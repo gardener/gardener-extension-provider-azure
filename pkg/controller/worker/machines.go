@@ -114,7 +114,11 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 	}
 
 	for _, pool := range w.worker.Spec.Pools {
-		workerPoolHash, err := worker.WorkerPoolHash(pool, w.cluster)
+		var additionalData []string
+		if infrastructureStatus.Identity != nil {
+			additionalData = append(additionalData, infrastructureStatus.Identity.ID)
+		}
+		workerPoolHash, err := worker.WorkerPoolHash(pool, w.cluster, additionalData...)
 		if err != nil {
 			return err
 		}
@@ -199,6 +203,10 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			}
 			if availabilitySetID != nil {
 				machineClassSpec["availabilitySetID"] = *availabilitySetID
+			}
+
+			if infrastructureStatus.Identity != nil {
+				machineClassSpec["identityID"] = infrastructureStatus.Identity.ID
 			}
 
 			var (

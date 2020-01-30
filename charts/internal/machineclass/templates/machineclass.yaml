@@ -32,6 +32,9 @@ spec:
     availabilitySet:
       id: {{ $machineClass.availabilitySetID }}
     {{- end }}
+    {{- if hasKey $machineClass "identityID" }}
+    identityID: {{ $machineClass.identityID }}
+    {{- end }}
     hardwareProfile:
       vmSize: {{ $machineClass.machineType }}
     osProfile:

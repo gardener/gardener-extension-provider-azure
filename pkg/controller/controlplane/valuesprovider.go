@@ -37,6 +37,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apiserver/pkg/authentication/user"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Object names
@@ -171,6 +172,13 @@ func (vp *valuesProvider) GetConfigChartValues(
 		return nil, errors.Wrapf(err, "could not get service account from secret '%s/%s'", cp.Spec.SecretRef.Namespace, cp.Spec.SecretRef.Name)
 	}
 
+	// Check if the configmap for the acr access need to be removed.
+	if infraStatus.Identity == nil || !infraStatus.Identity.ACRAccess {
+		if err := vp.removeAcrConfig(ctx, cp.Namespace); err != nil {
+			return nil, errors.Wrap(err, "could not remove acr config map")
+		}
+	}
+
 	// Get config chart values
 	return getConfigChartValues(infraStatus, cp, cluster, auth)
 }
@@ -209,6 +217,13 @@ func (vp *valuesProvider) GetControlPlaneShootChartValues(
 	}
 
 	return getControlPlaneShootChartValues(infraStatus)
+}
+
+func (vp *valuesProvider) removeAcrConfig(ctx context.Context, namespace string) error {
+	cm := corev1.ConfigMap{}
+	cm.SetName(azure.CloudProviderAcrConfigName)
+	cm.SetNamespace(namespace)
+	return client.IgnoreNotFound(vp.Client().Delete(ctx, &cm))
 }
 
 // getConfigChartValues collects and returns the configuration chart values.
@@ -255,6 +270,10 @@ func getConfigChartValues(
 			return nil, errors.Wrapf(err, "could not determine availability set for purpose 'nodes'")
 		}
 		values["availabilitySetName"] = nodesAvailabilitySet.Name
+	}
+
+	if infraStatus.Identity != nil && infraStatus.Identity.ACRAccess {
+		values["acrIdentityClientId"] = infraStatus.Identity.ClientID
 	}
 
 	return values, nil

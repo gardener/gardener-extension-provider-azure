@@ -86,6 +86,10 @@ func ValidateInfrastructureConfig(infra *apisazure.InfrastructureConfig, resourc
 		}
 	}
 
+	if infra.Identity != nil && (infra.Identity.Name == "" || infra.Identity.ResourceGroup == "") {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("identity"), infra.Identity, "specifying an identity requires the name of the identity and the resource group which hosts the identity"))
+	}
+
 	if nodes != nil {
 		allErrs = append(allErrs, nodes.ValidateSubset(workerCIDR)...)
 	}

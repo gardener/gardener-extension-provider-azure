@@ -75,6 +75,7 @@ var _ = Describe("Terraform", func() {
 	var (
 		infra      *extensionsv1alpha1.Infrastructure
 		config     *api.InfrastructureConfig
+		identity   map[string]interface{}
 		cluster    *controller.Cluster
 		clientAuth *internal.ClientAuth
 
@@ -163,6 +164,7 @@ var _ = Describe("Terraform", func() {
 						"serviceEndpoints": []string{testServiceEndpoint},
 					},
 				},
+				"identity":    identity,
 				"clusterName": infra.Namespace,
 				"networks": map[string]interface{}{
 					"worker": config.Networks.Workers,
@@ -206,6 +208,7 @@ var _ = Describe("Terraform", func() {
 						"serviceEndpoints": []string{testServiceEndpoint},
 					},
 				},
+				"identity":    identity,
 				"clusterName": infra.Namespace,
 				"networks": map[string]interface{}{
 					"worker": config.Networks.Workers,
@@ -255,6 +258,7 @@ var _ = Describe("Terraform", func() {
 						"serviceEndpoints": []string{testServiceEndpoint},
 					},
 				},
+				"identity":    identity,
 				"clusterName": infra.Namespace,
 				"networks": map[string]interface{}{
 					"worker": config.Networks.Workers,
@@ -356,6 +360,47 @@ var _ = Describe("Terraform", func() {
 					},
 				},
 				Zoned: false,
+			}))
+		})
+
+		It("should correctly compute the status for cluster with identity", func() {
+			var (
+				identityID       = "identity-id"
+				identityClientID = "identity-client-id"
+			)
+			state.IdentityID = identityID
+			state.IdentityClientID = identityClientID
+
+			status := StatusFromTerraformState(state)
+			Expect(status).To(Equal(&apiv1alpha1.InfrastructureStatus{
+				TypeMeta: StatusTypeMeta,
+				ResourceGroup: apiv1alpha1.ResourceGroup{
+					Name: resourceGroupName,
+				},
+				RouteTables: []apiv1alpha1.RouteTable{
+					{Name: routeTableName, Purpose: apiv1alpha1.PurposeNodes},
+				},
+				AvailabilitySets: []apiv1alpha1.AvailabilitySet{},
+				SecurityGroups: []apiv1alpha1.SecurityGroup{
+					{Name: securityGroupName, Purpose: apiv1alpha1.PurposeNodes},
+				},
+				Networks: apiv1alpha1.NetworkStatus{
+					VNet: apiv1alpha1.VNetStatus{
+						Name: vnetName,
+					},
+					Subnets: []apiv1alpha1.Subnet{
+						{
+							Purpose: apiv1alpha1.PurposeNodes,
+							Name:    subnetName,
+						},
+					},
+				},
+				Identity: &apiv1alpha1.IdentityStatus{
+					ID:        identityID,
+					ClientID:  identityClientID,
+					ACRAccess: false,
+				},
+				Zoned: true,
 			}))
 		})
 

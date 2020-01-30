@@ -83,6 +83,7 @@ var _ = Describe("Machines", func() {
 			var (
 				namespace        string
 				cloudProfileName string
+				identityID       = "identity-id"
 
 				azureClientID       string
 				azureClientSecret   string
@@ -242,6 +243,9 @@ var _ = Describe("Machines", func() {
 										ID:      availabilitySetID,
 									},
 								},
+								Identity: &apisazure.IdentityStatus{
+									ID: identityID,
+								},
 							}),
 						},
 						Pools: []extensionsv1alpha1.WorkerPool{
@@ -286,8 +290,8 @@ var _ = Describe("Machines", func() {
 				_ = apiv1alpha1.AddToScheme(scheme)
 				decoder = serializer.NewCodecFactory(scheme).UniversalDecoder()
 
-				workerPoolHash1, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster)
-				workerPoolHash2, _ = worker.WorkerPoolHash(w.Spec.Pools[1], cluster)
+				workerPoolHash1, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster, identityID)
+				workerPoolHash2, _ = worker.WorkerPoolHash(w.Spec.Pools[1], cluster, identityID)
 
 				workerDelegate, _ = NewWorkerDelegate(common.NewClientContext(c, scheme, decoder), chartApplier, "", w, clusterWithoutImages)
 			})
@@ -322,6 +326,7 @@ var _ = Describe("Machines", func() {
 							"size": volumeSize,
 						},
 						"sshPublicKey": sshKey,
+						"identityID":   identityID,
 					}
 
 					var (
@@ -372,17 +377,7 @@ var _ = Describe("Machines", func() {
 					expectGetSecretCallToWork(c, azureClientID, azureClientSecret, azureSubscriptionID, azureTenantID)
 
 					// Test workerDelegate.DeployMachineClasses()
-					chartApplier.
-						EXPECT().
-						ApplyChart(
-							context.TODO(),
-							filepath.Join(azure.InternalChartsPath, "machineclass"),
-							namespace,
-							"machineclass",
-							machineClasses,
-							nil,
-						).
-						Return(nil)
+					chartApplier.EXPECT().ApplyChart(context.TODO(), filepath.Join(azure.InternalChartsPath, "machineclass"), namespace, "machineclass", machineClasses, nil).Return(nil)
 
 					err := workerDelegate.DeployMachineClasses(context.TODO())
 					Expect(err).NotTo(HaveOccurred())

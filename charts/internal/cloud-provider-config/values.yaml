@@ -11,3 +11,4 @@ routeTableName: rtname
 securityGroupName: sgname
 region: location
 maxNodes: 0
+# acrIdentityClientId: identityClientID

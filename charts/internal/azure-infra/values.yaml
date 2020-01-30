@@ -10,6 +10,10 @@ create:
   vnet: true
   availabilitySet: false
 
+# identity:
+  # name: identity-name
+  # resourceGroup: identity-resource-group
+
 resourceGroup:
   name: my-resource-group
   vnet:
@@ -33,3 +37,5 @@ outputKeys:
   availabilitySetName: availabilitySetName
   routeTableName: routeTableName
   securityGroupName: securityGroupName
+  # identityID: managedIdentityID
+  # identityClientID: managedIdentityClientID

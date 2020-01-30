@@ -45,6 +45,10 @@ networks:
 zoned: false
 # resourceGroup:
 #   name: mygroup
+#identity:
+#  name: my-identity-name
+#  resourceGroup: my-identity-resource-group
+#  acrAccess: true
 ```
 
 The `networks.vnet` section describes whether you want to create the shoot cluster in an already existing VNet or whether to create a new one:
@@ -63,6 +67,10 @@ In the `networks.serviceEndpoints[]` list you can specify the list of Azure serv
 Via the `.zoned` boolean you can tell whether you want to use Azure availability zones or not.
 If you don't use zones then an availability set will be created and only basic load balancers will be used.
 Zoned clusters use standard load balancers.
+
+In the `identity` section you can specify an [Azure user-assigned managed identity](https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/overview#how-does-the-managed-identities-for-azure-resources-work) which should be attached to all cluster worker machines. With `identity.name` you can specify the name of the identity and with `identity.resourceGroup` you can specify the resource group which contains the identity resource on Azure. The identity need to be created by the user upfront (manually, other tooling, ...). Gardener/Azure Extension will only use the referenced one and won't create an identity. Furthermore the identity have to be in the same subscription as the Shoot cluster. Via the `identity.acrAccess` you can configure the worker machines to use the passed identity for pulling from an [Azure Container Registry (ACR)](https://docs.microsoft.com/en-us/azure/container-registry/container-registry-intro).
+
+Adding, exchanging or removing the identity will require a rolling update of all worker machines in the Shoot cluster.
 
 Currently, it's not yet possible to deploy into existing resource groups, but in the future it will.
 The `.resourceGroup.name` field will allow specifying the name of an already existing resource group that the shoot cluster and all infrastructure resources will be deployed to.

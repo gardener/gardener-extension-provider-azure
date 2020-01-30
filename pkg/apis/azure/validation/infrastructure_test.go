@@ -222,6 +222,27 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				}))
 			})
 		})
+
+		Context("Identity", func() {
+			It("should return no errors for using an identity", func() {
+				infrastructureConfig.Identity = &apisazure.IdentityConfig{
+					Name:          "test-identiy",
+					ResourceGroup: "identity-resource-group",
+				}
+				Expect(ValidateInfrastructureConfig(infrastructureConfig, &resourceGroup, &nodes, &pods, &services)).To(BeEmpty())
+			})
+
+			It("should return errors because no name or resource group is given", func() {
+				infrastructureConfig.Identity = &apisazure.IdentityConfig{
+					Name: "test-identiy",
+				}
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &resourceGroup, &nodes, &pods, &services)
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":  Equal(field.ErrorTypeInvalid),
+					"Field": Equal("identity"),
+				}))
+			})
+		})
 	})
 
 	Describe("#ValidateInfrastructureConfigUpdate", func() {

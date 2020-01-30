@@ -331,6 +331,19 @@ var _ = Describe("Ensurer", func() {
 	})
 
 	Describe("#EnsureKubeletServiceUnitOptions", func() {
+		var (
+			acrCmKey   = client.ObjectKey{Namespace: namespace, Name: azure.CloudProviderAcrConfigName}
+			acrContext = genericmutator.NewInternalEnsurerContext(
+				&extensionscontroller.Cluster{
+					Shoot: &gardencorev1beta1.Shoot{
+						Status: gardencorev1beta1.ShootStatus{
+							TechnicalID: namespace,
+						},
+					},
+				},
+			)
+		)
+
 		It("should modify existing elements of kubelet.service unit options", func() {
 			var (
 				oldUnitOptions = []*unit.UnitOption{
@@ -353,11 +366,59 @@ var _ = Describe("Ensurer", func() {
 				}
 			)
 
+			// Create mock client
+			client := mockclient.NewMockClient(ctrl)
+			client.EXPECT().Get(context.TODO(), acrCmKey, &corev1.ConfigMap{}).Return(errors.NewNotFound(schema.GroupResource{}, azure.CloudProviderAcrConfigName))
+
 			// Create ensurer
 			ensurer := NewEnsurer(logger)
+			err := ensurer.(inject.Client).InjectClient(client)
+			Expect(err).NotTo(HaveOccurred())
 
 			// Call EnsureKubeletServiceUnitOptions method and check the result
-			opts, err := ensurer.EnsureKubeletServiceUnitOptions(context.TODO(), dummyContext, oldUnitOptions)
+			opts, err := ensurer.EnsureKubeletServiceUnitOptions(context.TODO(), acrContext, oldUnitOptions)
+			Expect(err).To(Not(HaveOccurred()))
+			Expect(opts).To(Equal(newUnitOptions))
+		})
+
+		It("should modify existing elements of kubelet.service unit options and add acr config", func() {
+			var (
+				acrCM = &corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: azure.CloudProviderAcrConfigName},
+					Data:       map[string]string{},
+				}
+				oldUnitOptions = []*unit.UnitOption{
+					{
+						Section: "Service",
+						Name:    "ExecStart",
+						Value: `/opt/bin/hyperkube kubelet \
+		--config=/var/lib/kubelet/config/kubelet`,
+					},
+				}
+				newUnitOptions = []*unit.UnitOption{
+					{
+						Section: "Service",
+						Name:    "ExecStart",
+						Value: `/opt/bin/hyperkube kubelet \
+    --config=/var/lib/kubelet/config/kubelet \
+    --cloud-provider=azure \
+    --cloud-config=/var/lib/kubelet/cloudprovider.conf \
+    --azure-container-registry-config=/var/lib/kubelet/acr.conf`,
+					},
+				}
+			)
+
+			// Create mock client
+			client := mockclient.NewMockClient(ctrl)
+			client.EXPECT().Get(context.TODO(), acrCmKey, &corev1.ConfigMap{}).DoAndReturn(clientGet(acrCM))
+
+			// Create ensurer
+			ensurer := NewEnsurer(logger)
+			err := ensurer.(inject.Client).InjectClient(client)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Call EnsureKubeletServiceUnitOptions method and check the result
+			opts, err := ensurer.EnsureKubeletServiceUnitOptions(context.TODO(), acrContext, oldUnitOptions)
 			Expect(err).To(Not(HaveOccurred()))
 			Expect(opts).To(Equal(newUnitOptions))
 		})

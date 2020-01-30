@@ -27,6 +27,8 @@ type InfrastructureConfig struct {
 	ResourceGroup *ResourceGroup
 	// Networks is the network configuration (VNets, subnets, etc.)
 	Networks NetworkConfig
+	// Identity containts configuration for the assigned managed identity.
+	Identity *IdentityConfig
 	// Zoned indicates whether the cluster uses zones
 	Zoned bool
 }
@@ -62,6 +64,8 @@ type InfrastructureStatus struct {
 	RouteTables []RouteTable
 	// SecurityGroups is a list of created security groups
 	SecurityGroups []SecurityGroup
+	// Identity is the status of the managed identity.
+	Identity *IdentityStatus
 	// Zoned indicates whether the cluster uses zones
 	Zoned bool
 }
@@ -134,4 +138,24 @@ type VNetStatus struct {
 	Name string
 	// ResourceGroup is the resource group where the existing vNet belongs to.
 	ResourceGroup *string
+}
+
+// IdentityConfig contains configuration for the managed identity.
+type IdentityConfig struct {
+	// Name is the name of the identity.
+	Name string
+	// ResourceGroup is the resource group where the identity belongs to.
+	ResourceGroup string
+	// ACRAccess indicated if the identity should be used by the Shoot worker nodes to pull from an Azure Container Registry.
+	ACRAccess *bool
+}
+
+// IdentityStatus contains the status information of the created managed identity.
+type IdentityStatus struct {
+	// ID is the Azure resource if of the identity.
+	ID string
+	// ClientID is the client id of the identity.
+	ClientID string
+	// ACRAccess specifies if the identity should be used by the Shoot worker nodes to pull from an Azure Container Registry.
+	ACRAccess bool
 }

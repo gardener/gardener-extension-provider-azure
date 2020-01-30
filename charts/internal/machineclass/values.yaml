@@ -7,6 +7,7 @@ machineClasses:
   vnetName: my-vnet
   subnetName: my-subnet-in-my-vnet
   zone: 1
+  # identityID: /subscriptions/subscription-id/resourceGroups/resource-group-name/providers/Microsoft.ManagedIdentity/userAssignedIdentities/identity-name
   tags:
     Name: shoot-crazy-botany
     kubernetes.io-cluster-shoot-crazy-botany: "1"
