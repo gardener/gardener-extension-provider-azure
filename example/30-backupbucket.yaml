@@ -1,0 +1,23 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: backupprovider
+  namespace: garden
+type: Opaque
+data:
+# clientID: base64(clientID)
+# clientSecret: base64(clientSecret)
+# subscriptionID: base64(subscriptionID)
+# tenantID: base64(tenantID)
+---
+apiVersion: extensions.gardener.cloud/v1alpha1
+kind: BackupBucket
+metadata:
+  name: cloud--azure--fg2d6
+spec:
+  type: azure
+  region: eu-west-1
+  secretRef:
+    name: backupprovider
+    namespace: garden

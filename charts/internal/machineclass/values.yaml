@@ -1,0 +1,49 @@
+machineClasses:
+- name: class-1-zone
+# labels:
+#   foo: bar
+  region: westeurope
+  resourceGroup: my-resource-group
+  vnetName: my-vnet
+  subnetName: my-subnet-in-my-vnet
+  zone: 1
+  tags:
+    Name: shoot-crazy-botany
+    kubernetes.io-cluster-shoot-crazy-botany: "1"
+    kubernetes.io-role-node: "1"
+  secret:
+    clientID: ABCD
+    clientSecret: ABCD
+    subscriptionID: abc
+    tenantID: abc
+    cloudConfig: abc
+  machineType: Standard_DS1_V2
+  image:
+    urn: "CoreOS:CoreOS:Stable:1576.5.0"
+  osDisk:
+    size: 50
+    #type: Standard_LRS
+  sshPublicKey: ssh-rsa AAAAB3...
+- name: class-2-availability-set
+  region: westeurope
+  resourceGroup: my-resource-group
+  vnetName: my-vnet
+  subnetName: my-subnet-in-my-vnet
+  availabilitySetID: /subscriptions/subscription-id/resourceGroups/resource-group-name/providers/Microsoft.Compute/availabilitySets/availablity-set-name
+  tags:
+    Name: shoot-crazy-botany
+    kubernetes.io-cluster-shoot-crazy-botany: "1"
+    kubernetes.io-role-node: "1"
+  secret:
+    clientID: ABCD
+    clientSecret: ABCD
+    subscriptionID: abc
+    tenantID: abc
+    cloudConfig: abc
+  machineType: Standard_DS1_V2
+  image:
+    urn: "CoreOS:CoreOS:Stable:1576.5.0"
+  osDisk:
+    size: 50
+    type: Standard_LRS
+  sshPublicKey: ssh-rsa AAAAB3...

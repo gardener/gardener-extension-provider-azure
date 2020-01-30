@@ -1,0 +1,13 @@
+kubernetesVersion: 1.13.5
+tenantId: fooTenant
+subscriptionId: barSub
+aadClientId: fooClient
+aadClientSecret: barSecret
+resourceGroup: foobarGroup
+vnetName: name
+# vnetResourceGroup: vnetResourceGroup
+subnetName: sname
+routeTableName: rtname
+securityGroupName: sgname
+region: location
+maxNodes: 0

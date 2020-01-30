@@ -1,0 +1,85 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shoot--foobar--azure
+  labels:
+#    backup.gardener.cloud/provider: azure
+#    seed.gardener.cloud/provider: azure
+    shoot.gardener.cloud/provider: azure
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cloudprovider
+  namespace: shoot--foobar--azure
+type: Opaque
+data:
+  clientID: Y2xpZW50SUQ=
+  clientSecret: Y2xpZW50U2VjcmV0
+  subscriptionID: c3Vic2NyaXB0aW9uSUQ=
+  tenantID: dGVuYW50SUQ=
+---
+apiVersion: extensions.gardener.cloud/v1alpha1
+kind: Cluster
+metadata:
+  name: shoot--foobar--azure
+spec:
+  cloudProfile:
+    apiVersion: core.gardener.cloud/v1alpha1
+    kind: CloudProfile
+  seed:
+    apiVersion: core.gardener.cloud/v1alpha1
+    kind: Seed
+  shoot:
+    apiVersion: core.gardener.cloud/v1alpha1
+    kind: Shoot
+    spec:
+      networking:
+        pods: 10.250.0.0/19
+      kubernetes:
+        version: 1.13.4
+      hibernation:
+        enabled: false
+    status:
+      lastOperation:
+        state: Succeeded
+---
+apiVersion: extensions.gardener.cloud/v1alpha1
+kind: ControlPlane
+metadata:
+  name: control-plane
+  namespace: shoot--foobar--azure
+spec:
+  type: azure
+  region: europe-west1
+  secretRef:
+    name: cloudprovider
+    namespace: shoot--foobar--azure
+  providerConfig:
+    apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+    kind: ControlPlaneConfig
+    cloudControllerManager:
+      featureGates:
+        CustomResourceValidation: true
+  infrastructureProviderStatus:
+    apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+    kind: InfrastructureStatus
+    resourceGroup:
+      name: rg-1234
+    networks:
+      vnet:
+        name: vnet-1234
+      subnets:
+      - purpose: nodes
+        name: subnet-acbd1234
+    availabilitySets:
+    - id: /example/id
+      name: azure-avset-workers
+      purpose: nodes
+    routeTables:
+    - name: route-table
+      purpose: nodes
+    securityGroups:
+    - name: sec-groups
+      purpose: nodes

@@ -1,0 +1,75 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shoot--foobar--azure
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  namespace: shoot--foobar--azure
+  name: core-azure
+type: Opaque
+data:
+# clientID: base64(clientID)
+# clientSecret: base64(clientSecret)
+# subscriptionID: base64(subscriptionID)
+# tenantID: base64(tenantID)
+---
+apiVersion: extensions.gardener.cloud/v1alpha1
+kind: Cluster
+metadata:
+  name: shoot--foobar--azure
+spec:
+  cloudProfile:
+    apiVersion: core.gardener.cloud/v1alpha1
+    kind: CloudProfile
+    spec:
+      providerConfig:
+        apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+        kind: CloudProfileConfig
+        countFaultDomains:
+        - region: westeurope
+          count: 2
+        countUpdateDomains:
+        - region: westeurope
+          count: 5
+  seed:
+    apiVersion: core.gardener.cloud/v1alpha1
+    kind: Seed
+  shoot:
+    apiVersion: core.gardener.cloud/v1alpha1
+    kind: Shoot
+    spec:
+      networking:
+        pods: 10.243.128.0/17
+        services: 10.243.0.0/17
+    status:
+      lastOperation:
+        state: Succeeded
+---
+apiVersion: extensions.gardener.cloud/v1alpha1
+kind: Infrastructure
+metadata:
+  namespace: shoot--foobar--azure
+  name: azure-infra
+spec:
+  type: azure
+  region: westeurope
+  secretRef:
+    namespace: shoot--foobar--azure
+    name: core-azure
+  providerConfig:
+    apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+    kind: InfrastructureConfig
+    networks:
+      vnet: # specify either 'name' and 'resourceGroup' or 'cidr'
+      # name: my-vnet
+      # resourceGroup: my-vnet-group
+        cidr: 10.250.0.0/16
+      workers: 10.250.0.0/19
+    # serviceEndpoints:
+    # - entry1
+    zoned: false
+  # resourceGroup:
+  #   name: mygroup
