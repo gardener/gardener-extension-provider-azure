@@ -134,8 +134,8 @@ github.com/gardener/gardener-extension-networking-calico v0.0.0-20200129184310-c
 github.com/gardener/gardener-extension-networking-calico v0.0.0-20200129184310-ca90704ba78e/go.mod h1:IY4O46FVVDcmmlTwTP8keIiD5G+4HRm+oMhKQ64Mdv4=
 github.com/gardener/gardener-extensions v1.2.1-0.20200129183102-afdd6bad562a h1:S5gPMoKMt68R0FC4l99Rd0KuNhEfcD3g824gajEarv8=
 github.com/gardener/gardener-extensions v1.2.1-0.20200129183102-afdd6bad562a/go.mod h1:qJHM2NaRCdCBKjnvWXpixWBq1866kqZR76kA7edk8I4=
-github.com/gardener/gardener-extensions v1.2.1-0.20200130094329-f359bd0eb552 h1:PJjNeIE8dDix+Dw6N1YrFJ1+tzWKRYFjNxzRUAdcQZA=
-github.com/gardener/gardener-extensions v1.2.1-0.20200130094329-f359bd0eb552/go.mod h1:xsLUXvZZgIJCyvsRdUcpOEnrtzTSfeHqMuL24CWbxCc=
+github.com/gardener/gardener-extensions v1.3.0 h1:cq8/4lnvO+rA2pC42Zetb/4q4IsU1/ZEdsc5sW9jWio=
+github.com/gardener/gardener-extensions v1.3.0/go.mod h1:FoPT/v8gUT8BdufAAzGSMzJiiQvqr7+DMmippm1Mc9w=
 github.com/gardener/gardener-resource-manager v0.9.1-0.20200124091350-6ea41bbae81f h1:kaJJ2j6/uHTt6tDQiDO25HOq6Uit6Hu31hu47HfY/Lw=
 github.com/gardener/gardener-resource-manager v0.9.1-0.20200124091350-6ea41bbae81f/go.mod h1:0pKTHOhvU91eQB0EYr/6Ymd7lXc/5Hi8P8tF/gpV0VQ=
 github.com/gardener/hvpa-controller v0.0.0-20191014062307-fad3bdf06a25 h1:nOFITmV7vt4fcYPEXgj66Qs83FdDEMvL/LQcR0diRRE=
