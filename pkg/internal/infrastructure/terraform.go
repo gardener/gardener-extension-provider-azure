@@ -20,6 +20,7 @@ import (
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 	"github.com/gardener/gardener-extensions/pkg/controller"
 	"github.com/gardener/gardener-extensions/pkg/terraformer"
@@ -51,18 +52,11 @@ const (
 	TerraformerOutputKeySecurityGroupName = "securityGroupName"
 )
 
-var (
-	// ChartsPath is the path to the charts
-	ChartsPath = filepath.Join("controllers", "provider-azure", "charts")
-	// InternalChartsPath is the path to the internal charts
-	InternalChartsPath = filepath.Join(ChartsPath, "internal")
-
-	// StatusTypeMeta is the TypeMeta of the Azure InfrastructureStatus
-	StatusTypeMeta = metav1.TypeMeta{
-		APIVersion: apiv1alpha1.SchemeGroupVersion.String(),
-		Kind:       "InfrastructureStatus",
-	}
-)
+// StatusTypeMeta is the TypeMeta of the Azure InfrastructureStatus
+var StatusTypeMeta = metav1.TypeMeta{
+	APIVersion: apiv1alpha1.SchemeGroupVersion.String(),
+	Kind:       "InfrastructureStatus",
+}
 
 // ComputeTerraformerChartValues computes the values for the Azure Terraformer chart.
 func ComputeTerraformerChartValues(infra *extensionsv1alpha1.Infrastructure, clientAuth *internal.ClientAuth,
@@ -164,7 +158,7 @@ func RenderTerraformerChart(renderer chartrenderer.Interface, infra *extensionsv
 		return nil, err
 	}
 
-	release, err := renderer.Render(filepath.Join(InternalChartsPath, "azure-infra"), "azure-infra", infra.Namespace, values)
+	release, err := renderer.Render(filepath.Join(azure.InternalChartsPath, "azure-infra"), "azure-infra", infra.Namespace, values)
 	if err != nil {
 		return nil, err
 	}
