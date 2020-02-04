@@ -109,11 +109,22 @@ var ccmChart = &chart.Chart{
 
 var ccmShootChart = &chart.Chart{
 	Name: "cloud-controller-manager-shoot",
-	Path: filepath.Join(azure.InternalChartsPath, "cloud-controller-manager-shoot"),
+	Path: filepath.Join(azure.InternalChartsPath, "controlplane-shoot", "cloud-controller-manager-shoot"),
 	Objects: []*chart.Object{
 		{Type: &rbacv1.ClusterRole{}, Name: "system:controller:cloud-node-controller"},
 		{Type: &rbacv1.ClusterRoleBinding{}, Name: "system:controller:cloud-node-controller"},
 	},
+}
+
+var allowUDPEgressChart = &chart.Chart{
+	Name: "allow-udp-egress",
+	Path: filepath.Join(azure.InternalChartsPath, "controlplane-shoot", "allow-udp-egress"),
+}
+
+var controlPlaneShootChart = &chart.Chart{
+	Name:      "controlplane-shoot",
+	Path:      filepath.Join(azure.InternalChartsPath, "controlplane-shoot"),
+	SubCharts: []*chart.Chart{ccmShootChart, allowUDPEgressChart},
 }
 
 var storageClassChart = &chart.Chart{
@@ -182,6 +193,22 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 
 	// Get CCM chart values
 	return getCCMChartValues(cpConfig, cp, cluster, checksums, scaledDown)
+}
+
+// GetControlPlaneShootChartValues returns the values for the control plane shoot chart applied by the generic actuator.
+func (vp *valuesProvider) GetControlPlaneShootChartValues(
+	ctx context.Context,
+	cp *extensionsv1alpha1.ControlPlane,
+	cluster *extensionscontroller.Cluster,
+	checksums map[string]string,
+) (map[string]interface{}, error) {
+	// Decode infrastructureProviderStatus
+	infraStatus := &apisazure.InfrastructureStatus{}
+	if _, _, err := vp.Decoder().Decode(cp.Spec.InfrastructureProviderStatus.Raw, nil, infraStatus); err != nil {
+		return nil, errors.Wrapf(err, "could not decode infrastructureProviderStatus of controlplane '%s'", util.ObjectName(cp))
+	}
+
+	return getControlPlaneShootChartValues(infraStatus)
 }
 
 // getConfigChartValues collects and returns the configuration chart values.
@@ -256,6 +283,19 @@ func getCCMChartValues(
 
 	if cpConfig.CloudControllerManager != nil {
 		values["featureGates"] = cpConfig.CloudControllerManager.FeatureGates
+	}
+
+	return values, nil
+}
+
+// getControlPlaneShootChartValues collects and returns the control plane shoot chart values.
+func getControlPlaneShootChartValues(
+	infraStatus *apisazure.InfrastructureStatus,
+) (map[string]interface{}, error) {
+	values := map[string]interface{}{
+		"allow-udp-egress": map[string]interface{}{
+			"enabled": infraStatus.Zoned,
+		},
 	}
 
 	return values, nil
