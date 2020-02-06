@@ -1,0 +1,5 @@
+# TODO (dkistner): remove this subchart once we have a proper implementation for UDP egress via NAT GW
+apiVersion: v1
+description: Helm chart for allow-udp-egress
+name: allow-udp-egress
+version: 0.1.0

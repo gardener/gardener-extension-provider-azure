@@ -485,6 +485,18 @@ var _ = Describe("ValuesProvider", func() {
 			},
 		}
 
+		controlPlaneShootNonZonedClusterChartValues = map[string]interface{}{
+			"allow-udp-egress": map[string]interface{}{
+				"enabled": false,
+			},
+		}
+
+		controlPlaneShootZonedClusterChartValues = map[string]interface{}{
+			"allow-udp-egress": map[string]interface{}{
+				"enabled": true,
+			},
+		}
+
 		logger = log.Log.WithName("test")
 	)
 
@@ -627,6 +639,34 @@ var _ = Describe("ValuesProvider", func() {
 			values, err := vp.GetControlPlaneChartValues(context.TODO(), cp, cluster, checksums, false)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(ccmChartValues))
+		})
+	})
+
+	Describe("#GetControlPlaneShootChartValues", func() {
+		It("should return correct control plane shoot chart values for non zoned cluster", func() {
+			// Create valuesProvider
+			vp := NewValuesProvider(logger)
+			err := vp.(inject.Scheme).InjectScheme(scheme)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Call GetConfigChartValues method and check the result
+			values, err := vp.GetControlPlaneShootChartValues(context.TODO(), cp, cluster, checksums)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(controlPlaneShootNonZonedClusterChartValues))
+		})
+
+		It("should return correct control plane shoot chart values for zoned cluster", func() {
+			// Create valuesProvider
+			vp := NewValuesProvider(logger)
+			err := vp.(inject.Scheme).InjectScheme(scheme)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Call GetConfigChartValues method and check the result
+			values, err := vp.GetControlPlaneShootChartValues(context.TODO(), cpZoned, cluster, checksums)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(controlPlaneShootZonedClusterChartValues))
 		})
 	})
 })
