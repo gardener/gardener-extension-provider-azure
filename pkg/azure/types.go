@@ -62,6 +62,10 @@ const (
 	CloudProviderKubeletConfigName = "cloud-provider-kubelet-config"
 	// CloudProviderConfigMapKey is the key storing the cloud provider config as value in the cloud provider configmap.
 	CloudProviderConfigMapKey = "cloudprovider.conf"
+	// CloudProviderAcrConfigName is the name of the configmap containing the cloud provider config to configure the kubelet to get acr config.
+	CloudProviderAcrConfigName = "kubelet-acr-config"
+	// CloudProviderAcrConfigMapKey is the key storing the cloud provider config as value in the acr cloud provider configmap.
+	CloudProviderAcrConfigMapKey = "acr.conf"
 	// BackupSecretName is the name of the secret containing the credentials for storing the backups of Shoot clusters.
 	BackupSecretName = "etcd-backup"
 	// MachineControllerManagerVpaName is the name of the VerticalPodAutoscaler of the machine-controller-manager deployment.

@@ -50,6 +50,10 @@ const (
 	TerraformerOutputKeyRouteTableName = "routeTableName"
 	// TerraformerOutputKeySecurityGroupName is the key for the securityGroupName output
 	TerraformerOutputKeySecurityGroupName = "securityGroupName"
+	// TerraformerOutputKeyIdentityID is the key for the identityID output
+	TerraformerOutputKeyIdentityID = "identityID"
+	// TerraformerOutputKeyIdentityClientID is the key for the identityClientID output
+	TerraformerOutputKeyIdentityClientID = "identityClientID"
 )
 
 // StatusTypeMeta is the TypeMeta of the Azure InfrastructureStatus
@@ -67,7 +71,8 @@ func ComputeTerraformerChartValues(infra *extensionsv1alpha1.Infrastructure, cli
 		createAvailabilitySet = false
 		resourceGroupName     = infra.Namespace
 
-		azure = map[string]interface{}{
+		identityConfig map[string]interface{}
+		azure          = map[string]interface{}{
 			"subscriptionID": clientAuth.SubscriptionID,
 			"tenantID":       clientAuth.TenantID,
 			"region":         infra.Spec.Region,
@@ -128,6 +133,15 @@ func ComputeTerraformerChartValues(infra *extensionsv1alpha1.Infrastructure, cli
 		azure["countFaultDomains"] = countFaultDomains
 	}
 
+	if config.Identity != nil && config.Identity.Name != "" && config.Identity.ResourceGroup != "" {
+		identityConfig = map[string]interface{}{
+			"name":          config.Identity.Name,
+			"resourceGroup": config.Identity.ResourceGroup,
+		}
+		outputKeys["identityID"] = TerraformerOutputKeyIdentityID
+		outputKeys["identityClientID"] = TerraformerOutputKeyIdentityClientID
+	}
+
 	return map[string]interface{}{
 		"azure": azure,
 		"create": map[string]interface{}{
@@ -146,6 +160,7 @@ func ComputeTerraformerChartValues(infra *extensionsv1alpha1.Infrastructure, cli
 		"networks": map[string]interface{}{
 			"worker": config.Networks.Workers,
 		},
+		"identity":   identityConfig,
 		"outputKeys": outputKeys,
 	}, nil
 }
@@ -195,6 +210,10 @@ type TerraformState struct {
 	RouteTableName string
 	// SecurityGroupName is the name of the security group.
 	SecurityGroupName string
+	// IdentityID is the id of the identity.
+	IdentityID string
+	// IdentityClientID is the client id of the identity.
+	IdentityClientID string
 }
 
 // ExtractTerraformState extracts the TerraformState from the given Terraformer.
@@ -213,6 +232,10 @@ func ExtractTerraformState(tf terraformer.Terraformer, config *api.Infrastructur
 
 	if !config.Zoned {
 		outputKeys = append(outputKeys, TerraformerOutputKeyAvailabilitySetID, TerraformerOutputKeyAvailabilitySetName)
+	}
+
+	if config.Identity != nil && config.Identity.Name != "" && config.Identity.ResourceGroup != "" {
+		outputKeys = append(outputKeys, TerraformerOutputKeyIdentityID, TerraformerOutputKeyIdentityClientID)
 	}
 
 	vars, err := tf.GetStateOutputVariables(outputKeys...)
@@ -236,6 +259,12 @@ func ExtractTerraformState(tf terraformer.Terraformer, config *api.Infrastructur
 		tfState.AvailabilitySetID = vars[TerraformerOutputKeyAvailabilitySetID]
 		tfState.AvailabilitySetName = vars[TerraformerOutputKeyAvailabilitySetName]
 	}
+
+	if config.Identity != nil && config.Identity.Name != "" && config.Identity.ResourceGroup != "" {
+		tfState.IdentityID = vars[TerraformerOutputKeyIdentityID]
+		tfState.IdentityClientID = vars[TerraformerOutputKeyIdentityClientID]
+	}
+
 	return &tfState, nil
 }
 
@@ -271,6 +300,13 @@ func StatusFromTerraformState(state *TerraformState) *apiv1alpha1.Infrastructure
 		tfState.Networks.VNet.ResourceGroup = &state.VNetResourceGroupName
 	}
 
+	if state.IdentityID != "" && state.IdentityClientID != "" {
+		tfState.Identity = &apiv1alpha1.IdentityStatus{
+			ID:       state.IdentityID,
+			ClientID: state.IdentityClientID,
+		}
+	}
+
 	// If no AvailabilitySet was created then the Shoot uses zones.
 	if state.AvailabilitySetID == "" && state.AvailabilitySetName == "" {
 		tfState.Zoned = true
@@ -291,6 +327,12 @@ func ComputeStatus(tf terraformer.Terraformer, config *api.InfrastructureConfig)
 	if err != nil {
 		return nil, err
 	}
+	status := StatusFromTerraformState(state)
 
-	return StatusFromTerraformState(state), nil
+	// Check if ACR access should be configured.
+	if config.Identity != nil && config.Identity.ACRAccess != nil && *config.Identity.ACRAccess && status.Identity != nil {
+		status.Identity.ACRAccess = true
+	}
+
+	return status, nil
 }

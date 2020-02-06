@@ -30,8 +30,10 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
@@ -402,6 +404,64 @@ var _ = Describe("ValuesProvider", func() {
 			},
 		}
 
+		cpIdentity = &extensionsv1alpha1.ControlPlane{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "control-plane",
+				Namespace: namespace,
+			},
+			Spec: extensionsv1alpha1.ControlPlaneSpec{
+				Region: "eu-west-1a",
+				SecretRef: corev1.SecretReference{
+					Name:      v1beta1constants.SecretNameCloudProvider,
+					Namespace: namespace,
+				},
+				ProviderConfig: &runtime.RawExtension{
+					Raw: encode(&apisazure.ControlPlaneConfig{
+						CloudControllerManager: &apisazure.CloudControllerManagerConfig{
+							FeatureGates: map[string]bool{
+								"CustomResourceValidation": true,
+							},
+						},
+					}),
+				},
+				InfrastructureProviderStatus: &runtime.RawExtension{
+					Raw: encode(&apisazure.InfrastructureStatus{
+						ResourceGroup: apisazure.ResourceGroup{
+							Name: "rg-abcd1234",
+						},
+						Networks: apisazure.NetworkStatus{
+							VNet: apisazure.VNetStatus{
+								Name: "vnet-abcd1234",
+							},
+							Subnets: []apisazure.Subnet{
+								{
+									Name:    "subnet-abcd1234-nodes",
+									Purpose: "nodes",
+								},
+							},
+						},
+						SecurityGroups: []apisazure.SecurityGroup{
+							{
+								Purpose: "nodes",
+								Name:    "security-group-name-workers",
+							},
+						},
+						RouteTables: []apisazure.RouteTable{
+							{
+								Purpose: "nodes",
+								Name:    "route-table-name",
+							},
+						},
+						Identity: &apisazure.IdentityStatus{
+							ClientID:  "identity-client-id",
+							ACRAccess: true,
+						},
+						Zoned: true,
+					}),
+				},
+			},
+		}
+
 		cidr    = "10.250.0.0/19"
 		cluster = &extensionscontroller.Cluster{
 			Shoot: &gardencorev1beta1.Shoot{
@@ -430,6 +490,11 @@ var _ = Describe("ValuesProvider", func() {
 				"tenantID":       []byte(`TenantID`),
 			},
 		}
+
+		acrConfigMap = &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: azure.CloudProviderAcrConfigName, Namespace: namespace},
+		}
+		errorAcrConfigMapNotFound = errors.NewNotFound(schema.GroupResource{}, azure.CloudProviderAcrConfigName)
 
 		checksums = map[string]string{
 			v1beta1constants.SecretNameCloudProvider: "8bafb35ff1ac60275d62e1cbd495aceb511fb354f74a20f7d06ecb48b3a68432",
@@ -467,6 +532,22 @@ var _ = Describe("ValuesProvider", func() {
 			"securityGroupName": "security-group-name-workers",
 			"kubernetesVersion": "1.13.4",
 			"maxNodes":          maxNodes,
+		}
+
+		configIdentityClusterChartValues = map[string]interface{}{
+			"tenantId":            "TenantID",
+			"subscriptionId":      "SubscriptionID",
+			"aadClientId":         "ClientID",
+			"aadClientSecret":     "ClientSecret",
+			"resourceGroup":       "rg-abcd1234",
+			"vnetName":            "vnet-abcd1234",
+			"subnetName":          "subnet-abcd1234-nodes",
+			"region":              "eu-west-1a",
+			"routeTableName":      "route-table-name",
+			"securityGroupName":   "security-group-name-workers",
+			"kubernetesVersion":   "1.13.4",
+			"acrIdentityClientId": "identity-client-id",
+			"maxNodes":            maxNodes,
 		}
 
 		ccmChartValues = map[string]interface{}{
@@ -513,6 +594,7 @@ var _ = Describe("ValuesProvider", func() {
 			// Create mock client
 			client := mockclient.NewMockClient(ctrl)
 			client.EXPECT().Get(context.TODO(), cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
+			client.EXPECT().Delete(context.TODO(), acrConfigMap).Return(errorAcrConfigMapNotFound)
 
 			// Create valuesProvider
 			vp := NewValuesProvider(logger)
@@ -527,25 +609,44 @@ var _ = Describe("ValuesProvider", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(configNonZonedClusterChartValues))
 		})
-	})
 
-	It("should return correct config chart values for zoned cluster", func() {
-		// Create mock client
-		client := mockclient.NewMockClient(ctrl)
-		client.EXPECT().Get(context.TODO(), cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
+		It("should return correct config chart values for zoned cluster", func() {
+			// Create mock client
+			client := mockclient.NewMockClient(ctrl)
+			client.EXPECT().Get(context.TODO(), cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
+			client.EXPECT().Delete(context.TODO(), acrConfigMap).Return(errorAcrConfigMapNotFound)
 
-		// Create valuesProvider
-		vp := NewValuesProvider(logger)
-		err := vp.(inject.Scheme).InjectScheme(scheme)
-		Expect(err).NotTo(HaveOccurred())
-		err = vp.(inject.Client).InjectClient(client)
-		Expect(err).NotTo(HaveOccurred())
+			// Create valuesProvider
+			vp := NewValuesProvider(logger)
+			err := vp.(inject.Scheme).InjectScheme(scheme)
+			Expect(err).NotTo(HaveOccurred())
+			err = vp.(inject.Client).InjectClient(client)
+			Expect(err).NotTo(HaveOccurred())
 
-		// Call GetConfigChartValues method and check the result
-		values, err := vp.GetConfigChartValues(context.TODO(), cpZoned, cluster)
+			// Call GetConfigChartValues method and check the result
+			values, err := vp.GetConfigChartValues(context.TODO(), cpZoned, cluster)
 
-		Expect(err).NotTo(HaveOccurred())
-		Expect(values).To(Equal(configZonedClusterChartValues))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(configZonedClusterChartValues))
+		})
+
+		It("should return correct control plane chart values with identiy", func() {
+			// Create mock client
+			client := mockclient.NewMockClient(ctrl)
+			client.EXPECT().Get(context.TODO(), cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
+
+			// Create valuesProvider
+			vp := NewValuesProvider(logger)
+			err := vp.(inject.Scheme).InjectScheme(scheme)
+			Expect(err).NotTo(HaveOccurred())
+			err = vp.(inject.Client).InjectClient(client)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Call GetConfigChartValues method and check the result
+			values, err := vp.GetConfigChartValues(context.TODO(), cpIdentity, cluster)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(configIdentityClusterChartValues))
+		})
 	})
 
 	Describe("#GetConfigChartValuesNoSubnet", func() {
@@ -553,6 +654,7 @@ var _ = Describe("ValuesProvider", func() {
 			// Create mock client
 			client := mockclient.NewMockClient(ctrl)
 			client.EXPECT().Get(context.TODO(), cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
+			client.EXPECT().Delete(context.TODO(), acrConfigMap).Return(errorAcrConfigMapNotFound)
 
 			// Create valuesProvider
 			vp := NewValuesProvider(logger)
@@ -573,6 +675,7 @@ var _ = Describe("ValuesProvider", func() {
 			// Create mock client
 			client := mockclient.NewMockClient(ctrl)
 			client.EXPECT().Get(context.TODO(), cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
+			client.EXPECT().Delete(context.TODO(), acrConfigMap).Return(errorAcrConfigMapNotFound)
 
 			// Create valuesProvider
 			vp := NewValuesProvider(logger)
@@ -593,6 +696,7 @@ var _ = Describe("ValuesProvider", func() {
 			// Create mock client
 			client := mockclient.NewMockClient(ctrl)
 			client.EXPECT().Get(context.TODO(), cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
+			client.EXPECT().Delete(context.TODO(), acrConfigMap).Return(errorAcrConfigMapNotFound)
 
 			// Create valuesProvider
 			vp := NewValuesProvider(logger)
@@ -613,6 +717,7 @@ var _ = Describe("ValuesProvider", func() {
 			// Create mock client
 			client := mockclient.NewMockClient(ctrl)
 			client.EXPECT().Get(context.TODO(), cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
+			client.EXPECT().Delete(context.TODO(), acrConfigMap).Return(errorAcrConfigMapNotFound)
 
 			// Create valuesProvider
 			vp := NewValuesProvider(logger)

@@ -1,0 +1,17 @@
+{{if hasKey .Values "acrIdentityClientId" -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kubelet-acr-config
+  namespace: {{ .Release.Namespace }}
+data:
+  acr.conf: |
+    cloud: AZUREPUBLICCLOUD
+    tenantId: "{{ .Values.tenantId }}"
+    subscriptionId: "{{ .Values.subscriptionId }}"
+    aadClientId: "msi"
+    aadClientSecret: "msi"
+    useManagedIdentityExtension: true
+    userAssignedIdentityID: "{{.Values.acrIdentityClientId}}"
+    useInstanceMetadata: true
+{{- end}} 

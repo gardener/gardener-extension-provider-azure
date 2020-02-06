@@ -17,7 +17,7 @@ data "azurerm_resource_group" "rg" {
 {{- end}}
 
 #=====================================================================
-#= VNet, Subnets, Route Table, Security Groups
+#= VNet, Subnets, Route Table, Security Groups, Identity
 #=====================================================================
 
 {{ if .Values.create.vnet -}}
@@ -72,6 +72,13 @@ resource "azurerm_network_security_group" "workers" {
   resource_group_name = "${data.azurerm_resource_group.rg.name}"
   {{- end}}
 }
+
+{{ if .Values.identity -}}
+data "azurerm_user_assigned_identity" "identity" {
+  name                = "{{ required "identity.name is required" .Values.identity.name }}"
+  resource_group_name = "{{ required "identity.resourceGroup is required" .Values.identity.resourceGroup }}"
+}
+{{- end }}
 
 {{ if .Values.create.availabilitySet -}}
 #=====================================================================
@@ -139,3 +146,12 @@ output "{{ .Values.outputKeys.availabilitySetName }}" {
   value = "${azurerm_availability_set.workers.name}"
 }
 {{- end}}
+{{ if .Values.identity -}}
+output "{{ .Values.outputKeys.identityID }}" {
+  value = "${data.azurerm_user_assigned_identity.identity.id}"
+}
+
+output "{{ .Values.outputKeys.identityClientID }}" {
+  value = "${data.azurerm_user_assigned_identity.identity.client_id}"
+}
+{{- end }}
