@@ -101,7 +101,7 @@ If you don't want to configure anything for the `cloudControllerManager` simply 
 Please find below an example `Shoot` manifest for a non-zoned cluster:
 
 ```yaml
-apiVersion: core.gardener.cloud/v1alpha1
+apiVersion: core.gardener.cloud/v1beta1
 kind: Shoot
 metadata:
   name: johndoe-azure
@@ -133,8 +133,10 @@ spec:
         size: 50Gi
         type: Standard_LRS
   networking:
-    nodes: 10.250.0.0/16
     type: calico
+    pods: 100.96.0.0/11
+    nodes: 10.250.0.0/16
+    services: 100.64.0.0/13
   kubernetes:
     version: 1.16.1
   maintenance:
@@ -142,9 +144,9 @@ spec:
       kubernetesVersion: true
       machineImageVersion: true
   addons:
-    kubernetes-dashboard:
+    kubernetesDashboard:
       enabled: true
-    nginx-ingress:
+    nginxIngress:
       enabled: true
 ```
 
@@ -153,7 +155,7 @@ spec:
 Please find below an example `Shoot` manifest for a zoned cluster:
 
 ```yaml
-apiVersion: core.gardener.cloud/v1alpha1
+apiVersion: core.gardener.cloud/v1beta1
 kind: Shoot
 metadata:
   name: johndoe-azure
@@ -188,8 +190,10 @@ spec:
       - "1"
       - "2"
   networking:
-    nodes: 10.250.0.0/16
     type: calico
+    pods: 100.96.0.0/11
+    nodes: 10.250.0.0/16
+    services: 100.64.0.0/13
   kubernetes:
     version: 1.16.1
   maintenance:
@@ -197,8 +201,8 @@ spec:
       kubernetesVersion: true
       machineImageVersion: true
   addons:
-    kubernetes-dashboard:
+    kubernetesDashboard:
       enabled: true
-    nginx-ingress:
+    nginxIngress:
       enabled: true
 ```
