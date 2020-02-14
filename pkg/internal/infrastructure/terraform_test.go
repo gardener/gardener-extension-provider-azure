@@ -125,8 +125,10 @@ var _ = Describe("Terraform", func() {
 					Namespace: "foo",
 					Name:      "azure-credentials",
 				},
-				ProviderConfig: &runtime.RawExtension{
-					Object: rawconfig,
+				DefaultSpec: extensionsv1alpha1.DefaultSpec{
+					ProviderConfig: &runtime.RawExtension{
+						Object: rawconfig,
+					},
 				},
 			},
 		}

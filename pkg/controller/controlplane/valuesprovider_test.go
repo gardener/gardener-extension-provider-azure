@@ -63,14 +63,16 @@ var _ = Describe("ValuesProvider", func() {
 					Name:      v1beta1constants.SecretNameCloudProvider,
 					Namespace: namespace,
 				},
-				ProviderConfig: &runtime.RawExtension{
-					Raw: encode(&apisazure.ControlPlaneConfig{
-						CloudControllerManager: &apisazure.CloudControllerManagerConfig{
-							FeatureGates: map[string]bool{
-								"CustomResourceValidation": true,
+				DefaultSpec: extensionsv1alpha1.DefaultSpec{
+					ProviderConfig: &runtime.RawExtension{
+						Raw: encode(&apisazure.ControlPlaneConfig{
+							CloudControllerManager: &apisazure.CloudControllerManagerConfig{
+								FeatureGates: map[string]bool{
+									"CustomResourceValidation": true,
+								},
 							},
-						},
-					}),
+						}),
+					},
 				},
 				InfrastructureProviderStatus: &runtime.RawExtension{
 					Raw: encode(&apisazure.InfrastructureStatus{
@@ -124,14 +126,16 @@ var _ = Describe("ValuesProvider", func() {
 					Name:      v1beta1constants.SecretNameCloudProvider,
 					Namespace: namespace,
 				},
-				ProviderConfig: &runtime.RawExtension{
-					Raw: encode(&apisazure.ControlPlaneConfig{
-						CloudControllerManager: &apisazure.CloudControllerManagerConfig{
-							FeatureGates: map[string]bool{
-								"CustomResourceValidation": true,
+				DefaultSpec: extensionsv1alpha1.DefaultSpec{
+					ProviderConfig: &runtime.RawExtension{
+						Raw: encode(&apisazure.ControlPlaneConfig{
+							CloudControllerManager: &apisazure.CloudControllerManagerConfig{
+								FeatureGates: map[string]bool{
+									"CustomResourceValidation": true,
+								},
 							},
-						},
-					}),
+						}),
+					},
 				},
 				InfrastructureProviderStatus: &runtime.RawExtension{
 					Raw: encode(&apisazure.InfrastructureStatus{
@@ -185,14 +189,16 @@ var _ = Describe("ValuesProvider", func() {
 					Name:      v1beta1constants.SecretNameCloudProvider,
 					Namespace: namespace,
 				},
-				ProviderConfig: &runtime.RawExtension{
-					Raw: encode(&apisazure.ControlPlaneConfig{
-						CloudControllerManager: &apisazure.CloudControllerManagerConfig{
-							FeatureGates: map[string]bool{
-								"CustomResourceValidation": true,
+				DefaultSpec: extensionsv1alpha1.DefaultSpec{
+					ProviderConfig: &runtime.RawExtension{
+						Raw: encode(&apisazure.ControlPlaneConfig{
+							CloudControllerManager: &apisazure.CloudControllerManagerConfig{
+								FeatureGates: map[string]bool{
+									"CustomResourceValidation": true,
+								},
 							},
-						},
-					}),
+						}),
+					},
 				},
 				InfrastructureProviderStatus: &runtime.RawExtension{
 					Raw: encode(&apisazure.InfrastructureStatus{
@@ -239,14 +245,16 @@ var _ = Describe("ValuesProvider", func() {
 					Name:      v1beta1constants.SecretNameCloudProvider,
 					Namespace: namespace,
 				},
-				ProviderConfig: &runtime.RawExtension{
-					Raw: encode(&apisazure.ControlPlaneConfig{
-						CloudControllerManager: &apisazure.CloudControllerManagerConfig{
-							FeatureGates: map[string]bool{
-								"CustomResourceValidation": true,
+				DefaultSpec: extensionsv1alpha1.DefaultSpec{
+					ProviderConfig: &runtime.RawExtension{
+						Raw: encode(&apisazure.ControlPlaneConfig{
+							CloudControllerManager: &apisazure.CloudControllerManagerConfig{
+								FeatureGates: map[string]bool{
+									"CustomResourceValidation": true,
+								},
 							},
-						},
-					}),
+						}),
+					},
 				},
 				InfrastructureProviderStatus: &runtime.RawExtension{
 					Raw: encode(&apisazure.InfrastructureStatus{
@@ -300,14 +308,16 @@ var _ = Describe("ValuesProvider", func() {
 					Name:      v1beta1constants.SecretNameCloudProvider,
 					Namespace: namespace,
 				},
-				ProviderConfig: &runtime.RawExtension{
-					Raw: encode(&apisazure.ControlPlaneConfig{
-						CloudControllerManager: &apisazure.CloudControllerManagerConfig{
-							FeatureGates: map[string]bool{
-								"CustomResourceValidation": true,
+				DefaultSpec: extensionsv1alpha1.DefaultSpec{
+					ProviderConfig: &runtime.RawExtension{
+						Raw: encode(&apisazure.ControlPlaneConfig{
+							CloudControllerManager: &apisazure.CloudControllerManagerConfig{
+								FeatureGates: map[string]bool{
+									"CustomResourceValidation": true,
+								},
 							},
-						},
-					}),
+						}),
+					},
 				},
 				InfrastructureProviderStatus: &runtime.RawExtension{
 					Raw: encode(&apisazure.InfrastructureStatus{
@@ -361,14 +371,16 @@ var _ = Describe("ValuesProvider", func() {
 					Name:      v1beta1constants.SecretNameCloudProvider,
 					Namespace: namespace,
 				},
-				ProviderConfig: &runtime.RawExtension{
-					Raw: encode(&apisazure.ControlPlaneConfig{
-						CloudControllerManager: &apisazure.CloudControllerManagerConfig{
-							FeatureGates: map[string]bool{
-								"CustomResourceValidation": true,
+				DefaultSpec: extensionsv1alpha1.DefaultSpec{
+					ProviderConfig: &runtime.RawExtension{
+						Raw: encode(&apisazure.ControlPlaneConfig{
+							CloudControllerManager: &apisazure.CloudControllerManagerConfig{
+								FeatureGates: map[string]bool{
+									"CustomResourceValidation": true,
+								},
 							},
-						},
-					}),
+						}),
+					},
 				},
 				InfrastructureProviderStatus: &runtime.RawExtension{
 					Raw: encode(&apisazure.InfrastructureStatus{
@@ -415,14 +427,16 @@ var _ = Describe("ValuesProvider", func() {
 					Name:      v1beta1constants.SecretNameCloudProvider,
 					Namespace: namespace,
 				},
-				ProviderConfig: &runtime.RawExtension{
-					Raw: encode(&apisazure.ControlPlaneConfig{
-						CloudControllerManager: &apisazure.CloudControllerManagerConfig{
-							FeatureGates: map[string]bool{
-								"CustomResourceValidation": true,
+				DefaultSpec: extensionsv1alpha1.DefaultSpec{
+					ProviderConfig: &runtime.RawExtension{
+						Raw: encode(&apisazure.ControlPlaneConfig{
+							CloudControllerManager: &apisazure.CloudControllerManagerConfig{
+								FeatureGates: map[string]bool{
+									"CustomResourceValidation": true,
+								},
 							},
-						},
-					}),
+						}),
+					},
 				},
 				InfrastructureProviderStatus: &runtime.RawExtension{
 					Raw: encode(&apisazure.InfrastructureStatus{
