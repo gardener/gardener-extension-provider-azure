@@ -32,12 +32,13 @@ const (
 )
 
 type calicoConfig struct {
-	Backend calicov1alpha1.Backend `json:"backend"`
-	Felix   felix                  `json:"felix"`
-	IPv4    ipv4                   `json:"ipv4"`
-	IPAM    ipam                   `json:"ipam"`
-	Typha   typha                  `json:"typha"`
-	VethMTU string                 `json:"veth_mtu"`
+	Backend         calicov1alpha1.Backend `json:"backend"`
+	Felix           felix                  `json:"felix"`
+	IPv4            ipv4                   `json:"ipv4"`
+	IPAM            ipam                   `json:"ipam"`
+	Typha           typha                  `json:"typha"`
+	KubeControllers kubeControllers        `json:"kubeControllers"`
+	VethMTU         string                 `json:"veth_mtu"`
 }
 
 type felix struct {
@@ -57,6 +58,10 @@ type ipv4 struct {
 type ipam struct {
 	IPAMType string `json:"type"`
 	Subnet   string `json:"subnet"`
+}
+
+type kubeControllers struct {
+	Enabled bool `json:"enabled"`
 }
 
 type typha struct {
@@ -80,6 +85,9 @@ var defaultCalicoConfig = calicoConfig{
 		Subnet:   usePodCIDR,
 	},
 	Typha: typha{
+		Enabled: true,
+	},
+	KubeControllers: kubeControllers{
 		Enabled: true,
 	},
 	VethMTU: defaultMTU,
@@ -145,6 +153,7 @@ func generateChartValues(config *calicov1alpha1.NetworkConfig) (*calicoConfig, e
 		}
 	}
 	if c.Backend == calicov1alpha1.None {
+		c.KubeControllers.Enabled = false
 		c.Felix.IPInIP.Enabled = false
 		c.IPv4.Mode = calicov1alpha1.Never
 	}
