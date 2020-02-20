@@ -81,7 +81,7 @@ github.com/gardener/controller-manager-library/pkg/utils
 github.com/gardener/external-dns-management/pkg/apis/dns
 github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1
 github.com/gardener/external-dns-management/pkg/client/dns/clientset/versioned/scheme
-# github.com/gardener/gardener v1.0.4
+# github.com/gardener/gardener v1.0.1-0.20200213093126-7a6123b6ae21
 github.com/gardener/gardener/pkg/api/extensions
 github.com/gardener/gardener/pkg/apis/core
 github.com/gardener/gardener/pkg/apis/core/install
@@ -135,7 +135,7 @@ github.com/gardener/gardener/test/framework/config
 github.com/gardener/gardener/test/framework/reporter
 github.com/gardener/gardener/test/integration/framework
 github.com/gardener/gardener/test/integration/shoots
-# github.com/gardener/gardener-extension-networking-calico v0.0.0-20200129184310-ca90704ba78e
+# github.com/gardener/gardener-extension-networking-calico v1.3.0
 github.com/gardener/gardener-extension-networking-calico/pkg/apis/calico
 github.com/gardener/gardener-extension-networking-calico/pkg/apis/calico/install
 github.com/gardener/gardener-extension-networking-calico/pkg/apis/calico/v1alpha1
@@ -143,7 +143,7 @@ github.com/gardener/gardener-extension-networking-calico/pkg/calico
 github.com/gardener/gardener-extension-networking-calico/pkg/charts
 github.com/gardener/gardener-extension-networking-calico/pkg/controller
 github.com/gardener/gardener-extension-networking-calico/pkg/imagevector
-# github.com/gardener/gardener-extensions v1.3.1-0.20200210193219-b03f0bceb23f
+# github.com/gardener/gardener-extensions v1.3.1-0.20200219155613-f5f526846320
 github.com/gardener/gardener-extensions/hack
 github.com/gardener/gardener-extensions/hack/.ci
 github.com/gardener/gardener-extensions/hack/api-reference/template
@@ -578,7 +578,7 @@ google.golang.org/appengine/urlfetch
 gopkg.in/fsnotify.v1
 # gopkg.in/inf.v0 v0.9.1
 gopkg.in/inf.v0
-# gopkg.in/ini.v1 v1.51.1
+# gopkg.in/ini.v1 v1.51.0
 gopkg.in/ini.v1
 # gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7
 gopkg.in/tomb.v1
