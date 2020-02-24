@@ -32,7 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-// MachineClassKind yields the name of the AWS machine class.
+// MachineClassKind yields the name of the Azure machine class.
 func (w *workerDelegate) MachineClassKind() string {
 	return "AzureMachineClass"
 }

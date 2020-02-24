@@ -1,4 +1,4 @@
-// Copyright (c) 2018 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
+// Copyright (c) 2020 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,6 +35,8 @@ var _ = Describe("InfrastructureConfig validation", func() {
 		services    = "100.64.0.0/13"
 		vnetCIDR    = "10.0.0.0/8"
 		invalidCIDR = "invalid-cidr"
+
+		fldPath *field.Path
 	)
 
 	BeforeEach(func() {
@@ -53,7 +55,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 		It("should forbid specifying a resource group configuration", func() {
 			infrastructureConfig.ResourceGroup = &apisazure.ResourceGroup{}
 
-			errorList := ValidateInfrastructureConfig(infrastructureConfig, &resourceGroup, &nodes, &pods, &services)
+			errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
 
 			Expect(errorList).To(ConsistOfFields(Fields{
 				"Type":  Equal(field.ErrorTypeInvalid),
@@ -67,13 +69,14 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				infrastructureConfig.Networks.VNet = apisazure.VNet{
 					Name: &vnetName,
 				}
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &resourceGroup, &nodes, &pods, &services)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
 
-				Expect(errorList).To(ConsistOfFields(Fields{
-					"Type":   Equal(field.ErrorTypeInvalid),
-					"Field":  Equal("networks.vnet"),
-					"Detail": Equal("specifying an existing vnet name require a vnet name and vnet resource group"),
-				}))
+				Expect(errorList).To(ConsistOfFields(
+					Fields{
+						"Type":   Equal(field.ErrorTypeInvalid),
+						"Field":  Equal("networks.vnet"),
+						"Detail": Equal("specifying an existing vnet name require a vnet name and vnet resource group"),
+					}))
 			})
 
 			It("should forbid specifying a vnet resource group without name", func() {
@@ -81,13 +84,14 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				infrastructureConfig.Networks.VNet = apisazure.VNet{
 					ResourceGroup: &vnetGroup,
 				}
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &resourceGroup, &nodes, &pods, &services)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
 
-				Expect(errorList).To(ConsistOfFields(Fields{
-					"Type":   Equal(field.ErrorTypeInvalid),
-					"Field":  Equal("networks.vnet"),
-					"Detail": Equal("specifying an existing vnet name require a vnet name and vnet resource group"),
-				}))
+				Expect(errorList).To(ConsistOfFields(
+					Fields{
+						"Type":   Equal(field.ErrorTypeInvalid),
+						"Field":  Equal("networks.vnet"),
+						"Detail": Equal("specifying an existing vnet name require a vnet name and vnet resource group"),
+					}))
 			})
 
 			It("should forbid specifying existing vnet plus a vnet cidr", func() {
@@ -98,13 +102,14 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					ResourceGroup: &vnetGroup,
 					CIDR:          &vnetCIDR,
 				}
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &resourceGroup, &nodes, &pods, &services)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
 
-				Expect(errorList).To(ConsistOfFields(Fields{
-					"Type":   Equal(field.ErrorTypeInvalid),
-					"Field":  Equal("networks.vnet.cidr"),
-					"Detail": Equal("specifying a cidr for an existing vnet is not possible"),
-				}))
+				Expect(errorList).To(ConsistOfFields(
+					Fields{
+						"Type":   Equal(field.ErrorTypeInvalid),
+						"Field":  Equal("networks.vnet.cidr"),
+						"Detail": Equal("specifying a cidr for an existing vnet is not possible"),
+					}))
 			})
 
 			It("should forbid specifying existing vnet in same resource group", func() {
@@ -113,21 +118,30 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					Name:          &name,
 					ResourceGroup: &resourceGroup,
 				}
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &resourceGroup, &nodes, &pods, &services)
+				infrastructureConfig.ResourceGroup = &apisazure.ResourceGroup{
+					Name: resourceGroup,
+				}
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
 
-				Expect(errorList).To(ConsistOfFields(Fields{
-					"Type":   Equal(field.ErrorTypeInvalid),
-					"Field":  Equal("networks.vnet.resourceGroup"),
-					"Detail": Equal("specifying an existing vnet is the cluster resource group is not supported"),
-				}))
+				Expect(errorList).To(ConsistOfFields(
+					Fields{
+						"Type":  Equal(field.ErrorTypeInvalid),
+						"Field": Equal("resourceGroup"),
+					},
+					Fields{
+						"Type":   Equal(field.ErrorTypeInvalid),
+						"Field":  Equal("networks.vnet.resourceGroup"),
+						"Detail": Equal("the vnet resource group must not be the same as the cluster resource group"),
+					}))
 			})
 
 			It("should pass if no vnet cidr is specified and default is applied", func() {
 				nodes = "10.250.3.0/24"
+				infrastructureConfig.ResourceGroup = nil
 				infrastructureConfig.Networks = apisazure.NetworkConfig{
 					Workers: "10.250.3.0/24",
 				}
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &resourceGroup, &nodes, &pods, &services)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
 				Expect(errorList).To(HaveLen(0))
 			})
 		})
@@ -136,7 +150,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			It("should forbid invalid VNet CIDRs", func() {
 				infrastructureConfig.Networks.VNet.CIDR = &invalidCIDR
 
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &resourceGroup, &nodes, &pods, &services)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
@@ -148,7 +162,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			It("should forbid invalid workers CIDR", func() {
 				infrastructureConfig.Networks.Workers = invalidCIDR
 
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &resourceGroup, &nodes, &pods, &services)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
@@ -157,11 +171,24 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				}))
 			})
 
+			It("should forbid empty workers CIDR", func() {
+				infrastructureConfig.Networks.Workers = ""
+
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+
+				Expect(errorList).To(ConsistOfFields(
+					Fields{
+						"Type":   Equal(field.ErrorTypeInvalid),
+						"Field":  Equal("networks.workers"),
+						"Detail": Equal("invalid CIDR address: "),
+					}))
+			})
+
 			It("should forbid workers which are not in VNet and Nodes CIDR", func() {
 				notOverlappingCIDR := "1.1.1.1/32"
 				infrastructureConfig.Networks.Workers = notOverlappingCIDR
 
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &resourceGroup, &nodes, &pods, &services)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
@@ -177,7 +204,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			It("should forbid Pod CIDR to overlap with VNet CIDR", func() {
 				podCIDR := "10.0.0.1/32"
 
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &resourceGroup, &nodes, &podCIDR, &services)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &podCIDR, &services, fldPath)
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
@@ -189,7 +216,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			It("should forbid Services CIDR to overlap with VNet CIDR", func() {
 				servicesCIDR := "10.0.0.1/32"
 
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &resourceGroup, &nodes, &pods, &servicesCIDR)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &servicesCIDR, fldPath)
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
@@ -208,7 +235,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				infrastructureConfig.Networks.Workers = workers
 				infrastructureConfig.Networks.VNet = apisazure.VNet{CIDR: &vpcCIDR}
 
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &resourceGroup, &nodeCIDR, &podCIDR, &serviceCIDR)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodeCIDR, &podCIDR, &serviceCIDR, fldPath)
 
 				Expect(errorList).To(HaveLen(2))
 				Expect(errorList).To(ConsistOfFields(Fields{
@@ -229,14 +256,14 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					Name:          "test-identiy",
 					ResourceGroup: "identity-resource-group",
 				}
-				Expect(ValidateInfrastructureConfig(infrastructureConfig, &resourceGroup, &nodes, &pods, &services)).To(BeEmpty())
+				Expect(ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)).To(BeEmpty())
 			})
 
 			It("should return errors because no name or resource group is given", func() {
 				infrastructureConfig.Identity = &apisazure.IdentityConfig{
 					Name: "test-identiy",
 				}
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &resourceGroup, &nodes, &pods, &services)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":  Equal(field.ErrorTypeInvalid),
 					"Field": Equal("identity"),
@@ -247,14 +274,14 @@ var _ = Describe("InfrastructureConfig validation", func() {
 
 	Describe("#ValidateInfrastructureConfigUpdate", func() {
 		It("should return no errors for an unchanged config", func() {
-			Expect(ValidateInfrastructureConfigUpdate(infrastructureConfig, infrastructureConfig, &nodes, &pods, &services)).To(BeEmpty())
+			Expect(ValidateInfrastructureConfigUpdate(infrastructureConfig, infrastructureConfig, fldPath)).To(BeEmpty())
 		})
 
 		It("should forbid changing the resource group section", func() {
 			newInfrastructureConfig := infrastructureConfig.DeepCopy()
 			newInfrastructureConfig.ResourceGroup = &apisazure.ResourceGroup{}
 
-			errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, &nodes, &pods, &services)
+			errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, fldPath)
 
 			Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":  Equal(field.ErrorTypeInvalid),
@@ -267,11 +294,23 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			newCIDR := "1.2.3.4/5"
 			newInfrastructureConfig.Networks.VNet.CIDR = &newCIDR
 
-			errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, &nodes, &pods, &services)
+			errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, fldPath)
 
 			Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":  Equal(field.ErrorTypeInvalid),
-				"Field": Equal("networks"),
+				"Field": Equal("networks.vnet"),
+			}))))
+		})
+
+		It("should forbid moving a zoned cluster to a non zoned cluster", func() {
+			newInfrastructureConfig := infrastructureConfig.DeepCopy()
+			infrastructureConfig.Zoned = true
+
+			errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, fldPath)
+
+			Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeForbidden),
+				"Field": Equal("zoned"),
 			}))))
 		})
 	})
