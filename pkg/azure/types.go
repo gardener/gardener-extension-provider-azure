@@ -26,8 +26,6 @@ const (
 	TerraformerImageName = "terraformer"
 	// MachineControllerManagerImageName is the name of the MachineControllerManager image.
 	MachineControllerManagerImageName = "machine-controller-manager"
-	// ETCDBackupRestoreImageName is the name of the etcd backup and restore image.
-	ETCDBackupRestoreImageName = "etcd-backup-restore"
 
 	// MachineControllerManagerName is a constant for the name of the machine-controller-manager.
 	MachineControllerManagerName = "machine-controller-manager"
