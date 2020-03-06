@@ -1,4 +1,4 @@
-// Copyright (c) 2018 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
+// Copyright (c) 2020 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import (
 )
 
 // ValidateInfrastructureConfig validates a InfrastructureConfig object.
-func ValidateInfrastructureConfig(infra *apisazure.InfrastructureConfig, resourceGroupName, nodesCIDR, podsCIDR, servicesCIDR *string) field.ErrorList {
+func ValidateInfrastructureConfig(infra *apisazure.InfrastructureConfig, nodesCIDR, podsCIDR, servicesCIDR *string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	var (
@@ -48,13 +48,10 @@ func ValidateInfrastructureConfig(infra *apisazure.InfrastructureConfig, resourc
 	// validation here will fail for those cases.
 	// TODO: remove the following block and uncomment below blocks once deployment into existing resource groups works properly.
 	if infra.ResourceGroup != nil {
-		allErrs = append(allErrs, field.Invalid(field.NewPath("resourceGroup"), infra.ResourceGroup, "specifying an existing resource group is not supported yet"))
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("resourceGroup"), infra.ResourceGroup, "specifying an existing resource group is not supported yet"))
 	}
 
-	networksPath := field.NewPath("networks")
-	if len(infra.Networks.Workers) == 0 {
-		allErrs = append(allErrs, field.Required(networksPath.Child("workers"), "must specify the network range for the worker network"))
-	}
+	networksPath := fldPath.Child("networks")
 
 	workerCIDR := cidrvalidation.NewCIDR(infra.Networks.Workers, networksPath.Child("workers"))
 
@@ -67,8 +64,8 @@ func ValidateInfrastructureConfig(infra *apisazure.InfrastructureConfig, resourc
 		if infra.Networks.VNet.CIDR != nil {
 			allErrs = append(allErrs, field.Invalid(networksPath.Child("vnet", "cidr"), *infra.Networks.VNet.ResourceGroup, "specifying a cidr for an existing vnet is not possible"))
 		}
-		if *infra.Networks.VNet.ResourceGroup == *resourceGroupName {
-			allErrs = append(allErrs, field.Invalid(networksPath.Child("vnet", "resourceGroup"), *infra.Networks.VNet.ResourceGroup, "specifying an existing vnet is the cluster resource group is not supported"))
+		if infra.ResourceGroup != nil && *infra.Networks.VNet.ResourceGroup == infra.ResourceGroup.Name {
+			allErrs = append(allErrs, field.Invalid(networksPath.Child("vnet", "resourceGroup"), *infra.Networks.VNet.ResourceGroup, "the vnet resource group must not be the same as the cluster resource group"))
 		}
 	} else {
 		cidrPath := networksPath.Child("vnet", "cidr")
@@ -87,7 +84,7 @@ func ValidateInfrastructureConfig(infra *apisazure.InfrastructureConfig, resourc
 	}
 
 	if infra.Identity != nil && (infra.Identity.Name == "" || infra.Identity.ResourceGroup == "") {
-		allErrs = append(allErrs, field.Invalid(field.NewPath("identity"), infra.Identity, "specifying an identity requires the name of the identity and the resource group which hosts the identity"))
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("identity"), infra.Identity, "specifying an identity requires the name of the identity and the resource group which hosts the identity"))
 	}
 
 	if nodes != nil {
@@ -98,11 +95,16 @@ func ValidateInfrastructureConfig(infra *apisazure.InfrastructureConfig, resourc
 }
 
 // ValidateInfrastructureConfigUpdate validates a InfrastructureConfig object.
-func ValidateInfrastructureConfigUpdate(oldConfig, newConfig *apisazure.InfrastructureConfig, nodesCIDR, podsCIDR, servicesCIDR *string) field.ErrorList {
+func ValidateInfrastructureConfigUpdate(oldConfig, newConfig *apisazure.InfrastructureConfig, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.ResourceGroup, oldConfig.ResourceGroup, field.NewPath("resourceGroup"))...)
-	allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Networks, oldConfig.Networks, field.NewPath("networks"))...)
+	allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.ResourceGroup, oldConfig.ResourceGroup, fldPath.Child("resourceGroup"))...)
+	allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Networks.VNet, oldConfig.Networks.VNet, fldPath.Child("networks").Child("vnet"))...)
+	allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Networks.Workers, oldConfig.Networks.Workers, fldPath.Child("networks").Child("workers"))...)
+
+	if oldConfig.Zoned && !newConfig.Zoned {
+		allErrs = append(allErrs, field.Forbidden(fldPath.Child("zoned"), "moving a zoned cluster to a non-zoned cluster is not allowed"))
+	}
 
 	return allErrs
 }
