@@ -12,7 +12,7 @@ gardener-extension-provider-azure:
             image: 'eu.gcr.io/gardener-project/gardener/extensions/provider-azure'
             dockerfile: 'Dockerfile'
             target: gardener-extension-provider-azure
-          gardener-extension-provider-azure:
+          gardener-extension-validator-azure:
             registry: 'gcr-readwrite'
             image: 'eu.gcr.io/gardener-project/gardener/extensions/validator-azure'
             dockerfile: 'Dockerfile'
