@@ -27,23 +27,22 @@ import (
 const (
 	// TerraformVarClientID is the name of the terraform client id environment variable.
 	TerraformVarClientID = "TF_VAR_CLIENT_ID"
-	//TerraformVarClientSecret is the name of the client secret environment variable.
+	// TerraformVarClientSecret is the name of the client secret environment variable.
 	TerraformVarClientSecret = "TF_VAR_CLIENT_SECRET"
 )
 
 // TerraformVariablesEnvironmentFromClientAuth computes the Terraformer variables environment from the
 // given ServiceAccount.
-func TerraformVariablesEnvironmentFromClientAuth(auth *ClientAuth) (map[string]string, error) {
+func TerraformVariablesEnvironmentFromClientAuth(auth *ClientAuth) map[string]string {
 	return map[string]string{
 		TerraformVarClientID:     auth.ClientID,
 		TerraformVarClientSecret: auth.ClientSecret,
-	}, nil
+	}
 }
 
-// NewTerraformer initializes a new Terraformer that has the azure auth credentials.
+// NewTerraformer initializes a new Terraformer.
 func NewTerraformer(
 	restConfig *rest.Config,
-	clientAuth *ClientAuth,
 	purpose,
 	namespace,
 	name string,
@@ -53,14 +52,24 @@ func NewTerraformer(
 		return nil, err
 	}
 
-	variables, err := TerraformVariablesEnvironmentFromClientAuth(clientAuth)
+	return tf.
+		SetTerminationGracePeriodSeconds(630).
+		SetDeadlineCleaning(5 * time.Minute).
+		SetDeadlinePod(15 * time.Minute), nil
+}
+
+// NewTerraformerWithAuth initializes a new Terraformer that has the azure auth credentials.
+func NewTerraformerWithAuth(
+	restConfig *rest.Config,
+	purpose,
+	namespace,
+	name string,
+	clientAuth *ClientAuth,
+) (terraformer.Terraformer, error) {
+	tf, err := NewTerraformer(restConfig, purpose, namespace, name)
 	if err != nil {
 		return nil, err
 	}
 
-	return tf.
-		SetVariablesEnvironment(variables).
-		SetActiveDeadlineSeconds(630).
-		SetDeadlineCleaning(5 * time.Minute).
-		SetDeadlinePod(15 * time.Minute), nil
+	return tf.SetVariablesEnvironment(TerraformVariablesEnvironmentFromClientAuth(clientAuth)), nil
 }

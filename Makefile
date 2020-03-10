@@ -25,7 +25,7 @@ VERIFY                      := true
 LEADER_ELECTION             := false
 IGNORE_OPERATION_ANNOTATION := true
 
-WEBHOOK_CONFIG_MODE	:= service
+WEBHOOK_CONFIG_MODE	:= url
 WEBHOOK_CONFIG_URL	:= docker.for.mac.localhost
 EXTENSION_NAMESPACE	:=
 
@@ -109,7 +109,7 @@ start:
 		--leader-election=$(LEADER_ELECTION) \
 		--webhook-config-server-host=0.0.0.0 \
 		--webhook-config-server-port=8443 \
-		--webhook-config-namespace=$(EXTENSION_NAMESPACE)
+		--webhook-config-mode=$(WEBHOOK_CONFIG_MODE) \
 		$(WEBHOOK_PARAM)
 
 .PHONY: start-validator

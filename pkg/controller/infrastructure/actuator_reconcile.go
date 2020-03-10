@@ -50,7 +50,7 @@ func (a *actuator) Reconcile(ctx context.Context, infra *extensionsv1alpha1.Infr
 		return err
 	}
 
-	tf, err := internal.NewTerraformer(a.RESTConfig(), clientAuth, infrastructure.TerraformerPurpose, infra.Namespace, infra.Name)
+	tf, err := internal.NewTerraformerWithAuth(a.RESTConfig(), infrastructure.TerraformerPurpose, infra.Namespace, infra.Name, clientAuth)
 	if err != nil {
 		return err
 	}
