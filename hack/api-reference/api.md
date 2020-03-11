@@ -746,6 +746,36 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.NatGatewayConfig">NatGatewayConfig
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.NetworkConfig">NetworkConfig</a>)
+</p>
+<p>
+<p>NatGatewayConfig contains configuration for the nat gateway and the attached resources.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>enabled</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Enabled is an indicator if NAT gateway should be deployed.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.NetworkConfig">NetworkConfig
 </h3>
 <p>
@@ -785,6 +815,20 @@ string
 </td>
 <td>
 <p>Workers is the worker subnet range to create (used for the VMs).</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>natGateway</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.NatGatewayConfig">
+NatGatewayConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>NatGateway contains the configuration for the NatGateway.</p>
 </td>
 </tr>
 <tr>

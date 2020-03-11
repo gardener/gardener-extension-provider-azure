@@ -45,6 +45,8 @@ type NetworkConfig struct {
 	VNet VNet
 	// Workers is the worker subnet range to create (used for the VMs).
 	Workers string
+	// NatGateway contains the configuration for the NatGateway.
+	NatGateway *NatGatewayConfig
 	// ServiceEndpoints is a list of Azure ServiceEndpoints which should be associated with the worker subnet.
 	ServiceEndpoints []string
 }
@@ -138,6 +140,12 @@ type VNetStatus struct {
 	Name string
 	// ResourceGroup is the resource group where the existing vNet belongs to.
 	ResourceGroup *string
+}
+
+// NatGatewayConfig contains configuration for the nat gateway and the attached resources.
+type NatGatewayConfig struct {
+	// Enabled is an indicator if NAT gateway should be deployed.
+	Enabled bool
 }
 
 // IdentityConfig contains configuration for the managed identity.

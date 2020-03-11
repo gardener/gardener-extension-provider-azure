@@ -75,7 +75,6 @@ var _ = Describe("Terraform", func() {
 	var (
 		infra      *extensionsv1alpha1.Infrastructure
 		config     *api.InfrastructureConfig
-		identity   map[string]interface{}
 		cluster    *controller.Cluster
 		clientAuth *internal.ClientAuth
 
@@ -86,18 +85,16 @@ var _ = Describe("Terraform", func() {
 
 	BeforeEach(func() {
 		var (
-			VNetName = "vnet"
 			TestCIDR = "10.1.0.0/16"
 			VNetCIDR = TestCIDR
 		)
 		config = &api.InfrastructureConfig{
 			Networks: api.NetworkConfig{
 				VNet: api.VNet{
-					Name: &VNetName,
 					CIDR: &VNetCIDR,
 				},
 				Workers:          TestCIDR,
-				ServiceEndpoints: []string{testServiceEndpoint},
+				ServiceEndpoints: []string{},
 			},
 			Zoned: true,
 		}
@@ -105,7 +102,6 @@ var _ = Describe("Terraform", func() {
 		rawconfig := &apiv1alpha1.InfrastructureConfig{
 			Networks: apiv1alpha1.NetworkConfig{
 				VNet: apiv1alpha1.VNet{
-					Name: &VNetName,
 					CIDR: &VNetCIDR,
 				},
 				Workers:          TestCIDR,
@@ -143,88 +139,74 @@ var _ = Describe("Terraform", func() {
 	})
 
 	Describe("#ComputeTerraformerChartValues", func() {
-		It("should correctly compute the terraformer chart values for a zoned cluster", func() {
-			values, err := ComputeTerraformerChartValues(infra, clientAuth, config, cluster)
-			expectedValues := map[string]interface{}{
-				"azure": map[string]interface{}{
-					"subscriptionID": clientAuth.SubscriptionID,
-					"tenantID":       clientAuth.TenantID,
-					"region":         infra.Spec.Region,
-				},
-				"create": map[string]interface{}{
-					"resourceGroup":   true,
-					"vnet":            true,
-					"availabilitySet": false,
-				},
-				"resourceGroup": map[string]interface{}{
+		var (
+			expectedValues              map[string]interface{}
+			expectedAzureValues         map[string]interface{}
+			expectedCreateValues        map[string]interface{}
+			expectedOutputKeysValues    map[string]interface{}
+			expectedResourceGroupValues map[string]interface{}
+			expectedIdentityValues      map[string]interface{}
+		)
+
+		BeforeEach(func() {
+			expectedAzureValues = map[string]interface{}{
+				"subscriptionID": clientAuth.SubscriptionID,
+				"tenantID":       clientAuth.TenantID,
+				"region":         infra.Spec.Region,
+			}
+			expectedCreateValues = map[string]interface{}{
+				"resourceGroup":   true,
+				"vnet":            true,
+				"availabilitySet": false,
+				"natGateway":      false,
+			}
+			expectedResourceGroupValues = map[string]interface{}{
+				"name": infra.Namespace,
+				"vnet": map[string]interface{}{
 					"name": infra.Namespace,
-					"vnet": map[string]interface{}{
-						"name": infra.Namespace,
-						"cidr": config.Networks.Workers,
-					},
-					"subnet": map[string]interface{}{
-						"serviceEndpoints": []string{testServiceEndpoint},
-					},
+					"cidr": config.Networks.Workers,
 				},
-				"identity":    identity,
-				"clusterName": infra.Namespace,
+				"subnet": map[string]interface{}{
+					"serviceEndpoints": []string{},
+				},
+			}
+			expectedOutputKeysValues = map[string]interface{}{
+				"resourceGroupName": TerraformerOutputKeyResourceGroupName,
+				"vnetName":          TerraformerOutputKeyVNetName,
+				"subnetName":        TerraformerOutputKeySubnetName,
+				"routeTableName":    TerraformerOutputKeyRouteTableName,
+				"securityGroupName": TerraformerOutputKeySecurityGroupName,
+			}
+
+			expectedValues = map[string]interface{}{
+				"azure":         expectedAzureValues,
+				"create":        expectedCreateValues,
+				"resourceGroup": expectedResourceGroupValues,
+				"identity":      expectedIdentityValues,
+				"clusterName":   infra.Namespace,
 				"networks": map[string]interface{}{
 					"worker": config.Networks.Workers,
 				},
-				"outputKeys": map[string]interface{}{
-					"resourceGroupName": TerraformerOutputKeyResourceGroupName,
-					"vnetName":          TerraformerOutputKeyVNetName,
-					"subnetName":        TerraformerOutputKeySubnetName,
-					"routeTableName":    TerraformerOutputKeyRouteTableName,
-					"securityGroupName": TerraformerOutputKeySecurityGroupName,
-				},
+				"outputKeys": expectedOutputKeysValues,
 			}
+		})
+
+		It("should correctly compute the terraformer chart values for a zoned cluster", func() {
+			values, err := ComputeTerraformerChartValues(infra, clientAuth, config, cluster)
 			Expect(err).To(Not(HaveOccurred()))
 			Expect(values).To(BeEquivalentTo(expectedValues))
 		})
 
 		It("should correctly compute the terraformer chart values for a non zoned cluster", func() {
 			config.Zoned = false
+			expectedCreateValues["availabilitySet"] = true
+			expectedAzureValues["countUpdateDomains"] = countUpdateDomain
+			expectedAzureValues["countFaultDomains"] = countFaultDomain
+			expectedOutputKeysValues["availabilitySetID"] = TerraformerOutputKeyAvailabilitySetID
+			expectedOutputKeysValues["availabilitySetName"] = TerraformerOutputKeyAvailabilitySetName
+
 			values, err := ComputeTerraformerChartValues(infra, clientAuth, config, cluster)
 			Expect(err).To(Not(HaveOccurred()))
-			expectedValues := map[string]interface{}{
-				"azure": map[string]interface{}{
-					"subscriptionID":     clientAuth.SubscriptionID,
-					"tenantID":           clientAuth.TenantID,
-					"region":             infra.Spec.Region,
-					"countUpdateDomains": countUpdateDomain,
-					"countFaultDomains":  countFaultDomain,
-				},
-				"create": map[string]interface{}{
-					"resourceGroup":   true,
-					"vnet":            true,
-					"availabilitySet": true,
-				},
-				"resourceGroup": map[string]interface{}{
-					"name": infra.Namespace,
-					"vnet": map[string]interface{}{
-						"name": infra.Namespace,
-						"cidr": config.Networks.Workers,
-					},
-					"subnet": map[string]interface{}{
-						"serviceEndpoints": []string{testServiceEndpoint},
-					},
-				},
-				"identity":    identity,
-				"clusterName": infra.Namespace,
-				"networks": map[string]interface{}{
-					"worker": config.Networks.Workers,
-				},
-				"outputKeys": map[string]interface{}{
-					"resourceGroupName":   TerraformerOutputKeyResourceGroupName,
-					"vnetName":            TerraformerOutputKeyVNetName,
-					"subnetName":          TerraformerOutputKeySubnetName,
-					"routeTableName":      TerraformerOutputKeyRouteTableName,
-					"securityGroupName":   TerraformerOutputKeySecurityGroupName,
-					"availabilitySetID":   TerraformerOutputKeyAvailabilitySetID,
-					"availabilitySetName": TerraformerOutputKeyAvailabilitySetName,
-				},
-			}
 			Expect(values).To(BeEquivalentTo(expectedValues))
 		})
 
@@ -233,49 +215,68 @@ var _ = Describe("Terraform", func() {
 				existingVnetName          = "test"
 				existingVnetResourceGroup = "test-rg"
 			)
-
 			config.Networks.VNet = api.VNet{
 				Name:          &existingVnetName,
 				ResourceGroup: &existingVnetResourceGroup,
 			}
-			values, err := ComputeTerraformerChartValues(infra, clientAuth, config, cluster)
-			expectedValues := map[string]interface{}{
-				"azure": map[string]interface{}{
-					"subscriptionID": clientAuth.SubscriptionID,
-					"tenantID":       clientAuth.TenantID,
-					"region":         infra.Spec.Region,
-				},
-				"create": map[string]interface{}{
-					"resourceGroup":   true,
-					"vnet":            false,
-					"availabilitySet": false,
-				},
-				"resourceGroup": map[string]interface{}{
-					"name": infra.Namespace,
-					"vnet": map[string]interface{}{
-						"name":          existingVnetName,
-						"resourceGroup": existingVnetResourceGroup,
-					},
-					"subnet": map[string]interface{}{
-						"serviceEndpoints": []string{testServiceEndpoint},
-					},
-				},
-				"identity":    identity,
-				"clusterName": infra.Namespace,
-				"networks": map[string]interface{}{
-					"worker": config.Networks.Workers,
-				},
-				"outputKeys": map[string]interface{}{
-					"resourceGroupName": TerraformerOutputKeyResourceGroupName,
-					"vnetName":          TerraformerOutputKeyVNetName,
-					"vnetResourceGroup": TerraformerOutputKeyVNetResourceGroup,
-					"subnetName":        TerraformerOutputKeySubnetName,
-					"routeTableName":    TerraformerOutputKeyRouteTableName,
-					"securityGroupName": TerraformerOutputKeySecurityGroupName,
-				},
+
+			expectedCreateValues["vnet"] = false
+			expectedResourceGroupValues["vnet"] = map[string]interface{}{
+				"name":          existingVnetName,
+				"resourceGroup": existingVnetResourceGroup,
 			}
+			expectedOutputKeysValues["vnetName"] = TerraformerOutputKeyVNetName
+			expectedOutputKeysValues["vnetResourceGroup"] = TerraformerOutputKeyVNetResourceGroup
+
+			values, err := ComputeTerraformerChartValues(infra, clientAuth, config, cluster)
 			Expect(err).To(Not(HaveOccurred()))
 			Expect(values).To(BeEquivalentTo(expectedValues))
+		})
+
+		It("should correctly compute the terraformer chart values for a cluster with Azure Service Endpoints", func() {
+			var serviceEndpointList = []string{testServiceEndpoint}
+			config.Networks.ServiceEndpoints = serviceEndpointList
+			expectedResourceGroupValues["subnet"] = map[string]interface{}{
+				"serviceEndpoints": serviceEndpointList,
+			}
+			values, err := ComputeTerraformerChartValues(infra, clientAuth, config, cluster)
+			Expect(err).To(Not(HaveOccurred()))
+			Expect(values).To(BeEquivalentTo(expectedValues))
+		})
+
+		It("should correctly compute terraform chart values with identity", func() {
+			var (
+				identityName          = "identity-name"
+				identityResourceGroup = "identity-rg"
+			)
+			config.Identity = &api.IdentityConfig{
+				Name:          identityName,
+				ResourceGroup: identityResourceGroup,
+			}
+
+			identityValues := map[string]interface{}{
+				"name":          identityName,
+				"resourceGroup": identityResourceGroup,
+			}
+			expectedValues["identity"] = identityValues
+			expectedOutputKeysValues["identityID"] = TerraformerOutputKeyIdentityID
+			expectedOutputKeysValues["identityClientID"] = TerraformerOutputKeyIdentityClientID
+
+			values, err := ComputeTerraformerChartValues(infra, clientAuth, config, cluster)
+			Expect(err).To(Not(HaveOccurred()))
+			Expect(values).To(BeEquivalentTo(expectedValues))
+		})
+
+		Context("NatGateway", func() {
+			It("should correctly compute terraform chart values with NatGateway", func() {
+				config.Networks.NatGateway = &api.NatGatewayConfig{
+					Enabled: true,
+				}
+				expectedCreateValues["natGateway"] = true
+				values, err := ComputeTerraformerChartValues(infra, clientAuth, config, cluster)
+				Expect(err).To(Not(HaveOccurred()))
+				Expect(values).To(BeEquivalentTo(expectedValues))
+			})
 		})
 	})
 

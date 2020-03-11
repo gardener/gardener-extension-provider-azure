@@ -68,6 +68,8 @@ spec:
       # resourceGroup: my-vnet-group
         cidr: 10.250.0.0/16
       workers: 10.250.0.0/19
+    # natGateway:
+    #   enabled: false
     # serviceEndpoints:
     # - entry1
     zoned: false

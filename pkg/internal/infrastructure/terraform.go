@@ -69,6 +69,7 @@ func ComputeTerraformerChartValues(infra *extensionsv1alpha1.Infrastructure, cli
 		createResourceGroup   = true
 		createVNet            = true
 		createAvailabilitySet = false
+		createNatGateway      = false
 		resourceGroupName     = infra.Namespace
 
 		identityConfig map[string]interface{}
@@ -133,6 +134,10 @@ func ComputeTerraformerChartValues(infra *extensionsv1alpha1.Infrastructure, cli
 		azure["countFaultDomains"] = countFaultDomains
 	}
 
+	if config.Networks.NatGateway != nil && config.Networks.NatGateway.Enabled {
+		createNatGateway = true
+	}
+
 	if config.Identity != nil && config.Identity.Name != "" && config.Identity.ResourceGroup != "" {
 		identityConfig = map[string]interface{}{
 			"name":          config.Identity.Name,
@@ -148,6 +153,7 @@ func ComputeTerraformerChartValues(infra *extensionsv1alpha1.Infrastructure, cli
 			"resourceGroup":   createResourceGroup,
 			"vnet":            createVNet,
 			"availabilitySet": createAvailabilitySet,
+			"natGateway":      createNatGateway,
 		},
 		"resourceGroup": map[string]interface{}{
 			"name": resourceGroupName,
