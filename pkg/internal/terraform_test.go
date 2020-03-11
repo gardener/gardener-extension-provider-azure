@@ -32,11 +32,9 @@ var _ = Describe("Terraform", func() {
 		}
 	})
 
-	Describe("#TerraformerVariablesEnvironmentFromServiceAccount", func() {
+	Describe("#TerraformVariablesEnvironmentFromClientAuth", func() {
 		It("should correctly create the variables environment", func() {
-			variables, err := TerraformVariablesEnvironmentFromClientAuth(clientAuth)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(variables).To(Equal(map[string]string{
+			Expect(TerraformVariablesEnvironmentFromClientAuth(clientAuth)).To(Equal(map[string]string{
 				TerraformVarClientID:     clientID,
 				TerraformVarClientSecret: clientSecret,
 			}))
