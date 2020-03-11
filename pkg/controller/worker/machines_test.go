@@ -378,7 +378,7 @@ var _ = Describe("Machines", func() {
 					expectGetSecretCallToWork(c, azureClientID, azureClientSecret, azureSubscriptionID, azureTenantID)
 
 					// Test workerDelegate.DeployMachineClasses()
-					chartApplier.EXPECT().Apply(context.TODO(), filepath.Join(azure.InternalChartsPath, "machineclass"), namespace, "machineclass", kubernetes.Values(machineClasses), nil).Return(nil)
+					chartApplier.EXPECT().Apply(context.TODO(), filepath.Join(azure.InternalChartsPath, "machineclass"), namespace, "machineclass", kubernetes.Values(machineClasses)).Return(nil)
 
 					err := workerDelegate.DeployMachineClasses(context.TODO())
 					Expect(err).NotTo(HaveOccurred())
