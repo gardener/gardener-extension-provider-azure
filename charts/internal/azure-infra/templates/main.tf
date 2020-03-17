@@ -16,9 +16,9 @@ data "azurerm_resource_group" "rg" {
 }
 {{- end}}
 
-#=====================================================================
-#= VNet, Subnets, Route Table, Security Groups, Identity
-#=====================================================================
+#===============================================
+#= VNet, Subnets, Route Table, Security Groups
+#===============================================
 
 {{ if .Values.create.vnet -}}
 resource "azurerm_virtual_network" "vnet" {
@@ -73,7 +73,46 @@ resource "azurerm_network_security_group" "workers" {
   {{- end}}
 }
 
+{{ if .Values.create.natGateway -}}
+#===============================================
+#= NAT Gateway
+#===============================================
+
+resource "azurerm_public_ip" "natip" {
+  name                = "{{ required "clusterName is required" .Values.clusterName }}-nat-ip"
+  location            = "{{ required "azure.region is required" .Values.azure.region }}"
+  {{ if .Values.create.resourceGroup -}}
+  resource_group_name = "${azurerm_resource_group.rg.name}"
+  {{- else -}}
+  resource_group_name = "${data.azurerm_resource_group.rg.name}"
+  {{- end }}
+  allocation_method   = "Static"
+  sku                 = "Standard"
+}
+
+resource "azurerm_nat_gateway" "nat" {
+  name                    = "{{ required "clusterName is required" .Values.clusterName }}-nat-gateway"
+  location                = "{{ required "azure.region is required" .Values.azure.region }}"
+  {{ if .Values.create.resourceGroup -}}
+  resource_group_name     = "${azurerm_resource_group.rg.name}"
+  {{- else -}}
+  resource_group_name     = "${data.azurerm_resource_group.rg.name}"
+  {{- end }}
+  sku_name                = "Standard"
+  public_ip_address_ids   = ["${azurerm_public_ip.natip.id}"]
+}
+
+resource "azurerm_subnet_nat_gateway_association" "nat-worker-subnet-association" {
+  subnet_id      = "${azurerm_subnet.workers.id}"
+  nat_gateway_id = "${azurerm_nat_gateway.nat.id}"
+}
+{{- end }}
+
 {{ if .Values.identity -}}
+#===============================================
+#= Identity
+#===============================================
+
 data "azurerm_user_assigned_identity" "identity" {
   name                = "{{ required "identity.name is required" .Values.identity.name }}"
   resource_group_name = "{{ required "identity.resourceGroup is required" .Values.identity.resourceGroup }}"
@@ -81,9 +120,9 @@ data "azurerm_user_assigned_identity" "identity" {
 {{- end }}
 
 {{ if .Values.create.availabilitySet -}}
-#=====================================================================
+#===============================================
 #= Availability Set
-#=====================================================================
+#===============================================
 
 resource "azurerm_availability_set" "workers" {
   name                         = "{{ required "clusterName is required" .Values.clusterName }}-avset-workers"
@@ -99,9 +138,9 @@ resource "azurerm_availability_set" "workers" {
 }
 {{- end}}
 
-//=====================================================================
+#===============================================
 //= Output variables
-//=====================================================================
+#===============================================
 
 output "{{ .Values.outputKeys.resourceGroupName }}" {
 {{ if .Values.create.resourceGroup -}}

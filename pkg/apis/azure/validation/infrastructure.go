@@ -83,6 +83,16 @@ func ValidateInfrastructureConfig(infra *apisazure.InfrastructureConfig, nodesCI
 		}
 	}
 
+	// TODO(dkistner) Remove once we proceed with multiple AvailabilitySet support.
+	// Currently we will not offer Nat Gateway for non zoned/AvailabilitySet based
+	// clusters as the NatGateway is not compatible with Basic LoadBalancer and
+	// we would need Standard LoadBalancers also in combination with AvailabilitySets.
+	// For the multiple AvailabilitySet approach we would always need
+	// a Standard LoadBalancer and a NatGateway.
+	if !infra.Zoned && infra.Networks.NatGateway != nil {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("networks", "natGateway"), infra.Networks.NatGateway, "NatGateway is currently only supported for zoned cluster"))
+	}
+
 	if infra.Identity != nil && (infra.Identity.Name == "" || infra.Identity.ResourceGroup == "") {
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("identity"), infra.Identity, "specifying an identity requires the name of the identity and the resource group which hosts the identity"))
 	}

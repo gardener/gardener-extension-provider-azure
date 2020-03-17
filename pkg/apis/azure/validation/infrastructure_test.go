@@ -270,6 +270,26 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				}))
 			})
 		})
+
+		Context("NatGateway", func() {
+			It("should return no errors using a NatGateway for a zoned cluster", func() {
+				infrastructureConfig.Zoned = true
+				infrastructureConfig.Networks.NatGateway = &apisazure.NatGatewayConfig{Enabled: true}
+				Expect(ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)).To(BeEmpty())
+			})
+
+			It("should return an error using a NatGateway for a non zoned cluster", func() {
+				infrastructureConfig.Zoned = false
+				infrastructureConfig.Networks.NatGateway = &apisazure.NatGatewayConfig{}
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+				Expect(errorList).To(HaveLen(1))
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.natGateway"),
+					"Detail": Equal("NatGateway is currently only supported for zoned cluster"),
+				}))
+			})
+		})
 	})
 
 	Describe("#ValidateInfrastructureConfigUpdate", func() {

@@ -40,6 +40,8 @@ networks:
     # resouceGroup: my-vnet-resource-group
     cidr: 10.250.0.0/16
   workers: 10.250.0.0/19
+  # natGateway:
+  #   enabled: false
   # serviceEndpoints:
   # - Microsoft.Test
 zoned: false
@@ -63,6 +65,8 @@ The specified CIDR range must be contained in the VNet CIDR specified above, or 
 You can freely choose this CIDR and it is your responsibility to properly design the network layout to suit your needs.
 
 In the `networks.serviceEndpoints[]` list you can specify the list of Azure service endpoints which shall be associated with the worker subnet. All available service endpoints and their technical names can be found in the (Azure Service Endpoint documentation](https://docs.microsoft.com/en-us/azure/virtual-network/virtual-network-service-endpoints-overview).
+
+The `networks.natGateway` section contains configuration for the Azure NatGateway which can be attached to the worker subnet of the Shoot cluster. The NatGateway is currently optional and can be enabled/disabled via the field `networks.natGateway.enabled`. If the NatGateway is not deployed then the outgoing traffic initiated within the Shoot cluster will be routed via cluster LoadBalancer (default behaviour, see [here](https://docs.microsoft.com/en-us/azure/load-balancer/load-balancer-outbound-connections#scenarios)). **Restrictions:** The NatGateway is currently only available for zoned clusters (`.zoned=true`, see [#43](https://github.com/gardener/gardener-extension-provider-azure/issues/43) for more details) and it will not be deployed zone-redundant yet. Furthermore, the Azure NatGateway is not yet generally available (GA) from Azure side, hence, you need to register your subscription to participate in the preview for NatGateway.
 
 Via the `.zoned` boolean you can tell whether you want to use Azure availability zones or not.
 If you don't use zones then an availability set will be created and only basic load balancers will be used.
