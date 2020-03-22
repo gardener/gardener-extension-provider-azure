@@ -657,7 +657,19 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>URN is the uniform resource name, it has the format &lsquo;publisher:offer:sku:version&rsquo;</p>
+<p>URN is the uniform resource name of the image, it has the format &lsquo;publisher:offer:sku:version&rsquo;.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>id</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ID is the VM image ID</p>
 </td>
 </tr>
 </tbody>
@@ -698,7 +710,20 @@ string
 </em>
 </td>
 <td>
-<p>URN is the identifier for the image.</p>
+<em>(Optional)</em>
+<p>URN is the uniform resource name of the image, it has the format &lsquo;publisher:offer:sku:version&rsquo;.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>id</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ID is the VM image ID</p>
 </td>
 </tr>
 </tbody>
