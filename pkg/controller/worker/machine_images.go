@@ -16,12 +16,12 @@ package worker
 
 import (
 	"context"
-	"github.com/gardener/gardener/extensions/pkg/controller/worker"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 
+	"github.com/gardener/gardener/extensions/pkg/controller/worker"
 	"github.com/gardener/gardener/extensions/pkg/util"
 
 	"github.com/pkg/errors"
@@ -61,28 +61,28 @@ func (w *workerDelegate) GetMachineImages(ctx context.Context) (runtime.Object, 
 	return workerStatusV1alpha1, nil
 }
 
-func (w *workerDelegate) findMachineImage(name, version string) (urn *string, err error) {
+func (w *workerDelegate) findMachineImage(name, version string) (urn, id *string, err error) {
 	machineImage, err := helper.FindImageFromCloudProfile(w.cloudProfileConfig, name, version)
 	if err == nil {
-		return machineImage.URN, nil
+		return machineImage.URN, machineImage.ID, nil
 	}
 
 	// Try to look up machine image in worker provider status as it was not found in componentconfig.
 	if providerStatus := w.worker.Status.ProviderStatus; providerStatus != nil {
 		workerStatus := &api.WorkerStatus{}
 		if _, _, err := w.Decoder().Decode(providerStatus.Raw, nil, workerStatus); err != nil {
-			return nil, errors.Wrapf(err, "could not decode worker status of worker '%s'", util.ObjectName(w.worker))
+			return nil, nil, errors.Wrapf(err, "could not decode worker status of worker '%s'", util.ObjectName(w.worker))
 		}
 
 		machineImage, err := helper.FindMachineImage(workerStatus.MachineImages, name, version)
 		if err != nil {
-			return nil, worker.ErrorMachineImageNotFound(name, version)
+			return nil, nil, worker.ErrorMachineImageNotFound(name, version)
 		}
 
-		return machineImage.URN, nil
+		return machineImage.URN, machineImage.ID, nil
 	}
 
-	return nil, worker.ErrorMachineImageNotFound(name, version)
+	return nil, nil, worker.ErrorMachineImageNotFound(name, version)
 }
 
 func appendMachineImage(machineImages []api.MachineImage, machineImage api.MachineImage) []api.MachineImage {

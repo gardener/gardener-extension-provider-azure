@@ -7,7 +7,8 @@ In this document we are describing how this configuration looks like for Azure a
 ## `CloudProfileConfig`
 
 The cloud profile configuration contains information about the update and failure domain counts in the Azure regions you want to offer.
-Additionally, it contains the real machine image identifiers in the Azure environment.
+Additionally, it contains the real machine image identifiers in the Azure environment. You can provide either URN for Azure Market Place images or id of [Shared Image Gallery](https://docs.microsoft.com/en-us/azure/virtual-machines/linux/shared-image-galleries) images.
+When Shared Image Gallery is used, you have to ensure that the image is available in the desired regions and the end-user subscriptions have access to the image or to the whole gallery.
 You have to map every version that you specify in `.spec.machineImages[].versions` here such that the Azure extension knows the machine image identifiers for every version you want to offer.
 
 An example `CloudProfileConfig` for the Azure extension looks as follows:
@@ -26,6 +27,10 @@ machineImages:
   versions:
   - version: 2135.6.0
     urn: "CoreOS:CoreOS:Stable:2135.6.0"
+- name: myimage
+  versions:
+  - version: 1.0.0
+    id: "/subscriptions/<subscription ID where the gallery is located>/resourceGroups/myGalleryRG/providers/Microsoft.Compute/galleries/myGallery/images/myImageDefinition/versions/1.0.0"
 ```
 
 ## Example `CloudProfile` manifest

@@ -124,7 +124,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			return err
 		}
 
-		urn, err := w.findMachineImage(pool.MachineImage.Name, pool.MachineImage.Version)
+		urn, id, err := w.findMachineImage(pool.MachineImage.Name, pool.MachineImage.Version)
 		if err != nil {
 			return err
 		}
@@ -132,6 +132,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			Name:    pool.MachineImage.Name,
 			Version: pool.MachineImage.Version,
 			URN:     urn,
+			ID:      id,
 		})
 
 		volumeSize, err := worker.DiskSize(pool.Volume.Size)
@@ -155,8 +156,11 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			}
 		}
 
-		image := map[string]interface{}{
-			"urn": *urn,
+		image := map[string]interface{}{}
+		if urn != nil {
+			image["urn"] = *urn
+		} else {
+			image["id"] = *id
 		}
 
 		generateMachineClassAndDeployment := func(zone *zoneInfo, availabilitySetID *string) (worker.MachineDeployment, map[string]interface{}) {
