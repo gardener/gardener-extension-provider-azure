@@ -28,7 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type MutateFn func(*extensionsv1alpha1.Network) error
+type MutateFn func(new, old *extensionsv1alpha1.Network) error
 
 // NewMutator creates a new network mutator.
 func NewMutator(logger logr.Logger, mutateFn MutateFn) webhook.Mutator {
@@ -51,8 +51,13 @@ func (m *mutator) InjectClient(client client.Client) error {
 }
 
 // Mutate validates and if needed mutates the given object.
-func (m *mutator) Mutate(ctx context.Context, obj runtime.Object) error {
-	acc, err := meta.Accessor(obj)
+func (m *mutator) Mutate(ctx context.Context, new, old runtime.Object) error {
+	var (
+		newNetwork, oldNetwork *extensionsv1alpha1.Network
+		ok                     bool
+	)
+
+	acc, err := meta.Accessor(new)
 	if err != nil {
 		return errors.Wrapf(err, "could not create accessor during webhook")
 	}
@@ -61,9 +66,17 @@ func (m *mutator) Mutate(ctx context.Context, obj runtime.Object) error {
 		return nil
 	}
 
-	network, ok := obj.(*extensionsv1alpha1.Network)
+	newNetwork, ok = new.(*extensionsv1alpha1.Network)
 	if !ok {
 		return fmt.Errorf("could not mutate, object is not of type \"Network\"")
 	}
-	return m.mutateFunc(network)
+
+	if old != nil {
+		oldNetwork, ok = old.(*extensionsv1alpha1.Network)
+		if !ok {
+			return fmt.Errorf("could not cast old object to extensionsv1alpha1.Network")
+		}
+	}
+
+	return m.mutateFunc(newNetwork, oldNetwork)
 }
