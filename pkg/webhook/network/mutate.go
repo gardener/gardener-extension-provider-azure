@@ -24,8 +24,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-func mutateNetworkConfig(network *extensionsv1alpha1.Network) error {
-	extensionswebhook.LogMutation(logger, "Network", network.Namespace, network.Name)
+func mutateNetworkConfig(new, old *extensionsv1alpha1.Network) error {
+	extensionswebhook.LogMutation(logger, "Network", new.Namespace, new.Name)
 
 	var (
 		networkConfig *calicov1alpha1.NetworkConfig
@@ -33,8 +33,8 @@ func mutateNetworkConfig(network *extensionsv1alpha1.Network) error {
 		err           error
 	)
 
-	if network.Spec.ProviderConfig != nil {
-		networkConfig, err = controller.CalicoNetworkConfigFromNetworkResource(network)
+	if new.Spec.ProviderConfig != nil {
+		networkConfig, err = controller.CalicoNetworkConfigFromNetworkResource(new)
 		if err != nil {
 			return err
 		}
@@ -48,7 +48,7 @@ func mutateNetworkConfig(network *extensionsv1alpha1.Network) error {
 	}
 
 	networkConfig.Backend = &backendNone
-	network.Spec.ProviderConfig = &runtime.RawExtension{
+	new.Spec.ProviderConfig = &runtime.RawExtension{
 		Object: networkConfig,
 	}
 
