@@ -24,6 +24,7 @@ import (
 	"github.com/gardener/gardener-extensions/pkg/webhook/controlplane/genericmutator"
 
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	v1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
@@ -56,6 +57,10 @@ func (e *ensurer) InjectClient(client client.Client) error {
 
 // EnsureKubeAPIServerService ensures that the kube-apiserver service conforms to the provider requirements.
 func (e *ensurer) EnsureKubeAPIServerService(ctx context.Context, ectx genericmutator.EnsurerContext, new, old *corev1.Service) error {
+	if v1beta1helper.IsAPIServerExposureManaged(new) {
+		return nil
+	}
+
 	// TODO: Assuming seed kubernetes version is >= 1.12. Validate it correctly
 	if new.Annotations == nil {
 		new.Annotations = make(map[string]string)
@@ -66,6 +71,10 @@ func (e *ensurer) EnsureKubeAPIServerService(ctx context.Context, ectx genericmu
 
 // EnsureKubeAPIServerDeployment ensures that the kube-apiserver deployment conforms to the provider requirements.
 func (e *ensurer) EnsureKubeAPIServerDeployment(ctx context.Context, ectx genericmutator.EnsurerContext, new, old *appsv1.Deployment) error {
+	if v1beta1helper.IsAPIServerExposureManaged(new) {
+		return nil
+	}
+
 	cluster, err := controller.GetCluster(ctx, e.client, new.Namespace)
 	if err != nil {
 		return err

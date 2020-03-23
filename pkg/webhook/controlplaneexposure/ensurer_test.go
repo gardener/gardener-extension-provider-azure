@@ -90,6 +90,38 @@ var _ = Describe("Ensurer", func() {
 	})
 
 	Describe("#EnsureKubeAPIServerDeployment", func() {
+		It("should not modify kube-apiserver deployment if SNI is enabled", func() {
+			var (
+				dep = &appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      v1beta1constants.DeploymentNameKubeAPIServer,
+						Namespace: namespace,
+						Labels:    map[string]string{"core.gardener.cloud/apiserver-exposure": "gardener-managed"},
+					},
+					Spec: appsv1.DeploymentSpec{
+						Template: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{
+									{
+										Name: "kube-apiserver",
+									},
+								},
+							},
+						},
+					},
+				}
+				depCopy = dep.DeepCopy()
+			)
+
+			// Create ensurer
+			ensurer := NewEnsurer(etcdStorage, logger)
+
+			err := ensurer.EnsureKubeAPIServerDeployment(context.TODO(), dummyContext, dep, nil)
+			Expect(err).To(Not(HaveOccurred()))
+
+			Expect(dep).To(Equal(depCopy))
+		})
+
 		It("should add missing elements to kube-apiserver deployment", func() {
 			var (
 				dep = &appsv1.Deployment{
@@ -160,6 +192,43 @@ var _ = Describe("Ensurer", func() {
 		})
 	})
 
+	Describe("#EnsureKubeAPIServerService", func() {
+		var (
+			svc     *corev1.Service
+			ensurer genericmutator.Ensurer
+		)
+
+		BeforeEach(func() {
+			svc = &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      v1beta1constants.DeploymentNameKubeAPIServer,
+					Namespace: namespace,
+				},
+			}
+			ensurer = NewEnsurer(etcdStorage, logger)
+		})
+
+		It("should not modify kube-apiserver service if SNI is enabled", func() {
+			svc.Labels = map[string]string{"core.gardener.cloud/apiserver-exposure": "gardener-managed"}
+			svcCopy := svc.DeepCopy()
+
+			err := ensurer.EnsureKubeAPIServerService(context.TODO(), dummyContext, svc, nil)
+			Expect(err).To(Not(HaveOccurred()))
+
+			Expect(svc).To(Equal(svcCopy))
+		})
+
+		It("should modify kube-apiserver service", func() {
+			svcCopy := svc.DeepCopy()
+			svcCopy.Annotations = map[string]string{"service.beta.kubernetes.io/azure-load-balancer-tcp-idle-timeout": "30"}
+
+			err := ensurer.EnsureKubeAPIServerService(context.TODO(), dummyContext, svc, nil)
+			Expect(err).To(Not(HaveOccurred()))
+
+			Expect(svc).To(Equal(svcCopy))
+		})
+	})
+
 	Describe("#EnsureETCD", func() {
 		It("should add or modify elements to etcd-main statefulset", func() {
 			var (
@@ -171,7 +240,7 @@ var _ = Describe("Ensurer", func() {
 			// Create ensurer
 			ensurer := NewEnsurer(etcdStorage, logger)
 
-			// Call EnsureETCDStatefulSet method and check the result
+			// Call EnsureETCD method and check the result
 			err := ensurer.EnsureETCD(context.TODO(), dummyContext, etcd, nil)
 			Expect(err).To(Not(HaveOccurred()))
 			checkETCDMain(etcd)
@@ -191,7 +260,7 @@ var _ = Describe("Ensurer", func() {
 			// Create ensurer
 			ensurer := NewEnsurer(etcdStorage, logger)
 
-			// Call EnsureETCDStatefulSet method and check the result
+			// Call EnsureETCD method and check the result
 			err := ensurer.EnsureETCD(context.TODO(), dummyContext, etcd, nil)
 			Expect(err).To(Not(HaveOccurred()))
 			checkETCDMain(etcd)
@@ -207,7 +276,7 @@ var _ = Describe("Ensurer", func() {
 			// Create ensurer
 			ensurer := NewEnsurer(etcdStorage, logger)
 
-			// Call EnsureETCDStatefulSet method and check the result
+			// Call EnsureETCD method and check the result
 			err := ensurer.EnsureETCD(context.TODO(), dummyContext, etcd, nil)
 			Expect(err).To(Not(HaveOccurred()))
 			checkETCDEvents(etcd)
@@ -227,7 +296,7 @@ var _ = Describe("Ensurer", func() {
 			// Create ensurer
 			ensurer := NewEnsurer(etcdStorage, logger)
 
-			// Call EnsureETCDStatefulSet method and check the result
+			// Call EnsureETCD method and check the result
 			err := ensurer.EnsureETCD(context.TODO(), dummyContext, etcd, nil)
 			Expect(err).To(Not(HaveOccurred()))
 			checkETCDEvents(etcd)
