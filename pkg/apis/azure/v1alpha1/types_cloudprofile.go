@@ -54,6 +54,10 @@ type MachineImages struct {
 type MachineImageVersion struct {
 	// Version is the version of the image.
 	Version string `json:"version"`
-	// URN is the identifier for the image.
-	URN string `json:"urn"`
+	// URN is the uniform resource name of the image, it has the format 'publisher:offer:sku:version'.
+	// +optional
+	URN *string `json:"urn,omitempty"`
+	//ID is the VM image ID
+	// +optional
+	ID *string `json:"id,omitempty"`
 }

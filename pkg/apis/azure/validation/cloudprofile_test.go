@@ -26,6 +26,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
+var (
+	urn         = "Publisher:Offer:Sku:Version"
+	id          = "/subscription/id/image/id"
+	emptyString = ""
+)
+
 var _ = Describe("CloudProfileConfig validation", func() {
 	Describe("#ValidateCloudProfileConfig", func() {
 		var cloudProfileConfig *apisazure.CloudProfileConfig
@@ -50,7 +56,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 						Versions: []apisazure.MachineImageVersion{
 							{
 								Version: "Version",
-								URN:     "Publisher:Offer:Sku:Version",
+								URN:     &urn,
 							},
 						},
 					},
@@ -92,7 +98,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 							Versions: []apisazure.MachineImageVersion{
 								{
 									Version: "1.2.3",
-									URN:     urn,
+									URN:     &urn,
 								},
 							},
 						},
@@ -103,11 +109,72 @@ var _ = Describe("CloudProfileConfig validation", func() {
 					Expect(errorList).To(matcher)
 				},
 				Entry("correct urn", "foo:bar:baz:ban", BeEmpty()),
+				Entry("empty urn", "", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeRequired), "Field": Equal("machineImages[0].versions[0].urn")})))),
 				Entry("only one part", "foo", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeInvalid), "Field": Equal("machineImages[0].versions[0].urn")})))),
 				Entry("only two parts", "foo:bar", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeInvalid), "Field": Equal("machineImages[0].versions[0].urn")})))),
 				Entry("only three parts", "foo:bar:baz", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeInvalid), "Field": Equal("machineImages[0].versions[0].urn")})))),
 				Entry("more than four parts", "foo:bar:baz:ban:bam", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeInvalid), "Field": Equal("machineImages[0].versions[0].urn")})))),
 			)
+
+			DescribeTable("forbid unsupported machine image ID",
+				func(id string, matcher gomegatypes.GomegaMatcher) {
+					cloudProfileConfig.MachineImages = []apisazure.MachineImages{
+						{
+							Name: "my-image",
+							Versions: []apisazure.MachineImageVersion{
+								{
+									Version: "1.2.3",
+									ID:      &id,
+								},
+							},
+						},
+					}
+
+					errorList := ValidateCloudProfileConfig(cloudProfileConfig)
+
+					Expect(errorList).To(matcher)
+				},
+				Entry("correct id", "/non/empty/id", BeEmpty()),
+				Entry("empty id", "", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeRequired), "Field": Equal("machineImages[0].versions[0].id")})))),
+			)
+
+			DescribeTable("forbid invalid image reference coniguration",
+				func(urn, id *string, matcher gomegatypes.GomegaMatcher) {
+					cloudProfileConfig.MachineImages = []apisazure.MachineImages{
+						{
+							Name: "my-image",
+							Versions: []apisazure.MachineImageVersion{
+								{
+									Version: "1.2.3",
+									ID:      id,
+									URN:     urn,
+								},
+							},
+						},
+					}
+
+					errorList := ValidateCloudProfileConfig(cloudProfileConfig)
+
+					Expect(errorList).To(matcher)
+				},
+				Entry("only valid URN", &urn, nil, BeEmpty()),
+				Entry("only valid ID", nil, &id, BeEmpty()),
+				Entry("urn and id are nil", nil, nil, ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeRequired),
+					"Field": Equal("machineImages[0].versions[0]")})))),
+				Entry("urn and id are non-empty", &urn, &id, ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeRequired),
+					"Field": Equal("machineImages[0].versions[0]")})))),
+				Entry("urn and id are empty", &emptyString, &emptyString, ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeRequired),
+					"Field": Equal("machineImages[0].versions[0]"),
+				})), PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeRequired),
+					"Field": Equal("machineImages[0].versions[0].id"),
+				})), PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeRequired),
+					"Field": Equal("machineImages[0].versions[0].urn"),
+				})))))
 
 			It("should forbid unsupported machine image version configuration", func() {
 				cloudProfileConfig.MachineImages = []apisazure.MachineImages{
@@ -124,10 +191,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 					"Field": Equal("machineImages[0].versions[0].version"),
 				})), PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
-					"Field": Equal("machineImages[0].versions[0].urn"),
-				})), PointTo(MatchFields(IgnoreExtras, Fields{
-					"Type":  Equal(field.ErrorTypeInvalid),
-					"Field": Equal("machineImages[0].versions[0].urn"),
+					"Field": Equal("machineImages[0].versions[0]"),
 				}))))
 			})
 		})

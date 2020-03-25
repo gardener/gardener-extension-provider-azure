@@ -44,15 +44,17 @@ type DomainCount struct {
 // MachineImages is a mapping from logical names and versions to provider-specific identifiers.
 type MachineImages struct {
 	// Name is the logical name of the machine image.
-	Name string `json:"name"`
+	Name string
 	// Versions contains versions and a provider-specific identifier.
-	Versions []MachineImageVersion `json:"versions"`
+	Versions []MachineImageVersion
 }
 
 // MachineImageVersion contains a version and a provider-specific identifier.
 type MachineImageVersion struct {
 	// Version is the version of the image.
-	Version string `json:"version"`
-	// URN is the identifier for the image.
-	URN string `json:"urn"`
+	Version string
+	// URN is the uniform resource name of the image, it has the format 'publisher:offer:sku:version'.
+	URN *string
+	// ID is the image id.
+	ID *string
 }

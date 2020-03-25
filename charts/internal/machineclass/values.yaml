@@ -21,6 +21,7 @@ machineClasses:
   machineType: Standard_DS1_V2
   image:
     urn: "CoreOS:CoreOS:Stable:1576.5.0"
+    #id: "/Subscriptions/4bfa08b6-bad8-4b8e-aa00-741c0a859e36/Providers/Microsoft.Compute/Locations/westus/Publishers/CoreOS/ArtifactTypes/VMImage/Offers/CoreOS/Skus/Stable/Versions/1576.5.0"
   osDisk:
     size: 50
     #type: Standard_LRS
@@ -43,7 +44,8 @@ machineClasses:
     cloudConfig: abc
   machineType: Standard_DS1_V2
   image:
-    urn: "CoreOS:CoreOS:Stable:1576.5.0"
+    #urn: "CoreOS:CoreOS:Stable:1576.5.0"
+    id: "/Subscriptions/4bfa08b6-bad8-4b8e-aa00-741c0a859e36/Providers/Microsoft.Compute/Locations/westus/Publishers/CoreOS/ArtifactTypes/VMImage/Offers/CoreOS/Skus/Stable/Versions/1576.5.0"
   osDisk:
     size: 50
     type: Standard_LRS
