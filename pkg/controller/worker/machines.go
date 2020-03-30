@@ -79,8 +79,8 @@ func (w *workerDelegate) generateMachineClassSecretData(ctx context.Context) (ma
 
 type zoneInfo struct {
 	name  string
-	index int
-	count int
+	index int32
+	count int32
 }
 
 func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
@@ -252,8 +252,8 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		for zoneIndex, zone := range pool.Zones {
 			info := &zoneInfo{
 				name:  zone,
-				index: zoneIndex,
-				count: zoneCount,
+				index: int32(zoneIndex),
+				count: int32(zoneCount),
 			}
 
 			machineDeployment, machineClassSpec := generateMachineClassAndDeployment(info, nil)
