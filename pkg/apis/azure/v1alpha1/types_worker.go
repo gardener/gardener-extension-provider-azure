@@ -46,4 +46,7 @@ type MachineImage struct {
 	// ID is the VM image ID
 	// +optional
 	ID *string `json:"id,omitempty"`
+	// AcceleratedNetworking is an indicator if the image supports Azure accelerated networking.
+	// +optional
+	AcceleratedNetworking *bool `json:"acceleratedNetworking,omitempty"`
 }

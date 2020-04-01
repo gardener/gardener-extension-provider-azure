@@ -84,7 +84,6 @@ var _ = Describe("Machines", func() {
 			var (
 				namespace        string
 				cloudProfileName string
-				identityID       = "identity-id"
 
 				azureClientID       string
 				azureClientSecret   string
@@ -102,6 +101,7 @@ var _ = Describe("Machines", func() {
 				vnetName          string
 				subnetName        string
 				availabilitySetID string
+				identityID        string
 				machineType       string
 				userData          []byte
 				volumeSize        int
@@ -129,6 +129,8 @@ var _ = Describe("Machines", func() {
 				clusterWithoutImages   *extensionscontroller.Cluster
 				cluster                *extensionscontroller.Cluster
 				w                      *extensionsv1alpha1.Worker
+
+				boolTrue = true
 			)
 
 			BeforeEach(func() {
@@ -155,6 +157,7 @@ var _ = Describe("Machines", func() {
 				userData = []byte("some-user-data")
 				volumeSize = 20
 				sshKey = "public-key"
+				identityID = "identity-id"
 
 				namePool1 = "pool-1"
 				minPool1 = 5
@@ -180,7 +183,6 @@ var _ = Describe("Machines", func() {
 						},
 					},
 				}
-
 				cloudProfileConfig := &apiv1alpha1.CloudProfileConfig{
 					TypeMeta: metav1.TypeMeta{
 						APIVersion: apiv1alpha1.SchemeGroupVersion.String(),
@@ -191,14 +193,21 @@ var _ = Describe("Machines", func() {
 							Name: machineImageName,
 							Versions: []apiv1alpha1.MachineImageVersion{
 								apiv1alpha1.MachineImageVersion{
-									Version: machineImageVersion,
-									URN:     &machineImageURN,
+									Version:               machineImageVersion,
+									URN:                   &machineImageURN,
+									AcceleratedNetworking: &boolTrue,
 								},
 								apiv1alpha1.MachineImageVersion{
 									Version: machineImageVersionID,
 									ID:      &machineImageID,
 								},
 							},
+						},
+					},
+					MachineTypes: []apiv1alpha1.MachineType{
+						apiv1alpha1.MachineType{
+							Name:                  machineType,
+							AcceleratedNetworking: &boolTrue,
 						},
 					},
 				}
@@ -315,10 +324,13 @@ var _ = Describe("Machines", func() {
 
 				BeforeEach(func() {
 					defaultMachineClass := map[string]interface{}{
-						"region":            region,
-						"resourceGroup":     resourceGroupName,
-						"vnetName":          vnetName,
-						"subnetName":        subnetName,
+						"region":        region,
+						"resourceGroup": resourceGroupName,
+						"network": map[string]interface{}{
+							"vnet":                  vnetName,
+							"subnet":                subnetName,
+							"acceleratedNetworking": true,
+						},
 						"availabilitySetID": availabilitySetID,
 						"tags": map[string]interface{}{
 							"Name": namespace,
@@ -341,6 +353,10 @@ var _ = Describe("Machines", func() {
 						"urn": machineImageURN,
 					}
 
+					defaultMachineClass["network"] = map[string]interface{}{
+						"vnet":   vnetName,
+						"subnet": subnetName,
+					}
 					imageIdMachineClass = copyMachineClass(defaultMachineClass)
 					imageIdMachineClass["image"] = map[string]interface{}{
 						"id": machineImageID,
@@ -408,9 +424,10 @@ var _ = Describe("Machines", func() {
 						},
 						MachineImages: []apiv1alpha1.MachineImage{
 							{
-								Name:    machineImageName,
-								Version: machineImageVersion,
-								URN:     &machineImageURN,
+								Name:                  machineImageName,
+								Version:               machineImageVersion,
+								URN:                   &machineImageURN,
+								AcceleratedNetworking: &boolTrue,
 							},
 							{
 								Name:    machineImageName,
@@ -430,9 +447,7 @@ var _ = Describe("Machines", func() {
 			})
 
 			It("should fail because the secret cannot be read", func() {
-				c.EXPECT().
-					Get(context.TODO(), gomock.Any(), gomock.AssignableToTypeOf(&corev1.Secret{})).
-					Return(fmt.Errorf("error"))
+				c.EXPECT().Get(context.TODO(), gomock.Any(), gomock.AssignableToTypeOf(&corev1.Secret{})).Return(fmt.Errorf("error"))
 
 				result, err := workerDelegate.GenerateMachineDeployments(context.TODO())
 				Expect(err).To(HaveOccurred())

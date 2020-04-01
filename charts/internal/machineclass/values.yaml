@@ -4,10 +4,13 @@ machineClasses:
 #   foo: bar
   region: westeurope
   resourceGroup: my-resource-group
-  vnetName: my-vnet
-  subnetName: my-subnet-in-my-vnet
   zone: 1
   # identityID: /subscriptions/subscription-id/resourceGroups/resource-group-name/providers/Microsoft.ManagedIdentity/userAssignedIdentities/identity-name
+  network:
+    vnet: my-vnet
+    subnet: my-subnet-in-my-vnet
+    # vnetResourceGroup: my-vnet-resource-group
+    # acceleratedNetworking: true
   tags:
     Name: shoot-crazy-botany
     kubernetes.io-cluster-shoot-crazy-botany: "1"
@@ -29,8 +32,9 @@ machineClasses:
 - name: class-2-availability-set
   region: westeurope
   resourceGroup: my-resource-group
-  vnetName: my-vnet
-  subnetName: my-subnet-in-my-vnet
+  network:
+    vnet: my-vnet
+    subnet: my-subnet-in-my-vnet
   availabilitySetID: /subscriptions/subscription-id/resourceGroups/resource-group-name/providers/Microsoft.Compute/availabilitySets/availablity-set-name
   tags:
     Name: shoot-crazy-botany

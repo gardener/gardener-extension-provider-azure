@@ -34,6 +34,8 @@ var _ = Describe("Helper", func() {
 		purposeWrong api.Purpose = "baz"
 		urn          string      = "publisher:offer:sku:version"
 		imageID      string      = "/image/id"
+		boolTrue                 = true
+		boolFalse                = false
 	)
 
 	DescribeTable("#FindSubnetByPurpose",
@@ -96,6 +98,8 @@ var _ = Describe("Helper", func() {
 		Entry("entry not found (no version)", []api.MachineImage{{Name: "bar", Version: "1.2.3", URN: &urn}}, "bar", "1.2.4", nil, true),
 		Entry("entry exists(urn)", []api.MachineImage{{Name: "bar", Version: "1.2.3", URN: &urn}}, "bar", "1.2.3", &api.MachineImage{Name: "bar", Version: "1.2.3", URN: &urn}, false),
 		Entry("entry exists(id)", []api.MachineImage{{Name: "bar", Version: "1.2.3", ID: &imageID}}, "bar", "1.2.3", &api.MachineImage{Name: "bar", Version: "1.2.3", ID: &imageID}, false),
+		Entry("entry exists(accelerated networking active)", []api.MachineImage{{Name: "bar", Version: "1.2.3", URN: &urn, AcceleratedNetworking: &boolTrue}}, "bar", "1.2.3", &api.MachineImage{Name: "bar", Version: "1.2.3", URN: &urn, AcceleratedNetworking: &boolTrue}, false),
+		Entry("entry exists(accelerated networking inactive)", []api.MachineImage{{Name: "bar", Version: "1.2.3", URN: &urn, AcceleratedNetworking: &boolFalse}}, "bar", "1.2.3", &api.MachineImage{Name: "bar", Version: "1.2.3", URN: &urn, AcceleratedNetworking: &boolFalse}, false),
 	)
 
 	DescribeTable("#FindDomainCountByRegion",

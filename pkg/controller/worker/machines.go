@@ -124,15 +124,16 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			return err
 		}
 
-		urn, id, err := w.findMachineImage(pool.MachineImage.Name, pool.MachineImage.Version)
+		urn, id, imageSupportAcceleratedNetworking, err := w.findMachineImage(pool.MachineImage.Name, pool.MachineImage.Version)
 		if err != nil {
 			return err
 		}
 		machineImages = appendMachineImage(machineImages, apisazure.MachineImage{
-			Name:    pool.MachineImage.Name,
-			Version: pool.MachineImage.Version,
-			URN:     urn,
-			ID:      id,
+			Name:                  pool.MachineImage.Name,
+			Version:               pool.MachineImage.Version,
+			URN:                   urn,
+			ID:                    id,
+			AcceleratedNetworking: imageSupportAcceleratedNetworking,
 		})
 
 		volumeSize, err := worker.DiskSize(pool.Volume.Size)
@@ -174,12 +175,13 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 					Annotations:    pool.Annotations,
 					Taints:         pool.Taints,
 				}
-
+				networkConfig = map[string]interface{}{
+					"vnet":   infrastructureStatus.Networks.VNet.Name,
+					"subnet": nodesSubnet.Name,
+				}
 				machineClassSpec = map[string]interface{}{
 					"region":        w.worker.Spec.Region,
 					"resourceGroup": infrastructureStatus.ResourceGroup.Name,
-					"vnetName":      infrastructureStatus.Networks.VNet.Name,
-					"subnetName":    nodesSubnet.Name,
 					"tags": map[string]interface{}{
 						"Name": w.worker.Namespace,
 						fmt.Sprintf("kubernetes.io-cluster-%s", w.worker.Namespace): "1",
@@ -198,12 +200,16 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				machineClassSpec["vnetResourceGroup"] = *infrastructureStatus.Networks.VNet.ResourceGroup
 			}
 
+			if imageSupportAcceleratedNetworking != nil && *imageSupportAcceleratedNetworking && w.isMachineTypeSupportingAcceleratedNetworking(pool.MachineType) {
+				networkConfig["acceleratedNetworking"] = true
+			}
+			machineClassSpec["network"] = networkConfig
+
 			if zone != nil {
 				machineDeployment.Minimum = worker.DistributeOverZones(zone.index, pool.Minimum, zone.count)
 				machineDeployment.Maximum = worker.DistributeOverZones(zone.index, pool.Maximum, zone.count)
 				machineDeployment.MaxSurge = worker.DistributePositiveIntOrPercent(zone.index, pool.MaxSurge, zone.count, pool.Maximum)
 				machineDeployment.MaxUnavailable = worker.DistributePositiveIntOrPercent(zone.index, pool.MaxUnavailable, zone.count, pool.Minimum)
-
 				machineClassSpec["zone"] = zone.name
 			}
 			if availabilitySetID != nil {
@@ -267,4 +273,14 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 	w.machineImages = machineImages
 
 	return nil
+}
+
+// isMachineTypeSupportingAcceleratedNetworking checks if the passed machine type is supporting Azure accelerated networking.
+func (w *workerDelegate) isMachineTypeSupportingAcceleratedNetworking(machineTypeName string) bool {
+	for _, machType := range w.cloudProfileConfig.MachineTypes {
+		if machType.Name == machineTypeName && machType.AcceleratedNetworking != nil && *machType.AcceleratedNetworking {
+			return true
+		}
+	}
+	return false
 }
