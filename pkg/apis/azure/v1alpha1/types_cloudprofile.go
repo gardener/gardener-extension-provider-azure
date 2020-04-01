@@ -57,7 +57,15 @@ type MachineImageVersion struct {
 	// URN is the uniform resource name of the image, it has the format 'publisher:offer:sku:version'.
 	// +optional
 	URN *string `json:"urn,omitempty"`
-	//ID is the VM image ID
+	// Regions is a mapping to the correct image ID for the machine image in the supported regions.
 	// +optional
-	ID *string `json:"id,omitempty"`
+	Regions []RegionIDMapping `json:"regions"`
+}
+
+// RegionIDMapping is a mapping to the correct image ID for the machine image in the given region.
+type RegionIDMapping struct {
+	// Name is the name of the region.
+	Name string `json:"name"`
+	// ID is the ID for the machine image.
+	ID string `json:"id"`
 }

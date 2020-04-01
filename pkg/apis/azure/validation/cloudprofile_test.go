@@ -30,6 +30,13 @@ var (
 	urn         = "Publisher:Offer:Sku:Version"
 	id          = "/subscription/id/image/id"
 	emptyString = ""
+	region      = "westus"
+	regions     = []apisazure.RegionIDMapping{
+		{
+			Name: region,
+			ID:   id,
+		},
+	}
 )
 
 var _ = Describe("CloudProfileConfig validation", func() {
@@ -124,7 +131,12 @@ var _ = Describe("CloudProfileConfig validation", func() {
 							Versions: []apisazure.MachineImageVersion{
 								{
 									Version: "1.2.3",
-									ID:      &id,
+									Regions: []apisazure.RegionIDMapping{
+										{
+											Name: region,
+											ID:   id,
+										},
+									},
 								},
 							},
 						},
@@ -135,19 +147,19 @@ var _ = Describe("CloudProfileConfig validation", func() {
 					Expect(errorList).To(matcher)
 				},
 				Entry("correct id", "/non/empty/id", BeEmpty()),
-				Entry("empty id", "", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeRequired), "Field": Equal("machineImages[0].versions[0].id")})))),
+				Entry("empty id", "", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeRequired), "Field": Equal("machineImages[0].versions[0].regions[0].id")})))),
 			)
 
 			DescribeTable("forbid invalid image reference coniguration",
-				func(urn, id *string, matcher gomegatypes.GomegaMatcher) {
+				func(urn *string, regions []apisazure.RegionIDMapping, matcher gomegatypes.GomegaMatcher) {
 					cloudProfileConfig.MachineImages = []apisazure.MachineImages{
 						{
 							Name: "my-image",
 							Versions: []apisazure.MachineImageVersion{
 								{
 									Version: "1.2.3",
-									ID:      id,
 									URN:     urn,
+									Regions: regions,
 								},
 							},
 						},
@@ -158,19 +170,19 @@ var _ = Describe("CloudProfileConfig validation", func() {
 					Expect(errorList).To(matcher)
 				},
 				Entry("only valid URN", &urn, nil, BeEmpty()),
-				Entry("only valid ID", nil, &id, BeEmpty()),
+				Entry("only valid regions", nil, regions, BeEmpty()),
 				Entry("urn and id are nil", nil, nil, ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
 					"Field": Equal("machineImages[0].versions[0]")})))),
-				Entry("urn and id are non-empty", &urn, &id, ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+				Entry("urn and regions are non-empty", &urn, regions, ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
 					"Field": Equal("machineImages[0].versions[0]")})))),
-				Entry("urn and id are empty", &emptyString, &emptyString, ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+				Entry("urn and regional id are empty", &emptyString, []apisazure.RegionIDMapping{apisazure.RegionIDMapping{Name: region, ID: ""}}, ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
 					"Field": Equal("machineImages[0].versions[0]"),
 				})), PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
-					"Field": Equal("machineImages[0].versions[0].id"),
+					"Field": Equal("machineImages[0].versions[0].regions[0].id"),
 				})), PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
 					"Field": Equal("machineImages[0].versions[0].urn"),

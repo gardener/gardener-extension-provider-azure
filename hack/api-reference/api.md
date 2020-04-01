@@ -716,14 +716,16 @@ string
 </tr>
 <tr>
 <td>
-<code>id</code></br>
+<code>regions</code></br>
 <em>
-string
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.RegionIDMapping">
+[]RegionIDMapping
+</a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>ID is the VM image ID</p>
+<p>Regions is a mapping to the correct image ID for the machine image in the supported regions.</p>
 </td>
 </tr>
 </tbody>
@@ -927,6 +929,47 @@ VNetStatus
 <p>
 <p>Purpose is a purpose of a subnet.</p>
 </p>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.RegionIDMapping">RegionIDMapping
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.MachineImageVersion">MachineImageVersion</a>)
+</p>
+<p>
+<p>RegionIDMapping is a mapping to the correct image ID for the machine image in the given region.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name is the name of the region.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>id</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>ID is the ID for the machine image.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.ResourceGroup">ResourceGroup
 </h3>
 <p>

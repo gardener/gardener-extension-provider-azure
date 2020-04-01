@@ -62,7 +62,7 @@ func (w *workerDelegate) GetMachineImages(ctx context.Context) (runtime.Object, 
 }
 
 func (w *workerDelegate) findMachineImage(name, version string) (urn, id *string, err error) {
-	machineImage, err := helper.FindImageFromCloudProfile(w.cloudProfileConfig, name, version)
+	machineImage, err := helper.FindImageFromCloudProfile(w.cloudProfileConfig, name, version, w.worker.Spec.Region)
 	if err == nil {
 		return machineImage.URN, machineImage.ID, nil
 	}

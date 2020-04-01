@@ -24,8 +24,16 @@ import (
 )
 
 var (
-	profileURN = "publisher:offer:sku:1.2.4"
-	profileID  = "/subscription/image/id"
+	profileURN    = "publisher:offer:sku:1.2.4"
+	profileID     = "/subscription/image/id"
+	profileRegion = "westus"
+
+	regions = []api.RegionIDMapping{
+		{
+			Name: profileRegion,
+			ID:   profileID,
+		},
+	}
 )
 
 var _ = Describe("Helper", func() {
@@ -111,10 +119,10 @@ var _ = Describe("Helper", func() {
 	)
 
 	DescribeTable("#FindImage",
-		func(profileImages []api.MachineImages, imageName, version string, expectedImage *api.MachineImage) {
+		func(profileImages []api.MachineImages, imageName, version, region string, expectedImage *api.MachineImage) {
 			cfg := &api.CloudProfileConfig{}
 			cfg.MachineImages = profileImages
-			image, err := FindImageFromCloudProfile(cfg, imageName, version)
+			image, err := FindImageFromCloudProfile(cfg, imageName, version, region)
 
 			Expect(image).To(Equal(expectedImage))
 			if expectedImage != nil {
@@ -124,16 +132,17 @@ var _ = Describe("Helper", func() {
 			}
 		},
 
-		Entry("list is nil", nil, "ubuntu", "1", nil),
+		Entry("list is nil", nil, "ubuntu", "1", profileRegion, nil),
 
-		Entry("profile empty list", []api.MachineImages{}, "ubuntu", "1", nil),
-		Entry("profile entry not found (image does not exist)", makeProfileMachineImages("debian", "1", "3"), "ubuntu", "1", nil),
-		Entry("profile entry not found (version does not exist)", makeProfileMachineImages("ubuntu", "2", "4"), "ubuntu", "1", nil),
-		Entry("profile entry(urn)", makeProfileMachineImages("ubuntu", "1", "3"), "ubuntu", "1", &api.MachineImage{Name: "ubuntu", Version: "1", URN: &profileURN}),
-		Entry("profile entry(id)", makeProfileMachineImages("ubuntu", "1", "3"), "ubuntu", "3", &api.MachineImage{Name: "ubuntu", Version: "3", ID: &profileID}),
+		Entry("profile empty list", []api.MachineImages{}, "ubuntu", "1", profileRegion, nil),
+		Entry("profile entry not found (image does not exist)", makeProfileMachineImages("debian", "1", "3"), "ubuntu", "1", profileRegion, nil),
+		Entry("profile entry not found (version does not exist)", makeProfileMachineImages("ubuntu", "2", "4"), "ubuntu", "1", profileRegion, nil),
+		Entry("profile entry not found (region not supported)", makeProfileMachineImages("ubuntu", "2", "4"), "ubuntu", "4", "westeurope", nil),
+		Entry("profile entry(urn)", makeProfileMachineImages("ubuntu", "1", "3"), "ubuntu", "1", profileRegion, &api.MachineImage{Name: "ubuntu", Version: "1", URN: &profileURN}),
+		Entry("profile entry(id)", makeProfileMachineImages("ubuntu", "1", "3"), "ubuntu", "3", profileRegion, &api.MachineImage{Name: "ubuntu", Version: "3", ID: &profileID}),
 
-		Entry("valid image reference, only urn", makeProfileMachineImageWithIDandURN("ubuntu", "1", &profileURN, nil), "ubuntu", "1", &api.MachineImage{Name: "ubuntu", Version: "1", URN: &profileURN}),
-		Entry("valid image reference, only id", makeProfileMachineImageWithIDandURN("ubuntu", "1", nil, &profileID), "ubuntu", "1", &api.MachineImage{Name: "ubuntu", Version: "1", ID: &profileID}),
+		Entry("valid image reference, only urn", makeProfileMachineImageWithRegionsAndURN("ubuntu", "1", &profileURN, []api.RegionIDMapping{}), "ubuntu", "1", profileRegion, &api.MachineImage{Name: "ubuntu", Version: "1", URN: &profileURN}),
+		Entry("valid image reference, only id", makeProfileMachineImageWithRegionsAndURN("ubuntu", "1", nil, regions), "ubuntu", "1", profileRegion, &api.MachineImage{Name: "ubuntu", Version: "1", ID: &profileID}),
 	)
 })
 
@@ -148,14 +157,19 @@ func makeProfileMachineImages(name, urnVersion, idVersion string) []api.MachineI
 				},
 				{
 					Version: idVersion,
-					ID:      &profileID,
+					Regions: []api.RegionIDMapping{
+						{
+							Name: profileRegion,
+							ID:   profileID,
+						},
+					},
 				},
 			},
 		},
 	}
 }
 
-func makeProfileMachineImageWithIDandURN(name, version string, urn, id *string) []api.MachineImages {
+func makeProfileMachineImageWithRegionsAndURN(name, version string, urn *string, regions []api.RegionIDMapping) []api.MachineImages {
 	return []api.MachineImages{
 		{
 			Name: name,
@@ -163,7 +177,7 @@ func makeProfileMachineImageWithIDandURN(name, version string, urn, id *string) 
 				{
 					Version: version,
 					URN:     urn,
-					ID:      id,
+					Regions: regions,
 				},
 			},
 		},

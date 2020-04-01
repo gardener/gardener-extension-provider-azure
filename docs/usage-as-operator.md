@@ -27,7 +27,11 @@ machineImages:
   - version: 2135.6.0
     urn: "CoreOS:CoreOS:Stable:2135.6.0"
   - version: 2303.3.0
-    id: "/Subscriptions/4bfa08b6-bad8-4b8e-aa00-741c0a859e36/Providers/Microsoft.Compute/Locations/westus/Publishers/CoreOS/ArtifactTypes/VMImage/Offers/CoreOS/Skus/Stable/Versions/2303.3.0"
+    regions:
+    - name: westus
+      id: "/Subscriptions/4bfa08b6-bad8-4b8e-aa00-741c0a859e36/Providers/Microsoft.Compute/Locations/westus/Publishers/CoreOS/ArtifactTypes/VMImage/Offers/CoreOS/Skus/Stable/Versions/2303.3.0"
+    - name: westeurope
+      id: "/Subscriptions/00d2caa5-cd29-46f7-845a-2f8ee0360ef5/Providers/Microsoft.Compute/Locations/westeurope/Publishers/CoreOS/ArtifactTypes/VMImage/Offers/CoreOS/Skus/Stable/Versions/2303.3.0"
 ```
 
 ## Example `CloudProfile` manifest
