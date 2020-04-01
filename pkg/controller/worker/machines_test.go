@@ -188,7 +188,7 @@ var _ = Describe("Machines", func() {
 							Versions: []apiv1alpha1.MachineImageVersion{
 								apiv1alpha1.MachineImageVersion{
 									Version: machineImageVersion,
-									URN:     &machineImageURN,
+									URN:     machineImageURN,
 								},
 							},
 						},
