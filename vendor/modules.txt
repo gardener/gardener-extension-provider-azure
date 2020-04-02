@@ -158,7 +158,7 @@ github.com/gardener/gardener-extension-networking-calico/pkg/calico
 github.com/gardener/gardener-extension-networking-calico/pkg/charts
 github.com/gardener/gardener-extension-networking-calico/pkg/controller
 github.com/gardener/gardener-extension-networking-calico/pkg/imagevector
-# github.com/gardener/gardener-extensions v1.5.1-0.20200330101454-c65957bd80b5
+# github.com/gardener/gardener-extensions v1.5.1-0.20200402091828-df061f8dae06
 github.com/gardener/gardener-extensions/hack
 github.com/gardener/gardener-extensions/hack/.ci
 github.com/gardener/gardener-extensions/hack/api-reference/template
