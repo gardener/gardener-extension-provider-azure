@@ -7,7 +7,7 @@ In this document we are describing how this configuration looks like for Azure a
 ## `CloudProfileConfig`
 
 The cloud profile configuration contains information about the update and failure domain counts in the Azure regions you want to offer.
-Additionally, it contains the real machine image identifiers in the Azure environment. You can provide either URN or image ID.
+Additionally, it contains the real machine image identifiers in the Azure environment.
 You have to map every version that you specify in `.spec.machineImages[].versions` here such that the Azure extension knows the machine image identifiers for every version you want to offer.
 
 An example `CloudProfileConfig` for the Azure extension looks as follows:
@@ -26,8 +26,6 @@ machineImages:
   versions:
   - version: 2135.6.0
     urn: "CoreOS:CoreOS:Stable:2135.6.0"
-  - version: 2303.3.0
-    id: "/Subscriptions/4bfa08b6-bad8-4b8e-aa00-741c0a859e36/Providers/Microsoft.Compute/Locations/westus/Publishers/CoreOS/ArtifactTypes/VMImage/Offers/CoreOS/Skus/Stable/Versions/2303.3.0"
 ```
 
 ## Example `CloudProfile` manifest

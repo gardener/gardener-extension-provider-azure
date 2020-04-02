@@ -50,18 +50,11 @@ func ValidateCloudProfileConfig(cloudProfile *apisazure.CloudProfileConfig) fiel
 			if len(version.Version) == 0 {
 				allErrs = append(allErrs, field.Required(jdxPath.Child("version"), "must provide a version"))
 			}
-			if (version.URN == nil && version.ID == nil) || (version.URN != nil && version.ID != nil) {
-				allErrs = append(allErrs, field.Required(jdxPath, "must provide either urn or id"))
+			if len(version.URN) == 0 {
+				allErrs = append(allErrs, field.Required(jdxPath.Child("urn"), "must provide an urn"))
 			}
-			if version.URN != nil {
-				if len(*version.URN) == 0 {
-					allErrs = append(allErrs, field.Required(jdxPath.Child("urn"), "urn cannot be empty when defined"))
-				} else if len(strings.Split(*version.URN, ":")) != 4 {
-					allErrs = append(allErrs, field.Invalid(jdxPath.Child("urn"), version.URN, "please use the format `Publisher:Offer:Sku:Version` for the urn"))
-				}
-			}
-			if version.ID != nil && len(*version.ID) == 0 {
-				allErrs = append(allErrs, field.Required(jdxPath.Child("id"), "id cannot be empty when defined"))
+			if len(strings.Split(version.URN, ":")) != 4 {
+				allErrs = append(allErrs, field.Invalid(jdxPath.Child("urn"), version.URN, "please use the format `Publisher:Offer:Sku:Version` for the urn"))
 			}
 		}
 	}

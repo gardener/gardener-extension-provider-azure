@@ -25,7 +25,6 @@ import (
 
 var (
 	profileURN = "publisher:offer:sku:1.2.4"
-	profileID  = "/subscription/image/id"
 )
 
 var _ = Describe("Helper", func() {
@@ -33,7 +32,6 @@ var _ = Describe("Helper", func() {
 		purpose      api.Purpose = "foo"
 		purposeWrong api.Purpose = "baz"
 		urn          string      = "publisher:offer:sku:version"
-		imageID      string      = "/image/id"
 	)
 
 	DescribeTable("#FindSubnetByPurpose",
@@ -94,8 +92,7 @@ var _ = Describe("Helper", func() {
 		Entry("empty list", []api.MachineImage{}, "foo", "1.2.3", nil, true),
 		Entry("entry not found (no name)", []api.MachineImage{{Name: "bar", Version: "1.2.3", URN: &urn}}, "foo", "1.2.3", nil, true),
 		Entry("entry not found (no version)", []api.MachineImage{{Name: "bar", Version: "1.2.3", URN: &urn}}, "bar", "1.2.4", nil, true),
-		Entry("entry exists(urn)", []api.MachineImage{{Name: "bar", Version: "1.2.3", URN: &urn}}, "bar", "1.2.3", &api.MachineImage{Name: "bar", Version: "1.2.3", URN: &urn}, false),
-		Entry("entry exists(id)", []api.MachineImage{{Name: "bar", Version: "1.2.3", ID: &imageID}}, "bar", "1.2.3", &api.MachineImage{Name: "bar", Version: "1.2.3", ID: &imageID}, false),
+		Entry("entry exists", []api.MachineImage{{Name: "bar", Version: "1.2.3", URN: &urn}}, "bar", "1.2.3", &api.MachineImage{Name: "bar", Version: "1.2.3", URN: &urn}, false),
 	)
 
 	DescribeTable("#FindDomainCountByRegion",
@@ -127,43 +124,20 @@ var _ = Describe("Helper", func() {
 		Entry("list is nil", nil, "ubuntu", "1", nil),
 
 		Entry("profile empty list", []api.MachineImages{}, "ubuntu", "1", nil),
-		Entry("profile entry not found (image does not exist)", makeProfileMachineImages("debian", "1", "3"), "ubuntu", "1", nil),
-		Entry("profile entry not found (version does not exist)", makeProfileMachineImages("ubuntu", "2", "4"), "ubuntu", "1", nil),
-		Entry("profile entry(urn)", makeProfileMachineImages("ubuntu", "1", "3"), "ubuntu", "1", &api.MachineImage{Name: "ubuntu", Version: "1", URN: &profileURN}),
-		Entry("profile entry(id)", makeProfileMachineImages("ubuntu", "1", "3"), "ubuntu", "3", &api.MachineImage{Name: "ubuntu", Version: "3", ID: &profileID}),
-
-		Entry("valid image reference, only urn", makeProfileMachineImageWithIDandURN("ubuntu", "1", &profileURN, nil), "ubuntu", "1", &api.MachineImage{Name: "ubuntu", Version: "1", URN: &profileURN}),
-		Entry("valid image reference, only id", makeProfileMachineImageWithIDandURN("ubuntu", "1", nil, &profileID), "ubuntu", "1", &api.MachineImage{Name: "ubuntu", Version: "1", ID: &profileID}),
+		Entry("profile entry not found (image does not exist)", makeProfileMachineImages("debian", "1"), "ubuntu", "1", nil),
+		Entry("profile entry not found (version does not exist)", makeProfileMachineImages("ubuntu", "2"), "ubuntu", "1", nil),
+		Entry("profile entry", makeProfileMachineImages("ubuntu", "1"), "ubuntu", "1", &api.MachineImage{Name: "ubuntu", Version: "1", URN: &profileURN}),
 	)
 })
 
-func makeProfileMachineImages(name, urnVersion, idVersion string) []api.MachineImages {
-	return []api.MachineImages{
-		{
-			Name: name,
-			Versions: []api.MachineImageVersion{
-				{
-					Version: urnVersion,
-					URN:     &profileURN,
-				},
-				{
-					Version: idVersion,
-					ID:      &profileID,
-				},
-			},
-		},
-	}
-}
-
-func makeProfileMachineImageWithIDandURN(name, version string, urn, id *string) []api.MachineImages {
+func makeProfileMachineImages(name, version string) []api.MachineImages {
 	return []api.MachineImages{
 		{
 			Name: name,
 			Versions: []api.MachineImageVersion{
 				{
 					Version: version,
-					URN:     urn,
-					ID:      id,
+					URN:     profileURN,
 				},
 			},
 		},

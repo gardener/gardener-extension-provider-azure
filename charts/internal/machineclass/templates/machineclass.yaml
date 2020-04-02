@@ -47,11 +47,7 @@ spec:
             keyData: {{ $machineClass.sshPublicKey }}
     storageProfile:
       imageReference:
-{{- if $machineClass.image.id }}
-        id: {{ $machineClass.image.id }}
-{{- else }}
         urn: {{ $machineClass.image.urn }}
-{{- end }}
       osDisk:
         caching: None
         diskSizeGB: {{ $machineClass.osDisk.size }}

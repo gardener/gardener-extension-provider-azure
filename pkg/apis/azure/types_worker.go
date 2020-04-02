@@ -38,8 +38,6 @@ type MachineImage struct {
 	Name string
 	// Version is the logical version of the machine image.
 	Version string
-	// URN is the uniform resource name of the image, it has the format 'publisher:offer:sku:version'.
+	// URN is the uniform resource name, it has the format 'publisher:offer:sku:version'
 	URN *string
-	// ID is the VM image ID
-	ID *string
 }
