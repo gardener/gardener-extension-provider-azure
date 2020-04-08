@@ -22,7 +22,7 @@ import (
 	providerazure "github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/validator"
 
-	controllercmd "github.com/gardener/gardener-extensions/pkg/controller/cmd"
+	controllercmd "github.com/gardener/gardener/extensions/pkg/controller/cmd"
 	"github.com/gardener/gardener/pkg/apis/core/install"
 	"github.com/spf13/cobra"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"

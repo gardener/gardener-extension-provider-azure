@@ -15,7 +15,7 @@
 package network
 
 import (
-	extensionswebhook "github.com/gardener/gardener-extensions/pkg/webhook"
+	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 
 	calicov1alpha1 "github.com/gardener/gardener-extension-networking-calico/pkg/apis/calico/v1alpha1"
 	"github.com/gardener/gardener-extension-networking-calico/pkg/controller"

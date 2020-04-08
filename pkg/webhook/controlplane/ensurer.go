@@ -18,11 +18,11 @@ import (
 	"context"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	"github.com/gardener/gardener-extensions/pkg/controller/operatingsystemconfig/oscommon/cloudinit"
-	"github.com/gardener/gardener-extensions/pkg/util"
-	extensionswebhook "github.com/gardener/gardener-extensions/pkg/webhook"
-	"github.com/gardener/gardener-extensions/pkg/webhook/controlplane"
-	"github.com/gardener/gardener-extensions/pkg/webhook/controlplane/genericmutator"
+	"github.com/gardener/gardener/extensions/pkg/controller/operatingsystemconfig/oscommon/cloudinit"
+	"github.com/gardener/gardener/extensions/pkg/util"
+	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
+	"github.com/gardener/gardener/extensions/pkg/webhook/controlplane"
+	"github.com/gardener/gardener/extensions/pkg/webhook/controlplane/genericmutator"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 
 	"github.com/coreos/go-systemd/unit"

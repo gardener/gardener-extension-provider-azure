@@ -19,8 +19,6 @@ package imagevector
 import (
 	"strings"
 
-	"github.com/gardener/gardener-extension-networking-calico/pkg/calico"
-
 	"github.com/gardener/gardener/pkg/utils/imagevector"
 	"github.com/gobuffalo/packr/v2"
 	"k8s.io/apimachinery/pkg/util/runtime"
@@ -44,53 +42,4 @@ func init() {
 // ImageVector is the image vector that contains all the needed images.
 func ImageVector() imagevector.ImageVector {
 	return imageVector
-}
-
-// CalicoCNIImage returns the Calico CNI Image.
-func CalicoCNIImage() string {
-	image, err := imageVector.FindImage(calico.CNIImageName)
-	runtime.Must(err)
-	return image.String()
-}
-
-// CalicoNodeImage returns the Calico Node image.
-func CalicoNodeImage() string {
-	image, err := imageVector.FindImage(calico.NodeImageName)
-	runtime.Must(err)
-	return image.String()
-}
-
-// CalicoTyphaImage returns the Calico Typha image.
-func CalicoTyphaImage() string {
-	image, err := imageVector.FindImage(calico.TyphaImageName)
-	runtime.Must(err)
-	return image.String()
-}
-
-// CalicoKubeControllersImage returns the Calico Kube-controllers image.
-func CalicoKubeControllersImage() string {
-	image, err := imageVector.FindImage(calico.KubeControllersImageName)
-	runtime.Must(err)
-	return image.String()
-}
-
-// CalicoFlexVolumeDriverImage returns the Calico flexvol image.
-func CalicoFlexVolumeDriverImage() string {
-	image, err := imageVector.FindImage(calico.PodToDaemonFlexVolumeDriverImageName)
-	runtime.Must(err)
-	return image.String()
-}
-
-// TyphaClusterProportionalAutoscalerImage returns the Calico cluster-proportional-autoscaler image.
-func TyphaClusterProportionalAutoscalerImage() string {
-	image, err := imageVector.FindImage(calico.TyphaClusterProportionalAutoscalerImageName)
-	runtime.Must(err)
-	return image.String()
-}
-
-// TyphaClusterProportionalVerticalAutoscalerImage returns the Calico cluster-proportional-vertical-autoscaler image.
-func TyphaClusterProportionalVerticalAutoscalerImage() string {
-	image, err := imageVector.FindImage(calico.TyphaClusterProportionalVerticalAutoscalerImageName)
-	runtime.Must(err)
-	return image.String()
 }
