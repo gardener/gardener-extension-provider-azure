@@ -8,10 +8,15 @@ images:
   repository: k8s.gcr.io/hyperkube
   targetVersion: "< 1.17"
 - name: cloud-controller-manager
-  sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
-  repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-controller-manager
-  tag: v0.4.1
-  targetVersion: ">= 1.17"
+  sourceRepository: github.com/gardener/cloud-provider-aws
+  repository: eu.gcr.io/gardener-project/kubernetes/cloud-provider-azure
+  tag: "v1.17.4"
+  targetVersion: "1.17.x"
+- name: cloud-controller-manager
+  sourceRepository: github.com/gardener/cloud-provider-aws
+  repository: eu.gcr.io/gardener-project/kubernetes/cloud-provider-azure
+  tag: "v1.18.0"
+  targetVersion: ">= 1.18"
 - name: machine-controller-manager
   sourceRepository: github.com/gardener/machine-controller-manager
   repository: eu.gcr.io/gardener-project/gardener/machine-controller-manager
