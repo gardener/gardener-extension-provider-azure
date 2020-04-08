@@ -21,6 +21,7 @@ machineClasses:
   machineType: Standard_DS1_V2
   image:
     urn: "CoreOS:CoreOS:Stable:1576.5.0"
+    #id: "/subscriptions/<subscription ID where the gallery is located>/resourceGroups/myGalleryRG/providers/Microsoft.Compute/galleries/myGallery/images/myImageDefinition/versions/1.0.0"
   osDisk:
     size: 50
     #type: Standard_LRS
@@ -43,7 +44,8 @@ machineClasses:
     cloudConfig: abc
   machineType: Standard_DS1_V2
   image:
-    urn: "CoreOS:CoreOS:Stable:1576.5.0"
+    #urn: "CoreOS:CoreOS:Stable:1576.5.0"
+    id: "/subscriptions/<subscription ID where the gallery is located>/resourceGroups/myGalleryRG/providers/Microsoft.Compute/galleries/myGallery/images/myImageDefinition/versions/1.0.0"
   osDisk:
     size: 50
     type: Standard_LRS

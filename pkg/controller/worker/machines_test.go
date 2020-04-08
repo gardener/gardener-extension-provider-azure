@@ -92,9 +92,11 @@ var _ = Describe("Machines", func() {
 				azureTenantID       string
 				region              string
 
-				machineImageName    string
-				machineImageVersion string
-				machineImageURN     string
+				machineImageName      string
+				machineImageVersion   string
+				machineImageVersionID string
+				machineImageURN       string
+				machineImageID        string
 
 				resourceGroupName string
 				vnetName          string
@@ -141,7 +143,9 @@ var _ = Describe("Machines", func() {
 
 				machineImageName = "my-os"
 				machineImageVersion = "1"
+				machineImageVersionID = "2"
 				machineImageURN = "bar:baz:foo:123"
+				machineImageID = "/shared/image/gallery/image/id"
 
 				resourceGroupName = "my-rg"
 				vnetName = "my-vnet"
@@ -188,7 +192,11 @@ var _ = Describe("Machines", func() {
 							Versions: []apiv1alpha1.MachineImageVersion{
 								apiv1alpha1.MachineImageVersion{
 									Version: machineImageVersion,
-									URN:     machineImageURN,
+									URN:     &machineImageURN,
+								},
+								apiv1alpha1.MachineImageVersion{
+									Version: machineImageVersionID,
+									ID:      &machineImageID,
 								},
 							},
 						},
@@ -275,7 +283,7 @@ var _ = Describe("Machines", func() {
 								MachineType:    machineType,
 								MachineImage: extensionsv1alpha1.MachineImage{
 									Name:    machineImageName,
-									Version: machineImageVersion,
+									Version: machineImageVersionID,
 								},
 								UserData: userData,
 								Volume: &extensionsv1alpha1.Volume{
@@ -299,13 +307,14 @@ var _ = Describe("Machines", func() {
 
 			Describe("machine images", func() {
 				var (
-					defaultMachineClass map[string]interface{}
+					urnMachineClass     map[string]interface{}
+					imageIdMachineClass map[string]interface{}
 					machineDeployments  worker.MachineDeployments
 					machineClasses      map[string]interface{}
 				)
 
 				BeforeEach(func() {
-					defaultMachineClass = map[string]interface{}{
+					defaultMachineClass := map[string]interface{}{
 						"region":            region,
 						"resourceGroup":     resourceGroupName,
 						"vnetName":          vnetName,
@@ -320,9 +329,6 @@ var _ = Describe("Machines", func() {
 							"cloudConfig": string(userData),
 						},
 						"machineType": machineType,
-						"image": map[string]interface{}{
-							"urn": machineImageURN,
-						},
 						"osDisk": map[string]interface{}{
 							"size": volumeSize,
 						},
@@ -330,9 +336,19 @@ var _ = Describe("Machines", func() {
 						"identityID":   identityID,
 					}
 
+					urnMachineClass = copyMachineClass(defaultMachineClass)
+					urnMachineClass["image"] = map[string]interface{}{
+						"urn": machineImageURN,
+					}
+
+					imageIdMachineClass = copyMachineClass(defaultMachineClass)
+					imageIdMachineClass["image"] = map[string]interface{}{
+						"id": machineImageID,
+					}
+
 					var (
-						machineClassPool1 = copyMachineClass(defaultMachineClass)
-						machineClassPool2 = copyMachineClass(defaultMachineClass)
+						machineClassPool1 = copyMachineClass(urnMachineClass)
+						machineClassPool2 = copyMachineClass(imageIdMachineClass)
 
 						machineClassNamePool1 = fmt.Sprintf("%s-%s", namespace, namePool1)
 						machineClassNamePool2 = fmt.Sprintf("%s-%s", namespace, namePool2)
@@ -395,6 +411,11 @@ var _ = Describe("Machines", func() {
 								Name:    machineImageName,
 								Version: machineImageVersion,
 								URN:     &machineImageURN,
+							},
+							{
+								Name:    machineImageName,
+								Version: machineImageVersionID,
+								ID:      &machineImageID,
 							},
 						},
 					}))
