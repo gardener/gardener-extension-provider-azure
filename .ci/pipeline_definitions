@@ -17,7 +17,6 @@ gardener-extension-provider-azure:
             image: 'eu.gcr.io/gardener-project/gardener/extensions/validator-azure'
             dockerfile: 'Dockerfile'
             target: gardener-extension-validator-azure
-    steps: ~
   jobs:
     head-update:
       traits:

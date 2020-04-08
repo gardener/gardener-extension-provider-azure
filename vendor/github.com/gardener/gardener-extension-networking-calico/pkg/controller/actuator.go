@@ -16,8 +16,8 @@ package controller
 
 import (
 	calicov1alpha1 "github.com/gardener/gardener-extension-networking-calico/pkg/apis/calico/v1alpha1"
-	extensionscontroller "github.com/gardener/gardener-extensions/pkg/controller"
-	"github.com/gardener/gardener-extensions/pkg/controller/network"
+	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
+	"github.com/gardener/gardener/extensions/pkg/controller/network"
 
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

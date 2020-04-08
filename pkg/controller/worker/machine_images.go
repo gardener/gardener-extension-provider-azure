@@ -16,13 +16,13 @@ package worker
 
 import (
 	"context"
-	"github.com/gardener/gardener-extensions/pkg/controller/worker"
+	"github.com/gardener/gardener/extensions/pkg/controller/worker"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 
-	"github.com/gardener/gardener-extensions/pkg/util"
+	"github.com/gardener/gardener/extensions/pkg/util"
 
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

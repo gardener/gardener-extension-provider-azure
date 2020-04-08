@@ -21,7 +21,7 @@ import (
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
-	extensionscontroller "github.com/gardener/gardener-extensions/pkg/controller"
+	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
 	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-04-01/storage"
@@ -72,7 +72,7 @@ func NewStorageClientAuthFromSubscriptionSecretRef(ctx context.Context, c client
 		return nil, err
 	}
 
-	keysResponse, err := storageAccountClient.ListKeys(ctx, resourceGroupName, accountName)
+	keysResponse, err := storageAccountClient.ListKeys(ctx, resourceGroupName, accountName, storage.Kerb)
 	if err != nil {
 		return nil, err
 	}

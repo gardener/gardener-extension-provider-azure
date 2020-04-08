@@ -20,8 +20,8 @@ import (
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
-	extensioncontroller "github.com/gardener/gardener-extensions/pkg/controller"
-	"github.com/gardener/gardener-extensions/pkg/controller/backupbucket"
+	extensioncontroller "github.com/gardener/gardener/extensions/pkg/controller"
+	"github.com/gardener/gardener/extensions/pkg/controller/backupbucket"
 
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils"

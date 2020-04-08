@@ -122,13 +122,13 @@ func ComputeCalicoChartValues(network *extensionsv1alpha1.Network, config *calic
 	}
 	calicoChartValues := map[string]interface{}{
 		"images": map[string]interface{}{
-			calico.CNIImageName:                                        imagevector.CalicoCNIImage(),
-			calico.TyphaImageName:                                      imagevector.CalicoTyphaImage(),
-			calico.KubeControllersImageName:                            imagevector.CalicoKubeControllersImage(),
-			calico.NodeImageName:                                       imagevector.CalicoNodeImage(),
-			calico.PodToDaemonFlexVolumeDriverImageName:                imagevector.CalicoFlexVolumeDriverImage(),
-			calico.TyphaClusterProportionalAutoscalerImageName:         imagevector.TyphaClusterProportionalAutoscalerImage(),
-			calico.TyphaClusterProportionalVerticalAutoscalerImageName: imagevector.TyphaClusterProportionalVerticalAutoscalerImage(),
+			calico.CNIImageName:                                   imagevector.CalicoCNIImage(),
+			calico.TyphaImageName:                                 imagevector.CalicoTyphaImage(),
+			calico.KubeControllersImageName:                       imagevector.CalicoKubeControllersImage(),
+			calico.NodeImageName:                                  imagevector.CalicoNodeImage(),
+			calico.PodToDaemonFlexVolumeDriverImageName:           imagevector.CalicoFlexVolumeDriverImage(),
+			calico.CalicoClusterProportionalAutoscalerImageName:   imagevector.ClusterProportionalAutoscalerImage(),
+			calico.ClusterProportionalVerticalAutoscalerImageName: imagevector.ClusterProportionalVerticalAutoscalerImage(),
 		},
 		"global": map[string]string{
 			"podCIDR": network.Spec.PodCIDR,

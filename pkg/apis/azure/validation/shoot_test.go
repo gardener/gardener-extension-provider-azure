@@ -64,15 +64,15 @@ var _ = Describe("Shoot validation", func() {
 				{
 					Name: "worker1",
 					Volume: &core.Volume{
-						Type: pointer.StringPtr("Volume"),
-						Size: "30G",
+						Type:       pointer.StringPtr("Volume"),
+						VolumeSize: "30G",
 					},
 				},
 				{
 					Name: "worker2",
 					Volume: &core.Volume{
-						Type: pointer.StringPtr("Volume"),
-						Size: "20G",
+						Type:       pointer.StringPtr("Volume"),
+						VolumeSize: "20G",
 					},
 				},
 			}
@@ -128,7 +128,7 @@ var _ = Describe("Shoot validation", func() {
 
 				It("should forbid because volume type and size are not configured", func() {
 					workers[0].Volume.Type = nil
-					workers[0].Volume.Size = ""
+					workers[0].Volume.VolumeSize = ""
 
 					errorList := ValidateWorkers(workers, zoned, field.NewPath("workers"))
 

@@ -15,6 +15,6 @@
 // +k8s:deepcopy-gen=package
 // +groupName="azure.provider.extensions.gardener.cloud"
 
-//go:generate ../../../hack/generate-code Infrastructure:azure ControlPlane:azure
+//go:generate ../../../hack/update-codegen.sh
 
 package azure // import "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
