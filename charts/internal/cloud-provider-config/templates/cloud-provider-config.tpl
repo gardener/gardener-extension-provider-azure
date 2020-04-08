@@ -25,7 +25,7 @@ cloudProviderRateLimitQPS: {{ ( max .Values.maxNodes 10 ) }}
 cloudProviderRateLimitBucket: 100
 cloudProviderRateLimitQPSWrite: {{ ( max .Values.maxNodes 10 ) }}
 cloudProviderRateLimitBucketWrite: 100
-{{- if semverCompare ">= 1.14" .Values.kubernetesVersion }}
+{{- if and (semverCompare ">= 1.14" .Values.kubernetesVersion) (semverCompare "< 1.18" .Values.kubernetesVersion) }}
 cloudProviderBackoffMode: v2
 {{- end }}
 {{- end }}
