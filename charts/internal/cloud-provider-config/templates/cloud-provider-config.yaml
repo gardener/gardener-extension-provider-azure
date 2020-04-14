@@ -5,5 +5,6 @@ metadata:
   namespace: {{ .Release.Namespace }}
 data:
   cloudprovider.conf: |
-    {{- include "azure-credentials" . | indent 4 }}
-    {{- include "cloud-provider-config" . | indent 4 }}
+{{ include "azure-credentials" . | indent 4 }}
+{{ include "azure-subscription-info" . | indent 4 }}
+{{ include "cloud-provider-config" . | indent 4 }}

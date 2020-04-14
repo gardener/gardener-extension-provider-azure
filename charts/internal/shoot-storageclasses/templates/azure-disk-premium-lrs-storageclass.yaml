@@ -1,9 +1,0 @@
----
-apiVersion: {{ include "storageclassversion" . }}
-kind: StorageClass
-metadata:
-  name: managed-premium-ssd
-provisioner: kubernetes.io/azure-disk
-parameters:
-  storageaccounttype: Premium_LRS
-  kind: managed

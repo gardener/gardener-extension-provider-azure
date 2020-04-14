@@ -1,0 +1,25 @@
+# this is a technical service created to mitigate an issue with the UDP egress traffic for Shoots using
+# Azure Standard LoadBalancers (see https://github.com/gardener/gardener-extension-provider-azure/issues/1)
+apiVersion: v1
+kind: Service
+metadata:
+  name: allow-udp-egress
+  namespace: kube-system
+  annotations:
+    gardener.cloud/description: |
+      This is a technical Service created to mitigate an issue with the UDP egress traffic for Shoots using
+      Azure Standard LoadBalancers (see https://github.com/gardener/gardener-extension-provider-azure/issues/1).
+      It is needed because the Standard LoadBalancers will block all outgoing UDP traffic if there is not at least
+      one open UDP Port. This is a temporary workaround and will be removed in a future version, once we have a
+      proper implemenation for UDP egress via an Azure NAT Gateway in place.
+  labels:
+    app: gardener
+    role: allow-udp-egress
+spec:
+  ports:
+  - name: dummy
+    port: 1234
+    protocol: UDP
+    targetPort: 1234
+  selector: {} # select no Pods to not expose anything by accident
+  type: LoadBalancer

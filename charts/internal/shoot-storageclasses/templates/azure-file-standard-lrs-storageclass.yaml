@@ -1,8 +1,0 @@
----
-apiVersion: {{ include "storageclassversion" . }}
-kind: StorageClass
-metadata:
-  name: files
-provisioner: kubernetes.io/azure-file
-parameters:
-  skuName: Standard_LRS
