@@ -42,8 +42,10 @@ spec:
         command:
         {{- if semverCompare "< 1.17" .Values.kubernetesVersion }}
         - /hyperkube
-        {{- end }}
         - cloud-controller-manager
+        {{- else }}
+        - /azure-cloud-controller-manager
+        {{- end }}
         - --allocate-node-cidrs=true
         - --cloud-provider=azure
         - --cloud-config=/etc/kubernetes/cloudprovider/cloudprovider.conf
