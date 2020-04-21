@@ -6,10 +6,7 @@ In this document we are describing how this configuration looks like for Azure a
 
 ## `CloudProfileConfig`
 
-The cloud profile configuration contains information about the update and failure domain counts in the Azure regions you want to offer.
-Additionally, it contains the real machine image identifiers in the Azure environment. You can provide either URN for Azure Market Place images or id of [Shared Image Gallery](https://docs.microsoft.com/en-us/azure/virtual-machines/linux/shared-image-galleries) images.
-When Shared Image Gallery is used, you have to ensure that the image is available in the desired regions and the end-user subscriptions have access to the image or to the whole gallery.
-You have to map every version that you specify in `.spec.machineImages[].versions` here such that the Azure extension knows the machine image identifiers for every version you want to offer.
+
 
 An example `CloudProfileConfig` for the Azure extension looks as follows:
 
@@ -22,16 +19,30 @@ countUpdateDomains:
 countFaultDomains:
 - region: westeurope
   count: 3
+machineTypes:
+- name: Standard_D3_v2
+  acceleratedNetworking: true
+- name: Standard_X
 machineImages:
 - name: coreos
   versions:
   - version: 2135.6.0
     urn: "CoreOS:CoreOS:Stable:2135.6.0"
+    acceleratedNetworking: true
 - name: myimage
   versions:
   - version: 1.0.0
     id: "/subscriptions/<subscription ID where the gallery is located>/resourceGroups/myGalleryRG/providers/Microsoft.Compute/galleries/myGallery/images/myImageDefinition/versions/1.0.0"
 ```
+
+The cloud profile configuration contains information about the update via `.countUpdateDomains[]` and failure domain via `.countFaultDomains[]` counts in the Azure regions you want to offer.
+
+The `.machineTypes[]` list contain provider specific information to the machine types e.g. if the machine type support [Azure Accelerated Networking](https://docs.microsoft.com/en-us/azure/virtual-network/create-vm-accelerated-networking-cli), see `.machineTypes[].acceleratedNetworking`.
+
+Additionally, it contains the real machine image identifiers in the Azure environment. You can provide either URN for Azure Market Place images or id of [Shared Image Gallery](https://docs.microsoft.com/en-us/azure/virtual-machines/linux/shared-image-galleries) images.
+When Shared Image Gallery is used, you have to ensure that the image is available in the desired regions and the end-user subscriptions have access to the image or to the whole gallery.
+You have to map every version that you specify in `.spec.machineImages[].versions` here such that the Azure extension knows the machine image identifiers for every version you want to offer.
+Furthermore, you can specify for each image version via `.machineImages[].versions[].acceleratedNetworking` if Azure Accelerated Networking is supported.
 
 ## Example `CloudProfile` manifest
 
@@ -56,6 +67,10 @@ spec:
     versions:
     - version: 2135.6.0
   machineTypes:
+  - name: Standard_D3_v2
+    cpu: "4"
+    gpu: "0"
+    memory: 14Gi
   - name: Standard_D4_v3
     cpu: "4"
     gpu: "0"
@@ -75,6 +90,10 @@ spec:
   providerConfig:
     apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
     kind: CloudProfileConfig
+    machineTypes:
+    - name: Standard_D3_v2
+      acceleratedNetworking: true
+    - name: Standard_D4_v3
     countUpdateDomains:
     - region: westeurope
       count: 5
@@ -84,6 +103,9 @@ spec:
     machineImages:
     - name: coreos
       versions:
+      - version: 2303.3.0
+        urn: CoreOS:CoreOS:Stable:2303.3.0
+        acceleratedNetworking: true
       - version: 2135.6.0
         urn: "CoreOS:CoreOS:Stable:2135.6.0"
 ```

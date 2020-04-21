@@ -35,6 +35,10 @@ spec:
     {{- if hasKey $machineClass "identityID" }}
     identityID: {{ $machineClass.identityID }}
     {{- end }}
+    {{- if hasKey $machineClass.network "acceleratedNetworking" }}
+    networkProfile:
+      acceleratedNetworking: {{ $machineClass.network.acceleratedNetworking }}
+    {{- end }}
     hardwareProfile:
       vmSize: {{ $machineClass.machineType }}
     osProfile:
@@ -65,11 +69,11 @@ spec:
     name: {{ $machineClass.name }}
     namespace: {{ $.Release.Namespace }}
   subnetInfo:
-    vnetName: {{ $machineClass.vnetName }}
-    {{- if hasKey $machineClass "vnetResourceGroup" }}
-    vnetResourceGroup: {{ $machineClass.vnetResourceGroup}}
+    vnetName: {{ $machineClass.network.vnet }}
+    {{- if hasKey $machineClass.network "vnetResourceGroup" }}
+    vnetResourceGroup: {{ $machineClass.network.vnetResourceGroup}}
     {{- end }}
-    subnetName: {{ $machineClass.subnetName }}
+    subnetName: {{ $machineClass.network.subnet }}
 {{- if $machineClass.tags }}
   tags:
 {{ toYaml $machineClass.tags | indent 4 }}

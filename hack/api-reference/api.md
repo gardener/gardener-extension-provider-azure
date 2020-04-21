@@ -89,6 +89,20 @@ string
 logical names and versions to provider-specific identifiers.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>machineTypes</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.MachineType">
+[]MachineType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MachineTypes is a list of machine types complete with provider specific information.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.ControlPlaneConfig">ControlPlaneConfig
@@ -672,6 +686,18 @@ string
 <p>ID is the VM image ID</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>acceleratedNetworking</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>AcceleratedNetworking is an indicator if the image supports Azure accelerated networking.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.MachineImageVersion">MachineImageVersion
@@ -726,6 +752,18 @@ string
 <p>ID is the Shared Image Gallery image id.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>acceleratedNetworking</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>AcceleratedNetworking is an indicator if the image supports Azure accelerated networking.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.MachineImages">MachineImages
@@ -767,6 +805,48 @@ string
 </td>
 <td>
 <p>Versions contains versions and a provider-specific identifier.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.MachineType">MachineType
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.CloudProfileConfig">CloudProfileConfig</a>)
+</p>
+<p>
+<p>MachineType contains provider specific information to a machine type.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name is the name of the machine type.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>acceleratedNetworking</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>AcceleratedNetworking is an indicator if the machine type supports Azure accelerated networking.</p>
 </td>
 </tr>
 </tbody>
