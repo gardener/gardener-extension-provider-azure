@@ -31,7 +31,7 @@ var logger = log.Log.WithName("networking-calico-webhook")
 // AddToManager creates a webhook and adds it to the manager.
 func AddToManager(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 	logger.Info("Adding webhook to manager")
-	return network.Add(mgr, network.AddArgs{
+	return network.New(mgr, network.Args{
 		CloudProvider:   azure.Type,
 		NetworkProvider: calico.Type,
 		Types:           []runtime.Object{&extensionsv1alpha1.Network{}},
