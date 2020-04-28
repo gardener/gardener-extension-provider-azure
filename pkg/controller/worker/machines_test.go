@@ -97,15 +97,16 @@ var _ = Describe("Machines", func() {
 				machineImageURN       string
 				machineImageID        string
 
-				resourceGroupName string
-				vnetName          string
-				subnetName        string
-				availabilitySetID string
-				identityID        string
-				machineType       string
-				userData          []byte
-				volumeSize        int
-				sshKey            string
+				resourceGroupName     string
+				vnetResourceGroupName string
+				vnetName              string
+				subnetName            string
+				availabilitySetID     string
+				identityID            string
+				machineType           string
+				userData              []byte
+				volumeSize            int
+				sshKey                string
 
 				namePool1           string
 				minPool1            int32
@@ -150,6 +151,7 @@ var _ = Describe("Machines", func() {
 				machineImageID = "/shared/image/gallery/image/id"
 
 				resourceGroupName = "my-rg"
+				vnetResourceGroupName = "my-vnet-rg"
 				vnetName = "my-vnet"
 				subnetName = "subnet-1234"
 				availabilitySetID = "av-1234"
@@ -189,15 +191,15 @@ var _ = Describe("Machines", func() {
 						Kind:       "CloudProfileConfig",
 					},
 					MachineImages: []apiv1alpha1.MachineImages{
-						apiv1alpha1.MachineImages{
+						{
 							Name: machineImageName,
 							Versions: []apiv1alpha1.MachineImageVersion{
-								apiv1alpha1.MachineImageVersion{
+								{
 									Version:               machineImageVersion,
 									URN:                   &machineImageURN,
 									AcceleratedNetworking: &boolTrue,
 								},
-								apiv1alpha1.MachineImageVersion{
+								{
 									Version: machineImageVersionID,
 									ID:      &machineImageID,
 								},
@@ -205,7 +207,7 @@ var _ = Describe("Machines", func() {
 						},
 					},
 					MachineTypes: []apiv1alpha1.MachineType{
-						apiv1alpha1.MachineType{
+						{
 							Name:                  machineType,
 							AcceleratedNetworking: &boolTrue,
 						},
@@ -246,7 +248,8 @@ var _ = Describe("Machines", func() {
 								},
 								Networks: apisazure.NetworkStatus{
 									VNet: apisazure.VNetStatus{
-										Name: vnetName,
+										Name:          vnetName,
+										ResourceGroup: &vnetResourceGroupName,
 									},
 									Subnets: []apisazure.Subnet{
 										{
@@ -329,6 +332,7 @@ var _ = Describe("Machines", func() {
 						"network": map[string]interface{}{
 							"vnet":                  vnetName,
 							"subnet":                subnetName,
+							"vnetResourceGroup":     vnetResourceGroupName,
 							"acceleratedNetworking": true,
 						},
 						"availabilitySetID": availabilitySetID,
@@ -354,8 +358,9 @@ var _ = Describe("Machines", func() {
 					}
 
 					defaultMachineClass["network"] = map[string]interface{}{
-						"vnet":   vnetName,
-						"subnet": subnetName,
+						"vnet":              vnetName,
+						"subnet":            subnetName,
+						"vnetResourceGroup": vnetResourceGroupName,
 					}
 					imageIdMachineClass = copyMachineClass(defaultMachineClass)
 					imageIdMachineClass["image"] = map[string]interface{}{
@@ -410,7 +415,7 @@ var _ = Describe("Machines", func() {
 					expectGetSecretCallToWork(c, azureClientID, azureClientSecret, azureSubscriptionID, azureTenantID)
 
 					// Test workerDelegate.DeployMachineClasses()
-					chartApplier.EXPECT().Apply(context.TODO(), filepath.Join(azure.InternalChartsPath, "machineclass"), namespace, "machineclass", kubernetes.Values(machineClasses)).Return(nil)
+					chartApplier.EXPECT().Apply(context.TODO(), filepath.Join(azure.InternalChartsPath, "machineclass"), namespace, "machineclass", kubernetes.Values(machineClasses))
 
 					err := workerDelegate.DeployMachineClasses(context.TODO())
 					Expect(err).NotTo(HaveOccurred())
