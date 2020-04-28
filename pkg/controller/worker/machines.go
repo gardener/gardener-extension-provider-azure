@@ -175,10 +175,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 					Annotations:    pool.Annotations,
 					Taints:         pool.Taints,
 				}
-				networkConfig = map[string]interface{}{
-					"vnet":   infrastructureStatus.Networks.VNet.Name,
-					"subnet": nodesSubnet.Name,
-				}
+
 				machineClassSpec = map[string]interface{}{
 					"region":        w.worker.Spec.Region,
 					"resourceGroup": infrastructureStatus.ResourceGroup.Name,
@@ -196,10 +193,14 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 					"sshPublicKey": string(w.worker.Spec.SSHPublicKey),
 				}
 			)
-			if infrastructureStatus.Networks.VNet.ResourceGroup != nil {
-				machineClassSpec["vnetResourceGroup"] = *infrastructureStatus.Networks.VNet.ResourceGroup
-			}
 
+			networkConfig := map[string]interface{}{
+				"vnet":   infrastructureStatus.Networks.VNet.Name,
+				"subnet": nodesSubnet.Name,
+			}
+			if infrastructureStatus.Networks.VNet.ResourceGroup != nil {
+				networkConfig["vnetResourceGroup"] = *infrastructureStatus.Networks.VNet.ResourceGroup
+			}
 			if imageSupportAcceleratedNetworking != nil && *imageSupportAcceleratedNetworking && w.isMachineTypeSupportingAcceleratedNetworking(pool.MachineType) {
 				networkConfig["acceleratedNetworking"] = true
 			}
@@ -212,6 +213,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				machineDeployment.MaxUnavailable = worker.DistributePositiveIntOrPercent(zone.index, pool.MaxUnavailable, zone.count, pool.Minimum)
 				machineClassSpec["zone"] = zone.name
 			}
+
 			if availabilitySetID != nil {
 				machineClassSpec["availabilitySetID"] = *availabilitySetID
 			}
@@ -224,6 +226,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				deploymentName = fmt.Sprintf("%s-%s", w.worker.Namespace, pool.Name)
 				className      = fmt.Sprintf("%s-%s", deploymentName, workerPoolHash)
 			)
+
 			if zone != nil {
 				deploymentName = fmt.Sprintf("%s-z%s", deploymentName, zone.name)
 				className = fmt.Sprintf("%s-z%s", className, zone.name)
@@ -234,9 +237,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			machineDeployment.SecretName = className
 
 			machineClassSpec["name"] = className
-			machineClassSpec["labels"] = map[string]string{
-				v1beta1constants.GardenerPurpose: genericworkeractuator.GardenPurposeMachineClass,
-			}
+			machineClassSpec["labels"] = map[string]string{v1beta1constants.GardenerPurpose: genericworkeractuator.GardenPurposeMachineClass}
 			machineClassSpec["secret"].(map[string]interface{})[azure.ClientIDKey] = string(machineClassSecretData[machinev1alpha1.AzureClientID])
 			machineClassSpec["secret"].(map[string]interface{})[azure.ClientSecretKey] = string(machineClassSecretData[machinev1alpha1.AzureClientSecret])
 			machineClassSpec["secret"].(map[string]interface{})[azure.SubscriptionIDKey] = string(machineClassSecretData[machinev1alpha1.AzureSubscriptionID])
