@@ -48,6 +48,7 @@ func RegisterHealthChecks(mgr manager.Manager, opts healthcheck.DefaultAddArgs) 
 	if err := healthcheck.DefaultRegistration(
 		azure.Type,
 		extensionsv1alpha1.SchemeGroupVersion.WithKind(extensionsv1alpha1.ControlPlaneResource),
+		func() runtime.Object { return &extensionsv1alpha1.ControlPlaneList{} },
 		func() runtime.Object { return &extensionsv1alpha1.ControlPlane{} },
 		mgr,
 		opts,
@@ -73,6 +74,7 @@ func RegisterHealthChecks(mgr manager.Manager, opts healthcheck.DefaultAddArgs) 
 	return healthcheck.DefaultRegistration(
 		azure.Type,
 		extensionsv1alpha1.SchemeGroupVersion.WithKind(extensionsv1alpha1.WorkerResource),
+		func() runtime.Object { return &extensionsv1alpha1.WorkerList{} },
 		func() runtime.Object { return &extensionsv1alpha1.Worker{} },
 		mgr,
 		opts,
