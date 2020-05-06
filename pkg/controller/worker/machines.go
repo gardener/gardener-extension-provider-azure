@@ -18,6 +18,8 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"regexp"
+	"strings"
 
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	azureapi "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
@@ -28,9 +30,14 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
 	genericworkeractuator "github.com/gardener/gardener/extensions/pkg/controller/worker/genericactuator"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
+)
+
+var (
+	tagRegex = regexp.MustCompile(`[<>%\\&?/ ]`)
 )
 
 // MachineClassKind yields the name of the Azure machine class.
@@ -165,6 +172,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		}
 
 		generateMachineClassAndDeployment := func(zone *zoneInfo, availabilitySetID *string) (worker.MachineDeployment, map[string]interface{}) {
+			vmTags := w.getVmTags(pool)
 			var (
 				machineDeployment = worker.MachineDeployment{
 					Minimum:        pool.Minimum,
@@ -179,11 +187,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				machineClassSpec = map[string]interface{}{
 					"region":        w.worker.Spec.Region,
 					"resourceGroup": infrastructureStatus.ResourceGroup.Name,
-					"tags": map[string]interface{}{
-						"Name": w.worker.Namespace,
-						fmt.Sprintf("kubernetes.io-cluster-%s", w.worker.Namespace): "1",
-						"kubernetes.io-role-node":                                   "1",
-					},
+					"tags":          vmTags,
 					"secret": map[string]interface{}{
 						"cloudConfig": string(pool.UserData),
 					},
@@ -284,4 +288,23 @@ func (w *workerDelegate) isMachineTypeSupportingAcceleratedNetworking(machineTyp
 		}
 	}
 	return false
+}
+
+// getVmTags returns a map of vm tags
+func (w *workerDelegate) getVmTags(pool extensionsv1alpha1.WorkerPool) map[string]string {
+	vmTags := map[string]string{
+		"Name": w.worker.Namespace,
+		SanitizeAzureVMTag(fmt.Sprintf("kubernetes.io-cluster-%s", w.worker.Namespace)): "1",
+		SanitizeAzureVMTag("kubernetes.io-role-node"):                                   "1",
+	}
+	for k, v := range pool.Labels {
+		vmTags[SanitizeAzureVMTag(k)] = v
+	}
+	return vmTags
+}
+
+// SanitizeAzureVMTag will sanitize the tag base on the azure tag Restrictions
+// refer: https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/tag-resources#limitations
+func SanitizeAzureVMTag(label string) string {
+	return tagRegex.ReplaceAllString(strings.ToLower(label), "_")
 }

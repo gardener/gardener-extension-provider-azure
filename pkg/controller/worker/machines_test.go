@@ -123,6 +123,8 @@ var _ = Describe("Machines", func() {
 				workerPoolHash1 string
 				workerPoolHash2 string
 
+				labels map[string]string
+
 				shootVersionMajorMinor string
 				shootVersion           string
 				scheme                 *runtime.Scheme
@@ -166,6 +168,8 @@ var _ = Describe("Machines", func() {
 				maxPool1 = 10
 				maxSurgePool1 = intstr.FromInt(3)
 				maxUnavailablePool1 = intstr.FromInt(2)
+
+				labels = map[string]string{"component": "TiDB"}
 
 				namePool2 = "pool-2"
 				minPool2 = 30
@@ -285,6 +289,7 @@ var _ = Describe("Machines", func() {
 								Volume: &extensionsv1alpha1.Volume{
 									Size: fmt.Sprintf("%dGi", volumeSize),
 								},
+								Labels: labels,
 							},
 							{
 								Name:           namePool2,
@@ -301,6 +306,7 @@ var _ = Describe("Machines", func() {
 								Volume: &extensionsv1alpha1.Volume{
 									Size: fmt.Sprintf("%dGi", volumeSize),
 								},
+								Labels: labels,
 							},
 						},
 					},
@@ -326,6 +332,14 @@ var _ = Describe("Machines", func() {
 				)
 
 				BeforeEach(func() {
+					vmTags := map[string]string{
+						"Name": namespace,
+						SanitizeAzureVMTag(fmt.Sprintf("kubernetes.io-cluster-%s", namespace)): "1",
+						SanitizeAzureVMTag("kubernetes.io-role-node"):                          "1",
+					}
+					for k, v := range labels {
+						vmTags[SanitizeAzureVMTag(k)] = v
+					}
 					defaultMachineClass := map[string]interface{}{
 						"region":        region,
 						"resourceGroup": resourceGroupName,
@@ -336,11 +350,7 @@ var _ = Describe("Machines", func() {
 							"acceleratedNetworking": true,
 						},
 						"availabilitySetID": availabilitySetID,
-						"tags": map[string]interface{}{
-							"Name": namespace,
-							fmt.Sprintf("kubernetes.io-cluster-%s", namespace): "1",
-							"kubernetes.io-role-node":                          "1",
-						},
+						"tags":              vmTags,
 						"secret": map[string]interface{}{
 							"cloudConfig": string(userData),
 						},
@@ -395,6 +405,7 @@ var _ = Describe("Machines", func() {
 							Maximum:        maxPool1,
 							MaxSurge:       maxSurgePool1,
 							MaxUnavailable: maxUnavailablePool1,
+							Labels:         labels,
 						},
 						{
 							Name:           machineClassNamePool2,
@@ -404,6 +415,7 @@ var _ = Describe("Machines", func() {
 							Maximum:        maxPool2,
 							MaxSurge:       maxSurgePool2,
 							MaxUnavailable: maxUnavailablePool2,
+							Labels:         labels,
 						},
 					}
 
@@ -540,6 +552,12 @@ var _ = Describe("Machines", func() {
 				Expect(err).To(HaveOccurred())
 				Expect(result).To(BeNil())
 			})
+		})
+	})
+
+	Describe("sanitize azure vm tag", func() {
+		It("not include restricted characters", func() {
+			Expect(SanitizeAzureVMTag("<>%\\&?/a ")).To(Equal("_______a_"))
 		})
 	})
 })
