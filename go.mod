@@ -10,7 +10,7 @@ require (
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f
 	github.com/frankban/quicktest v1.9.0 // indirect
 	github.com/gardener/etcd-druid v0.1.15
-	github.com/gardener/gardener v1.3.1-0.20200505064036-175b017d8c5b
+	github.com/gardener/gardener v1.4.1
 	github.com/gardener/gardener-extension-networking-calico v1.5.1-0.20200408040839-8c58dc8f2462
 	github.com/gardener/machine-controller-manager v0.27.0
 	github.com/go-logr/logr v0.1.0
