@@ -9,6 +9,12 @@ provider "azurerm" {
 resource "azurerm_resource_group" "rg" {
   name     = "{{ required "resourceGroup.name is required" .Values.resourceGroup.name }}"
   location = "{{ required "azure.region is required" .Values.azure.region }}"
+
+  timeouts {
+    create = "10m"
+    update = "10m"
+    delete = "10m"
+  }
 }
 {{- else -}}
 data "azurerm_resource_group" "rg" {
@@ -30,6 +36,12 @@ resource "azurerm_virtual_network" "vnet" {
   {{- end}}
   location            = "{{ required "azure.region is required" .Values.azure.region }}"
   address_space       = ["{{ required "resourceGroup.vnet.cidr is required" .Values.resourceGroup.vnet.cidr }}"]
+
+  timeouts {
+    create = "10m"
+    update = "10m"
+    delete = "10m"
+  }
 }
 {{- else -}}
 data "azurerm_virtual_network" "vnet" {
@@ -51,6 +63,12 @@ resource "azurerm_subnet" "workers" {
   service_endpoints         = [{{range $index, $serviceEndpoint := .Values.resourceGroup.subnet.serviceEndpoints}}{{if $index}},{{end}}"{{$serviceEndpoint}}"{{end}}]
   route_table_id            = "${azurerm_route_table.workers.id}"
   network_security_group_id = "${azurerm_network_security_group.workers.id}"
+
+  timeouts {
+    create = "10m"
+    update = "10m"
+    delete = "10m"
+  }
 }
 
 resource "azurerm_route_table" "workers" {
@@ -60,7 +78,13 @@ resource "azurerm_route_table" "workers" {
   resource_group_name = "${azurerm_resource_group.rg.name}"
   {{- else -}}
   resource_group_name = "${data.azurerm_resource_group.rg.name}"
-  {{- end}}
+  {{- end }}
+
+  timeouts {
+    create = "10m"
+    update = "10m"
+    delete = "10m"
+  }
 }
 
 resource "azurerm_network_security_group" "workers" {
@@ -70,7 +94,13 @@ resource "azurerm_network_security_group" "workers" {
   resource_group_name = "${azurerm_resource_group.rg.name}"
   {{- else -}}
   resource_group_name = "${data.azurerm_resource_group.rg.name}"
-  {{- end}}
+  {{- end }}
+
+  timeouts {
+    create = "10m"
+    update = "10m"
+    delete = "10m"
+  }
 }
 
 {{ if .Values.create.natGateway -}}
@@ -88,6 +118,12 @@ resource "azurerm_public_ip" "natip" {
   {{- end }}
   allocation_method   = "Static"
   sku                 = "Standard"
+
+  timeouts {
+    create = "10m"
+    update = "10m"
+    delete = "10m"
+  }
 }
 
 resource "azurerm_nat_gateway" "nat" {
@@ -100,6 +136,12 @@ resource "azurerm_nat_gateway" "nat" {
   {{- end }}
   sku_name                = "Standard"
   public_ip_address_ids   = ["${azurerm_public_ip.natip.id}"]
+
+  timeouts {
+    create = "10m"
+    update = "10m"
+    delete = "10m"
+  }
 }
 
 resource "azurerm_subnet_nat_gateway_association" "nat-worker-subnet-association" {
@@ -135,6 +177,12 @@ resource "azurerm_availability_set" "workers" {
   platform_update_domain_count = "{{ required "azure.countUpdateDomains is required" .Values.azure.countUpdateDomains }}"
   platform_fault_domain_count  = "{{ required "azure.countFaultDomains is required" .Values.azure.countFaultDomains }}"
   managed                      = true
+
+  timeouts {
+    create = "10m"
+    update = "10m"
+    delete = "10m"
+  }
 }
 {{- end}}
 
