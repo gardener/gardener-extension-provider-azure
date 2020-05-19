@@ -56,6 +56,7 @@ config:
     storage:
       className: gardener.cloud-fast
       capacity: 33Gi
+      provisioner: kubernetes.io/azure-disk
 
 gardener:
   seed:

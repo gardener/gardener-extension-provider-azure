@@ -4,7 +4,7 @@ The [`core.gardener.cloud/v1beta1.Shoot` resource](https://github.com/gardener/g
 
 In this document we are describing how this configuration looks like for Azure and provide an example `Shoot` manifest with minimal configuration that you can use to create an Azure cluster (modulo the landscape-specific information like cloud profile names, secret binding names, etc.).
 
-## Provider secret data
+## Provider Secret Data
 
 Every shoot cluster references a `SecretBinding` which itself references a `Secret`, and this `Secret` contains the provider credentials of your Azure subscription.
 This `Secret` must look as follows:
@@ -211,9 +211,17 @@ spec:
       enabled: true
 ```
 
+## CSI volume provisioners
+
+Every Azure shoot cluster that has at least Kubernetes v1.19 will be deployed with the Azure Disk CSI driver and the Azure File CSI driver.
+Both are compatible with the legacy in-tree volume provisioners that were deprecated by the Kubernetes community and will be removed in future versions of Kubernetes.
+End-users might want to update their custom `StorageClass`es to the new `disk.csi.azure.com` or `file.csi.azure.com` provisioner, respectively.
+Shoot clusters with Kubernetes v1.18 or less will use the in-tree `kubernetes.io/azure-disk` and `kubernetes.io/azure-file` volume provisioners in the kube-controller-manager and the kubelet.
+
 ## Miscellaneous
 
 ### Azure Accelerated Networking
+
 All worker machines of the cluster will be automatically configured to use [Azure Accelerated Networking](https://docs.microsoft.com/en-us/azure/virtual-network/create-vm-accelerated-networking-cli) if the prerequisites are fulfilled.
 The prerequisites are that the used machine type and operating system image version are compatible for Accelerated Networking.
 Supported machine types are listed in the CloudProfile in `.spec.providerConfig.machineTypes[].acceleratedNetworking` and the supported operating system image versions are defined in `.spec.providerConfig.machineImages[].versions[].acceleratedNetworking`.
