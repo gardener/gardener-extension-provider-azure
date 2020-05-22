@@ -153,8 +153,8 @@ github.com/gardener/gardener v1.1.2/go.mod h1:CP9I0tCDVXTLPkJv/jUtXVUh948kSNKEGU
 github.com/gardener/gardener v1.3.1/go.mod h1:936P5tQbg6ViiW8BVC9ELM95sFrk4DgobKrxMNtn/LU=
 github.com/gardener/gardener v1.4.1-0.20200519155656-a8ccc6cc779a h1:Gq7N2Dbn4s9Wdn4Q+HrTozx6b8kfWh7J7rO1z2Lt5/g=
 github.com/gardener/gardener v1.4.1-0.20200519155656-a8ccc6cc779a/go.mod h1:t9oESM37bAMIuezi9I0H0I8+++8jy8BUPitcf4ERRXY=
-github.com/gardener/gardener v1.4.1-0.20200522134108-4f4a1db77d90 h1:OBAVS4wXAoPZHrLsvx9tGYcCJzTtJvENuWYgSwqHQ0I=
-github.com/gardener/gardener v1.4.1-0.20200522134108-4f4a1db77d90/go.mod h1:V+RVjUftDzhmb2ztBpf0uzyo1xoBjoDn0KKe0z+8IE0=
+github.com/gardener/gardener v1.4.1-0.20200522153953-4949b41172cc h1:eI10iV3k+DagGP5dEoAspQOJZz1WNz9rqfaWgMFn+2Y=
+github.com/gardener/gardener v1.4.1-0.20200522153953-4949b41172cc/go.mod h1:V+RVjUftDzhmb2ztBpf0uzyo1xoBjoDn0KKe0z+8IE0=
 github.com/gardener/gardener-extension-networking-calico v1.7.1-0.20200522070525-f9aa28d3c83a h1:jBvyEhkRzW11Nz2y9IIQAo9HUaCvCqxEko5Nf9NRYUI=
 github.com/gardener/gardener-extension-networking-calico v1.7.1-0.20200522070525-f9aa28d3c83a/go.mod h1:bmD89OLvEBbXLlznsHe90ZlgTU+OrKErwHb6NWlSTvY=
 github.com/gardener/gardener-resource-manager v0.10.0 h1:6OUKoWI3oha42F0oJN8OEo3UR+D3onOCel4Th+zgotU=
