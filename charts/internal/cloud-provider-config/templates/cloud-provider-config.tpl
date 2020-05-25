@@ -1,4 +1,4 @@
-{{- define "cloud-provider-config"}}
+{{- define "cloud-provider-config" -}}
 cloud: AZUREPUBLICCLOUD
 location: "{{ .Values.region }}"
 resourceGroup: "{{ .Values.resourceGroup }}"
@@ -28,4 +28,4 @@ cloudProviderRateLimitBucketWrite: 100
 {{- if and (semverCompare ">= 1.14" .Values.kubernetesVersion) (semverCompare "< 1.18" .Values.kubernetesVersion) }}
 cloudProviderBackoffMode: v2
 {{- end }}
-{{- end }}
+{{- end -}}

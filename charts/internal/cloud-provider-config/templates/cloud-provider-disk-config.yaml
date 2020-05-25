@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloud-provider-disk-config
+  namespace: {{ .Release.Namespace }}
+data:
+  cloudprovider.conf: |
+{{ include "cloud-provider-config" . | indent 4 }}
+{{- if semverCompare "< 1.15" .Values.kubernetesVersion }}
+{{ include "azure-credentials" . | indent 4 }}
+{{- else }}
+{{- if semverCompare ">= 1.18" .Values.kubernetesVersion }}
+{{ include "azure-subscription-info" . | indent 4 }}
+{{- end }}
+    useInstanceMetadata: true
+{{- end }}

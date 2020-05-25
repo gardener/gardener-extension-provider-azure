@@ -1,0 +1,63 @@
+{{- if not .Values.useLegacyProvisioner }}
+---
+apiVersion: {{ include "storageclassversion" . }}
+kind: StorageClass
+metadata:
+  name: default
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: disk.csi.azure.com
+parameters:
+  skuName: Standard_LRS
+  kind: managed
+volumeBindingMode: WaitForFirstConsumer
+
+---
+apiVersion: {{ include "storageclassversion" . }}
+kind: StorageClass
+metadata:
+  name: managed-standard-hdd
+provisioner: disk.csi.azure.com
+parameters:
+  skuName: Standard_LRS
+  kind: managed
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+
+{{- if semverCompare ">= 1.13" .Capabilities.KubeVersion.GitVersion }}
+---
+apiVersion: {{ include "storageclassversion" . }}
+kind: StorageClass
+metadata:
+  name: managed-standard-ssd
+provisioner: disk.csi.azure.com
+parameters:
+  skuName: StandardSSD_LRS
+  kind: managed
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+{{- end }}
+
+---
+apiVersion: {{ include "storageclassversion" . }}
+kind: StorageClass
+metadata:
+  name: managed-premium-ssd
+provisioner: disk.csi.azure.com
+parameters:
+  skuName: Premium_LRS
+  kind: managed
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+
+---
+apiVersion: {{ include "storageclassversion" . }}
+kind: StorageClass
+metadata:
+  name: files
+provisioner: file.csi.azure.com
+parameters:
+  skuName: Standard_LRS
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+{{- end }}

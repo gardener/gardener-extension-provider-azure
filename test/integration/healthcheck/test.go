@@ -25,7 +25,7 @@
 			1.1) HealthCondition Type: Shoot ControlPlaneHealthy
 				- delete the deployment 'cloud-controller-manager' and verify health check conditions in the ControlPlane status.
 			1.2) HealthCondition Type: Shoot SystemComponentsHealthy
-				- update the ManagedResource 'extension-controlplane-shoot' with an unhealthy condition and verify health check conditions in the ControlPlane status.
+				- update the ManagedResource 'extension-shoot-system-components' with an unhealthy condition and verify health check conditions in the ControlPlane status.
 		2) Worker
 			2.1) HealthCondition Type: Shoot ControlPlaneHealthy
 				- delete the deployment 'machine-controller-manager' and verify health check conditions in the Worker status.

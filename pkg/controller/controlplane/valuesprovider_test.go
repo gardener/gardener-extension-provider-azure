@@ -20,12 +20,14 @@ import (
 
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
-	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
 
+	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
+	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
+	"github.com/gardener/gardener/pkg/utils"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -46,11 +48,52 @@ const (
 
 var _ = Describe("ValuesProvider", func() {
 	var (
-		ctrl *gomock.Controller
+		ctrl   *gomock.Controller
+		ctx    = context.TODO()
+		logger = log.Log.WithName("test")
 
-		// Build scheme
+		c  *mockclient.MockClient
+		vp genericactuator.ValuesProvider
+
 		scheme = runtime.NewScheme()
 		_      = apisazure.AddToScheme(scheme)
+
+		infrastructureStatus = &apisazure.InfrastructureStatus{
+			ResourceGroup: apisazure.ResourceGroup{
+				Name: "rg-abcd1234",
+			},
+			Networks: apisazure.NetworkStatus{
+				VNet: apisazure.VNetStatus{
+					Name: "vnet-abcd1234",
+				},
+				Subnets: []apisazure.Subnet{
+					{
+						Name:    "subnet-abcd1234-nodes",
+						Purpose: "nodes",
+					},
+				},
+			},
+			SecurityGroups: []apisazure.SecurityGroup{
+				{
+					Purpose: "nodes",
+					Name:    "security-group-name-workers",
+				},
+			},
+			RouteTables: []apisazure.RouteTable{
+				{
+					Purpose: "nodes",
+					Name:    "route-table-name",
+				},
+			},
+			AvailabilitySets: []apisazure.AvailabilitySet{
+				{
+					Name:    "availability-set-name",
+					Purpose: "nodes",
+					ID:      "/my/azure/id",
+				},
+			},
+			Zoned: false,
+		}
 
 		cp = &extensionsv1alpha1.ControlPlane{
 			ObjectMeta: metav1.ObjectMeta{
@@ -75,409 +118,13 @@ var _ = Describe("ValuesProvider", func() {
 					},
 				},
 				InfrastructureProviderStatus: &runtime.RawExtension{
-					Raw: encode(&apisazure.InfrastructureStatus{
-						ResourceGroup: apisazure.ResourceGroup{
-							Name: "rg-abcd1234",
-						},
-						Networks: apisazure.NetworkStatus{
-							VNet: apisazure.VNetStatus{
-								Name: "vnet-abcd1234",
-							},
-							Subnets: []apisazure.Subnet{
-								{
-									Name:    "subnet-abcd1234-nodes",
-									Purpose: "nodes",
-								},
-							},
-						},
-						SecurityGroups: []apisazure.SecurityGroup{
-							{
-								Purpose: "nodes",
-								Name:    "security-group-name-workers",
-							},
-						},
-						RouteTables: []apisazure.RouteTable{
-							{
-								Purpose: "nodes",
-								Name:    "route-table-name",
-							},
-						},
-						AvailabilitySets: []apisazure.AvailabilitySet{
-							{
-								Name:    "availability-set-name",
-								Purpose: "nodes",
-								ID:      "/my/azure/id",
-							},
-						},
-						Zoned: false,
-					}),
+					Raw: encode(infrastructureStatus),
 				},
 			},
 		}
 
-		cpNoSubnet = &extensionsv1alpha1.ControlPlane{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "control-plane",
-				Namespace: namespace,
-			},
-			Spec: extensionsv1alpha1.ControlPlaneSpec{
-				Region: "eu-west-1a",
-				SecretRef: corev1.SecretReference{
-					Name:      v1beta1constants.SecretNameCloudProvider,
-					Namespace: namespace,
-				},
-				DefaultSpec: extensionsv1alpha1.DefaultSpec{
-					ProviderConfig: &runtime.RawExtension{
-						Raw: encode(&apisazure.ControlPlaneConfig{
-							CloudControllerManager: &apisazure.CloudControllerManagerConfig{
-								FeatureGates: map[string]bool{
-									"CustomResourceValidation": true,
-								},
-							},
-						}),
-					},
-				},
-				InfrastructureProviderStatus: &runtime.RawExtension{
-					Raw: encode(&apisazure.InfrastructureStatus{
-						ResourceGroup: apisazure.ResourceGroup{
-							Name: "rg-abcd1234",
-						},
-						Networks: apisazure.NetworkStatus{
-							VNet: apisazure.VNetStatus{
-								Name: "vnet-abcd1234",
-							},
-							Subnets: []apisazure.Subnet{
-								{
-									Name:    "subnet-abcd1234-nodes",
-									Purpose: "internal",
-								},
-							},
-						},
-						SecurityGroups: []apisazure.SecurityGroup{
-							{
-								Purpose: "nodes",
-								Name:    "security-group-name-workers",
-							},
-						},
-						RouteTables: []apisazure.RouteTable{
-							{
-								Purpose: "nodes",
-								Name:    "route-table-name",
-							},
-						},
-						AvailabilitySets: []apisazure.AvailabilitySet{
-							{
-								Name:    "availability-set-name",
-								Purpose: "nodes",
-								ID:      "/my/azure/id",
-							},
-						},
-						Zoned: false,
-					}),
-				},
-			},
-		}
-
-		cpNoAvailabilitySet = &extensionsv1alpha1.ControlPlane{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "control-plane",
-				Namespace: namespace,
-			},
-			Spec: extensionsv1alpha1.ControlPlaneSpec{
-				Region: "eu-west-1a",
-				SecretRef: corev1.SecretReference{
-					Name:      v1beta1constants.SecretNameCloudProvider,
-					Namespace: namespace,
-				},
-				DefaultSpec: extensionsv1alpha1.DefaultSpec{
-					ProviderConfig: &runtime.RawExtension{
-						Raw: encode(&apisazure.ControlPlaneConfig{
-							CloudControllerManager: &apisazure.CloudControllerManagerConfig{
-								FeatureGates: map[string]bool{
-									"CustomResourceValidation": true,
-								},
-							},
-						}),
-					},
-				},
-				InfrastructureProviderStatus: &runtime.RawExtension{
-					Raw: encode(&apisazure.InfrastructureStatus{
-						ResourceGroup: apisazure.ResourceGroup{
-							Name: "rg-abcd1234",
-						},
-						Networks: apisazure.NetworkStatus{
-							VNet: apisazure.VNetStatus{
-								Name: "vnet-abcd1234",
-							},
-							Subnets: []apisazure.Subnet{
-								{
-									Name:    "subnet-abcd1234-nodes",
-									Purpose: "nodes",
-								},
-							},
-						},
-						SecurityGroups: []apisazure.SecurityGroup{
-							{
-								Purpose: "nodes",
-								Name:    "security-group-name-workers",
-							},
-						},
-						RouteTables: []apisazure.RouteTable{
-							{
-								Purpose: "nodes",
-								Name:    "route-table-name",
-							},
-						},
-						Zoned: false,
-					}),
-				},
-			},
-		}
-
-		cpNoSecurityGroups = &extensionsv1alpha1.ControlPlane{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "control-plane",
-				Namespace: namespace,
-			},
-			Spec: extensionsv1alpha1.ControlPlaneSpec{
-				Region: "eu-west-1a",
-				SecretRef: corev1.SecretReference{
-					Name:      v1beta1constants.SecretNameCloudProvider,
-					Namespace: namespace,
-				},
-				DefaultSpec: extensionsv1alpha1.DefaultSpec{
-					ProviderConfig: &runtime.RawExtension{
-						Raw: encode(&apisazure.ControlPlaneConfig{
-							CloudControllerManager: &apisazure.CloudControllerManagerConfig{
-								FeatureGates: map[string]bool{
-									"CustomResourceValidation": true,
-								},
-							},
-						}),
-					},
-				},
-				InfrastructureProviderStatus: &runtime.RawExtension{
-					Raw: encode(&apisazure.InfrastructureStatus{
-						ResourceGroup: apisazure.ResourceGroup{
-							Name: "rg-abcd1234",
-						},
-						Networks: apisazure.NetworkStatus{
-							VNet: apisazure.VNetStatus{
-								Name: "vnet-abcd1234",
-							},
-							Subnets: []apisazure.Subnet{
-								{
-									Name:    "subnet-abcd1234-nodes",
-									Purpose: "nodes",
-								},
-							},
-						},
-						SecurityGroups: []apisazure.SecurityGroup{
-							{
-								Purpose: "internal",
-								Name:    "security-group-name-workers",
-							},
-						},
-						RouteTables: []apisazure.RouteTable{
-							{
-								Purpose: "nodes",
-								Name:    "route-table-name",
-							},
-						},
-						AvailabilitySets: []apisazure.AvailabilitySet{
-							{
-								Name:    "availability-set-name",
-								Purpose: "nodes",
-								ID:      "/my/azure/id",
-							},
-						},
-						Zoned: false,
-					}),
-				},
-			},
-		}
-
-		cpNoRouteTables = &extensionsv1alpha1.ControlPlane{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "control-plane",
-				Namespace: namespace,
-			},
-			Spec: extensionsv1alpha1.ControlPlaneSpec{
-				Region: "eu-west-1a",
-				SecretRef: corev1.SecretReference{
-					Name:      v1beta1constants.SecretNameCloudProvider,
-					Namespace: namespace,
-				},
-				DefaultSpec: extensionsv1alpha1.DefaultSpec{
-					ProviderConfig: &runtime.RawExtension{
-						Raw: encode(&apisazure.ControlPlaneConfig{
-							CloudControllerManager: &apisazure.CloudControllerManagerConfig{
-								FeatureGates: map[string]bool{
-									"CustomResourceValidation": true,
-								},
-							},
-						}),
-					},
-				},
-				InfrastructureProviderStatus: &runtime.RawExtension{
-					Raw: encode(&apisazure.InfrastructureStatus{
-						ResourceGroup: apisazure.ResourceGroup{
-							Name: "rg-abcd1234",
-						},
-						Networks: apisazure.NetworkStatus{
-							VNet: apisazure.VNetStatus{
-								Name: "vnet-abcd1234",
-							},
-							Subnets: []apisazure.Subnet{
-								{
-									Name:    "subnet-abcd1234-nodes",
-									Purpose: "nodes",
-								},
-							},
-						},
-						SecurityGroups: []apisazure.SecurityGroup{
-							{
-								Purpose: "nodes",
-								Name:    "security-group-name-workers",
-							},
-						},
-						RouteTables: []apisazure.RouteTable{
-							{
-								Purpose: "internal",
-								Name:    "route-table-name",
-							},
-						},
-						AvailabilitySets: []apisazure.AvailabilitySet{
-							{
-								Name:    "availability-set-name",
-								Purpose: "nodes",
-								ID:      "/my/azure/id",
-							},
-						},
-						Zoned: false,
-					}),
-				},
-			},
-		}
-
-		cpZoned = &extensionsv1alpha1.ControlPlane{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "control-plane",
-				Namespace: namespace,
-			},
-			Spec: extensionsv1alpha1.ControlPlaneSpec{
-				Region: "eu-west-1a",
-				SecretRef: corev1.SecretReference{
-					Name:      v1beta1constants.SecretNameCloudProvider,
-					Namespace: namespace,
-				},
-				DefaultSpec: extensionsv1alpha1.DefaultSpec{
-					ProviderConfig: &runtime.RawExtension{
-						Raw: encode(&apisazure.ControlPlaneConfig{
-							CloudControllerManager: &apisazure.CloudControllerManagerConfig{
-								FeatureGates: map[string]bool{
-									"CustomResourceValidation": true,
-								},
-							},
-						}),
-					},
-				},
-				InfrastructureProviderStatus: &runtime.RawExtension{
-					Raw: encode(&apisazure.InfrastructureStatus{
-						ResourceGroup: apisazure.ResourceGroup{
-							Name: "rg-abcd1234",
-						},
-						Networks: apisazure.NetworkStatus{
-							VNet: apisazure.VNetStatus{
-								Name: "vnet-abcd1234",
-							},
-							Subnets: []apisazure.Subnet{
-								{
-									Name:    "subnet-abcd1234-nodes",
-									Purpose: "nodes",
-								},
-							},
-						},
-						SecurityGroups: []apisazure.SecurityGroup{
-							{
-								Purpose: "nodes",
-								Name:    "security-group-name-workers",
-							},
-						},
-						RouteTables: []apisazure.RouteTable{
-							{
-								Purpose: "nodes",
-								Name:    "route-table-name",
-							},
-						},
-						Zoned: true,
-					}),
-				},
-			},
-		}
-
-		cpIdentity = &extensionsv1alpha1.ControlPlane{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "control-plane",
-				Namespace: namespace,
-			},
-			Spec: extensionsv1alpha1.ControlPlaneSpec{
-				Region: "eu-west-1a",
-				SecretRef: corev1.SecretReference{
-					Name:      v1beta1constants.SecretNameCloudProvider,
-					Namespace: namespace,
-				},
-				DefaultSpec: extensionsv1alpha1.DefaultSpec{
-					ProviderConfig: &runtime.RawExtension{
-						Raw: encode(&apisazure.ControlPlaneConfig{
-							CloudControllerManager: &apisazure.CloudControllerManagerConfig{
-								FeatureGates: map[string]bool{
-									"CustomResourceValidation": true,
-								},
-							},
-						}),
-					},
-				},
-				InfrastructureProviderStatus: &runtime.RawExtension{
-					Raw: encode(&apisazure.InfrastructureStatus{
-						ResourceGroup: apisazure.ResourceGroup{
-							Name: "rg-abcd1234",
-						},
-						Networks: apisazure.NetworkStatus{
-							VNet: apisazure.VNetStatus{
-								Name: "vnet-abcd1234",
-							},
-							Subnets: []apisazure.Subnet{
-								{
-									Name:    "subnet-abcd1234-nodes",
-									Purpose: "nodes",
-								},
-							},
-						},
-						SecurityGroups: []apisazure.SecurityGroup{
-							{
-								Purpose: "nodes",
-								Name:    "security-group-name-workers",
-							},
-						},
-						RouteTables: []apisazure.RouteTable{
-							{
-								Purpose: "nodes",
-								Name:    "route-table-name",
-							},
-						},
-						Identity: &apisazure.IdentityStatus{
-							ClientID:  "identity-client-id",
-							ACRAccess: true,
-						},
-						Zoned: true,
-					}),
-				},
-			},
-		}
-
-		cidr    = "10.250.0.0/19"
-		cluster = &extensionscontroller.Cluster{
+		cidr                  = "10.250.0.0/19"
+		clusterK8sLessThan119 = &extensionscontroller.Cluster{
 			Shoot: &gardencorev1beta1.Shoot{
 				Spec: gardencorev1beta1.ShootSpec{
 					Networking: gardencorev1beta1.Networking{
@@ -485,6 +132,18 @@ var _ = Describe("ValuesProvider", func() {
 					},
 					Kubernetes: gardencorev1beta1.Kubernetes{
 						Version: "1.13.4",
+					},
+				},
+			},
+		}
+		clusterK8sAtLeast119 = &extensionscontroller.Cluster{
+			Shoot: &gardencorev1beta1.Shoot{
+				Spec: gardencorev1beta1.ShootSpec{
+					Networking: gardencorev1beta1.Networking{
+						Pods: &cidr,
+					},
+					Kubernetes: gardencorev1beta1.Kubernetes{
+						Version: "1.19.4",
 					},
 				},
 			},
@@ -510,61 +169,191 @@ var _ = Describe("ValuesProvider", func() {
 		}
 		errorAcrConfigMapNotFound = errors.NewNotFound(schema.GroupResource{}, azure.CloudProviderAcrConfigName)
 
+		cloudProviderConfigData = "foo"
+		cpDiskConfigKey         = client.ObjectKey{Namespace: namespace, Name: azure.CloudProviderDiskConfigName}
+		cpDiskConfig            = &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      azure.CloudProviderDiskConfigName,
+				Namespace: namespace,
+			},
+			Data: map[string]string{
+				azure.CloudProviderConfigMapKey: cloudProviderConfigData,
+			},
+		}
+
 		checksums = map[string]string{
-			v1beta1constants.SecretNameCloudProvider: "8bafb35ff1ac60275d62e1cbd495aceb511fb354f74a20f7d06ecb48b3a68432",
-			azure.CloudProviderConfigName:            "08a7bc7fe8f59b055f173145e211760a83f02cf89635cef26ebb351378635606",
-			"cloud-controller-manager":               "3d791b164a808638da9a8df03924be2a41e34cd664e42231c00fe369e3588272",
-			"cloud-controller-manager-server":        "6dff2a2e6f14444b66d8e4a351c049f7e89ee24ba3eaab95dbec40ba6bdebb52",
+			v1beta1constants.SecretNameCloudProvider:     "8bafb35ff1ac60275d62e1cbd495aceb511fb354f74a20f7d06ecb48b3a68432",
+			azure.CloudProviderConfigName:                "08a7bc7fe8f59b055f173145e211760a83f02cf89635cef26ebb351378635606",
+			azure.CloudProviderDiskConfigName:            "0f92eba85c37a410c05d0c838d520527375f9e40a937458be81ec6036788b15c",
+			azure.CloudControllerManagerName:             "3d791b164a808638da9a8df03924be2a41e34cd664e42231c00fe369e3588272",
+			azure.CloudControllerManagerName + "-server": "6dff2a2e6f14444b66d8e4a351c049f7e89ee24ba3eaab95dbec40ba6bdebb52",
+			azure.CSIControllerFileName:                  "d8a928b2043db77e340b523547bf16cb4aa483f0645fe0a290ed1f20aab76257",
+			azure.CSIProvisionerName:                     "65b1dac6b50673535cff480564c2e5c71077ed19b1b6e0e2291207225bdf77d4",
+			azure.CSIAttacherName:                        "3f22909841cdbb80e5382d689d920309c0a7d995128e52c79773f9608ed7c289",
+			azure.CSISnapshotterName:                     "6a5bfc847638c499062f7fb44e31a30a9760bf4179e1dbf85e0ff4b4f162cd68",
+			azure.CSIResizerName:                         "a77e663ba1af340fb3dd7f6f8a1be47c7aa9e658198695480641e6b934c0b9ed",
+			azure.CSISnapshotControllerName:              "84cba346d2e2cf96c3811b55b01f57bdd9b9bcaed7065760470942d267984eaf",
 		}
 
-		configNonZonedClusterChartValues = map[string]interface{}{
-			"tenantId":            "TenantID",
-			"subscriptionId":      "SubscriptionID",
-			"aadClientId":         "ClientID",
-			"aadClientSecret":     "ClientSecret",
-			"resourceGroup":       "rg-abcd1234",
-			"vnetName":            "vnet-abcd1234",
-			"subnetName":          "subnet-abcd1234-nodes",
-			"region":              "eu-west-1a",
-			"availabilitySetName": "availability-set-name",
-			"routeTableName":      "route-table-name",
-			"securityGroupName":   "security-group-name-workers",
-			"kubernetesVersion":   "1.13.4",
-			"maxNodes":            maxNodes,
-		}
+		enabledTrue  = map[string]interface{}{"enabled": true}
+		enabledFalse = map[string]interface{}{"enabled": false}
+	)
 
-		configZonedClusterChartValues = map[string]interface{}{
-			"tenantId":          "TenantID",
-			"subscriptionId":    "SubscriptionID",
-			"aadClientId":       "ClientID",
-			"aadClientSecret":   "ClientSecret",
-			"resourceGroup":     "rg-abcd1234",
-			"vnetName":          "vnet-abcd1234",
-			"subnetName":        "subnet-abcd1234-nodes",
-			"region":            "eu-west-1a",
-			"routeTableName":    "route-table-name",
-			"securityGroupName": "security-group-name-workers",
-			"kubernetesVersion": "1.13.4",
-			"maxNodes":          maxNodes,
-		}
+	infrastructureStatusNoSubnet := infrastructureStatus.DeepCopy()
+	infrastructureStatusNoSubnet.Networks.Subnets[0].Purpose = "internal"
+	cpNoSubnet := cp.DeepCopy()
+	cpNoSubnet.Spec.InfrastructureProviderStatus = &runtime.RawExtension{Raw: encode(infrastructureStatusNoSubnet)}
 
-		configIdentityClusterChartValues = map[string]interface{}{
-			"tenantId":            "TenantID",
-			"subscriptionId":      "SubscriptionID",
-			"aadClientId":         "ClientID",
-			"aadClientSecret":     "ClientSecret",
-			"resourceGroup":       "rg-abcd1234",
-			"vnetName":            "vnet-abcd1234",
-			"subnetName":          "subnet-abcd1234-nodes",
-			"region":              "eu-west-1a",
-			"routeTableName":      "route-table-name",
-			"securityGroupName":   "security-group-name-workers",
-			"kubernetesVersion":   "1.13.4",
-			"acrIdentityClientId": "identity-client-id",
-			"maxNodes":            maxNodes,
-		}
+	infrastructureStatusNoAvailabilitySet := infrastructureStatus.DeepCopy()
+	infrastructureStatusNoAvailabilitySet.AvailabilitySets = nil
+	cpNoAvailabilitySet := cp.DeepCopy()
+	cpNoAvailabilitySet.Spec.InfrastructureProviderStatus = &runtime.RawExtension{Raw: encode(infrastructureStatusNoAvailabilitySet)}
 
-		ccmChartValues = map[string]interface{}{
+	infrastructureStatusNoSecurityGroups := infrastructureStatus.DeepCopy()
+	infrastructureStatusNoSecurityGroups.SecurityGroups[0].Purpose = "internal"
+	cpNoSecurityGroups := cp.DeepCopy()
+	cpNoSecurityGroups.Spec.InfrastructureProviderStatus = &runtime.RawExtension{Raw: encode(infrastructureStatusNoSecurityGroups)}
+
+	infrastructureStatusNoRouteTables := infrastructureStatus.DeepCopy()
+	infrastructureStatusNoRouteTables.RouteTables[0].Purpose = "internal"
+	cpNoRouteTables := cp.DeepCopy()
+	cpNoRouteTables.Spec.InfrastructureProviderStatus = &runtime.RawExtension{Raw: encode(infrastructureStatusNoRouteTables)}
+
+	infrastructureStatusZoned := infrastructureStatus.DeepCopy()
+	infrastructureStatusZoned.Zoned = true
+	cpZoned := cp.DeepCopy()
+	cpZoned.Spec.InfrastructureProviderStatus = &runtime.RawExtension{Raw: encode(infrastructureStatusZoned)}
+
+	infrastructureStatusIdentity := infrastructureStatus.DeepCopy()
+	infrastructureStatusIdentity.Zoned = true
+	infrastructureStatusIdentity.Identity = &apisazure.IdentityStatus{ClientID: "identity-client-id", ACRAccess: true}
+	cpIdentity := cp.DeepCopy()
+	cpIdentity.Spec.InfrastructureProviderStatus = &runtime.RawExtension{Raw: encode(infrastructureStatusIdentity)}
+
+	BeforeEach(func() {
+		ctrl = gomock.NewController(GinkgoT())
+
+		c = mockclient.NewMockClient(ctrl)
+		vp = NewValuesProvider(logger)
+
+		err := vp.(inject.Scheme).InjectScheme(scheme)
+		Expect(err).NotTo(HaveOccurred())
+		err = vp.(inject.Client).InjectClient(c)
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	AfterEach(func() {
+		ctrl.Finish()
+	})
+
+	Describe("#GetConfigChartValues", func() {
+		It("should return error, missing subnet", func() {
+			c.EXPECT().Get(ctx, cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
+			c.EXPECT().Delete(ctx, acrConfigMap).Return(errorAcrConfigMapNotFound)
+
+			_, err := vp.GetConfigChartValues(ctx, cpNoSubnet, clusterK8sLessThan119)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("could not determine subnet for purpose 'nodes'"))
+		})
+
+		It("should return error, missing availability set", func() {
+			c.EXPECT().Get(ctx, cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
+			c.EXPECT().Delete(ctx, acrConfigMap).Return(errorAcrConfigMapNotFound)
+
+			_, err := vp.GetConfigChartValues(ctx, cpNoAvailabilitySet, clusterK8sLessThan119)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("could not determine availability set for purpose 'nodes'"))
+		})
+
+		It("should return error, missing route tables", func() {
+			c.EXPECT().Get(ctx, cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
+			c.EXPECT().Delete(ctx, acrConfigMap).Return(errorAcrConfigMapNotFound)
+
+			_, err := vp.GetConfigChartValues(ctx, cpNoRouteTables, clusterK8sLessThan119)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("could not determine route table for purpose 'nodes'"))
+		})
+
+		It("should return error, missing security groups", func() {
+			c.EXPECT().Get(ctx, cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
+			c.EXPECT().Delete(ctx, acrConfigMap).Return(errorAcrConfigMapNotFound)
+
+			_, err := vp.GetConfigChartValues(ctx, cpNoSecurityGroups, clusterK8sLessThan119)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("could not determine security group for purpose 'nodes'"))
+		})
+
+		It("should return correct config chart values for non zoned cluster", func() {
+			c.EXPECT().Get(ctx, cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
+			c.EXPECT().Delete(ctx, acrConfigMap).Return(errorAcrConfigMapNotFound)
+
+			values, err := vp.GetConfigChartValues(ctx, cp, clusterK8sLessThan119)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(map[string]interface{}{
+				"tenantId":            "TenantID",
+				"subscriptionId":      "SubscriptionID",
+				"aadClientId":         "ClientID",
+				"aadClientSecret":     "ClientSecret",
+				"resourceGroup":       "rg-abcd1234",
+				"vnetName":            "vnet-abcd1234",
+				"subnetName":          "subnet-abcd1234-nodes",
+				"region":              "eu-west-1a",
+				"availabilitySetName": "availability-set-name",
+				"routeTableName":      "route-table-name",
+				"securityGroupName":   "security-group-name-workers",
+				"kubernetesVersion":   "1.13.4",
+				"maxNodes":            maxNodes,
+			}))
+		})
+
+		It("should return correct config chart values for zoned cluster", func() {
+			c.EXPECT().Get(ctx, cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
+			c.EXPECT().Delete(ctx, acrConfigMap).Return(errorAcrConfigMapNotFound)
+
+			values, err := vp.GetConfigChartValues(ctx, cpZoned, clusterK8sLessThan119)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(map[string]interface{}{
+				"tenantId":          "TenantID",
+				"subscriptionId":    "SubscriptionID",
+				"aadClientId":       "ClientID",
+				"aadClientSecret":   "ClientSecret",
+				"resourceGroup":     "rg-abcd1234",
+				"vnetName":          "vnet-abcd1234",
+				"subnetName":        "subnet-abcd1234-nodes",
+				"region":            "eu-west-1a",
+				"routeTableName":    "route-table-name",
+				"securityGroupName": "security-group-name-workers",
+				"kubernetesVersion": "1.13.4",
+				"maxNodes":          maxNodes,
+			}))
+		})
+
+		It("should return correct control plane chart values with identity", func() {
+			c.EXPECT().Get(ctx, cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
+
+			values, err := vp.GetConfigChartValues(ctx, cpIdentity, clusterK8sLessThan119)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(map[string]interface{}{
+				"tenantId":            "TenantID",
+				"subscriptionId":      "SubscriptionID",
+				"aadClientId":         "ClientID",
+				"aadClientSecret":     "ClientSecret",
+				"resourceGroup":       "rg-abcd1234",
+				"vnetName":            "vnet-abcd1234",
+				"subnetName":          "subnet-abcd1234-nodes",
+				"region":              "eu-west-1a",
+				"routeTableName":      "route-table-name",
+				"securityGroupName":   "security-group-name-workers",
+				"kubernetesVersion":   "1.13.4",
+				"acrIdentityClientId": "identity-client-id",
+				"maxNodes":            maxNodes,
+			}))
+		})
+	})
+
+	Describe("#GetControlPlaneChartValues", func() {
+		ccmChartValues := utils.MergeMaps(enabledTrue, map[string]interface{}{
 			"replicas":          1,
 			"clusterName":       namespace,
 			"kubernetesVersion": "1.13.4",
@@ -581,214 +370,123 @@ var _ = Describe("ValuesProvider", func() {
 			"featureGates": map[string]bool{
 				"CustomResourceValidation": true,
 			},
-		}
-
-		controlPlaneShootNonZonedClusterChartValues = map[string]interface{}{
-			"allow-udp-egress": map[string]interface{}{
-				"enabled": false,
-			},
-		}
-
-		controlPlaneShootZonedClusterChartValues = map[string]interface{}{
-			"allow-udp-egress": map[string]interface{}{
-				"enabled": true,
-			},
-		}
-
-		logger = log.Log.WithName("test")
-	)
-
-	BeforeEach(func() {
-		ctrl = gomock.NewController(GinkgoT())
-	})
-
-	AfterEach(func() {
-		ctrl.Finish()
-	})
-
-	Describe("#GetConfigChartValues", func() {
-		It("should return correct config chart values for non zoned cluster", func() {
-			// Create mock client
-			client := mockclient.NewMockClient(ctrl)
-			client.EXPECT().Get(context.TODO(), cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
-			client.EXPECT().Delete(context.TODO(), acrConfigMap).Return(errorAcrConfigMapNotFound)
-
-			// Create valuesProvider
-			vp := NewValuesProvider(logger)
-			err := vp.(inject.Scheme).InjectScheme(scheme)
-			Expect(err).NotTo(HaveOccurred())
-			err = vp.(inject.Client).InjectClient(client)
-			Expect(err).NotTo(HaveOccurred())
-
-			// Call GetConfigChartValues method and check the result
-			values, err := vp.GetConfigChartValues(context.TODO(), cp, cluster)
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(values).To(Equal(configNonZonedClusterChartValues))
 		})
 
-		It("should return correct config chart values for zoned cluster", func() {
-			// Create mock client
-			client := mockclient.NewMockClient(ctrl)
-			client.EXPECT().Get(context.TODO(), cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
-			client.EXPECT().Delete(context.TODO(), acrConfigMap).Return(errorAcrConfigMapNotFound)
-
-			// Create valuesProvider
-			vp := NewValuesProvider(logger)
-			err := vp.(inject.Scheme).InjectScheme(scheme)
+		It("should return correct control plane chart values (k8s < 1.19)", func() {
+			values, err := vp.GetControlPlaneChartValues(ctx, cp, clusterK8sLessThan119, checksums, false)
 			Expect(err).NotTo(HaveOccurred())
-			err = vp.(inject.Client).InjectClient(client)
-			Expect(err).NotTo(HaveOccurred())
-
-			// Call GetConfigChartValues method and check the result
-			values, err := vp.GetConfigChartValues(context.TODO(), cpZoned, cluster)
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(values).To(Equal(configZonedClusterChartValues))
+			Expect(values).To(Equal(map[string]interface{}{
+				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
+					"kubernetesVersion": clusterK8sLessThan119.Shoot.Spec.Kubernetes.Version,
+				}),
+				azure.CSIControllerName: enabledFalse,
+			}))
 		})
 
-		It("should return correct control plane chart values with identiy", func() {
-			// Create mock client
-			client := mockclient.NewMockClient(ctrl)
-			client.EXPECT().Get(context.TODO(), cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
-
-			// Create valuesProvider
-			vp := NewValuesProvider(logger)
-			err := vp.(inject.Scheme).InjectScheme(scheme)
+		It("should return correct control plane chart values (k8s >= 1.19)", func() {
+			values, err := vp.GetControlPlaneChartValues(ctx, cp, clusterK8sAtLeast119, checksums, false)
 			Expect(err).NotTo(HaveOccurred())
-			err = vp.(inject.Client).InjectClient(client)
-			Expect(err).NotTo(HaveOccurred())
-
-			// Call GetConfigChartValues method and check the result
-			values, err := vp.GetConfigChartValues(context.TODO(), cpIdentity, cluster)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(values).To(Equal(configIdentityClusterChartValues))
-		})
-	})
-
-	Describe("#GetConfigChartValuesNoSubnet", func() {
-		It("should return error, missing subnet", func() {
-			// Create mock client
-			client := mockclient.NewMockClient(ctrl)
-			client.EXPECT().Get(context.TODO(), cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
-			client.EXPECT().Delete(context.TODO(), acrConfigMap).Return(errorAcrConfigMapNotFound)
-
-			// Create valuesProvider
-			vp := NewValuesProvider(logger)
-			err := vp.(inject.Scheme).InjectScheme(scheme)
-			Expect(err).NotTo(HaveOccurred())
-			err = vp.(inject.Client).InjectClient(client)
-			Expect(err).NotTo(HaveOccurred())
-
-			// Call GetConfigChartValues method and check the result
-			_, err = vp.GetConfigChartValues(context.TODO(), cpNoSubnet, cluster)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("could not determine subnet for purpose 'nodes'"))
-		})
-	})
-
-	Describe("#GetConfigChartValuesNoAvailabilitySet", func() {
-		It("should return error, missing availability set", func() {
-			// Create mock client
-			client := mockclient.NewMockClient(ctrl)
-			client.EXPECT().Get(context.TODO(), cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
-			client.EXPECT().Delete(context.TODO(), acrConfigMap).Return(errorAcrConfigMapNotFound)
-
-			// Create valuesProvider
-			vp := NewValuesProvider(logger)
-			err := vp.(inject.Scheme).InjectScheme(scheme)
-			Expect(err).NotTo(HaveOccurred())
-			err = vp.(inject.Client).InjectClient(client)
-			Expect(err).NotTo(HaveOccurred())
-
-			// Call GetConfigChartValues method and check the result
-			_, err = vp.GetConfigChartValues(context.TODO(), cpNoAvailabilitySet, cluster)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("could not determine availability set for purpose 'nodes'"))
-		})
-	})
-
-	Describe("#GetConfigChartValuesNoRouteTable", func() {
-		It("should return error, missing route tables", func() {
-			// Create mock client
-			client := mockclient.NewMockClient(ctrl)
-			client.EXPECT().Get(context.TODO(), cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
-			client.EXPECT().Delete(context.TODO(), acrConfigMap).Return(errorAcrConfigMapNotFound)
-
-			// Create valuesProvider
-			vp := NewValuesProvider(logger)
-			err := vp.(inject.Scheme).InjectScheme(scheme)
-			Expect(err).NotTo(HaveOccurred())
-			err = vp.(inject.Client).InjectClient(client)
-			Expect(err).NotTo(HaveOccurred())
-
-			// Call GetConfigChartValues method and check the result
-			_, err = vp.GetConfigChartValues(context.TODO(), cpNoRouteTables, cluster)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("could not determine route table for purpose 'nodes'"))
-		})
-	})
-
-	Describe("#GetConfigChartValuesNoSecurityGroups", func() {
-		It("should return error, missing security groups", func() {
-			// Create mock client
-			client := mockclient.NewMockClient(ctrl)
-			client.EXPECT().Get(context.TODO(), cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
-			client.EXPECT().Delete(context.TODO(), acrConfigMap).Return(errorAcrConfigMapNotFound)
-
-			// Create valuesProvider
-			vp := NewValuesProvider(logger)
-			err := vp.(inject.Scheme).InjectScheme(scheme)
-			Expect(err).NotTo(HaveOccurred())
-			err = vp.(inject.Client).InjectClient(client)
-			Expect(err).NotTo(HaveOccurred())
-
-			// Call GetConfigChartValues method and check the result
-			_, err = vp.GetConfigChartValues(context.TODO(), cpNoSecurityGroups, cluster)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("could not determine security group for purpose 'nodes'"))
-		})
-	})
-
-	Describe("#GetControlPlaneChartValues", func() {
-		It("should return correct control plane chart values", func() {
-			// Create valuesProvider
-			vp := NewValuesProvider(logger)
-			err := vp.(inject.Scheme).InjectScheme(scheme)
-			Expect(err).NotTo(HaveOccurred())
-
-			// Call GetControlPlaneChartValues method and check the result
-			values, err := vp.GetControlPlaneChartValues(context.TODO(), cp, cluster, checksums, false)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(values).To(Equal(ccmChartValues))
+			Expect(values).To(Equal(map[string]interface{}{
+				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
+					"kubernetesVersion": clusterK8sAtLeast119.Shoot.Spec.Kubernetes.Version,
+				}),
+				azure.CSIControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
+					"replicas": 1,
+					"podAnnotations": map[string]interface{}{
+						"checksum/secret-" + azure.CSIControllerFileName:      checksums[azure.CSIControllerFileName],
+						"checksum/secret-" + azure.CSIProvisionerName:         checksums[azure.CSIProvisionerName],
+						"checksum/secret-" + azure.CSIAttacherName:            checksums[azure.CSIAttacherName],
+						"checksum/secret-" + azure.CSISnapshotterName:         checksums[azure.CSISnapshotterName],
+						"checksum/secret-" + azure.CSIResizerName:             checksums[azure.CSIResizerName],
+						"checksum/configmap-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
+					},
+					"csiSnapshotController": map[string]interface{}{
+						"replicas": 1,
+						"podAnnotations": map[string]interface{}{
+							"checksum/secret-" + azure.CSISnapshotControllerName: checksums[azure.CSISnapshotControllerName],
+						},
+					},
+				}),
+			}))
 		})
 	})
 
 	Describe("#GetControlPlaneShootChartValues", func() {
-		It("should return correct control plane shoot chart values for non zoned cluster", func() {
-			// Create valuesProvider
-			vp := NewValuesProvider(logger)
-			err := vp.(inject.Scheme).InjectScheme(scheme)
-			Expect(err).NotTo(HaveOccurred())
+		var (
+			csiNodeNotEnabled = utils.MergeMaps(enabledFalse, map[string]interface{}{
+				"podAnnotations": map[string]interface{}{
+					"checksum/configmap-" + azure.CloudProviderDiskConfigName: "",
+				},
+				"cloudProviderConfig": "",
+			})
+			csiNodeEnabled = utils.MergeMaps(enabledTrue, map[string]interface{}{
+				"podAnnotations": map[string]interface{}{
+					"checksum/configmap-" + azure.CloudProviderDiskConfigName: checksums[azure.CloudProviderDiskConfigName],
+				},
+				"cloudProviderConfig": cloudProviderConfigData,
+			})
+		)
 
-			// Call GetConfigChartValues method and check the result
-			values, err := vp.GetControlPlaneShootChartValues(context.TODO(), cp, cluster, checksums)
+		Context("k8s < 1.19", func() {
+			It("should return correct control plane shoot chart values for non zoned cluster", func() {
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, clusterK8sLessThan119, checksums)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values).To(Equal(map[string]interface{}{
+					azure.AllowUDPEgressName:         enabledFalse,
+					azure.CloudControllerManagerName: enabledTrue,
+					azure.CSINodeName:                csiNodeNotEnabled,
+				}))
+			})
 
-			Expect(err).NotTo(HaveOccurred())
-			Expect(values).To(Equal(controlPlaneShootNonZonedClusterChartValues))
+			It("should return correct control plane shoot chart values for zoned cluster", func() {
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cpZoned, clusterK8sLessThan119, checksums)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values).To(Equal(map[string]interface{}{
+					azure.AllowUDPEgressName:         enabledTrue,
+					azure.CloudControllerManagerName: enabledTrue,
+					azure.CSINodeName:                csiNodeNotEnabled,
+				}))
+			})
 		})
 
-		It("should return correct control plane shoot chart values for zoned cluster", func() {
-			// Create valuesProvider
-			vp := NewValuesProvider(logger)
-			err := vp.(inject.Scheme).InjectScheme(scheme)
-			Expect(err).NotTo(HaveOccurred())
+		Context("k8s >= 1.19", func() {
+			BeforeEach(func() {
+				c.EXPECT().Get(ctx, cpDiskConfigKey, &corev1.ConfigMap{}).DoAndReturn(clientGet(cpDiskConfig))
+			})
 
-			// Call GetConfigChartValues method and check the result
-			values, err := vp.GetControlPlaneShootChartValues(context.TODO(), cpZoned, cluster, checksums)
+			It("should return correct control plane shoot chart values for non zoned cluster", func() {
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, clusterK8sAtLeast119, checksums)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values).To(Equal(map[string]interface{}{
+					azure.AllowUDPEgressName:         enabledFalse,
+					azure.CloudControllerManagerName: enabledTrue,
+					azure.CSINodeName:                csiNodeEnabled,
+				}))
+			})
 
+			It("should return correct control plane shoot chart values for zoned cluster", func() {
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cpZoned, clusterK8sAtLeast119, checksums)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values).To(Equal(map[string]interface{}{
+					azure.AllowUDPEgressName:         enabledTrue,
+					azure.CloudControllerManagerName: enabledTrue,
+					azure.CSINodeName:                csiNodeEnabled,
+				}))
+			})
+		})
+	})
+
+	Describe("#GetStorageClassesChartValues()", func() {
+		It("should return correct storage class chart values (k8s < 1.19)", func() {
+			values, err := vp.GetStorageClassesChartValues(ctx, cp, clusterK8sLessThan119)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(values).To(Equal(controlPlaneShootZonedClusterChartValues))
+			Expect(values).To(Equal(map[string]interface{}{"useLegacyProvisioner": true}))
+		})
+
+		It("should return correct storage class chart values (k8s >= 1.19)", func() {
+			values, err := vp.GetStorageClassesChartValues(ctx, cp, clusterK8sAtLeast119)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(map[string]interface{}{"useLegacyProvisioner": false}))
 		})
 	})
 })

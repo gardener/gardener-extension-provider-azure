@@ -1,0 +1,6 @@
+allow-udp-egress:
+  enabled: false
+cloud-controller-manager:
+  enabled: true
+csi-driver-node:
+  enabled: false

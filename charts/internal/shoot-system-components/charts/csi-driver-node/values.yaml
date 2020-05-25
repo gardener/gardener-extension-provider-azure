@@ -1,0 +1,20 @@
+podAnnotations: {}
+cloudProviderConfig: |
+  <azure-cloud-provider-config>
+
+images:
+  csi-driver-disk: image-repository:image-tag
+  csi-driver-file: image-repository:image-tag
+  csi-node-driver-registrar: image-repository:image-tag
+  csi-liveness-probe: image-repository:image-tag
+
+socketPath: /csi/csi.sock
+
+resources:
+  driver:
+    requests:
+      cpu: 20m
+      memory: 50Mi
+    limits:
+      cpu: 50m
+      memory: 80Mi

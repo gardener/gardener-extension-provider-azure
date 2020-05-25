@@ -5,7 +5,7 @@ metadata:
   name: {{ .Values.config.etcd.storage.className }}
   labels:
 {{ include "labels" . | indent 4 }}
-provisioner: kubernetes.io/azure-disk
+provisioner: {{ .Values.config.etcd.storage.provisioner }}
 allowVolumeExpansion: true
 parameters:
   storageaccounttype: Premium_LRS

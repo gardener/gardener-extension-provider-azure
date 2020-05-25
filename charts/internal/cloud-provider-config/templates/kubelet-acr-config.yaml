@@ -12,6 +12,6 @@ data:
     aadClientId: "msi"
     aadClientSecret: "msi"
     useManagedIdentityExtension: true
-    userAssignedIdentityID: "{{.Values.acrIdentityClientId}}"
+    userAssignedIdentityID: "{{ .Values.acrIdentityClientId }}"
     useInstanceMetadata: true
 {{- end}} 
