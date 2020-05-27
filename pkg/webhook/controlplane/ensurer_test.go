@@ -18,8 +18,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/gardener/gardener/pkg/utils/version"
-
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 
 	"github.com/coreos/go-systemd/unit"
@@ -32,12 +30,13 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
+	"github.com/gardener/gardener/pkg/utils/version"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -127,13 +126,21 @@ var _ = Describe("Ensurer", func() {
 			},
 		)
 
-		cmKey = client.ObjectKey{Namespace: namespace, Name: azure.CloudProviderConfigName}
-		cm    = &corev1.ConfigMap{
+		key = client.ObjectKey{Namespace: namespace, Name: azure.CloudProviderConfigName}
+		cm  = &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: azure.CloudProviderConfigName},
 			Data:       map[string]string{"abc": "xyz", azure.CloudProviderConfigMapKey: cloudProviderConfigContent},
 		}
+		secret = &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: azure.CloudProviderConfigName},
+			Data:       map[string][]byte{"abc": []byte("xyz"), azure.CloudProviderConfigMapKey: []byte(cloudProviderConfigContent)},
+		}
 
 		annotations = map[string]string{
+			"checksum/secret-" + azure.CloudProviderConfigName: "546bca950d25ff0b53fe8b7d7e2cee183f61524d4e3207f9e4db953ee06bc48d",
+		}
+
+		annotationsConfigMap = map[string]string{
 			"checksum/configmap-" + azure.CloudProviderConfigName: "31d2e116fbf854a590e84ab9176f299af6ff86aeea61bcee6bd705de78da9bf3",
 		}
 
@@ -178,7 +185,7 @@ var _ = Describe("Ensurer", func() {
 		})
 
 		It("should add missing elements to kube-apiserver deployment (k8s < 1.17)", func() {
-			c.EXPECT().Get(ctx, cmKey, &corev1.ConfigMap{}).DoAndReturn(clientGet(cm))
+			c.EXPECT().Get(ctx, key, &corev1.Secret{}).DoAndReturn(clientGet(secret))
 
 			err := ensurer.EnsureKubeAPIServerDeployment(ctx, eContextK8s116, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
@@ -187,7 +194,7 @@ var _ = Describe("Ensurer", func() {
 		})
 
 		It("should add missing elements to kube-apiserver deployment (k8s >= 1.17, < 1.19)", func() {
-			c.EXPECT().Get(ctx, cmKey, &corev1.ConfigMap{}).DoAndReturn(clientGet(cm))
+			c.EXPECT().Get(ctx, key, &corev1.Secret{}).DoAndReturn(clientGet(secret))
 
 			err := ensurer.EnsureKubeAPIServerDeployment(ctx, eContextK8s117, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
@@ -196,7 +203,7 @@ var _ = Describe("Ensurer", func() {
 		})
 
 		It("should add missing elements to kube-apiserver deployment (k8s >= 1.19)", func() {
-			c.EXPECT().Get(ctx, cmKey, &corev1.ConfigMap{}).DoAndReturn(clientGet(cm))
+			c.EXPECT().Get(ctx, key, &corev1.Secret{}).DoAndReturn(clientGet(secret))
 
 			err := ensurer.EnsureKubeAPIServerDeployment(ctx, eContextK8s119, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
@@ -239,7 +246,7 @@ var _ = Describe("Ensurer", func() {
 				},
 			}
 
-			c.EXPECT().Get(ctx, cmKey, &corev1.ConfigMap{}).DoAndReturn(clientGet(cm))
+			c.EXPECT().Get(ctx, key, &corev1.Secret{}).DoAndReturn(clientGet(secret))
 
 			Expect(ensurer.EnsureKubeAPIServerDeployment(ctx, eContextK8s116, dep, nil)).To(Not(HaveOccurred()))
 			checkKubeAPIServerDeployment(dep, annotations, "1.16.0", false)
@@ -267,16 +274,17 @@ var _ = Describe("Ensurer", func() {
 		})
 
 		It("should add missing elements to kube-controller-manager deployment (k8s < 1.17)", func() {
-			c.EXPECT().Get(ctx, cmKey, &corev1.ConfigMap{}).DoAndReturn(clientGet(cm))
+			c.EXPECT().Get(ctx, key, &corev1.Secret{}).Return(apierrors.NewNotFound(schema.GroupResource{}, "Secret"))
+			c.EXPECT().Get(ctx, key, &corev1.ConfigMap{}).DoAndReturn(clientGet(cm))
 
 			err := ensurer.EnsureKubeControllerManagerDeployment(ctx, eContextK8s116, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
 
-			checkKubeControllerManagerDeployment(dep, annotations, kubeControllerManagerLabels, "1.16.4", false)
+			checkKubeControllerManagerDeployment(dep, annotationsConfigMap, kubeControllerManagerLabels, "1.16.4", false)
 		})
 
 		It("should add missing elements to kube-controller-manager deployment (k8s >= 1.17, k8s < 1.19)", func() {
-			c.EXPECT().Get(ctx, cmKey, &corev1.ConfigMap{}).DoAndReturn(clientGet(cm))
+			c.EXPECT().Get(ctx, key, &corev1.Secret{}).DoAndReturn(clientGet(secret))
 
 			err := ensurer.EnsureKubeControllerManagerDeployment(ctx, eContextK8s117, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
@@ -285,7 +293,7 @@ var _ = Describe("Ensurer", func() {
 		})
 
 		It("should add missing elements to kube-controller-manager deployment (k8s >= 1.19 w/o CSI annotation)", func() {
-			c.EXPECT().Get(ctx, cmKey, &corev1.ConfigMap{}).DoAndReturn(clientGet(cm))
+			c.EXPECT().Get(ctx, key, &corev1.Secret{}).DoAndReturn(clientGet(secret))
 
 			err := ensurer.EnsureKubeControllerManagerDeployment(ctx, eContextK8s119, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
@@ -327,7 +335,7 @@ var _ = Describe("Ensurer", func() {
 				},
 			}
 
-			c.EXPECT().Get(ctx, cmKey, &corev1.ConfigMap{}).DoAndReturn(clientGet(cm))
+			c.EXPECT().Get(ctx, key, &corev1.Secret{}).DoAndReturn(clientGet(secret))
 
 			err := ensurer.EnsureKubeControllerManagerDeployment(ctx, eContextK8s116, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
@@ -409,7 +417,7 @@ var _ = Describe("Ensurer", func() {
 				},
 			}
 
-			c.EXPECT().Get(ctx, acrCmKey, &corev1.ConfigMap{}).Return(errors.NewNotFound(schema.GroupResource{}, azure.CloudProviderAcrConfigName))
+			c.EXPECT().Get(ctx, acrCmKey, &corev1.ConfigMap{}).Return(apierrors.NewNotFound(schema.GroupResource{}, azure.CloudProviderAcrConfigName))
 
 			opts, err := ensurer.EnsureKubeletServiceUnitOptions(ctx, eContextK8s117, oldUnitOptions, nil)
 			Expect(err).To(Not(HaveOccurred()))
@@ -454,7 +462,7 @@ var _ = Describe("Ensurer", func() {
 				},
 			}
 
-			c.EXPECT().Get(ctx, acrCmKey, &corev1.ConfigMap{}).Return(errors.NewNotFound(schema.GroupResource{}, azure.CloudProviderAcrConfigName))
+			c.EXPECT().Get(ctx, acrCmKey, &corev1.ConfigMap{}).Return(apierrors.NewNotFound(schema.GroupResource{}, azure.CloudProviderAcrConfigName))
 
 			opts, err := ensurer.EnsureKubeletServiceUnitOptions(ctx, eContextK8s119, oldUnitOptions, nil)
 			Expect(err).To(Not(HaveOccurred()))
@@ -543,26 +551,40 @@ var _ = Describe("Ensurer", func() {
 
 	Describe("#EnsureKubeletCloudProviderConfig", func() {
 		var (
-			cmKey = client.ObjectKey{Namespace: namespace, Name: azure.CloudProviderDiskConfigName}
-			cm    = &corev1.ConfigMap{
+			objKey = client.ObjectKey{Namespace: namespace, Name: azure.CloudProviderDiskConfigName}
+			cm     = &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: azure.CloudProviderDiskConfigName},
 				Data:       map[string]string{"abc": "xyz", azure.CloudProviderConfigMapKey: cloudProviderConfigContent},
+			}
+			secret = &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: azure.CloudProviderDiskConfigName},
+				Data:       map[string][]byte{"abc": []byte("xyz"), azure.CloudProviderConfigMapKey: []byte(cloudProviderConfigContent)},
 			}
 
 			existingData = util.StringPtr("[LoadBalancer]\nlb-version=v2\nlb-provider:\n")
 			emptydata    = util.StringPtr("")
 		)
 
-		It("cloud provider configmap do not exist", func() {
-			c.EXPECT().Get(ctx, cmKey, &corev1.ConfigMap{}).Return(errors.NewNotFound(schema.GroupResource{}, cm.Name))
+		It("cloud provider secret or configmap do not exist", func() {
+			c.EXPECT().Get(ctx, objKey, &corev1.Secret{}).Return(apierrors.NewNotFound(schema.GroupResource{}, cm.Name))
+			c.EXPECT().Get(ctx, objKey, &corev1.ConfigMap{}).Return(apierrors.NewNotFound(schema.GroupResource{}, cm.Name))
 
 			err := ensurer.EnsureKubeletCloudProviderConfig(ctx, dummyContext, emptydata, namespace)
 			Expect(err).To(Not(HaveOccurred()))
 			Expect(*emptydata).To(Equal(""))
 		})
 
-		It("should create element containing cloud provider config content", func() {
-			c.EXPECT().Get(ctx, cmKey, &corev1.ConfigMap{}).DoAndReturn(clientGet(cm))
+		It("should create element containing cloud provider config content with configmap", func() {
+			c.EXPECT().Get(ctx, objKey, &corev1.Secret{}).Return(apierrors.NewNotFound(schema.GroupResource{}, cm.Name))
+			c.EXPECT().Get(ctx, objKey, &corev1.ConfigMap{}).DoAndReturn(clientGet(cm))
+
+			err := ensurer.EnsureKubeletCloudProviderConfig(ctx, dummyContext, emptydata, namespace)
+			Expect(err).To(Not(HaveOccurred()))
+			Expect(*emptydata).To(Equal(cloudProviderConfigContent))
+		})
+
+		It("should create element containing cloud provider config content with secret", func() {
+			c.EXPECT().Get(ctx, objKey, &corev1.Secret{}).DoAndReturn(clientGet(secret))
 
 			err := ensurer.EnsureKubeletCloudProviderConfig(ctx, dummyContext, emptydata, namespace)
 			Expect(err).To(Not(HaveOccurred()))
@@ -570,7 +592,7 @@ var _ = Describe("Ensurer", func() {
 		})
 
 		It("should modify existing element containing cloud provider config content", func() {
-			c.EXPECT().Get(ctx, cmKey, &corev1.ConfigMap{}).DoAndReturn(clientGet(cm))
+			c.EXPECT().Get(ctx, objKey, &corev1.Secret{}).DoAndReturn(clientGet(secret))
 
 			err := ensurer.EnsureKubeletCloudProviderConfig(ctx, dummyContext, existingData, namespace)
 			Expect(err).To(Not(HaveOccurred()))

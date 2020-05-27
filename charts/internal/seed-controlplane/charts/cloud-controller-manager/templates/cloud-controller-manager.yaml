@@ -115,8 +115,8 @@ spec:
         secret:
           secretName: cloud-controller-manager-server
       - name: cloud-provider-config
-        configMap:
-          name: cloud-provider-config
+        secret:
+          secretName: cloud-provider-config
       - name: etc-ssl
         hostPath:
           path: /etc/ssl

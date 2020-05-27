@@ -68,7 +68,7 @@ const (
 
 	// AllowUDPEgressName is the name of the service for allowing UDP egress traffic.
 	AllowUDPEgressName = "allow-udp-egress"
-	// CloudProviderConfigName is the name of the configmap containing the cloud provider config.
+	// CloudProviderConfigName is the name of the secret containing the cloud provider config.
 	CloudProviderConfigName = "cloud-provider-config"
 	// CloudProviderDiskConfigName is the name of the configmap containing the cloud provider config for disk/volume handling.
 	CloudProviderDiskConfigName = "cloud-provider-disk-config"
