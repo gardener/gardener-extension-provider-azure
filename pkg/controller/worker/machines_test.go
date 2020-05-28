@@ -344,10 +344,9 @@ var _ = Describe("Machines", func() {
 						"region":        region,
 						"resourceGroup": resourceGroupName,
 						"network": map[string]interface{}{
-							"vnet":                  vnetName,
-							"subnet":                subnetName,
-							"vnetResourceGroup":     vnetResourceGroupName,
-							"acceleratedNetworking": true,
+							"vnet":              vnetName,
+							"subnet":            subnetName,
+							"vnetResourceGroup": vnetResourceGroupName,
 						},
 						"availabilitySetID": availabilitySetID,
 						"tags":              vmTags,
@@ -367,11 +366,6 @@ var _ = Describe("Machines", func() {
 						"urn": machineImageURN,
 					}
 
-					defaultMachineClass["network"] = map[string]interface{}{
-						"vnet":              vnetName,
-						"subnet":            subnetName,
-						"vnetResourceGroup": vnetResourceGroupName,
-					}
 					imageIdMachineClass = copyMachineClass(defaultMachineClass)
 					imageIdMachineClass["image"] = map[string]interface{}{
 						"id": machineImageID,
