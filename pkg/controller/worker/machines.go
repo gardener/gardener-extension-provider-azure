@@ -21,7 +21,6 @@ import (
 	"regexp"
 	"strings"
 
-	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	azureapi "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	azureapihelper "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
@@ -92,10 +91,11 @@ type zoneInfo struct {
 
 func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 	var (
-		machineDeployments   = worker.MachineDeployments{}
-		machineClasses       []map[string]interface{}
-		machineImages        []apisazure.MachineImage
-		nodesAvailabilitySet *azureapi.AvailabilitySet
+		acceleratedNetworkAllowed = true
+		machineDeployments        = worker.MachineDeployments{}
+		machineClasses            []map[string]interface{}
+		machineImages             []azureapi.MachineImage
+		nodesAvailabilitySet      *azureapi.AvailabilitySet
 	)
 
 	machineClassSecretData, err := w.generateMachineClassSecretData(ctx)
@@ -119,6 +119,10 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+
+		// Do not enable accelerated networking for AvSet cluster.
+		// This is necessary to avoid `ExistingAvailabilitySetWasNotDeployedOnAcceleratedNetworkingEnabledCluster` error.
+		acceleratedNetworkAllowed = false
 	}
 
 	for _, pool := range w.worker.Spec.Pools {
@@ -135,7 +139,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		machineImages = appendMachineImage(machineImages, apisazure.MachineImage{
+		machineImages = appendMachineImage(machineImages, azureapi.MachineImage{
 			Name:                  pool.MachineImage.Name,
 			Version:               pool.MachineImage.Version,
 			URN:                   urn,
@@ -205,7 +209,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			if infrastructureStatus.Networks.VNet.ResourceGroup != nil {
 				networkConfig["vnetResourceGroup"] = *infrastructureStatus.Networks.VNet.ResourceGroup
 			}
-			if imageSupportAcceleratedNetworking != nil && *imageSupportAcceleratedNetworking && w.isMachineTypeSupportingAcceleratedNetworking(pool.MachineType) {
+			if imageSupportAcceleratedNetworking != nil && *imageSupportAcceleratedNetworking && w.isMachineTypeSupportingAcceleratedNetworking(pool.MachineType) && acceleratedNetworkAllowed {
 				networkConfig["acceleratedNetworking"] = true
 			}
 			machineClassSpec["network"] = networkConfig
