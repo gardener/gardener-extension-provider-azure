@@ -186,8 +186,8 @@ spec:
       - name: socket-dir
         emptyDir: {}
       - name: cloud-provider-config
-        configMap:
-          name: cloud-provider-config
+        secret:
+          secretName: cloud-provider-config
       {{- if eq .role "file" }}
       - name: csi-driver-controller-file
         secret:

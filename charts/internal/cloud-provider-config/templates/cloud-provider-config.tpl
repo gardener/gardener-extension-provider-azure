@@ -1,4 +1,4 @@
-{{- define "cloud-provider-config" -}}
+{{- define "cloud-provider-config-base" -}}
 cloud: AZUREPUBLICCLOUD
 location: "{{ .Values.region }}"
 resourceGroup: "{{ .Values.resourceGroup }}"
@@ -27,5 +27,23 @@ cloudProviderRateLimitQPSWrite: {{ ( max .Values.maxNodes 10 ) }}
 cloudProviderRateLimitBucketWrite: 100
 {{- if and (semverCompare ">= 1.14" .Values.kubernetesVersion) (semverCompare "< 1.18" .Values.kubernetesVersion) }}
 cloudProviderBackoffMode: v2
+{{- end }}
+{{- end -}}
+
+{{- define "cloud-provider-config" -}}
+{{ include "azure-credentials" . }}
+{{ include "azure-subscription-info" . }}
+{{ include "cloud-provider-config-base" . }}
+{{- end -}}
+
+{{- define "cloud-provider-disk-config" -}}
+{{ include "cloud-provider-config-base" . }}
+{{- if semverCompare "< 1.15" .Values.kubernetesVersion }}
+{{ include "azure-credentials" . }}
+{{- else }}
+{{- if semverCompare ">= 1.18" .Values.kubernetesVersion }}
+{{ include "azure-subscription-info" . }}
+{{- end }}
+useInstanceMetadata: true
 {{- end }}
 {{- end -}}

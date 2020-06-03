@@ -42,6 +42,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	storagev1beta1 "k8s.io/api/storage/v1beta1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apiserver/pkg/authentication/user"
 	autoscalingv1beta2 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1beta2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -163,11 +164,11 @@ var (
 		Path: filepath.Join(azure.InternalChartsPath, "cloud-provider-config"),
 		Objects: []*chart.Object{
 			{
-				Type: &corev1.ConfigMap{},
+				Type: &corev1.Secret{},
 				Name: azure.CloudProviderConfigName,
 			},
 			{
-				Type: &corev1.ConfigMap{},
+				Type: &corev1.Secret{},
 				Name: azure.CloudProviderDiskConfigName,
 			},
 		},
@@ -341,9 +342,29 @@ func (vp *valuesProvider) GetConfigChartValues(
 	return getConfigChartValues(infraStatus, cp, cluster, auth)
 }
 
+// TODO: Remove this in a future version again.
+func deleteLegacyCloudProviderConfigMaps(ctx context.Context, c client.Client, namespace string) error {
+	for _, name := range []string{
+		azure.CloudProviderConfigName,
+		azure.CloudProviderDiskConfigName,
+	} {
+		cm := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+		}
+
+		if err := client.IgnoreNotFound(c.Delete(ctx, cm)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // GetControlPlaneChartValues returns the values for the control plane chart applied by the generic actuator.
 func (vp *valuesProvider) GetControlPlaneChartValues(
-	_ context.Context,
+	ctx context.Context,
 	cp *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
 	checksums map[string]string,
@@ -355,6 +376,18 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 		if _, _, err := vp.Decoder().Decode(cp.Spec.ProviderConfig.Raw, nil, cpConfig); err != nil {
 			return nil, errors.Wrapf(err, "could not decode providerConfig of controlplane '%s'", util.ObjectName(cp))
 		}
+	}
+
+	cpConfigSecret := &corev1.Secret{}
+	if err := vp.Client().Get(ctx, kutil.Key(cp.Namespace, azure.CloudProviderConfigName), cpConfigSecret); err != nil {
+		return nil, err
+	}
+	checksums[azure.CloudProviderConfigName] = util.ComputeChecksum(cpConfigSecret.Data)
+
+	// TODO: This cleanup is only necessary because we switched from a ConfigMap to a Secret.
+	// Please remove this logic in a future version.
+	if err := deleteLegacyCloudProviderConfigMaps(ctx, vp.Client(), cp.Namespace); err != nil {
+		return nil, errors.Wrap(err, "could not clean up cloud provider config map")
 	}
 
 	return getControlPlaneChartValues(cpConfig, cp, cluster, checksums, scaledDown)
@@ -384,13 +417,13 @@ func (vp *valuesProvider) GetControlPlaneShootChartValues(
 	)
 
 	if !k8sVersionLessThan119 {
-		cm := &corev1.ConfigMap{}
-		if err := vp.Client().Get(ctx, kutil.Key(cp.Namespace, azure.CloudProviderDiskConfigName), cm); err != nil {
+		secret := &corev1.Secret{}
+		if err := vp.Client().Get(ctx, kutil.Key(cp.Namespace, azure.CloudProviderDiskConfigName), secret); err != nil {
 			return nil, err
 		}
 
-		cloudProviderDiskConfig = cm.Data[azure.CloudProviderConfigMapKey]
-		cloudProviderDiskConfigChecksum = util.ComputeChecksum(cm.Data)
+		cloudProviderDiskConfig = string(secret.Data[azure.CloudProviderConfigMapKey])
+		cloudProviderDiskConfigChecksum = util.ComputeChecksum(secret.Data)
 	}
 
 	return getControlPlaneShootChartValues(infraStatus, k8sVersionLessThan119, cloudProviderDiskConfig, cloudProviderDiskConfigChecksum), nil
@@ -532,7 +565,7 @@ func getCCMChartValues(
 			"checksum/secret-" + azure.CloudControllerManagerName:             checksums[azure.CloudControllerManagerName],
 			"checksum/secret-" + azure.CloudControllerManagerName + "-server": checksums[azure.CloudControllerManagerName+"-server"],
 			"checksum/secret-" + v1beta1constants.SecretNameCloudProvider:     checksums[v1beta1constants.SecretNameCloudProvider],
-			"checksum/configmap-" + azure.CloudProviderConfigName:             checksums[azure.CloudProviderConfigName],
+			"checksum/secret-" + azure.CloudProviderConfigName:                checksums[azure.CloudProviderConfigName],
 		},
 		"podLabels": map[string]interface{}{
 			v1beta1constants.LabelPodMaintenanceRestart: "true",
@@ -565,12 +598,12 @@ func getCSIControllerChartValues(
 		"enabled":  true,
 		"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
 		"podAnnotations": map[string]interface{}{
-			"checksum/secret-" + azure.CSIControllerFileName:      checksums[azure.CSIControllerFileName],
-			"checksum/secret-" + azure.CSIProvisionerName:         checksums[azure.CSIProvisionerName],
-			"checksum/secret-" + azure.CSIAttacherName:            checksums[azure.CSIAttacherName],
-			"checksum/secret-" + azure.CSISnapshotterName:         checksums[azure.CSISnapshotterName],
-			"checksum/secret-" + azure.CSIResizerName:             checksums[azure.CSIResizerName],
-			"checksum/configmap-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
+			"checksum/secret-" + azure.CSIControllerFileName:   checksums[azure.CSIControllerFileName],
+			"checksum/secret-" + azure.CSIProvisionerName:      checksums[azure.CSIProvisionerName],
+			"checksum/secret-" + azure.CSIAttacherName:         checksums[azure.CSIAttacherName],
+			"checksum/secret-" + azure.CSISnapshotterName:      checksums[azure.CSISnapshotterName],
+			"checksum/secret-" + azure.CSIResizerName:          checksums[azure.CSIResizerName],
+			"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
 		},
 		"csiSnapshotController": map[string]interface{}{
 			"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),

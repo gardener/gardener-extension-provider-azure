@@ -250,8 +250,8 @@ var (
 	cloudProviderConfigVolume = corev1.Volume{
 		Name: azure.CloudProviderConfigName,
 		VolumeSource: corev1.VolumeSource{
-			ConfigMap: &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{Name: azure.CloudProviderConfigName},
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: azure.CloudProviderConfigName,
 			},
 		},
 	}
@@ -300,7 +300,12 @@ func (e *ensurer) ensureChecksumAnnotations(ctx context.Context, template *corev
 		return nil
 	}
 
-	return controlplane.EnsureConfigMapChecksumAnnotation(ctx, template, e.client, namespace, azure.CloudProviderConfigName)
+	err := controlplane.EnsureSecretChecksumAnnotation(ctx, template, e.client, namespace, azure.CloudProviderConfigName)
+	if apierrors.IsNotFound(errors.Cause(err)) {
+		// TODO: Needed for compatibility reasons. Remove getting the config from a config map in a future version.
+		return controlplane.EnsureConfigMapChecksumAnnotation(ctx, template, e.client, namespace, azure.CloudProviderConfigName)
+	}
+	return err
 }
 
 // EnsureKubeletServiceUnitOptions ensures that the kubelet.service unit options conform to the provider requirements.
@@ -392,18 +397,34 @@ func (e *ensurer) ShouldProvisionKubeletCloudProviderConfig(ctx context.Context,
 
 // EnsureKubeletCloudProviderConfig ensures that the cloud provider config file conforms to the provider requirements.
 func (e *ensurer) EnsureKubeletCloudProviderConfig(ctx context.Context, _ genericmutator.EnsurerContext, data *string, namespace string) error {
-	// Get `cloud-provider-config` ConfigMap
+	secret := &corev1.Secret{}
+	secretErr := e.client.Get(ctx, kutil.Key(namespace, azure.CloudProviderDiskConfigName), secret)
+	if client.IgnoreNotFound(secretErr) != nil {
+		return errors.Wrapf(secretErr, "could not get secret '%s/%s'", namespace, azure.CloudProviderDiskConfigName)
+	}
+
+	if len(secret.Data[azure.CloudProviderConfigMapKey]) > 0 {
+		*data = string(secret.Data[azure.CloudProviderConfigMapKey])
+		return nil
+	}
+
+	if !apierrors.IsNotFound(secretErr) && len(secret.Data[azure.CloudProviderConfigMapKey]) == 0 {
+		return nil
+	}
+
+	// TODO: Needed for compatibility reasons. Remove getting the config from a config map in a future version.
+	// Get `cloud-provider-config` Secret
 	cm := &corev1.ConfigMap{}
 	if err := e.client.Get(ctx, kutil.Key(namespace, azure.CloudProviderDiskConfigName), cm); err != nil {
 		if apierrors.IsNotFound(err) {
 			e.logger.Info("configmap not found", "name", azure.CloudProviderDiskConfigName, "namespace", namespace)
 			return nil
 		}
-		return errors.Wrapf(err, "could not get configmap '%s/%s'", namespace, azure.CloudProviderDiskConfigName)
+		return errors.Wrapf(err, "could not get config map '%s/%s'", namespace, azure.CloudProviderDiskConfigName)
 	}
 
-	// Check if the data has "cloudprovider.conf" key
-	if cm.Data == nil || cm.Data[azure.CloudProviderConfigMapKey] == "" {
+	// Check if "cloudprovider.conf" is present
+	if len(cm.Data[azure.CloudProviderConfigMapKey]) == 0 {
 		return nil
 	}
 

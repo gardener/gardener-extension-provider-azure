@@ -1,10 +1,8 @@
 apiVersion: v1
-kind: ConfigMap
+kind: Secret
 metadata:
   name: cloud-provider-config
   namespace: {{ .Release.Namespace }}
+type: Opaque
 data:
-  cloudprovider.conf: |
-{{ include "azure-credentials" . | indent 4 }}
-{{ include "azure-subscription-info" . | indent 4 }}
-{{ include "cloud-provider-config" . | indent 4 }}
+  cloudprovider.conf: {{ include "cloud-provider-config" . | b64enc }}

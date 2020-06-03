@@ -170,21 +170,24 @@ var _ = Describe("ValuesProvider", func() {
 		errorAcrConfigMapNotFound = errors.NewNotFound(schema.GroupResource{}, azure.CloudProviderAcrConfigName)
 
 		cloudProviderConfigData = "foo"
-		cpDiskConfigKey         = client.ObjectKey{Namespace: namespace, Name: azure.CloudProviderDiskConfigName}
-		cpDiskConfig            = &corev1.ConfigMap{
+		cpConfigSecretKey       = client.ObjectKey{Namespace: namespace, Name: azure.CloudProviderConfigName}
+		cpConfigSecret          = &corev1.Secret{
+			Data: map[string][]byte{azure.CloudProviderConfigMapKey: []byte(cloudProviderConfigData)},
+		}
+		cpDiskConfigKey = client.ObjectKey{Namespace: namespace, Name: azure.CloudProviderDiskConfigName}
+		cpDiskConfig    = &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      azure.CloudProviderDiskConfigName,
 				Namespace: namespace,
 			},
-			Data: map[string]string{
-				azure.CloudProviderConfigMapKey: cloudProviderConfigData,
+			Data: map[string][]byte{
+				azure.CloudProviderConfigMapKey: []byte(cloudProviderConfigData),
 			},
 		}
 
 		checksums = map[string]string{
 			v1beta1constants.SecretNameCloudProvider:     "8bafb35ff1ac60275d62e1cbd495aceb511fb354f74a20f7d06ecb48b3a68432",
-			azure.CloudProviderConfigName:                "08a7bc7fe8f59b055f173145e211760a83f02cf89635cef26ebb351378635606",
-			azure.CloudProviderDiskConfigName:            "0f92eba85c37a410c05d0c838d520527375f9e40a937458be81ec6036788b15c",
+			azure.CloudProviderDiskConfigName:            "77627eb2343b9f2dc2fca3cce35f2f9eec55783aa5f7dac21c473019e5825de2",
 			azure.CloudControllerManagerName:             "3d791b164a808638da9a8df03924be2a41e34cd664e42231c00fe369e3588272",
 			azure.CloudControllerManagerName + "-server": "6dff2a2e6f14444b66d8e4a351c049f7e89ee24ba3eaab95dbec40ba6bdebb52",
 			azure.CSIControllerFileName:                  "d8a928b2043db77e340b523547bf16cb4aa483f0645fe0a290ed1f20aab76257",
@@ -362,7 +365,7 @@ var _ = Describe("ValuesProvider", func() {
 				"checksum/secret-cloud-controller-manager":        "3d791b164a808638da9a8df03924be2a41e34cd664e42231c00fe369e3588272",
 				"checksum/secret-cloud-controller-manager-server": "6dff2a2e6f14444b66d8e4a351c049f7e89ee24ba3eaab95dbec40ba6bdebb52",
 				"checksum/secret-cloudprovider":                   "8bafb35ff1ac60275d62e1cbd495aceb511fb354f74a20f7d06ecb48b3a68432",
-				"checksum/configmap-cloud-provider-config":        "08a7bc7fe8f59b055f173145e211760a83f02cf89635cef26ebb351378635606",
+				"checksum/secret-cloud-provider-config":           "77627eb2343b9f2dc2fca3cce35f2f9eec55783aa5f7dac21c473019e5825de2",
 			},
 			"podLabels": map[string]interface{}{
 				"maintenance.gardener.cloud/restart": "true",
@@ -372,8 +375,15 @@ var _ = Describe("ValuesProvider", func() {
 			},
 		})
 
+		BeforeEach(func() {
+			c.EXPECT().Get(ctx, cpConfigSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpConfigSecret))
+			c.EXPECT().Delete(ctx, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: azure.CloudProviderConfigName, Namespace: namespace}}).Return(nil)
+			c.EXPECT().Delete(ctx, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: azure.CloudProviderDiskConfigName, Namespace: namespace}}).Return(nil)
+		})
+
 		It("should return correct control plane chart values (k8s < 1.19)", func() {
 			values, err := vp.GetControlPlaneChartValues(ctx, cp, clusterK8sLessThan119, checksums, false)
+
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
 				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
@@ -393,12 +403,12 @@ var _ = Describe("ValuesProvider", func() {
 				azure.CSIControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
 					"replicas": 1,
 					"podAnnotations": map[string]interface{}{
-						"checksum/secret-" + azure.CSIControllerFileName:      checksums[azure.CSIControllerFileName],
-						"checksum/secret-" + azure.CSIProvisionerName:         checksums[azure.CSIProvisionerName],
-						"checksum/secret-" + azure.CSIAttacherName:            checksums[azure.CSIAttacherName],
-						"checksum/secret-" + azure.CSISnapshotterName:         checksums[azure.CSISnapshotterName],
-						"checksum/secret-" + azure.CSIResizerName:             checksums[azure.CSIResizerName],
-						"checksum/configmap-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
+						"checksum/secret-" + azure.CSIControllerFileName:   checksums[azure.CSIControllerFileName],
+						"checksum/secret-" + azure.CSIProvisionerName:      checksums[azure.CSIProvisionerName],
+						"checksum/secret-" + azure.CSIAttacherName:         checksums[azure.CSIAttacherName],
+						"checksum/secret-" + azure.CSISnapshotterName:      checksums[azure.CSISnapshotterName],
+						"checksum/secret-" + azure.CSIResizerName:          checksums[azure.CSIResizerName],
+						"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
 					},
 					"csiSnapshotController": map[string]interface{}{
 						"replicas": 1,
@@ -451,7 +461,7 @@ var _ = Describe("ValuesProvider", func() {
 
 		Context("k8s >= 1.19", func() {
 			BeforeEach(func() {
-				c.EXPECT().Get(ctx, cpDiskConfigKey, &corev1.ConfigMap{}).DoAndReturn(clientGet(cpDiskConfig))
+				c.EXPECT().Get(ctx, cpDiskConfigKey, &corev1.Secret{}).DoAndReturn(clientGet(cpDiskConfig))
 			})
 
 			It("should return correct control plane shoot chart values for non zoned cluster", func() {
