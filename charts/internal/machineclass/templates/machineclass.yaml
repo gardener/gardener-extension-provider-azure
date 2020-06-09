@@ -64,6 +64,10 @@ spec:
           storageAccountType: {{ $machineClass.osDisk.type }}
         {{- end }}
         createOption: FromImage
+{{- if $machineClass.dataDisks }}
+      dataDisks:
+{{ toYaml $machineClass.dataDisks | indent 6 }}
+{{- end }}
   resourceGroup: {{ $machineClass.resourceGroup }}
   secretRef:
     name: {{ $machineClass.name }}

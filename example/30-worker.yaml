@@ -109,3 +109,7 @@ spec:
     volume:
       type: standard
       size: 35Gi
+  # dataVolumes:
+  # - name: kubelet-dir
+  #   type: standard
+  #   size: 36Gi

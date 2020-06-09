@@ -105,8 +105,15 @@ var _ = Describe("Machines", func() {
 				identityID            string
 				machineType           string
 				userData              []byte
-				volumeSize            int
 				sshKey                string
+
+				volumeSize      int
+				volumeType      string
+				dataVolume1Name string
+				dataVolume1Size int
+				dataVolume2Name string
+				dataVolume2Size int
+				dataVolume2Type string
 
 				namePool1           string
 				minPool1            int32
@@ -159,9 +166,16 @@ var _ = Describe("Machines", func() {
 				availabilitySetID = "av-1234"
 				machineType = "large"
 				userData = []byte("some-user-data")
-				volumeSize = 20
 				sshKey = "public-key"
 				identityID = "identity-id"
+
+				volumeSize = 20
+				volumeType = "Standard_LRS"
+				dataVolume1Name = "foo"
+				dataVolume1Size = 25
+				dataVolume2Name = "bar"
+				dataVolume2Size = 30
+				dataVolume2Type = "Premium_LRS"
 
 				namePool1 = "pool-1"
 				minPool1 = 5
@@ -287,6 +301,17 @@ var _ = Describe("Machines", func() {
 								Volume: &extensionsv1alpha1.Volume{
 									Size: fmt.Sprintf("%dGi", volumeSize),
 								},
+								DataVolumes: []extensionsv1alpha1.Volume{
+									{
+										Name: &dataVolume1Name,
+										Size: fmt.Sprintf("%dGi", dataVolume1Size),
+									},
+									{
+										Name: &dataVolume2Name,
+										Size: fmt.Sprintf("%dGi", dataVolume2Size),
+										Type: &dataVolume2Type,
+									},
+								},
 								Labels: labels,
 							},
 							{
@@ -303,6 +328,7 @@ var _ = Describe("Machines", func() {
 								UserData: userData,
 								Volume: &extensionsv1alpha1.Volume{
 									Size: fmt.Sprintf("%dGi", volumeSize),
+									Type: &volumeType,
 								},
 								Labels: labels,
 							},
@@ -315,7 +341,7 @@ var _ = Describe("Machines", func() {
 				_ = apiv1alpha1.AddToScheme(scheme)
 				decoder = serializer.NewCodecFactory(scheme).UniversalDecoder()
 
-				workerPoolHash1, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster, identityID)
+				workerPoolHash1, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster, identityID, fmt.Sprintf("%dGi", dataVolume1Size), fmt.Sprintf("%dGi", dataVolume2Size), dataVolume2Type)
 				workerPoolHash2, _ = worker.WorkerPoolHash(w.Spec.Pools[1], cluster, identityID)
 
 				workerDelegate, _ = NewWorkerDelegate(common.NewClientContext(c, scheme, decoder), chartApplier, "", w, clusterWithoutImages)
@@ -338,6 +364,7 @@ var _ = Describe("Machines", func() {
 					for k, v := range labels {
 						vmTags[SanitizeAzureVMTag(k)] = v
 					}
+
 					defaultMachineClass := map[string]interface{}{
 						"region":        region,
 						"resourceGroup": resourceGroupName,
@@ -382,6 +409,26 @@ var _ = Describe("Machines", func() {
 
 					addNameAndSecretsToMachineClass(machineClassPool1, azureClientID, azureClientSecret, azureSubscriptionID, azureTenantID, machineClassWithHashPool1)
 					addNameAndSecretsToMachineClass(machineClassPool2, azureClientID, azureClientSecret, azureSubscriptionID, azureTenantID, machineClassWithHashPool2)
+
+					machineClassPool1["dataDisks"] = []map[string]interface{}{
+						{
+							"name":               dataVolume2Name,
+							"lun":                int32(0),
+							"diskSizeGB":         dataVolume2Size,
+							"storageAccountType": dataVolume2Type,
+							"caching":            "None",
+						},
+						{
+							"name":       dataVolume1Name,
+							"lun":        int32(1),
+							"diskSizeGB": dataVolume1Size,
+							"caching":    "None",
+						},
+					}
+					machineClassPool2["osDisk"] = map[string]interface{}{
+						"size": volumeSize,
+						"type": volumeType,
+					}
 
 					machineClasses = map[string]interface{}{"machineClasses": []map[string]interface{}{
 						machineClassPool1,
