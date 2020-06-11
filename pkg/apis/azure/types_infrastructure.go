@@ -27,7 +27,7 @@ type InfrastructureConfig struct {
 	ResourceGroup *ResourceGroup
 	// Networks is the network configuration (VNets, subnets, etc.)
 	Networks NetworkConfig
-	// Identity containts configuration for the assigned managed identity.
+	// Identity contains configuration for the assigned managed identity.
 	Identity *IdentityConfig
 	// Zoned indicates whether the cluster uses zones
 	Zoned bool

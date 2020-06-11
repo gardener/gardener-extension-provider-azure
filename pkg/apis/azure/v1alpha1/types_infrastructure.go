@@ -29,7 +29,7 @@ type InfrastructureConfig struct {
 	ResourceGroup *ResourceGroup `json:"resourceGroup,omitempty"`
 	// Networks is the network configuration (VNet, subnets, etc.).
 	Networks NetworkConfig `json:"networks"`
-	// Identity containts configuration for the assigned managed identity.
+	// Identity contains configuration for the assigned managed identity.
 	// +optional
 	Identity *IdentityConfig `json:"identity,omitempty"`
 	// Zoned indicates whether the cluster uses availability zones.
