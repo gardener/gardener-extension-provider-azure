@@ -19,11 +19,10 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/util"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	"github.com/gardener/gardener/pkg/apis/core"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-func decodeControlPlaneConfig(decoder runtime.Decoder, cp *core.ProviderConfig) (*azure.ControlPlaneConfig, error) {
+func decodeControlPlaneConfig(decoder runtime.Decoder, cp *runtime.RawExtension) (*azure.ControlPlaneConfig, error) {
 	controlPlaneConfig := &azure.ControlPlaneConfig{}
 	if err := util.Decode(decoder, cp.Raw, controlPlaneConfig); err != nil {
 		return nil, err
@@ -32,7 +31,7 @@ func decodeControlPlaneConfig(decoder runtime.Decoder, cp *core.ProviderConfig) 
 	return controlPlaneConfig, nil
 }
 
-func decodeInfrastructureConfig(decoder runtime.Decoder, infra *core.ProviderConfig) (*azure.InfrastructureConfig, error) {
+func decodeInfrastructureConfig(decoder runtime.Decoder, infra *runtime.RawExtension) (*azure.InfrastructureConfig, error) {
 	infraConfig := &azure.InfrastructureConfig{}
 	if err := util.Decode(decoder, infra.Raw, infraConfig); err != nil {
 		return nil, err
@@ -41,7 +40,7 @@ func decodeInfrastructureConfig(decoder runtime.Decoder, infra *core.ProviderCon
 	return infraConfig, nil
 }
 
-func checkAndDecodeInfrastructureConfig(decoder runtime.Decoder, config *core.ProviderConfig, fldPath *field.Path) (*azure.InfrastructureConfig, error) {
+func checkAndDecodeInfrastructureConfig(decoder runtime.Decoder, config *runtime.RawExtension, fldPath *field.Path) (*azure.InfrastructureConfig, error) {
 	if config == nil {
 		return nil, field.Required(fldPath, "InfrastructureConfig must be set for Azure shoots")
 	}

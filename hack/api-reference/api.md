@@ -219,7 +219,7 @@ IdentityConfig
 </td>
 <td>
 <em>(Optional)</em>
-<p>Identity containts configuration for the assigned managed identity.</p>
+<p>Identity contains configuration for the assigned managed identity.</p>
 </td>
 </tr>
 <tr>
