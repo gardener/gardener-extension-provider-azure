@@ -36,6 +36,8 @@ outputKeys:
   subnetName: subnetName
   availabilitySetID: availabilitySetID
   availabilitySetName: availabilitySetName
+  countFaultDomains: countFaultDomains
+  countUpdateDomains: countUpdateDomains
   routeTableName: routeTableName
   securityGroupName: securityGroupName
   # identityID: managedIdentityID

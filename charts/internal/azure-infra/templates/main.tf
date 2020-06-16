@@ -184,6 +184,14 @@ output "{{ .Values.outputKeys.availabilitySetID }}" {
 output "{{ .Values.outputKeys.availabilitySetName }}" {
   value = "${azurerm_availability_set.workers.name}"
 }
+
+output "{{ .Values.outputKeys.countFaultDomains }}" {
+  value = "${azurerm_availability_set.workers.platform_fault_domain_count}"
+}
+
+output "{{ .Values.outputKeys.countUpdateDomains }}" {
+  value = "${azurerm_availability_set.workers.platform_update_domain_count}"
+}
 {{- end}}
 {{ if .Values.identity -}}
 output "{{ .Values.outputKeys.identityID }}" {
