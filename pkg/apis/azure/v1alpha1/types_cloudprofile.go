@@ -42,7 +42,7 @@ type DomainCount struct {
 	// Region is a region.
 	Region string `json:"region"`
 	// Count is the count value for the respective domain count.
-	Count int `json:"count"`
+	Count int32 `json:"count"`
 }
 
 // MachineImages is a mapping from logical names and versions to provider-specific identifiers.

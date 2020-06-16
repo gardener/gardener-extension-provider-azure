@@ -81,7 +81,7 @@ func FindMachineImage(machineImages []api.MachineImage, name, version string) (*
 }
 
 // FindDomainCountByRegion takes a region and the domain counts and finds the count for the given region.
-func FindDomainCountByRegion(domainCounts []api.DomainCount, region string) (int, error) {
+func FindDomainCountByRegion(domainCounts []api.DomainCount, region string) (int32, error) {
 	for _, domainCount := range domainCounts {
 		if domainCount.Region == region {
 			return domainCount.Count, nil

@@ -338,6 +338,30 @@ string
 <p>Name is the name of the availability set</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>countFaultDomains</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CountFaultDomains is the count of fault domains.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>countUpdateDomains</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CountUpdateDomains is the count of update domains.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.CloudControllerManagerConfig">CloudControllerManagerConfig
@@ -403,7 +427,7 @@ string
 <td>
 <code>count</code></br>
 <em>
-int
+int32
 </em>
 </td>
 <td>
