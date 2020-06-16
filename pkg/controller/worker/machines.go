@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 
 	azureapi "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
@@ -31,6 +32,7 @@ import (
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/client/kubernetes"
+	"github.com/gardener/gardener/pkg/utils"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -126,11 +128,13 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 	}
 
 	for _, pool := range w.worker.Spec.Pools {
-		var additionalData []string
+		var additionalHashData []string
 		if infrastructureStatus.Identity != nil {
-			additionalData = append(additionalData, infrastructureStatus.Identity.ID)
+			additionalHashData = append(additionalHashData, infrastructureStatus.Identity.ID)
 		}
-		workerPoolHash, err := worker.WorkerPoolHash(pool, w.cluster, additionalData...)
+		additionalHashData = append(additionalHashData, computeAdditionalHashData(pool)...)
+
+		workerPoolHash, err := worker.WorkerPoolHash(pool, w.cluster, additionalHashData...)
 		if err != nil {
 			return err
 		}
@@ -147,27 +151,6 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			AcceleratedNetworking: imageSupportAcceleratedNetworking,
 		})
 
-		volumeSize, err := worker.DiskSize(pool.Volume.Size)
-		if err != nil {
-			return err
-		}
-		osDisk := map[string]interface{}{
-			"size": volumeSize,
-		}
-
-		// In the past the volume type information was not passed to the machineclass.
-		// In consequence the Machine controller manager has created machines always
-		// with the default volume type of the requested machine type. Existing clusters
-		// respectively their worker pools could have an invalid volume configuration
-		// which was not applied. To do not damage exisiting cluster we will set for
-		// now the volume type only if it's a valid Azure volume type.
-		// Otherwise we will still use the default volume of the machine type.
-		if pool.Volume.Type != nil {
-			if *pool.Volume.Type == "Standard_LRS" || *pool.Volume.Type == "StandardSSD_LRS" || *pool.Volume.Type == "Premium_LRS" {
-				osDisk["type"] = *pool.Volume.Type
-			}
-		}
-
 		image := map[string]interface{}{}
 		if urn != nil {
 			image["urn"] = *urn
@@ -175,8 +158,12 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			image["id"] = *id
 		}
 
+		disks, err := computeDisks(pool)
+		if err != nil {
+			return err
+		}
+
 		generateMachineClassAndDeployment := func(zone *zoneInfo, availabilitySetID *string) (worker.MachineDeployment, map[string]interface{}) {
-			vmTags := w.getVmTags(pool)
 			var (
 				machineDeployment = worker.MachineDeployment{
 					Minimum:        pool.Minimum,
@@ -188,18 +175,17 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 					Taints:         pool.Taints,
 				}
 
-				machineClassSpec = map[string]interface{}{
+				machineClassSpec = utils.MergeMaps(map[string]interface{}{
 					"region":        w.worker.Spec.Region,
 					"resourceGroup": infrastructureStatus.ResourceGroup.Name,
-					"tags":          vmTags,
+					"tags":          w.getVmTags(pool),
 					"secret": map[string]interface{}{
 						"cloudConfig": string(pool.UserData),
 					},
 					"machineType":  pool.MachineType,
 					"image":        image,
-					"osDisk":       osDisk,
 					"sshPublicKey": string(w.worker.Spec.SSHPublicKey),
-				}
+				}, disks)
 			)
 
 			networkConfig := map[string]interface{}{
@@ -307,8 +293,77 @@ func (w *workerDelegate) getVmTags(pool extensionsv1alpha1.WorkerPool) map[strin
 	return vmTags
 }
 
+func computeDisks(pool extensionsv1alpha1.WorkerPool) (map[string]interface{}, error) {
+	// handle root disk
+	volumeSize, err := worker.DiskSize(pool.Volume.Size)
+	if err != nil {
+		return nil, err
+	}
+	osDisk := map[string]interface{}{
+		"size": volumeSize,
+	}
+	// In the past the volume type information was not passed to the machineclass.
+	// In consequence the Machine controller manager has created machines always
+	// with the default volume type of the requested machine type. Existing clusters
+	// respectively their worker pools could have an invalid volume configuration
+	// which was not applied. To do not damage existing cluster we will set for
+	// now the volume type only if it's a valid Azure volume type.
+	// Otherwise we will still use the default volume of the machine type.
+	if pool.Volume.Type != nil && (*pool.Volume.Type == "Standard_LRS" || *pool.Volume.Type == "StandardSSD_LRS" || *pool.Volume.Type == "Premium_LRS") {
+		osDisk["type"] = *pool.Volume.Type
+	}
+
+	disks := map[string]interface{}{
+		"osDisk": osDisk,
+	}
+
+	// handle data disks
+	var dataDisks []map[string]interface{}
+	if dataVolumes := pool.DataVolumes; len(dataVolumes) > 0 {
+		// sort data volumes for consistent device naming
+		sort.Slice(dataVolumes, func(i, j int) bool {
+			return *dataVolumes[i].Name < *dataVolumes[j].Name
+		})
+
+		for i, volume := range dataVolumes {
+			volumeSize, err := worker.DiskSize(volume.Size)
+			if err != nil {
+				return nil, err
+			}
+			disk := map[string]interface{}{
+				"name":       *volume.Name,
+				"lun":        int32(i),
+				"diskSizeGB": volumeSize,
+				"caching":    "None",
+			}
+			if volume.Type != nil {
+				disk["storageAccountType"] = *volume.Type
+			}
+			dataDisks = append(dataDisks, disk)
+		}
+
+		disks["dataDisks"] = dataDisks
+	}
+
+	return disks, nil
+}
+
 // SanitizeAzureVMTag will sanitize the tag base on the azure tag Restrictions
 // refer: https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/tag-resources#limitations
 func SanitizeAzureVMTag(label string) string {
 	return tagRegex.ReplaceAllString(strings.ToLower(label), "_")
+}
+
+func computeAdditionalHashData(pool extensionsv1alpha1.WorkerPool) []string {
+	var additionalData []string
+
+	for _, dv := range pool.DataVolumes {
+		additionalData = append(additionalData, dv.Size)
+
+		if dv.Type != nil {
+			additionalData = append(additionalData, *dv.Type)
+		}
+	}
+
+	return additionalData
 }

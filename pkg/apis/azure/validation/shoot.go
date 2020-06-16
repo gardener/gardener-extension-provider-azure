@@ -23,6 +23,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
+const maxDataVolumeCount = 64
+
 // ValidateNetworking validates the network settings of a Shoot.
 func ValidateNetworking(networking core.Networking, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
@@ -43,6 +45,14 @@ func ValidateWorkers(workers []core.Worker, zoned bool, fldPath *field.Path) fie
 			allErrs = append(allErrs, field.Required(fldPath.Index(i).Child("volume"), "must not be nil"))
 		} else {
 			allErrs = append(allErrs, validateVolume(worker.Volume, fldPath.Index(i).Child("volume"))...)
+		}
+
+		if length := len(worker.DataVolumes); length > maxDataVolumeCount {
+			allErrs = append(allErrs, field.TooMany(fldPath.Index(i).Child("dataVolumes"), length, maxDataVolumeCount))
+		}
+		for j, volume := range worker.DataVolumes {
+			dataVolPath := fldPath.Index(i).Child("dataVolumes").Index(j)
+			allErrs = append(allErrs, validateVolume(&volume, dataVolPath)...)
 		}
 
 		if zoned && len(worker.Zones) == 0 {
@@ -91,6 +101,9 @@ func validateVolume(vol *core.Volume, fldPath *field.Path) field.ErrorList {
 	}
 	if vol.VolumeSize == "" {
 		allErrs = append(allErrs, field.Required(fldPath.Child("size"), "must not be empty"))
+	}
+	if vol.Encrypted != nil {
+		allErrs = append(allErrs, field.NotSupported(fldPath.Child("encrypted"), *vol.Encrypted, nil))
 	}
 	return allErrs
 }

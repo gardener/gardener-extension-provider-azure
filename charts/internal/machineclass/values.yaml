@@ -53,4 +53,10 @@ machineClasses:
   osDisk:
     size: 50
     type: Standard_LRS
+# dataDisks:
+# - lun: 0
+#   caching: None
+#   diskSizeGB: 100
+#   storageAccountType: Standard_LRS
+#   name: sdb
   sshPublicKey: ssh-rsa AAAAB3...

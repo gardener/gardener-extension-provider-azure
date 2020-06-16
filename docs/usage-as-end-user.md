@@ -100,6 +100,28 @@ The `cloudControllerManager.featureGates` contains a map of explicitly enabled o
 For production usage it's not recommend to use this field at all as you can enable alpha features or disable beta/stable features, potentially impacting the cluster stability.
 If you don't want to configure anything for the `cloudControllerManager` simply omit the key in the YAML specification.
 
+## `WorkerConfig`
+
+The Azure extension does not support a specific `WorkerConfig` yet, however, it supports encryption for volumes plus support for additional data volumes per machine.
+Please note that you cannot specify the `encrypted` flag for Azure disks as they are encrypted by default/out-of-the-box.
+For each data volume, you have to specify a name.
+The following YAML is a snippet of a `Shoot` resource:
+
+```yaml
+spec:
+  provider:
+    workers:
+    - name: cpu-worker
+      ...
+      volume:
+        type: Standard_LRS
+        size: 20Gi
+      dataVolumes:
+      - name: kubelet-dir
+        type: Standard_LRS
+        size: 25Gi
+```
+
 ## Example `Shoot` manifest (non-zoned)
 
 Please find below an example `Shoot` manifest for a non-zoned cluster:
