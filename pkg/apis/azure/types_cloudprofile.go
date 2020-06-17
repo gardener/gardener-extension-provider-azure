@@ -40,7 +40,7 @@ type DomainCount struct {
 	// Region is a region.
 	Region string
 	// Count is the count value for the respective domain count.
-	Count int
+	Count int32
 }
 
 // MachineImages is a mapping from logical names and versions to provider-specific identifiers.

@@ -29,9 +29,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/pointer"
 )
 
-func makeCluster(pods, services string, region string, countFaultDomain, countUpdateDomain int) *controller.Cluster {
+func makeCluster(pods, services string, region string, countFaultDomain, countUpdateDomain int32) *controller.Cluster {
 	var (
 		shoot = gardencorev1beta1.Shoot{
 			Spec: gardencorev1beta1.ShootSpec{
@@ -77,8 +78,8 @@ var _ = Describe("Terraform", func() {
 		clientAuth *internal.ClientAuth
 
 		testServiceEndpoint = "Microsoft.Test"
-		countFaultDomain    = 1
-		countUpdateDomain   = 2
+		countFaultDomain    = int32(1)
+		countUpdateDomain   = int32(2)
 	)
 
 	BeforeEach(func() {
@@ -202,6 +203,43 @@ var _ = Describe("Terraform", func() {
 			expectedAzureValues["countFaultDomains"] = countFaultDomain
 			expectedOutputKeysValues["availabilitySetID"] = TerraformerOutputKeyAvailabilitySetID
 			expectedOutputKeysValues["availabilitySetName"] = TerraformerOutputKeyAvailabilitySetName
+
+			values, err := ComputeTerraformerChartValues(infra, clientAuth, config, cluster)
+			Expect(err).To(Not(HaveOccurred()))
+			Expect(values).To(BeEquivalentTo(expectedValues))
+		})
+
+		It("should correctly compute the terraformer chart values for a non zoned cluster w/ status", func() {
+			countFaultDomains := int32(3)
+			countUpdateDomains := int32(5)
+
+			config.Zoned = false
+			expectedCreateValues["availabilitySet"] = true
+			expectedAzureValues["countUpdateDomains"] = countUpdateDomains
+			expectedAzureValues["countFaultDomains"] = countFaultDomains
+			expectedOutputKeysValues["availabilitySetID"] = TerraformerOutputKeyAvailabilitySetID
+			expectedOutputKeysValues["availabilitySetName"] = TerraformerOutputKeyAvailabilitySetName
+
+			status := apiv1alpha1.InfrastructureStatus{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "InfrastructureStatus",
+					APIVersion: apiv1alpha1.SchemeGroupVersion.String(),
+				},
+				AvailabilitySets: []apiv1alpha1.AvailabilitySet{
+					{CountFaultDomains: &countFaultDomains, CountUpdateDomains: &countUpdateDomains, Purpose: apiv1alpha1.PurposeNodes},
+				},
+			}
+
+			rawStatus, err := json.Marshal(status)
+			Expect(err).To(Not(HaveOccurred()))
+
+			infra.Status = extensionsv1alpha1.InfrastructureStatus{
+				DefaultStatus: extensionsv1alpha1.DefaultStatus{
+					ProviderStatus: &runtime.RawExtension{
+						Raw: rawStatus,
+					},
+				},
+			}
 
 			values, err := ComputeTerraformerChartValues(infra, clientAuth, config, cluster)
 			Expect(err).To(Not(HaveOccurred()))
@@ -334,6 +372,8 @@ var _ = Describe("Terraform", func() {
 		It("should correctly compute the status for non zoned cluster", func() {
 			state.AvailabilitySetID = availabilitySetID
 			state.AvailabilitySetName = availabilitySetName
+			state.CountFaultDomains = 2
+			state.CountUpdateDomains = 5
 			status := StatusFromTerraformState(state)
 			Expect(status).To(Equal(&apiv1alpha1.InfrastructureStatus{
 				TypeMeta: StatusTypeMeta,
@@ -344,7 +384,8 @@ var _ = Describe("Terraform", func() {
 					{Name: routeTableName, Purpose: apiv1alpha1.PurposeNodes},
 				},
 				AvailabilitySets: []apiv1alpha1.AvailabilitySet{
-					{Name: availabilitySetName, ID: availabilitySetID, Purpose: apiv1alpha1.PurposeNodes},
+					{Name: availabilitySetName, ID: availabilitySetID, Purpose: apiv1alpha1.PurposeNodes,
+						CountFaultDomains: pointer.Int32Ptr(2), CountUpdateDomains: pointer.Int32Ptr(5)},
 				},
 				SecurityGroups: []apiv1alpha1.SecurityGroup{
 					{Name: securityGroupName, Purpose: apiv1alpha1.PurposeNodes},

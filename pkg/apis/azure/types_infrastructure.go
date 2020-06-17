@@ -106,6 +106,10 @@ type AvailabilitySet struct {
 	ID string
 	// Name is the name of the availability set
 	Name string
+	// CountFaultDomains is the count of fault domains.
+	CountFaultDomains *int32
+	// CountUpdateDomains is the count of update domains.
+	CountUpdateDomains *int32
 }
 
 // RouteTable is the azure route table

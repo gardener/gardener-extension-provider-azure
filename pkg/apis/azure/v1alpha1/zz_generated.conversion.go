@@ -272,6 +272,8 @@ func autoConvert_v1alpha1_AvailabilitySet_To_azure_AvailabilitySet(in *Availabil
 	out.Purpose = azure.Purpose(in.Purpose)
 	out.ID = in.ID
 	out.Name = in.Name
+	out.CountFaultDomains = (*int32)(unsafe.Pointer(in.CountFaultDomains))
+	out.CountUpdateDomains = (*int32)(unsafe.Pointer(in.CountUpdateDomains))
 	return nil
 }
 
@@ -284,6 +286,8 @@ func autoConvert_azure_AvailabilitySet_To_v1alpha1_AvailabilitySet(in *azure.Ava
 	out.Purpose = Purpose(in.Purpose)
 	out.ID = in.ID
 	out.Name = in.Name
+	out.CountFaultDomains = (*int32)(unsafe.Pointer(in.CountFaultDomains))
+	out.CountUpdateDomains = (*int32)(unsafe.Pointer(in.CountUpdateDomains))
 	return nil
 }
 
