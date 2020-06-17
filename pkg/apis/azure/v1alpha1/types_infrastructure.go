@@ -115,6 +115,12 @@ type AvailabilitySet struct {
 	ID string `json:"id"`
 	// Name is the name of the availability set
 	Name string `json:"name"`
+	// CountFaultDomains is the count of fault domains.
+	// +optional
+	CountFaultDomains *int32 `json:"countFaultDomains,omitempty"`
+	// CountUpdateDomains is the count of update domains.
+	// +optional
+	CountUpdateDomains *int32 `json:"countUpdateDomains,omitempty"`
 }
 
 // RouteTable is the azure route table

@@ -105,13 +105,13 @@ var _ = Describe("Helper", func() {
 	DescribeTable("#FindDomainCountByRegion",
 		func(domainCounts []api.DomainCount, region string, expectedCount int, expectErr bool) {
 			count, err := FindDomainCountByRegion(domainCounts, region)
-			expectResults(count, expectedCount, err, expectErr)
+			expectResults(count, int32(expectedCount), err, expectErr)
 		},
 
 		Entry("list is nil", nil, "foo", 0, true),
 		Entry("empty list", []api.DomainCount{}, "foo", 0, true),
-		Entry("entry not found", []api.DomainCount{{Region: "bar", Count: 1}}, "foo", 0, true),
-		Entry("entry exists", []api.DomainCount{{Region: "bar", Count: 1}}, "bar", 1, false),
+		Entry("entry not found", []api.DomainCount{{Region: "bar", Count: int32(1)}}, "foo", 0, true),
+		Entry("entry exists", []api.DomainCount{{Region: "bar", Count: int32(1)}}, "bar", 1, false),
 	)
 
 	DescribeTable("#FindImage",

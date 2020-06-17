@@ -15,7 +15,9 @@
 package infrastructure
 
 import (
+	"fmt"
 	"path/filepath"
+	"strconv"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
@@ -28,6 +30,7 @@ import (
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/chartrenderer"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/pointer"
 )
 
 const (
@@ -46,6 +49,10 @@ const (
 	TerraformerOutputKeyAvailabilitySetID = "availabilitySetID"
 	// TerraformerOutputKeyAvailabilitySetName is the key for the availabilitySetName output
 	TerraformerOutputKeyAvailabilitySetName = "availabilitySetName"
+	// TerraformerOutputKeyCountFaultDomains is the key for the fault domain count output.
+	TerraformerOutputKeyCountFaultDomains = "countFaultDomains"
+	// TerraformerOutputKeyCountUpdateDomains is the key for the update domain count output.
+	TerraformerOutputKeyCountUpdateDomains = "countUpdateDomains"
 	// TerraformerOutputKeyRouteTableName is the key for the routeTableName output
 	TerraformerOutputKeyRouteTableName = "routeTableName"
 	// TerraformerOutputKeySecurityGroupName is the key for the securityGroupName output
@@ -116,22 +123,13 @@ func ComputeTerraformerChartValues(infra *extensionsv1alpha1.Infrastructure, cli
 		outputKeys["availabilitySetID"] = TerraformerOutputKeyAvailabilitySetID
 		outputKeys["availabilitySetName"] = TerraformerOutputKeyAvailabilitySetName
 
-		cloudProfileConfig, err := helper.CloudProfileConfigFromCluster(cluster)
+		count, err := findDomainCounts(cluster, infra)
 		if err != nil {
 			return nil, err
 		}
 
-		updateDomainCount, err := helper.FindDomainCountByRegion(cloudProfileConfig.CountUpdateDomains, infra.Spec.Region)
-		if err != nil {
-			return nil, err
-		}
-		azure["countUpdateDomains"] = updateDomainCount
-
-		countFaultDomains, err := helper.FindDomainCountByRegion(cloudProfileConfig.CountFaultDomains, infra.Spec.Region)
-		if err != nil {
-			return nil, err
-		}
-		azure["countFaultDomains"] = countFaultDomains
+		azure["countFaultDomains"] = count.faultDomains
+		azure["countUpdateDomains"] = count.updateDomains
 	}
 
 	if config.Networks.NatGateway != nil && config.Networks.NatGateway.Enabled {
@@ -208,6 +206,10 @@ type TerraformState struct {
 	ResourceGroupName string
 	// AvailabilitySetID is the ID for the created availability set.
 	AvailabilitySetID string
+	// CountFaultDomains is the fault domain count for the created availability set.
+	CountFaultDomains int
+	// CountUpdateDomains is the update domain count for the created availability set.
+	CountUpdateDomains int
 	// AvailabilitySetName the ID for the created availability set .
 	AvailabilitySetName string
 	// SubnetName is the name of the created subnet.
@@ -237,7 +239,8 @@ func ExtractTerraformState(tf terraformer.Terraformer, config *api.Infrastructur
 	}
 
 	if !config.Zoned {
-		outputKeys = append(outputKeys, TerraformerOutputKeyAvailabilitySetID, TerraformerOutputKeyAvailabilitySetName)
+		outputKeys = append(outputKeys, TerraformerOutputKeyAvailabilitySetID, TerraformerOutputKeyAvailabilitySetName,
+			TerraformerOutputKeyCountFaultDomains, TerraformerOutputKeyCountUpdateDomains)
 	}
 
 	if config.Identity != nil && config.Identity.Name != "" && config.Identity.ResourceGroup != "" {
@@ -264,6 +267,16 @@ func ExtractTerraformState(tf terraformer.Terraformer, config *api.Infrastructur
 	if !config.Zoned {
 		tfState.AvailabilitySetID = vars[TerraformerOutputKeyAvailabilitySetID]
 		tfState.AvailabilitySetName = vars[TerraformerOutputKeyAvailabilitySetName]
+		countFaultDomains, err := strconv.Atoi(vars[TerraformerOutputKeyCountFaultDomains])
+		if err != nil {
+			return nil, fmt.Errorf("error while parsing countFaultDomain from state: %v", err)
+		}
+		tfState.CountFaultDomains = countFaultDomains
+		countUpdateDomains, err := strconv.Atoi(vars[TerraformerOutputKeyCountUpdateDomains])
+		if err != nil {
+			return nil, fmt.Errorf("error while parsing countUpdateDomain from state: %v", err)
+		}
+		tfState.CountUpdateDomains = countUpdateDomains
 	}
 
 	if config.Identity != nil && config.Identity.Name != "" && config.Identity.ResourceGroup != "" {
@@ -318,9 +331,11 @@ func StatusFromTerraformState(state *TerraformState) *apiv1alpha1.Infrastructure
 		tfState.Zoned = true
 	} else {
 		tfState.AvailabilitySets = append(tfState.AvailabilitySets, apiv1alpha1.AvailabilitySet{
-			Name:    state.AvailabilitySetName,
-			ID:      state.AvailabilitySetID,
-			Purpose: apiv1alpha1.PurposeNodes,
+			Name:               state.AvailabilitySetName,
+			ID:                 state.AvailabilitySetID,
+			CountFaultDomains:  pointer.Int32Ptr(int32(state.CountFaultDomains)),
+			CountUpdateDomains: pointer.Int32Ptr(int32(state.CountUpdateDomains)),
+			Purpose:            apiv1alpha1.PurposeNodes,
 		})
 	}
 
@@ -341,4 +356,60 @@ func ComputeStatus(tf terraformer.Terraformer, config *api.InfrastructureConfig)
 	}
 
 	return status, nil
+}
+
+type domainCounts struct {
+	faultDomains  int32
+	updateDomains int32
+}
+
+func findDomainCounts(cluster *controller.Cluster, infra *extensionsv1alpha1.Infrastructure) (*domainCounts, error) {
+	var (
+		faultDomainCount  *int32
+		updateDomainCount *int32
+	)
+
+	if infra.Status.ProviderStatus != nil {
+		infrastructureStatus, err := helper.InfrastructureStatusFromInfrastructure(infra)
+		if err != nil {
+			return nil, fmt.Errorf("error obtaining update and fault domain counts from infrastructure status: %v", err)
+		}
+		nodesAvailabilitySet, err := helper.FindAvailabilitySetByPurpose(infrastructureStatus.AvailabilitySets, api.PurposeNodes)
+		if err != nil {
+			return nil, fmt.Errorf("error obtaining update and fault domain counts from infrastructure status: %v", err)
+		}
+
+		// Take values from the availability set status.
+		// Domain counts can still be nil, esp. if the status was written by an earlier version of this provider extension.
+		if nodesAvailabilitySet != nil {
+			faultDomainCount = nodesAvailabilitySet.CountFaultDomains
+			updateDomainCount = nodesAvailabilitySet.CountUpdateDomains
+		}
+	}
+
+	cloudProfileConfig, err := helper.CloudProfileConfigFromCluster(cluster)
+	if err != nil {
+		return nil, err
+	}
+
+	if faultDomainCount == nil {
+		count, err := helper.FindDomainCountByRegion(cloudProfileConfig.CountFaultDomains, infra.Spec.Region)
+		if err != nil {
+			return nil, err
+		}
+		faultDomainCount = &count
+	}
+
+	if updateDomainCount == nil {
+		count, err := helper.FindDomainCountByRegion(cloudProfileConfig.CountUpdateDomains, infra.Spec.Region)
+		if err != nil {
+			return nil, err
+		}
+		updateDomainCount = &count
+	}
+
+	return &domainCounts{
+		faultDomains:  *faultDomainCount,
+		updateDomains: *updateDomainCount,
+	}, nil
 }
