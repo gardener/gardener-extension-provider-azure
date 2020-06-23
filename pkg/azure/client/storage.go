@@ -28,6 +28,7 @@ import (
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -61,7 +62,8 @@ func NewStorageClientAuthFromSubscriptionSecretRef(ctx context.Context, c client
 		Kind:     storage.BlobStorage,
 		Location: &region,
 		AccountPropertiesCreateParameters: &storage.AccountPropertiesCreateParameters{
-			AccessTier: storage.Cool,
+			AccessTier:             storage.Cool,
+			EnableHTTPSTrafficOnly: pointer.BoolPtr(true),
 		},
 	})
 	if err != nil {

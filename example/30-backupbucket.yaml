@@ -17,7 +17,7 @@ metadata:
   name: cloud--azure--fg2d6
 spec:
   type: azure
-  region: eu-west-1
+  region: northeurope
   secretRef:
     name: backupprovider
     namespace: garden
