@@ -48,6 +48,8 @@ const (
 	MachineControllerManagerImageName = "machine-controller-manager"
 	// TerraformerImageName is the name of the Terraformer image.
 	TerraformerImageName = "terraformer"
+	// RemedyControllerName is the name of the remedy-controller image.
+	RemedyControllerImageName = "remedy-controller-azure"
 
 	// SubscriptionIDKey is the key for the subscription ID.
 	SubscriptionIDKey = "subscriptionID"
@@ -114,6 +116,8 @@ const (
 	MachineControllerManagerVpaName = "machine-controller-manager-vpa"
 	// MachineControllerManagerMonitoringConfigName is the name of the ConfigMap containing monitoring stack configurations for machine-controller-manager.
 	MachineControllerManagerMonitoringConfigName = "machine-controller-manager-monitoring-config"
+	// RemedyControllerName is a constant for the name of the remedy-controller.
+	RemedyControllerName = "remedy-controller-azure"
 )
 
 var (

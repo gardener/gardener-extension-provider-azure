@@ -4,3 +4,5 @@ cloud-controller-manager:
   enabled: true
 csi-driver-node:
   enabled: false
+remedy-controller-azure:
+  enabled: false
