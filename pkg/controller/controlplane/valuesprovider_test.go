@@ -144,6 +144,9 @@ var _ = Describe("ValuesProvider", func() {
 					},
 					Kubernetes: gardencorev1beta1.Kubernetes{
 						Version: "1.19.4",
+						VerticalPodAutoscaler: &gardencorev1beta1.VerticalPodAutoscaler{
+							Enabled: true,
+						},
 					},
 				},
 			},
@@ -466,12 +469,14 @@ var _ = Describe("ValuesProvider", func() {
 				"podAnnotations": map[string]interface{}{
 					"checksum/configmap-" + azure.CloudProviderDiskConfigName: "",
 				},
+				"vpaEnabled":          false,
 				"cloudProviderConfig": "",
 			})
 			csiNodeEnabled = utils.MergeMaps(enabledTrue, map[string]interface{}{
 				"podAnnotations": map[string]interface{}{
 					"checksum/configmap-" + azure.CloudProviderDiskConfigName: checksums[azure.CloudProviderDiskConfigName],
 				},
+				"vpaEnabled":          true,
 				"cloudProviderConfig": cloudProviderConfigData,
 			})
 		)

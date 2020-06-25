@@ -29,6 +29,7 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
 	"github.com/gardener/gardener/extensions/pkg/util"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils/chart"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
@@ -284,6 +285,8 @@ var (
 					{Type: &rbacv1.ClusterRole{}, Name: azure.UsernamePrefix + azure.CSIControllerFileName},
 					{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.CSIControllerFileName},
 					{Type: &policyv1beta1.PodSecurityPolicy{}, Name: strings.Replace(azure.UsernamePrefix+azure.CSIDriverName, ":", ".", -1)},
+					{Type: extensionscontroller.GetVerticalPodAutoscalerObject(), Name: azure.CSINodeDiskName},
+					{Type: extensionscontroller.GetVerticalPodAutoscalerObject(), Name: azure.CSINodeFileName},
 					// csi-provisioner
 					{Type: &rbacv1.ClusterRole{}, Name: azure.UsernamePrefix + azure.CSIProvisionerName},
 					{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.CSIProvisionerName},
@@ -466,7 +469,7 @@ func (vp *valuesProvider) GetControlPlaneShootChartValues(
 
 	enableRemedyController := cluster.Shoot.Annotations[enableRemedyControllerAnnotation] == "true"
 
-	return getControlPlaneShootChartValues(infraStatus, k8sVersionLessThan119, enableRemedyController, cloudProviderDiskConfig, cloudProviderDiskConfigChecksum), nil
+	return getControlPlaneShootChartValues(cluster, infraStatus, k8sVersionLessThan119, enableRemedyController, cloudProviderDiskConfig, cloudProviderDiskConfigChecksum), nil
 }
 
 // GetStorageClassesChartValues returns the values for the storage classes chart applied by the generic actuator.
@@ -683,6 +686,7 @@ func getRemedyControllerChartValues(
 
 // getControlPlaneShootChartValues collects and returns the control plane shoot chart values.
 func getControlPlaneShootChartValues(
+	cluster *extensionscontroller.Cluster,
 	infraStatus *apisazure.InfrastructureStatus,
 	k8sVersionLessThan119 bool,
 	enableRemedyController bool,
@@ -693,7 +697,8 @@ func getControlPlaneShootChartValues(
 		azure.AllowUDPEgressName:         map[string]interface{}{"enabled": infraStatus.Zoned},
 		azure.CloudControllerManagerName: map[string]interface{}{"enabled": true},
 		azure.CSINodeName: map[string]interface{}{
-			"enabled": !k8sVersionLessThan119,
+			"enabled":    !k8sVersionLessThan119,
+			"vpaEnabled": gardencorev1beta1helper.ShootWantsVerticalPodAutoscaler(cluster.Shoot),
 			"podAnnotations": map[string]interface{}{
 				"checksum/configmap-" + azure.CloudProviderDiskConfigName: cloudProviderDiskConfigChecksum,
 			},
