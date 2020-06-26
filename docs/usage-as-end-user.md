@@ -37,7 +37,7 @@ kind: InfrastructureConfig
 networks:
   vnet: # specify either 'name' and 'resourceGroup' or 'cidr'
     # name: my-vnet
-    # resouceGroup: my-vnet-resource-group
+    # resourceGroup: my-vnet-resource-group
     cidr: 10.250.0.0/16
   workers: 10.250.0.0/19
   # natGateway:
