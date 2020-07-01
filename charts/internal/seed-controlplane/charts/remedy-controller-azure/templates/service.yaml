@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: remedy-controller-azure
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: remedy-controller-azure
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+  - name: metrics
+    port: {{ .Values.manager.metricsPort }}
+    protocol: TCP
+  - name: target-metrics
+    port: {{ .Values.targetManager.metricsPort }}
+    protocol: TCP
+  selector:
+    app: remedy-controller-azure

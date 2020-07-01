@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: remedy-controller-azure-monitoring-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    extensions.gardener.cloud/configuration: monitoring
+data:
+  scrape_config: |
+    - job_name: remedy-controller-azure
+      honor_labels: false
+      kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names: [{{ .Release.Namespace }}]
+      relabel_configs:
+      - source_labels:
+        - __meta_kubernetes_service_name
+        - __meta_kubernetes_endpoint_port_name
+        action: keep
+        regex: remedy-controller-azure;metrics
+      # common metrics
+      - action: labelmap
+        regex: __meta_kubernetes_service_label_(.+)
+      - source_labels: [ __meta_kubernetes_pod_name ]
+        target_label: pod
+      metric_relabel_configs:
+      - source_labels: [ __name__ ]
+        regex: ^(azure_read_requests_total|azure_write_requests_total|cleaned_azure_public_ips_total|reapplied_azure_virtual_machines_total|azure_virtual_machine_states|rest_client_requests_total|controller_runtime_reconcile_total|workqueue_adds_total|workqueue_depth|workqueue_longest_running_processor_seconds|workqueue_queue_duration_seconds_bucket|workqueue_queue_duration_seconds_sum|workqueue_queue_duration_seconds_count|workqueue_retries_total|workqueue_unfinished_work_seconds|workqueue_work_duration_seconds_bucket|workqueue_work_duration_seconds_sum|workqueue_work_duration_seconds_count|process_max_fds|process_open_fds)$
+        action: keep
+
+  alerting_rules: |
+    remedy-controller-azure.rules.yaml: |
+      groups:
+      - name: remedy-controller-azure.rules
+        rules:
+        - alert: RemedyControllerDown
+          expr: absent(up{job="remedy-controller-azure"} == 1)
+          for: 15m
+          labels:
+            service: remedy-controller-azure
+            severity: warning
+            type: seed
+            visibility: all
+          annotations:
+            description: Remedies for certain infrastructure issues cannot be applied.
+            summary: Remedy controller is down.
+        - alert: AzureVMFailed
+          expr: azure_virtual_machine_states == 2
+          for: 5m
+          labels:
+            service: remedy-controller-azure
+            severity: critical
+            type: shoot
+            visibility: all
+          annotations:
+            description: An Azure virtual machine is in a Failed state and could not be fixed by the remedy controller.
+            summary: An Azure VM is in a Failed state.
+
+  dashboard_operators: |
+    remedy-controller-azure-dashboard.json: |-
+{{- .Files.Get "rc-monitoring-dashboard.json" | nindent 6 }}
