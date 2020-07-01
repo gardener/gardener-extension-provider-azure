@@ -8,6 +8,10 @@ dependencies:
   version: 0.1.0
   condition: cloud-controller-manager.enabled
 - name: csi-driver-node
-  repository: http://locwalhost:10191
+  repository: http://localhost:10191
   version: 0.1.0
   condition: csi-driver-node.enabled
+- name: remedy-controller-azure
+  repository: http://localhost:10191
+  version: 0.1.0
+  condition: remedy-controller-azure.enabled

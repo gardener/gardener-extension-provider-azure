@@ -1,0 +1,21 @@
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: publicipaddresses.azure.remedy.gardener.cloud
+spec:
+  group: azure.remedy.gardener.cloud
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+  version: v1alpha1
+  scope: Namespaced
+  names:
+    plural: publicipaddresses
+    singular: publicipaddress
+    kind: PublicIPAddress
+    shortNames:
+    - pubip
+  subresources:
+    status: {}

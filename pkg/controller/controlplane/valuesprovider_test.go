@@ -148,6 +148,23 @@ var _ = Describe("ValuesProvider", func() {
 				},
 			},
 		}
+		clusterWithRemedyControllerEnabled = &extensionscontroller.Cluster{
+			Shoot: &gardencorev1beta1.Shoot{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						enableRemedyControllerAnnotation: "true",
+					},
+				},
+				Spec: gardencorev1beta1.ShootSpec{
+					Networking: gardencorev1beta1.Networking{
+						Pods: &cidr,
+					},
+					Kubernetes: gardencorev1beta1.Kubernetes{
+						Version: "1.13.4",
+					},
+				},
+			},
+		}
 
 		cpSecretKey = client.ObjectKey{Namespace: namespace, Name: v1beta1constants.SecretNameCloudProvider}
 		cpSecret    = &corev1.Secret{
@@ -196,6 +213,7 @@ var _ = Describe("ValuesProvider", func() {
 			azure.CSISnapshotterName:                     "6a5bfc847638c499062f7fb44e31a30a9760bf4179e1dbf85e0ff4b4f162cd68",
 			azure.CSIResizerName:                         "a77e663ba1af340fb3dd7f6f8a1be47c7aa9e658198695480641e6b934c0b9ed",
 			azure.CSISnapshotControllerName:              "84cba346d2e2cf96c3811b55b01f57bdd9b9bcaed7065760470942d267984eaf",
+			azure.RemedyControllerName:                   "84cba346d2e2cf96c3811b55b01f57bdd9b9bcaed7065760470942d267984eaf",
 		}
 
 		enabledTrue  = map[string]interface{}{"enabled": true}
@@ -389,7 +407,8 @@ var _ = Describe("ValuesProvider", func() {
 				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
 					"kubernetesVersion": clusterK8sLessThan119.Shoot.Spec.Kubernetes.Version,
 				}),
-				azure.CSIControllerName: enabledFalse,
+				azure.CSIControllerName:    enabledFalse,
+				azure.RemedyControllerName: enabledFalse,
 			}))
 		})
 
@@ -415,6 +434,26 @@ var _ = Describe("ValuesProvider", func() {
 						"podAnnotations": map[string]interface{}{
 							"checksum/secret-" + azure.CSISnapshotControllerName: checksums[azure.CSISnapshotControllerName],
 						},
+					},
+				}),
+				azure.RemedyControllerName: enabledFalse,
+			}))
+		})
+
+		It("should return correct control plane chart values when remedy controller is enabled", func() {
+			values, err := vp.GetControlPlaneChartValues(ctx, cp, clusterWithRemedyControllerEnabled, checksums, false)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(map[string]interface{}{
+				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
+					"kubernetesVersion": clusterK8sLessThan119.Shoot.Spec.Kubernetes.Version,
+				}),
+				azure.CSIControllerName: enabledFalse,
+				azure.RemedyControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
+					"replicas": 1,
+					"podAnnotations": map[string]interface{}{
+						"checksum/secret-" + azure.RemedyControllerName:    checksums[azure.RemedyControllerName],
+						"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
 					},
 				}),
 			}))
@@ -445,6 +484,7 @@ var _ = Describe("ValuesProvider", func() {
 					azure.AllowUDPEgressName:         enabledFalse,
 					azure.CloudControllerManagerName: enabledTrue,
 					azure.CSINodeName:                csiNodeNotEnabled,
+					azure.RemedyControllerName:       enabledFalse,
 				}))
 			})
 
@@ -455,6 +495,7 @@ var _ = Describe("ValuesProvider", func() {
 					azure.AllowUDPEgressName:         enabledTrue,
 					azure.CloudControllerManagerName: enabledTrue,
 					azure.CSINodeName:                csiNodeNotEnabled,
+					azure.RemedyControllerName:       enabledFalse,
 				}))
 			})
 		})
@@ -471,6 +512,7 @@ var _ = Describe("ValuesProvider", func() {
 					azure.AllowUDPEgressName:         enabledFalse,
 					azure.CloudControllerManagerName: enabledTrue,
 					azure.CSINodeName:                csiNodeEnabled,
+					azure.RemedyControllerName:       enabledFalse,
 				}))
 			})
 
@@ -481,6 +523,31 @@ var _ = Describe("ValuesProvider", func() {
 					azure.AllowUDPEgressName:         enabledTrue,
 					azure.CloudControllerManagerName: enabledTrue,
 					azure.CSINodeName:                csiNodeEnabled,
+					azure.RemedyControllerName:       enabledFalse,
+				}))
+			})
+		})
+
+		Context("remedy controller is enabled", func() {
+			It("should return correct control plane shoot chart values for non zoned cluster", func() {
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, clusterWithRemedyControllerEnabled, checksums)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values).To(Equal(map[string]interface{}{
+					azure.AllowUDPEgressName:         enabledFalse,
+					azure.CloudControllerManagerName: enabledTrue,
+					azure.CSINodeName:                csiNodeNotEnabled,
+					azure.RemedyControllerName:       enabledTrue,
+				}))
+			})
+
+			It("should return correct control plane shoot chart values for zoned cluster", func() {
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cpZoned, clusterWithRemedyControllerEnabled, checksums)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values).To(Equal(map[string]interface{}{
+					azure.AllowUDPEgressName:         enabledTrue,
+					azure.CloudControllerManagerName: enabledTrue,
+					azure.CSINodeName:                csiNodeNotEnabled,
+					azure.RemedyControllerName:       enabledTrue,
 				}))
 			})
 		})

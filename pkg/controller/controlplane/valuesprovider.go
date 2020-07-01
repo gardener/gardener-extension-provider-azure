@@ -48,6 +48,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const (
+	// enableRemedyControllerAnnotation enables the Azure remedy controller (disabled by default)
+	// This annotation and the corresponding code should be removed once the remedy controller is considered
+	// fully enabled for production use.
+	enableRemedyControllerAnnotation = "azure.provider.extensions.gardener.cloud/enable-remedy-controller"
+)
+
 // Object names
 
 var (
@@ -155,6 +162,18 @@ var (
 						APIServerURL: v1beta1constants.DeploymentNameKubeAPIServer,
 					},
 				},
+				&secrets.ControlPlaneSecretConfig{
+					CertificateSecretConfig: &secrets.CertificateSecretConfig{
+						Name:       azure.RemedyControllerName,
+						CommonName: azure.UsernamePrefix + azure.RemedyControllerName,
+						CertType:   secrets.ClientCert,
+						SigningCA:  cas[v1beta1constants.SecretNameCACluster],
+					},
+					KubeConfigRequest: &secrets.KubeConfigRequest{
+						ClusterName:  clusterName,
+						APIServerURL: v1beta1constants.DeploymentNameKubeAPIServer,
+					},
+				},
 			}
 		},
 	}
@@ -209,6 +228,18 @@ var (
 					// csi-snapshot-controller
 					{Type: &appsv1.Deployment{}, Name: azure.CSISnapshotControllerName},
 					{Type: &autoscalingv1beta2.VerticalPodAutoscaler{}, Name: azure.CSISnapshotControllerName + "-vpa"},
+				},
+			},
+			{
+				Name:   azure.RemedyControllerName,
+				Images: []string{azure.RemedyControllerImageName},
+				Objects: []*chart.Object{
+					{Type: &appsv1.Deployment{}, Name: azure.RemedyControllerName},
+					{Type: &corev1.ConfigMap{}, Name: azure.RemedyControllerName + "-config"},
+					{Type: &autoscalingv1beta2.VerticalPodAutoscaler{}, Name: azure.RemedyControllerName + "-vpa"},
+					{Type: &rbacv1.Role{}, Name: azure.RemedyControllerName},
+					{Type: &rbacv1.RoleBinding{}, Name: azure.RemedyControllerName},
+					{Type: &corev1.ServiceAccount{}, Name: azure.RemedyControllerName},
 				},
 			},
 		},
@@ -281,6 +312,13 @@ var (
 					{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.CSIResizerName},
 					{Type: &rbacv1.Role{}, Name: azure.UsernamePrefix + azure.CSIResizerName},
 					{Type: &rbacv1.RoleBinding{}, Name: azure.UsernamePrefix + azure.CSIResizerName},
+				},
+			},
+			{
+				Name: azure.RemedyControllerName,
+				Objects: []*chart.Object{
+					{Type: &rbacv1.ClusterRole{}, Name: azure.UsernamePrefix + azure.RemedyControllerName},
+					{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.RemedyControllerName},
 				},
 			},
 		},
@@ -426,7 +464,9 @@ func (vp *valuesProvider) GetControlPlaneShootChartValues(
 		cloudProviderDiskConfigChecksum = util.ComputeChecksum(secret.Data)
 	}
 
-	return getControlPlaneShootChartValues(infraStatus, k8sVersionLessThan119, cloudProviderDiskConfig, cloudProviderDiskConfigChecksum), nil
+	enableRemedyController := cluster.Shoot.Annotations[enableRemedyControllerAnnotation] == "true"
+
+	return getControlPlaneShootChartValues(infraStatus, k8sVersionLessThan119, enableRemedyController, cloudProviderDiskConfig, cloudProviderDiskConfigChecksum), nil
 }
 
 // GetStorageClassesChartValues returns the values for the storage classes chart applied by the generic actuator.
@@ -541,9 +581,15 @@ func getControlPlaneChartValues(
 		return nil, err
 	}
 
+	remedy, err := getRemedyControllerChartValues(cluster, checksums, scaledDown)
+	if err != nil {
+		return nil, err
+	}
+
 	return map[string]interface{}{
 		azure.CloudControllerManagerName: ccm,
 		azure.CSIControllerName:          csi,
+		azure.RemedyControllerName:       remedy,
 	}, nil
 }
 
@@ -614,10 +660,32 @@ func getCSIControllerChartValues(
 	}, nil
 }
 
+// getRemedyControllerChartValues collects and returns the remedy controller chart values.
+func getRemedyControllerChartValues(
+	cluster *extensionscontroller.Cluster,
+	checksums map[string]string,
+	scaledDown bool,
+) (map[string]interface{}, error) {
+	enableRemedyController := cluster.Shoot.Annotations[enableRemedyControllerAnnotation] == "true"
+	if !enableRemedyController {
+		return map[string]interface{}{"enabled": false}, nil
+	}
+
+	return map[string]interface{}{
+		"enabled":  true,
+		"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
+		"podAnnotations": map[string]interface{}{
+			"checksum/secret-" + azure.RemedyControllerName:    checksums[azure.RemedyControllerName],
+			"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
+		},
+	}, nil
+}
+
 // getControlPlaneShootChartValues collects and returns the control plane shoot chart values.
 func getControlPlaneShootChartValues(
 	infraStatus *apisazure.InfrastructureStatus,
 	k8sVersionLessThan119 bool,
+	enableRemedyController bool,
 	cloudProviderDiskConfig string,
 	cloudProviderDiskConfigChecksum string,
 ) map[string]interface{} {
@@ -631,5 +699,6 @@ func getControlPlaneShootChartValues(
 			},
 			"cloudProviderConfig": cloudProviderDiskConfig,
 		},
+		azure.RemedyControllerName: map[string]interface{}{"enabled": enableRemedyController},
 	}
 }

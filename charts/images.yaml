@@ -59,3 +59,8 @@ images:
   sourceRepository: github.com/kubernetes-csi/livenessprobe
   repository: quay.io/k8scsi/livenessprobe
   tag: "v2.0.0"
+
+- name: remedy-controller-azure
+  sourceRepository: github.com/gardener/remedy-controller
+  repository: eu.gcr.io/gardener-project/gardener/remedy-controller/remedy-controller-azure
+  tag: "0.2.0"
