@@ -3,8 +3,9 @@ module github.com/gardener/gardener-extension-provider-azure
 go 1.14
 
 require (
-	github.com/Azure/azure-sdk-for-go v39.0.0+incompatible
+	github.com/Azure/azure-sdk-for-go v44.0.0+incompatible
 	github.com/Azure/azure-storage-blob-go v0.7.0
+	github.com/Azure/go-autorest/autorest v0.10.1 // indirect
 	github.com/Azure/go-autorest/autorest/azure/auth v0.4.2
 	github.com/ahmetb/gen-crd-api-reference-docs v0.1.5
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f
