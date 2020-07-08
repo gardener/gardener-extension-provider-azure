@@ -6,6 +6,7 @@ metadata:
   name: allow-udp-egress
   namespace: kube-system
   annotations:
+    azure.remedy.gardener.cloud/ignore: "true"
     gardener.cloud/description: |
       This is a technical Service created to mitigate an issue with the UDP egress traffic for Shoots using
       Azure Standard LoadBalancers (see https://github.com/gardener/gardener-extension-provider-azure/issues/1).
