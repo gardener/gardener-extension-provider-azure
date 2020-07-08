@@ -11,9 +11,9 @@ resources:
     memory: 256Mi
 
 manager:
-  metricsPort: 6000
+  metricsPort: 10258
 targetManager:
-  metricsPort: 6001
+  metricsPort: 10259
 
 controllers:
   publicipaddress:
