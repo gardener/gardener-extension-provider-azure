@@ -64,6 +64,7 @@ func NewStorageClientAuthFromSubscriptionSecretRef(ctx context.Context, c client
 		AccountPropertiesCreateParameters: &storage.AccountPropertiesCreateParameters{
 			AccessTier:             storage.Cool,
 			EnableHTTPSTrafficOnly: pointer.BoolPtr(true),
+			AllowBlobPublicAccess:  pointer.BoolPtr(false),
 		},
 	})
 	if err != nil {
