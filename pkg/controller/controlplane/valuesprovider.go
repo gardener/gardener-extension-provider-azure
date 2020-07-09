@@ -382,10 +382,27 @@ func (vp *valuesProvider) GetConfigChartValues(
 
 // TODO: Remove this in a future version again.
 func deleteLegacyCloudProviderConfigMaps(ctx context.Context, c client.Client, namespace string) error {
-	for _, name := range []string{
-		azure.CloudProviderConfigName,
-		azure.CloudProviderDiskConfigName,
-	} {
+	cmNames := []string{azure.CloudProviderDiskConfigName}
+
+	apiserverDeployment := &appsv1.Deployment{}
+	if err := c.Get(ctx, kutil.Key(namespace, v1beta1constants.DeploymentNameKubeAPIServer), apiserverDeployment); client.IgnoreNotFound(err) != nil {
+		return err
+	}
+	deleteCloudConfig := true
+	for _, vol := range apiserverDeployment.Spec.Template.Spec.Volumes {
+		if vol.ConfigMap != nil && vol.ConfigMap.Name == azure.CloudProviderConfigName {
+			// Legacy config map is still referenced by the KAS deployment and we cannot delete it now.
+			// This can happen during the shoot deletion.
+			deleteCloudConfig = false
+			break
+		}
+	}
+
+	if deleteCloudConfig {
+		cmNames = append(cmNames, azure.CloudProviderConfigName)
+	}
+
+	for _, name := range cmNames {
 		cm := &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
