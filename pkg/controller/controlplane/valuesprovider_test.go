@@ -18,6 +18,9 @@ import (
 	"context"
 	"encoding/json"
 
+	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
+	appsv1 "k8s.io/api/apps/v1"
+
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 
@@ -395,6 +398,7 @@ var _ = Describe("ValuesProvider", func() {
 
 		BeforeEach(func() {
 			c.EXPECT().Get(ctx, cpConfigSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpConfigSecret))
+			c.EXPECT().Get(ctx, kutil.Key(namespace, v1beta1constants.DeploymentNameKubeAPIServer), &appsv1.Deployment{}).Return(nil)
 			c.EXPECT().Delete(ctx, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: azure.CloudProviderConfigName, Namespace: namespace}}).Return(nil)
 			c.EXPECT().Delete(ctx, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: azure.CloudProviderDiskConfigName, Namespace: namespace}}).Return(nil)
 		})
