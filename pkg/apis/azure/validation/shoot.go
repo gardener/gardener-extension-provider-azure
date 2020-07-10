@@ -52,7 +52,7 @@ func ValidateWorkers(workers []core.Worker, zoned bool, fldPath *field.Path) fie
 		}
 		for j, volume := range worker.DataVolumes {
 			dataVolPath := fldPath.Index(i).Child("dataVolumes").Index(j)
-			allErrs = append(allErrs, validateVolume(&volume, dataVolPath)...)
+			allErrs = append(allErrs, validateDataVolume(&volume, dataVolPath)...)
 		}
 
 		if zoned && len(worker.Zones) == 0 {
@@ -95,15 +95,23 @@ func ValidateWorkersUpdate(oldWorkers, newWorkers []core.Worker, fldPath *field.
 }
 
 func validateVolume(vol *core.Volume, fldPath *field.Path) field.ErrorList {
+	return validateVolumeFunc(vol.Type, vol.VolumeSize, vol.Encrypted, fldPath)
+}
+
+func validateDataVolume(vol *core.DataVolume, fldPath *field.Path) field.ErrorList {
+	return validateVolumeFunc(vol.Type, vol.VolumeSize, vol.Encrypted, fldPath)
+}
+
+func validateVolumeFunc(volumeType *string, volumeSize string, encrypted *bool, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
-	if vol.Type == nil {
+	if volumeType == nil {
 		allErrs = append(allErrs, field.Required(fldPath.Child("type"), "must not be empty"))
 	}
-	if vol.VolumeSize == "" {
+	if volumeSize == "" {
 		allErrs = append(allErrs, field.Required(fldPath.Child("size"), "must not be empty"))
 	}
-	if vol.Encrypted != nil {
-		allErrs = append(allErrs, field.NotSupported(fldPath.Child("encrypted"), *vol.Encrypted, nil))
+	if encrypted != nil {
+		allErrs = append(allErrs, field.NotSupported(fldPath.Child("encrypted"), *encrypted, nil))
 	}
 	return allErrs
 }

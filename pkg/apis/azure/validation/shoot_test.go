@@ -130,7 +130,7 @@ var _ = Describe("Shoot validation", func() {
 					workers[0].Volume.Type = nil
 					workers[0].Volume.VolumeSize = ""
 					workers[0].Volume.Encrypted = pointer.BoolPtr(false)
-					workers[0].DataVolumes = []core.Volume{{Encrypted: pointer.BoolPtr(true)}}
+					workers[0].DataVolumes = []core.DataVolume{{Encrypted: pointer.BoolPtr(true)}}
 
 					errorList := ValidateWorkers(workers, zoned, field.NewPath("workers"))
 
@@ -164,8 +164,8 @@ var _ = Describe("Shoot validation", func() {
 
 				It("should forbid because of too many data volumes", func() {
 					for i := 0; i <= 64; i++ {
-						workers[0].DataVolumes = append(workers[0].DataVolumes, core.Volume{
-							Name:       pointer.StringPtr("foo"),
+						workers[0].DataVolumes = append(workers[0].DataVolumes, core.DataVolume{
+							Name:       "foo",
 							VolumeSize: "20Gi",
 							Type:       pointer.StringPtr("foo"),
 						})

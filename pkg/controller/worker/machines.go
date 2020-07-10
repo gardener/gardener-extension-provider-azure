@@ -322,7 +322,7 @@ func computeDisks(pool extensionsv1alpha1.WorkerPool) (map[string]interface{}, e
 	if dataVolumes := pool.DataVolumes; len(dataVolumes) > 0 {
 		// sort data volumes for consistent device naming
 		sort.Slice(dataVolumes, func(i, j int) bool {
-			return *dataVolumes[i].Name < *dataVolumes[j].Name
+			return dataVolumes[i].Name < dataVolumes[j].Name
 		})
 
 		for i, volume := range dataVolumes {
@@ -331,7 +331,7 @@ func computeDisks(pool extensionsv1alpha1.WorkerPool) (map[string]interface{}, e
 				return nil, err
 			}
 			disk := map[string]interface{}{
-				"name":       *volume.Name,
+				"name":       volume.Name,
 				"lun":        int32(i),
 				"diskSizeGB": volumeSize,
 				"caching":    "None",
