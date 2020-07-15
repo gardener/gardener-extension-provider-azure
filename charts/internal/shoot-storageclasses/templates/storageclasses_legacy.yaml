@@ -6,6 +6,7 @@ metadata:
   name: default
   annotations:
     storageclass.kubernetes.io/is-default-class: "true"
+allowVolumeExpansion: true
 provisioner: kubernetes.io/azure-disk
 parameters:
   storageaccounttype: Standard_LRS
@@ -16,6 +17,7 @@ apiVersion: {{ include "storageclassversion" . }}
 kind: StorageClass
 metadata:
   name: managed-standard-hdd
+allowVolumeExpansion: true
 provisioner: kubernetes.io/azure-disk
 parameters:
   storageaccounttype: Standard_LRS
@@ -27,6 +29,7 @@ apiVersion: {{ include "storageclassversion" . }}
 kind: StorageClass
 metadata:
   name: managed-standard-ssd
+allowVolumeExpansion: true
 provisioner: kubernetes.io/azure-disk
 parameters:
   storageaccounttype: StandardSSD_LRS
@@ -38,6 +41,7 @@ apiVersion: {{ include "storageclassversion" . }}
 kind: StorageClass
 metadata:
   name: managed-premium-ssd
+allowVolumeExpansion: true
 provisioner: kubernetes.io/azure-disk
 parameters:
   storageaccounttype: Premium_LRS
@@ -48,6 +52,7 @@ apiVersion: {{ include "storageclassversion" . }}
 kind: StorageClass
 metadata:
   name: files
+allowVolumeExpansion: true
 provisioner: kubernetes.io/azure-file
 parameters:
   skuName: Standard_LRS
