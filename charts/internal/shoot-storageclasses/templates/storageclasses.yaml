@@ -11,7 +11,7 @@ parameters:
   skuName: Standard_LRS
   kind: managed
 volumeBindingMode: WaitForFirstConsumer
-
+allowVolumeExpansion: true
 ---
 apiVersion: {{ include "storageclassversion" . }}
 kind: StorageClass
