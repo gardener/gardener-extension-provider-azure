@@ -13,6 +13,7 @@ require (
 	github.com/gardener/gardener v1.7.1-0.20200803051903-729a1cce46be
 	github.com/gardener/gardener-extension-networking-calico v1.7.1-0.20200522070525-f9aa28d3c83a
 	github.com/gardener/machine-controller-manager v0.33.0
+	github.com/gardener/remedy-controller v0.6.0
 	github.com/go-logr/logr v0.1.0
 	github.com/gobuffalo/packr/v2 v2.8.0
 	github.com/golang/mock v1.4.3
