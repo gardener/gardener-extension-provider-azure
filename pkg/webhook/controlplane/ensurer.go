@@ -42,7 +42,7 @@ import (
 
 const (
 	acrConfigPath       = "/var/lib/kubelet/acr.conf"
-	csiMigrationVersion = "1.19"
+	csiMigrationVersion = "1.20"
 )
 
 // NewEnsurer creates a new controlplane ensurer.
