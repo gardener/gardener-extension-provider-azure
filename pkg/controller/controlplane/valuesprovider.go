@@ -23,18 +23,17 @@ import (
 	azureapihelper "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
-
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
-	"github.com/gardener/gardener/extensions/pkg/controller/controlplane"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
-	"github.com/gardener/gardener/extensions/pkg/util"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"github.com/gardener/gardener/pkg/utils"
 	"github.com/gardener/gardener/pkg/utils/chart"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	"github.com/gardener/gardener/pkg/utils/secrets"
 	"github.com/gardener/gardener/pkg/utils/version"
+
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
@@ -86,7 +85,7 @@ var (
 					CertificateSecretConfig: &secrets.CertificateSecretConfig{
 						Name:       azure.CloudControllerManagerName + "-server",
 						CommonName: azure.CloudControllerManagerName,
-						DNSNames:   controlplane.DNSNamesForService(azure.CloudControllerManagerName, clusterName),
+						DNSNames:   kutil.DNSNamesForService(azure.CloudControllerManagerName, clusterName),
 						CertType:   secrets.ServerCert,
 						SigningCA:  cas[v1beta1constants.SecretNameCACluster],
 					},
@@ -356,14 +355,14 @@ func (vp *valuesProvider) GetConfigChartValues(
 	cpConfig := &apisazure.ControlPlaneConfig{}
 	if cp.Spec.ProviderConfig != nil {
 		if _, _, err := vp.Decoder().Decode(cp.Spec.ProviderConfig.Raw, nil, cpConfig); err != nil {
-			return nil, errors.Wrapf(err, "could not decode providerConfig of controlplane '%s'", util.ObjectName(cp))
+			return nil, errors.Wrapf(err, "could not decode providerConfig of controlplane '%s'", kutil.ObjectName(cp))
 		}
 	}
 
 	// Decode infrastructureProviderStatus
 	infraStatus := &apisazure.InfrastructureStatus{}
 	if _, _, err := vp.Decoder().Decode(cp.Spec.InfrastructureProviderStatus.Raw, nil, infraStatus); err != nil {
-		return nil, errors.Wrapf(err, "could not decode infrastructureProviderStatus of controlplane '%s'", util.ObjectName(cp))
+		return nil, errors.Wrapf(err, "could not decode infrastructureProviderStatus of controlplane '%s'", kutil.ObjectName(cp))
 	}
 
 	// Get client auth
@@ -432,7 +431,7 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 	cpConfig := &apisazure.ControlPlaneConfig{}
 	if cp.Spec.ProviderConfig != nil {
 		if _, _, err := vp.Decoder().Decode(cp.Spec.ProviderConfig.Raw, nil, cpConfig); err != nil {
-			return nil, errors.Wrapf(err, "could not decode providerConfig of controlplane '%s'", util.ObjectName(cp))
+			return nil, errors.Wrapf(err, "could not decode providerConfig of controlplane '%s'", kutil.ObjectName(cp))
 		}
 	}
 
@@ -440,7 +439,7 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 	if err := vp.Client().Get(ctx, kutil.Key(cp.Namespace, azure.CloudProviderConfigName), cpConfigSecret); err != nil {
 		return nil, err
 	}
-	checksums[azure.CloudProviderConfigName] = util.ComputeChecksum(cpConfigSecret.Data)
+	checksums[azure.CloudProviderConfigName] = utils.ComputeChecksum(cpConfigSecret.Data)
 
 	// TODO: This cleanup is only necessary because we switched from a ConfigMap to a Secret.
 	// Please remove this logic in a future version.
@@ -461,7 +460,7 @@ func (vp *valuesProvider) GetControlPlaneShootChartValues(
 	// Decode infrastructureProviderStatus
 	infraStatus := &apisazure.InfrastructureStatus{}
 	if _, _, err := vp.Decoder().Decode(cp.Spec.InfrastructureProviderStatus.Raw, nil, infraStatus); err != nil {
-		return nil, errors.Wrapf(err, "could not decode infrastructureProviderStatus of controlplane '%s'", util.ObjectName(cp))
+		return nil, errors.Wrapf(err, "could not decode infrastructureProviderStatus of controlplane '%s'", kutil.ObjectName(cp))
 	}
 
 	k8sVersionLessThan119, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, "<", "1.19")
@@ -481,7 +480,7 @@ func (vp *valuesProvider) GetControlPlaneShootChartValues(
 		}
 
 		cloudProviderDiskConfig = string(secret.Data[azure.CloudProviderConfigMapKey])
-		cloudProviderDiskConfigChecksum = util.ComputeChecksum(secret.Data)
+		cloudProviderDiskConfigChecksum = utils.ComputeChecksum(secret.Data)
 	}
 
 	enableRemedyController := cluster.Shoot.Annotations[enableRemedyControllerAnnotation] == "true"
@@ -521,7 +520,7 @@ func getConfigChartValues(
 ) (map[string]interface{}, error) {
 	subnetName, routeTableName, securityGroupName, err := getInfraNames(infraStatus)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not determine subnet, availability set, route table or security group name from infrastructureStatus of controlplane '%s'", util.ObjectName(cp))
+		return nil, errors.Wrapf(err, "could not determine subnet, availability set, route table or security group name from infrastructureStatus of controlplane '%s'", kutil.ObjectName(cp))
 	}
 
 	var maxNodes int32
