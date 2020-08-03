@@ -18,12 +18,9 @@ import (
 	"context"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-
-	"github.com/coreos/go-systemd/unit"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/csimigration"
 	"github.com/gardener/gardener/extensions/pkg/controller/operatingsystemconfig/oscommon/cloudinit"
-	"github.com/gardener/gardener/extensions/pkg/util"
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	"github.com/gardener/gardener/extensions/pkg/webhook/controlplane"
 	"github.com/gardener/gardener/extensions/pkg/webhook/controlplane/genericmutator"
@@ -31,12 +28,15 @@ import (
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	versionutils "github.com/gardener/gardener/pkg/utils/version"
+
+	"github.com/coreos/go-systemd/unit"
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	kubeletconfigv1beta1 "k8s.io/kubelet/config/v1beta1"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -471,7 +471,7 @@ func (e *ensurer) ensureAcrConfigFile(ctx context.Context, ectx genericmutator.E
 	// Add new ACR systemd file.
 	*files = append(*files, extensionsv1alpha1.File{
 		Path:        acrConfigPath,
-		Permissions: util.Int32Ptr(0644),
+		Permissions: pointer.Int32Ptr(0644),
 		Content: extensionsv1alpha1.FileContent{
 			Inline: fci,
 		},
