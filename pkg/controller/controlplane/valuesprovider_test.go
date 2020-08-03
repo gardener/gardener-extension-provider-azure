@@ -127,7 +127,7 @@ var _ = Describe("ValuesProvider", func() {
 		}
 
 		cidr                  = "10.250.0.0/19"
-		clusterK8sLessThan119 = &extensionscontroller.Cluster{
+		clusterK8sLessThan120 = &extensionscontroller.Cluster{
 			Shoot: &gardencorev1beta1.Shoot{
 				Spec: gardencorev1beta1.ShootSpec{
 					Networking: gardencorev1beta1.Networking{
@@ -139,14 +139,14 @@ var _ = Describe("ValuesProvider", func() {
 				},
 			},
 		}
-		clusterK8sAtLeast119 = &extensionscontroller.Cluster{
+		clusterK8sAtLeast120 = &extensionscontroller.Cluster{
 			Shoot: &gardencorev1beta1.Shoot{
 				Spec: gardencorev1beta1.ShootSpec{
 					Networking: gardencorev1beta1.Networking{
 						Pods: &cidr,
 					},
 					Kubernetes: gardencorev1beta1.Kubernetes{
-						Version: "1.19.4",
+						Version: "1.20.4",
 						VerticalPodAutoscaler: &gardencorev1beta1.VerticalPodAutoscaler{
 							Enabled: true,
 						},
@@ -278,7 +278,7 @@ var _ = Describe("ValuesProvider", func() {
 			c.EXPECT().Get(ctx, cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
 			c.EXPECT().Delete(ctx, acrConfigMap).Return(errorAcrConfigMapNotFound)
 
-			_, err := vp.GetConfigChartValues(ctx, cpNoSubnet, clusterK8sLessThan119)
+			_, err := vp.GetConfigChartValues(ctx, cpNoSubnet, clusterK8sLessThan120)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("could not determine subnet for purpose 'nodes'"))
 		})
@@ -287,7 +287,7 @@ var _ = Describe("ValuesProvider", func() {
 			c.EXPECT().Get(ctx, cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
 			c.EXPECT().Delete(ctx, acrConfigMap).Return(errorAcrConfigMapNotFound)
 
-			_, err := vp.GetConfigChartValues(ctx, cpNoAvailabilitySet, clusterK8sLessThan119)
+			_, err := vp.GetConfigChartValues(ctx, cpNoAvailabilitySet, clusterK8sLessThan120)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("could not determine availability set for purpose 'nodes'"))
 		})
@@ -296,7 +296,7 @@ var _ = Describe("ValuesProvider", func() {
 			c.EXPECT().Get(ctx, cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
 			c.EXPECT().Delete(ctx, acrConfigMap).Return(errorAcrConfigMapNotFound)
 
-			_, err := vp.GetConfigChartValues(ctx, cpNoRouteTables, clusterK8sLessThan119)
+			_, err := vp.GetConfigChartValues(ctx, cpNoRouteTables, clusterK8sLessThan120)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("could not determine route table for purpose 'nodes'"))
 		})
@@ -305,7 +305,7 @@ var _ = Describe("ValuesProvider", func() {
 			c.EXPECT().Get(ctx, cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
 			c.EXPECT().Delete(ctx, acrConfigMap).Return(errorAcrConfigMapNotFound)
 
-			_, err := vp.GetConfigChartValues(ctx, cpNoSecurityGroups, clusterK8sLessThan119)
+			_, err := vp.GetConfigChartValues(ctx, cpNoSecurityGroups, clusterK8sLessThan120)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("could not determine security group for purpose 'nodes'"))
 		})
@@ -314,7 +314,7 @@ var _ = Describe("ValuesProvider", func() {
 			c.EXPECT().Get(ctx, cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
 			c.EXPECT().Delete(ctx, acrConfigMap).Return(errorAcrConfigMapNotFound)
 
-			values, err := vp.GetConfigChartValues(ctx, cp, clusterK8sLessThan119)
+			values, err := vp.GetConfigChartValues(ctx, cp, clusterK8sLessThan120)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
 				"tenantId":            "TenantID",
@@ -337,7 +337,7 @@ var _ = Describe("ValuesProvider", func() {
 			c.EXPECT().Get(ctx, cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
 			c.EXPECT().Delete(ctx, acrConfigMap).Return(errorAcrConfigMapNotFound)
 
-			values, err := vp.GetConfigChartValues(ctx, cpZoned, clusterK8sLessThan119)
+			values, err := vp.GetConfigChartValues(ctx, cpZoned, clusterK8sLessThan120)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
@@ -359,7 +359,7 @@ var _ = Describe("ValuesProvider", func() {
 		It("should return correct control plane chart values with identity", func() {
 			c.EXPECT().Get(ctx, cpSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(cpSecret))
 
-			values, err := vp.GetConfigChartValues(ctx, cpIdentity, clusterK8sLessThan119)
+			values, err := vp.GetConfigChartValues(ctx, cpIdentity, clusterK8sLessThan120)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
 				"tenantId":            "TenantID",
@@ -406,25 +406,25 @@ var _ = Describe("ValuesProvider", func() {
 			c.EXPECT().Delete(ctx, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: azure.CloudProviderDiskConfigName, Namespace: namespace}}).Return(nil)
 		})
 
-		It("should return correct control plane chart values (k8s < 1.19)", func() {
-			values, err := vp.GetControlPlaneChartValues(ctx, cp, clusterK8sLessThan119, checksums, false)
+		It("should return correct control plane chart values (k8s < 1.20)", func() {
+			values, err := vp.GetControlPlaneChartValues(ctx, cp, clusterK8sLessThan120, checksums, false)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
 				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
-					"kubernetesVersion": clusterK8sLessThan119.Shoot.Spec.Kubernetes.Version,
+					"kubernetesVersion": clusterK8sLessThan120.Shoot.Spec.Kubernetes.Version,
 				}),
 				azure.CSIControllerName:    enabledFalse,
 				azure.RemedyControllerName: enabledFalse,
 			}))
 		})
 
-		It("should return correct control plane chart values (k8s >= 1.19)", func() {
-			values, err := vp.GetControlPlaneChartValues(ctx, cp, clusterK8sAtLeast119, checksums, false)
+		It("should return correct control plane chart values (k8s >= 1.20)", func() {
+			values, err := vp.GetControlPlaneChartValues(ctx, cp, clusterK8sAtLeast120, checksums, false)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
 				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
-					"kubernetesVersion": clusterK8sAtLeast119.Shoot.Spec.Kubernetes.Version,
+					"kubernetesVersion": clusterK8sAtLeast120.Shoot.Spec.Kubernetes.Version,
 				}),
 				azure.CSIControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
 					"replicas": 1,
@@ -453,7 +453,7 @@ var _ = Describe("ValuesProvider", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
 				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
-					"kubernetesVersion": clusterK8sLessThan119.Shoot.Spec.Kubernetes.Version,
+					"kubernetesVersion": clusterK8sLessThan120.Shoot.Spec.Kubernetes.Version,
 				}),
 				azure.CSIControllerName: enabledFalse,
 				azure.RemedyControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
@@ -485,9 +485,9 @@ var _ = Describe("ValuesProvider", func() {
 			})
 		)
 
-		Context("k8s < 1.19", func() {
+		Context("k8s < 1.20", func() {
 			It("should return correct control plane shoot chart values for non zoned cluster", func() {
-				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, clusterK8sLessThan119, checksums)
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, clusterK8sLessThan120, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
 					azure.AllowUDPEgressName:         enabledFalse,
@@ -498,7 +498,7 @@ var _ = Describe("ValuesProvider", func() {
 			})
 
 			It("should return correct control plane shoot chart values for zoned cluster", func() {
-				values, err := vp.GetControlPlaneShootChartValues(ctx, cpZoned, clusterK8sLessThan119, checksums)
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cpZoned, clusterK8sLessThan120, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
 					azure.AllowUDPEgressName:         enabledTrue,
@@ -509,13 +509,13 @@ var _ = Describe("ValuesProvider", func() {
 			})
 		})
 
-		Context("k8s >= 1.19", func() {
+		Context("k8s >= 1.20", func() {
 			BeforeEach(func() {
 				c.EXPECT().Get(ctx, cpDiskConfigKey, &corev1.Secret{}).DoAndReturn(clientGet(cpDiskConfig))
 			})
 
 			It("should return correct control plane shoot chart values for non zoned cluster", func() {
-				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, clusterK8sAtLeast119, checksums)
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, clusterK8sAtLeast120, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
 					azure.AllowUDPEgressName:         enabledFalse,
@@ -526,7 +526,7 @@ var _ = Describe("ValuesProvider", func() {
 			})
 
 			It("should return correct control plane shoot chart values for zoned cluster", func() {
-				values, err := vp.GetControlPlaneShootChartValues(ctx, cpZoned, clusterK8sAtLeast119, checksums)
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cpZoned, clusterK8sAtLeast120, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
 					azure.AllowUDPEgressName:         enabledTrue,
@@ -563,14 +563,14 @@ var _ = Describe("ValuesProvider", func() {
 	})
 
 	Describe("#GetStorageClassesChartValues()", func() {
-		It("should return correct storage class chart values (k8s < 1.19)", func() {
-			values, err := vp.GetStorageClassesChartValues(ctx, cp, clusterK8sLessThan119)
+		It("should return correct storage class chart values (k8s < 1.20)", func() {
+			values, err := vp.GetStorageClassesChartValues(ctx, cp, clusterK8sLessThan120)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{"useLegacyProvisioner": true}))
 		})
 
-		It("should return correct storage class chart values (k8s >= 1.19)", func() {
-			values, err := vp.GetStorageClassesChartValues(ctx, cp, clusterK8sAtLeast119)
+		It("should return correct storage class chart values (k8s >= 1.20)", func() {
+			values, err := vp.GetStorageClassesChartValues(ctx, cp, clusterK8sAtLeast120)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{"useLegacyProvisioner": false}))
 		})
