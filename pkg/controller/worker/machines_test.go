@@ -19,6 +19,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"strings"
+	"time"
 
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
@@ -132,6 +134,8 @@ var _ = Describe("Machines", func() {
 
 				labels map[string]string
 
+				machineConfiguration *machinev1alpha1.MachineConfiguration
+
 				shootVersionMajorMinor string
 				shootVersion           string
 				scheme                 *runtime.Scheme
@@ -184,6 +188,7 @@ var _ = Describe("Machines", func() {
 				maxUnavailablePool1 = intstr.FromInt(2)
 
 				labels = map[string]string{"component": "TiDB"}
+				machineConfiguration = &machinev1alpha1.MachineConfiguration{}
 
 				namePool2 = "pool-2"
 				minPool2 = 30
@@ -437,24 +442,26 @@ var _ = Describe("Machines", func() {
 
 					machineDeployments = worker.MachineDeployments{
 						{
-							Name:           machineClassNamePool1,
-							ClassName:      machineClassWithHashPool1,
-							SecretName:     machineClassWithHashPool1,
-							Minimum:        minPool1,
-							Maximum:        maxPool1,
-							MaxSurge:       maxSurgePool1,
-							MaxUnavailable: maxUnavailablePool1,
-							Labels:         labels,
+							Name:                 machineClassNamePool1,
+							ClassName:            machineClassWithHashPool1,
+							SecretName:           machineClassWithHashPool1,
+							Minimum:              minPool1,
+							Maximum:              maxPool1,
+							MaxSurge:             maxSurgePool1,
+							MaxUnavailable:       maxUnavailablePool1,
+							Labels:               labels,
+							MachineConfiguration: machineConfiguration,
 						},
 						{
-							Name:           machineClassNamePool2,
-							ClassName:      machineClassWithHashPool2,
-							SecretName:     machineClassWithHashPool2,
-							Minimum:        minPool2,
-							Maximum:        maxPool2,
-							MaxSurge:       maxSurgePool2,
-							MaxUnavailable: maxUnavailablePool2,
-							Labels:         labels,
+							Name:                 machineClassNamePool2,
+							ClassName:            machineClassWithHashPool2,
+							SecretName:           machineClassWithHashPool2,
+							Minimum:              minPool2,
+							Maximum:              maxPool2,
+							MaxSurge:             maxSurgePool2,
+							MaxUnavailable:       maxUnavailablePool2,
+							Labels:               labels,
+							MachineConfiguration: machineConfiguration,
 						},
 					}
 
@@ -590,6 +597,36 @@ var _ = Describe("Machines", func() {
 				result, err := workerDelegate.GenerateMachineDeployments(context.TODO())
 				Expect(err).To(HaveOccurred())
 				Expect(result).To(BeNil())
+			})
+
+			It("should set expected machineControllerManager settings on machine deployment", func() {
+				expectGetSecretCallToWork(c, azureClientID, azureClientSecret, azureSubscriptionID, azureTenantID)
+
+				testDrainTimeout := metav1.Duration{Duration: 10 * time.Minute}
+				testHealthTimeout := metav1.Duration{Duration: 20 * time.Minute}
+				testCreationTimeout := metav1.Duration{Duration: 30 * time.Minute}
+				testMaxEvictRetries := int32(30)
+				testNodeConditions := []string{"ReadonlyFilesystem", "KernelDeadlock", "DiskPressure"}
+				w.Spec.Pools[0].MachineControllerManagerSettings = &gardencorev1beta1.MachineControllerManagerSettings{
+					MachineDrainTimeout:    &testDrainTimeout,
+					MachineCreationTimeout: &testCreationTimeout,
+					MachineHealthTimeout:   &testHealthTimeout,
+					MaxEvictRetries:        &testMaxEvictRetries,
+					NodeConditions:         testNodeConditions,
+				}
+
+				workerDelegate, _ = NewWorkerDelegate(common.NewClientContext(c, scheme, decoder), chartApplier, "", w, cluster)
+
+				result, err := workerDelegate.GenerateMachineDeployments(context.TODO())
+				resultSettings := result[0].MachineConfiguration
+				resultNodeConditions := strings.Join(testNodeConditions, ",")
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resultSettings.MachineDrainTimeout).To(Equal(&testDrainTimeout))
+				Expect(resultSettings.MachineCreationTimeout).To(Equal(&testCreationTimeout))
+				Expect(resultSettings.MachineHealthTimeout).To(Equal(&testHealthTimeout))
+				Expect(resultSettings.MaxEvictRetries).To(Equal(&testMaxEvictRetries))
+				Expect(resultSettings.NodeConditions).To(Equal(&resultNodeConditions))
 			})
 		})
 	})
