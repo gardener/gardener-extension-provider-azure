@@ -166,13 +166,14 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		generateMachineClassAndDeployment := func(zone *zoneInfo, availabilitySetID *string) (worker.MachineDeployment, map[string]interface{}) {
 			var (
 				machineDeployment = worker.MachineDeployment{
-					Minimum:        pool.Minimum,
-					Maximum:        pool.Maximum,
-					MaxSurge:       pool.MaxSurge,
-					MaxUnavailable: pool.MaxUnavailable,
-					Labels:         pool.Labels,
-					Annotations:    pool.Annotations,
-					Taints:         pool.Taints,
+					Minimum:              pool.Minimum,
+					Maximum:              pool.Maximum,
+					MaxSurge:             pool.MaxSurge,
+					MaxUnavailable:       pool.MaxUnavailable,
+					Labels:               pool.Labels,
+					Annotations:          pool.Annotations,
+					Taints:               pool.Taints,
+					MachineConfiguration: genericworkeractuator.ReadMachineConfiguration(pool),
 				}
 
 				machineClassSpec = utils.MergeMaps(map[string]interface{}{
