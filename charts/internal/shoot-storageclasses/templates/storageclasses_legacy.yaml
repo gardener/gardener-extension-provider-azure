@@ -6,6 +6,7 @@ metadata:
   name: default
   annotations:
     storageclass.kubernetes.io/is-default-class: "true"
+    resources.gardener.cloud/delete-on-invalid-update: "true"
 allowVolumeExpansion: true
 provisioner: kubernetes.io/azure-disk
 parameters:
@@ -17,6 +18,8 @@ apiVersion: {{ include "storageclassversion" . }}
 kind: StorageClass
 metadata:
   name: managed-standard-hdd
+  annotations:
+    resources.gardener.cloud/delete-on-invalid-update: "true"
 allowVolumeExpansion: true
 provisioner: kubernetes.io/azure-disk
 parameters:
@@ -29,6 +32,8 @@ apiVersion: {{ include "storageclassversion" . }}
 kind: StorageClass
 metadata:
   name: managed-standard-ssd
+  annotations:
+    resources.gardener.cloud/delete-on-invalid-update: "true"
 allowVolumeExpansion: true
 provisioner: kubernetes.io/azure-disk
 parameters:
@@ -41,6 +46,8 @@ apiVersion: {{ include "storageclassversion" . }}
 kind: StorageClass
 metadata:
   name: managed-premium-ssd
+  annotations:
+    resources.gardener.cloud/delete-on-invalid-update: "true"
 allowVolumeExpansion: true
 provisioner: kubernetes.io/azure-disk
 parameters:
@@ -52,6 +59,8 @@ apiVersion: {{ include "storageclassversion" . }}
 kind: StorageClass
 metadata:
   name: files
+  annotations:
+    resources.gardener.cloud/delete-on-invalid-update: "true"
 allowVolumeExpansion: true
 provisioner: kubernetes.io/azure-file
 parameters:
