@@ -602,6 +602,7 @@ func Convert_azure_MachineType_To_v1alpha1_MachineType(in *azure.MachineType, ou
 
 func autoConvert_v1alpha1_NatGatewayConfig_To_azure_NatGatewayConfig(in *NatGatewayConfig, out *azure.NatGatewayConfig, s conversion.Scope) error {
 	out.Enabled = in.Enabled
+	out.IdleConnectionTimeoutMinutes = (*int32)(unsafe.Pointer(in.IdleConnectionTimeoutMinutes))
 	return nil
 }
 
@@ -612,6 +613,7 @@ func Convert_v1alpha1_NatGatewayConfig_To_azure_NatGatewayConfig(in *NatGatewayC
 
 func autoConvert_azure_NatGatewayConfig_To_v1alpha1_NatGatewayConfig(in *azure.NatGatewayConfig, out *NatGatewayConfig, s conversion.Scope) error {
 	out.Enabled = in.Enabled
+	out.IdleConnectionTimeoutMinutes = (*int32)(unsafe.Pointer(in.IdleConnectionTimeoutMinutes))
 	return nil
 }
 

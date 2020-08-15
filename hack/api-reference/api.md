@@ -903,6 +903,18 @@ bool
 <p>Enabled is an indicator if NAT gateway should be deployed.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>idleConnectionTimeoutMinutes</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>IdleConnectionTimeoutMinutes specifies the idle connection timeout limit for NAT gateway in minutes.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.NetworkConfig">NetworkConfig

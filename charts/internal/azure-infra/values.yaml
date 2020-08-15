@@ -42,3 +42,7 @@ outputKeys:
   securityGroupName: securityGroupName
   # identityID: managedIdentityID
   # identityClientID: managedIdentityClientID
+
+natGateway:
+  idleConnectionTimeoutMinutes:
+

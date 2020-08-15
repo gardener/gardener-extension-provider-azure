@@ -289,6 +289,41 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					"Detail": Equal("NatGateway is currently only supported for zoned cluster"),
 				}))
 			})
+
+			Context("IdleConnectionTimeoutMinutes", func() {
+				It("should return an error when specifying lower than minimum values", func() {
+					var timeoutValue int32 = 0
+					infrastructureConfig.Zoned = true
+					infrastructureConfig.Networks.NatGateway = &apisazure.NatGatewayConfig{Enabled: true, IdleConnectionTimeoutMinutes: &timeoutValue}
+					errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+					Expect(errorList).To(HaveLen(1))
+					Expect(errorList).To(ConsistOfFields(Fields{
+						"Type":   Equal(field.ErrorTypeInvalid),
+						"Field":  Equal("networks.natGateway.idleConnectionTimeoutMinutes"),
+						"Detail": Equal("idleConnectionTimeoutMinutes values must range between 4 and 120"),
+					}))
+				})
+
+				It("should return an error when specifying greater than maximum values", func() {
+					var timeoutValue int32 = 121
+					infrastructureConfig.Zoned = true
+					infrastructureConfig.Networks.NatGateway = &apisazure.NatGatewayConfig{Enabled: true, IdleConnectionTimeoutMinutes: &timeoutValue}
+					errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+					Expect(errorList).To(HaveLen(1))
+					Expect(errorList).To(ConsistOfFields(Fields{
+						"Type":   Equal(field.ErrorTypeInvalid),
+						"Field":  Equal("networks.natGateway.idleConnectionTimeoutMinutes"),
+						"Detail": Equal("idleConnectionTimeoutMinutes values must range between 4 and 120"),
+					}))
+				})
+
+				It("should not return an error for valid values", func() {
+					var timeoutValue int32 = 120
+					infrastructureConfig.Zoned = true
+					infrastructureConfig.Networks.NatGateway = &apisazure.NatGatewayConfig{Enabled: true, IdleConnectionTimeoutMinutes: &timeoutValue}
+					Expect(ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)).To(BeEmpty())
+				})
+			})
 		})
 	})
 

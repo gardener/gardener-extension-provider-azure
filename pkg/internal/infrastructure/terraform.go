@@ -95,6 +95,7 @@ func ComputeTerraformerChartValues(infra *extensionsv1alpha1.Infrastructure, cli
 			"routeTableName":    TerraformerOutputKeyRouteTableName,
 			"securityGroupName": TerraformerOutputKeySecurityGroupName,
 		}
+		natGatewayConfig = map[string]interface{}{}
 	)
 	// check if we should use an existing ResourceGroup or create a new one
 	if config.ResourceGroup != nil {
@@ -134,6 +135,9 @@ func ComputeTerraformerChartValues(infra *extensionsv1alpha1.Infrastructure, cli
 
 	if config.Networks.NatGateway != nil && config.Networks.NatGateway.Enabled {
 		createNatGateway = true
+		if config.Networks.NatGateway.IdleConnectionTimeoutMinutes != nil {
+			natGatewayConfig["idleConnectionTimeoutMinutes"] = *config.Networks.NatGateway.IdleConnectionTimeoutMinutes
+		}
 	}
 
 	if config.Identity != nil && config.Identity.Name != "" && config.Identity.ResourceGroup != "" {
@@ -165,6 +169,7 @@ func ComputeTerraformerChartValues(infra *extensionsv1alpha1.Infrastructure, cli
 			"worker": config.Networks.Workers,
 		},
 		"identity":   identityConfig,
+		"natGateway": natGatewayConfig,
 		"outputKeys": outputKeys,
 	}, nil
 }
