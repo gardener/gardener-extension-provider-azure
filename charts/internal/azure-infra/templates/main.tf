@@ -100,6 +100,11 @@ resource "azurerm_nat_gateway" "nat" {
   {{- end }}
   sku_name                = "Standard"
   public_ip_address_ids   = [azurerm_public_ip.natip.id]
+  {{- if .Values.natGateway }}
+  {{- if .Values.natGateway.idleConnectionTimeoutMinutes }}
+  idle_timeout_in_minutes = {{ .Values.natGateway.idleConnectionTimeoutMinutes }}
+  {{- end }}
+  {{- end }}
 }
 
 resource "azurerm_subnet_nat_gateway_association" "nat-worker-subnet-association" {

@@ -16,10 +16,14 @@ package validation
 
 import (
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-
 	cidrvalidation "github.com/gardener/gardener/pkg/utils/validation/cidr"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+)
+
+const (
+	natGatewayMinTimeoutInMinutes int32 = 4
+	natGatewayMaxTimeoutInMinutes int32 = 120
 )
 
 // ValidateInfrastructureConfig validates a InfrastructureConfig object.
@@ -91,6 +95,12 @@ func ValidateInfrastructureConfig(infra *apisazure.InfrastructureConfig, nodesCI
 	// a Standard LoadBalancer and a NatGateway.
 	if !infra.Zoned && infra.Networks.NatGateway != nil {
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("networks", "natGateway"), infra.Networks.NatGateway, "NatGateway is currently only supported for zoned cluster"))
+	}
+
+	if infra.Networks.NatGateway != nil &&
+		infra.Networks.NatGateway.IdleConnectionTimeoutMinutes != nil &&
+		(*infra.Networks.NatGateway.IdleConnectionTimeoutMinutes < natGatewayMinTimeoutInMinutes || *infra.Networks.NatGateway.IdleConnectionTimeoutMinutes > natGatewayMaxTimeoutInMinutes) {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("networks", "natGateway", "idleConnectionTimeoutMinutes"), *infra.Networks.NatGateway.IdleConnectionTimeoutMinutes, "idleConnectionTimeoutMinutes values must range between 4 and 120"))
 	}
 
 	if infra.Identity != nil && (infra.Identity.Name == "" || infra.Identity.ResourceGroup == "") {

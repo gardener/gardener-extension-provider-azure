@@ -150,6 +150,8 @@ type VNetStatus struct {
 type NatGatewayConfig struct {
 	// Enabled is an indicator if NAT gateway should be deployed.
 	Enabled bool
+	// IdleConnectionTimeoutMinutes specifies the idle connection timeout limit for NAT gateway in minutes.
+	IdleConnectionTimeoutMinutes *int32
 }
 
 // IdentityConfig contains configuration for the managed identity.

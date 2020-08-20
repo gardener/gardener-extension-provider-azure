@@ -145,6 +145,7 @@ var _ = Describe("Terraform", func() {
 			expectedOutputKeysValues    map[string]interface{}
 			expectedResourceGroupValues map[string]interface{}
 			expectedIdentityValues      map[string]interface{}
+			expectedNatGatewayValues    map[string]interface{}
 		)
 
 		BeforeEach(func() {
@@ -177,6 +178,8 @@ var _ = Describe("Terraform", func() {
 				"securityGroupName": TerraformerOutputKeySecurityGroupName,
 			}
 
+			expectedNatGatewayValues = map[string]interface{}{}
+
 			expectedValues = map[string]interface{}{
 				"azure":         expectedAzureValues,
 				"create":        expectedCreateValues,
@@ -186,6 +189,7 @@ var _ = Describe("Terraform", func() {
 				"networks": map[string]interface{}{
 					"worker": config.Networks.Workers,
 				},
+				"natGateway": expectedNatGatewayValues,
 				"outputKeys": expectedOutputKeysValues,
 			}
 		})
@@ -309,6 +313,19 @@ var _ = Describe("Terraform", func() {
 					Enabled: true,
 				}
 				expectedCreateValues["natGateway"] = true
+				values, err := ComputeTerraformerChartValues(infra, clientAuth, config, cluster)
+				Expect(err).To(Not(HaveOccurred()))
+				Expect(values).To(BeEquivalentTo(expectedValues))
+			})
+
+			It("should correctly compute terraform chart values with NatGateway's Timeout value", func() {
+				var timeout int32 = 30
+				config.Networks.NatGateway = &api.NatGatewayConfig{
+					Enabled:                      true,
+					IdleConnectionTimeoutMinutes: &timeout,
+				}
+				expectedCreateValues["natGateway"] = true
+				expectedNatGatewayValues["idleConnectionTimeoutMinutes"] = timeout
 				values, err := ComputeTerraformerChartValues(infra, clientAuth, config, cluster)
 				Expect(err).To(Not(HaveOccurred()))
 				Expect(values).To(BeEquivalentTo(expectedValues))
