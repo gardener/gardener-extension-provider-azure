@@ -49,10 +49,8 @@ import (
 )
 
 const (
-	// enableRemedyControllerAnnotation enables the Azure remedy controller (disabled by default)
-	// This annotation and the corresponding code should be removed once the remedy controller is considered
-	// fully enabled for production use.
-	enableRemedyControllerAnnotation = "azure.provider.extensions.gardener.cloud/enable-remedy-controller"
+	// disableRemedyControllerAnnotation disables the Azure remedy controller (enabled by default)
+	disableRemedyControllerAnnotation = "azure.provider.extensions.gardener.cloud/disable-remedy-controller"
 )
 
 // Object names
@@ -483,9 +481,9 @@ func (vp *valuesProvider) GetControlPlaneShootChartValues(
 		cloudProviderDiskConfigChecksum = utils.ComputeChecksum(secret.Data)
 	}
 
-	enableRemedyController := cluster.Shoot.Annotations[enableRemedyControllerAnnotation] == "true"
+	disableRemedyController := cluster.Shoot.Annotations[disableRemedyControllerAnnotation] == "true"
 
-	return getControlPlaneShootChartValues(cluster, infraStatus, k8sVersionLessThan120, enableRemedyController, cloudProviderDiskConfig, cloudProviderDiskConfigChecksum), nil
+	return getControlPlaneShootChartValues(cluster, infraStatus, k8sVersionLessThan120, disableRemedyController, cloudProviderDiskConfig, cloudProviderDiskConfigChecksum), nil
 }
 
 // GetStorageClassesChartValues returns the values for the storage classes chart applied by the generic actuator.
@@ -685,8 +683,8 @@ func getRemedyControllerChartValues(
 	checksums map[string]string,
 	scaledDown bool,
 ) (map[string]interface{}, error) {
-	enableRemedyController := cluster.Shoot.Annotations[enableRemedyControllerAnnotation] == "true"
-	if !enableRemedyController {
+	disableRemedyController := cluster.Shoot.Annotations[disableRemedyControllerAnnotation] == "true"
+	if disableRemedyController {
 		return map[string]interface{}{"enabled": false}, nil
 	}
 
@@ -705,7 +703,7 @@ func getControlPlaneShootChartValues(
 	cluster *extensionscontroller.Cluster,
 	infraStatus *apisazure.InfrastructureStatus,
 	k8sVersionLessThan120 bool,
-	enableRemedyController bool,
+	disableRemedyController bool,
 	cloudProviderDiskConfig string,
 	cloudProviderDiskConfigChecksum string,
 ) map[string]interface{} {
@@ -720,6 +718,6 @@ func getControlPlaneShootChartValues(
 			},
 			"cloudProviderConfig": cloudProviderDiskConfig,
 		},
-		azure.RemedyControllerName: map[string]interface{}{"enabled": enableRemedyController},
+		azure.RemedyControllerName: map[string]interface{}{"enabled": !disableRemedyController},
 	}
 }
