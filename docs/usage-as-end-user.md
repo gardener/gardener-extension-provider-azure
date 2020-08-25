@@ -2,12 +2,19 @@
 
 The [`core.gardener.cloud/v1beta1.Shoot` resource](https://github.com/gardener/gardener/blob/master/example/90-shoot.yaml) declares a few fields that are meant to contain provider-specific configuration.
 
-In this document we are describing how this configuration looks like for Azure and provide an example `Shoot` manifest with minimal configuration that you can use to create an Azure cluster (modulo the landscape-specific information like cloud profile names, secret binding names, etc.).
+This document describes the configurable options for Azure and provides an example `Shoot` manifest with minimal configuration that can be used to create an Azure cluster (modulo the landscape-specific information like cloud profile names, secret binding names, etc.).
 
-## Provider Secret Data
+## Azure Provider Credentials
 
-Every shoot cluster references a `SecretBinding` which itself references a `Secret`, and this `Secret` contains the provider credentials of your Azure subscription.
-This `Secret` must look as follows:
+In order for Gardener to create a Kubernetes cluster using Azure infrastructure components, a Shoot has to provide credentials with sufficient permissions to the desired Azure subscription.
+Every shoot cluster references a `SecretBinding` which itself references a `Secret`, and this `Secret` contains the provider credentials of the Azure subscription.
+The `SecretBinding` is configurable in the [Shoot cluster](https://github.com/gardener/gardener/blob/master/example/90-shoot.yaml) with the field `secretBindingName`.
+
+Create an [Azure Application and Service Principle](https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal) and obtain its credentials.
+Please make sure the Azure application has the following IAM roles. 
+- [Contributor](https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#contributor)
+
+The example below demonstrates how the secret containing the client credentials of the Azure Application has to look like:
 
 ```yaml
 apiVersion: v1
@@ -22,8 +29,6 @@ data:
   subscriptionID: base64(subscription-id)
   tenantID: base64(tenant-id)
 ```
-
-Please look up https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal as well.
 
 ## `InfrastructureConfig`
 

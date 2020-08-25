@@ -1,12 +1,21 @@
-# Using the Azure provider extension with Gardener as operator
+# Using the Azure provider extension with Gardener as an operator
 
-The [`core.gardener.cloud/v1alpha1.CloudProfile` resource](https://github.com/gardener/gardener/blob/master/example/30-cloudprofile.yaml) declares a `providerConfig` field that is meant to contain provider-specific configuration.
+The [`core.gardener.cloud/v1beta1.CloudProfile` resource](https://github.com/gardener/gardener/blob/master/example/30-cloudprofile.yaml) declares a `providerConfig` field that is meant to contain provider-specific configuration.
+The [`core.gardener.cloud/v1beta1.Seed` resource](https://github.com/gardener/gardener/blob/master/example/50-seed.yaml) is structured similarly.
+Additionally, it allows configuring settings for the backups of the main etcds' data of shoot clusters control planes running in this seed cluster.
 
-In this document we are describing how this configuration looks like for Azure and provide an example `CloudProfile` manifest with minimal configuration that you can use to allow creating Azure shoot clusters.
+This document explains the necessary configuration for the Azure provider extension.
 
-## `CloudProfileConfig`
+## `CloudProfile` resource
 
+This section describes, how the configuration for `CloudProfile`s looks like for Azure by providing an example `CloudProfile` manifest with minimal configuration that can be used to allow the creation of Azure shoot clusters.
 
+### `CloudProfileConfig`
+
+The cloud profile configuration contains information about the real machine image IDs in the Azure environment (image `urn` or `id`).
+You have to map every version that you specify in `.spec.machineImages[].versions` to an available VM image in your subscription. 
+The VM can be from the [Azure Marketplace](https://azuremarketplace.microsoft.com/en-us/marketplace/apps?filters=virtual-machine-images) identified via an `urn` 
+or a custom VM image identified by `id` from a shared image gallery.  
 
 An example `CloudProfileConfig` for the Azure extension looks as follows:
 
@@ -44,7 +53,7 @@ When Shared Image Gallery is used, you have to ensure that the image is availabl
 You have to map every version that you specify in `.spec.machineImages[].versions` here such that the Azure extension knows the machine image identifiers for every version you want to offer.
 Furthermore, you can specify for each image version via `.machineImages[].versions[].acceleratedNetworking` if Azure Accelerated Networking is supported.
 
-## Example `CloudProfile` manifest
+### Example `CloudProfile` manifest
 
 The possible values for `.spec.volumeTypes[].name` on Azure are `Standard_LRS`, `StandardSSD_LRS` and `Premium_LRS`. There is another volume type called `UltraSSD_LRS` but this type is not supported to use as os disk. If an end user select a volume type whose name is not equal to one of the valid values then the machine will be created with the default volume type which belong to the selected machine type. Therefore it is recommended to configure only the valid values for the `.spec.volumeType[].name` in the `CloudProfile`.
 
@@ -109,3 +118,60 @@ spec:
       - version: 2135.6.0
         urn: "CoreOS:CoreOS:Stable:2135.6.0"
 ```
+
+## `Seed` resource
+
+This provider extension does not support any provider configuration for the `Seed`'s `.spec.provider.providerConfig` field.
+However, it supports managing of backup infrastructure, i.e., you can specify a configuration for the `.spec.backup` field.
+
+### Backup configuration
+
+A Seed of type `azure` can be configured to perform backups for the main etcds' of the shoot clusters control planes using Azure Blob storage.
+
+The location/region where the backups will be stored defaults to the region of the Seed (`spec.provider.region`), but can also be explicitly configured via the field `spec.backup.region`.
+The region of the backup can be different from where the Seed cluster is running.
+However, usually it makes sense to pick the same region for the backup bucket as used for the Seed cluster.
+
+Please find below an example `Seed` manifest (partly) that configures backups using Azure Blob storage. 
+
+```yaml
+---
+apiVersion: core.gardener.cloud/v1beta1
+kind: Seed
+metadata:
+  name: my-seed
+spec:
+  provider:
+    type: azure
+    region: westeurope
+  backup:
+    provider: azure
+    region: westeurope # default region
+    secretRef:
+      name: backup-credentials
+      namespace: garden
+  ...
+```
+The referenced secret has to contain the provider credentials of the Azure subscription.
+Please take a look [here](https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal) on how to create an Azure Application, Service Principle and how to obtain credentials.
+The example below demonstrates how the secret has to look like.
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: core-azure
+  namespace: garden-dev
+type: Opaque
+data:
+  clientID: base64(client-id)
+  clientSecret: base64(client-secret)
+  subscriptionID: base64(subscription-id)
+  tenantID: base64(tenant-id)
+```
+
+#### Permissions for Azure Blob storage
+
+Please make sure the Azure application has the following IAM roles. 
+- [Contributor](https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#contributor)
+
