@@ -34,6 +34,12 @@ ifeq ($(WEBHOOK_CONFIG_MODE), service)
   WEBHOOK_PARAM := --webhook-config-namespace=$(EXTENSION_NAMESPACE)
 endif
 
+SUBSCRIPTION_ID_FILE := .kube-secrets/azure/subscription_id.secret
+TENANT_ID_FILE := .kube-secrets/azure/tenant_id.secret
+CLIENT_ID_FILE := .kube-secrets/azure/client_id.secret
+CLIENT_SECRET_FILE := .kube-secrets/azure/client_secret.secret
+REGION := westeurope
+
 #########################################
 # Rules for local development scenarios #
 #########################################
@@ -139,3 +145,14 @@ verify: check format test
 
 .PHONY: verify-extended
 verify-extended: install-requirements check-generate check format test-cov test-clean
+
+.PHONY: integration-test-infra
+integration-test-infra:
+	@go test -timeout=0 -mod=vendor ./test/integration/infrastructure \
+		--v -ginkgo.v -ginkgo.progress \
+		--kubeconfig=${KUBECONFIG} \
+		--subscription-id='$(shell cat $(SUBSCRIPTION_ID_FILE))' \
+		--tenant-id='$(shell cat $(TENANT_ID_FILE))' \
+		--client-id='$(shell cat $(CLIENT_ID_FILE))' \
+		--client-secret='$(shell cat $(CLIENT_SECRET_FILE))' \
+		--region=$(REGION)
