@@ -63,6 +63,11 @@ resource "azurerm_route_table" "workers" {
   {{- end}}
 }
 
+resource "azurerm_subnet_route_table_association" "workers-rt-subnet-association" {
+  subnet_id      = azurerm_subnet.workers.id
+  route_table_id = azurerm_route_table.workers.id
+}
+
 resource "azurerm_network_security_group" "workers" {
   name                = "{{ required "clusterName is required" .Values.clusterName }}-workers"
   location            = "{{ required "azure.region is required" .Values.azure.region }}"
@@ -71,6 +76,11 @@ resource "azurerm_network_security_group" "workers" {
   {{- else -}}
   resource_group_name = data.azurerm_resource_group.rg.name
   {{- end}}
+}
+
+resource "azurerm_subnet_network_security_group_association" "workers-nsg-subnet-association" {
+  subnet_id                 = azurerm_subnet.workers.id
+  network_security_group_id = azurerm_network_security_group.workers.id
 }
 
 {{ if .Values.create.natGateway -}}
