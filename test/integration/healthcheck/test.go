@@ -62,7 +62,7 @@ const (
 	setupContextTimeout   = 2 * time.Minute
 )
 
-var _ = ginkgo.Describe("Provider-azure integration test: health checks", func() {
+var _ = ginkgo.Describe("Azure integration test: health checks", func() {
 	f := createShootFramework()
 
 	ginkgo.Context("ControlPlane", func() {

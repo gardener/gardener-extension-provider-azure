@@ -1,0 +1,43 @@
+apiVersion: testmachinery.sapcloud.io/v1beta1
+kind: Testrun
+metadata:
+  generateName: tm-extension-azure-
+  namespace: default
+spec:
+
+  ttlSecondsAfterFinished: 172800 # 2 days
+
+  config:
+    - name: SUBSCRIPTION_ID
+      type: env
+      valueFrom:
+        secretKeyRef:
+          name: shoot-operator-az
+          key: subscriptionID
+    - name: TENANT_ID
+      type: env
+      valueFrom:
+        secretKeyRef:
+          name: shoot-operator-az
+          key: tenantID
+    - name: CLIENT_ID
+      type: env
+      valueFrom:
+        secretKeyRef:
+          name: shoot-operator-az
+          key: clientID
+    - name: CLIENT_SECRET
+      type: env
+      valueFrom:
+        secretKeyRef:
+          name: shoot-operator-az
+          key: clientSecret
+
+  testflow:
+    - name: infrastructure-test
+      definition:
+        name: infrastructure-test
+        config:
+          - name: REGION
+            type: env
+            value: westeurope

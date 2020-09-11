@@ -2,6 +2,9 @@
 github.com/Azure/azure-pipeline-go/pipeline
 # github.com/Azure/azure-sdk-for-go v44.0.0+incompatible
 ## explicit
+github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2020-06-01/compute
+github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi
+github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network
 github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources
 github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-04-01/storage
 github.com/Azure/azure-sdk-for-go/version
@@ -9,9 +12,11 @@ github.com/Azure/azure-sdk-for-go/version
 ## explicit
 github.com/Azure/azure-storage-blob-go/azblob
 # github.com/Azure/go-autorest/autorest v0.10.1
+## explicit
 github.com/Azure/go-autorest/autorest
 github.com/Azure/go-autorest/autorest/azure
 # github.com/Azure/go-autorest/autorest/adal v0.8.2
+## explicit
 github.com/Azure/go-autorest/autorest/adal
 # github.com/Azure/go-autorest/autorest/azure/auth v0.4.2
 ## explicit
@@ -449,6 +454,8 @@ github.com/onsi/ginkgo/types
 ## explicit
 github.com/onsi/gomega
 github.com/onsi/gomega/format
+github.com/onsi/gomega/gbytes
+github.com/onsi/gomega/gexec
 github.com/onsi/gomega/gstruct
 github.com/onsi/gomega/gstruct/errors
 github.com/onsi/gomega/internal/assertion
@@ -494,9 +501,12 @@ github.com/rogpeppe/go-internal/module
 github.com/rogpeppe/go-internal/semver
 # github.com/russross/blackfriday/v2 v2.0.1
 github.com/russross/blackfriday/v2
+# github.com/satori/go.uuid v1.2.0
+github.com/satori/go.uuid
 # github.com/shurcooL/sanitized_anchor_name v1.0.0
 github.com/shurcooL/sanitized_anchor_name
 # github.com/sirupsen/logrus v1.4.2
+## explicit
 github.com/sirupsen/logrus
 # github.com/spf13/afero v1.2.2
 github.com/spf13/afero
@@ -1161,6 +1171,7 @@ sigs.k8s.io/controller-runtime/pkg/client/config
 sigs.k8s.io/controller-runtime/pkg/controller
 sigs.k8s.io/controller-runtime/pkg/controller/controllerutil
 sigs.k8s.io/controller-runtime/pkg/conversion
+sigs.k8s.io/controller-runtime/pkg/envtest
 sigs.k8s.io/controller-runtime/pkg/event
 sigs.k8s.io/controller-runtime/pkg/handler
 sigs.k8s.io/controller-runtime/pkg/healthz
@@ -1168,6 +1179,9 @@ sigs.k8s.io/controller-runtime/pkg/internal/controller
 sigs.k8s.io/controller-runtime/pkg/internal/controller/metrics
 sigs.k8s.io/controller-runtime/pkg/internal/log
 sigs.k8s.io/controller-runtime/pkg/internal/recorder
+sigs.k8s.io/controller-runtime/pkg/internal/testing/integration
+sigs.k8s.io/controller-runtime/pkg/internal/testing/integration/addr
+sigs.k8s.io/controller-runtime/pkg/internal/testing/integration/internal
 sigs.k8s.io/controller-runtime/pkg/leaderelection
 sigs.k8s.io/controller-runtime/pkg/log
 sigs.k8s.io/controller-runtime/pkg/log/zap
