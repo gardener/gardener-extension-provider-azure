@@ -97,8 +97,17 @@ spec:
           mountPath: /var/lib/cloud-controller-manager-server
         - name: cloud-provider-config
           mountPath: /etc/kubernetes/cloudprovider
+        - name: fedora-rhel6-openelec-cabundle
+          mountPath: /etc/pki/tls
+          readOnly: true
+        - name: centos-rhel-cabundle
+          mountPath: /etc/pki/ca-trust
+          readOnly: true
         - name: etc-ssl
           mountPath: /etc/ssl
+          readOnly: true
+        - name: usr-share-cacerts
+          mountPath: /usr/share/ca-certificates
           readOnly: true
       dnsPolicy: ClusterFirst
       restartPolicy: Always
@@ -114,6 +123,19 @@ spec:
       - name: cloud-provider-config
         secret:
           secretName: cloud-provider-config
+      - name: fedora-rhel6-openelec-cabundle
+        hostPath:
+          path: /etc/pki/tls
+          type: "DirectoryOrCreate"
+      - name: centos-rhel-cabundle
+        hostPath:
+          path: /etc/pki/ca-trust
+          type: "DirectoryOrCreate"
       - name: etc-ssl
         hostPath:
           path: /etc/ssl
+          type: "DirectoryOrCreate"
+      - name: usr-share-cacerts
+        hostPath:
+          path: /usr/share/ca-certificates
+          type: "DirectoryOrCreate"
