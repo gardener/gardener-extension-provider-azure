@@ -54,7 +54,6 @@ func (a *azureNetworkPolicy) Rules() []np.Rule {
 		a.newSource(ag.KubeSchedulerNotSecured()).AllowPod(ag.KubeAPIServer()).Build(),
 		a.newSource(ag.KubeSchedulerSecured()).AllowPod(ag.KubeAPIServer()).Build(),
 		a.newSource(ag.KubeStateMetricsShoot()).AllowPod(ag.KubeAPIServer()).Build(),
-		a.newSource(ag.KubeStateMetricsSeed()).AllowHost(ag.SeedKubeAPIServer(), ag.External()).Build(),
 		a.newSource(ag.MachineControllerManager()).AllowPod(ag.KubeAPIServer()).AllowHost(ag.SeedKubeAPIServer(), ag.External()).Build(),
 		a.newSource(ag.Prometheus()).AllowPod(
 			ag.CloudControllerManagerNotSecured(),
@@ -66,7 +65,6 @@ func (a *azureNetworkPolicy) Rules() []np.Rule {
 			ag.KubeControllerManagerSecured(),
 			ag.KubeSchedulerNotSecured(),
 			ag.KubeSchedulerSecured(),
-			ag.KubeStateMetricsSeed(),
 			ag.KubeStateMetricsShoot(),
 			ag.MachineControllerManager(),
 		).AllowTargetPod(ag.Loki().FromPort("metrics")).AllowHost(ag.SeedKubeAPIServer(), ag.External(), ag.GardenPrometheus()).Build(),
@@ -98,7 +96,6 @@ func (a *azureNetworkPolicy) Sources() []*np.SourcePod {
 		ag.KubeControllerManagerSecured(),
 		ag.KubeSchedulerNotSecured(),
 		ag.KubeSchedulerSecured(),
-		ag.KubeStateMetricsSeed(),
 		ag.KubeStateMetricsShoot(),
 		ag.MachineControllerManager(),
 		ag.Prometheus(),

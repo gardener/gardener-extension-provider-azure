@@ -18,7 +18,7 @@ import (
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	. "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/validation"
 
-	. "github.com/gardener/gardener/pkg/utils/validation/gomega"
+	. "github.com/gardener/gardener/pkg/utils/test/matchers"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"

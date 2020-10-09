@@ -53,6 +53,7 @@ var _ = Describe("Machines", func() {
 	var (
 		ctrl         *gomock.Controller
 		c            *mockclient.MockClient
+		statusWriter *mockclient.MockStatusWriter
 		chartApplier *mockkubernetes.MockChartApplier
 	)
 
@@ -61,6 +62,7 @@ var _ = Describe("Machines", func() {
 
 		c = mockclient.NewMockClient(ctrl)
 		chartApplier = mockkubernetes.NewMockChartApplier(ctrl)
+		statusWriter = mockclient.NewMockStatusWriter(ctrl)
 	})
 
 	AfterEach(func() {
@@ -478,27 +480,22 @@ var _ = Describe("Machines", func() {
 					err := workerDelegate.DeployMachineClasses(context.TODO())
 					Expect(err).NotTo(HaveOccurred())
 
-					// Test workerDelegate.GetMachineImages()
-					machineImages, err := workerDelegate.GetMachineImages(context.TODO())
-					Expect(machineImages).To(Equal(&apiv1alpha1.WorkerStatus{
-						TypeMeta: metav1.TypeMeta{
-							APIVersion: apiv1alpha1.SchemeGroupVersion.String(),
-							Kind:       "WorkerStatus",
+					// Test workerDelegate.UpdateMachineImagesStatus()
+
+					expectStatusContainsMachineImages(c, statusWriter, w, []apiv1alpha1.MachineImage{
+						{
+							Name:                  machineImageName,
+							Version:               machineImageVersion,
+							URN:                   &machineImageURN,
+							AcceleratedNetworking: &boolTrue,
 						},
-						MachineImages: []apiv1alpha1.MachineImage{
-							{
-								Name:                  machineImageName,
-								Version:               machineImageVersion,
-								URN:                   &machineImageURN,
-								AcceleratedNetworking: &boolTrue,
-							},
-							{
-								Name:    machineImageName,
-								Version: machineImageVersionID,
-								ID:      &machineImageID,
-							},
+						{
+							Name:    machineImageName,
+							Version: machineImageVersionID,
+							ID:      &machineImageID,
 						},
-					}))
+					})
+					err = workerDelegate.UpdateMachineImagesStatus(context.TODO())
 					Expect(err).NotTo(HaveOccurred())
 
 					// Test workerDelegate.GenerateMachineDeployments()
@@ -665,6 +662,26 @@ func expectGetSecretCallToWork(c *mockclient.MockClient, azureClientID, azureCli
 			}
 			return nil
 		})
+}
+
+func expectStatusContainsMachineImages(c *mockclient.MockClient, statusWriter *mockclient.MockStatusWriter, worker *extensionsv1alpha1.Worker, images []apiv1alpha1.MachineImage) {
+	expectedProviderStatus := &apiv1alpha1.WorkerStatus{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: apiv1alpha1.SchemeGroupVersion.String(),
+			Kind:       "WorkerStatus",
+		},
+		MachineImages: images,
+	}
+	workerWithExpectedStatus := worker.DeepCopy()
+	workerWithExpectedStatus.Status.ProviderStatus = &runtime.RawExtension{
+		Object: expectedProviderStatus,
+	}
+
+	c.EXPECT().Get(context.TODO(), gomock.Any(), gomock.AssignableToTypeOf(&extensionsv1alpha1.Worker{})).DoAndReturn(func(_ context.Context, _ client.ObjectKey, worker *extensionsv1alpha1.Worker) error {
+		return nil
+	})
+	c.EXPECT().Status().Return(statusWriter)
+	statusWriter.EXPECT().Update(context.TODO(), workerWithExpectedStatus).Return(nil)
 }
 
 func addNameAndSecretsToMachineClass(class map[string]interface{}, azureClientID, azureClientSecret, azureSubscriptionID, azureTenantID, name string) {
