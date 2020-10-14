@@ -131,34 +131,31 @@ func (a *genericActuator) Reconcile(ctx context.Context, worker *extensionsv1alp
 		return errors.Wrapf(err, "failed to generate the machine deployment config")
 	}
 
-	_ = existingMachineClassNames
-	/*
-		// Wait until all generated machine deployments are healthy/available.
-		if err := a.waitUntilWantedMachineDeploymentsAvailable(ctx, logger, cluster, worker, existingMachineDeploymentNames, existingMachineClassNames, wantedMachineDeployments, clusterAutoscalerUsed); err != nil {
-			// check if the machine controller manager is stuck
-			isStuck, msg, err2 := a.IsMachineControllerStuck(ctx, worker)
-			if err2 != nil {
-				logger.Error(err2, "failed to check if the machine controller manager pod is stuck after unsuccessfully waiting for all machine deployments to be ready")
-				// continue in order to return `err` and determine error codes
-			}
-
-			if isStuck {
-				podList := corev1.PodList{}
-				if err2 := a.client.List(ctx, &podList, client.InNamespace(worker.Namespace), client.MatchingLabels{"role": "machine-controller-manager"}); err2 != nil {
-					return errors.Wrapf(err2, "failed to list machine controller manager pods for worker (%s/%s)", worker.Namespace, worker.Name)
-				}
-
-				for _, pod := range podList.Items {
-					if err2 := a.client.Delete(ctx, &pod); err2 != nexistingMachineClassNamesil {
-						return errors.Wrapf(err2, "failed to delete stuck machine controller manager pod for worker (%s/%s)", worker.Namespace, worker.Name)
-					}
-				}
-				logger.Info("Successfully deleted stuck machine controller manager pod", "reason", msg)
-			}
-
-			return gardencorev1beta1helper.DetermineError(err, fmt.Sprintf("Failed while waiting for all machine deployments to be ready: '%s'", err.Error()))
+	// Wait until all generated machine deployments are healthy/available.
+	if err := a.waitUntilWantedMachineDeploymentsAvailable(ctx, logger, cluster, worker, existingMachineDeploymentNames, existingMachineClassNames, wantedMachineDeployments, clusterAutoscalerUsed); err != nil {
+		// check if the machine controller manager is stuck
+		isStuck, msg, err2 := a.IsMachineControllerStuck(ctx, worker)
+		if err2 != nil {
+			logger.Error(err2, "failed to check if the machine controller manager pod is stuck after unsuccessfully waiting for all machine deployments to be ready")
+			// continue in order to return `err` and determine error codes
 		}
-	*/
+
+		if isStuck {
+			podList := corev1.PodList{}
+			if err2 := a.client.List(ctx, &podList, client.InNamespace(worker.Namespace), client.MatchingLabels{"role": "machine-controller-manager"}); err2 != nil {
+				return errors.Wrapf(err2, "failed to list machine controller manager pods for worker (%s/%s)", worker.Namespace, worker.Name)
+			}
+
+			for _, pod := range podList.Items {
+				if err2 := a.client.Delete(ctx, &pod); err2 != nil {
+					return errors.Wrapf(err2, "failed to delete stuck machine controller manager pod for worker (%s/%s)", worker.Namespace, worker.Name)
+				}
+			}
+			logger.Info("Successfully deleted stuck machine controller manager pod", "reason", msg)
+		}
+
+		return gardencorev1beta1helper.DetermineError(err, fmt.Sprintf("Failed while waiting for all machine deployments to be ready: '%s'", err.Error()))
+	}
 
 	// Delete all old machine deployments (i.e. those which were not previously computed but exist in the cluster).
 	if err := a.cleanupMachineDeployments(ctx, logger, existingMachineDeployments, wantedMachineDeployments); err != nil {
