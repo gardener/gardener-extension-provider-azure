@@ -42,7 +42,6 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	storagev1beta1 "k8s.io/api/storage/v1beta1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apiserver/pkg/authentication/user"
 	autoscalingv1beta2 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1beta2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -380,43 +379,6 @@ func (vp *valuesProvider) GetConfigChartValues(
 	return getConfigChartValues(infraStatus, cp, cluster, auth)
 }
 
-// TODO: Remove this in a future version again.
-func deleteLegacyCloudProviderConfigMaps(ctx context.Context, c client.Client, namespace string) error {
-	cmNames := []string{azure.CloudProviderDiskConfigName}
-
-	apiserverDeployment := &appsv1.Deployment{}
-	if err := c.Get(ctx, kutil.Key(namespace, v1beta1constants.DeploymentNameKubeAPIServer), apiserverDeployment); client.IgnoreNotFound(err) != nil {
-		return err
-	}
-	deleteCloudConfig := true
-	for _, vol := range apiserverDeployment.Spec.Template.Spec.Volumes {
-		if vol.ConfigMap != nil && vol.ConfigMap.Name == azure.CloudProviderConfigName {
-			// Legacy config map is still referenced by the KAS deployment and we cannot delete it now.
-			// This can happen during the shoot deletion.
-			deleteCloudConfig = false
-			break
-		}
-	}
-
-	if deleteCloudConfig {
-		cmNames = append(cmNames, azure.CloudProviderConfigName)
-	}
-
-	for _, name := range cmNames {
-		cm := &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: namespace,
-			},
-		}
-
-		if err := client.IgnoreNotFound(c.Delete(ctx, cm)); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // GetControlPlaneChartValues returns the values for the control plane chart applied by the generic actuator.
 func (vp *valuesProvider) GetControlPlaneChartValues(
 	ctx context.Context,
@@ -438,12 +400,6 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 		return nil, err
 	}
 	checksums[azure.CloudProviderConfigName] = utils.ComputeChecksum(cpConfigSecret.Data)
-
-	// TODO: This cleanup is only necessary because we switched from a ConfigMap to a Secret.
-	// Please remove this logic in a future version.
-	if err := deleteLegacyCloudProviderConfigMaps(ctx, vp.Client(), cp.Namespace); err != nil {
-		return nil, errors.Wrap(err, "could not clean up cloud provider config map")
-	}
 
 	return getControlPlaneChartValues(cpConfig, cp, cluster, checksums, scaledDown)
 }
