@@ -28,12 +28,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var _ = Describe("Service Account", func() {
+var _ = Describe("Azure Auth", func() {
 	var (
 		ctrl *gomock.Controller
 
+		ctx context.Context
+
 		clientAuth *ClientAuth
 		secret     *corev1.Secret
+		secretRef  corev1.SecretReference
+
+		name           string
+		namespace      string
+		subscriptionID string
 	)
 
 	BeforeEach(func() {
@@ -53,6 +60,14 @@ var _ = Describe("Service Account", func() {
 				azure.SubscriptionIDKey: []byte(subscriptionID),
 			},
 		}
+
+		ctx = context.TODO()
+		namespace = "foo"
+		name = "bar"
+		secretRef = corev1.SecretReference{
+			Namespace: namespace,
+			Name:      name,
+		}
 	})
 
 	AfterEach(func() {
@@ -69,16 +84,7 @@ var _ = Describe("Service Account", func() {
 
 	Describe("#GetClientAuthData", func() {
 		It("should retrieve the client auth data", func() {
-			var (
-				c         = mockclient.NewMockClient(ctrl)
-				namespace = "foo"
-				name      = "bar"
-				secretRef = corev1.SecretReference{
-					Namespace: namespace,
-					Name:      name,
-				}
-				ctx = context.TODO()
-			)
+			var c = mockclient.NewMockClient(ctrl)
 			c.EXPECT().Get(ctx, kutil.Key(namespace, name), gomock.AssignableToTypeOf(&corev1.Secret{})).
 				DoAndReturn(func(_ context.Context, _ client.ObjectKey, actual *corev1.Secret) error {
 					*actual = *secret
@@ -89,6 +95,23 @@ var _ = Describe("Service Account", func() {
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(actual).To(Equal(clientAuth))
+		})
+	})
+
+	Describe("#GetAuthorizerAndSubscriptionID", func() {
+		It("should retrieve Azure autorizer and subscription id", func() {
+			var c = mockclient.NewMockClient(ctrl)
+			c.EXPECT().Get(ctx, kutil.Key(namespace, name), gomock.AssignableToTypeOf(&corev1.Secret{})).
+				DoAndReturn(func(_ context.Context, _ client.ObjectKey, actual *corev1.Secret) error {
+					*actual = *secret
+					return nil
+				})
+
+			authorizer, subscription, err := GetAuthorizerAndSubscriptionID(ctx, c, secretRef)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(subscription).To(ContainSubstring(subscriptionID))
+			Expect(authorizer).NotTo(BeNil())
 		})
 	})
 })

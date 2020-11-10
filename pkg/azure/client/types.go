@@ -17,26 +17,55 @@ package client
 import (
 	"context"
 
+	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
+	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-04-01/storage"
 	"github.com/Azure/azure-storage-blob-go/azblob"
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// StorageAuth represents a Azure storage auth.
-type StorageAuth struct {
-	// StorageAccount is the data field in a secret where the storage account is stored at.
-	StorageAccount []byte
-	// StorageKey is the data field in a secret where the storage key is stored at.
-	StorageKey []byte
+// Factory represents a factory to produce clients for various Azure services.
+type Factory interface {
+	Group(context.Context, corev1.SecretReference) (Group, error)
+	Storage(context.Context, corev1.SecretReference) (Storage, error)
+	StorageAccount(context.Context, corev1.SecretReference) (StorageAccount, error)
 }
 
-// StorageClient represents a Azure storage client.
-type StorageClient struct {
-	// serviceURL is azure storage serviceURL object configured with storage credentials and pipeline.
-	serviceURL azblob.ServiceURL
+// Group represents an Azure group client.
+type Group interface {
+	CreateOrUpdate(context.Context, string, string) error
+	DeleteIfExits(context.Context, string) error
 }
 
-// Storage represents a Azure storage client.
+// Storage represents an Azure (blob) storage client.
 type Storage interface {
-	DeleteObjectsWithPrefix(ctx context.Context, container, prefix string) error
-	CreateContainerIfNotExists(ctx context.Context, container string) error
-	DeleteContainerIfExists(ctx context.Context, container string) error
+	DeleteObjectsWithPrefix(context.Context, string, string) error
+	CreateContainerIfNotExists(context.Context, string) error
+	DeleteContainerIfExists(context.Context, string) error
+}
+
+// StorageAccount represents an Azure storage account client.
+type StorageAccount interface {
+	CreateStorageAccount(context.Context, string, string, string) error
+	ListStorageAccountKey(context.Context, string, string) (string, error)
+}
+
+// AzureFactory is an implementation of Factory to produce clients for various Azure services.
+type AzureFactory struct {
+	client client.Client
+}
+
+// StorageClient is an implementation of Storage for a (blob) storage client.
+type StorageClient struct {
+	serviceURL *azblob.ServiceURL
+}
+
+// StorageAccountClient is an implementation of StorageAccount for storage account client.
+type StorageAccountClient struct {
+	client storage.AccountsClient
+}
+
+// GroupClient is an implementation of Group for a resource group client.
+type GroupClient struct {
+	client resources.GroupsClient
 }
