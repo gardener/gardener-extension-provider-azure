@@ -19,8 +19,10 @@ import (
 	"flag"
 	"os"
 	"reflect"
+	"strconv"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
+	"github.com/go-logr/logr"
 
 	"github.com/gardener/gardener/extensions/test/tm/generator"
 	"github.com/pkg/errors"
@@ -29,20 +31,41 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
-var (
-	infrastructureProviderConfigPath = flag.String("infrastructure-provider-config-filepath", "", "filepath to the provider specific infrastructure config")
-	controlplaneProviderConfigPath   = flag.String("controlplane-provider-config-filepath", "", "filepath to the provider specific controlplane config")
-
-	networkVnetCidr   = flag.String("network-vnet-cidr", "10.250.0.0/16", "vnet network cidr")
-	networkWorkerCidr = flag.String("network-worker-cidr", "10.250.0.0/19", "worker network cidr")
-
-	zoned = flag.Bool("zoned", false, "shoot uses multiple zones")
+const (
+	defaultNetworkVnetCIDR   = "10.250.0.0/16"
+	defaultNetworkWorkerCidr = "10.250.0.0/19"
 )
 
+type GeneratorConfig struct {
+	networkWorkerCidr                string
+	networkVnetCidr                  string
+	infrastructureProviderConfigPath string
+	controlplaneProviderConfigPath   string
+	zonedFlag                        string
+	zoned                            bool
+}
+
+var (
+	cfg    *GeneratorConfig
+	logger logr.Logger
+)
+
+func addFlags() {
+	cfg = &GeneratorConfig{}
+	flag.StringVar(&cfg.infrastructureProviderConfigPath, "infrastructure-provider-config-filepath", "", "filepath to the provider specific infrastructure config")
+	flag.StringVar(&cfg.controlplaneProviderConfigPath, "controlplane-provider-config-filepath", "", "filepath to the provider specific controlplane config")
+
+	flag.StringVar(&cfg.networkVnetCidr, "network-vnet-cidr", "", "vnet network cidr")
+	flag.StringVar(&cfg.networkWorkerCidr, "network-worker-cidr", "", "worker network cidr")
+
+	flag.StringVar(&cfg.zonedFlag, "zoned", "", "shoot uses multiple zones")
+}
+
 func main() {
-	log.SetLogger(zap.Logger(false))
-	logger := log.Log.WithName("azure-generator")
+	addFlags()
 	flag.Parse()
+	log.SetLogger(zap.Logger(false))
+	logger = log.Log.WithName("azure-generator")
 	if err := validate(); err != nil {
 		logger.Error(err, "error validating input flags")
 		os.Exit(1)
@@ -55,11 +78,11 @@ func main() {
 		},
 		Networks: v1alpha1.NetworkConfig{
 			VNet: v1alpha1.VNet{
-				CIDR: networkVnetCidr,
+				CIDR: &cfg.networkVnetCidr,
 			},
-			Workers: *networkWorkerCidr,
+			Workers: cfg.networkWorkerCidr,
 		},
-		Zoned: *zoned,
+		Zoned: cfg.zoned,
 	}
 
 	cp := v1alpha1.ControlPlaneConfig{
@@ -69,29 +92,39 @@ func main() {
 		},
 	}
 
-	if err := generator.MarshalAndWriteConfig(*infrastructureProviderConfigPath, infra); err != nil {
+	if err := generator.MarshalAndWriteConfig(cfg.infrastructureProviderConfigPath, infra); err != nil {
 		logger.Error(err, "unable to write infrastructure config")
 		os.Exit(1)
 	}
-	if err := generator.MarshalAndWriteConfig(*controlplaneProviderConfigPath, cp); err != nil {
+	if err := generator.MarshalAndWriteConfig(cfg.controlplaneProviderConfigPath, cp); err != nil {
 		logger.Error(err, "unable to write infrastructure config")
 		os.Exit(1)
 	}
-	logger.Info("successfully written azure provider configuration", "infra", *infrastructureProviderConfigPath, "controlplane", *controlplaneProviderConfigPath)
+	logger.Info("successfully written azure provider configuration", "infra", cfg.infrastructureProviderConfigPath, "controlplane", cfg.controlplaneProviderConfigPath)
 }
 
 func validate() error {
-	if err := generator.ValidateString(infrastructureProviderConfigPath); err != nil {
+	if err := generator.ValidateString(&cfg.infrastructureProviderConfigPath); err != nil {
 		return errors.Wrap(err, "error validating infrastructure provider config path")
 	}
-	if err := generator.ValidateString(controlplaneProviderConfigPath); err != nil {
+	if err := generator.ValidateString(&cfg.controlplaneProviderConfigPath); err != nil {
 		return errors.Wrap(err, "error validating controlplane provider config path")
 	}
-	if err := generator.ValidateString(networkVnetCidr); err != nil {
-		return errors.Wrap(err, "error validating vnet CIDR")
+	//Optional Parameters
+	if err := generator.ValidateString(&cfg.networkVnetCidr); err != nil {
+		logger.Info("Parameter network-vnet-cidr is not set, using default.", "value", defaultNetworkVnetCIDR)
+		cfg.networkVnetCidr = defaultNetworkVnetCIDR
 	}
-	if err := generator.ValidateString(networkWorkerCidr); err != nil {
-		return errors.Wrap(err, "error validating worker CIDR")
+	if err := generator.ValidateString(&cfg.networkWorkerCidr); err != nil {
+		logger.Info("Parameter network-worker-cidr is not set, using default.", "value", defaultNetworkWorkerCidr)
+		cfg.networkWorkerCidr = defaultNetworkWorkerCidr
+	}
+	if err := generator.ValidateString(&cfg.zonedFlag); err == nil {
+		parsedBool, err := strconv.ParseBool(cfg.zonedFlag)
+		if err != nil {
+			return errors.Wrap(err, "zoned is not a boolean value")
+		}
+		cfg.zoned = parsedBool
 	}
 	return nil
 }
