@@ -140,6 +140,14 @@ func ComputeTerraformerChartValues(infra *extensionsv1alpha1.Infrastructure, cli
 		}
 	}
 
+	// Checks if the Gardener managed NatGateway public ip needs to be migrated.
+	// TODO(natipmigration) This can be removed in future versions when the ip migration has been completed.
+	natGatewayIPMigrationRequired, err := isNatGatewayIPMigrationRequired(infra, config)
+	if err != nil {
+		return nil, err
+	}
+	natGatewayConfig["migrateNatGatewayToIPAssociation"] = natGatewayIPMigrationRequired
+
 	if config.Identity != nil && config.Identity.Name != "" && config.Identity.ResourceGroup != "" {
 		identityConfig = map[string]interface{}{
 			"name":          config.Identity.Name,
@@ -227,6 +235,9 @@ type TerraformState struct {
 	IdentityID string
 	// IdentityClientID is the client id of the identity.
 	IdentityClientID string
+	// NatGatewayIPMigrated is the indicator if the nat gateway ip is migrated.
+	// TODO(natipmigration) This can be removed in future versions when the ip migration has been completed.
+	NatGatewayIPMigrated string
 }
 
 // ExtractTerraformState extracts the TerraformState from the given Terraformer.
@@ -289,6 +300,10 @@ func ExtractTerraformState(tf terraformer.Terraformer, config *api.Infrastructur
 		tfState.IdentityClientID = vars[TerraformerOutputKeyIdentityClientID]
 	}
 
+	if config.Networks.NatGateway != nil && config.Networks.NatGateway.Enabled {
+		tfState.NatGatewayIPMigrated = "true"
+	}
+
 	return &tfState, nil
 }
 
@@ -342,6 +357,11 @@ func StatusFromTerraformState(state *TerraformState) *apiv1alpha1.Infrastructure
 			CountUpdateDomains: pointer.Int32Ptr(int32(state.CountUpdateDomains)),
 			Purpose:            apiv1alpha1.PurposeNodes,
 		})
+	}
+
+	// TODO(natipmigration) This can be removed in future versions when the ip migration has been completed.
+	if state.NatGatewayIPMigrated == "true" {
+		tfState.NatGatewayPublicIPMigrated = true
 	}
 
 	return &tfState
@@ -417,4 +437,26 @@ func findDomainCounts(cluster *controller.Cluster, infra *extensionsv1alpha1.Inf
 		faultDomains:  *faultDomainCount,
 		updateDomains: *updateDomainCount,
 	}, nil
+}
+
+// isNatGatewayIPMigrationRequired checks if the Gardener managed NatGateway public ip needs to be migrated.
+// TODO(natipmigration) This can be removed in future versions when the ip migration has been completed.
+func isNatGatewayIPMigrationRequired(infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig) (bool, error) {
+	if config.Networks.NatGateway == nil || !config.Networks.NatGateway.Enabled {
+		return false, nil
+	}
+
+	if infra.Status.ProviderStatus == nil {
+		return false, nil
+	}
+
+	infrastructureStatus, err := helper.InfrastructureStatusFromInfrastructure(infra)
+	if err != nil {
+		return false, err
+	}
+
+	if infrastructureStatus.NatGatewayPublicIPMigrated {
+		return false, nil
+	}
+	return true, nil
 }

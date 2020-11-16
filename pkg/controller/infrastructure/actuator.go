@@ -45,12 +45,7 @@ func NewActuator() infrastructure.Actuator {
 	}
 }
 
-func (a *actuator) updateProviderStatus(
-	ctx context.Context,
-	tf terraformer.Terraformer,
-	infra *extensionsv1alpha1.Infrastructure,
-	config *api.InfrastructureConfig,
-) error {
+func (a *actuator) updateProviderStatus(ctx context.Context, tf terraformer.Terraformer, infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig) error {
 	status, err := infrainternal.ComputeStatus(tf, config)
 	if err != nil {
 		return err

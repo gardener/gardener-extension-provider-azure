@@ -3,6 +3,8 @@ provider "azurerm" {
   tenant_id       = "{{ required "azure.tenantID is required" .Values.azure.tenantID }}"
   client_id       = var.CLIENT_ID
   client_secret   = var.CLIENT_SECRET
+
+  features {}
 }
 
 {{ if .Values.create.resourceGroup -}}
@@ -47,10 +49,8 @@ resource "azurerm_subnet" "workers" {
   virtual_network_name      = data.azurerm_virtual_network.vnet.name
   resource_group_name       = data.azurerm_virtual_network.vnet.resource_group_name
   {{- end }}
-  address_prefix            = "{{ required "networks.worker is required" .Values.networks.worker }}"
+  address_prefixes          = ["{{ required "networks.worker is required" .Values.networks.worker }}"]
   service_endpoints         = [{{range $index, $serviceEndpoint := .Values.resourceGroup.subnet.serviceEndpoints}}{{if $index}},{{end}}"{{$serviceEndpoint}}"{{end}}]
-  route_table_id            = azurerm_route_table.workers.id
-  network_security_group_id = azurerm_network_security_group.workers.id
 }
 
 resource "azurerm_route_table" "workers" {
@@ -109,12 +109,21 @@ resource "azurerm_nat_gateway" "nat" {
   resource_group_name     = data.azurerm_resource_group.rg.name
   {{- end }}
   sku_name                = "Standard"
-  public_ip_address_ids   = [azurerm_public_ip.natip.id]
-  {{- if .Values.natGateway }}
-  {{- if .Values.natGateway.idleConnectionTimeoutMinutes }}
+  {{ if .Values.natGateway -}}
+  {{ if .Values.natGateway.idleConnectionTimeoutMinutes -}}
   idle_timeout_in_minutes = {{ .Values.natGateway.idleConnectionTimeoutMinutes }}
   {{- end }}
+
+  # TODO(natipmigration) This can be removed in future versions when the ip migration has been completed.
+  {{ if .Values.natGateway.migrateNatGatewayToIPAssociation -}}
+  public_ip_address_ids   = []
   {{- end }}
+  {{- end }}
+}
+
+resource "azurerm_nat_gateway_public_ip_association" "natip-association" {
+  nat_gateway_id       = azurerm_nat_gateway.nat.id
+  public_ip_address_id = azurerm_public_ip.natip.id
 }
 
 resource "azurerm_subnet_nat_gateway_association" "nat-worker-subnet-association" {
