@@ -30,6 +30,9 @@ data:
   tenantID: base64(tenant-id)
 ```
 
+⚠️ Depending on your API usage it can be problematic to reuse the same Service Principal for different Shoot clusters due to rate limits.
+Please consider spreading your Shoots over Service Principals from different Azure subscriptions if you are hitting those limits.
+
 ## `InfrastructureConfig`
 
 The infrastructure configuration mainly describes how the network layout looks like in order to create the shoot worker nodes in a later step, thus, prepares everything relevant to create VMs, load balancers, volumes, etc.
