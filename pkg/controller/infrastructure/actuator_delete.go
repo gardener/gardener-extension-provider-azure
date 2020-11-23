@@ -26,7 +26,7 @@ import (
 
 // Delete implements infrastructure.Actuator.
 func (a *actuator) Delete(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
-	tf, err := internal.NewTerraformer(a.RESTConfig(), infrastructure.TerraformerPurpose, infra.Namespace, infra.Name)
+	tf, err := internal.NewTerraformer(a.RESTConfig(), infrastructure.TerraformerPurpose, infra)
 	if err != nil {
 		return err
 	}
@@ -44,12 +44,7 @@ func (a *actuator) Delete(ctx context.Context, infra *extensionsv1alpha1.Infrast
 		return tf.CleanupConfiguration(ctx)
 	}
 
-	clientAuth, err := internal.GetClientAuthData(ctx, a.Client(), infra.Spec.SecretRef)
-	if err != nil {
-		return err
-	}
-
 	return tf.
-		SetVariablesEnvironment(internal.TerraformVariablesEnvironmentFromClientAuth(clientAuth)).
+		SetEnvVars(internal.TerraformerEnvVars(infra.Spec.SecretRef)...).
 		Destroy()
 }

@@ -28,11 +28,6 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/adal"
 	azureRest "github.com/Azure/go-autorest/autorest/azure"
-	azureinstall "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/install"
-	azurev1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure"
-	. "github.com/gardener/gardener-extension-provider-azure/test/integration/infrastructure"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -53,6 +48,12 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+
+	azureinstall "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/install"
+	azurev1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure"
+	. "github.com/gardener/gardener-extension-provider-azure/test/integration/infrastructure"
 )
 
 const (
@@ -196,7 +197,9 @@ var _ = Describe("Infrastructure tests", func() {
 
 		cfg, err := testEnv.Start()
 		Expect(err).ToNot(HaveOccurred())
-		mgr, err := manager.New(cfg, manager.Options{})
+		mgr, err := manager.New(cfg, manager.Options{
+			MetricsBindAddress: "0",
+		})
 		Expect(err).ToNot(HaveOccurred())
 
 		Expect(extensionsv1alpha1.AddToScheme(mgr.GetScheme())).To(Succeed())
@@ -758,7 +761,7 @@ func verifyCreation(
 		}
 	}
 
-	//subnets
+	// subnets
 	subnet, err := az.subnets.Get(ctx, vnetResourceGroupName, status.Networks.VNet.Name, subnetName, "")
 	Expect(err).ToNot(HaveOccurred())
 	Expect(subnet.AddressPrefix).To(PointTo(Equal(WorkerCIDR)))

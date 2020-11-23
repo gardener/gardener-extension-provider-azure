@@ -17,27 +17,32 @@ package internal
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
 )
 
 var _ = Describe("Terraform", func() {
-	var (
-		clientAuth             *ClientAuth
-		clientSecret, clientID = "secret", "client_id"
-	)
-
-	BeforeEach(func() {
-		clientAuth = &ClientAuth{
-			ClientSecret: clientSecret,
-			ClientID:     clientID,
-		}
-	})
-
-	Describe("#TerraformVariablesEnvironmentFromClientAuth", func() {
-		It("should correctly create the variables environment", func() {
-			Expect(TerraformVariablesEnvironmentFromClientAuth(clientAuth)).To(Equal(map[string]string{
-				TerraformVarClientID:     clientID,
-				TerraformVarClientSecret: clientSecret,
-			}))
+	Describe("#TerraformerEnvVars", func() {
+		It("should correctly create the environment variables", func() {
+			secretRef := corev1.SecretReference{Name: "cloud"}
+			Expect(TerraformerEnvVars(secretRef)).To(ConsistOf(
+				corev1.EnvVar{
+					Name: "TF_VAR_CLIENT_ID",
+					ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: secretRef.Name,
+						},
+						Key: "clientID",
+					}},
+				},
+				corev1.EnvVar{
+					Name: "TF_VAR_CLIENT_SECRET",
+					ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: secretRef.Name,
+						},
+						Key: "clientSecret",
+					}},
+				}))
 		})
 	})
 })

@@ -46,6 +46,11 @@ func (w *workerDelegate) MachineClassKind() string {
 	return "AzureMachineClass"
 }
 
+// MachineClass yields a newly initialized machine class object.
+func (w *workerDelegate) MachineClass() runtime.Object {
+	return &machinev1alpha1.AzureMachineClass{}
+}
+
 // MachineClassList yields a newly initialized AzureMachineClassList object.
 func (w *workerDelegate) MachineClassList() runtime.Object {
 	return &machinev1alpha1.AzureMachineClassList{}

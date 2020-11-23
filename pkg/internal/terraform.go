@@ -17,11 +17,14 @@ package internal
 import (
 	"time"
 
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/imagevector"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
-
+	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/logger"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/rest"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/imagevector"
 )
 
 const (
@@ -31,23 +34,34 @@ const (
 	TerraformVarClientSecret = "TF_VAR_CLIENT_SECRET"
 )
 
-// TerraformVariablesEnvironmentFromClientAuth computes the Terraformer variables environment from the
-// given ServiceAccount.
-func TerraformVariablesEnvironmentFromClientAuth(auth *ClientAuth) map[string]string {
-	return map[string]string{
-		TerraformVarClientID:     auth.ClientID,
-		TerraformVarClientSecret: auth.ClientSecret,
-	}
+// TerraformerEnvVars computes the Terraformer environment variables from the given secret reference.
+func TerraformerEnvVars(secretRef corev1.SecretReference) []corev1.EnvVar {
+	return []corev1.EnvVar{{
+		Name: TerraformVarClientID,
+		ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+			LocalObjectReference: corev1.LocalObjectReference{
+				Name: secretRef.Name,
+			},
+			Key: azure.ClientIDKey,
+		}},
+	}, {
+		Name: TerraformVarClientSecret,
+		ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+			LocalObjectReference: corev1.LocalObjectReference{
+				Name: secretRef.Name,
+			},
+			Key: azure.ClientSecretKey,
+		}},
+	}}
 }
 
 // NewTerraformer initializes a new Terraformer.
 func NewTerraformer(
 	restConfig *rest.Config,
-	purpose,
-	namespace,
-	name string,
+	purpose string,
+	infra *extensionsv1alpha1.Infrastructure,
 ) (terraformer.Terraformer, error) {
-	tf, err := terraformer.NewForConfig(logger.NewLogger("info"), restConfig, purpose, namespace, name, imagevector.TerraformerImage())
+	tf, err := terraformer.NewForConfig(logger.NewLogger("info"), restConfig, purpose, infra.Namespace, infra.Name, imagevector.TerraformerImage())
 	if err != nil {
 		return nil, err
 	}
@@ -61,15 +75,13 @@ func NewTerraformer(
 // NewTerraformerWithAuth initializes a new Terraformer that has the azure auth credentials.
 func NewTerraformerWithAuth(
 	restConfig *rest.Config,
-	purpose,
-	namespace,
-	name string,
-	clientAuth *ClientAuth,
+	purpose string,
+	infra *extensionsv1alpha1.Infrastructure,
 ) (terraformer.Terraformer, error) {
-	tf, err := NewTerraformer(restConfig, purpose, namespace, name)
+	tf, err := NewTerraformer(restConfig, purpose, infra)
 	if err != nil {
 		return nil, err
 	}
 
-	return tf.SetVariablesEnvironment(TerraformVariablesEnvironmentFromClientAuth(clientAuth)), nil
+	return tf.SetEnvVars(TerraformerEnvVars(infra.Spec.SecretRef)...), nil
 }
