@@ -56,11 +56,7 @@ func TerraformerEnvVars(secretRef corev1.SecretReference) []corev1.EnvVar {
 }
 
 // NewTerraformer initializes a new Terraformer.
-func NewTerraformer(
-	restConfig *rest.Config,
-	purpose string,
-	infra *extensionsv1alpha1.Infrastructure,
-) (terraformer.Terraformer, error) {
+func NewTerraformer(restConfig *rest.Config, purpose string, infra *extensionsv1alpha1.Infrastructure) (terraformer.Terraformer, error) {
 	tf, err := terraformer.NewForConfig(logger.NewLogger("info"), restConfig, purpose, infra.Namespace, infra.Name, imagevector.TerraformerImage())
 	if err != nil {
 		return nil, err
@@ -73,11 +69,7 @@ func NewTerraformer(
 }
 
 // NewTerraformerWithAuth initializes a new Terraformer that has the azure auth credentials.
-func NewTerraformerWithAuth(
-	restConfig *rest.Config,
-	purpose string,
-	infra *extensionsv1alpha1.Infrastructure,
-) (terraformer.Terraformer, error) {
+func NewTerraformerWithAuth(restConfig *rest.Config, purpose string, infra *extensionsv1alpha1.Infrastructure) (terraformer.Terraformer, error) {
 	tf, err := NewTerraformer(restConfig, purpose, infra)
 	if err != nil {
 		return nil, err

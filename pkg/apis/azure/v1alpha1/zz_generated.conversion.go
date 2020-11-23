@@ -474,6 +474,7 @@ func autoConvert_v1alpha1_InfrastructureStatus_To_azure_InfrastructureStatus(in 
 	out.SecurityGroups = *(*[]azure.SecurityGroup)(unsafe.Pointer(&in.SecurityGroups))
 	out.Identity = (*azure.IdentityStatus)(unsafe.Pointer(in.Identity))
 	out.Zoned = in.Zoned
+	out.NatGatewayPublicIPMigrated = in.NatGatewayPublicIPMigrated
 	return nil
 }
 
@@ -494,6 +495,7 @@ func autoConvert_azure_InfrastructureStatus_To_v1alpha1_InfrastructureStatus(in 
 	out.SecurityGroups = *(*[]SecurityGroup)(unsafe.Pointer(&in.SecurityGroups))
 	out.Identity = (*IdentityStatus)(unsafe.Pointer(in.Identity))
 	out.Zoned = in.Zoned
+	out.NatGatewayPublicIPMigrated = in.NatGatewayPublicIPMigrated
 	return nil
 }
 

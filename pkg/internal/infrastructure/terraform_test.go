@@ -21,7 +21,6 @@ import (
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 	"github.com/gardener/gardener/extensions/pkg/controller"
-
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	. "github.com/onsi/ginkgo"
@@ -178,7 +177,9 @@ var _ = Describe("Terraform", func() {
 				"securityGroupName": TerraformerOutputKeySecurityGroupName,
 			}
 
-			expectedNatGatewayValues = map[string]interface{}{}
+			expectedNatGatewayValues = map[string]interface{}{
+				"migrateNatGatewayToIPAssociation": false,
+			}
 
 			expectedValues = map[string]interface{}{
 				"azure":         expectedAzureValues,
@@ -329,6 +330,50 @@ var _ = Describe("Terraform", func() {
 				values, err := ComputeTerraformerChartValues(infra, clientAuth, config, cluster)
 				Expect(err).To(Not(HaveOccurred()))
 				Expect(values).To(BeEquivalentTo(expectedValues))
+			})
+
+			// TODO(natipmigration) This can be removed in future versions when the ip migration has been completed.
+			Context("NatGateway Gardener managed IP migration", func() {
+				BeforeEach(func() {
+					config.Networks.NatGateway = &api.NatGatewayConfig{
+						Enabled: true,
+					}
+					expectedCreateValues["natGateway"] = true
+				})
+
+				It("should migrate the NatGateway IP as it is not yet migrated", func() {
+					infrastructureStatus := api.InfrastructureStatus{
+						NatGatewayPublicIPMigrated: false,
+					}
+					infrastructureStatusMarshalled, err := json.Marshal(infrastructureStatus)
+					Expect(err).NotTo(HaveOccurred())
+
+					infra.Status.ProviderStatus = &runtime.RawExtension{
+						Raw: infrastructureStatusMarshalled,
+					}
+
+					expectedNatGatewayValues["migrateNatGatewayToIPAssociation"] = true
+					values, err := ComputeTerraformerChartValues(infra, clientAuth, config, cluster)
+					Expect(err).To(Not(HaveOccurred()))
+					Expect(values).To(BeEquivalentTo(expectedValues))
+				})
+
+				It("should not migrate the NatGateway IP as it is already migrated", func() {
+					infrastructureStatus := api.InfrastructureStatus{
+						NatGatewayPublicIPMigrated: true,
+					}
+					infrastructureStatusMarshalled, err := json.Marshal(infrastructureStatus)
+					Expect(err).NotTo(HaveOccurred())
+
+					infra.Status.ProviderStatus = &runtime.RawExtension{
+						Raw: infrastructureStatusMarshalled,
+					}
+
+					expectedNatGatewayValues["migrateNatGatewayToIPAssociation"] = false
+					values, err := ComputeTerraformerChartValues(infra, clientAuth, config, cluster)
+					Expect(err).To(Not(HaveOccurred()))
+					Expect(values).To(BeEquivalentTo(expectedValues))
+				})
 			})
 		})
 	})
