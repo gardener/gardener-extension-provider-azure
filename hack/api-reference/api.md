@@ -284,6 +284,20 @@ resources that are still using this version. Hence, it stores the used versions 
 reconciliation is possible.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>vmoDependencies</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.VmoDependency">
+[]VmoDependency
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>VmoDependencies is a list of external VirtualMachineScaleSet Orchestration Mode VM (VMO) dependencies.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.AvailabilitySet">AvailabilitySet
@@ -1309,6 +1323,58 @@ string
 <td>
 <em>(Optional)</em>
 <p>ResourceGroup is the resource group where the existing vNet belongs to.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.VmoDependency">VmoDependency
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.WorkerStatus">WorkerStatus</a>)
+</p>
+<p>
+<p>VmoDependency is dependency reference for a workerpool to a VirtualMachineScaleSet Orchestration Mode VM (VMO).</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>poolName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PoolName is the name of the worker pool to which the VMO belong to.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>id</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>ID is the id of the VMO resource on Azure.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name is the name of the VMO resource on Azure.</p>
 </td>
 </tr>
 </tbody>

@@ -1,4 +1,4 @@
-// Copyright (c) 2019 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
+// Copyright (c) 2020 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package client
 import (
 	"context"
 
+	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2020-06-30/compute"
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
 	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-04-01/storage"
 	"github.com/Azure/azure-storage-blob-go/azblob"
@@ -29,6 +30,7 @@ type Factory interface {
 	Group(context.Context, corev1.SecretReference) (Group, error)
 	Storage(context.Context, corev1.SecretReference) (Storage, error)
 	StorageAccount(context.Context, corev1.SecretReference) (StorageAccount, error)
+	Vmss(context.Context, corev1.SecretReference) (Vmss, error)
 }
 
 // Group represents an Azure group client.
@@ -50,6 +52,14 @@ type StorageAccount interface {
 	ListStorageAccountKey(context.Context, string, string) (string, error)
 }
 
+// Vmss represents an Azure virtual machine scale set client.
+type Vmss interface {
+	List(context.Context, string) ([]compute.VirtualMachineScaleSet, error)
+	Get(context.Context, string, string) (*compute.VirtualMachineScaleSet, error)
+	Create(context.Context, string, string, *compute.VirtualMachineScaleSet) (*compute.VirtualMachineScaleSet, error)
+	Delete(context.Context, string, string) error
+}
+
 // AzureFactory is an implementation of Factory to produce clients for various Azure services.
 type AzureFactory struct {
 	client client.Client
@@ -68,4 +78,9 @@ type StorageAccountClient struct {
 // GroupClient is an implementation of Group for a resource group client.
 type GroupClient struct {
 	client resources.GroupsClient
+}
+
+// VmssClient is an implementation of Vmss for a virtual machine scale set client.
+type VmssClient struct {
+	client compute.VirtualMachineScaleSetsClient
 }

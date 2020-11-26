@@ -16,6 +16,7 @@ package infrastructure
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strconv"
@@ -81,7 +82,7 @@ func ComputeTerraformerChartValues(infra *extensionsv1alpha1.Infrastructure, cli
 		resourceGroupName     = infra.Namespace
 
 		identityConfig map[string]interface{}
-		azure          = map[string]interface{}{
+		azureConfig    = map[string]interface{}{
 			"subscriptionID": clientAuth.SubscriptionID,
 			"tenantID":       clientAuth.TenantID,
 			"region":         infra.Spec.Region,
@@ -98,6 +99,12 @@ func ComputeTerraformerChartValues(infra *extensionsv1alpha1.Infrastructure, cli
 		}
 		natGatewayConfig = map[string]interface{}{}
 	)
+
+	primaryAvSetRequired, err := isPrimaryAvailabilitySetRequired(infra, config, cluster)
+	if err != nil {
+		return nil, err
+	}
+
 	// check if we should use an existing ResourceGroup or create a new one
 	if config.ResourceGroup != nil {
 		createResourceGroup = false
@@ -119,8 +126,7 @@ func ComputeTerraformerChartValues(infra *extensionsv1alpha1.Infrastructure, cli
 		vnetConfig["cidr"] = config.Networks.Workers
 	}
 
-	// If the cluster is zoned, then we don't need to create an AvailabilitySet.
-	if !config.Zoned {
+	if primaryAvSetRequired {
 		createAvailabilitySet = true
 		outputKeys["availabilitySetID"] = TerraformerOutputKeyAvailabilitySetID
 		outputKeys["availabilitySetName"] = TerraformerOutputKeyAvailabilitySetName
@@ -130,8 +136,8 @@ func ComputeTerraformerChartValues(infra *extensionsv1alpha1.Infrastructure, cli
 			return nil, err
 		}
 
-		azure["countFaultDomains"] = count.faultDomains
-		azure["countUpdateDomains"] = count.updateDomains
+		azureConfig["countFaultDomains"] = count.faultDomains
+		azureConfig["countUpdateDomains"] = count.updateDomains
 	}
 
 	if config.Networks.NatGateway != nil && config.Networks.NatGateway.Enabled {
@@ -159,7 +165,7 @@ func ComputeTerraformerChartValues(infra *extensionsv1alpha1.Infrastructure, cli
 	}
 
 	return map[string]interface{}{
-		"azure": azure,
+		"azure": azureConfig,
 		"create": map[string]interface{}{
 			"resourceGroup":   createResourceGroup,
 			"vnet":            createVNet,
@@ -236,28 +242,36 @@ type TerraformState struct {
 	IdentityID string
 	// IdentityClientID is the client id of the identity.
 	IdentityClientID string
+	// Zoned is an indicator if zones should be used.
+	Zoned bool
 	// NatGatewayIPMigrated is the indicator if the nat gateway ip is migrated.
 	// TODO(natipmigration) This can be removed in future versions when the ip migration has been completed.
 	NatGatewayIPMigrated string
 }
 
 // ExtractTerraformState extracts the TerraformState from the given Terraformer.
-func ExtractTerraformState(ctx context.Context, tf terraformer.Terraformer, config *api.InfrastructureConfig) (*TerraformState, error) {
-	var outputKeys = []string{
-		TerraformerOutputKeyResourceGroupName,
-		TerraformerOutputKeyRouteTableName,
-		TerraformerOutputKeySecurityGroupName,
-		TerraformerOutputKeySubnetName,
-		TerraformerOutputKeyVNetName,
+func ExtractTerraformState(ctx context.Context, tf terraformer.Terraformer, infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig, cluster *controller.Cluster) (*TerraformState, error) {
+	var (
+		outputKeys = []string{
+			TerraformerOutputKeyResourceGroupName,
+			TerraformerOutputKeyRouteTableName,
+			TerraformerOutputKeySecurityGroupName,
+			TerraformerOutputKeySubnetName,
+			TerraformerOutputKeyVNetName,
+		}
+	)
+
+	primaryAvSetRequired, err := isPrimaryAvailabilitySetRequired(infra, config, cluster)
+	if err != nil {
+		return nil, err
 	}
 
 	if config.Networks.VNet.Name != nil && config.Networks.VNet.ResourceGroup != nil {
 		outputKeys = append(outputKeys, TerraformerOutputKeyVNetResourceGroup)
 	}
 
-	if !config.Zoned {
-		outputKeys = append(outputKeys, TerraformerOutputKeyAvailabilitySetID, TerraformerOutputKeyAvailabilitySetName,
-			TerraformerOutputKeyCountFaultDomains, TerraformerOutputKeyCountUpdateDomains)
+	if primaryAvSetRequired {
+		outputKeys = append(outputKeys, TerraformerOutputKeyAvailabilitySetID, TerraformerOutputKeyAvailabilitySetName, TerraformerOutputKeyCountFaultDomains, TerraformerOutputKeyCountUpdateDomains)
 	}
 
 	if config.Identity != nil && config.Identity.Name != "" && config.Identity.ResourceGroup != "" {
@@ -275,13 +289,18 @@ func ExtractTerraformState(ctx context.Context, tf terraformer.Terraformer, conf
 		RouteTableName:    vars[TerraformerOutputKeyRouteTableName],
 		SecurityGroupName: vars[TerraformerOutputKeySecurityGroupName],
 		SubnetName:        vars[TerraformerOutputKeySubnetName],
+		Zoned:             false,
 	}
 
 	if config.Networks.VNet.Name != nil && config.Networks.VNet.ResourceGroup != nil {
 		tfState.VNetResourceGroupName = vars[TerraformerOutputKeyVNetResourceGroup]
 	}
 
-	if !config.Zoned {
+	if config.Zoned {
+		tfState.Zoned = true
+	}
+
+	if primaryAvSetRequired {
 		tfState.AvailabilitySetID = vars[TerraformerOutputKeyAvailabilitySetID]
 		tfState.AvailabilitySetName = vars[TerraformerOutputKeyAvailabilitySetName]
 		countFaultDomains, err := strconv.Atoi(vars[TerraformerOutputKeyCountFaultDomains])
@@ -310,67 +329,70 @@ func ExtractTerraformState(ctx context.Context, tf terraformer.Terraformer, conf
 
 // StatusFromTerraformState computes an InfrastructureStatus from the given
 // Terraform variables.
-func StatusFromTerraformState(state *TerraformState) *apiv1alpha1.InfrastructureStatus {
-	var tfState = apiv1alpha1.InfrastructureStatus{
+func StatusFromTerraformState(tfState *TerraformState) *apiv1alpha1.InfrastructureStatus {
+	var infraState = apiv1alpha1.InfrastructureStatus{
 		TypeMeta: StatusTypeMeta,
 		ResourceGroup: apiv1alpha1.ResourceGroup{
-			Name: state.ResourceGroupName,
+			Name: tfState.ResourceGroupName,
 		},
 		Networks: apiv1alpha1.NetworkStatus{
 			VNet: apiv1alpha1.VNetStatus{
-				Name: state.VNetName,
+				Name: tfState.VNetName,
 			},
 			Subnets: []apiv1alpha1.Subnet{
 				{
 					Purpose: apiv1alpha1.PurposeNodes,
-					Name:    state.SubnetName,
+					Name:    tfState.SubnetName,
 				},
 			},
 		},
 		AvailabilitySets: []apiv1alpha1.AvailabilitySet{},
 		RouteTables: []apiv1alpha1.RouteTable{
-			{Purpose: apiv1alpha1.PurposeNodes, Name: state.RouteTableName},
+			{Purpose: apiv1alpha1.PurposeNodes, Name: tfState.RouteTableName},
 		},
 		SecurityGroups: []apiv1alpha1.SecurityGroup{
-			{Name: state.SecurityGroupName, Purpose: apiv1alpha1.PurposeNodes},
+			{Name: tfState.SecurityGroupName, Purpose: apiv1alpha1.PurposeNodes},
 		},
+		Zoned: false,
 	}
 
-	if state.VNetResourceGroupName != "" {
-		tfState.Networks.VNet.ResourceGroup = &state.VNetResourceGroupName
+	if tfState.Zoned {
+		infraState.Zoned = true
 	}
 
-	if state.IdentityID != "" && state.IdentityClientID != "" {
-		tfState.Identity = &apiv1alpha1.IdentityStatus{
-			ID:       state.IdentityID,
-			ClientID: state.IdentityClientID,
+	if tfState.VNetResourceGroupName != "" {
+		infraState.Networks.VNet.ResourceGroup = &tfState.VNetResourceGroupName
+	}
+
+	if tfState.IdentityID != "" && tfState.IdentityClientID != "" {
+		infraState.Identity = &apiv1alpha1.IdentityStatus{
+			ID:       tfState.IdentityID,
+			ClientID: tfState.IdentityClientID,
 		}
 	}
 
-	// If no AvailabilitySet was created then the Shoot uses zones.
-	if state.AvailabilitySetID == "" && state.AvailabilitySetName == "" {
-		tfState.Zoned = true
-	} else {
-		tfState.AvailabilitySets = append(tfState.AvailabilitySets, apiv1alpha1.AvailabilitySet{
-			Name:               state.AvailabilitySetName,
-			ID:                 state.AvailabilitySetID,
-			CountFaultDomains:  pointer.Int32Ptr(int32(state.CountFaultDomains)),
-			CountUpdateDomains: pointer.Int32Ptr(int32(state.CountUpdateDomains)),
+	// Add AvailabilitySet to the infrastructure tfState if an AvailabilitySet is part of the Terraform tfState.
+	if tfState.AvailabilitySetID != "" && tfState.AvailabilitySetName != "" {
+		infraState.AvailabilitySets = append(infraState.AvailabilitySets, apiv1alpha1.AvailabilitySet{
+			Name:               tfState.AvailabilitySetName,
+			ID:                 tfState.AvailabilitySetID,
+			CountFaultDomains:  pointer.Int32Ptr(int32(tfState.CountFaultDomains)),
+			CountUpdateDomains: pointer.Int32Ptr(int32(tfState.CountUpdateDomains)),
 			Purpose:            apiv1alpha1.PurposeNodes,
 		})
 	}
 
 	// TODO(natipmigration) This can be removed in future versions when the ip migration has been completed.
-	if state.NatGatewayIPMigrated == "true" {
-		tfState.NatGatewayPublicIPMigrated = true
+	if tfState.NatGatewayIPMigrated == "true" {
+		infraState.NatGatewayPublicIPMigrated = true
 	}
 
-	return &tfState
+	return &infraState
 }
 
 // ComputeStatus computes the status based on the Terraformer and the given InfrastructureConfig.
-func ComputeStatus(ctx context.Context, tf terraformer.Terraformer, config *api.InfrastructureConfig) (*apiv1alpha1.InfrastructureStatus, error) {
-	state, err := ExtractTerraformState(ctx, tf, config)
+func ComputeStatus(ctx context.Context, tf terraformer.Terraformer, infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig, cluster *controller.Cluster) (*apiv1alpha1.InfrastructureStatus, error) {
+	state, err := ExtractTerraformState(ctx, tf, infra, config, cluster)
 	if err != nil {
 		return nil, err
 	}
@@ -438,6 +460,43 @@ func findDomainCounts(cluster *controller.Cluster, infra *extensionsv1alpha1.Inf
 		faultDomains:  *faultDomainCount,
 		updateDomains: *updateDomainCount,
 	}, nil
+}
+
+// isPrimaryAvailabilitySetRequired determines if a cluster primary AvailabilitySet is required.
+func isPrimaryAvailabilitySetRequired(infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig, cluster *controller.Cluster) (bool, error) {
+	if config.Zoned {
+		return false, nil
+	}
+	if cluster.Shoot == nil {
+		return false, errors.New("cannot determine if primary availability set is required as cluster.Shoot is not set")
+	}
+
+	hasVmoAnnotation := helper.HasShootVmoAlphaAnnotation(cluster.Shoot.Annotations)
+
+	// If the infrastructureStatus is not exists that mean it is a new Infrastucture.
+	if infra.Status.ProviderStatus == nil {
+		if hasVmoAnnotation {
+			return false, nil
+		}
+		return true, nil
+	}
+
+	// If the infrastructureStatus already exists that mean the Infrastucture is already created.
+	infrastructureStatus, err := helper.InfrastructureStatusFromInfrastructure(infra)
+	if err != nil {
+		return false, err
+	}
+
+	if len(infrastructureStatus.AvailabilitySets) > 0 {
+		if _, err := helper.FindAvailabilitySetByPurpose(infrastructureStatus.AvailabilitySets, api.PurposeNodes); err == nil {
+			if hasVmoAnnotation {
+				return false, errors.New("cannot use vmss orchestration mode VM (VMO) as this cluster already used an availability set")
+			}
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // isNatGatewayIPMigrationRequired checks if the Gardener managed NatGateway public ip needs to be migrated.

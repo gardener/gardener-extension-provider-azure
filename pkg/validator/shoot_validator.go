@@ -19,6 +19,7 @@ import (
 	"reflect"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azurevalidation "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/validation"
 
 	"github.com/gardener/gardener/pkg/apis/core"
@@ -26,6 +27,7 @@ import (
 )
 
 var (
+	metaDataPath    = field.NewPath("metadata")
 	specPath        = field.NewPath("spec")
 	nwPath          = specPath.Child("networking")
 	providerPath    = specPath.Child("provider")
@@ -47,7 +49,7 @@ func (v *Shoot) validateShoot(shoot *core.Shoot, infraConfig *azure.Infrastructu
 	allErrs = append(allErrs, azurevalidation.ValidateNetworking(shoot.Spec.Networking, nwPath)...)
 
 	// Provider validation
-	allErrs = append(allErrs, azurevalidation.ValidateInfrastructureConfig(infraConfig, shoot.Spec.Networking.Nodes, shoot.Spec.Networking.Pods, shoot.Spec.Networking.Services, infraConfigPath)...)
+	allErrs = append(allErrs, azurevalidation.ValidateInfrastructureConfig(infraConfig, shoot.Spec.Networking.Nodes, shoot.Spec.Networking.Pods, shoot.Spec.Networking.Services, helper.HasShootVmoAlphaAnnotation(shoot.Annotations), infraConfigPath)...)
 
 	// Shoot workers
 	allErrs = append(allErrs, azurevalidation.ValidateWorkers(shoot.Spec.Provider.Workers, infraConfig.Zoned, workersPath)...)
@@ -77,9 +79,10 @@ func (v *Shoot) validateShootUpdate(oldShoot, shoot *core.Shoot) error {
 
 	var allErrs = field.ErrorList{}
 	if !reflect.DeepEqual(oldInfraConfig, infraConfig) {
-		allErrs = append(allErrs, azurevalidation.ValidateInfrastructureConfigUpdate(oldInfraConfig, infraConfig, infraConfigPath)...)
+		allErrs = append(allErrs, azurevalidation.ValidateInfrastructureConfigUpdate(oldInfraConfig, infraConfig, metaDataPath)...)
 	}
 
+	allErrs = append(allErrs, azurevalidation.ValidateVmoConfigUpdate(helper.HasShootVmoAlphaAnnotation(oldShoot.Annotations), helper.HasShootVmoAlphaAnnotation(shoot.Annotations), metaDataPath)...)
 	allErrs = append(allErrs, azurevalidation.ValidateWorkersUpdate(oldShoot.Spec.Provider.Workers, shoot.Spec.Provider.Workers, workersPath)...)
 
 	allErrs = append(allErrs, v.validateShoot(shoot, infraConfig)...)

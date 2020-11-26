@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 // FindSubnetByPurpose takes a list of subnets and tries to find the first entry
@@ -114,4 +115,18 @@ func FindImageFromCloudProfile(cloudProfileConfig *api.CloudProfileConfig, image
 	}
 
 	return nil, fmt.Errorf("could not find an image for name %q in version %q", imageName, imageVersion)
+}
+
+// IsVmoRequired determines if VMO is required.
+func IsVmoRequired(infrastructureStatus *api.InfrastructureStatus) bool {
+	return !infrastructureStatus.Zoned && len(infrastructureStatus.AvailabilitySets) == 0
+}
+
+// HasShootVmoAlphaAnnotation determines if the passed Shoot annotations contain instruction to use VMO.
+func HasShootVmoAlphaAnnotation(shootAnnotations map[string]string) bool {
+	value, exists := shootAnnotations[azure.ShootVmoUsageAnnotation]
+	if exists && value == "true" {
+		return true
+	}
+	return false
 }

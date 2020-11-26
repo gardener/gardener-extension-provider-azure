@@ -227,6 +227,7 @@ func (client PrivateEndpointsClient) Get(ctx context.Context, resourceGroupName 
 	result, err = client.GetResponder(resp)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "network.PrivateEndpointsClient", "Get", resp, "Failure responding to request")
+		return
 	}
 
 	return
@@ -305,6 +306,10 @@ func (client PrivateEndpointsClient) List(ctx context.Context, resourceGroupName
 	result.pelr, err = client.ListResponder(resp)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "network.PrivateEndpointsClient", "List", resp, "Failure responding to request")
+		return
+	}
+	if result.pelr.hasNextLink() && result.pelr.IsEmpty() {
+		err = result.NextWithContext(ctx)
 	}
 
 	return
@@ -365,6 +370,7 @@ func (client PrivateEndpointsClient) listNextResults(ctx context.Context, lastRe
 	result, err = client.ListResponder(resp)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "network.PrivateEndpointsClient", "listNextResults", resp, "Failure responding to next results request")
+		return
 	}
 	return
 }
@@ -414,6 +420,10 @@ func (client PrivateEndpointsClient) ListBySubscription(ctx context.Context) (re
 	result.pelr, err = client.ListBySubscriptionResponder(resp)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "network.PrivateEndpointsClient", "ListBySubscription", resp, "Failure responding to request")
+		return
+	}
+	if result.pelr.hasNextLink() && result.pelr.IsEmpty() {
+		err = result.NextWithContext(ctx)
 	}
 
 	return
@@ -473,6 +483,7 @@ func (client PrivateEndpointsClient) listBySubscriptionNextResults(ctx context.C
 	result, err = client.ListBySubscriptionResponder(resp)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "network.PrivateEndpointsClient", "listBySubscriptionNextResults", resp, "Failure responding to next results request")
+		return
 	}
 	return
 }

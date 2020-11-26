@@ -14,14 +14,52 @@
 
 package worker
 
-import "context"
+import (
+	"context"
 
-// DeployMachineDependencies is a hook to create external machine dependencies.
-func (w *workerDelegate) DeployMachineDependencies(_ context.Context) error {
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
+)
+
+func (w *workerDelegate) DeployMachineDependencies(ctx context.Context) error {
+	infrastructureStatus, err := w.decodeAzureInfrastructureStatus()
+	if err != nil {
+		return err
+	}
+	workerProviderStatus, err := w.decodeWorkerProviderStatus()
+	if err != nil {
+		return err
+	}
+
+	if helper.IsVmoRequired(infrastructureStatus) {
+		vmoDependencies, err := w.reconcileVmoDependencies(ctx, infrastructureStatus, workerProviderStatus)
+		workerProviderStatus.VmoDependencies = vmoDependencies
+		if err != nil {
+			return w.updateWorkerProviderStatusWithError(ctx, workerProviderStatus, err)
+		}
+		return w.updateWorkerProviderStatus(ctx, workerProviderStatus)
+	}
+
 	return nil
 }
 
-// CleanupMachineDependencies is a hook to cleanup external machine dependencies.
-func (w *workerDelegate) CleanupMachineDependencies(_ context.Context) error {
+func (w *workerDelegate) CleanupMachineDependencies(ctx context.Context) error {
+	infrastructureStatus, err := w.decodeAzureInfrastructureStatus()
+	if err != nil {
+		return err
+	}
+	workerProviderStatus, err := w.decodeWorkerProviderStatus()
+	if err != nil {
+		return err
+	}
+
+	if helper.IsVmoRequired(infrastructureStatus) {
+		vmoDependencies, err := w.cleanupVmoDependencies(ctx, infrastructureStatus, workerProviderStatus)
+		workerProviderStatus.VmoDependencies = vmoDependencies
+		if err != nil {
+			return w.updateWorkerProviderStatusWithError(ctx, workerProviderStatus, err)
+		}
+		return w.updateWorkerProviderStatus(ctx, workerProviderStatus)
+	}
+
 	return nil
 }

@@ -15,6 +15,9 @@ loadBalancerSku: "basic"
 {{- else }}
 loadBalancerSku: "standard"
 {{- end }}
+{{- if hasKey .Values "vmType" }}
+vmType: "{{ .Values.vmType }}"
+{{- end }}
 cloudProviderBackoff: true
 cloudProviderBackoffRetries: 6
 cloudProviderBackoffExponent: 1.5

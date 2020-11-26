@@ -220,15 +220,6 @@ var _ = Describe("ValuesProvider", func() {
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("could not determine security group for purpose 'nodes'"))
 			})
-
-			It("should return error, missing availability set", func() {
-				infrastructureStatus.Zoned = false
-				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-
-				_, err := vp.GetConfigChartValues(ctx, cp, cluster)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("could not determine availability set for purpose 'nodes'"))
-			})
 		})
 
 		Context("Generate config chart values", func() {
@@ -255,6 +246,31 @@ var _ = Describe("ValuesProvider", func() {
 					"securityGroupName":   "security-group-name-workers",
 					"kubernetesVersion":   k8sVersionLessThan121,
 					"maxNodes":            maxNodes,
+				}))
+			})
+
+			It("should return correct config chart valued for cluser with vmo (non-zoned)", func() {
+				c.EXPECT().Delete(ctx, azureContainerRegistryConfigMap).Return(errorAzureContainerRegistryConfigMapNotFound)
+
+				infrastructureStatus.Zoned = false
+				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+
+				values, err := vp.GetConfigChartValues(ctx, cp, cluster)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values).To(Equal(map[string]interface{}{
+					"tenantId":          "TenantID",
+					"subscriptionId":    "SubscriptionID",
+					"aadClientId":       "ClientID",
+					"aadClientSecret":   "ClientSecret",
+					"resourceGroup":     "rg-abcd1234",
+					"vnetName":          "vnet-abcd1234",
+					"subnetName":        "subnet-abcd1234-nodes",
+					"region":            "eu-west-1a",
+					"routeTableName":    "route-table-name",
+					"securityGroupName": "security-group-name-workers",
+					"kubernetesVersion": k8sVersionLessThan121,
+					"maxNodes":          maxNodes,
+					"vmType":            "vmss",
 				}))
 			})
 

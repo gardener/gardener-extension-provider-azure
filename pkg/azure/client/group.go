@@ -17,8 +17,6 @@ package client
 import (
 	"context"
 
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
-
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
 )
 
@@ -35,7 +33,7 @@ func (c GroupClient) CreateOrUpdate(ctx context.Context, resourceGroupName, regi
 // DeleteIfExits deletes a resource group if it exits.
 func (c GroupClient) DeleteIfExits(ctx context.Context, resourceGroupName string) error {
 	_, err := c.client.Delete(ctx, resourceGroupName)
-	if err != nil && internal.AzureAPIErrorNotFound(err) {
+	if err != nil && IsAzureAPINotFoundError(err) {
 		return nil
 	}
 	return err
