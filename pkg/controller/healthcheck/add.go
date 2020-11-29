@@ -54,6 +54,9 @@ func RegisterHealthChecks(mgr manager.Manager, opts healthcheck.DefaultAddArgs) 
 		}
 		return csiEnabled
 	}
+	remedyControllerPreCheckFunc := func(_ runtime.Object, cluster *extensionscontroller.Cluster) bool {
+		return cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] != "true"
+	}
 
 	if err := healthcheck.DefaultRegistration(
 		azure.Type,
@@ -77,6 +80,11 @@ func RegisterHealthChecks(mgr manager.Manager, opts healthcheck.DefaultAddArgs) 
 				ConditionType: string(gardencorev1beta1.ShootControlPlaneHealthy),
 				HealthCheck:   general.NewSeedDeploymentHealthChecker(azure.CSIControllerFileName),
 				PreCheckFunc:  csiEnabledPreCheckFunc,
+			},
+			{
+				ConditionType: string(gardencorev1beta1.ShootControlPlaneHealthy),
+				HealthCheck:   general.NewSeedDeploymentHealthChecker(azure.RemedyControllerName),
+				PreCheckFunc:  remedyControllerPreCheckFunc,
 			},
 			{
 				ConditionType: string(gardencorev1beta1.ShootControlPlaneHealthy),

@@ -118,6 +118,8 @@ const (
 	MachineControllerManagerMonitoringConfigName = "machine-controller-manager-monitoring-config"
 	// RemedyControllerName is a constant for the name of the remedy-controller.
 	RemedyControllerName = "remedy-controller-azure"
+	// DisableRemedyControllerAnnotation disables the Azure remedy controller (enabled by default)
+	DisableRemedyControllerAnnotation = "azure.provider.extensions.gardener.cloud/disable-remedy-controller"
 )
 
 var (

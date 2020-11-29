@@ -392,7 +392,7 @@ var _ = Describe("ValuesProvider", func() {
 
 		It("should return correct control plane chart values when remedy controller is disabled", func() {
 			cluster = generateCluster(cidr, k8sVersionLessThan120, false, map[string]string{
-				disableRemedyControllerAnnotation: "true",
+				azure.DisableRemedyControllerAnnotation: "true",
 			})
 
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
@@ -507,7 +507,7 @@ var _ = Describe("ValuesProvider", func() {
 		Context("remedy controller is disabled", func() {
 			BeforeEach(func() {
 				cluster = generateCluster(cidr, k8sVersionLessThan120, false, map[string]string{
-					disableRemedyControllerAnnotation: "true",
+					azure.DisableRemedyControllerAnnotation: "true",
 				})
 			})
 
