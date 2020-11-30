@@ -47,11 +47,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const (
-	// disableRemedyControllerAnnotation disables the Azure remedy controller (enabled by default)
-	disableRemedyControllerAnnotation = "azure.provider.extensions.gardener.cloud/disable-remedy-controller"
-)
-
 // Object names
 
 var (
@@ -437,7 +432,7 @@ func (vp *valuesProvider) GetControlPlaneShootChartValues(
 		cloudProviderDiskConfigChecksum = utils.ComputeChecksum(secret.Data)
 	}
 
-	disableRemedyController := cluster.Shoot.Annotations[disableRemedyControllerAnnotation] == "true"
+	disableRemedyController := cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] == "true"
 
 	return getControlPlaneShootChartValues(cluster, infraStatus, k8sVersionLessThan120, disableRemedyController, cloudProviderDiskConfig, cloudProviderDiskConfigChecksum), nil
 }
@@ -639,7 +634,7 @@ func getRemedyControllerChartValues(
 	checksums map[string]string,
 	scaledDown bool,
 ) (map[string]interface{}, error) {
-	disableRemedyController := cluster.Shoot.Annotations[disableRemedyControllerAnnotation] == "true"
+	disableRemedyController := cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] == "true"
 	if disableRemedyController {
 		return map[string]interface{}{"enabled": false}, nil
 	}
