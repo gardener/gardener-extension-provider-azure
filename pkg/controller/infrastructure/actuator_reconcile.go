@@ -22,17 +22,20 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
+	"github.com/go-logr/logr"
 
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	"github.com/pkg/errors"
 )
 
 // Reconcile implements infrastructure.Actuator.
 func (a *actuator) Reconcile(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
-	return a.reconcile(ctx, infra, cluster, terraformer.StateConfigMapInitializerFunc(terraformer.CreateState))
+	logger := a.logger.WithValues("infrastructure", kutil.KeyFromObject(infra), "operation", "reconcile")
+	return a.reconcile(ctx, logger, infra, cluster, terraformer.StateConfigMapInitializerFunc(terraformer.CreateState))
 }
 
-func (a *actuator) reconcile(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster, stateInitializer terraformer.StateConfigMapInitializer) error {
+func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster, stateInitializer terraformer.StateConfigMapInitializer) error {
 	config, err := helper.InfrastructureConfigFromInfrastructure(infra)
 	if err != nil {
 		return err
@@ -48,14 +51,14 @@ func (a *actuator) reconcile(ctx context.Context, infra *extensionsv1alpha1.Infr
 		return err
 	}
 
-	tf, err := internal.NewTerraformerWithAuth(a.RESTConfig(), infrastructure.TerraformerPurpose, infra)
+	tf, err := internal.NewTerraformerWithAuth(logger, a.RESTConfig(), infrastructure.TerraformerPurpose, infra)
 	if err != nil {
 		return err
 	}
 
 	if err := tf.
-		InitializeWith(terraformer.DefaultInitializer(a.Client(), terraformFiles.Main, terraformFiles.Variables, terraformFiles.TFVars, stateInitializer)).
-		Apply(); err != nil {
+		InitializeWith(ctx, terraformer.DefaultInitializer(a.Client(), terraformFiles.Main, terraformFiles.Variables, terraformFiles.TFVars, stateInitializer)).
+		Apply(ctx); err != nil {
 
 		return errors.Wrap(err, "failed to apply the terraform config")
 	}
