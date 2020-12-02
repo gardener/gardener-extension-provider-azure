@@ -15,6 +15,7 @@
 package validator
 
 import (
+	"errors"
 	"reflect"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
@@ -55,19 +56,26 @@ func (v *Shoot) validateShoot(shoot *core.Shoot, infraConfig *azure.Infrastructu
 }
 
 func (v *Shoot) validateShootUpdate(oldShoot, shoot *core.Shoot) error {
-	// InfrastructureConfig update
+
+	// Decode the new infrastructure config.
+	if shoot.Spec.Provider.InfrastructureConfig == nil {
+		return field.Required(infraConfigPath, "InfrastructureConfig must be set for Azure shoots")
+	}
 	infraConfig, err := checkAndDecodeInfrastructureConfig(v.decoder, shoot.Spec.Provider.InfrastructureConfig, infraConfigPath)
 	if err != nil {
 		return err
 	}
 
-	oldInfraConfig, err := checkAndDecodeInfrastructureConfig(v.decoder, shoot.Spec.Provider.InfrastructureConfig, infraConfigPath)
+	// Decode the old infrastructure config.
+	if oldShoot.Spec.Provider.InfrastructureConfig == nil {
+		return field.InternalError(infraConfigPath, errors.New("InfrastructureConfig is not available on old shoot"))
+	}
+	oldInfraConfig, err := checkAndDecodeInfrastructureConfig(v.decoder, oldShoot.Spec.Provider.InfrastructureConfig, infraConfigPath)
 	if err != nil {
 		return err
 	}
 
-	allErrs := field.ErrorList{}
-
+	var allErrs = field.ErrorList{}
 	if !reflect.DeepEqual(oldInfraConfig, infraConfig) {
 		allErrs = append(allErrs, azurevalidation.ValidateInfrastructureConfigUpdate(oldInfraConfig, infraConfig, infraConfigPath)...)
 	}

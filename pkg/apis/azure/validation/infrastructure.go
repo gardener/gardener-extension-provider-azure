@@ -57,35 +57,13 @@ func ValidateInfrastructureConfig(infra *apisazure.InfrastructureConfig, nodesCI
 
 	networksPath := fldPath.Child("networks")
 
+	// Validate workers subnet cidr
 	workerCIDR := cidrvalidation.NewCIDR(infra.Networks.Workers, networksPath.Child("workers"))
-
 	allErrs = append(allErrs, cidrvalidation.ValidateCIDRParse(workerCIDR)...)
 	allErrs = append(allErrs, cidrvalidation.ValidateCIDRIsCanonical(networksPath.Child("workers"), infra.Networks.Workers)...)
 
-	if (infra.Networks.VNet.Name != nil && infra.Networks.VNet.ResourceGroup == nil) || (infra.Networks.VNet.Name == nil && infra.Networks.VNet.ResourceGroup != nil) {
-		allErrs = append(allErrs, field.Invalid(networksPath.Child("vnet"), infra.Networks.VNet, "specifying an existing vnet name require a vnet name and vnet resource group"))
-	} else if infra.Networks.VNet.Name != nil && infra.Networks.VNet.ResourceGroup != nil {
-		if infra.Networks.VNet.CIDR != nil {
-			allErrs = append(allErrs, field.Invalid(networksPath.Child("vnet", "cidr"), *infra.Networks.VNet.ResourceGroup, "specifying a cidr for an existing vnet is not possible"))
-		}
-		if infra.ResourceGroup != nil && *infra.Networks.VNet.ResourceGroup == infra.ResourceGroup.Name {
-			allErrs = append(allErrs, field.Invalid(networksPath.Child("vnet", "resourceGroup"), *infra.Networks.VNet.ResourceGroup, "the vnet resource group must not be the same as the cluster resource group"))
-		}
-	} else {
-		cidrPath := networksPath.Child("vnet", "cidr")
-		if infra.Networks.VNet.CIDR == nil {
-			// Use worker/subnet cidr as cidr for the vnet.
-			allErrs = append(allErrs, workerCIDR.ValidateSubset(nodes)...)
-			allErrs = append(allErrs, workerCIDR.ValidateNotSubset(pods, services)...)
-		} else {
-			vpcCIDR := cidrvalidation.NewCIDR(*(infra.Networks.VNet.CIDR), cidrPath)
-			allErrs = append(allErrs, vpcCIDR.ValidateParse()...)
-			allErrs = append(allErrs, vpcCIDR.ValidateSubset(nodes)...)
-			allErrs = append(allErrs, vpcCIDR.ValidateSubset(workerCIDR)...)
-			allErrs = append(allErrs, vpcCIDR.ValidateNotSubset(pods, services)...)
-			allErrs = append(allErrs, cidrvalidation.ValidateCIDRIsCanonical(cidrPath, *infra.Networks.VNet.CIDR)...)
-		}
-	}
+	// Validate vnet config
+	allErrs = append(allErrs, validateVnetConfig(infra.Networks.VNet, infra.ResourceGroup, workerCIDR, nodes, pods, services, networksPath.Child("vnet"))...)
 
 	// TODO(dkistner) Remove once we proceed with multiple AvailabilitySet support.
 	// Currently we will not offer Nat Gateway for non zoned/AvailabilitySet based
@@ -114,14 +92,83 @@ func ValidateInfrastructureConfig(infra *apisazure.InfrastructureConfig, nodesCI
 	return allErrs
 }
 
+func validateVnetConfig(vnetConfig apisazure.VNet, resourceGroupConfig *apisazure.ResourceGroup, workers, nodes, pods, services cidrvalidation.CIDR, vnetConfigPath *field.Path) field.ErrorList {
+	var allErrs = field.ErrorList{}
+
+	// Validate that just vnet name or vnet resource group is specified.
+	if (vnetConfig.Name != nil && vnetConfig.ResourceGroup == nil) || (vnetConfig.Name == nil && vnetConfig.ResourceGroup != nil) {
+		return append(allErrs, field.Invalid(vnetConfigPath, vnetConfig, "a vnet cidr or vnet name and resource group need to be specified"))
+	}
+
+	if isExternalVnetUsed(&vnetConfig) {
+		if vnetConfig.CIDR != nil {
+			allErrs = append(allErrs, field.Invalid(vnetConfigPath.Child("cidr"), vnetConfig, "specifying a cidr for an existing vnet is not possible"))
+		}
+
+		if resourceGroupConfig != nil && *vnetConfig.ResourceGroup == resourceGroupConfig.Name {
+			allErrs = append(allErrs, field.Invalid(vnetConfigPath.Child("resourceGroup"), *vnetConfig.ResourceGroup, "the vnet resource group must not be the same as the cluster resource group"))
+		}
+		return allErrs
+	}
+
+	// Validate no cidr config is specified at all.
+	if isDefaultVnetConfig(&vnetConfig) {
+		allErrs = append(allErrs, workers.ValidateSubset(nodes)...)
+		allErrs = append(allErrs, workers.ValidateNotSubset(pods, services)...)
+		return allErrs
+	}
+
+	vnetCIDR := cidrvalidation.NewCIDR(*vnetConfig.CIDR, vnetConfigPath.Child("cidr"))
+	allErrs = append(allErrs, vnetCIDR.ValidateParse()...)
+	allErrs = append(allErrs, vnetCIDR.ValidateSubset(nodes)...)
+	allErrs = append(allErrs, vnetCIDR.ValidateSubset(workers)...)
+	allErrs = append(allErrs, vnetCIDR.ValidateNotSubset(pods, services)...)
+	allErrs = append(allErrs, cidrvalidation.ValidateCIDRIsCanonical(vnetConfigPath.Child("cidr"), *vnetConfig.CIDR)...)
+
+	return allErrs
+}
+
 // ValidateInfrastructureConfigUpdate validates a InfrastructureConfig object.
 func ValidateInfrastructureConfigUpdate(oldConfig, newConfig *apisazure.InfrastructureConfig, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.ResourceGroup, oldConfig.ResourceGroup, fldPath.Child("resourceGroup"))...)
-	allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Networks.VNet, oldConfig.Networks.VNet, fldPath.Child("networks").Child("vnet"))...)
 	allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Networks.Workers, oldConfig.Networks.Workers, fldPath.Child("networks").Child("workers"))...)
 	allErrs = append(allErrs, apivalidation.ValidateImmutableField(oldConfig.Zoned, newConfig.Zoned, fldPath.Child("zoned"))...)
+	allErrs = append(allErrs, validateVnetConfigUpdate(&oldConfig.Networks, &newConfig.Networks, fldPath.Child("networks"))...)
 
 	return allErrs
+}
+
+func validateVnetConfigUpdate(oldNeworkConfig, newNetworkConfig *apisazure.NetworkConfig, networkConfigPath *field.Path) field.ErrorList {
+	var allErrs = field.ErrorList{}
+
+	if isExternalVnetUsed(&oldNeworkConfig.VNet) || isDefaultVnetConfig(&oldNeworkConfig.VNet) {
+		allErrs = append(allErrs, apivalidation.ValidateImmutableField(newNetworkConfig.VNet.Name, oldNeworkConfig.VNet.Name, networkConfigPath.Child("vnet", "name"))...)
+		allErrs = append(allErrs, apivalidation.ValidateImmutableField(newNetworkConfig.VNet.ResourceGroup, oldNeworkConfig.VNet.ResourceGroup, networkConfigPath.Child("vnet", "resourceGroup"))...)
+		return allErrs
+	}
+
+	if oldNeworkConfig.VNet.CIDR != nil && newNetworkConfig.VNet.CIDR == nil {
+		return append(allErrs, field.Invalid(networkConfigPath.Child("vnet", "cidr"), newNetworkConfig.VNet.CIDR, "vnet cidr need to be specified"))
+	}
+
+	return allErrs
+}
+
+func isExternalVnetUsed(vnetConfig *apisazure.VNet) bool {
+	if vnetConfig == nil {
+		return false
+	}
+	if vnetConfig.Name != nil && vnetConfig.ResourceGroup != nil {
+		return true
+	}
+	return false
+}
+
+func isDefaultVnetConfig(vnetConfig *apisazure.VNet) bool {
+	if vnetConfig.CIDR == nil && vnetConfig.Name == nil && vnetConfig.ResourceGroup == nil {
+		return true
+	}
+	return false
 }
