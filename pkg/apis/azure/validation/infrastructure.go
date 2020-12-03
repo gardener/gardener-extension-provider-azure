@@ -121,10 +121,7 @@ func ValidateInfrastructureConfigUpdate(oldConfig, newConfig *apisazure.Infrastr
 	allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.ResourceGroup, oldConfig.ResourceGroup, fldPath.Child("resourceGroup"))...)
 	allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Networks.VNet, oldConfig.Networks.VNet, fldPath.Child("networks").Child("vnet"))...)
 	allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Networks.Workers, oldConfig.Networks.Workers, fldPath.Child("networks").Child("workers"))...)
-
-	if oldConfig.Zoned && !newConfig.Zoned {
-		allErrs = append(allErrs, field.Forbidden(fldPath.Child("zoned"), "moving a zoned cluster to a non-zoned cluster is not allowed"))
-	}
+	allErrs = append(allErrs, apivalidation.ValidateImmutableField(oldConfig.Zoned, newConfig.Zoned, fldPath.Child("zoned"))...)
 
 	return allErrs
 }

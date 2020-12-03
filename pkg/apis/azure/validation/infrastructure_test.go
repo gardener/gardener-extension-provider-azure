@@ -20,6 +20,7 @@ import (
 
 	. "github.com/gardener/gardener/pkg/utils/test/matchers"
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -357,16 +358,30 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			}))))
 		})
 
-		It("should forbid moving a zoned cluster to a non zoned cluster", func() {
-			newInfrastructureConfig := infrastructureConfig.DeepCopy()
-			infrastructureConfig.Zoned = true
+		DescribeTable("Zoned",
+			func(isOldZoned, isNewZoned, expectError bool) {
+				newInfrastructureConfig := infrastructureConfig.DeepCopy()
+				if isOldZoned {
+					infrastructureConfig.Zoned = true
+				}
+				if isNewZoned {
+					newInfrastructureConfig.Zoned = true
+				}
 
-			errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, fldPath)
-
-			Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Type":  Equal(field.ErrorTypeForbidden),
-				"Field": Equal("zoned"),
-			}))))
-		})
+				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, fldPath)
+				if !expectError {
+					Expect(errorList).To(HaveLen(0))
+					return
+				}
+				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeInvalid),
+					"Field": Equal("zoned"),
+				}))))
+			},
+			Entry("should pass as old and new cluster are zoned", true, true, false),
+			Entry("should pass as old and new cluster are non-zoned", false, false, false),
+			Entry("should forbid moving a zoned cluster to a non-zoned cluster", false, true, true),
+			Entry("should forbid moving a non-zoned cluster to a zoned cluster", true, false, true),
+		)
 	})
 })
