@@ -4,7 +4,6 @@ metadata:
   name: remedy-controller-azure
   namespace: {{ .Release.Namespace }}
   labels:
-    garden.sapcloud.io/role: controlplane
     app: remedy-controller-azure
 spec:
   revisionHistoryLimit: 0
@@ -21,6 +20,7 @@ spec:
 {{- end }}
       labels:
         garden.sapcloud.io/role: controlplane
+        gardener.cloud/role: controlplane
         app: remedy-controller-azure
         networking.gardener.cloud/to-dns: allowed
         networking.gardener.cloud/to-public-networks: allowed
