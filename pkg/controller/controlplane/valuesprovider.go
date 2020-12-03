@@ -195,7 +195,7 @@ var (
 				Objects: []*chart.Object{
 					{Type: &corev1.Service{}, Name: azure.CloudControllerManagerName},
 					{Type: &appsv1.Deployment{}, Name: azure.CloudControllerManagerName},
-					{Type: &corev1.ConfigMap{}, Name: azure.CloudControllerManagerName + "-monitoring-config"},
+					{Type: &corev1.ConfigMap{}, Name: azure.CloudControllerManagerName + "-observability-config"},
 					{Type: &autoscalingv1beta2.VerticalPodAutoscaler{}, Name: azure.CloudControllerManagerName + "-vpa"},
 				},
 			},
@@ -215,6 +215,7 @@ var (
 					// csi-driver-controllers
 					{Type: &appsv1.Deployment{}, Name: azure.CSIControllerDiskName},
 					{Type: &appsv1.Deployment{}, Name: azure.CSIControllerFileName},
+					{Type: &corev1.ConfigMap{}, Name: azure.CSIControllerObservabilityConfigName},
 					{Type: &autoscalingv1beta2.VerticalPodAutoscaler{}, Name: azure.CSIControllerDiskName + "-vpa"},
 					{Type: &autoscalingv1beta2.VerticalPodAutoscaler{}, Name: azure.CSIControllerFileName + "-vpa"},
 					// csi-snapshot-controller
@@ -395,6 +396,11 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 		return nil, err
 	}
 	checksums[azure.CloudProviderConfigName] = utils.ComputeChecksum(cpConfigSecret.Data)
+
+	// TODO: Remove this code in next version. Delete old config
+	if err := vp.deleteCCMMonitoringConfig(ctx, cp.Namespace); err != nil {
+		return nil, err
+	}
 
 	return getControlPlaneChartValues(cpConfig, cp, cluster, checksums, scaledDown)
 }
