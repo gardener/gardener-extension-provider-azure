@@ -17,12 +17,15 @@ package infrastructure
 import (
 	"context"
 
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
+	"github.com/gardener/gardener/extensions/pkg/terraformer"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Delete implements infrastructure.Actuator.
@@ -46,7 +49,28 @@ func (a *actuator) Delete(ctx context.Context, infra *extensionsv1alpha1.Infrast
 		return tf.CleanupConfiguration(ctx)
 	}
 
+	config, err := helper.InfrastructureConfigFromInfrastructure(infra)
+	if err != nil {
+		return err
+	}
+
+	clientAuth, err := infrastructure.GetClientAuthFromInfrastructure(ctx, a.Client(), infra)
+	if err != nil {
+		return err
+	}
+
+	terraformFiles, err := infrastructure.RenderTerraformerChart(a.ChartRenderer(), infra, clientAuth, config, cluster)
+	if err != nil {
+		return err
+	}
+
 	return tf.
+		InitializeWith(ctx, terraformer.DefaultInitializer(a.Client(), terraformFiles.Main, terraformFiles.Variables, terraformFiles.TFVars, terraformer.StateConfigMapInitializerFunc(NoOpStateInitializer))).
 		SetEnvVars(internal.TerraformerEnvVars(infra.Spec.SecretRef)...).
 		Destroy(ctx)
+}
+
+// NoOpStateInitializer is a no-op StateConfigMapInitializerFunc.
+func NoOpStateInitializer(ctx context.Context, c client.Client, namespace, name string) error {
+	return nil
 }
