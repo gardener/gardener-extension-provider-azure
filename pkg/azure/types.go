@@ -48,7 +48,7 @@ const (
 	MachineControllerManagerImageName = "machine-controller-manager"
 	// TerraformerImageName is the name of the Terraformer image.
 	TerraformerImageName = "terraformer"
-	// RemedyControllerName is the name of the remedy-controller image.
+	// RemedyControllerImageName is the name of the remedy-controller image.
 	RemedyControllerImageName = "remedy-controller-azure"
 
 	// SubscriptionIDKey is the key for the subscription ID.
