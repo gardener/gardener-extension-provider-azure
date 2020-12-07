@@ -24,6 +24,7 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/utils/pointer"
 )
 
 var _ = Describe("InfrastructureConfig validation", func() {
@@ -76,7 +77,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					Fields{
 						"Type":   Equal(field.ErrorTypeInvalid),
 						"Field":  Equal("networks.vnet"),
-						"Detail": Equal("specifying an existing vnet name require a vnet name and vnet resource group"),
+						"Detail": Equal("a vnet cidr or vnet name and resource group need to be specified"),
 					}))
 			})
 
@@ -91,7 +92,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					Fields{
 						"Type":   Equal(field.ErrorTypeInvalid),
 						"Field":  Equal("networks.vnet"),
-						"Detail": Equal("specifying an existing vnet name require a vnet name and vnet resource group"),
+						"Detail": Equal("a vnet cidr or vnet name and resource group need to be specified"),
 					}))
 			})
 
@@ -345,17 +346,54 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			}))))
 		})
 
-		It("should forbid changing the network section", func() {
-			newInfrastructureConfig := infrastructureConfig.DeepCopy()
-			newCIDR := "1.2.3.4/5"
-			newInfrastructureConfig.Networks.VNet.CIDR = &newCIDR
+		Context("vnet config update", func() {
+			It("should allow to resize the vnet cidr", func() {
+				newInfrastructureConfig := infrastructureConfig.DeepCopy()
+				newInfrastructureConfig.Networks.VNet.CIDR = pointer.StringPtr("10.250.3.0/22")
 
-			errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, fldPath)
+				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, fldPath)
+				Expect(errorList).Should(HaveLen(0))
+			})
 
-			Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Type":  Equal(field.ErrorTypeInvalid),
-				"Field": Equal("networks.vnet"),
-			}))))
+			It("should forbid to modify the external vnet config", func() {
+				infrastructureConfig.Networks.VNet.Name = pointer.StringPtr("external-vnet-name")
+				infrastructureConfig.Networks.VNet.ResourceGroup = pointer.StringPtr("external-vnet-rg")
+
+				newInfrastructureConfig := infrastructureConfig.DeepCopy()
+				newInfrastructureConfig.Networks.VNet.Name = pointer.StringPtr("modified")
+				newInfrastructureConfig.Networks.VNet.ResourceGroup = pointer.StringPtr("modified")
+
+				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, fldPath)
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.vnet.name"),
+					"Detail": Equal("field is immutable"),
+				}, Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.vnet.resourceGroup"),
+					"Detail": Equal("field is immutable"),
+				}))
+			})
+
+			It("should forbid to add external vnet config", func() {
+				infrastructureConfig.Networks.VNet = apisazure.VNet{}
+
+				newInfrastructureConfig := infrastructureConfig.DeepCopy()
+				newInfrastructureConfig.Networks.VNet.Name = pointer.StringPtr("modified")
+				newInfrastructureConfig.Networks.VNet.ResourceGroup = pointer.StringPtr("modified")
+
+				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, fldPath)
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.vnet.name"),
+					"Detail": Equal("field is immutable"),
+				}, Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.vnet.resourceGroup"),
+					"Detail": Equal("field is immutable"),
+				}))
+			})
+
 		})
 
 		DescribeTable("Zoned",
