@@ -418,7 +418,7 @@ func (vp *valuesProvider) GetControlPlaneShootChartValues(
 		return nil, errors.Wrapf(err, "could not decode infrastructureProviderStatus of controlplane '%s'", kutil.ObjectName(cp))
 	}
 
-	k8sVersionLessThan120, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, "<", "1.20")
+	k8sVersionLessThan121, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, "<", "1.21")
 	if err != nil {
 		return nil, err
 	}
@@ -428,7 +428,7 @@ func (vp *valuesProvider) GetControlPlaneShootChartValues(
 		cloudProviderDiskConfigChecksum string
 	)
 
-	if !k8sVersionLessThan120 {
+	if !k8sVersionLessThan121 {
 		secret := &corev1.Secret{}
 		if err := vp.Client().Get(ctx, kutil.Key(cp.Namespace, azure.CloudProviderDiskConfigName), secret); err != nil {
 			return nil, err
@@ -440,7 +440,7 @@ func (vp *valuesProvider) GetControlPlaneShootChartValues(
 
 	disableRemedyController := cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] == "true"
 
-	return getControlPlaneShootChartValues(cluster, infraStatus, k8sVersionLessThan120, disableRemedyController, cloudProviderDiskConfig, cloudProviderDiskConfigChecksum), nil
+	return getControlPlaneShootChartValues(cluster, infraStatus, k8sVersionLessThan121, disableRemedyController, cloudProviderDiskConfig, cloudProviderDiskConfigChecksum), nil
 }
 
 // GetStorageClassesChartValues returns the values for the storage classes chart applied by the generic actuator.
@@ -449,13 +449,13 @@ func (vp *valuesProvider) GetStorageClassesChartValues(
 	_ *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
 ) (map[string]interface{}, error) {
-	k8sVersionLessThan120, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, "<", "1.20")
+	k8sVersionLessThan121, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, "<", "1.21")
 	if err != nil {
 		return nil, err
 	}
 
 	return map[string]interface{}{
-		"useLegacyProvisioner": k8sVersionLessThan120,
+		"useLegacyProvisioner": k8sVersionLessThan121,
 	}, nil
 }
 
@@ -605,12 +605,12 @@ func getCSIControllerChartValues(
 	checksums map[string]string,
 	scaledDown bool,
 ) (map[string]interface{}, error) {
-	k8sVersionLessThan120, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, "<", "1.20")
+	k8sVersionLessThan121, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, "<", "1.21")
 	if err != nil {
 		return nil, err
 	}
 
-	if k8sVersionLessThan120 {
+	if k8sVersionLessThan121 {
 		return map[string]interface{}{"enabled": false}, nil
 	}
 
@@ -659,7 +659,7 @@ func getRemedyControllerChartValues(
 func getControlPlaneShootChartValues(
 	cluster *extensionscontroller.Cluster,
 	infraStatus *apisazure.InfrastructureStatus,
-	k8sVersionLessThan120 bool,
+	k8sVersionLessThan121 bool,
 	disableRemedyController bool,
 	cloudProviderDiskConfig string,
 	cloudProviderDiskConfigChecksum string,
@@ -668,7 +668,7 @@ func getControlPlaneShootChartValues(
 		azure.AllowUDPEgressName:         map[string]interface{}{"enabled": infraStatus.Zoned},
 		azure.CloudControllerManagerName: map[string]interface{}{"enabled": true},
 		azure.CSINodeName: map[string]interface{}{
-			"enabled":    !k8sVersionLessThan120,
+			"enabled":    !k8sVersionLessThan121,
 			"vpaEnabled": gardencorev1beta1helper.ShootWantsVerticalPodAutoscaler(cluster.Shoot),
 			"podAnnotations": map[string]interface{}{
 				"checksum/configmap-" + azure.CloudProviderDiskConfigName: cloudProviderDiskConfigChecksum,

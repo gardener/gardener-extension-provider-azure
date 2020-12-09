@@ -103,8 +103,8 @@ var _ = Describe("ValuesProvider", func() {
 		cidr                    = "10.250.0.0/19"
 		cloudProviderConfigData = "foo"
 
-		k8sVersionLessThan120    = "1.13.4"
-		k8sVersionHigherEqual120 = "1.20.4"
+		k8sVersionLessThan121    = "1.13.4"
+		k8sVersionHigherEqual121 = "1.21.4"
 
 		enabledTrue  = map[string]interface{}{"enabled": true}
 		enabledFalse = map[string]interface{}{"enabled": false}
@@ -159,7 +159,7 @@ var _ = Describe("ValuesProvider", func() {
 
 		infrastructureStatus = defaultInfrastructureStatus.DeepCopy()
 		controlPlaneConfig = defaultControlPlaneConfig.DeepCopy()
-		cluster = generateCluster(cidr, k8sVersionLessThan120, false, nil)
+		cluster = generateCluster(cidr, k8sVersionLessThan121, false, nil)
 	})
 
 	AfterEach(func() {
@@ -253,7 +253,7 @@ var _ = Describe("ValuesProvider", func() {
 					"availabilitySetName": primaryAvailabilitySetName,
 					"routeTableName":      "route-table-name",
 					"securityGroupName":   "security-group-name-workers",
-					"kubernetesVersion":   k8sVersionLessThan120,
+					"kubernetesVersion":   k8sVersionLessThan121,
 					"maxNodes":            maxNodes,
 				}))
 			})
@@ -275,7 +275,7 @@ var _ = Describe("ValuesProvider", func() {
 					"region":            "eu-west-1a",
 					"routeTableName":    "route-table-name",
 					"securityGroupName": "security-group-name-workers",
-					"kubernetesVersion": k8sVersionLessThan120,
+					"kubernetesVersion": k8sVersionLessThan121,
 					"maxNodes":          maxNodes,
 				}))
 			})
@@ -302,7 +302,7 @@ var _ = Describe("ValuesProvider", func() {
 					"region":              "eu-west-1a",
 					"routeTableName":      "route-table-name",
 					"securityGroupName":   "security-group-name-workers",
-					"kubernetesVersion":   k8sVersionLessThan120,
+					"kubernetesVersion":   k8sVersionLessThan121,
 					"acrIdentityClientId": identityName,
 					"maxNodes":            maxNodes,
 				}))
@@ -320,7 +320,7 @@ var _ = Describe("ValuesProvider", func() {
 			ccmChartValues = utils.MergeMaps(enabledTrue, map[string]interface{}{
 				"replicas":          1,
 				"clusterName":       namespace,
-				"kubernetesVersion": k8sVersionLessThan120,
+				"kubernetesVersion": k8sVersionLessThan121,
 				"podNetwork":        cidr,
 				"podAnnotations": map[string]interface{}{
 					"checksum/secret-cloud-controller-manager":        "3d791b164a808638da9a8df03924be2a41e34cd664e42231c00fe369e3588272",
@@ -342,7 +342,7 @@ var _ = Describe("ValuesProvider", func() {
 			c.EXPECT().Delete(context.TODO(), ccmMonitoringConfigmap).DoAndReturn(clientDeleteSuccess())
 		})
 
-		It("should return correct control plane chart values (k8s < 1.20)", func() {
+		It("should return correct control plane chart values (k8s < 1.21)", func() {
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, checksums, false)
 
@@ -362,8 +362,8 @@ var _ = Describe("ValuesProvider", func() {
 			}))
 		})
 
-		It("should return correct control plane chart values (k8s >= 1.20)", func() {
-			cluster = generateCluster(cidr, k8sVersionHigherEqual120, true, nil)
+		It("should return correct control plane chart values (k8s >= 1.21)", func() {
+			cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil)
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 
 			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, checksums, false)
@@ -400,7 +400,7 @@ var _ = Describe("ValuesProvider", func() {
 		})
 
 		It("should return correct control plane chart values when remedy controller is disabled", func() {
-			cluster = generateCluster(cidr, k8sVersionLessThan120, false, map[string]string{
+			cluster = generateCluster(cidr, k8sVersionLessThan121, false, map[string]string{
 				azure.DisableRemedyControllerAnnotation: "true",
 			})
 
@@ -436,7 +436,7 @@ var _ = Describe("ValuesProvider", func() {
 			})
 		)
 
-		Context("k8s < 1.20", func() {
+		Context("k8s < 1.21", func() {
 			It("should return correct control plane shoot chart values for zoned cluster", func() {
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 
@@ -466,7 +466,7 @@ var _ = Describe("ValuesProvider", func() {
 			})
 		})
 
-		Context("k8s >= 1.20", func() {
+		Context("k8s >= 1.21", func() {
 			var (
 				cpDiskConfigKey = client.ObjectKey{Namespace: namespace, Name: azure.CloudProviderDiskConfigName}
 				cpDiskConfig    = &corev1.Secret{
@@ -482,7 +482,7 @@ var _ = Describe("ValuesProvider", func() {
 
 			BeforeEach(func() {
 				c.EXPECT().Get(ctx, cpDiskConfigKey, &corev1.Secret{}).DoAndReturn(clientGet(cpDiskConfig))
-				cluster = generateCluster(cidr, k8sVersionHigherEqual120, true, nil)
+				cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil)
 			})
 
 			It("should return correct control plane shoot chart values for zoned cluster", func() {
@@ -515,7 +515,7 @@ var _ = Describe("ValuesProvider", func() {
 
 		Context("remedy controller is disabled", func() {
 			BeforeEach(func() {
-				cluster = generateCluster(cidr, k8sVersionLessThan120, false, map[string]string{
+				cluster = generateCluster(cidr, k8sVersionLessThan121, false, map[string]string{
 					azure.DisableRemedyControllerAnnotation: "true",
 				})
 			})
@@ -550,15 +550,15 @@ var _ = Describe("ValuesProvider", func() {
 	})
 
 	Describe("#GetStorageClassesChartValues()", func() {
-		It("should return correct storage class chart values (k8s < 1.20)", func() {
+		It("should return correct storage class chart values (k8s < 1.21)", func() {
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 			values, err := vp.GetStorageClassesChartValues(ctx, cp, cluster)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{"useLegacyProvisioner": true}))
 		})
 
-		It("should return correct storage class chart values (k8s >= 1.20)", func() {
-			cluster = generateCluster(cidr, k8sVersionHigherEqual120, true, nil)
+		It("should return correct storage class chart values (k8s >= 1.21)", func() {
+			cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil)
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 			values, err := vp.GetStorageClassesChartValues(ctx, cp, cluster)
 			Expect(err).NotTo(HaveOccurred())
