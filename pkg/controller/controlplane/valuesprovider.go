@@ -188,52 +188,63 @@ var (
 	controlPlaneChart = &chart.Chart{
 		Name: "seed-controlplane",
 		Path: filepath.Join(azure.InternalChartsPath, "seed-controlplane"),
-		SubCharts: []*chart.Chart{
+		SubCharts: []*chart.SubChart{
 			{
-				Name:   azure.CloudControllerManagerName,
-				Images: []string{azure.CloudControllerManagerImageName},
-				Objects: []*chart.Object{
-					{Type: &corev1.Service{}, Name: azure.CloudControllerManagerName},
-					{Type: &appsv1.Deployment{}, Name: azure.CloudControllerManagerName},
-					{Type: &corev1.ConfigMap{}, Name: azure.CloudControllerManagerName + "-observability-config"},
-					{Type: &autoscalingv1beta2.VerticalPodAutoscaler{}, Name: azure.CloudControllerManagerName + "-vpa"},
+				Chart: chart.Chart{
+					Name:   azure.CloudControllerManagerName,
+					Images: []string{azure.CloudControllerManagerImageName},
+					Objects: []*chart.Object{
+						{Type: &corev1.Service{}, Name: azure.CloudControllerManagerName},
+						{Type: &appsv1.Deployment{}, Name: azure.CloudControllerManagerName},
+						{Type: &corev1.ConfigMap{}, Name: azure.CloudControllerManagerName + "-observability-config"},
+						{Type: &autoscalingv1beta2.VerticalPodAutoscaler{}, Name: azure.CloudControllerManagerName + "-vpa"},
+					},
 				},
+				Condition: "cloud-controller-manager.enabled",
 			},
 			{
-				Name: azure.CSIControllerName,
-				Images: []string{
-					azure.CSIDriverDiskImageName,
-					azure.CSIDriverFileImageName,
-					azure.CSIProvisionerImageName,
-					azure.CSIAttacherImageName,
-					azure.CSISnapshotterImageName,
-					azure.CSIResizerImageName,
-					azure.CSILivenessProbeImageName,
-					azure.CSISnapshotControllerImageName,
+				Chart: chart.Chart{
+					Name: azure.CSIControllerName,
+					Images: []string{
+						azure.CSIDriverDiskImageName,
+						azure.CSIDriverFileImageName,
+						azure.CSIProvisionerImageName,
+						azure.CSIAttacherImageName,
+						azure.CSISnapshotterImageName,
+						azure.CSIResizerImageName,
+						azure.CSILivenessProbeImageName,
+						azure.CSISnapshotControllerImageName,
+					},
+					Objects: []*chart.Object{
+						// csi-driver-controllers
+						{Type: &appsv1.Deployment{}, Name: azure.CSIControllerDiskName},
+						{Type: &appsv1.Deployment{}, Name: azure.CSIControllerFileName},
+						{Type: &corev1.ConfigMap{}, Name: azure.CSIControllerObservabilityConfigName},
+						{Type: &autoscalingv1beta2.VerticalPodAutoscaler{}, Name: azure.CSIControllerDiskName + "-vpa"},
+						{Type: &autoscalingv1beta2.VerticalPodAutoscaler{}, Name: azure.CSIControllerFileName + "-vpa"},
+						// csi-snapshot-controller
+						{Type: &appsv1.Deployment{}, Name: azure.CSISnapshotControllerName},
+						{Type: &autoscalingv1beta2.VerticalPodAutoscaler{}, Name: azure.CSISnapshotControllerName + "-vpa"},
+					},
 				},
-				Objects: []*chart.Object{
-					// csi-driver-controllers
-					{Type: &appsv1.Deployment{}, Name: azure.CSIControllerDiskName},
-					{Type: &appsv1.Deployment{}, Name: azure.CSIControllerFileName},
-					{Type: &corev1.ConfigMap{}, Name: azure.CSIControllerObservabilityConfigName},
-					{Type: &autoscalingv1beta2.VerticalPodAutoscaler{}, Name: azure.CSIControllerDiskName + "-vpa"},
-					{Type: &autoscalingv1beta2.VerticalPodAutoscaler{}, Name: azure.CSIControllerFileName + "-vpa"},
-					// csi-snapshot-controller
-					{Type: &appsv1.Deployment{}, Name: azure.CSISnapshotControllerName},
-					{Type: &autoscalingv1beta2.VerticalPodAutoscaler{}, Name: azure.CSISnapshotControllerName + "-vpa"},
-				},
+				Condition: "csi-driver-controller.enabled",
 			},
 			{
-				Name:   azure.RemedyControllerName,
-				Images: []string{azure.RemedyControllerImageName},
-				Objects: []*chart.Object{
-					{Type: &appsv1.Deployment{}, Name: azure.RemedyControllerName},
-					{Type: &corev1.ConfigMap{}, Name: azure.RemedyControllerName + "-config"},
-					{Type: &autoscalingv1beta2.VerticalPodAutoscaler{}, Name: azure.RemedyControllerName + "-vpa"},
-					{Type: &rbacv1.Role{}, Name: azure.RemedyControllerName},
-					{Type: &rbacv1.RoleBinding{}, Name: azure.RemedyControllerName},
-					{Type: &corev1.ServiceAccount{}, Name: azure.RemedyControllerName},
+				Chart: chart.Chart{
+					Name:   azure.RemedyControllerName,
+					Images: []string{azure.RemedyControllerImageName},
+					Objects: []*chart.Object{
+						{Type: &appsv1.Deployment{}, Name: azure.RemedyControllerName},
+						{Type: &corev1.Service{}, Name: azure.RemedyControllerName},
+						{Type: &corev1.ConfigMap{}, Name: azure.RemedyControllerName + "-config"},
+						{Type: &corev1.ConfigMap{}, Name: azure.RemedyControllerName + "-monitoring-config"},
+						{Type: &autoscalingv1beta2.VerticalPodAutoscaler{}, Name: azure.RemedyControllerName + "-vpa"},
+						{Type: &rbacv1.Role{}, Name: azure.RemedyControllerName},
+						{Type: &rbacv1.RoleBinding{}, Name: azure.RemedyControllerName},
+						{Type: &corev1.ServiceAccount{}, Name: azure.RemedyControllerName},
+					},
 				},
+				Condition: "remedy-controller-azure.enabled",
 			},
 		},
 	}
@@ -241,80 +252,92 @@ var (
 	controlPlaneShootChart = &chart.Chart{
 		Name: "shoot-system-components",
 		Path: filepath.Join(azure.InternalChartsPath, "shoot-system-components"),
-		SubCharts: []*chart.Chart{
+		SubCharts: []*chart.SubChart{
 			{
-				Name: "allow-udp-egress",
-				Objects: []*chart.Object{
-					{Type: &corev1.Service{}, Name: "allow-udp-egress"},
+				Chart: chart.Chart{
+					Name: "allow-udp-egress",
+					Objects: []*chart.Object{
+						{Type: &corev1.Service{}, Name: "allow-udp-egress"},
+					},
 				},
+				Condition: "allow-udp-egress.enabled",
 			},
 			{
-				Name: azure.CloudControllerManagerName,
-				Objects: []*chart.Object{
-					{Type: &rbacv1.ClusterRole{}, Name: "system:controller:cloud-node-controller"},
-					{Type: &rbacv1.ClusterRoleBinding{}, Name: "system:controller:cloud-node-controller"},
+				Chart: chart.Chart{
+					Name: azure.CloudControllerManagerName,
+					Objects: []*chart.Object{
+						{Type: &rbacv1.ClusterRole{}, Name: "system:controller:cloud-node-controller"},
+						{Type: &rbacv1.ClusterRoleBinding{}, Name: "system:controller:cloud-node-controller"},
+					},
 				},
+				Condition: "cloud-controller-manager.enabled",
 			},
 			{
-				Name: azure.CSINodeName,
-				Images: []string{
-					azure.CSIDriverDiskImageName,
-					azure.CSIDriverFileImageName,
-					azure.CSINodeDriverRegistrarImageName,
-					azure.CSILivenessProbeImageName,
+				Chart: chart.Chart{
+					Name: azure.CSINodeName,
+					Images: []string{
+						azure.CSIDriverDiskImageName,
+						azure.CSIDriverFileImageName,
+						azure.CSINodeDriverRegistrarImageName,
+						azure.CSILivenessProbeImageName,
+					},
+					Objects: []*chart.Object{
+						// csi-driver
+						{Type: &corev1.ConfigMap{}, Name: azure.CloudProviderDiskConfigName},
+						{Type: &corev1.ServiceAccount{}, Name: azure.CSINodeDiskName},
+						{Type: &corev1.ServiceAccount{}, Name: azure.CSINodeFileName},
+						{Type: &appsv1.DaemonSet{}, Name: azure.CSINodeDiskName},
+						{Type: &appsv1.DaemonSet{}, Name: azure.CSINodeFileName},
+						{Type: &storagev1beta1.CSIDriver{}, Name: "disk.csi.azure.com"},
+						{Type: &storagev1beta1.CSIDriver{}, Name: "file.csi.azure.com"},
+						{Type: &rbacv1.ClusterRole{}, Name: azure.UsernamePrefix + azure.CSIDriverName},
+						{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.CSIDriverName},
+						{Type: &rbacv1.ClusterRole{}, Name: azure.UsernamePrefix + azure.CSIControllerFileName},
+						{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.CSIControllerFileName},
+						{Type: &policyv1beta1.PodSecurityPolicy{}, Name: strings.Replace(azure.UsernamePrefix+azure.CSIDriverName, ":", ".", -1)},
+						{Type: extensionscontroller.GetVerticalPodAutoscalerObject(), Name: azure.CSINodeDiskName},
+						{Type: extensionscontroller.GetVerticalPodAutoscalerObject(), Name: azure.CSINodeFileName},
+						// csi-provisioner
+						{Type: &rbacv1.ClusterRole{}, Name: azure.UsernamePrefix + azure.CSIProvisionerName},
+						{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.CSIProvisionerName},
+						{Type: &rbacv1.Role{}, Name: azure.UsernamePrefix + azure.CSIProvisionerName},
+						{Type: &rbacv1.RoleBinding{}, Name: azure.UsernamePrefix + azure.CSIProvisionerName},
+						// csi-attacher
+						{Type: &rbacv1.ClusterRole{}, Name: azure.UsernamePrefix + azure.CSIAttacherName},
+						{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.CSIAttacherName},
+						{Type: &rbacv1.Role{}, Name: azure.UsernamePrefix + azure.CSIAttacherName},
+						{Type: &rbacv1.RoleBinding{}, Name: azure.UsernamePrefix + azure.CSIAttacherName},
+						// csi-snapshotter
+						{Type: &apiextensionsv1beta1.CustomResourceDefinition{}, Name: "volumesnapshotclasses.snapshot.storage.k8s.io"},
+						{Type: &apiextensionsv1beta1.CustomResourceDefinition{}, Name: "volumesnapshotcontents.snapshot.storage.k8s.io"},
+						{Type: &apiextensionsv1beta1.CustomResourceDefinition{}, Name: "volumesnapshots.snapshot.storage.k8s.io"},
+						{Type: &rbacv1.ClusterRole{}, Name: azure.UsernamePrefix + azure.CSISnapshotterName},
+						{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.CSISnapshotterName},
+						{Type: &rbacv1.Role{}, Name: azure.UsernamePrefix + azure.CSISnapshotterName},
+						{Type: &rbacv1.RoleBinding{}, Name: azure.UsernamePrefix + azure.CSISnapshotterName},
+						// csi-snapshot-controller
+						{Type: &rbacv1.ClusterRole{}, Name: azure.UsernamePrefix + azure.CSISnapshotControllerName},
+						{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.CSISnapshotControllerName},
+						{Type: &rbacv1.Role{}, Name: azure.UsernamePrefix + azure.CSISnapshotControllerName},
+						{Type: &rbacv1.RoleBinding{}, Name: azure.UsernamePrefix + azure.CSISnapshotControllerName},
+						// csi-resizer
+						{Type: &rbacv1.ClusterRole{}, Name: azure.UsernamePrefix + azure.CSIResizerName},
+						{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.CSIResizerName},
+						{Type: &rbacv1.Role{}, Name: azure.UsernamePrefix + azure.CSIResizerName},
+						{Type: &rbacv1.RoleBinding{}, Name: azure.UsernamePrefix + azure.CSIResizerName},
+					},
 				},
-				Objects: []*chart.Object{
-					// csi-driver
-					{Type: &corev1.ConfigMap{}, Name: azure.CloudProviderDiskConfigName},
-					{Type: &corev1.ServiceAccount{}, Name: azure.CSINodeDiskName},
-					{Type: &corev1.ServiceAccount{}, Name: azure.CSINodeFileName},
-					{Type: &appsv1.DaemonSet{}, Name: azure.CSINodeDiskName},
-					{Type: &appsv1.DaemonSet{}, Name: azure.CSINodeFileName},
-					{Type: &storagev1beta1.CSIDriver{}, Name: "disk.csi.azure.com"},
-					{Type: &storagev1beta1.CSIDriver{}, Name: "file.csi.azure.com"},
-					{Type: &rbacv1.ClusterRole{}, Name: azure.UsernamePrefix + azure.CSIDriverName},
-					{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.CSIDriverName},
-					{Type: &rbacv1.ClusterRole{}, Name: azure.UsernamePrefix + azure.CSIControllerFileName},
-					{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.CSIControllerFileName},
-					{Type: &policyv1beta1.PodSecurityPolicy{}, Name: strings.Replace(azure.UsernamePrefix+azure.CSIDriverName, ":", ".", -1)},
-					{Type: extensionscontroller.GetVerticalPodAutoscalerObject(), Name: azure.CSINodeDiskName},
-					{Type: extensionscontroller.GetVerticalPodAutoscalerObject(), Name: azure.CSINodeFileName},
-					// csi-provisioner
-					{Type: &rbacv1.ClusterRole{}, Name: azure.UsernamePrefix + azure.CSIProvisionerName},
-					{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.CSIProvisionerName},
-					{Type: &rbacv1.Role{}, Name: azure.UsernamePrefix + azure.CSIProvisionerName},
-					{Type: &rbacv1.RoleBinding{}, Name: azure.UsernamePrefix + azure.CSIProvisionerName},
-					// csi-attacher
-					{Type: &rbacv1.ClusterRole{}, Name: azure.UsernamePrefix + azure.CSIAttacherName},
-					{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.CSIAttacherName},
-					{Type: &rbacv1.Role{}, Name: azure.UsernamePrefix + azure.CSIAttacherName},
-					{Type: &rbacv1.RoleBinding{}, Name: azure.UsernamePrefix + azure.CSIAttacherName},
-					// csi-snapshotter
-					{Type: &apiextensionsv1beta1.CustomResourceDefinition{}, Name: "volumesnapshotclasses.snapshot.storage.k8s.io"},
-					{Type: &apiextensionsv1beta1.CustomResourceDefinition{}, Name: "volumesnapshotcontents.snapshot.storage.k8s.io"},
-					{Type: &apiextensionsv1beta1.CustomResourceDefinition{}, Name: "volumesnapshots.snapshot.storage.k8s.io"},
-					{Type: &rbacv1.ClusterRole{}, Name: azure.UsernamePrefix + azure.CSISnapshotterName},
-					{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.CSISnapshotterName},
-					{Type: &rbacv1.Role{}, Name: azure.UsernamePrefix + azure.CSISnapshotterName},
-					{Type: &rbacv1.RoleBinding{}, Name: azure.UsernamePrefix + azure.CSISnapshotterName},
-					// csi-snapshot-controller
-					{Type: &rbacv1.ClusterRole{}, Name: azure.UsernamePrefix + azure.CSISnapshotControllerName},
-					{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.CSISnapshotControllerName},
-					{Type: &rbacv1.Role{}, Name: azure.UsernamePrefix + azure.CSISnapshotControllerName},
-					{Type: &rbacv1.RoleBinding{}, Name: azure.UsernamePrefix + azure.CSISnapshotControllerName},
-					// csi-resizer
-					{Type: &rbacv1.ClusterRole{}, Name: azure.UsernamePrefix + azure.CSIResizerName},
-					{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.CSIResizerName},
-					{Type: &rbacv1.Role{}, Name: azure.UsernamePrefix + azure.CSIResizerName},
-					{Type: &rbacv1.RoleBinding{}, Name: azure.UsernamePrefix + azure.CSIResizerName},
-				},
+				Condition: "csi-driver-node.enabled",
 			},
 			{
-				Name: azure.RemedyControllerName,
-				Objects: []*chart.Object{
-					{Type: &rbacv1.ClusterRole{}, Name: azure.UsernamePrefix + azure.RemedyControllerName},
-					{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.RemedyControllerName},
+				Chart: chart.Chart{
+					Name: azure.RemedyControllerName,
+					Objects: []*chart.Object{
+						{Type: &rbacv1.ClusterRole{}, Name: azure.UsernamePrefix + azure.RemedyControllerName},
+						{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.RemedyControllerName},
+					},
 				},
+				Condition: "remedy-controller-azure.enabled",
 			},
 		},
 	}

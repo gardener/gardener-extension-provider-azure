@@ -16,6 +16,7 @@ package chart
 
 import (
 	"context"
+	"strings"
 
 	"github.com/gardener/gardener/pkg/chartrenderer"
 	gardenerkubernetes "github.com/gardener/gardener/pkg/client/kubernetes"
@@ -32,7 +33,7 @@ import (
 type Interface interface {
 	// Apply applies this chart in the given namespace using the given ChartApplier. Before applying the chart,
 	// it collects its values, injecting images and merging the given values as needed.
-	Apply(context.Context, gardenerkubernetes.ChartApplier, string, imagevector.ImageVector, string, string, map[string]interface{}) error
+	Apply(context.Context, gardenerkubernetes.ChartApplier, client.Client, string, imagevector.ImageVector, string, string, map[string]interface{}) error
 	// Render renders this chart in the given namespace using the given chartRenderer. Before rendering the chart,
 	// it collects its values, injecting images and merging the given values as needed.
 	Render(chartrenderer.Interface, string, imagevector.ImageVector, string, string, map[string]interface{}) (string, []byte, error)
@@ -46,7 +47,12 @@ type Chart struct {
 	Path      string
 	Images    []string
 	Objects   []*Object
-	SubCharts []*Chart
+	SubCharts []*SubChart
+}
+
+type SubChart struct {
+	Chart
+	Condition string
 }
 
 // Object represents an object deployed by a Chart.
@@ -60,6 +66,7 @@ type Object struct {
 func (c *Chart) Apply(
 	ctx context.Context,
 	chartApplier gardenerkubernetes.ChartApplier,
+	client client.Client,
 	namespace string,
 	imageVector imagevector.ImageVector,
 	runtimeVersion, targetVersion string,
@@ -77,6 +84,20 @@ func (c *Chart) Apply(
 	if err != nil {
 		return errors.Wrapf(err, "could not apply chart '%s' in namespace '%s'", c.Name, namespace)
 	}
+
+	// Delete disabled subcharts
+	for _, sc := range c.SubCharts {
+		v, err := evaluateCondition(additionalValues, sc.Condition)
+		if err != nil {
+			return errors.Wrapf(err, "could not evaluate condition %s for subchart %s", sc.Condition, sc.Name)
+		}
+		if !v {
+			if err := sc.Delete(ctx, client, namespace); err != nil {
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -130,6 +151,23 @@ func (c *Chart) injectImages(
 	}
 
 	return values, nil
+}
+
+func evaluateCondition(values map[string]interface{}, condition string) (bool, error) {
+	if condition == "" {
+		return true, nil
+	}
+	var result, ok bool
+	keys := strings.Split(condition, ".")
+	for _, key := range keys[:len(keys)-1] {
+		if values, ok = values[key].(map[string]interface{}); !ok {
+			return false, errors.Errorf("key %s does not exist or its element is not a map", key)
+		}
+	}
+	if result, ok = values[keys[len(keys)-1]].(bool); !ok {
+		return false, errors.Errorf("key %s does not exist or its element is not a bool", keys[len(keys)-1])
+	}
+	return result, nil
 }
 
 // Delete deletes this chart's objects from the given namespace using the given client.
