@@ -69,9 +69,11 @@ func (a *actuator) Delete(
 	cp *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
 ) error {
-	// Delete all remaining remedy controller resources
-	if err := a.deleteRemedyControllerResources(ctx, cp); err != nil {
-		return err
+	if cp.Spec.Purpose == nil || *cp.Spec.Purpose == extensionsv1alpha1.Normal {
+		// Delete all remaining remedy controller resources
+		if err := a.deleteRemedyControllerResources(ctx, cp); err != nil {
+			return err
+		}
 	}
 
 	// Call Delete on the composed Actuator
@@ -86,9 +88,11 @@ func (a *actuator) Migrate(
 	cp *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
 ) error {
-	// Delete all remaining remedy controller resources
-	if err := a.deleteRemedyControllerResources(ctx, cp); err != nil {
-		return err
+	if cp.Spec.Purpose == nil || *cp.Spec.Purpose == extensionsv1alpha1.Normal {
+		// Delete all remaining remedy controller resources
+		if err := a.deleteRemedyControllerResources(ctx, cp); err != nil {
+			return err
+		}
 	}
 
 	// Call Migrate on the composed Actuator
