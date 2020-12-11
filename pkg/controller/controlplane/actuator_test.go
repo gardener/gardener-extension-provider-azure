@@ -44,9 +44,13 @@ var _ = Describe("Actuator", func() {
 		a        *mockcontrolplane.MockActuator
 		actuator controlplane.Actuator
 
-		cp = &extensionsv1alpha1.ControlPlane{
-			ObjectMeta: metav1.ObjectMeta{Name: "control-plane", Namespace: namespace},
-			Spec:       extensionsv1alpha1.ControlPlaneSpec{},
+		newControlPlane = func(purpose *extensionsv1alpha1.Purpose) *extensionsv1alpha1.ControlPlane {
+			return &extensionsv1alpha1.ControlPlane{
+				ObjectMeta: metav1.ObjectMeta{Name: "control-plane", Namespace: namespace},
+				Spec: extensionsv1alpha1.ControlPlaneSpec{
+					Purpose: purpose,
+				},
+			}
 		}
 		cluster = &extensionscontroller.Cluster{
 			Shoot: &gardencorev1beta1.Shoot{
@@ -85,6 +89,7 @@ var _ = Describe("Actuator", func() {
 	Describe("#Delete", func() {
 		It("should delete remaining remedy controller resources", func() {
 			pubip := newPubip(nil)
+			cp := newControlPlane(nil)
 			c.EXPECT().List(ctx, &azurev1alpha1.PublicIPAddressList{}, client.InNamespace(namespace)).
 				DoAndReturn(func(_ context.Context, list *azurev1alpha1.PublicIPAddressList, _ ...client.ListOption) error {
 					list.Items = []azurev1alpha1.PublicIPAddress{*pubip}
@@ -104,6 +109,15 @@ var _ = Describe("Actuator", func() {
 					list.Items = []azurev1alpha1.VirtualMachine{}
 					return nil
 				})
+			a.EXPECT().Delete(ctx, cp, cluster).Return(nil)
+
+			err := actuator.Delete(ctx, cp, cluster)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should not delete remaining remedy controller resources for controlplane with purpose exposure", func() {
+			exposure := extensionsv1alpha1.Exposure
+			cp := newControlPlane(&exposure)
 			a.EXPECT().Delete(ctx, cp, cluster).Return(nil)
 
 			err := actuator.Delete(ctx, cp, cluster)
