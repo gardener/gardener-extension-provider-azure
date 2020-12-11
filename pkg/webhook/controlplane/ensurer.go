@@ -409,7 +409,7 @@ func (e *ensurer) EnsureKubeletConfiguration(ctx context.Context, ectx genericmu
 		new.FeatureGates["CSIMigration"] = true
 		new.FeatureGates["CSIMigrationAzureDisk"] = true
 		new.FeatureGates["CSIMigrationAzureFile"] = true
-		// kubelets of new worker nodes can directly be started with the the `CSIMigrationAzure<*>Complete` feature gates
+		// kubelets of new worker nodes can directly be started with the `CSIMigrationAzure<*>Complete` feature gates
 		new.FeatureGates["CSIMigrationAzureDiskComplete"] = true
 		new.FeatureGates["CSIMigrationAzureFileComplete"] = true
 	}
