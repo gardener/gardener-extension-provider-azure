@@ -46,7 +46,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ = Describe("Machines", func() {
@@ -95,11 +94,7 @@ var _ = Describe("Machines", func() {
 				namespace        string
 				cloudProfileName string
 
-				azureClientID       string
-				azureClientSecret   string
-				azureSubscriptionID string
-				azureTenantID       string
-				region              string
+				region string
 
 				machineImageName      string
 				machineImageVersion   string
@@ -160,10 +155,6 @@ var _ = Describe("Machines", func() {
 				cloudProfileName = "azure"
 
 				region = "westeurope"
-				azureClientID = "client-id"
-				azureClientSecret = "client-secret"
-				azureSubscriptionID = "1234"
-				azureTenantID = "1234"
 
 				machineImageName = "my-os"
 				machineImageVersion = "1"
@@ -420,8 +411,8 @@ var _ = Describe("Machines", func() {
 						machineClassWithHashPool2 = fmt.Sprintf("%s-%s", machineClassNamePool2, workerPoolHash2)
 					)
 
-					addNameAndSecretsToMachineClass(machineClassPool1, azureClientID, azureClientSecret, azureSubscriptionID, azureTenantID, machineClassWithHashPool1)
-					addNameAndSecretsToMachineClass(machineClassPool2, azureClientID, azureClientSecret, azureSubscriptionID, azureTenantID, machineClassWithHashPool2)
+					addNameAndSecretsToMachineClass(machineClassPool1, machineClassWithHashPool1, w.Spec.SecretRef)
+					addNameAndSecretsToMachineClass(machineClassPool2, machineClassWithHashPool2, w.Spec.SecretRef)
 
 					machineClassPool1["dataDisks"] = []map[string]interface{}{
 						{
@@ -478,8 +469,6 @@ var _ = Describe("Machines", func() {
 				It("should return the expected machine deployments for profile image types", func() {
 					workerDelegate, _ = NewWorkerDelegate(common.NewClientContext(c, scheme, decoder), chartApplier, "", w, cluster)
 
-					expectGetSecretCallToWork(c, azureClientID, azureClientSecret, azureSubscriptionID, azureTenantID)
-
 					// Test workerDelegate.DeployMachineClasses()
 					chartApplier.EXPECT().Apply(context.TODO(), filepath.Join(azure.InternalChartsPath, "machineclass"), namespace, "machineclass", kubernetes.Values(machineClasses))
 
@@ -512,17 +501,7 @@ var _ = Describe("Machines", func() {
 				})
 			})
 
-			It("should fail because the secret cannot be read", func() {
-				c.EXPECT().Get(context.TODO(), gomock.Any(), gomock.AssignableToTypeOf(&corev1.Secret{})).Return(fmt.Errorf("error"))
-
-				result, err := workerDelegate.GenerateMachineDeployments(context.TODO())
-				Expect(err).To(HaveOccurred())
-				Expect(result).To(BeNil())
-			})
-
 			It("should fail because the version is invalid", func() {
-				expectGetSecretCallToWork(c, azureClientID, azureClientSecret, azureSubscriptionID, azureTenantID)
-
 				clusterWithoutImages.Shoot.Spec.Kubernetes.Version = "invalid"
 				workerDelegate, _ = NewWorkerDelegate(common.NewClientContext(c, scheme, decoder), chartApplier, "", w, cluster)
 
@@ -532,8 +511,6 @@ var _ = Describe("Machines", func() {
 			})
 
 			It("should fail because the infrastructure status cannot be decoded", func() {
-				expectGetSecretCallToWork(c, azureClientID, azureClientSecret, azureSubscriptionID, azureTenantID)
-
 				w.Spec.InfrastructureProviderStatus = &runtime.RawExtension{}
 
 				workerDelegate, _ = NewWorkerDelegate(common.NewClientContext(c, scheme, decoder), chartApplier, "", w, cluster)
@@ -544,8 +521,6 @@ var _ = Describe("Machines", func() {
 			})
 
 			It("should fail because the nodes subnet cannot be found", func() {
-				expectGetSecretCallToWork(c, azureClientID, azureClientSecret, azureSubscriptionID, azureTenantID)
-
 				w.Spec.InfrastructureProviderStatus = &runtime.RawExtension{
 					Raw: encode(&apisazure.InfrastructureStatus{}),
 				}
@@ -558,8 +533,6 @@ var _ = Describe("Machines", func() {
 			})
 
 			It("should fail because the nodes availability set cannot be found", func() {
-				expectGetSecretCallToWork(c, azureClientID, azureClientSecret, azureSubscriptionID, azureTenantID)
-
 				w.Spec.InfrastructureProviderStatus = &runtime.RawExtension{
 					Raw: encode(&apisazure.InfrastructureStatus{
 						Networks: apisazure.NetworkStatus{
@@ -581,8 +554,6 @@ var _ = Describe("Machines", func() {
 			})
 
 			It("should fail because the machine image information cannot be found", func() {
-				expectGetSecretCallToWork(c, azureClientID, azureClientSecret, azureSubscriptionID, azureTenantID)
-
 				workerDelegate, _ = NewWorkerDelegate(common.NewClientContext(c, scheme, decoder), chartApplier, "", w, clusterWithoutImages)
 
 				result, err := workerDelegate.GenerateMachineDeployments(context.TODO())
@@ -591,8 +562,6 @@ var _ = Describe("Machines", func() {
 			})
 
 			It("should fail because the volume size cannot be decoded", func() {
-				expectGetSecretCallToWork(c, azureClientID, azureClientSecret, azureSubscriptionID, azureTenantID)
-
 				w.Spec.Pools[0].Volume.Size = "not-decodeable"
 
 				workerDelegate, _ = NewWorkerDelegate(common.NewClientContext(c, scheme, decoder), chartApplier, "", w, cluster)
@@ -603,8 +572,6 @@ var _ = Describe("Machines", func() {
 			})
 
 			It("should set expected machineControllerManager settings on machine deployment", func() {
-				expectGetSecretCallToWork(c, azureClientID, azureClientSecret, azureSubscriptionID, azureTenantID)
-
 				testDrainTimeout := metav1.Duration{Duration: 10 * time.Minute}
 				testHealthTimeout := metav1.Duration{Duration: 20 * time.Minute}
 				testCreationTimeout := metav1.Duration{Duration: 30 * time.Minute}
@@ -656,20 +623,6 @@ func copyMachineClass(def map[string]interface{}) map[string]interface{} {
 	return out
 }
 
-func expectGetSecretCallToWork(c *mockclient.MockClient, azureClientID, azureClientSecret, azureSubscriptionID, azureTenantID string) {
-	c.EXPECT().
-		Get(context.TODO(), gomock.Any(), gomock.AssignableToTypeOf(&corev1.Secret{})).
-		DoAndReturn(func(_ context.Context, _ client.ObjectKey, secret *corev1.Secret) error {
-			secret.Data = map[string][]byte{
-				azure.ClientIDKey:       []byte(azureClientID),
-				azure.ClientSecretKey:   []byte(azureClientSecret),
-				azure.SubscriptionIDKey: []byte(azureSubscriptionID),
-				azure.TenantIDKey:       []byte(azureTenantID),
-			}
-			return nil
-		})
-}
-
 func expectStatusContainsMachineImages(c *mockclient.MockClient, statusWriter *mockclient.MockStatusWriter, worker *extensionsv1alpha1.Worker, images []apiv1alpha1.MachineImage) {
 	expectedProviderStatus := &apiv1alpha1.WorkerStatus{
 		TypeMeta: metav1.TypeMeta{
@@ -690,13 +643,13 @@ func expectStatusContainsMachineImages(c *mockclient.MockClient, statusWriter *m
 	statusWriter.EXPECT().Update(context.TODO(), workerWithExpectedStatus).Return(nil)
 }
 
-func addNameAndSecretsToMachineClass(class map[string]interface{}, azureClientID, azureClientSecret, azureSubscriptionID, azureTenantID, name string) {
+func addNameAndSecretsToMachineClass(class map[string]interface{}, name string, credentialsSecretRef corev1.SecretReference) {
 	class["name"] = name
+	class["credentialsSecretRef"] = map[string]interface{}{
+		"name":      credentialsSecretRef.Name,
+		"namespace": credentialsSecretRef.Namespace,
+	}
 	class["labels"] = map[string]string{
 		v1beta1constants.GardenerPurpose: genericworkeractuator.GardenPurposeMachineClass,
 	}
-	class["secret"].(map[string]interface{})[azure.ClientIDKey] = azureClientID
-	class["secret"].(map[string]interface{})[azure.ClientSecretKey] = azureClientSecret
-	class["secret"].(map[string]interface{})[azure.SubscriptionIDKey] = azureSubscriptionID
-	class["secret"].(map[string]interface{})[azure.TenantIDKey] = azureTenantID
 }

@@ -25,7 +25,6 @@ import (
 	azureapi "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	azureapihelper "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
 	genericworkeractuator "github.com/gardener/gardener/extensions/pkg/controller/worker/genericactuator"
@@ -76,20 +75,6 @@ func (w *workerDelegate) GenerateMachineDeployments(ctx context.Context) (worker
 	return w.machineDeployments, nil
 }
 
-func (w *workerDelegate) generateMachineClassSecretData(ctx context.Context) (map[string][]byte, error) {
-	credentials, err := internal.GetClientAuthData(ctx, w.Client(), w.worker.Spec.SecretRef)
-	if err != nil {
-		return nil, err
-	}
-
-	return map[string][]byte{
-		machinev1alpha1.AzureClientID:       []byte(credentials.ClientID),
-		machinev1alpha1.AzureClientSecret:   []byte(credentials.ClientSecret),
-		machinev1alpha1.AzureSubscriptionID: []byte(credentials.SubscriptionID),
-		machinev1alpha1.AzureTenantID:       []byte(credentials.TenantID),
-	}, nil
-}
-
 type zoneInfo struct {
 	name  string
 	index int32
@@ -104,11 +89,6 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		machineImages             []azureapi.MachineImage
 		nodesAvailabilitySet      *azureapi.AvailabilitySet
 	)
-
-	machineClassSecretData, err := w.generateMachineClassSecretData(ctx)
-	if err != nil {
-		return err
-	}
 
 	infrastructureStatus := &azureapi.InfrastructureStatus{}
 	if _, _, err := w.Decoder().Decode(w.worker.Spec.InfrastructureProviderStatus.Raw, nil, infrastructureStatus); err != nil {
@@ -188,6 +168,10 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 					"secret": map[string]interface{}{
 						"cloudConfig": string(pool.UserData),
 					},
+					"credentialsSecretRef": map[string]interface{}{
+						"name":      w.worker.Spec.SecretRef.Name,
+						"namespace": w.worker.Spec.SecretRef.Namespace,
+					},
 					"machineType":  pool.MachineType,
 					"image":        image,
 					"sshPublicKey": string(w.worker.Spec.SSHPublicKey),
@@ -238,10 +222,6 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 
 			machineClassSpec["name"] = className
 			machineClassSpec["labels"] = map[string]string{v1beta1constants.GardenerPurpose: genericworkeractuator.GardenPurposeMachineClass}
-			machineClassSpec["secret"].(map[string]interface{})[azure.ClientIDKey] = string(machineClassSecretData[machinev1alpha1.AzureClientID])
-			machineClassSpec["secret"].(map[string]interface{})[azure.ClientSecretKey] = string(machineClassSecretData[machinev1alpha1.AzureClientSecret])
-			machineClassSpec["secret"].(map[string]interface{})[azure.SubscriptionIDKey] = string(machineClassSecretData[machinev1alpha1.AzureSubscriptionID])
-			machineClassSpec["secret"].(map[string]interface{})[azure.TenantIDKey] = string(machineClassSecretData[machinev1alpha1.AzureTenantID])
 
 			return machineDeployment, machineClassSpec
 		}

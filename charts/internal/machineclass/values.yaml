@@ -16,11 +16,10 @@ machineClasses:
     kubernetes.io-cluster-shoot-crazy-botany: "1"
     kubernetes.io-role-node: "1"
   secret:
-    clientID: ABCD
-    clientSecret: ABCD
-    subscriptionID: abc
-    tenantID: abc
     cloudConfig: abc
+  credentialsSecretRef:
+    name: cloudprovider
+    namespace: shoot-namespace
   machineType: Standard_DS1_V2
   image:
     urn: "CoreOS:CoreOS:Stable:1576.5.0"
@@ -41,11 +40,10 @@ machineClasses:
     kubernetes.io-cluster-shoot-crazy-botany: "1"
     kubernetes.io-role-node: "1"
   secret:
-    clientID: ABCD
-    clientSecret: ABCD
-    subscriptionID: abc
-    tenantID: abc
     cloudConfig: abc
+  credentialsSecretRef:
+    name: cloudprovider
+    namespace: shoot-namespace
   machineType: Standard_DS1_V2
   image:
     #urn: "CoreOS:CoreOS:Stable:1576.5.0"
