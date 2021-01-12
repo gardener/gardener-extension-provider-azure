@@ -25,6 +25,7 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -71,6 +72,6 @@ func (a *actuator) Delete(ctx context.Context, infra *extensionsv1alpha1.Infrast
 }
 
 // NoOpStateInitializer is a no-op StateConfigMapInitializerFunc.
-func NoOpStateInitializer(ctx context.Context, c client.Client, namespace, name string) error {
+func NoOpStateInitializer(ctx context.Context, c client.Client, namespace, name string, owner *metav1.OwnerReference) error {
 	return nil
 }
