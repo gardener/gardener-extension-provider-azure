@@ -19,16 +19,17 @@ import (
 	"encoding/json"
 	"testing"
 
-	druidv1alpha1 "github.com/gardener/etcd-druid/api/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/config"
+
+	druidv1alpha1 "github.com/gardener/etcd-druid/api/v1alpha1"
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
+	gcontext "github.com/gardener/gardener/extensions/pkg/webhook/context"
 	"github.com/gardener/gardener/extensions/pkg/webhook/controlplane/genericmutator"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
 	"github.com/gardener/gardener/pkg/utils"
-
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -53,7 +54,7 @@ func TestController(t *testing.T) {
 
 var _ = Describe("Ensurer", func() {
 	var (
-		dummyContext = genericmutator.NewEnsurerContext(nil, nil)
+		dummyContext = gcontext.NewGardenContext(nil, nil)
 
 		etcdStorage = &config.ETCDStorage{
 			ClassName: pointer.StringPtr("gardener.cloud-fast"),

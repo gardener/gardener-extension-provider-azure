@@ -24,6 +24,7 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/controller/csimigration"
 	"github.com/gardener/gardener/extensions/pkg/controller/operatingsystemconfig/oscommon/cloudinit"
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
+	gcontext "github.com/gardener/gardener/extensions/pkg/webhook/context"
 	"github.com/gardener/gardener/extensions/pkg/webhook/controlplane"
 	"github.com/gardener/gardener/extensions/pkg/webhook/controlplane/genericmutator"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
@@ -65,11 +66,11 @@ func (e *ensurer) InjectClient(client client.Client) error {
 }
 
 // EnsureKubeAPIServerDeployment ensures that the kube-apiserver deployment conforms to the provider requirements.
-func (e *ensurer) EnsureKubeAPIServerDeployment(ctx context.Context, ectx genericmutator.EnsurerContext, new, _ *appsv1.Deployment) error {
+func (e *ensurer) EnsureKubeAPIServerDeployment(ctx context.Context, gctx gcontext.GardenContext, new, _ *appsv1.Deployment) error {
 	template := &new.Spec.Template
 	ps := &template.Spec
 
-	cluster, err := ectx.GetCluster(ctx)
+	cluster, err := gctx.GetCluster(ctx)
 	if err != nil {
 		return err
 	}
@@ -89,11 +90,11 @@ func (e *ensurer) EnsureKubeAPIServerDeployment(ctx context.Context, ectx generi
 }
 
 // EnsureKubeControllerManagerDeployment ensures that the kube-controller-manager deployment conforms to the provider requirements.
-func (e *ensurer) EnsureKubeControllerManagerDeployment(ctx context.Context, ectx genericmutator.EnsurerContext, new, _ *appsv1.Deployment) error {
+func (e *ensurer) EnsureKubeControllerManagerDeployment(ctx context.Context, gctx gcontext.GardenContext, new, _ *appsv1.Deployment) error {
 	template := &new.Spec.Template
 	ps := &template.Spec
 
-	cluster, err := ectx.GetCluster(ctx)
+	cluster, err := gctx.GetCluster(ctx)
 	if err != nil {
 		return err
 	}
@@ -114,11 +115,11 @@ func (e *ensurer) EnsureKubeControllerManagerDeployment(ctx context.Context, ect
 }
 
 // EnsureKubeSchedulerDeployment ensures that the kube-scheduler deployment conforms to the provider requirements.
-func (e *ensurer) EnsureKubeSchedulerDeployment(ctx context.Context, ectx genericmutator.EnsurerContext, new, _ *appsv1.Deployment) error {
+func (e *ensurer) EnsureKubeSchedulerDeployment(ctx context.Context, gctx gcontext.GardenContext, new, _ *appsv1.Deployment) error {
 	template := &new.Spec.Template
 	ps := &template.Spec
 
-	cluster, err := ectx.GetCluster(ctx)
+	cluster, err := gctx.GetCluster(ctx)
 	if err != nil {
 		return err
 	}
@@ -346,8 +347,8 @@ func (e *ensurer) ensureChecksumAnnotations(ctx context.Context, template *corev
 }
 
 // EnsureKubeletServiceUnitOptions ensures that the kubelet.service unit options conform to the provider requirements.
-func (e *ensurer) EnsureKubeletServiceUnitOptions(ctx context.Context, ectx genericmutator.EnsurerContext, new, _ []*unit.UnitOption) ([]*unit.UnitOption, error) {
-	cluster, err := ectx.GetCluster(ctx)
+func (e *ensurer) EnsureKubeletServiceUnitOptions(ctx context.Context, gctx gcontext.GardenContext, new, _ []*unit.UnitOption) ([]*unit.UnitOption, error) {
+	cluster, err := gctx.GetCluster(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -390,8 +391,8 @@ func (e *ensurer) ensureKubeletCommandLineArgs(ctx context.Context, cluster *ext
 }
 
 // EnsureKubeletConfiguration ensures that the kubelet configuration conforms to the provider requirements.
-func (e *ensurer) EnsureKubeletConfiguration(ctx context.Context, ectx genericmutator.EnsurerContext, new, old *kubeletconfigv1beta1.KubeletConfiguration) error {
-	cluster, err := ectx.GetCluster(ctx)
+func (e *ensurer) EnsureKubeletConfiguration(ctx context.Context, gctx gcontext.GardenContext, new, old *kubeletconfigv1beta1.KubeletConfiguration) error {
+	cluster, err := gctx.GetCluster(ctx)
 	if err != nil {
 		return err
 	}
@@ -418,8 +419,8 @@ func (e *ensurer) EnsureKubeletConfiguration(ctx context.Context, ectx genericmu
 }
 
 // ShouldProvisionKubeletCloudProviderConfig returns true if the cloud provider config file should be added to the kubelet configuration.
-func (e *ensurer) ShouldProvisionKubeletCloudProviderConfig(ctx context.Context, ectx genericmutator.EnsurerContext) bool {
-	cluster, err := ectx.GetCluster(ctx)
+func (e *ensurer) ShouldProvisionKubeletCloudProviderConfig(ctx context.Context, gctx gcontext.GardenContext) bool {
+	cluster, err := gctx.GetCluster(ctx)
 	if err != nil {
 		return false
 	}
@@ -433,7 +434,7 @@ func (e *ensurer) ShouldProvisionKubeletCloudProviderConfig(ctx context.Context,
 }
 
 // EnsureKubeletCloudProviderConfig ensures that the cloud provider config file conforms to the provider requirements.
-func (e *ensurer) EnsureKubeletCloudProviderConfig(ctx context.Context, _ genericmutator.EnsurerContext, data *string, namespace string) error {
+func (e *ensurer) EnsureKubeletCloudProviderConfig(ctx context.Context, _ gcontext.GardenContext, data *string, namespace string) error {
 	secret := &corev1.Secret{}
 	if err := e.client.Get(ctx, kutil.Key(namespace, azure.CloudProviderDiskConfigName), secret); err != nil {
 		if apierrors.IsNotFound(err) {
@@ -455,12 +456,12 @@ func (e *ensurer) EnsureKubeletCloudProviderConfig(ctx context.Context, _ generi
 }
 
 // EnsureAdditionalFile ensures additional systemd files
-func (e *ensurer) EnsureAdditionalFiles(ctx context.Context, ectx genericmutator.EnsurerContext, new, _ *[]extensionsv1alpha1.File) error {
-	return e.ensureAcrConfigFile(ctx, ectx, new)
+func (e *ensurer) EnsureAdditionalFiles(ctx context.Context, gctx gcontext.GardenContext, new, _ *[]extensionsv1alpha1.File) error {
+	return e.ensureAcrConfigFile(ctx, gctx, new)
 }
 
-func (e *ensurer) ensureAcrConfigFile(ctx context.Context, ectx genericmutator.EnsurerContext, files *[]extensionsv1alpha1.File) error {
-	cluster, err := ectx.GetCluster(ctx)
+func (e *ensurer) ensureAcrConfigFile(ctx context.Context, gctx gcontext.GardenContext, files *[]extensionsv1alpha1.File) error {
+	cluster, err := gctx.GetCluster(ctx)
 	if err != nil {
 		return err
 	}

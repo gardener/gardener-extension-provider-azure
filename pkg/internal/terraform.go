@@ -21,6 +21,7 @@ import (
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
@@ -62,12 +63,14 @@ func NewTerraformer(logger logr.Logger, restConfig *rest.Config, purpose string,
 		return nil, err
 	}
 
+	owner := metav1.NewControllerRef(infra, extensionsv1alpha1.SchemeGroupVersion.WithKind(extensionsv1alpha1.InfrastructureResource))
 	return tf.
 		UseV2(true).
 		SetLogLevel("debug").
 		SetTerminationGracePeriodSeconds(630).
 		SetDeadlineCleaning(5 * time.Minute).
-		SetDeadlinePod(15 * time.Minute), nil
+		SetDeadlinePod(15 * time.Minute).
+		SetOwnerRef(owner), nil
 }
 
 // NewTerraformerWithAuth initializes a new Terraformer that has the azure auth credentials.
