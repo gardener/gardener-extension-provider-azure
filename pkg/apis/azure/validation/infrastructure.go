@@ -68,20 +68,69 @@ func ValidateInfrastructureConfig(infra *apisazure.InfrastructureConfig, nodesCI
 	workerCIDR := cidrvalidation.NewCIDR(infra.Networks.Workers, networksPath.Child("workers"))
 	allErrs = append(allErrs, cidrvalidation.ValidateCIDRParse(workerCIDR)...)
 	allErrs = append(allErrs, cidrvalidation.ValidateCIDRIsCanonical(networksPath.Child("workers"), infra.Networks.Workers)...)
+	if nodes != nil {
+		allErrs = append(allErrs, nodes.ValidateSubset(workerCIDR)...)
+	}
 
-	// Validate vnet config
 	allErrs = append(allErrs, validateVnetConfig(infra.Networks.VNet, infra.ResourceGroup, workerCIDR, nodes, pods, services, networksPath.Child("vnet"))...)
-
-	allErrs = append(allErrs, validateNatGatewayConfig(infra, hasVmoAlphaAnnotation, fldPath.Child("networks", "natGateway"))...)
+	allErrs = append(allErrs, validateNatGatewayConfig(infra.Networks.NatGateway, infra.Zoned, hasVmoAlphaAnnotation, networksPath.Child("natGateway"))...)
 
 	if infra.Identity != nil && (infra.Identity.Name == "" || infra.Identity.ResourceGroup == "") {
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("identity"), infra.Identity, "specifying an identity requires the name of the identity and the resource group which hosts the identity"))
 	}
 
-	if nodes != nil {
-		allErrs = append(allErrs, nodes.ValidateSubset(workerCIDR)...)
+	return allErrs
+}
+
+func validateNatGatewayConfig(natGatewayConfig *apisazure.NatGatewayConfig, zoned bool, hasVmoAlphaAnnotation bool, natGatewayPath *field.Path) field.ErrorList {
+	var allErrs = field.ErrorList{}
+
+	if natGatewayConfig == nil {
+		return nil
 	}
 
+	if !natGatewayConfig.Enabled {
+		if natGatewayConfig.Zone != nil || natGatewayConfig.IdleConnectionTimeoutMinutes != nil || natGatewayConfig.IPAddresses != nil {
+			return append(allErrs, field.Invalid(natGatewayPath, natGatewayConfig, "NatGateway is disabled but additional NatGateway config is passed"))
+		}
+		return nil
+	}
+
+	// NatGateway cannot be offered for Shoot clusters with a primary AvailabilitySet.
+	// The NatGateway is not compatible with the Basic SKU Loadbalancers which are
+	// required to use for Shoot clusters with AvailabilitySet.
+	if !zoned && !hasVmoAlphaAnnotation {
+		return append(allErrs, field.Forbidden(natGatewayPath, "NatGateway is currently only supported for zonal and VMO clusters"))
+	}
+
+	if natGatewayConfig.IdleConnectionTimeoutMinutes != nil && (*natGatewayConfig.IdleConnectionTimeoutMinutes < natGatewayMinTimeoutInMinutes || *natGatewayConfig.IdleConnectionTimeoutMinutes > natGatewayMaxTimeoutInMinutes) {
+		allErrs = append(allErrs, field.Invalid(natGatewayPath.Child("idleConnectionTimeoutMinutes"), *natGatewayConfig.IdleConnectionTimeoutMinutes, "idleConnectionTimeoutMinutes values must range between 4 and 120"))
+	}
+
+	if natGatewayConfig.Zone == nil {
+		if len(natGatewayConfig.IPAddresses) > 0 {
+			allErrs = append(allErrs, field.Invalid(natGatewayPath.Child("zone"), *natGatewayConfig, "Public IPs can only be selected for zonal NatGateways"))
+		}
+		return allErrs
+	}
+	allErrs = append(allErrs, validateNatGatewayIPReference(natGatewayConfig.IPAddresses, *natGatewayConfig.Zone, natGatewayPath.Child("ipAddresses"))...)
+
+	return allErrs
+}
+
+func validateNatGatewayIPReference(publicIPReferences []apisazure.PublicIPReference, zone int32, fldPath *field.Path) field.ErrorList {
+	var allErrs = field.ErrorList{}
+	for i, publicIPRef := range publicIPReferences {
+		if publicIPRef.Zone != zone {
+			allErrs = append(allErrs, field.Invalid(fldPath.Index(i).Child("zone"), publicIPRef.Zone, fmt.Sprintf("Public IP can't be used as it is not in the same zone as the NatGateway (zone %d)", zone)))
+		}
+		if publicIPRef.Name == "" {
+			allErrs = append(allErrs, field.Required(fldPath.Index(i).Child("name"), "Name for NatGateway public ip resource is required"))
+		}
+		if publicIPRef.ResourceGroup == "" {
+			allErrs = append(allErrs, field.Required(fldPath.Index(i).Child("resourceGroup"), "ResourceGroup for NatGateway public ip resouce is required"))
+		}
+	}
 	return allErrs
 }
 
@@ -117,27 +166,6 @@ func validateVnetConfig(vnetConfig apisazure.VNet, resourceGroupConfig *apisazur
 	allErrs = append(allErrs, vnetCIDR.ValidateSubset(workers)...)
 	allErrs = append(allErrs, vnetCIDR.ValidateNotSubset(pods, services)...)
 	allErrs = append(allErrs, cidrvalidation.ValidateCIDRIsCanonical(vnetConfigPath.Child("cidr"), *vnetConfig.CIDR)...)
-
-	return allErrs
-}
-
-func validateNatGatewayConfig(infra *apisazure.InfrastructureConfig, hasVmoAlphaAnnotation bool, natGatewayConfigPath *field.Path) field.ErrorList {
-	var allErrs = field.ErrorList{}
-
-	if infra.Networks.NatGateway == nil {
-		return allErrs
-	}
-
-	// NatGateway can't be offered for Shoot clusters with a primary AvailabilitySet.
-	// The NatGateway is not compatible with the Basic SKU Loadbalancers which are
-	// required for Shoot clusters with AvailabilitySet.
-	if !infra.Zoned && !hasVmoAlphaAnnotation {
-		return append(allErrs, field.Invalid(natGatewayConfigPath, infra.Networks.NatGateway, "NatGateway is currently only supported for zoned cluster"))
-	}
-
-	if infra.Networks.NatGateway.IdleConnectionTimeoutMinutes != nil && (*infra.Networks.NatGateway.IdleConnectionTimeoutMinutes < natGatewayMinTimeoutInMinutes || *infra.Networks.NatGateway.IdleConnectionTimeoutMinutes > natGatewayMaxTimeoutInMinutes) {
-		allErrs = append(allErrs, field.Invalid(natGatewayConfigPath.Child("idleConnectionTimeoutMinutes"), *infra.Networks.NatGateway.IdleConnectionTimeoutMinutes, "idleConnectionTimeoutMinutes values must range between 4 and 120"))
-	}
 
 	return allErrs
 }

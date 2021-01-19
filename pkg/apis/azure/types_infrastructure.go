@@ -51,6 +51,28 @@ type NetworkConfig struct {
 	ServiceEndpoints []string
 }
 
+// NatGatewayConfig contains configuration for the NAT gateway and the attached resources.
+type NatGatewayConfig struct {
+	// Enabled is an indicator if NAT gateway should be deployed.
+	Enabled bool
+	// IdleConnectionTimeoutMinutes specifies the idle connection timeout limit for NAT gateway in minutes.
+	IdleConnectionTimeoutMinutes *int32
+	// Zone specifies the zone in which the NAT gateway should be deployed to.
+	Zone *int32
+	// IPAddresses is a list of ip addresses which should be assigned to the NAT gateway.
+	IPAddresses []PublicIPReference
+}
+
+// PublicIPReference contains information about a public ip.
+type PublicIPReference struct {
+	// Name is the name of the public ip.
+	Name string
+	// ResourceGroup is the name of the resource group where the public ip is assigned to.
+	ResourceGroup string
+	// Zone is the zone in which the public ip is deployed to.
+	Zone int32
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // InfrastructureStatus contains information about created infrastructure resources.
@@ -147,14 +169,6 @@ type VNetStatus struct {
 	Name string
 	// ResourceGroup is the resource group where the existing vNet belongs to.
 	ResourceGroup *string
-}
-
-// NatGatewayConfig contains configuration for the nat gateway and the attached resources.
-type NatGatewayConfig struct {
-	// Enabled is an indicator if NAT gateway should be deployed.
-	Enabled bool
-	// IdleConnectionTimeoutMinutes specifies the idle connection timeout limit for NAT gateway in minutes.
-	IdleConnectionTimeoutMinutes *int32
 }
 
 // IdentityConfig contains configuration for the managed identity.

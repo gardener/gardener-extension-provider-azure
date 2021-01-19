@@ -909,7 +909,7 @@ bool
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.NetworkConfig">NetworkConfig</a>)
 </p>
 <p>
-<p>NatGatewayConfig contains configuration for the nat gateway and the attached resources.</p>
+<p>NatGatewayConfig contains configuration for the NAT gateway and the attached resources.</p>
 </p>
 <table>
 <thead>
@@ -940,6 +940,32 @@ int32
 <td>
 <em>(Optional)</em>
 <p>IdleConnectionTimeoutMinutes specifies the idle connection timeout limit for NAT gateway in minutes.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>zone</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Zone specifies the zone in which the NAT gateway should be deployed to.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ipAddresses</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.PublicIPReference">
+[]PublicIPReference
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>IPAddresses is a list of ip addresses which should be assigned to the NAT gateway.</p>
 </td>
 </tr>
 </tbody>
@@ -1054,6 +1080,58 @@ VNetStatus
 </td>
 <td>
 <p>Subnets are the subnets that have been created.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.PublicIPReference">PublicIPReference
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.NatGatewayConfig">NatGatewayConfig</a>)
+</p>
+<p>
+<p>PublicIPReference contains information about a public ip.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name is the name of the public ip.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>resourceGroup</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>ResourceGroup is the name of the resource group where the public ip is assigned to.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>zone</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>Zone is the zone in which the public ip is deployed to.</p>
 </td>
 </tr>
 </tbody>

@@ -15,10 +15,15 @@ create:
   # name: identity-name
   # resourceGroup: identity-resource-group
 
-natGateway:
-  idleConnectionTimeoutMinutes:
-  # TODO(natipmigration) This can be removed in future versions when the ip migration has been completed.
-  migrateNatGatewayToIPAssociation: false
+# natGateway:
+  # idleConnectionTimeoutMinutes: 4
+  # zone: 1
+  # migrateNatGatewayToIPAssociation: false # TODO(natipmigration) This can be removed in future versions when the ip migration has been completed.
+  # ipAddresses:
+  # - name: public-ip-0-name
+  #   resourceGroup: public-ip-0-resource-group
+  # - name: public-ip-1-name
+  #   resourceGroup: public-ip-1-resource-group
 
 resourceGroup:
   name: my-resource-group
