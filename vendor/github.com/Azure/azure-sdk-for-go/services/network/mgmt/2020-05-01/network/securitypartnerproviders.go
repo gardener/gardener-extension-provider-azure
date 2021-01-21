@@ -226,6 +226,7 @@ func (client SecurityPartnerProvidersClient) Get(ctx context.Context, resourceGr
 	result, err = client.GetResponder(resp)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "network.SecurityPartnerProvidersClient", "Get", resp, "Failure responding to request")
+		return
 	}
 
 	return
@@ -299,6 +300,10 @@ func (client SecurityPartnerProvidersClient) List(ctx context.Context) (result S
 	result.spplr, err = client.ListResponder(resp)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "network.SecurityPartnerProvidersClient", "List", resp, "Failure responding to request")
+		return
+	}
+	if result.spplr.hasNextLink() && result.spplr.IsEmpty() {
+		err = result.NextWithContext(ctx)
 	}
 
 	return
@@ -358,6 +363,7 @@ func (client SecurityPartnerProvidersClient) listNextResults(ctx context.Context
 	result, err = client.ListResponder(resp)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "network.SecurityPartnerProvidersClient", "listNextResults", resp, "Failure responding to next results request")
+		return
 	}
 	return
 }
@@ -409,6 +415,10 @@ func (client SecurityPartnerProvidersClient) ListByResourceGroup(ctx context.Con
 	result.spplr, err = client.ListByResourceGroupResponder(resp)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "network.SecurityPartnerProvidersClient", "ListByResourceGroup", resp, "Failure responding to request")
+		return
+	}
+	if result.spplr.hasNextLink() && result.spplr.IsEmpty() {
+		err = result.NextWithContext(ctx)
 	}
 
 	return
@@ -469,6 +479,7 @@ func (client SecurityPartnerProvidersClient) listByResourceGroupNextResults(ctx 
 	result, err = client.ListByResourceGroupResponder(resp)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "network.SecurityPartnerProvidersClient", "listByResourceGroupNextResults", resp, "Failure responding to next results request")
+		return
 	}
 	return
 }
@@ -521,6 +532,7 @@ func (client SecurityPartnerProvidersClient) UpdateTags(ctx context.Context, res
 	result, err = client.UpdateTagsResponder(resp)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "network.SecurityPartnerProvidersClient", "UpdateTags", resp, "Failure responding to request")
+		return
 	}
 
 	return

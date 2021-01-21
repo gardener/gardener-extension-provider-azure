@@ -1,0 +1,253 @@
+// Copyright (c) 2020 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package worker
+
+import (
+	"context"
+	"fmt"
+	"reflect"
+
+	azureapi "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	azureapihelper "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
+
+	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2020-06-30/compute"
+	"github.com/gardener/gardener/pkg/utils"
+	"k8s.io/utils/pointer"
+)
+
+func (w *workerDelegate) reconcileVmoDependencies(ctx context.Context, infrastructureStatus *azureapi.InfrastructureStatus, workerProviderStatus *azureapi.WorkerStatus) ([]azureapi.VmoDependency, error) {
+	var vmoDependencies = copyVmoDependencies(workerProviderStatus)
+
+	vmoClient, err := w.clientFactory.Vmss(ctx, w.worker.Spec.SecretRef)
+	if err != nil {
+		return vmoDependencies, err
+	}
+
+	faultDomainCount, err := azureapihelper.FindDomainCountByRegion(w.cloudProfileConfig.CountFaultDomains, w.worker.Spec.Region)
+	if err != nil {
+		return nil, err
+	}
+
+	// Deploy workerpool dependencies and store their status to be persistent in the worker provider status.
+	for _, workerPool := range w.worker.Spec.Pools {
+		vmoDependencyStatus, err := w.reconcileVMO(ctx, vmoClient, vmoDependencies, infrastructureStatus.ResourceGroup.Name, workerPool.Name, faultDomainCount)
+		if err != nil {
+			return vmoDependencies, err
+		}
+		vmoDependencies = appendVmoDependency(vmoDependencies, vmoDependencyStatus)
+	}
+
+	return vmoDependencies, nil
+}
+
+func (w *workerDelegate) reconcileVMO(ctx context.Context, client azureclient.Vmss, dependencies []azureapi.VmoDependency, resourceGroupName, workerPoolName string, faultDomainCount int32) (*azureapi.VmoDependency, error) {
+	var (
+		existingDependency *azureapi.VmoDependency
+		vmo                *compute.VirtualMachineScaleSet
+		err                error
+	)
+
+	// Check if there is already a VMO dependency object for the workerpool in the status.
+	for _, dep := range dependencies {
+		if dep.PoolName == workerPoolName {
+			existingDependency = &dep
+			break
+		}
+	}
+
+	// Try to fetch the VMO from Azure as it exists in the status.
+	if existingDependency != nil {
+		vmo, err = client.Get(ctx, resourceGroupName, existingDependency.Name)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// VMO does not exists. Create it.
+	if vmo == nil {
+		newVMO, err := generateAndCreateVmo(ctx, client, workerPoolName, resourceGroupName, w.worker.Spec.Region, faultDomainCount)
+		if err != nil {
+			return nil, err
+		}
+		return newVMO, nil
+	}
+
+	// VMO already exists. Check if the fault domain count configuration has been changed.
+	// If yes then it is required to create a new VMO with the correct configuration.
+	if *vmo.PlatformFaultDomainCount != faultDomainCount {
+		newVMO, err := generateAndCreateVmo(ctx, client, workerPoolName, resourceGroupName, w.worker.Spec.Region, faultDomainCount)
+		if err != nil {
+			return nil, err
+		}
+		return newVMO, nil
+	}
+
+	return &azureapi.VmoDependency{
+		ID:       *vmo.ID,
+		Name:     *vmo.Name,
+		PoolName: workerPoolName,
+	}, nil
+}
+
+func (w *workerDelegate) cleanupVmoDependencies(ctx context.Context, infrastructureStatus *azureapi.InfrastructureStatus, workerProviderStatus *azureapi.WorkerStatus) ([]azureapi.VmoDependency, error) {
+	var vmoDependencies = copyVmoDependencies(workerProviderStatus)
+
+	vmoClient, err := w.clientFactory.Vmss(ctx, w.worker.Spec.SecretRef)
+	if err != nil {
+		return vmoDependencies, err
+	}
+
+	// Cleanup VMO dependencies which are not tracked in the worker provider status anymore.
+	if err := cleanupOrphanVMODependencies(ctx, vmoClient, workerProviderStatus.VmoDependencies, infrastructureStatus.ResourceGroup.Name); err != nil {
+		return vmoDependencies, err
+	}
+
+	// Delete all vmo workerpool dependencies as the Worker is intended to be deleted.
+	if w.worker.ObjectMeta.DeletionTimestamp != nil {
+		for _, dependency := range workerProviderStatus.VmoDependencies {
+			if err := vmoClient.Delete(ctx, infrastructureStatus.ResourceGroup.Name, dependency.Name); err != nil {
+				return vmoDependencies, err
+			}
+			vmoDependencies = removeVmoDependency(vmoDependencies, dependency)
+		}
+		return vmoDependencies, nil
+	}
+
+	for _, dependency := range workerProviderStatus.VmoDependencies {
+		var workerPoolExists = false
+		for _, pool := range w.worker.Spec.Pools {
+			if pool.Name == dependency.PoolName {
+				workerPoolExists = true
+				break
+			}
+		}
+		if workerPoolExists {
+			continue
+		}
+
+		// Delete the dependency as no corresponding workerpool exist anymore.
+		if err := vmoClient.Delete(ctx, infrastructureStatus.ResourceGroup.Name, dependency.Name); err != nil {
+			return vmoDependencies, err
+		}
+		vmoDependencies = removeVmoDependency(vmoDependencies, dependency)
+	}
+	return vmoDependencies, nil
+}
+
+func cleanupOrphanVMODependencies(ctx context.Context, client azureclient.Vmss, dependencies []azureapi.VmoDependency, resourceGroupName string) error {
+	vmoListAll, err := client.List(ctx, resourceGroupName)
+	if err != nil {
+		return err
+	}
+	vmoList := filterGardenerManagedVmos(vmoListAll)
+
+	for _, vmo := range vmoList {
+		vmoExists := false
+		for _, dependency := range dependencies {
+			if *vmo.ID == dependency.ID {
+				vmoExists = true
+				break
+			}
+		}
+		if !vmoExists {
+			if err := client.Delete(ctx, resourceGroupName, *vmo.Name); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// VMO Helper
+
+func generateAndCreateVmo(ctx context.Context, client azureclient.Vmss, workerPoolName, resourceGroupName, region string, faultDomainCount int32) (*azureapi.VmoDependency, error) {
+	var properties = &compute.VirtualMachineScaleSet{
+		Location: &region,
+		VirtualMachineScaleSetProperties: &compute.VirtualMachineScaleSetProperties{
+			SinglePlacementGroup:     pointer.BoolPtr(false),
+			PlatformFaultDomainCount: &faultDomainCount,
+		},
+		Tags: map[string]*string{
+			azure.MachineSetTagKey: pointer.StringPtr("1"),
+		},
+	}
+
+	randomString, err := utils.GenerateRandomString(8)
+	if err != nil {
+		return nil, err
+	}
+
+	newVMO, err := client.Create(ctx, resourceGroupName, fmt.Sprintf("vmo-%s-%s", workerPoolName, randomString), properties)
+	if err != nil {
+		return nil, err
+	}
+
+	return &azureapi.VmoDependency{
+		ID:       *newVMO.ID,
+		Name:     *newVMO.Name,
+		PoolName: workerPoolName,
+	}, nil
+}
+
+func copyVmoDependencies(workerStatus *azureapi.WorkerStatus) []azureapi.VmoDependency {
+	statusCopy := workerStatus.DeepCopy()
+	return statusCopy.VmoDependencies
+}
+
+// appendVmoDependency appends a new vmo to the dependency list.
+// If the dependency list contains already a vmo for the workerpool then the
+// existing vmo object will be replaced by the given vmo object.
+func appendVmoDependency(dependencies []azureapi.VmoDependency, dependency *azureapi.VmoDependency) []azureapi.VmoDependency {
+	var idx *int
+	for i, dep := range dependencies {
+		if dep.PoolName == dependency.PoolName {
+			idx = &i
+			break
+		}
+	}
+	if idx != nil {
+		dependencies[*idx] = *dependency
+	} else {
+		dependencies = append(dependencies, *dependency)
+	}
+	return dependencies
+}
+
+// removeVmoDependency will remove a given vmo dependency from the passed list of dependencies.
+func removeVmoDependency(dependencies []azureapi.VmoDependency, dependency azureapi.VmoDependency) []azureapi.VmoDependency {
+	var idx *int
+	for i, dep := range dependencies {
+		if reflect.DeepEqual(dependency, dep) {
+			idx = &i
+			break
+		}
+	}
+	if idx != nil {
+		return append(dependencies[:*idx], dependencies[*idx+1:]...)
+	}
+	return dependencies
+}
+
+func filterGardenerManagedVmos(list []compute.VirtualMachineScaleSet) []compute.VirtualMachineScaleSet {
+	var filteredList = []compute.VirtualMachineScaleSet{}
+	for _, vmo := range list {
+		if _, hasTag := vmo.Tags[azure.MachineSetTagKey]; hasTag {
+			filteredList = append(filteredList, vmo)
+		}
+	}
+	return filteredList
+}

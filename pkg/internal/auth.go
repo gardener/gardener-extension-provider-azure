@@ -20,7 +20,7 @@ import (
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 
-	"github.com/Azure/go-autorest/autorest"
+	azureautorest "github.com/Azure/go-autorest/autorest"
 	azureauth "github.com/Azure/go-autorest/autorest/azure/auth"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
@@ -81,7 +81,7 @@ func ReadClientAuthDataFromSecret(secret *corev1.Secret) (*ClientAuth, error) {
 
 // GetAuthorizerAndSubscriptionID retrieves the client auth data specified by the secret reference
 // to create and return an Azure Authorizer and a subscription id.
-func GetAuthorizerAndSubscriptionID(ctx context.Context, c client.Client, secretRef corev1.SecretReference) (autorest.Authorizer, string, error) {
+func GetAuthorizerAndSubscriptionID(ctx context.Context, c client.Client, secretRef corev1.SecretReference) (azureautorest.Authorizer, string, error) {
 	clientAuth, err := GetClientAuthData(ctx, c, secretRef)
 	if err != nil {
 		return nil, "", err

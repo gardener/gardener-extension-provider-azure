@@ -3,7 +3,7 @@ module github.com/gardener/gardener-extension-provider-azure
 go 1.15
 
 require (
-	github.com/Azure/azure-sdk-for-go v44.0.0+incompatible
+	github.com/Azure/azure-sdk-for-go v49.2.0+incompatible
 	github.com/Azure/azure-storage-blob-go v0.7.0
 	github.com/Azure/go-autorest/autorest v0.10.1
 	github.com/Azure/go-autorest/autorest/adal v0.8.2

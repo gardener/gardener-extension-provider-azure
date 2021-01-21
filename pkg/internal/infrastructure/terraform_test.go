@@ -19,6 +19,7 @@ import (
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -201,54 +202,125 @@ var _ = Describe("Terraform", func() {
 			Expect(values).To(BeEquivalentTo(expectedValues))
 		})
 
-		It("should correctly compute the terraformer chart values for a non zoned cluster", func() {
-			config.Zoned = false
-			expectedCreateValues["availabilitySet"] = true
-			expectedAzureValues["countUpdateDomains"] = countUpdateDomain
-			expectedAzureValues["countFaultDomains"] = countFaultDomain
-			expectedOutputKeysValues["availabilitySetID"] = TerraformerOutputKeyAvailabilitySetID
-			expectedOutputKeysValues["availabilitySetName"] = TerraformerOutputKeyAvailabilitySetName
+		Context("Cluster with primary availabilityset (non zoned)", func() {
+			BeforeEach(func() {
+				config.Zoned = false
+				expectedCreateValues["availabilitySet"] = true
+			})
 
-			values, err := ComputeTerraformerChartValues(infra, clientAuth, config, cluster)
-			Expect(err).To(Not(HaveOccurred()))
-			Expect(values).To(BeEquivalentTo(expectedValues))
+			It("should correctly compute the terraformer chart values for a cluster with primary availabilityset (non zoned)", func() {
+				expectedAzureValues["countUpdateDomains"] = countUpdateDomain
+				expectedAzureValues["countFaultDomains"] = countFaultDomain
+				expectedOutputKeysValues["availabilitySetID"] = TerraformerOutputKeyAvailabilitySetID
+				expectedOutputKeysValues["availabilitySetName"] = TerraformerOutputKeyAvailabilitySetName
+
+				values, err := ComputeTerraformerChartValues(infra, clientAuth, config, cluster)
+				Expect(err).To(Not(HaveOccurred()))
+				Expect(values).To(BeEquivalentTo(expectedValues))
+			})
+
+			It("should correctly compute the terraformer chart values for cluster with primary availabilityset (non zoned) w/ status", func() {
+				countFaultDomains := int32(3)
+				countUpdateDomains := int32(5)
+
+				expectedAzureValues["countUpdateDomains"] = countUpdateDomains
+				expectedAzureValues["countFaultDomains"] = countFaultDomains
+				expectedOutputKeysValues["availabilitySetID"] = TerraformerOutputKeyAvailabilitySetID
+				expectedOutputKeysValues["availabilitySetName"] = TerraformerOutputKeyAvailabilitySetName
+
+				status := apiv1alpha1.InfrastructureStatus{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "InfrastructureStatus",
+						APIVersion: apiv1alpha1.SchemeGroupVersion.String(),
+					},
+					AvailabilitySets: []apiv1alpha1.AvailabilitySet{
+						{CountFaultDomains: &countFaultDomains, CountUpdateDomains: &countUpdateDomains, Purpose: apiv1alpha1.PurposeNodes},
+					},
+				}
+
+				rawStatus, err := json.Marshal(status)
+				Expect(err).To(Not(HaveOccurred()))
+
+				infra.Status = extensionsv1alpha1.InfrastructureStatus{
+					DefaultStatus: extensionsv1alpha1.DefaultStatus{
+						ProviderStatus: &runtime.RawExtension{
+							Raw: rawStatus,
+						},
+					},
+				}
+
+				values, err := ComputeTerraformerChartValues(infra, clientAuth, config, cluster)
+				Expect(err).To(Not(HaveOccurred()))
+				Expect(values).To(BeEquivalentTo(expectedValues))
+			})
 		})
 
-		It("should correctly compute the terraformer chart values for a non zoned cluster w/ status", func() {
-			countFaultDomains := int32(3)
-			countUpdateDomains := int32(5)
+		Context("Cluster with VMO (non zoned)", func() {
+			BeforeEach(func() {
+				config.Zoned = false
+				cluster.Shoot.Annotations = map[string]string{
+					azure.ShootVmoUsageAnnotation: "true",
+				}
+			})
 
-			config.Zoned = false
-			expectedCreateValues["availabilitySet"] = true
-			expectedAzureValues["countUpdateDomains"] = countUpdateDomains
-			expectedAzureValues["countFaultDomains"] = countFaultDomains
-			expectedOutputKeysValues["availabilitySetID"] = TerraformerOutputKeyAvailabilitySetID
-			expectedOutputKeysValues["availabilitySetName"] = TerraformerOutputKeyAvailabilitySetName
+			It("should correctly compute the terraformer chart values", func() {
+				values, err := ComputeTerraformerChartValues(infra, clientAuth, config, cluster)
+				Expect(err).To(Not(HaveOccurred()))
+				Expect(values).To(BeEquivalentTo(expectedValues))
+			})
 
-			status := apiv1alpha1.InfrastructureStatus{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "InfrastructureStatus",
-					APIVersion: apiv1alpha1.SchemeGroupVersion.String(),
-				},
-				AvailabilitySets: []apiv1alpha1.AvailabilitySet{
-					{CountFaultDomains: &countFaultDomains, CountUpdateDomains: &countUpdateDomains, Purpose: apiv1alpha1.PurposeNodes},
-				},
-			}
-
-			rawStatus, err := json.Marshal(status)
-			Expect(err).To(Not(HaveOccurred()))
-
-			infra.Status = extensionsv1alpha1.InfrastructureStatus{
-				DefaultStatus: extensionsv1alpha1.DefaultStatus{
-					ProviderStatus: &runtime.RawExtension{
-						Raw: rawStatus,
+			It("should correctly compute the terraformer chart values with existing infrastrucutre status", func() {
+				infrastructureStatus := apiv1alpha1.InfrastructureStatus{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "InfrastructureStatus",
+						APIVersion: apiv1alpha1.SchemeGroupVersion.String(),
 					},
-				},
-			}
+				}
 
-			values, err := ComputeTerraformerChartValues(infra, clientAuth, config, cluster)
-			Expect(err).To(Not(HaveOccurred()))
-			Expect(values).To(BeEquivalentTo(expectedValues))
+				rawStatus, err := json.Marshal(infrastructureStatus)
+				Expect(err).To(Not(HaveOccurred()))
+				infra.Status = extensionsv1alpha1.InfrastructureStatus{
+					DefaultStatus: extensionsv1alpha1.DefaultStatus{
+						ProviderStatus: &runtime.RawExtension{
+							Raw: rawStatus,
+						},
+					},
+				}
+
+				values, err := ComputeTerraformerChartValues(infra, clientAuth, config, cluster)
+				Expect(err).To(Not(HaveOccurred()))
+				Expect(values).To(BeEquivalentTo(expectedValues))
+			})
+
+			It("should throw an error as cluster already use primary availabilityset", func() {
+				infrastructureStatus := apiv1alpha1.InfrastructureStatus{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "InfrastructureStatus",
+						APIVersion: apiv1alpha1.SchemeGroupVersion.String(),
+					},
+					AvailabilitySets: []apiv1alpha1.AvailabilitySet{
+						{
+							CountFaultDomains:  &countFaultDomain,
+							CountUpdateDomains: &countUpdateDomain,
+							Purpose:            apiv1alpha1.PurposeNodes,
+						},
+					},
+				}
+
+				rawStatus, err := json.Marshal(infrastructureStatus)
+				Expect(err).To(Not(HaveOccurred()))
+				infra.Status = extensionsv1alpha1.InfrastructureStatus{
+					DefaultStatus: extensionsv1alpha1.DefaultStatus{
+						ProviderStatus: &runtime.RawExtension{
+							Raw: rawStatus,
+						},
+					},
+				}
+
+				_, err = ComputeTerraformerChartValues(infra, clientAuth, config, cluster)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("cannot use vmss orchestration mode VM (VMO) as this cluster already used an availability set"))
+			})
 		})
 
 		It("should correctly compute the terraformer chart values for a cluster deployed in an existing vnet", func() {
@@ -399,6 +471,7 @@ var _ = Describe("Terraform", func() {
 				AvailabilitySetName: "",
 				SecurityGroupName:   securityGroupName,
 				ResourceGroupName:   resourceGroupName,
+				Zoned:               true,
 			}
 		})
 
@@ -436,6 +509,7 @@ var _ = Describe("Terraform", func() {
 			state.AvailabilitySetName = availabilitySetName
 			state.CountFaultDomains = 2
 			state.CountUpdateDomains = 5
+			state.Zoned = false
 			status := StatusFromTerraformState(state)
 			Expect(status).To(Equal(&apiv1alpha1.InfrastructureStatus{
 				TypeMeta: StatusTypeMeta,

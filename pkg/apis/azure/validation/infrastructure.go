@@ -15,7 +15,10 @@
 package validation
 
 import (
+	"fmt"
+
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	cidrvalidation "github.com/gardener/gardener/pkg/utils/validation/cidr"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -27,7 +30,7 @@ const (
 )
 
 // ValidateInfrastructureConfig validates a InfrastructureConfig object.
-func ValidateInfrastructureConfig(infra *apisazure.InfrastructureConfig, nodesCIDR, podsCIDR, servicesCIDR *string, fldPath *field.Path) field.ErrorList {
+func ValidateInfrastructureConfig(infra *apisazure.InfrastructureConfig, nodesCIDR, podsCIDR, servicesCIDR *string, hasVmoAlphaAnnotation bool, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	var (
@@ -55,6 +58,10 @@ func ValidateInfrastructureConfig(infra *apisazure.InfrastructureConfig, nodesCI
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("resourceGroup"), infra.ResourceGroup, "specifying an existing resource group is not supported yet"))
 	}
 
+	if infra.Zoned && hasVmoAlphaAnnotation {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("zoned"), infra.Zoned, fmt.Sprintf("specifying a zoned cluster and having the %q annotation is not allowed", azure.ShootVmoUsageAnnotation)))
+	}
+
 	networksPath := fldPath.Child("networks")
 
 	// Validate workers subnet cidr
@@ -65,21 +72,7 @@ func ValidateInfrastructureConfig(infra *apisazure.InfrastructureConfig, nodesCI
 	// Validate vnet config
 	allErrs = append(allErrs, validateVnetConfig(infra.Networks.VNet, infra.ResourceGroup, workerCIDR, nodes, pods, services, networksPath.Child("vnet"))...)
 
-	// TODO(dkistner) Remove once we proceed with multiple AvailabilitySet support.
-	// Currently we will not offer Nat Gateway for non zoned/AvailabilitySet based
-	// clusters as the NatGateway is not compatible with Basic LoadBalancer and
-	// we would need Standard LoadBalancers also in combination with AvailabilitySets.
-	// For the multiple AvailabilitySet approach we would always need
-	// a Standard LoadBalancer and a NatGateway.
-	if !infra.Zoned && infra.Networks.NatGateway != nil {
-		allErrs = append(allErrs, field.Invalid(fldPath.Child("networks", "natGateway"), infra.Networks.NatGateway, "NatGateway is currently only supported for zoned cluster"))
-	}
-
-	if infra.Networks.NatGateway != nil &&
-		infra.Networks.NatGateway.IdleConnectionTimeoutMinutes != nil &&
-		(*infra.Networks.NatGateway.IdleConnectionTimeoutMinutes < natGatewayMinTimeoutInMinutes || *infra.Networks.NatGateway.IdleConnectionTimeoutMinutes > natGatewayMaxTimeoutInMinutes) {
-		allErrs = append(allErrs, field.Invalid(fldPath.Child("networks", "natGateway", "idleConnectionTimeoutMinutes"), *infra.Networks.NatGateway.IdleConnectionTimeoutMinutes, "idleConnectionTimeoutMinutes values must range between 4 and 120"))
-	}
+	allErrs = append(allErrs, validateNatGatewayConfig(infra, hasVmoAlphaAnnotation, fldPath.Child("networks", "natGateway"))...)
 
 	if infra.Identity != nil && (infra.Identity.Name == "" || infra.Identity.ResourceGroup == "") {
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("identity"), infra.Identity, "specifying an identity requires the name of the identity and the resource group which hosts the identity"))
@@ -128,14 +121,53 @@ func validateVnetConfig(vnetConfig apisazure.VNet, resourceGroupConfig *apisazur
 	return allErrs
 }
 
+func validateNatGatewayConfig(infra *apisazure.InfrastructureConfig, hasVmoAlphaAnnotation bool, natGatewayConfigPath *field.Path) field.ErrorList {
+	var allErrs = field.ErrorList{}
+
+	if infra.Networks.NatGateway == nil {
+		return allErrs
+	}
+
+	// NatGateway can't be offered for Shoot clusters with a primary AvailabilitySet.
+	// The NatGateway is not compatible with the Basic SKU Loadbalancers which are
+	// required for Shoot clusters with AvailabilitySet.
+	if !infra.Zoned && !hasVmoAlphaAnnotation {
+		return append(allErrs, field.Invalid(natGatewayConfigPath, infra.Networks.NatGateway, "NatGateway is currently only supported for zoned cluster"))
+	}
+
+	if infra.Networks.NatGateway.IdleConnectionTimeoutMinutes != nil && (*infra.Networks.NatGateway.IdleConnectionTimeoutMinutes < natGatewayMinTimeoutInMinutes || *infra.Networks.NatGateway.IdleConnectionTimeoutMinutes > natGatewayMaxTimeoutInMinutes) {
+		allErrs = append(allErrs, field.Invalid(natGatewayConfigPath.Child("idleConnectionTimeoutMinutes"), *infra.Networks.NatGateway.IdleConnectionTimeoutMinutes, "idleConnectionTimeoutMinutes values must range between 4 and 120"))
+	}
+
+	return allErrs
+}
+
 // ValidateInfrastructureConfigUpdate validates a InfrastructureConfig object.
-func ValidateInfrastructureConfigUpdate(oldConfig, newConfig *apisazure.InfrastructureConfig, fldPath *field.Path) field.ErrorList {
+func ValidateInfrastructureConfigUpdate(oldConfig, newConfig *apisazure.InfrastructureConfig, providerPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.ResourceGroup, oldConfig.ResourceGroup, fldPath.Child("resourceGroup"))...)
-	allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Networks.Workers, oldConfig.Networks.Workers, fldPath.Child("networks").Child("workers"))...)
-	allErrs = append(allErrs, apivalidation.ValidateImmutableField(oldConfig.Zoned, newConfig.Zoned, fldPath.Child("zoned"))...)
-	allErrs = append(allErrs, validateVnetConfigUpdate(&oldConfig.Networks, &newConfig.Networks, fldPath.Child("networks"))...)
+	allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.ResourceGroup, oldConfig.ResourceGroup, providerPath.Child("resourceGroup"))...)
+	allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Networks.Workers, oldConfig.Networks.Workers, providerPath.Child("networks").Child("workers"))...)
+	allErrs = append(allErrs, apivalidation.ValidateImmutableField(oldConfig.Zoned, newConfig.Zoned, providerPath.Child("zoned"))...)
+
+	allErrs = append(allErrs, validateVnetConfigUpdate(&oldConfig.Networks, &newConfig.Networks, providerPath.Child("networks"))...)
+
+	return allErrs
+}
+
+// ValidateVmoConfigUpdate validates the VMO configuration on update.
+func ValidateVmoConfigUpdate(oldShootHasAlphaVmoAnnotation, newShootHasAlphaVmoAnnotation bool, metaDataPath *field.Path) field.ErrorList {
+	var allErrs = field.ErrorList{}
+
+	// Check if old shoot has not the vmo alpha annotation and forbid to add it.
+	if !oldShootHasAlphaVmoAnnotation && newShootHasAlphaVmoAnnotation {
+		allErrs = append(allErrs, field.Forbidden(metaDataPath.Child("annotations"), fmt.Sprintf("not allowed to add annotation %q to an already existing shoot cluster", azure.ShootVmoUsageAnnotation)))
+	}
+
+	// Check if old shoot has the vmo alpha annotaion and forbid to remove it.
+	if oldShootHasAlphaVmoAnnotation && !newShootHasAlphaVmoAnnotation {
+		allErrs = append(allErrs, field.Forbidden(metaDataPath.Child("annotations"), fmt.Sprintf("not allowed to remove annotation %q to an already existing shoot cluster", azure.ShootVmoUsageAnnotation)))
+	}
 
 	return allErrs
 }

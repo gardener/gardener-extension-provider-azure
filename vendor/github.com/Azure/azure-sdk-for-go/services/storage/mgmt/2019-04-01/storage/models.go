@@ -31,577 +31,6 @@ import (
 // The package's fully qualified name.
 const fqdn = "github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-04-01/storage"
 
-// AccessTier enumerates the values for access tier.
-type AccessTier string
-
-const (
-	// Cool ...
-	Cool AccessTier = "Cool"
-	// Hot ...
-	Hot AccessTier = "Hot"
-)
-
-// PossibleAccessTierValues returns an array of possible values for the AccessTier const type.
-func PossibleAccessTierValues() []AccessTier {
-	return []AccessTier{Cool, Hot}
-}
-
-// AccountExpand enumerates the values for account expand.
-type AccountExpand string
-
-const (
-	// AccountExpandGeoReplicationStats ...
-	AccountExpandGeoReplicationStats AccountExpand = "geoReplicationStats"
-)
-
-// PossibleAccountExpandValues returns an array of possible values for the AccountExpand const type.
-func PossibleAccountExpandValues() []AccountExpand {
-	return []AccountExpand{AccountExpandGeoReplicationStats}
-}
-
-// AccountStatus enumerates the values for account status.
-type AccountStatus string
-
-const (
-	// Available ...
-	Available AccountStatus = "available"
-	// Unavailable ...
-	Unavailable AccountStatus = "unavailable"
-)
-
-// PossibleAccountStatusValues returns an array of possible values for the AccountStatus const type.
-func PossibleAccountStatusValues() []AccountStatus {
-	return []AccountStatus{Available, Unavailable}
-}
-
-// Action enumerates the values for action.
-type Action string
-
-const (
-	// Allow ...
-	Allow Action = "Allow"
-)
-
-// PossibleActionValues returns an array of possible values for the Action const type.
-func PossibleActionValues() []Action {
-	return []Action{Allow}
-}
-
-// Action1 enumerates the values for action 1.
-type Action1 string
-
-const (
-	// Acquire ...
-	Acquire Action1 = "Acquire"
-	// Break ...
-	Break Action1 = "Break"
-	// Change ...
-	Change Action1 = "Change"
-	// Release ...
-	Release Action1 = "Release"
-	// Renew ...
-	Renew Action1 = "Renew"
-)
-
-// PossibleAction1Values returns an array of possible values for the Action1 const type.
-func PossibleAction1Values() []Action1 {
-	return []Action1{Acquire, Break, Change, Release, Renew}
-}
-
-// Bypass enumerates the values for bypass.
-type Bypass string
-
-const (
-	// AzureServices ...
-	AzureServices Bypass = "AzureServices"
-	// Logging ...
-	Logging Bypass = "Logging"
-	// Metrics ...
-	Metrics Bypass = "Metrics"
-	// None ...
-	None Bypass = "None"
-)
-
-// PossibleBypassValues returns an array of possible values for the Bypass const type.
-func PossibleBypassValues() []Bypass {
-	return []Bypass{AzureServices, Logging, Metrics, None}
-}
-
-// DefaultAction enumerates the values for default action.
-type DefaultAction string
-
-const (
-	// DefaultActionAllow ...
-	DefaultActionAllow DefaultAction = "Allow"
-	// DefaultActionDeny ...
-	DefaultActionDeny DefaultAction = "Deny"
-)
-
-// PossibleDefaultActionValues returns an array of possible values for the DefaultAction const type.
-func PossibleDefaultActionValues() []DefaultAction {
-	return []DefaultAction{DefaultActionAllow, DefaultActionDeny}
-}
-
-// DirectoryServiceOptions enumerates the values for directory service options.
-type DirectoryServiceOptions string
-
-const (
-	// DirectoryServiceOptionsAADDS ...
-	DirectoryServiceOptionsAADDS DirectoryServiceOptions = "AADDS"
-	// DirectoryServiceOptionsAD ...
-	DirectoryServiceOptionsAD DirectoryServiceOptions = "AD"
-	// DirectoryServiceOptionsNone ...
-	DirectoryServiceOptionsNone DirectoryServiceOptions = "None"
-)
-
-// PossibleDirectoryServiceOptionsValues returns an array of possible values for the DirectoryServiceOptions const type.
-func PossibleDirectoryServiceOptionsValues() []DirectoryServiceOptions {
-	return []DirectoryServiceOptions{DirectoryServiceOptionsAADDS, DirectoryServiceOptionsAD, DirectoryServiceOptionsNone}
-}
-
-// GeoReplicationStatus enumerates the values for geo replication status.
-type GeoReplicationStatus string
-
-const (
-	// GeoReplicationStatusBootstrap ...
-	GeoReplicationStatusBootstrap GeoReplicationStatus = "Bootstrap"
-	// GeoReplicationStatusLive ...
-	GeoReplicationStatusLive GeoReplicationStatus = "Live"
-	// GeoReplicationStatusUnavailable ...
-	GeoReplicationStatusUnavailable GeoReplicationStatus = "Unavailable"
-)
-
-// PossibleGeoReplicationStatusValues returns an array of possible values for the GeoReplicationStatus const type.
-func PossibleGeoReplicationStatusValues() []GeoReplicationStatus {
-	return []GeoReplicationStatus{GeoReplicationStatusBootstrap, GeoReplicationStatusLive, GeoReplicationStatusUnavailable}
-}
-
-// HTTPProtocol enumerates the values for http protocol.
-type HTTPProtocol string
-
-const (
-	// HTTPS ...
-	HTTPS HTTPProtocol = "https"
-	// Httpshttp ...
-	Httpshttp HTTPProtocol = "https,http"
-)
-
-// PossibleHTTPProtocolValues returns an array of possible values for the HTTPProtocol const type.
-func PossibleHTTPProtocolValues() []HTTPProtocol {
-	return []HTTPProtocol{HTTPS, Httpshttp}
-}
-
-// ImmutabilityPolicyState enumerates the values for immutability policy state.
-type ImmutabilityPolicyState string
-
-const (
-	// Locked ...
-	Locked ImmutabilityPolicyState = "Locked"
-	// Unlocked ...
-	Unlocked ImmutabilityPolicyState = "Unlocked"
-)
-
-// PossibleImmutabilityPolicyStateValues returns an array of possible values for the ImmutabilityPolicyState const type.
-func PossibleImmutabilityPolicyStateValues() []ImmutabilityPolicyState {
-	return []ImmutabilityPolicyState{Locked, Unlocked}
-}
-
-// ImmutabilityPolicyUpdateType enumerates the values for immutability policy update type.
-type ImmutabilityPolicyUpdateType string
-
-const (
-	// Extend ...
-	Extend ImmutabilityPolicyUpdateType = "extend"
-	// Lock ...
-	Lock ImmutabilityPolicyUpdateType = "lock"
-	// Put ...
-	Put ImmutabilityPolicyUpdateType = "put"
-)
-
-// PossibleImmutabilityPolicyUpdateTypeValues returns an array of possible values for the ImmutabilityPolicyUpdateType const type.
-func PossibleImmutabilityPolicyUpdateTypeValues() []ImmutabilityPolicyUpdateType {
-	return []ImmutabilityPolicyUpdateType{Extend, Lock, Put}
-}
-
-// KeyPermission enumerates the values for key permission.
-type KeyPermission string
-
-const (
-	// Full ...
-	Full KeyPermission = "Full"
-	// Read ...
-	Read KeyPermission = "Read"
-)
-
-// PossibleKeyPermissionValues returns an array of possible values for the KeyPermission const type.
-func PossibleKeyPermissionValues() []KeyPermission {
-	return []KeyPermission{Full, Read}
-}
-
-// KeySource enumerates the values for key source.
-type KeySource string
-
-const (
-	// MicrosoftKeyvault ...
-	MicrosoftKeyvault KeySource = "Microsoft.Keyvault"
-	// MicrosoftStorage ...
-	MicrosoftStorage KeySource = "Microsoft.Storage"
-)
-
-// PossibleKeySourceValues returns an array of possible values for the KeySource const type.
-func PossibleKeySourceValues() []KeySource {
-	return []KeySource{MicrosoftKeyvault, MicrosoftStorage}
-}
-
-// Kind enumerates the values for kind.
-type Kind string
-
-const (
-	// BlobStorage ...
-	BlobStorage Kind = "BlobStorage"
-	// BlockBlobStorage ...
-	BlockBlobStorage Kind = "BlockBlobStorage"
-	// FileStorage ...
-	FileStorage Kind = "FileStorage"
-	// Storage ...
-	Storage Kind = "Storage"
-	// StorageV2 ...
-	StorageV2 Kind = "StorageV2"
-)
-
-// PossibleKindValues returns an array of possible values for the Kind const type.
-func PossibleKindValues() []Kind {
-	return []Kind{BlobStorage, BlockBlobStorage, FileStorage, Storage, StorageV2}
-}
-
-// LargeFileSharesState enumerates the values for large file shares state.
-type LargeFileSharesState string
-
-const (
-	// Disabled ...
-	Disabled LargeFileSharesState = "Disabled"
-	// Enabled ...
-	Enabled LargeFileSharesState = "Enabled"
-)
-
-// PossibleLargeFileSharesStateValues returns an array of possible values for the LargeFileSharesState const type.
-func PossibleLargeFileSharesStateValues() []LargeFileSharesState {
-	return []LargeFileSharesState{Disabled, Enabled}
-}
-
-// LeaseDuration enumerates the values for lease duration.
-type LeaseDuration string
-
-const (
-	// Fixed ...
-	Fixed LeaseDuration = "Fixed"
-	// Infinite ...
-	Infinite LeaseDuration = "Infinite"
-)
-
-// PossibleLeaseDurationValues returns an array of possible values for the LeaseDuration const type.
-func PossibleLeaseDurationValues() []LeaseDuration {
-	return []LeaseDuration{Fixed, Infinite}
-}
-
-// LeaseState enumerates the values for lease state.
-type LeaseState string
-
-const (
-	// LeaseStateAvailable ...
-	LeaseStateAvailable LeaseState = "Available"
-	// LeaseStateBreaking ...
-	LeaseStateBreaking LeaseState = "Breaking"
-	// LeaseStateBroken ...
-	LeaseStateBroken LeaseState = "Broken"
-	// LeaseStateExpired ...
-	LeaseStateExpired LeaseState = "Expired"
-	// LeaseStateLeased ...
-	LeaseStateLeased LeaseState = "Leased"
-)
-
-// PossibleLeaseStateValues returns an array of possible values for the LeaseState const type.
-func PossibleLeaseStateValues() []LeaseState {
-	return []LeaseState{LeaseStateAvailable, LeaseStateBreaking, LeaseStateBroken, LeaseStateExpired, LeaseStateLeased}
-}
-
-// LeaseStatus enumerates the values for lease status.
-type LeaseStatus string
-
-const (
-	// LeaseStatusLocked ...
-	LeaseStatusLocked LeaseStatus = "Locked"
-	// LeaseStatusUnlocked ...
-	LeaseStatusUnlocked LeaseStatus = "Unlocked"
-)
-
-// PossibleLeaseStatusValues returns an array of possible values for the LeaseStatus const type.
-func PossibleLeaseStatusValues() []LeaseStatus {
-	return []LeaseStatus{LeaseStatusLocked, LeaseStatusUnlocked}
-}
-
-// ListKeyExpand enumerates the values for list key expand.
-type ListKeyExpand string
-
-const (
-	// Kerb ...
-	Kerb ListKeyExpand = "kerb"
-)
-
-// PossibleListKeyExpandValues returns an array of possible values for the ListKeyExpand const type.
-func PossibleListKeyExpandValues() []ListKeyExpand {
-	return []ListKeyExpand{Kerb}
-}
-
-// MinimumTLSVersion enumerates the values for minimum tls version.
-type MinimumTLSVersion string
-
-const (
-	// TLS10 ...
-	TLS10 MinimumTLSVersion = "TLS1_0"
-	// TLS11 ...
-	TLS11 MinimumTLSVersion = "TLS1_1"
-	// TLS12 ...
-	TLS12 MinimumTLSVersion = "TLS1_2"
-)
-
-// PossibleMinimumTLSVersionValues returns an array of possible values for the MinimumTLSVersion const type.
-func PossibleMinimumTLSVersionValues() []MinimumTLSVersion {
-	return []MinimumTLSVersion{TLS10, TLS11, TLS12}
-}
-
-// Permissions enumerates the values for permissions.
-type Permissions string
-
-const (
-	// A ...
-	A Permissions = "a"
-	// C ...
-	C Permissions = "c"
-	// D ...
-	D Permissions = "d"
-	// L ...
-	L Permissions = "l"
-	// P ...
-	P Permissions = "p"
-	// R ...
-	R Permissions = "r"
-	// U ...
-	U Permissions = "u"
-	// W ...
-	W Permissions = "w"
-)
-
-// PossiblePermissionsValues returns an array of possible values for the Permissions const type.
-func PossiblePermissionsValues() []Permissions {
-	return []Permissions{A, C, D, L, P, R, U, W}
-}
-
-// ProvisioningState enumerates the values for provisioning state.
-type ProvisioningState string
-
-const (
-	// Creating ...
-	Creating ProvisioningState = "Creating"
-	// ResolvingDNS ...
-	ResolvingDNS ProvisioningState = "ResolvingDNS"
-	// Succeeded ...
-	Succeeded ProvisioningState = "Succeeded"
-)
-
-// PossibleProvisioningStateValues returns an array of possible values for the ProvisioningState const type.
-func PossibleProvisioningStateValues() []ProvisioningState {
-	return []ProvisioningState{Creating, ResolvingDNS, Succeeded}
-}
-
-// PublicAccess enumerates the values for public access.
-type PublicAccess string
-
-const (
-	// PublicAccessBlob ...
-	PublicAccessBlob PublicAccess = "Blob"
-	// PublicAccessContainer ...
-	PublicAccessContainer PublicAccess = "Container"
-	// PublicAccessNone ...
-	PublicAccessNone PublicAccess = "None"
-)
-
-// PossiblePublicAccessValues returns an array of possible values for the PublicAccess const type.
-func PossiblePublicAccessValues() []PublicAccess {
-	return []PublicAccess{PublicAccessBlob, PublicAccessContainer, PublicAccessNone}
-}
-
-// Reason enumerates the values for reason.
-type Reason string
-
-const (
-	// AccountNameInvalid ...
-	AccountNameInvalid Reason = "AccountNameInvalid"
-	// AlreadyExists ...
-	AlreadyExists Reason = "AlreadyExists"
-)
-
-// PossibleReasonValues returns an array of possible values for the Reason const type.
-func PossibleReasonValues() []Reason {
-	return []Reason{AccountNameInvalid, AlreadyExists}
-}
-
-// ReasonCode enumerates the values for reason code.
-type ReasonCode string
-
-const (
-	// NotAvailableForSubscription ...
-	NotAvailableForSubscription ReasonCode = "NotAvailableForSubscription"
-	// QuotaID ...
-	QuotaID ReasonCode = "QuotaId"
-)
-
-// PossibleReasonCodeValues returns an array of possible values for the ReasonCode const type.
-func PossibleReasonCodeValues() []ReasonCode {
-	return []ReasonCode{NotAvailableForSubscription, QuotaID}
-}
-
-// Services enumerates the values for services.
-type Services string
-
-const (
-	// B ...
-	B Services = "b"
-	// F ...
-	F Services = "f"
-	// Q ...
-	Q Services = "q"
-	// T ...
-	T Services = "t"
-)
-
-// PossibleServicesValues returns an array of possible values for the Services const type.
-func PossibleServicesValues() []Services {
-	return []Services{B, F, Q, T}
-}
-
-// SignedResource enumerates the values for signed resource.
-type SignedResource string
-
-const (
-	// SignedResourceB ...
-	SignedResourceB SignedResource = "b"
-	// SignedResourceC ...
-	SignedResourceC SignedResource = "c"
-	// SignedResourceF ...
-	SignedResourceF SignedResource = "f"
-	// SignedResourceS ...
-	SignedResourceS SignedResource = "s"
-)
-
-// PossibleSignedResourceValues returns an array of possible values for the SignedResource const type.
-func PossibleSignedResourceValues() []SignedResource {
-	return []SignedResource{SignedResourceB, SignedResourceC, SignedResourceF, SignedResourceS}
-}
-
-// SignedResourceTypes enumerates the values for signed resource types.
-type SignedResourceTypes string
-
-const (
-	// SignedResourceTypesC ...
-	SignedResourceTypesC SignedResourceTypes = "c"
-	// SignedResourceTypesO ...
-	SignedResourceTypesO SignedResourceTypes = "o"
-	// SignedResourceTypesS ...
-	SignedResourceTypesS SignedResourceTypes = "s"
-)
-
-// PossibleSignedResourceTypesValues returns an array of possible values for the SignedResourceTypes const type.
-func PossibleSignedResourceTypesValues() []SignedResourceTypes {
-	return []SignedResourceTypes{SignedResourceTypesC, SignedResourceTypesO, SignedResourceTypesS}
-}
-
-// SkuName enumerates the values for sku name.
-type SkuName string
-
-const (
-	// PremiumLRS ...
-	PremiumLRS SkuName = "Premium_LRS"
-	// PremiumZRS ...
-	PremiumZRS SkuName = "Premium_ZRS"
-	// StandardGRS ...
-	StandardGRS SkuName = "Standard_GRS"
-	// StandardGZRS ...
-	StandardGZRS SkuName = "Standard_GZRS"
-	// StandardLRS ...
-	StandardLRS SkuName = "Standard_LRS"
-	// StandardRAGRS ...
-	StandardRAGRS SkuName = "Standard_RAGRS"
-	// StandardRAGZRS ...
-	StandardRAGZRS SkuName = "Standard_RAGZRS"
-	// StandardZRS ...
-	StandardZRS SkuName = "Standard_ZRS"
-)
-
-// PossibleSkuNameValues returns an array of possible values for the SkuName const type.
-func PossibleSkuNameValues() []SkuName {
-	return []SkuName{PremiumLRS, PremiumZRS, StandardGRS, StandardGZRS, StandardLRS, StandardRAGRS, StandardRAGZRS, StandardZRS}
-}
-
-// SkuTier enumerates the values for sku tier.
-type SkuTier string
-
-const (
-	// Premium ...
-	Premium SkuTier = "Premium"
-	// Standard ...
-	Standard SkuTier = "Standard"
-)
-
-// PossibleSkuTierValues returns an array of possible values for the SkuTier const type.
-func PossibleSkuTierValues() []SkuTier {
-	return []SkuTier{Premium, Standard}
-}
-
-// State enumerates the values for state.
-type State string
-
-const (
-	// StateDeprovisioning ...
-	StateDeprovisioning State = "deprovisioning"
-	// StateFailed ...
-	StateFailed State = "failed"
-	// StateNetworkSourceDeleted ...
-	StateNetworkSourceDeleted State = "networkSourceDeleted"
-	// StateProvisioning ...
-	StateProvisioning State = "provisioning"
-	// StateSucceeded ...
-	StateSucceeded State = "succeeded"
-)
-
-// PossibleStateValues returns an array of possible values for the State const type.
-func PossibleStateValues() []State {
-	return []State{StateDeprovisioning, StateFailed, StateNetworkSourceDeleted, StateProvisioning, StateSucceeded}
-}
-
-// UsageUnit enumerates the values for usage unit.
-type UsageUnit string
-
-const (
-	// Bytes ...
-	Bytes UsageUnit = "Bytes"
-	// BytesPerSecond ...
-	BytesPerSecond UsageUnit = "BytesPerSecond"
-	// Count ...
-	Count UsageUnit = "Count"
-	// CountsPerSecond ...
-	CountsPerSecond UsageUnit = "CountsPerSecond"
-	// Percent ...
-	Percent UsageUnit = "Percent"
-	// Seconds ...
-	Seconds UsageUnit = "Seconds"
-)
-
-// PossibleUsageUnitValues returns an array of possible values for the UsageUnit const type.
-func PossibleUsageUnitValues() []UsageUnit {
-	return []UsageUnit{Bytes, BytesPerSecond, Count, CountsPerSecond, Percent, Seconds}
-}
-
 // Account the storage account.
 type Account struct {
 	autorest.Response `json:"-"`
@@ -617,11 +46,11 @@ type Account struct {
 	Tags map[string]*string `json:"tags"`
 	// Location - The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
-	// ID - READ-ONLY; Fully qualified resource Id for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	// ID - READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
 	ID *string `json:"id,omitempty"`
 	// Name - READ-ONLY; The name of the resource
 	Name *string `json:"name,omitempty"`
-	// Type - READ-ONLY; The type of the resource. Ex- Microsoft.Compute/virtualMachines or Microsoft.Storage/storageAccounts.
+	// Type - READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty"`
 }
 
@@ -951,10 +380,15 @@ func (alr AccountListResult) IsEmpty() bool {
 	return alr.Value == nil || len(*alr.Value) == 0
 }
 
+// hasNextLink returns true if the NextLink is not empty.
+func (alr AccountListResult) hasNextLink() bool {
+	return alr.NextLink != nil && len(*alr.NextLink) != 0
+}
+
 // accountListResultPreparer prepares a request to retrieve the next set of results.
 // It returns nil if no more results exist.
 func (alr AccountListResult) accountListResultPreparer(ctx context.Context) (*http.Request, error) {
-	if alr.NextLink == nil || len(to.String(alr.NextLink)) < 1 {
+	if !alr.hasNextLink() {
 		return nil, nil
 	}
 	return autorest.Prepare((&http.Request{}).WithContext(ctx),
@@ -982,11 +416,16 @@ func (page *AccountListResultPage) NextWithContext(ctx context.Context) (err err
 			tracing.EndSpan(ctx, sc, err)
 		}()
 	}
-	next, err := page.fn(ctx, page.alr)
-	if err != nil {
-		return err
+	for {
+		next, err := page.fn(ctx, page.alr)
+		if err != nil {
+			return err
+		}
+		page.alr = next
+		if !next.hasNextLink() || !next.IsEmpty() {
+			break
+		}
 	}
-	page.alr = next
 	return nil
 }
 
@@ -1016,8 +455,11 @@ func (page AccountListResultPage) Values() []Account {
 }
 
 // Creates a new instance of the AccountListResultPage type.
-func NewAccountListResultPage(getNextPage func(context.Context, AccountListResult) (AccountListResult, error)) AccountListResultPage {
-	return AccountListResultPage{fn: getNextPage}
+func NewAccountListResultPage(cur AccountListResult, getNextPage func(context.Context, AccountListResult) (AccountListResult, error)) AccountListResultPage {
+	return AccountListResultPage{
+		fn:  getNextPage,
+		alr: cur,
+	}
 }
 
 // AccountProperties properties of the storage account.
@@ -1064,6 +506,30 @@ type AccountProperties struct {
 	AllowBlobPublicAccess *bool `json:"allowBlobPublicAccess,omitempty"`
 	// MinimumTLSVersion - Set the minimum TLS version to be permitted on requests to storage. The default interpretation is TLS 1.0 for this property. Possible values include: 'TLS10', 'TLS11', 'TLS12'
 	MinimumTLSVersion MinimumTLSVersion `json:"minimumTlsVersion,omitempty"`
+}
+
+// MarshalJSON is the custom marshaler for AccountProperties.
+func (ap AccountProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	if ap.AzureFilesIdentityBasedAuthentication != nil {
+		objectMap["azureFilesIdentityBasedAuthentication"] = ap.AzureFilesIdentityBasedAuthentication
+	}
+	if ap.EnableHTTPSTrafficOnly != nil {
+		objectMap["supportsHttpsTrafficOnly"] = ap.EnableHTTPSTrafficOnly
+	}
+	if ap.IsHnsEnabled != nil {
+		objectMap["isHnsEnabled"] = ap.IsHnsEnabled
+	}
+	if ap.LargeFileSharesState != "" {
+		objectMap["largeFileSharesState"] = ap.LargeFileSharesState
+	}
+	if ap.AllowBlobPublicAccess != nil {
+		objectMap["allowBlobPublicAccess"] = ap.AllowBlobPublicAccess
+	}
+	if ap.MinimumTLSVersion != "" {
+		objectMap["minimumTlsVersion"] = ap.MinimumTLSVersion
+	}
+	return json.Marshal(objectMap)
 }
 
 // AccountPropertiesCreateParameters the parameters used to create the storage account.
@@ -1302,15 +768,15 @@ type ActiveDirectoryProperties struct {
 	AzureStorageSid *string `json:"azureStorageSid,omitempty"`
 }
 
-// AzureEntityResource the resource model definition for a Azure Resource Manager resource with an etag.
+// AzureEntityResource the resource model definition for an Azure Resource Manager resource with an etag.
 type AzureEntityResource struct {
 	// Etag - READ-ONLY; Resource Etag.
 	Etag *string `json:"etag,omitempty"`
-	// ID - READ-ONLY; Fully qualified resource Id for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	// ID - READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
 	ID *string `json:"id,omitempty"`
 	// Name - READ-ONLY; The name of the resource
 	Name *string `json:"name,omitempty"`
-	// Type - READ-ONLY; The type of the resource. Ex- Microsoft.Compute/virtualMachines or Microsoft.Storage/storageAccounts.
+	// Type - READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty"`
 }
 
@@ -1329,11 +795,11 @@ type BlobContainer struct {
 	*ContainerProperties `json:"properties,omitempty"`
 	// Etag - READ-ONLY; Resource Etag.
 	Etag *string `json:"etag,omitempty"`
-	// ID - READ-ONLY; Fully qualified resource Id for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	// ID - READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
 	ID *string `json:"id,omitempty"`
 	// Name - READ-ONLY; The name of the resource
 	Name *string `json:"name,omitempty"`
-	// Type - READ-ONLY; The type of the resource. Ex- Microsoft.Compute/virtualMachines or Microsoft.Storage/storageAccounts.
+	// Type - READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty"`
 }
 
@@ -1418,11 +884,11 @@ type BlobServiceProperties struct {
 	autorest.Response `json:"-"`
 	// BlobServicePropertiesProperties - The properties of a storage account’s Blob service.
 	*BlobServicePropertiesProperties `json:"properties,omitempty"`
-	// ID - READ-ONLY; Fully qualified resource Id for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	// ID - READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
 	ID *string `json:"id,omitempty"`
 	// Name - READ-ONLY; The name of the resource
 	Name *string `json:"name,omitempty"`
-	// Type - READ-ONLY; The type of the resource. Ex- Microsoft.Compute/virtualMachines or Microsoft.Storage/storageAccounts.
+	// Type - READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty"`
 }
 
@@ -1644,6 +1110,15 @@ type EncryptionService struct {
 	LastEnabledTime *date.Time `json:"lastEnabledTime,omitempty"`
 }
 
+// MarshalJSON is the custom marshaler for EncryptionService.
+func (es EncryptionService) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	if es.Enabled != nil {
+		objectMap["enabled"] = es.Enabled
+	}
+	return json.Marshal(objectMap)
+}
+
 // EncryptionServices a list of services that support encryption.
 type EncryptionServices struct {
 	// Blob - The encryption function of the blob storage service.
@@ -1654,6 +1129,18 @@ type EncryptionServices struct {
 	Table *EncryptionService `json:"table,omitempty"`
 	// Queue - READ-ONLY; The encryption function of the queue storage service.
 	Queue *EncryptionService `json:"queue,omitempty"`
+}
+
+// MarshalJSON is the custom marshaler for EncryptionServices.
+func (es EncryptionServices) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	if es.Blob != nil {
+		objectMap["blob"] = es.Blob
+	}
+	if es.File != nil {
+		objectMap["file"] = es.File
+	}
+	return json.Marshal(objectMap)
 }
 
 // Endpoints the URIs that are used to perform a retrieval of a public blob, queue, table, web or dfs
@@ -1685,11 +1172,11 @@ type FileServiceProperties struct {
 	autorest.Response `json:"-"`
 	// FileServicePropertiesProperties - The properties of File services in storage account.
 	*FileServicePropertiesProperties `json:"properties,omitempty"`
-	// ID - READ-ONLY; Fully qualified resource Id for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	// ID - READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
 	ID *string `json:"id,omitempty"`
 	// Name - READ-ONLY; The name of the resource
 	Name *string `json:"name,omitempty"`
-	// Type - READ-ONLY; The type of the resource. Ex- Microsoft.Compute/virtualMachines or Microsoft.Storage/storageAccounts.
+	// Type - READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty"`
 }
 
@@ -1766,11 +1253,11 @@ type FileShare struct {
 	*FileShareProperties `json:"properties,omitempty"`
 	// Etag - READ-ONLY; Resource Etag.
 	Etag *string `json:"etag,omitempty"`
-	// ID - READ-ONLY; Fully qualified resource Id for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	// ID - READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
 	ID *string `json:"id,omitempty"`
 	// Name - READ-ONLY; The name of the resource
 	Name *string `json:"name,omitempty"`
-	// Type - READ-ONLY; The type of the resource. Ex- Microsoft.Compute/virtualMachines or Microsoft.Storage/storageAccounts.
+	// Type - READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty"`
 }
 
@@ -1849,11 +1336,11 @@ type FileShareItem struct {
 	*FileShareProperties `json:"properties,omitempty"`
 	// Etag - READ-ONLY; Resource Etag.
 	Etag *string `json:"etag,omitempty"`
-	// ID - READ-ONLY; Fully qualified resource Id for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	// ID - READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
 	ID *string `json:"id,omitempty"`
 	// Name - READ-ONLY; The name of the resource
 	Name *string `json:"name,omitempty"`
-	// Type - READ-ONLY; The type of the resource. Ex- Microsoft.Compute/virtualMachines or Microsoft.Storage/storageAccounts.
+	// Type - READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty"`
 }
 
@@ -2004,10 +1491,15 @@ func (fsi FileShareItems) IsEmpty() bool {
 	return fsi.Value == nil || len(*fsi.Value) == 0
 }
 
+// hasNextLink returns true if the NextLink is not empty.
+func (fsi FileShareItems) hasNextLink() bool {
+	return fsi.NextLink != nil && len(*fsi.NextLink) != 0
+}
+
 // fileShareItemsPreparer prepares a request to retrieve the next set of results.
 // It returns nil if no more results exist.
 func (fsi FileShareItems) fileShareItemsPreparer(ctx context.Context) (*http.Request, error) {
-	if fsi.NextLink == nil || len(to.String(fsi.NextLink)) < 1 {
+	if !fsi.hasNextLink() {
 		return nil, nil
 	}
 	return autorest.Prepare((&http.Request{}).WithContext(ctx),
@@ -2035,11 +1527,16 @@ func (page *FileShareItemsPage) NextWithContext(ctx context.Context) (err error)
 			tracing.EndSpan(ctx, sc, err)
 		}()
 	}
-	next, err := page.fn(ctx, page.fsi)
-	if err != nil {
-		return err
+	for {
+		next, err := page.fn(ctx, page.fsi)
+		if err != nil {
+			return err
+		}
+		page.fsi = next
+		if !next.hasNextLink() || !next.IsEmpty() {
+			break
+		}
 	}
-	page.fsi = next
 	return nil
 }
 
@@ -2069,8 +1566,11 @@ func (page FileShareItemsPage) Values() []FileShareItem {
 }
 
 // Creates a new instance of the FileShareItemsPage type.
-func NewFileShareItemsPage(getNextPage func(context.Context, FileShareItems) (FileShareItems, error)) FileShareItemsPage {
-	return FileShareItemsPage{fn: getNextPage}
+func NewFileShareItemsPage(cur FileShareItems, getNextPage func(context.Context, FileShareItems) (FileShareItems, error)) FileShareItemsPage {
+	return FileShareItemsPage{
+		fn:  getNextPage,
+		fsi: cur,
+	}
 }
 
 // FileShareProperties the properties of the file share.
@@ -2116,6 +1616,15 @@ type Identity struct {
 	Type *string `json:"type,omitempty"`
 }
 
+// MarshalJSON is the custom marshaler for Identity.
+func (i Identity) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	if i.Type != nil {
+		objectMap["type"] = i.Type
+	}
+	return json.Marshal(objectMap)
+}
+
 // ImmutabilityPolicy the ImmutabilityPolicy property of a blob container, including Id, resource name,
 // resource type, Etag.
 type ImmutabilityPolicy struct {
@@ -2124,11 +1633,11 @@ type ImmutabilityPolicy struct {
 	*ImmutabilityPolicyProperty `json:"properties,omitempty"`
 	// Etag - READ-ONLY; Resource Etag.
 	Etag *string `json:"etag,omitempty"`
-	// ID - READ-ONLY; Fully qualified resource Id for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	// ID - READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
 	ID *string `json:"id,omitempty"`
 	// Name - READ-ONLY; The name of the resource
 	Name *string `json:"name,omitempty"`
-	// Type - READ-ONLY; The type of the resource. Ex- Microsoft.Compute/virtualMachines or Microsoft.Storage/storageAccounts.
+	// Type - READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty"`
 }
 
@@ -2270,6 +1779,15 @@ type ImmutabilityPolicyProperty struct {
 	State ImmutabilityPolicyState `json:"state,omitempty"`
 }
 
+// MarshalJSON is the custom marshaler for ImmutabilityPolicyProperty.
+func (ipp ImmutabilityPolicyProperty) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	if ipp.ImmutabilityPeriodSinceCreationInDays != nil {
+		objectMap["immutabilityPeriodSinceCreationInDays"] = ipp.ImmutabilityPeriodSinceCreationInDays
+	}
+	return json.Marshal(objectMap)
+}
+
 // IPRule IP rule with specific IP or IP range in CIDR format.
 type IPRule struct {
 	// IPAddressOrRange - Specifies the IP or IP range in CIDR format. Only IPV4 address is allowed.
@@ -2320,12 +1838,30 @@ type LegalHold struct {
 	Tags *[]string `json:"tags,omitempty"`
 }
 
+// MarshalJSON is the custom marshaler for LegalHold.
+func (lh LegalHold) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	if lh.Tags != nil {
+		objectMap["tags"] = lh.Tags
+	}
+	return json.Marshal(objectMap)
+}
+
 // LegalHoldProperties the LegalHold property of a blob container.
 type LegalHoldProperties struct {
 	// HasLegalHold - READ-ONLY; The hasLegalHold public property is set to true by SRP if there are at least one existing tag. The hasLegalHold public property is set to false by SRP if all existing legal hold tags are cleared out. There can be a maximum of 1000 blob containers with hasLegalHold=true for a given account.
 	HasLegalHold *bool `json:"hasLegalHold,omitempty"`
 	// Tags - The list of LegalHold tags of a blob container.
 	Tags *[]TagProperty `json:"tags,omitempty"`
+}
+
+// MarshalJSON is the custom marshaler for LegalHoldProperties.
+func (lhp LegalHoldProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	if lhp.Tags != nil {
+		objectMap["tags"] = lhp.Tags
+	}
+	return json.Marshal(objectMap)
 }
 
 // ListAccountSasResponse the List SAS credentials operation response.
@@ -2341,11 +1877,11 @@ type ListContainerItem struct {
 	*ContainerProperties `json:"properties,omitempty"`
 	// Etag - READ-ONLY; Resource Etag.
 	Etag *string `json:"etag,omitempty"`
-	// ID - READ-ONLY; Fully qualified resource Id for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	// ID - READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
 	ID *string `json:"id,omitempty"`
 	// Name - READ-ONLY; The name of the resource
 	Name *string `json:"name,omitempty"`
-	// Type - READ-ONLY; The type of the resource. Ex- Microsoft.Compute/virtualMachines or Microsoft.Storage/storageAccounts.
+	// Type - READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty"`
 }
 
@@ -2496,10 +2032,15 @@ func (lci ListContainerItems) IsEmpty() bool {
 	return lci.Value == nil || len(*lci.Value) == 0
 }
 
+// hasNextLink returns true if the NextLink is not empty.
+func (lci ListContainerItems) hasNextLink() bool {
+	return lci.NextLink != nil && len(*lci.NextLink) != 0
+}
+
 // listContainerItemsPreparer prepares a request to retrieve the next set of results.
 // It returns nil if no more results exist.
 func (lci ListContainerItems) listContainerItemsPreparer(ctx context.Context) (*http.Request, error) {
-	if lci.NextLink == nil || len(to.String(lci.NextLink)) < 1 {
+	if !lci.hasNextLink() {
 		return nil, nil
 	}
 	return autorest.Prepare((&http.Request{}).WithContext(ctx),
@@ -2527,11 +2068,16 @@ func (page *ListContainerItemsPage) NextWithContext(ctx context.Context) (err er
 			tracing.EndSpan(ctx, sc, err)
 		}()
 	}
-	next, err := page.fn(ctx, page.lci)
-	if err != nil {
-		return err
+	for {
+		next, err := page.fn(ctx, page.lci)
+		if err != nil {
+			return err
+		}
+		page.lci = next
+		if !next.hasNextLink() || !next.IsEmpty() {
+			break
+		}
 	}
-	page.lci = next
 	return nil
 }
 
@@ -2561,8 +2107,11 @@ func (page ListContainerItemsPage) Values() []ListContainerItem {
 }
 
 // Creates a new instance of the ListContainerItemsPage type.
-func NewListContainerItemsPage(getNextPage func(context.Context, ListContainerItems) (ListContainerItems, error)) ListContainerItemsPage {
-	return ListContainerItemsPage{fn: getNextPage}
+func NewListContainerItemsPage(cur ListContainerItems, getNextPage func(context.Context, ListContainerItems) (ListContainerItems, error)) ListContainerItemsPage {
+	return ListContainerItemsPage{
+		fn:  getNextPage,
+		lci: cur,
+	}
 }
 
 // ListServiceSasResponse the List service SAS credentials operation response.
@@ -2577,11 +2126,11 @@ type ManagementPolicy struct {
 	autorest.Response `json:"-"`
 	// ManagementPolicyProperties - Returns the Storage Account Data Policies Rules.
 	*ManagementPolicyProperties `json:"properties,omitempty"`
-	// ID - READ-ONLY; Fully qualified resource Id for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	// ID - READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
 	ID *string `json:"id,omitempty"`
 	// Name - READ-ONLY; The name of the resource
 	Name *string `json:"name,omitempty"`
-	// Type - READ-ONLY; The type of the resource. Ex- Microsoft.Compute/virtualMachines or Microsoft.Storage/storageAccounts.
+	// Type - READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty"`
 }
 
@@ -2687,6 +2236,15 @@ type ManagementPolicyProperties struct {
 	LastModifiedTime *date.Time `json:"lastModifiedTime,omitempty"`
 	// Policy - The Storage Account ManagementPolicy, in JSON format. See more details in: https://docs.microsoft.com/en-us/azure/storage/common/storage-lifecycle-managment-concepts.
 	Policy *ManagementPolicySchema `json:"policy,omitempty"`
+}
+
+// MarshalJSON is the custom marshaler for ManagementPolicyProperties.
+func (mpp ManagementPolicyProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	if mpp.Policy != nil {
+		objectMap["policy"] = mpp.Policy
+	}
+	return json.Marshal(objectMap)
 }
 
 // ManagementPolicyRule an object that wraps the Lifecycle rule. Each rule is uniquely defined by name.
@@ -2855,24 +2413,24 @@ type OperationProperties struct {
 	ServiceSpecification *ServiceSpecification `json:"serviceSpecification,omitempty"`
 }
 
-// ProxyResource the resource model definition for a ARM proxy resource. It will have everything other than
-// required location and tags
+// ProxyResource the resource model definition for a Azure Resource Manager proxy resource. It will not
+// have tags and a location
 type ProxyResource struct {
-	// ID - READ-ONLY; Fully qualified resource Id for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	// ID - READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
 	ID *string `json:"id,omitempty"`
 	// Name - READ-ONLY; The name of the resource
 	Name *string `json:"name,omitempty"`
-	// Type - READ-ONLY; The type of the resource. Ex- Microsoft.Compute/virtualMachines or Microsoft.Storage/storageAccounts.
+	// Type - READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty"`
 }
 
-// Resource ...
+// Resource common fields that are returned in the response for all Azure Resource Manager resources
 type Resource struct {
-	// ID - READ-ONLY; Fully qualified resource Id for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	// ID - READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
 	ID *string `json:"id,omitempty"`
 	// Name - READ-ONLY; The name of the resource
 	Name *string `json:"name,omitempty"`
-	// Type - READ-ONLY; The type of the resource. Ex- Microsoft.Compute/virtualMachines or Microsoft.Storage/storageAccounts.
+	// Type - READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty"`
 }
 
@@ -2884,6 +2442,15 @@ type Restriction struct {
 	Values *[]string `json:"values,omitempty"`
 	// ReasonCode - The reason for the restriction. As of now this can be "QuotaId" or "NotAvailableForSubscription". Quota Id is set when the SKU has requiredQuotas parameter as the subscription does not belong to that quota. The "NotAvailableForSubscription" is related to capacity at DC. Possible values include: 'QuotaID', 'NotAvailableForSubscription'
 	ReasonCode ReasonCode `json:"reasonCode,omitempty"`
+}
+
+// MarshalJSON is the custom marshaler for Restriction.
+func (r Restriction) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	if r.ReasonCode != "" {
+		objectMap["reasonCode"] = r.ReasonCode
+	}
+	return json.Marshal(objectMap)
 }
 
 // ServiceSasParameters the parameters to list service SAS credentials of a specific resource.
@@ -2950,6 +2517,18 @@ type Sku struct {
 	Restrictions *[]Restriction `json:"restrictions,omitempty"`
 }
 
+// MarshalJSON is the custom marshaler for Sku.
+func (s Sku) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	if s.Name != "" {
+		objectMap["name"] = s.Name
+	}
+	if s.Restrictions != nil {
+		objectMap["restrictions"] = s.Restrictions
+	}
+	return json.Marshal(objectMap)
+}
+
 // SKUCapability the capability information in the specified SKU, including file encryption, network ACLs,
 // change notification, etc.
 type SKUCapability struct {
@@ -2980,17 +2559,18 @@ type TagProperty struct {
 	Upn *string `json:"upn,omitempty"`
 }
 
-// TrackedResource the resource model definition for a ARM tracked top level resource
+// TrackedResource the resource model definition for an Azure Resource Manager tracked top level resource
+// which has 'tags' and a 'location'
 type TrackedResource struct {
 	// Tags - Resource tags.
 	Tags map[string]*string `json:"tags"`
 	// Location - The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
-	// ID - READ-ONLY; Fully qualified resource Id for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	// ID - READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
 	ID *string `json:"id,omitempty"`
 	// Name - READ-ONLY; The name of the resource
 	Name *string `json:"name,omitempty"`
-	// Type - READ-ONLY; The type of the resource. Ex- Microsoft.Compute/virtualMachines or Microsoft.Storage/storageAccounts.
+	// Type - READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty"`
 }
 

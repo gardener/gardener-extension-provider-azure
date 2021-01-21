@@ -20,13 +20,14 @@ import (
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/imagevector"
+
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/common"
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
 	"github.com/gardener/gardener/extensions/pkg/controller/worker/genericactuator"
 	"github.com/gardener/gardener/extensions/pkg/util"
-
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	gardener "github.com/gardener/gardener/pkg/client/kubernetes"
 	"github.com/go-logr/logr"
@@ -72,15 +73,8 @@ func (d *delegateFactory) WorkerDelegate(ctx context.Context, worker *extensions
 		return nil, err
 	}
 
-	return NewWorkerDelegate(
-		d.ClientContext,
-
-		seedChartApplier,
-		serverVersion.GitVersion,
-
-		worker,
-		cluster,
-	)
+	factory := azureclient.NewAzureClientFactory(d.ClientContext.Client())
+	return NewWorkerDelegate(d.ClientContext, seedChartApplier, serverVersion.GitVersion, worker, cluster, factory)
 }
 
 type workerDelegate struct {
@@ -96,22 +90,17 @@ type workerDelegate struct {
 	machineClasses     []map[string]interface{}
 	machineDeployments worker.MachineDeployments
 	machineImages      []api.MachineImage
+
+	clientFactory azureclient.Factory
 }
 
 // NewWorkerDelegate creates a new context for a worker reconciliation.
-func NewWorkerDelegate(
-	clientContext common.ClientContext,
-
-	seedChartApplier gardener.ChartApplier,
-	serverVersion string,
-
-	worker *extensionsv1alpha1.Worker,
-	cluster *extensionscontroller.Cluster,
-) (genericactuator.WorkerDelegate, error) {
+func NewWorkerDelegate(clientContext common.ClientContext, seedChartApplier gardener.ChartApplier, serverVersion string, worker *extensionsv1alpha1.Worker, cluster *extensionscontroller.Cluster, factory azureclient.Factory) (genericactuator.WorkerDelegate, error) {
 	config, err := helper.CloudProfileConfigFromCluster(cluster)
 	if err != nil {
 		return nil, err
 	}
+
 	return &workerDelegate{
 		ClientContext: clientContext,
 
@@ -121,5 +110,7 @@ func NewWorkerDelegate(
 		cloudProfileConfig: config,
 		cluster:            cluster,
 		worker:             worker,
+
+		clientFactory: factory,
 	}, nil
 }

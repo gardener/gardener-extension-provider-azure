@@ -19,6 +19,7 @@ import (
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 
+	azurecompute "github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2020-06-30/compute"
 	azureresources "github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
 	azurestorage "github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-04-01/storage"
 	corev1 "k8s.io/api/core/v1"
@@ -69,5 +70,19 @@ func (f AzureFactory) StorageAccount(ctx context.Context, secretRef corev1.Secre
 
 	return StorageAccountClient{
 		client: storageAccountClient,
+	}, nil
+}
+
+// Vmss reads the secret from the passed reference and return an Azure virtual machine scale set client.
+func (f AzureFactory) Vmss(ctx context.Context, secretRef corev1.SecretReference) (Vmss, error) {
+	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(ctx, f.client, secretRef)
+	if err != nil {
+		return nil, err
+	}
+	vmssClient := azurecompute.NewVirtualMachineScaleSetsClient(subscriptionID)
+	vmssClient.Authorizer = authorizer
+
+	return VmssClient{
+		client: vmssClient,
 	}, nil
 }

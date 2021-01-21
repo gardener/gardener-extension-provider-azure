@@ -17,6 +17,7 @@ package infrastructure
 import (
 	"context"
 
+	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/common"
 	"github.com/go-logr/logr"
 
@@ -45,8 +46,8 @@ func NewActuator() infrastructure.Actuator {
 	}
 }
 
-func (a *actuator) updateProviderStatus(ctx context.Context, tf terraformer.Terraformer, infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig) error {
-	status, err := infrainternal.ComputeStatus(ctx, tf, config)
+func (a *actuator) updateProviderStatus(ctx context.Context, tf terraformer.Terraformer, infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig, cluster *controller.Cluster) error {
+	status, err := infrainternal.ComputeStatus(ctx, tf, infra, config, cluster)
 	if err != nil {
 		return err
 	}

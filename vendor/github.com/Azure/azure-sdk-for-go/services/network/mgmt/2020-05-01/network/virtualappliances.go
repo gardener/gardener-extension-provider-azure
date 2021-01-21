@@ -239,6 +239,7 @@ func (client VirtualAppliancesClient) Get(ctx context.Context, resourceGroupName
 	result, err = client.GetResponder(resp)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "network.VirtualAppliancesClient", "Get", resp, "Failure responding to request")
+		return
 	}
 
 	return
@@ -315,6 +316,10 @@ func (client VirtualAppliancesClient) List(ctx context.Context) (result VirtualA
 	result.valr, err = client.ListResponder(resp)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "network.VirtualAppliancesClient", "List", resp, "Failure responding to request")
+		return
+	}
+	if result.valr.hasNextLink() && result.valr.IsEmpty() {
+		err = result.NextWithContext(ctx)
 	}
 
 	return
@@ -374,6 +379,7 @@ func (client VirtualAppliancesClient) listNextResults(ctx context.Context, lastR
 	result, err = client.ListResponder(resp)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "network.VirtualAppliancesClient", "listNextResults", resp, "Failure responding to next results request")
+		return
 	}
 	return
 }
@@ -425,6 +431,10 @@ func (client VirtualAppliancesClient) ListByResourceGroup(ctx context.Context, r
 	result.valr, err = client.ListByResourceGroupResponder(resp)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "network.VirtualAppliancesClient", "ListByResourceGroup", resp, "Failure responding to request")
+		return
+	}
+	if result.valr.hasNextLink() && result.valr.IsEmpty() {
+		err = result.NextWithContext(ctx)
 	}
 
 	return
@@ -485,6 +495,7 @@ func (client VirtualAppliancesClient) listByResourceGroupNextResults(ctx context
 	result, err = client.ListByResourceGroupResponder(resp)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "network.VirtualAppliancesClient", "listByResourceGroupNextResults", resp, "Failure responding to next results request")
+		return
 	}
 	return
 }
@@ -537,6 +548,7 @@ func (client VirtualAppliancesClient) UpdateTags(ctx context.Context, resourceGr
 	result, err = client.UpdateTagsResponder(resp)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "network.VirtualAppliancesClient", "UpdateTags", resp, "Failure responding to request")
+		return
 	}
 
 	return

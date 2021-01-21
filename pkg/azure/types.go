@@ -1,4 +1,4 @@
-// Copyright (c) 2019 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
+// Copyright (c) 2020 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,6 +23,9 @@ import (
 const (
 	// Name is the name of the Azure provider.
 	Name = "provider-azure"
+
+	// ShootVmoUsageAnnotation is an annotation assigned to the Shoot resource which indicates if VMO should be used.
+	ShootVmoUsageAnnotation = "alpha.azure.provider.extensions.gardener.cloud/vmo"
 
 	// CloudControllerManagerImageName is the name of the cloud-controller-manager image.
 	CloudControllerManagerImageName = "cloud-controller-manager"
@@ -67,6 +70,9 @@ const (
 
 	// AzureBlobStorageHostName is the host name for azure blob storage service.
 	AzureBlobStorageHostName = "blob.core.windows.net"
+
+	// MachineSetTagKey is the name of the infrastructure resource tag for machine sets.
+	MachineSetTagKey = "machineset.azure.extensions.gardener.cloud"
 
 	// AllowUDPEgressName is the name of the service for allowing UDP egress traffic.
 	AllowUDPEgressName = "allow-udp-egress"

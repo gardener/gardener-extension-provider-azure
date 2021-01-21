@@ -226,6 +226,7 @@ func (client IPAllocationsClient) Get(ctx context.Context, resourceGroupName str
 	result, err = client.GetResponder(resp)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "network.IPAllocationsClient", "Get", resp, "Failure responding to request")
+		return
 	}
 
 	return
@@ -302,6 +303,10 @@ func (client IPAllocationsClient) List(ctx context.Context) (result IPAllocation
 	result.ialr, err = client.ListResponder(resp)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "network.IPAllocationsClient", "List", resp, "Failure responding to request")
+		return
+	}
+	if result.ialr.hasNextLink() && result.ialr.IsEmpty() {
+		err = result.NextWithContext(ctx)
 	}
 
 	return
@@ -361,6 +366,7 @@ func (client IPAllocationsClient) listNextResults(ctx context.Context, lastResul
 	result, err = client.ListResponder(resp)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "network.IPAllocationsClient", "listNextResults", resp, "Failure responding to next results request")
+		return
 	}
 	return
 }
@@ -412,6 +418,10 @@ func (client IPAllocationsClient) ListByResourceGroup(ctx context.Context, resou
 	result.ialr, err = client.ListByResourceGroupResponder(resp)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "network.IPAllocationsClient", "ListByResourceGroup", resp, "Failure responding to request")
+		return
+	}
+	if result.ialr.hasNextLink() && result.ialr.IsEmpty() {
+		err = result.NextWithContext(ctx)
 	}
 
 	return
@@ -472,6 +482,7 @@ func (client IPAllocationsClient) listByResourceGroupNextResults(ctx context.Con
 	result, err = client.ListByResourceGroupResponder(resp)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "network.IPAllocationsClient", "listByResourceGroupNextResults", resp, "Failure responding to next results request")
+		return
 	}
 	return
 }
@@ -524,6 +535,7 @@ func (client IPAllocationsClient) UpdateTags(ctx context.Context, resourceGroupN
 	result, err = client.UpdateTagsResponder(resp)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "network.IPAllocationsClient", "UpdateTags", resp, "Failure responding to request")
+		return
 	}
 
 	return

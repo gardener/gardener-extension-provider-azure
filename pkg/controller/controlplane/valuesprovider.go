@@ -339,11 +339,7 @@ type valuesProvider struct {
 }
 
 // GetConfigChartValues returns the values for the config chart applied by the generic actuator.
-func (vp *valuesProvider) GetConfigChartValues(
-	ctx context.Context,
-	cp *extensionsv1alpha1.ControlPlane,
-	cluster *extensionscontroller.Cluster,
-) (map[string]interface{}, error) {
+func (vp *valuesProvider) GetConfigChartValues(ctx context.Context, cp *extensionsv1alpha1.ControlPlane, cluster *extensionscontroller.Cluster) (map[string]interface{}, error) {
 	// Decode providerConfig
 	cpConfig := &apisazure.ControlPlaneConfig{}
 	if cp.Spec.ProviderConfig != nil {
@@ -467,12 +463,7 @@ func (vp *valuesProvider) removeAcrConfig(ctx context.Context, namespace string)
 }
 
 // getConfigChartValues collects and returns the configuration chart values.
-func getConfigChartValues(
-	infraStatus *apisazure.InfrastructureStatus,
-	cp *extensionsv1alpha1.ControlPlane,
-	cluster *extensionscontroller.Cluster,
-	ca *internal.ClientAuth,
-) (map[string]interface{}, error) {
+func getConfigChartValues(infraStatus *apisazure.InfrastructureStatus, cp *extensionsv1alpha1.ControlPlane, cluster *extensionscontroller.Cluster, ca *internal.ClientAuth) (map[string]interface{}, error) {
 	subnetName, routeTableName, securityGroupName, err := getInfraNames(infraStatus)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not determine subnet, availability set, route table or security group name from infrastructureStatus of controlplane '%s'", kutil.ObjectName(cp))
@@ -503,20 +494,25 @@ func getConfigChartValues(
 		values["vnetResourceGroup"] = *infraStatus.Networks.VNet.ResourceGroup
 	}
 
-	// Add AvailabilitySet config if the cluster is not zoned.
-	if !infraStatus.Zoned {
-		nodesAvailabilitySet, err := azureapihelper.FindAvailabilitySetByPurpose(infraStatus.AvailabilitySets, apisazure.PurposeNodes)
-		if err != nil {
-			return nil, errors.Wrapf(err, "could not determine availability set for purpose 'nodes'")
-		}
-		values["availabilitySetName"] = nodesAvailabilitySet.Name
-	}
-
 	if infraStatus.Identity != nil && infraStatus.Identity.ACRAccess {
 		values["acrIdentityClientId"] = infraStatus.Identity.ClientID
 	}
 
-	return values, nil
+	return appendMachineSetValues(values, infraStatus), nil
+}
+
+func appendMachineSetValues(values map[string]interface{}, infraStatus *apisazure.InfrastructureStatus) map[string]interface{} {
+	if azureapihelper.IsVmoRequired(infraStatus) {
+		values["vmType"] = "vmss"
+		return values
+	}
+
+	if primaryAvailabilitySet, err := azureapihelper.FindAvailabilitySetByPurpose(infraStatus.AvailabilitySets, apisazure.PurposeNodes); err == nil {
+		values["availabilitySetName"] = primaryAvailabilitySet.Name
+		return values
+	}
+
+	return values
 }
 
 // getInfraNames determines the subnet, availability set, route table and security group names from the given infrastructure status.

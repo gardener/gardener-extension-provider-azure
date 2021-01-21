@@ -21,7 +21,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2020-06-01/compute"
+	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2020-06-30/compute"
 	"github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
@@ -240,121 +240,149 @@ var _ = Describe("Infrastructure tests", func() {
 		azure.InternalChartsPath = internalChartsPath
 	})
 
-	Context("with availabilitySet cluster creating new vNet", func() {
+	Context("AvailabilitySet cluster", func() {
 		AfterEach(func() {
 			framework.RunCleanupActions()
 		})
 
-		It("should successfully create and delete", func() {
+		It("should successfully create and delete AvailabilitySet cluster creating new vNet", func() {
 			providerConfig := newInfrastructureConfig(nil, nil, false, false)
 
 			namespace, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
 
-			err = runTest(ctx, logger, c, clientSet, namespace, providerConfig, decoder)
+			err = runTest(ctx, logger, c, clientSet, namespace, providerConfig, false, decoder)
 			Expect(err).ToNot(HaveOccurred())
 		})
-	})
 
-	Context("with availabilitySet cluster using existing vNet and existing Identity", func() {
-		AfterEach(func() {
-			framework.RunCleanupActions()
-		})
-
-		It("should successfully create and delete", func() {
+		It("should successfully create and delete AvailabilitySet cluster using existing vNet and existing identity", func() {
 			foreignName, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
 
-			var (
-				foreignGroupName = foreignName
-				foreignVNetName  = foreignName
-				foreignIdName    = foreignName
-			)
-
-			Expect(prepareNewResourceGroup(ctx, logger, clientSet, foreignGroupName, *region)).To(Succeed())
-			Expect(prepareNewVNet(ctx, logger, clientSet, foreignGroupName, foreignVNetName, *region, VNetCIDR)).To(Succeed())
-			Expect(prepareNewIdentity(ctx, logger, clientSet, foreignGroupName, foreignIdName, *region)).To(Succeed())
+			Expect(prepareNewResourceGroup(ctx, logger, clientSet, foreignName, *region)).To(Succeed())
+			Expect(prepareNewVNet(ctx, logger, clientSet, foreignName, foreignName, *region, VNetCIDR)).To(Succeed())
+			Expect(prepareNewIdentity(ctx, logger, clientSet, foreignName, foreignName, *region)).To(Succeed())
 
 			var cleanupHandle framework.CleanupActionHandle
 			cleanupHandle = framework.AddCleanupAction(func() {
 				By("foreign ResourceGroup teardown")
-				err := teardownResourceGroup(ctx, clientSet, foreignGroupName)
+				err := teardownResourceGroup(ctx, clientSet, foreignName)
 				Expect(err).ToNot(HaveOccurred())
 
 				framework.RemoveCleanupAction(cleanupHandle)
 			})
 
 			vnetConfig := &azurev1alpha1.VNet{
-				Name:          pointer.StringPtr(foreignVNetName),
-				ResourceGroup: pointer.StringPtr(foreignGroupName),
+				Name:          pointer.StringPtr(foreignName),
+				ResourceGroup: pointer.StringPtr(foreignName),
 			}
-			idConfig := &azurev1alpha1.IdentityConfig{
-				Name:          foreignIdName,
-				ResourceGroup: foreignGroupName,
+			identityConfig := &azurev1alpha1.IdentityConfig{
+				Name:          foreignName,
+				ResourceGroup: foreignName,
 			}
-			providerConfig := newInfrastructureConfig(vnetConfig, idConfig, false, false)
-			providerConfig.Identity = idConfig
+			providerConfig := newInfrastructureConfig(vnetConfig, identityConfig, false, false)
 
 			namespace, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
-			err = runTest(ctx, logger, c, clientSet, namespace, providerConfig, decoder)
+			err = runTest(ctx, logger, c, clientSet, namespace, providerConfig, false, decoder)
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 
-	Context("with zonal cluster creating new vNet and NatGateway", func() {
+	Context("Zonal cluster", func() {
 		AfterEach(func() {
 			framework.RunCleanupActions()
 		})
 
-		It("should successfully create and delete", func() {
-			providerConfig := newInfrastructureConfig(nil, nil, true, true)
+		It("should successfully create and delete a zonal cluster without NatGateway creating new vNet", func() {
+			providerConfig := newInfrastructureConfig(nil, nil, false, true)
 
 			namespace, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
 
-			err = runTest(ctx, logger, c, clientSet, namespace, providerConfig, decoder)
+			err = runTest(ctx, logger, c, clientSet, namespace, providerConfig, false, decoder)
 			Expect(err).ToNot(HaveOccurred())
 		})
-	})
 
-	Context("with zonal cluster using existing vNet and NatGateway", func() {
-		AfterEach(func() {
-			framework.RunCleanupActions()
-		})
-
-		It("should successfully create and delete", func() {
+		It("should successfully create and delete a zonal cluster with NatGateway using an existing vNet and identity", func() {
 			foreignName, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
 
-			var (
-				foreignGroupName = foreignName
-				foreignVNetName  = foreignName
-				foreignIdName    = foreignName
-			)
-
-			Expect(prepareNewResourceGroup(ctx, logger, clientSet, foreignGroupName, *region)).To(Succeed())
-			Expect(prepareNewVNet(ctx, logger, clientSet, foreignGroupName, foreignVNetName, *region, VNetCIDR)).To(Succeed())
-			Expect(prepareNewIdentity(ctx, logger, clientSet, foreignGroupName, foreignIdName, *region)).To(Succeed())
+			Expect(prepareNewResourceGroup(ctx, logger, clientSet, foreignName, *region)).To(Succeed())
+			Expect(prepareNewVNet(ctx, logger, clientSet, foreignName, foreignName, *region, VNetCIDR)).To(Succeed())
+			Expect(prepareNewIdentity(ctx, logger, clientSet, foreignName, foreignName, *region)).To(Succeed())
 
 			var cleanupHandle framework.CleanupActionHandle
 			cleanupHandle = framework.AddCleanupAction(func() {
 				By("foreign ResourceGroup teardown")
-				err := teardownResourceGroup(ctx, clientSet, foreignGroupName)
+				err := teardownResourceGroup(ctx, clientSet, foreignName)
 				Expect(err).ToNot(HaveOccurred())
 
 				framework.RemoveCleanupAction(cleanupHandle)
 			})
 
 			vnetConfig := &azurev1alpha1.VNet{
-				Name:          pointer.StringPtr(foreignVNetName),
-				ResourceGroup: pointer.StringPtr(foreignGroupName),
+				Name:          pointer.StringPtr(foreignName),
+				ResourceGroup: pointer.StringPtr(foreignName),
 			}
-			providerConfig := newInfrastructureConfig(vnetConfig, nil, true, true)
+			identityConfig := &azurev1alpha1.IdentityConfig{
+				Name:          foreignName,
+				ResourceGroup: foreignName,
+			}
+			providerConfig := newInfrastructureConfig(vnetConfig, identityConfig, true, true)
 
 			namespace, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
-			err = runTest(ctx, logger, c, clientSet, namespace, providerConfig, decoder)
+			err = runTest(ctx, logger, c, clientSet, namespace, providerConfig, false, decoder)
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+
+	Context("VMO cluster", func() {
+		AfterEach(func() {
+			framework.RunCleanupActions()
+		})
+
+		It("should successfully create and delete VMO cluster without NatGateway creating new vNet", func() {
+			providerConfig := newInfrastructureConfig(nil, nil, false, false)
+
+			namespace, err := generateName()
+			Expect(err).ToNot(HaveOccurred())
+
+			err = runTest(ctx, logger, c, clientSet, namespace, providerConfig, true, decoder)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should successfully create and delete VMO cluster with NatGateway using an existing vNet and identity", func() {
+			foreignName, err := generateName()
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(prepareNewResourceGroup(ctx, logger, clientSet, foreignName, *region)).To(Succeed())
+			Expect(prepareNewVNet(ctx, logger, clientSet, foreignName, foreignName, *region, VNetCIDR)).To(Succeed())
+			Expect(prepareNewIdentity(ctx, logger, clientSet, foreignName, foreignName, *region)).To(Succeed())
+
+			var cleanupHandle framework.CleanupActionHandle
+			cleanupHandle = framework.AddCleanupAction(func() {
+				By("foreign ResourceGroup teardown")
+				err := teardownResourceGroup(ctx, clientSet, foreignName)
+				Expect(err).ToNot(HaveOccurred())
+
+				framework.RemoveCleanupAction(cleanupHandle)
+			})
+
+			vnetConfig := &azurev1alpha1.VNet{
+				Name:          pointer.StringPtr(foreignName),
+				ResourceGroup: pointer.StringPtr(foreignName),
+			}
+			identityConfig := &azurev1alpha1.IdentityConfig{
+				Name:          foreignName,
+				ResourceGroup: foreignName,
+			}
+			providerConfig := newInfrastructureConfig(vnetConfig, identityConfig, true, false)
+
+			namespace, err := generateName()
+			Expect(err).ToNot(HaveOccurred())
+			err = runTest(ctx, logger, c, clientSet, namespace, providerConfig, true, decoder)
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
@@ -367,6 +395,7 @@ func runTest(
 	az *azureClientSet,
 	namespaceName string,
 	providerConfig *azurev1alpha1.InfrastructureConfig,
+	setVmoAnnotationToShoot bool,
 	decoder runtime.Decoder,
 ) error {
 	var (
@@ -418,7 +447,7 @@ func runTest(
 	}
 
 	By("create cluster CR")
-	cluster, err := newCluster(namespaceName, *region)
+	cluster, err := newCluster(namespaceName, *region, setVmoAnnotationToShoot)
 	if err != nil {
 		return err
 	}
@@ -525,7 +554,7 @@ func newInfrastructureConfig(vnet *azurev1alpha1.VNet, id *azurev1alpha1.Identit
 	}
 }
 
-func newCluster(name, region string) (*extensionsv1alpha1.Cluster, error) {
+func newCluster(name, region string, setVmoAnnotationToShoot bool) (*extensionsv1alpha1.Cluster, error) {
 	rawAzureCloudProfileConfig, err := json.Marshal(
 		azurev1alpha1.CloudProfileConfig{
 			TypeMeta: metav1.TypeMeta{
@@ -565,7 +594,24 @@ func newCluster(name, region string) (*extensionsv1alpha1.Cluster, error) {
 		return nil, err
 	}
 
-	cluster := &extensionsv1alpha1.Cluster{
+	shoot := gardencorev1beta1.Shoot{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: gardencorev1beta1.SchemeGroupVersion.String(),
+			Kind:       "Shoot",
+		},
+	}
+	if setVmoAnnotationToShoot {
+		shoot.Annotations = map[string]string{
+			"alpha.azure.provider.extensions.gardener.cloud/vmo": "true",
+		}
+	}
+
+	rawShoot, err := json.Marshal(shoot)
+	if err != nil {
+		return nil, err
+	}
+
+	return &extensionsv1alpha1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
@@ -573,10 +619,11 @@ func newCluster(name, region string) (*extensionsv1alpha1.Cluster, error) {
 			CloudProfile: runtime.RawExtension{
 				Raw: rawCloudProfile,
 			},
+			Shoot: runtime.RawExtension{
+				Raw: rawShoot,
+			},
 		},
-	}
-
-	return cluster, nil
+	}, nil
 }
 
 func newInfrastructure(namespace string, providerConfig *azurev1alpha1.InfrastructureConfig) (*extensionsv1alpha1.Infrastructure, error) {

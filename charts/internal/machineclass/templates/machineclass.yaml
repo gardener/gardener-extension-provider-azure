@@ -24,9 +24,10 @@ spec:
     {{- if hasKey $machineClass "zone" }}
     zone: {{ $machineClass.zone }}
     {{- end }}
-    {{- if hasKey $machineClass "availabilitySetID" }}
-    availabilitySet:
-      id: {{ $machineClass.availabilitySetID }}
+    {{- if hasKey $machineClass "machineSet" }}
+    machineSet:
+      id: {{ $machineClass.machineSet.id }}
+      kind: {{ $machineClass.machineSet.kind }}
     {{- end }}
     {{- if hasKey $machineClass "identityID" }}
     identityID: {{ $machineClass.identityID }}

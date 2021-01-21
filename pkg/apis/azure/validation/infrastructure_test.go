@@ -15,8 +15,11 @@
 package validation_test
 
 import (
+	"fmt"
+
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	. "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/validation"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 
 	. "github.com/gardener/gardener/pkg/utils/test/matchers"
 	. "github.com/onsi/ginkgo"
@@ -29,16 +32,17 @@ import (
 
 var _ = Describe("InfrastructureConfig validation", func() {
 	var (
-		infrastructureConfig *apisazure.InfrastructureConfig
-		nodes                string
-		resourceGroup        = "shoot--test--foo"
+		infrastructureConfig  *apisazure.InfrastructureConfig
+		nodes                 string
+		resourceGroup         = "shoot--test--foo"
+		hasVmoAlphaAnnotation bool
 
 		pods        = "100.96.0.0/11"
 		services    = "100.64.0.0/13"
 		vnetCIDR    = "10.0.0.0/8"
 		invalidCIDR = "invalid-cidr"
 
-		fldPath *field.Path
+		providerPath *field.Path
 	)
 
 	BeforeEach(func() {
@@ -51,13 +55,14 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				},
 			},
 		}
+		hasVmoAlphaAnnotation = false
 	})
 
 	Describe("#ValidateInfrastructureConfig", func() {
 		It("should forbid specifying a resource group configuration", func() {
 			infrastructureConfig.ResourceGroup = &apisazure.ResourceGroup{}
 
-			errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+			errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
 
 			Expect(errorList).To(ConsistOfFields(Fields{
 				"Type":  Equal(field.ErrorTypeInvalid),
@@ -71,7 +76,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				infrastructureConfig.Networks.VNet = apisazure.VNet{
 					Name: &vnetName,
 				}
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
 
 				Expect(errorList).To(ConsistOfFields(
 					Fields{
@@ -86,7 +91,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				infrastructureConfig.Networks.VNet = apisazure.VNet{
 					ResourceGroup: &vnetGroup,
 				}
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
 
 				Expect(errorList).To(ConsistOfFields(
 					Fields{
@@ -104,7 +109,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					ResourceGroup: &vnetGroup,
 					CIDR:          &vnetCIDR,
 				}
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
 
 				Expect(errorList).To(ConsistOfFields(
 					Fields{
@@ -123,7 +128,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				infrastructureConfig.ResourceGroup = &apisazure.ResourceGroup{
 					Name: resourceGroup,
 				}
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
 
 				Expect(errorList).To(ConsistOfFields(
 					Fields{
@@ -143,8 +148,22 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				infrastructureConfig.Networks = apisazure.NetworkConfig{
 					Workers: "10.250.3.0/24",
 				}
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
 				Expect(errorList).To(HaveLen(0))
+			})
+		})
+
+		Context("Zonal", func() {
+			It(fmt.Sprintf("should forbid specifying the %q annotation for a zonal cluster", azure.ShootVmoUsageAnnotation), func() {
+				infrastructureConfig.Zoned = true
+				hasVmoAlphaAnnotation = true
+
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
+
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":  Equal(field.ErrorTypeInvalid),
+					"Field": Equal("zoned"),
+				}))
 			})
 		})
 
@@ -152,7 +171,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			It("should forbid invalid VNet CIDRs", func() {
 				infrastructureConfig.Networks.VNet.CIDR = &invalidCIDR
 
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
@@ -164,7 +183,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			It("should forbid invalid workers CIDR", func() {
 				infrastructureConfig.Networks.Workers = invalidCIDR
 
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
@@ -176,7 +195,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			It("should forbid empty workers CIDR", func() {
 				infrastructureConfig.Networks.Workers = ""
 
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
 
 				Expect(errorList).To(ConsistOfFields(
 					Fields{
@@ -190,7 +209,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				notOverlappingCIDR := "1.1.1.1/32"
 				infrastructureConfig.Networks.Workers = notOverlappingCIDR
 
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
@@ -206,7 +225,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			It("should forbid Pod CIDR to overlap with VNet CIDR", func() {
 				podCIDR := "10.0.0.1/32"
 
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &podCIDR, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &podCIDR, &services, hasVmoAlphaAnnotation, providerPath)
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
@@ -218,7 +237,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			It("should forbid Services CIDR to overlap with VNet CIDR", func() {
 				servicesCIDR := "10.0.0.1/32"
 
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &servicesCIDR, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &servicesCIDR, hasVmoAlphaAnnotation, providerPath)
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
@@ -237,7 +256,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				infrastructureConfig.Networks.Workers = workers
 				infrastructureConfig.Networks.VNet = apisazure.VNet{CIDR: &vpcCIDR}
 
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodeCIDR, &podCIDR, &serviceCIDR, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodeCIDR, &podCIDR, &serviceCIDR, hasVmoAlphaAnnotation, providerPath)
 
 				Expect(errorList).To(HaveLen(2))
 				Expect(errorList).To(ConsistOfFields(Fields{
@@ -258,14 +277,14 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					Name:          "test-identiy",
 					ResourceGroup: "identity-resource-group",
 				}
-				Expect(ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)).To(BeEmpty())
+				Expect(ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)).To(BeEmpty())
 			})
 
 			It("should return errors because no name or resource group is given", func() {
 				infrastructureConfig.Identity = &apisazure.IdentityConfig{
 					Name: "test-identiy",
 				}
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":  Equal(field.ErrorTypeInvalid),
 					"Field": Equal("identity"),
@@ -277,13 +296,13 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			It("should return no errors using a NatGateway for a zoned cluster", func() {
 				infrastructureConfig.Zoned = true
 				infrastructureConfig.Networks.NatGateway = &apisazure.NatGatewayConfig{Enabled: true}
-				Expect(ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)).To(BeEmpty())
+				Expect(ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)).To(BeEmpty())
 			})
 
 			It("should return an error using a NatGateway for a non zoned cluster", func() {
 				infrastructureConfig.Zoned = false
 				infrastructureConfig.Networks.NatGateway = &apisazure.NatGatewayConfig{}
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
 				Expect(errorList).To(HaveLen(1))
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
@@ -297,7 +316,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					var timeoutValue int32 = 0
 					infrastructureConfig.Zoned = true
 					infrastructureConfig.Networks.NatGateway = &apisazure.NatGatewayConfig{Enabled: true, IdleConnectionTimeoutMinutes: &timeoutValue}
-					errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+					errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
 					Expect(errorList).To(HaveLen(1))
 					Expect(errorList).To(ConsistOfFields(Fields{
 						"Type":   Equal(field.ErrorTypeInvalid),
@@ -310,7 +329,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					var timeoutValue int32 = 121
 					infrastructureConfig.Zoned = true
 					infrastructureConfig.Networks.NatGateway = &apisazure.NatGatewayConfig{Enabled: true, IdleConnectionTimeoutMinutes: &timeoutValue}
-					errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)
+					errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
 					Expect(errorList).To(HaveLen(1))
 					Expect(errorList).To(ConsistOfFields(Fields{
 						"Type":   Equal(field.ErrorTypeInvalid),
@@ -323,22 +342,27 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					var timeoutValue int32 = 120
 					infrastructureConfig.Zoned = true
 					infrastructureConfig.Networks.NatGateway = &apisazure.NatGatewayConfig{Enabled: true, IdleConnectionTimeoutMinutes: &timeoutValue}
-					Expect(ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, fldPath)).To(BeEmpty())
+					Expect(ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)).To(BeEmpty())
 				})
 			})
 		})
 	})
 
 	Describe("#ValidateInfrastructureConfigUpdate", func() {
+		var newInfrastructureConfig *apisazure.InfrastructureConfig
+
+		BeforeEach(func() {
+			newInfrastructureConfig = infrastructureConfig.DeepCopy()
+		})
+
 		It("should return no errors for an unchanged config", func() {
-			Expect(ValidateInfrastructureConfigUpdate(infrastructureConfig, infrastructureConfig, fldPath)).To(BeEmpty())
+			Expect(ValidateInfrastructureConfigUpdate(infrastructureConfig, infrastructureConfig, providerPath)).To(BeEmpty())
 		})
 
 		It("should forbid changing the resource group section", func() {
-			newInfrastructureConfig := infrastructureConfig.DeepCopy()
 			newInfrastructureConfig.ResourceGroup = &apisazure.ResourceGroup{}
 
-			errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, fldPath)
+			errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, providerPath)
 
 			Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":  Equal(field.ErrorTypeInvalid),
@@ -351,7 +375,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				newInfrastructureConfig := infrastructureConfig.DeepCopy()
 				newInfrastructureConfig.Networks.VNet.CIDR = pointer.StringPtr("10.250.3.0/22")
 
-				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, fldPath)
+				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, providerPath)
 				Expect(errorList).Should(HaveLen(0))
 			})
 
@@ -363,7 +387,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				newInfrastructureConfig.Networks.VNet.Name = pointer.StringPtr("modified")
 				newInfrastructureConfig.Networks.VNet.ResourceGroup = pointer.StringPtr("modified")
 
-				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, fldPath)
+				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, providerPath)
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
 					"Field":  Equal("networks.vnet.name"),
@@ -382,7 +406,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				newInfrastructureConfig.Networks.VNet.Name = pointer.StringPtr("modified")
 				newInfrastructureConfig.Networks.VNet.ResourceGroup = pointer.StringPtr("modified")
 
-				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, fldPath)
+				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, providerPath)
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
 					"Field":  Equal("networks.vnet.name"),
@@ -405,8 +429,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				if isNewZoned {
 					newInfrastructureConfig.Zoned = true
 				}
-
-				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, fldPath)
+				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, providerPath)
 				if !expectError {
 					Expect(errorList).To(HaveLen(0))
 					return
@@ -422,4 +445,25 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			Entry("should forbid moving a non-zoned cluster to a zoned cluster", true, false, true),
 		)
 	})
+
+	DescribeTable("#ValidateVmoConfigUpdate",
+		func(newHasVmoAlphaAnnotation, oldHasVmoAlphaAnnotation, expectErrors bool) {
+			var (
+				path      *field.Path
+				errorList = ValidateVmoConfigUpdate(newHasVmoAlphaAnnotation, oldHasVmoAlphaAnnotation, path)
+			)
+			if !expectErrors {
+				Expect(errorList).To(HaveLen(0))
+				return
+			}
+			Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":  Equal(field.ErrorTypeForbidden),
+				"Field": Equal("annotations"),
+			}))))
+		},
+		Entry("should pass as old and new cluster have vmo alpha annotation", true, true, false),
+		Entry("should pass as old and new cluster don't have vmo alpha annotation", false, false, false),
+		Entry("should forbid removing the vmo alpha annotation for an already existing cluster", true, false, true),
+		Entry("should forbid adding the vmo alpha annotation to an already existing cluster", false, true, true),
+	)
 })

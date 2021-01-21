@@ -17,6 +17,7 @@ package helper_test
 import (
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	. "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -138,6 +139,42 @@ var _ = Describe("Helper", func() {
 
 		Entry("valid image reference, only urn", makeProfileMachineImageWithIDandURN("ubuntu", "1", &profileURN, nil), "ubuntu", "1", &api.MachineImage{Name: "ubuntu", Version: "1", URN: &profileURN}),
 		Entry("valid image reference, only id", makeProfileMachineImageWithIDandURN("ubuntu", "1", nil, &profileID), "ubuntu", "1", &api.MachineImage{Name: "ubuntu", Version: "1", ID: &profileID}),
+	)
+
+	DescribeTable("#IsVmoRequired",
+		func(zoned bool, availabilitySet *api.AvailabilitySet, expectedVmoRequired bool) {
+			var infrastructureStatus = &api.InfrastructureStatus{
+				Zoned: zoned,
+			}
+			if availabilitySet != nil {
+				infrastructureStatus.AvailabilitySets = append(infrastructureStatus.AvailabilitySets, *availabilitySet)
+			}
+
+			Expect(IsVmoRequired(infrastructureStatus)).To(Equal(expectedVmoRequired))
+		},
+		Entry("should require a VMO", false, nil, true),
+		Entry("should not require VMO for zoned cluster", true, nil, false),
+		Entry("should not require VMO for a cluster with primary availabilityset (non zoned)", false, &api.AvailabilitySet{
+			ID:      "/my/azure/availabilityset/id",
+			Name:    "my-availabilityset",
+			Purpose: api.PurposeNodes,
+		}, false),
+	)
+
+	DescribeTable("#HasShootVmoAlphaAnnotation",
+		func(hasVmoAnnotaion, hasCorrectVmoAnnotationValue, expectedResult bool) {
+			var annotations = map[string]string{}
+			if hasVmoAnnotaion {
+				annotations[azure.ShootVmoUsageAnnotation] = "some-arbitrary-value"
+			}
+			if hasCorrectVmoAnnotationValue {
+				annotations[azure.ShootVmoUsageAnnotation] = "true"
+			}
+			Expect(HasShootVmoAlphaAnnotation(annotations)).To(Equal(expectedResult))
+		},
+		Entry("should return true as shoot annotations contain vmo alpha annotation with value true", true, true, true),
+		Entry("should return false as shoot annotations contain vmo alpha annotation with wrong value", true, false, false),
+		Entry("should return false as shoot annotations do not contain vmo alpha annotation", false, false, false),
 	)
 })
 
