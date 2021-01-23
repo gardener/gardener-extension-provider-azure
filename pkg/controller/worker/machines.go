@@ -33,7 +33,7 @@ import (
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	"github.com/gardener/gardener/pkg/utils"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
-	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
@@ -46,12 +46,12 @@ func (w *workerDelegate) MachineClassKind() string {
 }
 
 // MachineClass yields a newly initialized machine class object.
-func (w *workerDelegate) MachineClass() runtime.Object {
+func (w *workerDelegate) MachineClass() client.Object {
 	return &machinev1alpha1.AzureMachineClass{}
 }
 
 // MachineClassList yields a newly initialized AzureMachineClassList object.
-func (w *workerDelegate) MachineClassList() runtime.Object {
+func (w *workerDelegate) MachineClassList() client.ObjectList {
 	return &machinev1alpha1.AzureMachineClassList{}
 }
 

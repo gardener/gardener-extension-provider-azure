@@ -19,11 +19,11 @@ import (
 	"net/http"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	"github.com/gardener/gardener/extensions/pkg/util"
 
+	"github.com/gardener/gardener/extensions/pkg/util"
 	"github.com/gardener/gardener/pkg/apis/core"
 	"github.com/go-logr/logr"
-	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	admissionv1 "k8s.io/api/admission/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -48,12 +48,12 @@ func (v *Shoot) Handle(ctx context.Context, req admission.Request) admission.Res
 	}
 
 	switch req.Operation {
-	case admissionv1beta1.Create:
+	case admissionv1.Create:
 		if err := v.validateShootCreation(shoot); err != nil {
 			v.Logger.Error(err, "denied request")
 			return admission.Errored(http.StatusBadRequest, err)
 		}
-	case admissionv1beta1.Update:
+	case admissionv1.Update:
 		oldShoot := &core.Shoot{}
 		if err := util.Decode(v.decoder, req.OldObject.Raw, oldShoot); err != nil {
 			v.Logger.Error(err, "failed to decode old shoot", "old shoot", string(req.OldObject.Raw))
