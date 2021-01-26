@@ -71,7 +71,7 @@ func NewValidatorCommand(ctx context.Context) *cobra.Command {
 			log.Info("Registering webhooks")
 			hookServer.Register("/webhooks/validate", &webhook.Admission{Handler: &validator.Shoot{Logger: log.WithName("shoot-validator")}})
 
-			if err := mgr.Start(ctx.Done()); err != nil {
+			if err := mgr.Start(ctx); err != nil {
 				controllercmd.LogErrAndExit(err, "error running manager")
 			}
 		},

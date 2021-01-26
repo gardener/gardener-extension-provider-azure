@@ -212,7 +212,7 @@ var _ = Describe("Infrastructure tests", func() {
 
 		By("start manager")
 		go func() {
-			err := mgr.Start(mgrContext.Done())
+			err := mgr.Start(mgrContext)
 			Expect(err).ToNot(HaveOccurred())
 		}()
 
@@ -487,7 +487,7 @@ func runTest(
 		ctx,
 		c,
 		logger,
-		func() runtime.Object { return &extensionsv1alpha1.Infrastructure{} },
+		func() client.Object { return &extensionsv1alpha1.Infrastructure{} },
 		extensionsv1alpha1.InfrastructureResource,
 		infra.Namespace,
 		infra.Name,
