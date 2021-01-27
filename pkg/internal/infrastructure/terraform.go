@@ -71,6 +71,26 @@ var StatusTypeMeta = metav1.TypeMeta{
 	Kind:       "InfrastructureStatus",
 }
 
+// RenderTerraformerChart renders the azure-infra chart with the given values.
+func RenderTerraformerChart(renderer chartrenderer.Interface, infra *extensionsv1alpha1.Infrastructure, clientAuth *internal.ClientAuth,
+	config *api.InfrastructureConfig, cluster *controller.Cluster) (*TerraformFiles, error) {
+	values, err := ComputeTerraformerChartValues(infra, clientAuth, config, cluster)
+	if err != nil {
+		return nil, err
+	}
+
+	release, err := renderer.Render(filepath.Join(azure.InternalChartsPath, "azure-infra"), "azure-infra", infra.Namespace, values)
+	if err != nil {
+		return nil, err
+	}
+
+	return &TerraformFiles{
+		Main:      release.FileContent("main.tf"),
+		Variables: release.FileContent("variables.tf"),
+		TFVars:    []byte(release.FileContent("terraform.tfvars")),
+	}, nil
+}
+
 // ComputeTerraformerChartValues computes the values for the Azure Terraformer chart.
 func ComputeTerraformerChartValues(infra *extensionsv1alpha1.Infrastructure, clientAuth *internal.ClientAuth,
 	config *api.InfrastructureConfig, cluster *controller.Cluster) (map[string]interface{}, error) {
@@ -78,7 +98,6 @@ func ComputeTerraformerChartValues(infra *extensionsv1alpha1.Infrastructure, cli
 		createResourceGroup   = true
 		createVNet            = true
 		createAvailabilitySet = false
-		createNatGateway      = false
 		resourceGroupName     = infra.Namespace
 
 		identityConfig map[string]interface{}
@@ -97,7 +116,6 @@ func ComputeTerraformerChartValues(infra *extensionsv1alpha1.Infrastructure, cli
 			"routeTableName":    TerraformerOutputKeyRouteTableName,
 			"securityGroupName": TerraformerOutputKeySecurityGroupName,
 		}
-		natGatewayConfig = map[string]interface{}{}
 	)
 
 	primaryAvSetRequired, err := isPrimaryAvailabilitySetRequired(infra, config, cluster)
@@ -140,12 +158,7 @@ func ComputeTerraformerChartValues(infra *extensionsv1alpha1.Infrastructure, cli
 		azureConfig["countUpdateDomains"] = count.updateDomains
 	}
 
-	if config.Networks.NatGateway != nil && config.Networks.NatGateway.Enabled {
-		createNatGateway = true
-		if config.Networks.NatGateway.IdleConnectionTimeoutMinutes != nil {
-			natGatewayConfig["idleConnectionTimeoutMinutes"] = *config.Networks.NatGateway.IdleConnectionTimeoutMinutes
-		}
-	}
+	natGatewayConfig, createNatGateway := generateNatGatewayValues(config)
 
 	// Checks if the Gardener managed NatGateway public ip needs to be migrated.
 	// TODO(natipmigration) This can be removed in future versions when the ip migration has been completed.
@@ -189,24 +202,32 @@ func ComputeTerraformerChartValues(infra *extensionsv1alpha1.Infrastructure, cli
 	}, nil
 }
 
-// RenderTerraformerChart renders the azure-infra chart with the given values.
-func RenderTerraformerChart(renderer chartrenderer.Interface, infra *extensionsv1alpha1.Infrastructure, clientAuth *internal.ClientAuth,
-	config *api.InfrastructureConfig, cluster *controller.Cluster) (*TerraformFiles, error) {
-	values, err := ComputeTerraformerChartValues(infra, clientAuth, config, cluster)
-	if err != nil {
-		return nil, err
+func generateNatGatewayValues(config *api.InfrastructureConfig) (map[string]interface{}, bool) {
+	var natGatewayConfig = make(map[string]interface{})
+	if config.Networks.NatGateway == nil || !config.Networks.NatGateway.Enabled {
+		return natGatewayConfig, false
 	}
 
-	release, err := renderer.Render(filepath.Join(azure.InternalChartsPath, "azure-infra"), "azure-infra", infra.Namespace, values)
-	if err != nil {
-		return nil, err
+	if config.Networks.NatGateway.IdleConnectionTimeoutMinutes != nil {
+		natGatewayConfig["idleConnectionTimeoutMinutes"] = *config.Networks.NatGateway.IdleConnectionTimeoutMinutes
 	}
 
-	return &TerraformFiles{
-		Main:      release.FileContent("main.tf"),
-		Variables: release.FileContent("variables.tf"),
-		TFVars:    []byte(release.FileContent("terraform.tfvars")),
-	}, nil
+	if config.Networks.NatGateway.Zone != nil {
+		natGatewayConfig["zone"] = *config.Networks.NatGateway.Zone
+	}
+
+	if len(config.Networks.NatGateway.IPAddresses) > 0 {
+		var ipAddresses = make([]map[string]interface{}, len(config.Networks.NatGateway.IPAddresses))
+		for i, ip := range config.Networks.NatGateway.IPAddresses {
+			ipAddresses[i] = map[string]interface{}{
+				"name":          ip.Name,
+				"resourceGroup": ip.ResourceGroup,
+			}
+		}
+		natGatewayConfig["ipAddresses"] = ipAddresses
+	}
+
+	return natGatewayConfig, true
 }
 
 // TerraformFiles are the files that have been rendered from the infrastructure chart.

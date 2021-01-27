@@ -57,6 +57,31 @@ type NetworkConfig struct {
 	ServiceEndpoints []string `json:"serviceEndpoints,omitempty"`
 }
 
+// NatGatewayConfig contains configuration for the NAT gateway and the attached resources.
+type NatGatewayConfig struct {
+	// Enabled is an indicator if NAT gateway should be deployed.
+	Enabled bool `json:"enabled"`
+	// IdleConnectionTimeoutMinutes specifies the idle connection timeout limit for NAT gateway in minutes.
+	// +optional
+	IdleConnectionTimeoutMinutes *int32 `json:"idleConnectionTimeoutMinutes,omitempty"`
+	// Zone specifies the zone in which the NAT gateway should be deployed to.
+	// +optional
+	Zone *int32 `json:"zone,omitempty"`
+	// IPAddresses is a list of ip addresses which should be assigned to the NAT gateway.
+	// +optional
+	IPAddresses []PublicIPReference `json:"ipAddresses,omitempty"`
+}
+
+// PublicIPReference contains information about a public ip.
+type PublicIPReference struct {
+	// Name is the name of the public ip.
+	Name string `json:"name"`
+	// ResourceGroup is the name of the resource group where the public ip is assigned to.
+	ResourceGroup string `json:"resourceGroup"`
+	// Zone is the zone in which the public ip is deployed to.
+	Zone int32 `json:"zone"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // InfrastructureStatus contains information about created infrastructure resources.
@@ -163,15 +188,6 @@ type VNetStatus struct {
 	// ResourceGroup is the resource group where the existing vNet belongs to.
 	// +optional
 	ResourceGroup *string `json:"resourceGroup,omitempty"`
-}
-
-// NatGatewayConfig contains configuration for the nat gateway and the attached resources.
-type NatGatewayConfig struct {
-	// Enabled is an indicator if NAT gateway should be deployed.
-	Enabled bool `json:"enabled"`
-	// IdleConnectionTimeoutMinutes specifies the idle connection timeout limit for NAT gateway in minutes.
-	// +optional
-	IdleConnectionTimeoutMinutes *int32 `json:"idleConnectionTimeoutMinutes,omitempty"`
 }
 
 // IdentityConfig contains configuration for the managed identity.

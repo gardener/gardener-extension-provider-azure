@@ -293,22 +293,99 @@ var _ = Describe("InfrastructureConfig validation", func() {
 		})
 
 		Context("NatGateway", func() {
-			It("should return no errors using a NatGateway for a zoned cluster", func() {
+			BeforeEach(func() {
 				infrastructureConfig.Zoned = true
 				infrastructureConfig.Networks.NatGateway = &apisazure.NatGatewayConfig{Enabled: true}
+			})
+
+			It("should pass as there is no NatGateway config is provided", func() {
+				infrastructureConfig.Networks.NatGateway = nil
 				Expect(ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)).To(BeEmpty())
 			})
 
-			It("should return an error using a NatGateway for a non zoned cluster", func() {
-				infrastructureConfig.Zoned = false
-				infrastructureConfig.Networks.NatGateway = &apisazure.NatGatewayConfig{}
+			It("should pass as the NatGateway is disabled", func() {
+				infrastructureConfig.Networks.NatGateway.Enabled = false
+				Expect(ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)).To(BeEmpty())
+			})
+
+			It("should fail as NatGatway is disabled but additional config for the NatGateway is supplied", func() {
+				infrastructureConfig.Networks.NatGateway.Enabled = false
+				infrastructureConfig.Networks.NatGateway.Zone = pointer.Int32Ptr(2)
+
 				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
-				Expect(errorList).To(HaveLen(1))
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
 					"Field":  Equal("networks.natGateway"),
-					"Detail": Equal("NatGateway is currently only supported for zoned cluster"),
+					"Detail": Equal("NatGateway is disabled but additional NatGateway config is passed"),
 				}))
+			})
+
+			It("should fail as NatGatway is enabled but the cluster is not zonal", func() {
+				infrastructureConfig.Zoned = false
+				infrastructureConfig.Networks.NatGateway.Enabled = true
+
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":   Equal(field.ErrorTypeForbidden),
+					"Field":  Equal("networks.natGateway"),
+					"Detail": Equal("NatGateway is currently only supported for zonal and VMO clusters"),
+				}))
+			})
+
+			It("should pass as the NatGateway has a zone", func() {
+				infrastructureConfig.Networks.NatGateway.Zone = pointer.Int32Ptr(2)
+				Expect(ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)).To(BeEmpty())
+			})
+
+			Context("User provided public IP", func() {
+				BeforeEach(func() {
+					infrastructureConfig.Networks.NatGateway.Zone = pointer.Int32Ptr(1)
+					infrastructureConfig.Networks.NatGateway.IPAddresses = []apisazure.PublicIPReference{{
+						Name:          "public-ip-name",
+						ResourceGroup: "public-ip-resource-group",
+						Zone:          1,
+					}}
+				})
+
+				It("should fail as NatGateway has no zone but an external public ip", func() {
+					infrastructureConfig.Networks.NatGateway.Zone = nil
+					errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
+					Expect(errorList).To(ConsistOfFields(Fields{
+						"Type":   Equal(field.ErrorTypeInvalid),
+						"Field":  Equal("networks.natGateway.zone"),
+						"Detail": Equal("Public IPs can only be selected for zonal NatGateways"),
+					}))
+				})
+
+				It("should fail as resource is in a different zone as the NatGateway", func() {
+					infrastructureConfig.Networks.NatGateway.IPAddresses[0].Zone = 2
+					errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
+					Expect(errorList).To(ConsistOfFields(Fields{
+						"Type":   Equal(field.ErrorTypeInvalid),
+						"Field":  Equal("networks.natGateway.ipAddresses[0].zone"),
+						"Detail": Equal("Public IP can't be used as it is not in the same zone as the NatGateway (zone 1)"),
+					}))
+				})
+
+				It("should fail as name is empty", func() {
+					infrastructureConfig.Networks.NatGateway.IPAddresses[0].Name = ""
+					errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
+					Expect(errorList).To(ConsistOfFields(Fields{
+						"Type":   Equal(field.ErrorTypeRequired),
+						"Field":  Equal("networks.natGateway.ipAddresses[0].name"),
+						"Detail": Equal("Name for NatGateway public ip resource is required"),
+					}))
+				})
+
+				It("should fail as resource group is empty", func() {
+					infrastructureConfig.Networks.NatGateway.IPAddresses[0].ResourceGroup = ""
+					errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
+					Expect(errorList).To(ConsistOfFields(Fields{
+						"Type":   Equal(field.ErrorTypeRequired),
+						"Field":  Equal("networks.natGateway.ipAddresses[0].resourceGroup"),
+						"Detail": Equal("ResourceGroup for NatGateway public ip resouce is required"),
+					}))
+				})
 			})
 
 			Context("IdleConnectionTimeoutMinutes", func() {

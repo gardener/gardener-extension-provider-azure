@@ -387,7 +387,7 @@ var _ = Describe("Terraform", func() {
 				}
 				expectedCreateValues["natGateway"] = true
 				values, err := ComputeTerraformerChartValues(infra, clientAuth, config, cluster)
-				Expect(err).To(Not(HaveOccurred()))
+				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(BeEquivalentTo(expectedValues))
 			})
 
@@ -400,7 +400,46 @@ var _ = Describe("Terraform", func() {
 				expectedCreateValues["natGateway"] = true
 				expectedNatGatewayValues["idleConnectionTimeoutMinutes"] = timeout
 				values, err := ComputeTerraformerChartValues(infra, clientAuth, config, cluster)
-				Expect(err).To(Not(HaveOccurred()))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values).To(BeEquivalentTo(expectedValues))
+			})
+
+			It("should correctly compute terraform chart values with zonal NatGateway", func() {
+				config.Networks.NatGateway = &api.NatGatewayConfig{
+					Enabled: true,
+					Zone:    pointer.Int32Ptr(1),
+				}
+				expectedCreateValues["natGateway"] = true
+				expectedNatGatewayValues["zone"] = int32(1)
+				values, err := ComputeTerraformerChartValues(infra, clientAuth, config, cluster)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values).To(BeEquivalentTo(expectedValues))
+			})
+
+			It("should correctly compute terraform chart values with zonal public ip addresses", func() {
+				var (
+					ipName          = "public-ip-1-name"
+					ipResourceGroup = "public-ip-1-resource-group"
+				)
+
+				config.Networks.NatGateway = &api.NatGatewayConfig{
+					Enabled: true,
+					Zone:    pointer.Int32Ptr(1),
+					IPAddresses: []api.PublicIPReference{{
+						Name:          ipName,
+						ResourceGroup: ipResourceGroup,
+						Zone:          int32(1),
+					}},
+				}
+				expectedCreateValues["natGateway"] = true
+				expectedNatGatewayValues["zone"] = int32(1)
+				expectedNatGatewayValues["ipAddresses"] = []map[string]interface{}{{
+					"name":          ipName,
+					"resourceGroup": ipResourceGroup,
+				}}
+
+				values, err := ComputeTerraformerChartValues(infra, clientAuth, config, cluster)
+				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(BeEquivalentTo(expectedValues))
 			})
 
