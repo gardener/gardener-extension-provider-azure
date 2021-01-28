@@ -6,7 +6,7 @@ metadata:
   labels:
     app: remedy-controller-azure
 spec:
-  revisionHistoryLimit: 0
+  revisionHistoryLimit: 1
   replicas: {{ .Values.replicas }}
   selector:
     matchLabels:
