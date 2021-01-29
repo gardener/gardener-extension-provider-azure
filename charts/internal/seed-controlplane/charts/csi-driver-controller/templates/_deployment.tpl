@@ -10,7 +10,7 @@ metadata:
     role: controller-{{ .role }}
 spec:
   replicas: {{ .Values.replicas }}
-  revisionHistoryLimit: 0
+  revisionHistoryLimit: 1
   selector:
     matchLabels:
       app: csi
