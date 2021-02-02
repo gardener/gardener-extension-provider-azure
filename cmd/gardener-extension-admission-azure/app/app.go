@@ -18,38 +18,42 @@ import (
 	"context"
 	"fmt"
 
+	admissioncmd "github.com/gardener/gardener-extension-provider-azure/pkg/admission/cmd"
 	azureinstall "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/install"
 	providerazure "github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/validator"
 
 	controllercmd "github.com/gardener/gardener/extensions/pkg/controller/cmd"
+	webhookcmd "github.com/gardener/gardener/extensions/pkg/webhook/cmd"
 	"github.com/gardener/gardener/pkg/apis/core/install"
 	"github.com/spf13/cobra"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
-var log = logf.Log.WithName("gardener-extension-validator-azure")
+var log = logf.Log.WithName("gardener-extension-admission-azure")
 
-// NewValidatorCommand creates a new command for running an Azure validator.
-func NewValidatorCommand(ctx context.Context) *cobra.Command {
+// NewAdmissionCommand creates a new command for running an Azure validator.
+func NewAdmissionCommand(ctx context.Context) *cobra.Command {
 	var (
 		restOpts = &controllercmd.RESTOptions{}
 		mgrOpts  = &controllercmd.ManagerOptions{
 			WebhookServerPort: 443,
 		}
 
+		webhookSwitches = admissioncmd.GardenWebhookSwitchOptions()
+		webhookOptions  = webhookcmd.NewAddToManagerSimpleOptions(webhookSwitches)
+
 		aggOption = controllercmd.NewOptionAggregator(
 			restOpts,
 			mgrOpts,
+			webhookOptions,
 		)
 	)
 
 	cmd := &cobra.Command{
-		Use: fmt.Sprintf("validator-%s", providerazure.Type),
+		Use: fmt.Sprintf("admission-%s", providerazure.Type),
 
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := aggOption.Complete(); err != nil {
 				controllercmd.LogErrAndExit(err, "error completing options")
 			}
@@ -66,14 +70,11 @@ func NewValidatorCommand(ctx context.Context) *cobra.Command {
 			}
 
 			log.Info("Setting up webhook server")
-			hookServer := mgr.GetWebhookServer()
-
-			log.Info("Registering webhooks")
-			hookServer.Register("/webhooks/validate", &webhook.Admission{Handler: &validator.Shoot{Logger: log.WithName("shoot-validator")}})
-
-			if err := mgr.Start(ctx); err != nil {
-				controllercmd.LogErrAndExit(err, "error running manager")
+			if err := webhookOptions.Completed().AddToManager(mgr); err != nil {
+				return err
 			}
+
+			return mgr.Start(ctx)
 		},
 	}
 

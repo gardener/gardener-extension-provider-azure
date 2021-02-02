@@ -15,7 +15,7 @@
 package main
 
 import (
-	"github.com/gardener/gardener-extension-provider-azure/cmd/gardener-extension-validator-azure/app"
+	"github.com/gardener/gardener-extension-provider-azure/cmd/gardener-extension-admission-azure/app"
 
 	controllercmd "github.com/gardener/gardener/extensions/pkg/controller/cmd"
 	"github.com/gardener/gardener/extensions/pkg/log"
@@ -25,7 +25,7 @@ import (
 
 func main() {
 	runtimelog.SetLogger(log.ZapLogger(false))
-	cmd := app.NewValidatorCommand(signals.SetupSignalHandler())
+	cmd := app.NewAdmissionCommand(signals.SetupSignalHandler())
 
 	if err := cmd.Execute(); err != nil {
 		controllercmd.LogErrAndExit(err, "error executing the main command")

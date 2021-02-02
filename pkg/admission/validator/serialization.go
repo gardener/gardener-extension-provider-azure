@@ -51,3 +51,11 @@ func checkAndDecodeInfrastructureConfig(decoder runtime.Decoder, config *runtime
 	}
 	return infraConfig, nil
 }
+
+func decodeCloudProfileConfig(decoder runtime.Decoder, config *runtime.RawExtension) (*azure.CloudProfileConfig, error) {
+	cloudProfileConfig := &azure.CloudProfileConfig{}
+	if err := util.Decode(decoder, config.Raw, cloudProfileConfig); err != nil {
+		return nil, err
+	}
+	return cloudProfileConfig, nil
+}
