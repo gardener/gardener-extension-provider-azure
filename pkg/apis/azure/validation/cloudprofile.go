@@ -24,13 +24,13 @@ import (
 )
 
 // ValidateCloudProfileConfig validates a CloudProfileConfig object.
-func ValidateCloudProfileConfig(cloudProfile *apisazure.CloudProfileConfig) field.ErrorList {
+func ValidateCloudProfileConfig(cloudProfile *apisazure.CloudProfileConfig, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	allErrs = append(allErrs, validateDomainCount(cloudProfile.CountFaultDomains, field.NewPath("countFaultDomains"))...)
-	allErrs = append(allErrs, validateDomainCount(cloudProfile.CountUpdateDomains, field.NewPath("countUpdateDomains"))...)
+	allErrs = append(allErrs, validateDomainCount(cloudProfile.CountFaultDomains, fldPath.Child("countFaultDomains"))...)
+	allErrs = append(allErrs, validateDomainCount(cloudProfile.CountUpdateDomains, fldPath.Child("countUpdateDomains"))...)
 
-	machineImagesPath := field.NewPath("machineImages")
+	machineImagesPath := fldPath.Child("machineImages")
 	if len(cloudProfile.MachineImages) == 0 {
 		allErrs = append(allErrs, field.Required(machineImagesPath, "must provide at least one machine image"))
 	}

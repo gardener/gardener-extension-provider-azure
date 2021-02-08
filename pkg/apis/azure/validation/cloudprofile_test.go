@@ -34,7 +34,10 @@ var (
 
 var _ = Describe("CloudProfileConfig validation", func() {
 	Describe("#ValidateCloudProfileConfig", func() {
-		var cloudProfileConfig *apisazure.CloudProfileConfig
+		var (
+			cloudProfileConfig *apisazure.CloudProfileConfig
+			root               = field.NewPath("root")
+		)
 
 		BeforeEach(func() {
 			cloudProfileConfig = &apisazure.CloudProfileConfig{
@@ -68,25 +71,25 @@ var _ = Describe("CloudProfileConfig validation", func() {
 			It("should enforce that at least one machine image has been defined", func() {
 				cloudProfileConfig.MachineImages = []apisazure.MachineImages{}
 
-				errorList := ValidateCloudProfileConfig(cloudProfileConfig)
+				errorList := ValidateCloudProfileConfig(cloudProfileConfig, root)
 
 				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
-					"Field": Equal("machineImages"),
+					"Field": Equal("root.machineImages"),
 				}))))
 			})
 
 			It("should forbid unsupported machine image values", func() {
 				cloudProfileConfig.MachineImages = []apisazure.MachineImages{{}}
 
-				errorList := ValidateCloudProfileConfig(cloudProfileConfig)
+				errorList := ValidateCloudProfileConfig(cloudProfileConfig, root)
 
 				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
-					"Field": Equal("machineImages[0].name"),
+					"Field": Equal("root.machineImages[0].name"),
 				})), PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
-					"Field": Equal("machineImages[0].versions"),
+					"Field": Equal("root.machineImages[0].versions"),
 				}))))
 			})
 
@@ -104,16 +107,16 @@ var _ = Describe("CloudProfileConfig validation", func() {
 						},
 					}
 
-					errorList := ValidateCloudProfileConfig(cloudProfileConfig)
+					errorList := ValidateCloudProfileConfig(cloudProfileConfig, root)
 
 					Expect(errorList).To(matcher)
 				},
 				Entry("correct urn", "foo:bar:baz:ban", BeEmpty()),
-				Entry("empty urn", "", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeRequired), "Field": Equal("machineImages[0].versions[0].urn")})))),
-				Entry("only one part", "foo", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeInvalid), "Field": Equal("machineImages[0].versions[0].urn")})))),
-				Entry("only two parts", "foo:bar", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeInvalid), "Field": Equal("machineImages[0].versions[0].urn")})))),
-				Entry("only three parts", "foo:bar:baz", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeInvalid), "Field": Equal("machineImages[0].versions[0].urn")})))),
-				Entry("more than four parts", "foo:bar:baz:ban:bam", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeInvalid), "Field": Equal("machineImages[0].versions[0].urn")})))),
+				Entry("empty urn", "", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeRequired), "Field": Equal("root.machineImages[0].versions[0].urn")})))),
+				Entry("only one part", "foo", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeInvalid), "Field": Equal("root.machineImages[0].versions[0].urn")})))),
+				Entry("only two parts", "foo:bar", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeInvalid), "Field": Equal("root.machineImages[0].versions[0].urn")})))),
+				Entry("only three parts", "foo:bar:baz", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeInvalid), "Field": Equal("root.machineImages[0].versions[0].urn")})))),
+				Entry("more than four parts", "foo:bar:baz:ban:bam", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeInvalid), "Field": Equal("root.machineImages[0].versions[0].urn")})))),
 			)
 
 			DescribeTable("forbid unsupported machine image ID",
@@ -130,12 +133,12 @@ var _ = Describe("CloudProfileConfig validation", func() {
 						},
 					}
 
-					errorList := ValidateCloudProfileConfig(cloudProfileConfig)
+					errorList := ValidateCloudProfileConfig(cloudProfileConfig, root)
 
 					Expect(errorList).To(matcher)
 				},
 				Entry("correct id", "/non/empty/id", BeEmpty()),
-				Entry("empty id", "", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeRequired), "Field": Equal("machineImages[0].versions[0].id")})))),
+				Entry("empty id", "", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeRequired), "Field": Equal("root.machineImages[0].versions[0].id")})))),
 			)
 
 			DescribeTable("forbid invalid image reference coniguration",
@@ -153,7 +156,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 						},
 					}
 
-					errorList := ValidateCloudProfileConfig(cloudProfileConfig)
+					errorList := ValidateCloudProfileConfig(cloudProfileConfig, root)
 
 					Expect(errorList).To(matcher)
 				},
@@ -161,19 +164,19 @@ var _ = Describe("CloudProfileConfig validation", func() {
 				Entry("only valid ID", nil, &id, BeEmpty()),
 				Entry("urn and id are nil", nil, nil, ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
-					"Field": Equal("machineImages[0].versions[0]")})))),
+					"Field": Equal("root.machineImages[0].versions[0]")})))),
 				Entry("urn and id are non-empty", &urn, &id, ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
-					"Field": Equal("machineImages[0].versions[0]")})))),
+					"Field": Equal("root.machineImages[0].versions[0]")})))),
 				Entry("urn and id are empty", pointer.StringPtr(""), pointer.StringPtr(""), ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
-					"Field": Equal("machineImages[0].versions[0]"),
+					"Field": Equal("root.machineImages[0].versions[0]"),
 				})), PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
-					"Field": Equal("machineImages[0].versions[0].id"),
+					"Field": Equal("root.machineImages[0].versions[0].id"),
 				})), PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
-					"Field": Equal("machineImages[0].versions[0].urn"),
+					"Field": Equal("root.machineImages[0].versions[0].urn"),
 				})))))
 
 			It("should forbid unsupported machine image version configuration", func() {
@@ -184,14 +187,14 @@ var _ = Describe("CloudProfileConfig validation", func() {
 					},
 				}
 
-				errorList := ValidateCloudProfileConfig(cloudProfileConfig)
+				errorList := ValidateCloudProfileConfig(cloudProfileConfig, root)
 
 				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
-					"Field": Equal("machineImages[0].versions[0].version"),
+					"Field": Equal("root.machineImages[0].versions[0].version"),
 				})), PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
-					"Field": Equal("machineImages[0].versions[0]"),
+					"Field": Equal("root.machineImages[0].versions[0]"),
 				}))))
 			})
 		})
@@ -200,11 +203,11 @@ var _ = Describe("CloudProfileConfig validation", func() {
 			It("should enforce that at least one fault domain count has been defined", func() {
 				cloudProfileConfig.CountFaultDomains = []apisazure.DomainCount{}
 
-				errorList := ValidateCloudProfileConfig(cloudProfileConfig)
+				errorList := ValidateCloudProfileConfig(cloudProfileConfig, root)
 
 				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
-					"Field": Equal("countFaultDomains"),
+					"Field": Equal("root.countFaultDomains"),
 				}))))
 			})
 
@@ -216,14 +219,14 @@ var _ = Describe("CloudProfileConfig validation", func() {
 					},
 				}
 
-				errorList := ValidateCloudProfileConfig(cloudProfileConfig)
+				errorList := ValidateCloudProfileConfig(cloudProfileConfig, root)
 
 				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
-					"Field": Equal("countFaultDomains[0].region"),
+					"Field": Equal("root.countFaultDomains[0].region"),
 				})), PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeInvalid),
-					"Field": Equal("countFaultDomains[0].count"),
+					"Field": Equal("root.countFaultDomains[0].count"),
 				}))))
 			})
 		})
@@ -232,11 +235,11 @@ var _ = Describe("CloudProfileConfig validation", func() {
 			It("should enforce that at least one update domain count has been defined", func() {
 				cloudProfileConfig.CountUpdateDomains = []apisazure.DomainCount{}
 
-				errorList := ValidateCloudProfileConfig(cloudProfileConfig)
+				errorList := ValidateCloudProfileConfig(cloudProfileConfig, root)
 
 				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
-					"Field": Equal("countUpdateDomains"),
+					"Field": Equal("root.countUpdateDomains"),
 				}))))
 			})
 
@@ -248,14 +251,14 @@ var _ = Describe("CloudProfileConfig validation", func() {
 					},
 				}
 
-				errorList := ValidateCloudProfileConfig(cloudProfileConfig)
+				errorList := ValidateCloudProfileConfig(cloudProfileConfig, root)
 
 				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
-					"Field": Equal("countUpdateDomains[0].region"),
+					"Field": Equal("root.countUpdateDomains[0].region"),
 				})), PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeInvalid),
-					"Field": Equal("countUpdateDomains[0].count"),
+					"Field": Equal("root.countUpdateDomains[0].count"),
 				}))))
 			})
 		})

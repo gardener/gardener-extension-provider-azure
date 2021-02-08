@@ -12,11 +12,11 @@ gardener-extension-provider-azure:
             image: 'eu.gcr.io/gardener-project/gardener/extensions/provider-azure'
             dockerfile: 'Dockerfile'
             target: gardener-extension-provider-azure
-          gardener-extension-validator-azure:
+          gardener-extension-admission-azure:
             registry: 'gcr-readwrite'
-            image: 'eu.gcr.io/gardener-project/gardener/extensions/validator-azure'
+            image: 'eu.gcr.io/gardener-project/gardener/extensions/admission-azure'
             dockerfile: 'Dockerfile'
-            target: gardener-extension-validator-azure
+            target: gardener-extension-admission-azure
   jobs:
     head-update:
       traits:
@@ -56,5 +56,5 @@ gardener-extension-provider-azure:
           dockerimages:
             gardener-extension-provider-azure:
               tag_as_latest: true
-            gardener-extension-validator-azure:
+            gardener-extension-admission-azure:
               tag_as_latest: true

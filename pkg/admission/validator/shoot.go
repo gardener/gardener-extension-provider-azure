@@ -15,15 +15,21 @@
 package validator
 
 import (
-	"errors"
+	"context"
+	"fmt"
 	"reflect"
+
+	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
+	"github.com/gardener/gardener/pkg/apis/core"
+	"github.com/go-logr/logr"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/apimachinery/pkg/util/validation/field"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azurevalidation "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/validation"
-
-	"github.com/gardener/gardener/pkg/apis/core"
-	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
 var (
@@ -36,11 +42,55 @@ var (
 	workersPath     = providerPath.Child("workers")
 )
 
-func (v *Shoot) validateShoot(shoot *core.Shoot, infraConfig *azure.InfrastructureConfig) field.ErrorList {
+// shoot validates shoots
+type shoot struct {
+	decoder runtime.Decoder
+	Logger  logr.Logger
+}
+
+// NewShootValidator returns a new instance of a shoot validator.
+func NewShootValidator() extensionswebhook.Validator {
+	return &shoot{}
+}
+
+// InjectScheme injects the given scheme into the validator.
+func (s *shoot) InjectScheme(scheme *runtime.Scheme) error {
+	s.decoder = serializer.NewCodecFactory(scheme).UniversalDecoder()
+	return nil
+}
+
+// Validate validates the given shoot object
+func (s *shoot) Validate(ctx context.Context, new, old client.Object) error {
+	shoot, ok := new.(*core.Shoot)
+	if !ok {
+		return fmt.Errorf("wrong object type %T", new)
+	}
+
+	if old != nil {
+		oldShoot, ok := old.(*core.Shoot)
+		if !ok {
+			return fmt.Errorf("wrong object type %T for old object", old)
+		}
+		return s.validateUpdate(oldShoot, shoot)
+	}
+
+	return s.validateCreation(shoot)
+}
+
+func (s *shoot) validateCreation(shoot *core.Shoot) error {
+	infraConfig, err := checkAndDecodeInfrastructureConfig(s.decoder, shoot.Spec.Provider.InfrastructureConfig, infraConfigPath)
+	if err != nil {
+		return err
+	}
+
+	return s.validateShoot(shoot, infraConfig).ToAggregate()
+}
+
+func (s *shoot) validateShoot(shoot *core.Shoot, infraConfig *azure.InfrastructureConfig) field.ErrorList {
 	allErrs := field.ErrorList{}
 	// ControlPlaneConfig
 	if shoot.Spec.Provider.ControlPlaneConfig != nil {
-		if _, err := decodeControlPlaneConfig(v.decoder, shoot.Spec.Provider.ControlPlaneConfig); err != nil {
+		if _, err := decodeControlPlaneConfig(s.decoder, shoot.Spec.Provider.ControlPlaneConfig); err != nil {
 			allErrs = append(allErrs, field.Forbidden(cpConfigPath, "not allowed to configure an unsupported controlPlaneConfig"))
 		}
 	}
@@ -57,22 +107,21 @@ func (v *Shoot) validateShoot(shoot *core.Shoot, infraConfig *azure.Infrastructu
 	return allErrs
 }
 
-func (v *Shoot) validateShootUpdate(oldShoot, shoot *core.Shoot) error {
-
+func (s *shoot) validateUpdate(oldShoot, shoot *core.Shoot) error {
 	// Decode the new infrastructure config.
 	if shoot.Spec.Provider.InfrastructureConfig == nil {
 		return field.Required(infraConfigPath, "InfrastructureConfig must be set for Azure shoots")
 	}
-	infraConfig, err := checkAndDecodeInfrastructureConfig(v.decoder, shoot.Spec.Provider.InfrastructureConfig, infraConfigPath)
+	infraConfig, err := checkAndDecodeInfrastructureConfig(s.decoder, shoot.Spec.Provider.InfrastructureConfig, infraConfigPath)
 	if err != nil {
 		return err
 	}
 
 	// Decode the old infrastructure config.
 	if oldShoot.Spec.Provider.InfrastructureConfig == nil {
-		return field.InternalError(infraConfigPath, errors.New("InfrastructureConfig is not available on old shoot"))
+		return field.InternalError(infraConfigPath, fmt.Errorf("InfrastructureConfig is not available on old shoot"))
 	}
-	oldInfraConfig, err := checkAndDecodeInfrastructureConfig(v.decoder, oldShoot.Spec.Provider.InfrastructureConfig, infraConfigPath)
+	oldInfraConfig, err := checkAndDecodeInfrastructureConfig(s.decoder, oldShoot.Spec.Provider.InfrastructureConfig, infraConfigPath)
 	if err != nil {
 		return err
 	}
@@ -85,16 +134,7 @@ func (v *Shoot) validateShootUpdate(oldShoot, shoot *core.Shoot) error {
 	allErrs = append(allErrs, azurevalidation.ValidateVmoConfigUpdate(helper.HasShootVmoAlphaAnnotation(oldShoot.Annotations), helper.HasShootVmoAlphaAnnotation(shoot.Annotations), metaDataPath)...)
 	allErrs = append(allErrs, azurevalidation.ValidateWorkersUpdate(oldShoot.Spec.Provider.Workers, shoot.Spec.Provider.Workers, workersPath)...)
 
-	allErrs = append(allErrs, v.validateShoot(shoot, infraConfig)...)
+	allErrs = append(allErrs, s.validateShoot(shoot, infraConfig)...)
 
 	return allErrs.ToAggregate()
-}
-
-func (v *Shoot) validateShootCreation(shoot *core.Shoot) error {
-	infraConfig, err := checkAndDecodeInfrastructureConfig(v.decoder, shoot.Spec.Provider.InfrastructureConfig, infraConfigPath)
-	if err != nil {
-		return err
-	}
-
-	return v.validateShoot(shoot, infraConfig).ToAggregate()
 }

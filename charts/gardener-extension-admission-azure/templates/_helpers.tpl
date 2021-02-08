@@ -1,5 +1,5 @@
 {{- define "name" -}}
-gardener-extension-validator-azure
+gardener-extension-admission-azure
 {{- end -}}
 
 {{- define "labels.app.key" -}}
