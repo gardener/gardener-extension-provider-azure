@@ -12,7 +12,7 @@ require (
 	github.com/coreos/go-systemd/v22 v22.1.0
 	github.com/frankban/quicktest v1.9.0 // indirect
 	github.com/gardener/etcd-druid v0.3.0
-	github.com/gardener/gardener v1.16.0
+	github.com/gardener/gardener v1.16.2
 	github.com/gardener/gardener-extension-networking-calico v1.7.1-0.20200522070525-f9aa28d3c83a
 	github.com/gardener/machine-controller-manager v0.36.0
 	github.com/gardener/remedy-controller v0.6.0
