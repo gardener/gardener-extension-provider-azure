@@ -32,9 +32,10 @@ import (
 
 var (
 	mcmChart = &chart.Chart{
-		Name:   azure.MachineControllerManagerName,
-		Path:   filepath.Join(azure.InternalChartsPath, azure.MachineControllerManagerName, "seed"),
-		Images: []string{azure.MachineControllerManagerImageName},
+		Name: azure.MachineControllerManagerName,
+		Path: filepath.Join(azure.InternalChartsPath, azure.MachineControllerManagerName, "seed"),
+		Images: []string{azure.MachineControllerManagerImageName,
+			azure.MachineControllerManagerProviderAzureImageName},
 		Objects: []*chart.Object{
 			{Type: &appsv1.Deployment{}, Name: azure.MachineControllerManagerName},
 			{Type: &corev1.Service{}, Name: azure.MachineControllerManagerName},
