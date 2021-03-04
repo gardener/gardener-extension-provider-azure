@@ -29,6 +29,7 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/webhook/controlplane/genericmutator"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	oscutils "github.com/gardener/gardener/pkg/operation/botanist/extensions/operatingsystemconfig/utils"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	versionutils "github.com/gardener/gardener/pkg/utils/version"
 	"github.com/go-logr/logr"
@@ -476,7 +477,7 @@ func (e *ensurer) ensureAcrConfigFile(ctx context.Context, gctx gcontext.GardenC
 	}
 
 	// Write the content of the file.
-	fciCodec := controlplane.NewFileContentInlineCodec()
+	fciCodec := oscutils.NewFileContentInlineCodec()
 	fci, err := fciCodec.Encode([]byte(cm.Data[azure.CloudProviderAcrConfigMapKey]), string(cloudinit.B64FileCodecID))
 	if err != nil {
 		return errors.Wrap(err, "could not encode acr cloud provider config")
