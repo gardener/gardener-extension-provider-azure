@@ -20,13 +20,13 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
+
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
-	"github.com/go-logr/logr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Reconcile implements infrastructure.Actuator.
@@ -41,12 +41,7 @@ func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, infra *ext
 		return err
 	}
 
-	clientAuth, err := infrastructure.GetClientAuthFromInfrastructure(ctx, a.Client(), infra)
-	if err != nil {
-		return err
-	}
-
-	terraformFiles, err := infrastructure.RenderTerraformerChart(a.ChartRenderer(), infra, clientAuth, config, cluster)
+	terraformFiles, err := infrastructure.RenderTerraformerChart(a.ChartRenderer(), infra, config, cluster)
 	if err != nil {
 		return err
 	}

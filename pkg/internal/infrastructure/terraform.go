@@ -21,13 +21,13 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/gardener/gardener/extensions/pkg/controller"
+	"github.com/gardener/gardener/extensions/pkg/terraformer"
+
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
-	"github.com/gardener/gardener/extensions/pkg/controller"
-	"github.com/gardener/gardener/extensions/pkg/terraformer"
 
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/chartrenderer"
@@ -72,9 +72,16 @@ var StatusTypeMeta = metav1.TypeMeta{
 }
 
 // RenderTerraformerChart renders the azure-infra chart with the given values.
-func RenderTerraformerChart(renderer chartrenderer.Interface, infra *extensionsv1alpha1.Infrastructure, clientAuth *internal.ClientAuth,
-	config *api.InfrastructureConfig, cluster *controller.Cluster) (*TerraformFiles, error) {
-	values, err := ComputeTerraformerChartValues(infra, clientAuth, config, cluster)
+func RenderTerraformerChart(
+	renderer chartrenderer.Interface,
+	infra *extensionsv1alpha1.Infrastructure,
+	config *api.InfrastructureConfig,
+	cluster *controller.Cluster,
+) (
+	*TerraformFiles,
+	error,
+) {
+	values, err := ComputeTerraformerChartValues(infra, config, cluster)
 	if err != nil {
 		return nil, err
 	}
@@ -92,8 +99,14 @@ func RenderTerraformerChart(renderer chartrenderer.Interface, infra *extensionsv
 }
 
 // ComputeTerraformerChartValues computes the values for the Azure Terraformer chart.
-func ComputeTerraformerChartValues(infra *extensionsv1alpha1.Infrastructure, clientAuth *internal.ClientAuth,
-	config *api.InfrastructureConfig, cluster *controller.Cluster) (map[string]interface{}, error) {
+func ComputeTerraformerChartValues(
+	infra *extensionsv1alpha1.Infrastructure,
+	config *api.InfrastructureConfig,
+	cluster *controller.Cluster,
+) (
+	map[string]interface{},
+	error,
+) {
 	var (
 		createResourceGroup   = true
 		createVNet            = true
@@ -102,9 +115,7 @@ func ComputeTerraformerChartValues(infra *extensionsv1alpha1.Infrastructure, cli
 
 		identityConfig map[string]interface{}
 		azureConfig    = map[string]interface{}{
-			"subscriptionID": clientAuth.SubscriptionID,
-			"tenantID":       clientAuth.TenantID,
-			"region":         infra.Spec.Region,
+			"region": infra.Spec.Region,
 		}
 		vnetConfig = map[string]interface{}{
 			"name": infra.Namespace,

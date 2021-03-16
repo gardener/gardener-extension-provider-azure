@@ -26,6 +26,24 @@ var _ = Describe("Terraform", func() {
 			secretRef := corev1.SecretReference{Name: "cloud"}
 			Expect(TerraformerEnvVars(secretRef)).To(ConsistOf(
 				corev1.EnvVar{
+					Name: "TF_VAR_SUBSCRIPTION_ID",
+					ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: secretRef.Name,
+						},
+						Key: "subscriptionID",
+					}},
+				},
+				corev1.EnvVar{
+					Name: "TF_VAR_TENANT_ID",
+					ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: secretRef.Name,
+						},
+						Key: "tenantID",
+					}},
+				},
+				corev1.EnvVar{
 					Name: "TF_VAR_CLIENT_ID",
 					ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{

@@ -1,6 +1,6 @@
 provider "azurerm" {
-  subscription_id = "{{ required "azure.subscriptionID is required" .Values.azure.subscriptionID }}"
-  tenant_id       = "{{ required "azure.tenantID is required" .Values.azure.tenantID }}"
+  subscription_id = var.SUBSCRIPTION_ID
+  tenant_id       = var.TENANT_ID
   client_id       = var.CLIENT_ID
   client_secret   = var.CLIENT_SECRET
 
