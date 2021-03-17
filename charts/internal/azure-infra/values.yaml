@@ -1,6 +1,4 @@
 azure:
-  subscriptionID: 81dde535-61b4-442a-96e6-6e30c6e55039
-  tenantID: e9ec4533-d130-4d00-a7c3-d85f1c750c5a
   region: westeurope
   countUpdateDomains: 5
   countFaultDomains: 2

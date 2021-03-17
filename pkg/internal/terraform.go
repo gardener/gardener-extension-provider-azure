@@ -29,6 +29,10 @@ import (
 )
 
 const (
+	// TerraformVarSubscriptionID is the name of the terraform subscription id environment variable.
+	TerraformVarSubscriptionID = "TF_VAR_SUBSCRIPTION_ID"
+	// TerraformVarTenantID is the name of the terraform tenant id environment variable.
+	TerraformVarTenantID = "TF_VAR_TENANT_ID"
 	// TerraformVarClientID is the name of the terraform client id environment variable.
 	TerraformVarClientID = "TF_VAR_CLIENT_ID"
 	// TerraformVarClientSecret is the name of the client secret environment variable.
@@ -38,6 +42,22 @@ const (
 // TerraformerEnvVars computes the Terraformer environment variables from the given secret reference.
 func TerraformerEnvVars(secretRef corev1.SecretReference) []corev1.EnvVar {
 	return []corev1.EnvVar{{
+		Name: TerraformVarSubscriptionID,
+		ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+			LocalObjectReference: corev1.LocalObjectReference{
+				Name: secretRef.Name,
+			},
+			Key: azure.SubscriptionIDKey,
+		}},
+	}, {
+		Name: TerraformVarTenantID,
+		ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+			LocalObjectReference: corev1.LocalObjectReference{
+				Name: secretRef.Name,
+			},
+			Key: azure.TenantIDKey,
+		}},
+	}, {
 		Name: TerraformVarClientID,
 		ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
 			LocalObjectReference: corev1.LocalObjectReference{
