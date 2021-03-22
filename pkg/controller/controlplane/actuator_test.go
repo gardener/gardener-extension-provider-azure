@@ -22,10 +22,10 @@ import (
 	azurev1alpha1 "github.com/gardener/remedy-controller/pkg/apis/azure/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	mockcontrolplane "github.com/gardener/gardener/extensions/pkg/controller/controlplane/mock"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
-	mockcontrolplane "github.com/gardener/gardener/pkg/mock/gardener/extensions/controller/controlplane"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

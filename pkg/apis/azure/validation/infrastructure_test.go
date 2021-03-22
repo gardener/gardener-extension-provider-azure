@@ -214,7 +214,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
 					"Field":  Equal("networks.workers"),
-					"Detail": Equal(`must be a subset of "" ("10.250.0.0/16")`),
+					"Detail": Equal(`must be a subset of "<nil>" ("10.250.0.0/16")`),
 				}, Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
 					"Field":  Equal("networks.workers"),
@@ -229,7 +229,6 @@ var _ = Describe("InfrastructureConfig validation", func() {
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
-					"Field":  Equal(""),
 					"Detail": Equal(`must not be a subset of "networks.vnet.cidr" ("10.0.0.0/8")`),
 				}))
 			})
@@ -241,7 +240,6 @@ var _ = Describe("InfrastructureConfig validation", func() {
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
-					"Field":  Equal(""),
 					"Detail": Equal(`must not be a subset of "networks.vnet.cidr" ("10.0.0.0/8")`),
 				}))
 			})
