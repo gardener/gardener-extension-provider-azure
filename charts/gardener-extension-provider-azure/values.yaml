@@ -12,8 +12,8 @@ vpa:
   enabled: true
   resourcePolicy:
     minAllowed:
-      cpu: 10m
-      memory: 120Mi
+      cpu: 50m
+      memory: 64Mi
   updatePolicy:
     updateMode: "Auto"
 
