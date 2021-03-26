@@ -565,6 +565,23 @@ var _ = Describe("ValuesProvider", func() {
 		})
 	})
 
+	Describe("#GetControlPlaneShootCRDsChartValues", func() {
+		It("should return correct control plane shoot CRDs chart values (k8s < 1.21)", func() {
+			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+			values, err := vp.GetControlPlaneShootCRDsChartValues(ctx, cp, cluster)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(map[string]interface{}{"volumesnapshots": map[string]interface{}{"enabled": false}}))
+		})
+
+		It("should return correct control plane shoot CRDs chart values (k8s >= 1.21)", func() {
+			cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil)
+			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+			values, err := vp.GetControlPlaneShootCRDsChartValues(ctx, cp, cluster)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(map[string]interface{}{"volumesnapshots": map[string]interface{}{"enabled": true}}))
+		})
+	})
+
 	Describe("#GetStorageClassesChartValues()", func() {
 		It("should return correct storage class chart values (k8s < 1.21)", func() {
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
