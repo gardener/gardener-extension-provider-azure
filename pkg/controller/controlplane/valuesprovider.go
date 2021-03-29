@@ -405,11 +405,6 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 	}
 	checksums[azure.CloudProviderConfigName] = utils.ComputeChecksum(cpConfigSecret.Data)
 
-	// TODO: Remove this code in next version. Delete old config
-	if err := vp.deleteCCMMonitoringConfig(ctx, cp.Namespace); err != nil {
-		return nil, err
-	}
-
 	return getControlPlaneChartValues(cpConfig, cp, cluster, checksums, scaledDown)
 }
 
