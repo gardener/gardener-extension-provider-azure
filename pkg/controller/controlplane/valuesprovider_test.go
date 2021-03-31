@@ -123,14 +123,6 @@ var _ = Describe("ValuesProvider", func() {
 			ID:      "/my/azure/id",
 		}
 
-		// TODO remove cpMap in next version
-		ccmMonitoringConfigmap = &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: namespace,
-				Name:      "cloud-controller-manager-monitoring-config",
-			},
-		}
-
 		checksums = map[string]string{
 			v1beta1constants.SecretNameCloudProvider:     "8bafb35ff1ac60275d62e1cbd495aceb511fb354f74a20f7d06ecb48b3a68432",
 			azure.CloudProviderDiskConfigName:            "77627eb2343b9f2dc2fca3cce35f2f9eec55783aa5f7dac21c473019e5825de2",
@@ -355,7 +347,6 @@ var _ = Describe("ValuesProvider", func() {
 
 		BeforeEach(func() {
 			c.EXPECT().Get(ctx, controlPlaneConfigSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(controlPlaneConfigSecret))
-			c.EXPECT().Delete(context.TODO(), ccmMonitoringConfigmap).DoAndReturn(clientDeleteSuccess())
 		})
 
 		It("should return correct control plane chart values (k8s < 1.21)", func() {
@@ -661,11 +652,5 @@ func generateCluster(cidr, k8sVersion string, vpaEnabled bool, shootAnnotations 
 
 	return &extensionscontroller.Cluster{
 		Shoot: &shoot,
-	}
-}
-
-func clientDeleteSuccess() interface{} {
-	return func(ctx context.Context, cm runtime.Object) error {
-		return nil
 	}
 }
