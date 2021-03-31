@@ -48,7 +48,7 @@ func wrapNewWorkerDelegate(client *mockclient.MockClient, seedChartApplier *mock
 	_ = apiazure.AddToScheme(scheme)
 	_ = v1alpha1.AddToScheme(scheme)
 
-	workerDelegate, err := NewWorkerDelegate(common.NewClientContext(client, scheme, serializer.NewCodecFactory(scheme).UniversalDecoder()), seedChartApplier, "", worker, cluster, factory)
+	workerDelegate, err := NewWorkerDelegate(common.NewClientContext(client, scheme, serializer.NewCodecFactory(scheme, serializer.EnableStrict).UniversalDecoder()), seedChartApplier, "", worker, cluster, factory)
 	Expect(err).NotTo(HaveOccurred())
 	return workerDelegate
 }

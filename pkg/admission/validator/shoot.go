@@ -21,7 +21,6 @@ import (
 
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	"github.com/gardener/gardener/pkg/apis/core"
-	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -44,8 +43,8 @@ var (
 
 // shoot validates shoots
 type shoot struct {
-	decoder runtime.Decoder
-	Logger  logr.Logger
+	decoder        runtime.Decoder
+	lenientDecoder runtime.Decoder
 }
 
 // NewShootValidator returns a new instance of a shoot validator.
@@ -55,7 +54,8 @@ func NewShootValidator() extensionswebhook.Validator {
 
 // InjectScheme injects the given scheme into the validator.
 func (s *shoot) InjectScheme(scheme *runtime.Scheme) error {
-	s.decoder = serializer.NewCodecFactory(scheme).UniversalDecoder()
+	s.decoder = serializer.NewCodecFactory(scheme, serializer.EnableStrict).UniversalDecoder()
+	s.lenientDecoder = serializer.NewCodecFactory(scheme).UniversalDecoder()
 	return nil
 }
 
@@ -121,7 +121,7 @@ func (s *shoot) validateUpdate(oldShoot, shoot *core.Shoot) error {
 	if oldShoot.Spec.Provider.InfrastructureConfig == nil {
 		return field.InternalError(infraConfigPath, fmt.Errorf("InfrastructureConfig is not available on old shoot"))
 	}
-	oldInfraConfig, err := checkAndDecodeInfrastructureConfig(s.decoder, oldShoot.Spec.Provider.InfrastructureConfig, infraConfigPath)
+	oldInfraConfig, err := checkAndDecodeInfrastructureConfig(s.lenientDecoder, oldShoot.Spec.Provider.InfrastructureConfig, infraConfigPath)
 	if err != nil {
 		return err
 	}
