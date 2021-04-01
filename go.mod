@@ -1,6 +1,6 @@
 module github.com/gardener/gardener-extension-provider-azure
 
-go 1.15
+go 1.16
 
 require (
 	github.com/Azure/azure-sdk-for-go v49.2.0+incompatible
@@ -8,11 +8,12 @@ require (
 	github.com/Azure/go-autorest/autorest v0.11.1
 	github.com/Azure/go-autorest/autorest/adal v0.9.5
 	github.com/Azure/go-autorest/autorest/azure/auth v0.4.2
+	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/ahmetb/gen-crd-api-reference-docs v0.2.0
 	github.com/coreos/go-systemd/v22 v22.1.0
 	github.com/frankban/quicktest v1.9.0 // indirect
 	github.com/gardener/etcd-druid v0.3.0
-	github.com/gardener/gardener v1.19.2
+	github.com/gardener/gardener v1.20.0
 	github.com/gardener/gardener-extension-networking-calico v1.7.1-0.20200522070525-f9aa28d3c83a
 	github.com/gardener/machine-controller-manager v0.36.0
 	github.com/gardener/remedy-controller v0.6.0
@@ -20,8 +21,9 @@ require (
 	github.com/gobuffalo/packr/v2 v2.8.1
 	github.com/golang/mock v1.5.0
 	github.com/golang/snappy v0.0.2 // indirect
+	github.com/mitchellh/copystructure v1.1.1 // indirect
 	github.com/nwaples/rardecode v1.1.0 // indirect
-	github.com/onsi/ginkgo v1.14.1
+	github.com/onsi/ginkgo v1.14.2
 	github.com/onsi/gomega v1.10.5
 	github.com/pierrec/lz4 v2.5.1+incompatible // indirect
 	github.com/pkg/errors v0.9.1
