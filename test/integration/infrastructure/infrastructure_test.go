@@ -31,7 +31,7 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	"github.com/gardener/gardener/pkg/operation/common"
+	"github.com/gardener/gardener/pkg/extensions"
 	"github.com/gardener/gardener/pkg/utils"
 	"github.com/gardener/gardener/test/framework"
 	. "github.com/onsi/ginkgo"
@@ -414,7 +414,7 @@ func runTest(
 		Expect(client.IgnoreNotFound(c.Delete(ctx, infra))).To(Succeed())
 
 		By("wait until infrastructure is deleted")
-		err := common.WaitUntilExtensionCRDeleted(
+		err := extensions.WaitUntilExtensionCRDeleted(
 			ctx,
 			c,
 			logger,
@@ -483,7 +483,7 @@ func runTest(
 	}
 
 	By("wait until infrastructure is created")
-	if err := common.WaitUntilExtensionCRReady(
+	if err := extensions.WaitUntilExtensionCRReady(
 		ctx,
 		c,
 		logger,
