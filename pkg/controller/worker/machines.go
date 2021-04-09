@@ -109,10 +109,9 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		return err
 	}
 
-	var vmoRequired = azureapihelper.IsVmoRequired(infrastructureStatus)
 	for _, pool := range w.worker.Spec.Pools {
 		// Get the vmo dependency from the worker status if exists.
-		vmoDependency, err := determineWorkerPoolVmoDependency(workerStatus, pool.Name)
+		vmoDependency, err := w.determineWorkerPoolVmoDependency(ctx, infrastructureStatus, workerStatus, pool.Name)
 		if err != nil {
 			return err
 		}
@@ -229,7 +228,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		}
 
 		// VMO
-		if vmoRequired {
+		if vmoDependency != nil {
 			machineDeployment, machineClassSpec := generateMachineClassAndDeployment(nil, &machineSetInfo{
 				id:   vmoDependency.ID,
 				kind: "vmo",
@@ -240,7 +239,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		}
 
 		// AvailabilitySet
-		if !vmoRequired && !infrastructureStatus.Zoned {
+		if !infrastructureStatus.Zoned && vmoDependency == nil {
 			nodesAvailabilitySet, err := azureapihelper.FindAvailabilitySetByPurpose(infrastructureStatus.AvailabilitySets, azureapi.PurposeNodes)
 			if err != nil {
 				return err
@@ -392,19 +391,4 @@ func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPo
 		return "", err
 	}
 	return workerPoolHash, nil
-}
-
-func determineWorkerPoolVmoDependency(workerStatus *azureapi.WorkerStatus, poolName string) (*azureapi.VmoDependency, error) {
-	var dependency *azureapi.VmoDependency
-	for _, dep := range workerStatus.VmoDependencies {
-		if dep.PoolName != poolName {
-			continue
-		}
-		if dependency != nil {
-			return nil, fmt.Errorf("found more then one vmo dependencies for workerpool %s in the worker provider status", poolName)
-		}
-		runVariableTmp := dep
-		dependency = &runVariableTmp
-	}
-	return dependency, nil
 }
