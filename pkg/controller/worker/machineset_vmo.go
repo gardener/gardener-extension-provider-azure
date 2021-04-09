@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 
 	azureapi "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	azureapihelper "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
@@ -96,11 +97,7 @@ func (w *workerDelegate) reconcileVMO(ctx context.Context, client azureclient.Vm
 		return newVMO, nil
 	}
 
-	return &azureapi.VmoDependency{
-		ID:       *vmo.ID,
-		Name:     *vmo.Name,
-		PoolName: workerPoolName,
-	}, nil
+	return generateVmoDependency(vmo, workerPoolName), nil
 }
 
 func (w *workerDelegate) cleanupVmoDependencies(ctx context.Context, infrastructureStatus *azureapi.InfrastructureStatus, workerProviderStatus *azureapi.WorkerStatus) ([]azureapi.VmoDependency, error) {
@@ -172,6 +169,75 @@ func cleanupOrphanVMODependencies(ctx context.Context, client azureclient.Vmss, 
 	return nil
 }
 
+func (w *workerDelegate) determineWorkerPoolVmoDependency(ctx context.Context, infrastructureStatus *azureapi.InfrastructureStatus, workerStatus *azureapi.WorkerStatus, workerPoolName string) (*azureapi.VmoDependency, error) {
+	if !azureapihelper.IsVmoRequired(infrastructureStatus) {
+		return nil, nil
+	}
+
+	// First: Lookup the vmo dependency for the worker pool in the worker status.
+	var dependencyInStatus *azureapi.VmoDependency
+	for _, dep := range workerStatus.VmoDependencies {
+		if dep.PoolName != workerPoolName {
+			continue
+		}
+		if dependencyInStatus != nil {
+			return nil, fmt.Errorf("found more then one vmo dependencies for workerpool %s in the worker provider status", workerPoolName)
+		}
+		depSnapshot := dep
+		dependencyInStatus = &depSnapshot
+	}
+	if dependencyInStatus != nil {
+		return dependencyInStatus, nil
+	}
+
+	// Second: The vmo dependency was not found in the worker status. Check if a corresponding vmo exists on Azure.
+	vmoClient, err := w.clientFactory.Vmss(ctx, w.worker.Spec.SecretRef)
+	if err != nil {
+		return nil, err
+	}
+
+	vmoListAll, err := vmoClient.List(ctx, infrastructureStatus.ResourceGroup.Name)
+	if err != nil {
+		return nil, err
+	}
+	vmoList := filterGardenerManagedVmos(vmoListAll)
+
+	var existingVmo *compute.VirtualMachineScaleSet
+	for _, vmo := range vmoList {
+		if vmo.Name != nil && strings.Contains(*vmo.Name, workerPoolName) {
+			if existingVmo != nil {
+				return nil, fmt.Errorf("found multiple vmos for workerpool %q in resource group %q", workerPoolName, infrastructureStatus.ResourceGroup.Name)
+			}
+			vmoSnapshot := &vmo
+			existingVmo = vmoSnapshot
+		}
+	}
+	if existingVmo != nil {
+		existingVmoDependency := generateVmoDependency(existingVmo, workerPoolName)
+		workerStatus.VmoDependencies = append(workerStatus.VmoDependencies, *existingVmoDependency)
+		if err := w.updateWorkerProviderStatus(ctx, workerStatus); err != nil {
+			return nil, err
+		}
+		return existingVmoDependency, nil
+	}
+
+	// Third: No vmo for the worker pool was found on Azure. Need to create it.
+	faultDomainCount, err := azureapihelper.FindDomainCountByRegion(w.cloudProfileConfig.CountFaultDomains, w.worker.Spec.Region)
+	if err != nil {
+		return nil, err
+	}
+
+	newDependency, err := generateAndCreateVmo(ctx, vmoClient, workerPoolName, infrastructureStatus.ResourceGroup.Name, w.worker.Spec.Region, faultDomainCount)
+	if err != nil {
+		return nil, err
+	}
+	workerStatus.VmoDependencies = append(workerStatus.VmoDependencies, *newDependency)
+	if err := w.updateWorkerProviderStatus(ctx, workerStatus); err != nil {
+		return nil, err
+	}
+	return newDependency, nil
+}
+
 // VMO Helper
 
 func generateAndCreateVmo(ctx context.Context, client azureclient.Vmss, workerPoolName, resourceGroupName, region string, faultDomainCount int32) (*azureapi.VmoDependency, error) {
@@ -196,11 +262,7 @@ func generateAndCreateVmo(ctx context.Context, client azureclient.Vmss, workerPo
 		return nil, err
 	}
 
-	return &azureapi.VmoDependency{
-		ID:       *newVMO.ID,
-		Name:     *newVMO.Name,
-		PoolName: workerPoolName,
-	}, nil
+	return generateVmoDependency(newVMO, workerPoolName), nil
 }
 
 func copyVmoDependencies(workerStatus *azureapi.WorkerStatus) []azureapi.VmoDependency {
@@ -250,4 +312,12 @@ func filterGardenerManagedVmos(list []compute.VirtualMachineScaleSet) []compute.
 		}
 	}
 	return filteredList
+}
+
+func generateVmoDependency(vmo *compute.VirtualMachineScaleSet, workerPoolName string) *azureapi.VmoDependency {
+	return &azureapi.VmoDependency{
+		ID:       *vmo.ID,
+		Name:     *vmo.Name,
+		PoolName: workerPoolName,
+	}
 }
