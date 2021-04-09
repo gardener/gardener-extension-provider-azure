@@ -6,6 +6,7 @@ gardener-extension-provider-azure:
       version:
         preprocess: 'inject-commit-hash'
       publish:
+        oci-builder: 'kaniko'
         dockerimages:
           gardener-extension-provider-azure:
             registry: 'gcr-readwrite'
@@ -53,6 +54,7 @@ gardener-extension-provider-azure:
               slack_cfg_name: 'scp_workspace'
         component_descriptor: ~
         publish:
+          oci-builder: 'kaniko'
           dockerimages:
             gardener-extension-provider-azure:
               tag_as_latest: true
