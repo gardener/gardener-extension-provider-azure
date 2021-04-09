@@ -128,6 +128,7 @@ var _ = Describe("ValuesProvider", func() {
 			azure.CloudProviderDiskConfigName:            "77627eb2343b9f2dc2fca3cce35f2f9eec55783aa5f7dac21c473019e5825de2",
 			azure.CloudControllerManagerName:             "3d791b164a808638da9a8df03924be2a41e34cd664e42231c00fe369e3588272",
 			azure.CloudControllerManagerName + "-server": "6dff2a2e6f14444b66d8e4a351c049f7e89ee24ba3eaab95dbec40ba6bdebb52",
+			azure.CSIControllerDiskName:                  "77627eb2343b9f2dc2fca3cce35f2f9eec55783aa5f7dac21c473019e5825de2",
 			azure.CSIControllerFileName:                  "d8a928b2043db77e340b523547bf16cb4aa483f0645fe0a290ed1f20aab76257",
 			azure.CSIProvisionerName:                     "65b1dac6b50673535cff480564c2e5c71077ed19b1b6e0e2291207225bdf77d4",
 			azure.CSIAttacherName:                        "3f22909841cdbb80e5382d689d920309c0a7d995128e52c79773f9608ed7c289",
@@ -382,6 +383,7 @@ var _ = Describe("ValuesProvider", func() {
 				azure.CSIControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
 					"replicas": 1,
 					"podAnnotations": map[string]interface{}{
+						"checksum/secret-" + azure.CSIControllerDiskName:   checksums[azure.CSIControllerDiskName],
 						"checksum/secret-" + azure.CSIControllerFileName:   checksums[azure.CSIControllerFileName],
 						"checksum/secret-" + azure.CSIProvisionerName:      checksums[azure.CSIProvisionerName],
 						"checksum/secret-" + azure.CSIAttacherName:         checksums[azure.CSIAttacherName],

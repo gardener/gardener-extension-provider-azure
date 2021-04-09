@@ -42,6 +42,9 @@ spec:
         imagePullPolicy: IfNotPresent
         args :
         - --endpoint=$(CSI_ENDPOINT)
+        {{- if eq .role "disk" }}
+        - --kubeconfig=/var/lib/csi-driver-controller-disk/kubeconfig
+        {{- end }}
         {{- if eq .role "file" }}
         - --nodeid=dummy
         - --kubeconfig=/var/lib/csi-driver-controller-file/kubeconfig
@@ -73,6 +76,10 @@ spec:
         volumeMounts:
         - name: socket-dir
           mountPath: {{ .Values.socketPath }}
+        {{- if eq .role "disk" }}
+        - name: csi-driver-controller-disk
+          mountPath: /var/lib/csi-driver-controller-disk
+        {{- end }}
         {{- if eq .role "file" }}
         - name: csi-driver-controller-file
           mountPath: /var/lib/csi-driver-controller-file
@@ -85,9 +92,8 @@ spec:
         imagePullPolicy: IfNotPresent
         args:
         - --csi-address=$(ADDRESS)
-        - --enable-leader-election
         - --feature-gates=Topology=true
-        - --leader-election-type=leases
+        - --leader-election=true
         - --leader-election-namespace=kube-system
         - --kubeconfig=/var/lib/csi-provisioner/kubeconfig
         - --timeout=120s
@@ -190,6 +196,11 @@ spec:
       - name: cloud-provider-config
         secret:
           secretName: cloud-provider-config
+      {{- if eq .role "disk" }}
+      - name: csi-driver-controller-disk
+        secret:
+          secretName: csi-driver-controller-disk
+      {{- end }}
       {{- if eq .role "file" }}
       - name: csi-driver-controller-file
         secret:
