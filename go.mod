@@ -13,12 +13,11 @@ require (
 	github.com/coreos/go-systemd/v22 v22.1.0
 	github.com/frankban/quicktest v1.9.0 // indirect
 	github.com/gardener/etcd-druid v0.3.0
-	github.com/gardener/gardener v1.20.0
+	github.com/gardener/gardener v1.20.1
 	github.com/gardener/gardener-extension-networking-calico v1.7.1-0.20200522070525-f9aa28d3c83a
 	github.com/gardener/machine-controller-manager v0.36.0
 	github.com/gardener/remedy-controller v0.6.0
 	github.com/go-logr/logr v0.3.0
-	github.com/gobuffalo/packr/v2 v2.8.1
 	github.com/golang/mock v1.5.0
 	github.com/golang/snappy v0.0.2 // indirect
 	github.com/mitchellh/copystructure v1.1.1 // indirect
