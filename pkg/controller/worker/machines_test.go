@@ -44,6 +44,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/pointer"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ = Describe("Machines", func() {
@@ -81,7 +82,7 @@ var _ = Describe("Machines", func() {
 			It("should return the correct kind of the machine class", func() {
 				w := makeWorker(namespace, region, nil, nil)
 				workerDelegate := wrapNewWorkerDelegate(c, nil, w, nil, nil)
-				Expect(workerDelegate.MachineClassKind()).To(Equal("AzureMachineClass"))
+				Expect(workerDelegate.MachineClassKind()).To(Equal("MachineClass"))
 			})
 		})
 
@@ -89,7 +90,7 @@ var _ = Describe("Machines", func() {
 			It("should return the correct type for the machine class", func() {
 				w := makeWorker(namespace, region, nil, nil)
 				workerDelegate := wrapNewWorkerDelegate(c, nil, w, nil, nil)
-				Expect(workerDelegate.MachineClass()).To(Equal(&machinev1alpha1.AzureMachineClass{}))
+				Expect(workerDelegate.MachineClass()).To(Equal(&machinev1alpha1.MachineClass{}))
 			})
 		})
 
@@ -97,7 +98,7 @@ var _ = Describe("Machines", func() {
 			It("should return the correct type for the machine class list", func() {
 				w := makeWorker(namespace, region, nil, nil)
 				workerDelegate := wrapNewWorkerDelegate(c, nil, w, nil, nil)
-				Expect(workerDelegate.MachineClassList()).To(Equal(&machinev1alpha1.AzureMachineClassList{}))
+				Expect(workerDelegate.MachineClassList()).To(Equal(&machinev1alpha1.MachineClassList{}))
 			})
 		})
 
@@ -397,8 +398,21 @@ var _ = Describe("Machines", func() {
 				It("should return the expected machine deployments for profile image types", func() {
 					workerDelegate := wrapNewWorkerDelegate(c, chartApplier, w, cluster, nil)
 
+					gomock.InOrder(
+						c.EXPECT().
+							DeleteAllOf(context.TODO(), &machinev1alpha1.AzureMachineClass{}, client.InNamespace(namespace)),
+						chartApplier.
+							EXPECT().
+							Apply(
+								ctx,
+								filepath.Join(azure.InternalChartsPath, "machineclass"),
+								namespace,
+								"machineclass",
+								kubernetes.Values(machineClasses),
+							),
+					)
+
 					// Test workerDelegate.DeployMachineClasses()
-					chartApplier.EXPECT().Apply(ctx, filepath.Join(azure.InternalChartsPath, "machineclass"), namespace, "machineclass", kubernetes.Values(machineClasses)).Return(nil)
 					err := workerDelegate.DeployMachineClasses(ctx)
 					Expect(err).NotTo(HaveOccurred())
 

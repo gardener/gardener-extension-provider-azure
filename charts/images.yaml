@@ -32,7 +32,10 @@ images:
   sourceRepository: github.com/gardener/machine-controller-manager
   repository: eu.gcr.io/gardener-project/gardener/machine-controller-manager
   tag: "v0.38.0"
-
+- name: machine-controller-manager-provider-azure
+  sourceRepository: github.com/gardener/machine-controller-manager-provider-azure
+  repository: eu.gcr.io/gardener-project/gardener/machine-controller-manager-provider-azure
+  tag: "0.1.0"
 - name: csi-driver-disk
   sourceRepository: github.com/kubernetes-sigs/azuredisk-csi-driver
   repository: mcr.microsoft.com/k8s/csi/azuredisk-csi

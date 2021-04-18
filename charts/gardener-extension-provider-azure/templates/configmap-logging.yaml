@@ -16,7 +16,7 @@ data:
 
     [FILTER]
         Name                parser
-        Match               kubernetes.*machine-controller-manager*azure-machine-controller-manager*
+        Match               kubernetes.*machine-controller-manager*azure*
         Key_Name            log
         Parser              kubeapiserverParser
         Reserve_Data        True
