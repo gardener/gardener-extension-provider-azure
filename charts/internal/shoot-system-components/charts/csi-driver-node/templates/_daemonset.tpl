@@ -122,6 +122,10 @@ spec:
           value: {{ .Values.socketPath }}
         - name: DRIVER_REG_SOCK_PATH
           value: /var/lib/kubelet/plugins/{{ include (print "csi-driver-node.provisioner-" .role) . }}/csi.sock
+{{- if .Values.resources.nodeDriverRegistrar }}
+        resources:
+{{ toYaml .Values.resources.nodeDriverRegistrar | indent 10 }}
+{{- end }}
         volumeMounts:
         - name: plugin-dir
           mountPath: /csi
