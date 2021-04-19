@@ -84,6 +84,18 @@ var (
 				},
 				&secrets.ControlPlaneSecretConfig{
 					CertificateSecretConfig: &secrets.CertificateSecretConfig{
+						Name:       azure.CSIControllerDiskName,
+						CommonName: azure.UsernamePrefix + azure.CSIControllerDiskName,
+						CertType:   secrets.ClientCert,
+						SigningCA:  cas[v1beta1constants.SecretNameCACluster],
+					},
+					KubeConfigRequest: &secrets.KubeConfigRequest{
+						ClusterName:  clusterName,
+						APIServerURL: v1beta1constants.DeploymentNameKubeAPIServer,
+					},
+				},
+				&secrets.ControlPlaneSecretConfig{
+					CertificateSecretConfig: &secrets.CertificateSecretConfig{
 						Name:       azure.CSIControllerFileName,
 						CommonName: azure.UsernamePrefix + azure.CSIControllerFileName,
 						CertType:   secrets.ClientCert,
@@ -639,6 +651,7 @@ func getCSIControllerChartValues(
 		"enabled":  true,
 		"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
 		"podAnnotations": map[string]interface{}{
+			"checksum/secret-" + azure.CSIControllerDiskName:   checksums[azure.CSIControllerDiskName],
 			"checksum/secret-" + azure.CSIControllerFileName:   checksums[azure.CSIControllerFileName],
 			"checksum/secret-" + azure.CSIProvisionerName:      checksums[azure.CSIProvisionerName],
 			"checksum/secret-" + azure.CSIAttacherName:         checksums[azure.CSIAttacherName],

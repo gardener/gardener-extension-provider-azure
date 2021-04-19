@@ -515,12 +515,12 @@ var _ = Describe("Ensurer", func() {
 		It("should modify existing elements of kubelet configuration (k8s >= 1.21)", func() {
 			newKubeletConfig := &kubeletconfigv1beta1.KubeletConfiguration{
 				FeatureGates: map[string]bool{
-					"Foo":                           true,
-					"CSIMigration":                  true,
-					"CSIMigrationAzureDisk":         true,
-					"CSIMigrationAzureFile":         true,
-					"CSIMigrationAzureDiskComplete": true,
-					"CSIMigrationAzureFileComplete": true,
+					"Foo":                             true,
+					"CSIMigration":                    true,
+					"CSIMigrationAzureDisk":           true,
+					"CSIMigrationAzureFile":           true,
+					"InTreePluginAzureDiskUnregister": true,
+					"InTreePluginAzureFileUnregister": true,
 				},
 			}
 			kubeletConfig := *oldKubeletConfig
@@ -599,7 +599,7 @@ func checkKubeAPIServerDeployment(dep *appsv1.Deployment, annotations map[string
 			Expect(c.Command).To(ContainElement("--feature-gates=CSIMigration=true,CSIMigrationAzureDisk=true,CSIMigrationAzureFile=true"))
 		}
 	} else {
-		Expect(c.Command).To(ContainElement("--feature-gates=CSIMigration=true,CSIMigrationAzureDisk=true,CSIMigrationAzureFile=true,CSIMigrationAzureDiskComplete=true,CSIMigrationAzureFileComplete=true"))
+		Expect(c.Command).To(ContainElement("--feature-gates=CSIMigration=true,CSIMigrationAzureDisk=true,CSIMigrationAzureFile=true,InTreePluginAzureDiskUnregister=true,InTreePluginAzureFileUnregister=true"))
 		Expect(c.Command).NotTo(ContainElement("--cloud-provider=azure"))
 		Expect(c.Command).NotTo(ContainElement("--cloud-config=/etc/kubernetes/cloudprovider/cloudprovider.conf"))
 		Expect(c.Command).NotTo(test.ContainElementWithPrefixContaining("--enable-admission-plugins=", "PersistentVolumeLabel", ","))
@@ -638,7 +638,7 @@ func checkKubeControllerManagerDeployment(dep *appsv1.Deployment, annotations, l
 			Expect(c.Command).To(ContainElement("--feature-gates=CSIMigration=true,CSIMigrationAzureDisk=true,CSIMigrationAzureFile=true"))
 		}
 	} else {
-		Expect(c.Command).To(ContainElement("--feature-gates=CSIMigration=true,CSIMigrationAzureDisk=true,CSIMigrationAzureFile=true,CSIMigrationAzureDiskComplete=true,CSIMigrationAzureFileComplete=true"))
+		Expect(c.Command).To(ContainElement("--feature-gates=CSIMigration=true,CSIMigrationAzureDisk=true,CSIMigrationAzureFile=true,InTreePluginAzureDiskUnregister=true,InTreePluginAzureFileUnregister=true"))
 		Expect(c.Command).NotTo(ContainElement("--cloud-config=/etc/kubernetes/cloudprovider/cloudprovider.conf"))
 		Expect(c.Command).NotTo(ContainElement("--external-cloud-volume-plugin=aws"))
 		Expect(dep.Spec.Template.Labels).To(BeNil())
@@ -664,7 +664,7 @@ func checkKubeSchedulerDeployment(dep *appsv1.Deployment, k8sVersion string, nee
 	if !needsCSIMigrationCompletedFeatureGates {
 		Expect(c.Command).To(ContainElement("--feature-gates=CSIMigration=true,CSIMigrationAzureDisk=true,CSIMigrationAzureFile=true"))
 	} else {
-		Expect(c.Command).To(ContainElement("--feature-gates=CSIMigration=true,CSIMigrationAzureDisk=true,CSIMigrationAzureFile=true,CSIMigrationAzureDiskComplete=true,CSIMigrationAzureFileComplete=true"))
+		Expect(c.Command).To(ContainElement("--feature-gates=CSIMigration=true,CSIMigrationAzureDisk=true,CSIMigrationAzureFile=true,InTreePluginAzureDiskUnregister=true,InTreePluginAzureFileUnregister=true"))
 	}
 }
 
