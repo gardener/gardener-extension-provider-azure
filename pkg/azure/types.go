@@ -76,8 +76,8 @@ const (
 	// MachineSetTagKey is the name of the infrastructure resource tag for machine sets.
 	MachineSetTagKey = "machineset.azure.extensions.gardener.cloud"
 
-	// AllowUDPEgressName is the name of the service for allowing UDP egress traffic.
-	AllowUDPEgressName = "allow-udp-egress"
+	// AllowEgressName is the name of the service for allowing egress traffic.
+	AllowEgressName = "allow-egress"
 	// CloudProviderConfigName is the name of the secret containing the cloud provider config.
 	CloudProviderConfigName = "cloud-provider-config"
 	// CloudProviderDiskConfigName is the name of the secret containing the cloud provider config for disk/volume handling.

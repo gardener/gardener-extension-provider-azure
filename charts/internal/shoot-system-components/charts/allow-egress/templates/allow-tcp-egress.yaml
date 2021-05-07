@@ -1,0 +1,25 @@
+# this is a technical service created to mitigate an issue with the TCP egress traffic for Shoots using
+# Azure Standard LoadBalancers (see https://github.com/gardener/gardener-extension-provider-azure/issues/1)
+apiVersion: v1
+kind: Service
+metadata:
+  name: allow-tcp-egress
+  namespace: kube-system
+  annotations:
+    azure.remedy.gardener.cloud/ignore: "true"
+    gardener.cloud/description: |
+      This is a technical Service created to mitigate an issue with the TCP egress traffic for Shoots using
+      Azure Standard LoadBalancers (see https://github.com/gardener/gardener-extension-provider-azure/issues/1).
+      It is needed because the Standard LoadBalancers will block all outgoing TCP traffic if there is not at least
+      one open TCP Port.
+  labels:
+    app: gardener
+    role: allow-tcp-egress
+spec:
+  ports:
+  - name: dummy
+    port: 1234
+    protocol: TCP
+    targetPort: 1234
+  selector: {} # select no Pods to not expose anything by accident
+  type: LoadBalancer

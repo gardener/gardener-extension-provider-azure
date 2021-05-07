@@ -255,9 +255,10 @@ var (
 		Path: filepath.Join(azure.InternalChartsPath, "shoot-system-components"),
 		SubCharts: []*chart.Chart{
 			{
-				Name: "allow-udp-egress",
+				Name: "allow-egress",
 				Objects: []*chart.Object{
 					{Type: &corev1.Service{}, Name: "allow-udp-egress"},
+					{Type: &corev1.Service{}, Name: "allow-tcp-egress"},
 				},
 			},
 			{
@@ -699,7 +700,7 @@ func getControlPlaneShootChartValues(
 	cloudProviderDiskConfigChecksum string,
 ) map[string]interface{} {
 	return map[string]interface{}{
-		azure.AllowUDPEgressName:         map[string]interface{}{"enabled": infraStatus.Zoned},
+		azure.AllowEgressName:            map[string]interface{}{"enabled": infraStatus.Zoned},
 		azure.CloudControllerManagerName: map[string]interface{}{"enabled": true},
 		azure.CSINodeName: map[string]interface{}{
 			"enabled":    !k8sVersionLessThan121,

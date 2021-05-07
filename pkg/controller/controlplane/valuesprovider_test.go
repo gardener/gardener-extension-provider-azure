@@ -452,7 +452,7 @@ var _ = Describe("ValuesProvider", func() {
 				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
-					azure.AllowUDPEgressName:         enabledTrue,
+					azure.AllowEgressName:            enabledTrue,
 					azure.CloudControllerManagerName: enabledTrue,
 					azure.CSINodeName:                csiNodeNotEnabled,
 					azure.RemedyControllerName:       enabledTrue,
@@ -467,7 +467,7 @@ var _ = Describe("ValuesProvider", func() {
 				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
-					azure.AllowUDPEgressName:         enabledFalse,
+					azure.AllowEgressName:            enabledFalse,
 					azure.CloudControllerManagerName: enabledTrue,
 					azure.CSINodeName:                csiNodeNotEnabled,
 					azure.RemedyControllerName:       enabledTrue,
@@ -499,7 +499,7 @@ var _ = Describe("ValuesProvider", func() {
 				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
-					azure.AllowUDPEgressName:         enabledTrue,
+					azure.AllowEgressName:            enabledTrue,
 					azure.CloudControllerManagerName: enabledTrue,
 					azure.CSINodeName:                csiNodeEnabled,
 					azure.RemedyControllerName:       enabledTrue,
@@ -514,7 +514,7 @@ var _ = Describe("ValuesProvider", func() {
 				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
-					azure.AllowUDPEgressName:         enabledFalse,
+					azure.AllowEgressName:            enabledFalse,
 					azure.CloudControllerManagerName: enabledTrue,
 					azure.CSINodeName:                csiNodeEnabled,
 					azure.RemedyControllerName:       enabledTrue,
@@ -534,7 +534,7 @@ var _ = Describe("ValuesProvider", func() {
 				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
-					azure.AllowUDPEgressName:         enabledTrue,
+					azure.AllowEgressName:            enabledTrue,
 					azure.CloudControllerManagerName: enabledTrue,
 					azure.CSINodeName:                csiNodeNotEnabled,
 					azure.RemedyControllerName:       enabledFalse,
@@ -549,7 +549,7 @@ var _ = Describe("ValuesProvider", func() {
 				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
-					azure.AllowUDPEgressName:         enabledFalse,
+					azure.AllowEgressName:            enabledFalse,
 					azure.CloudControllerManagerName: enabledTrue,
 					azure.CSINodeName:                csiNodeNotEnabled,
 					azure.RemedyControllerName:       enabledFalse,
