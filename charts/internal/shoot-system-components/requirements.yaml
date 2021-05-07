@@ -1,8 +1,8 @@
 dependencies:
-- name: allow-udp-egress
+- name: allow-egress
   repository: http://localhost:10191
   version: 0.1.0
-  condition: allow-udp-egress.enabled
+  condition: allow-egress.enabled
 - name: cloud-controller-manager
   repository: http://localhost:10191
   version: 0.1.0
