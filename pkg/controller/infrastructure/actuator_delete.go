@@ -54,7 +54,12 @@ func (a *actuator) Delete(ctx context.Context, infra *extensionsv1alpha1.Infrast
 		return err
 	}
 
-	terraformFiles, err := infrastructure.RenderTerraformerChart(a.ChartRenderer(), infra, config, cluster)
+	values, err := infrastructure.ComputeTerraformerTemplateValues(infra, config, cluster)
+	if err != nil {
+		return err
+	}
+
+	terraformFiles, err := infrastructure.RenderTerraformFiles(values)
 	if err != nil {
 		return err
 	}

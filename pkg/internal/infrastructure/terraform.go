@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"strconv"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
@@ -27,10 +26,7 @@ import (
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	"github.com/gardener/gardener/pkg/chartrenderer"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 )
@@ -71,35 +67,8 @@ var StatusTypeMeta = metav1.TypeMeta{
 	Kind:       "InfrastructureStatus",
 }
 
-// RenderTerraformerChart renders the azure-infra chart with the given values.
-func RenderTerraformerChart(
-	renderer chartrenderer.Interface,
-	infra *extensionsv1alpha1.Infrastructure,
-	config *api.InfrastructureConfig,
-	cluster *controller.Cluster,
-) (
-	*TerraformFiles,
-	error,
-) {
-	values, err := ComputeTerraformerChartValues(infra, config, cluster)
-	if err != nil {
-		return nil, err
-	}
-
-	release, err := renderer.Render(filepath.Join(azure.InternalChartsPath, "azure-infra"), "azure-infra", infra.Namespace, values)
-	if err != nil {
-		return nil, err
-	}
-
-	return &TerraformFiles{
-		Main:      release.FileContent("main.tf"),
-		Variables: release.FileContent("variables.tf"),
-		TFVars:    []byte(release.FileContent("terraform.tfvars")),
-	}, nil
-}
-
-// ComputeTerraformerChartValues computes the values for the Azure Terraformer chart.
-func ComputeTerraformerChartValues(
+// ComputeTerraformerTemplateValues computes the values for the Azure Terraformer chart.
+func ComputeTerraformerTemplateValues(
 	infra *extensionsv1alpha1.Infrastructure,
 	config *api.InfrastructureConfig,
 	cluster *controller.Cluster,
@@ -159,6 +128,8 @@ func ComputeTerraformerChartValues(
 		createAvailabilitySet = true
 		outputKeys["availabilitySetID"] = TerraformerOutputKeyAvailabilitySetID
 		outputKeys["availabilitySetName"] = TerraformerOutputKeyAvailabilitySetName
+		outputKeys["countFaultDomains"] = TerraformerOutputKeyCountFaultDomains
+		outputKeys["countUpdateDomains"] = TerraformerOutputKeyCountUpdateDomains
 
 		count, err := findDomainCounts(cluster, infra)
 		if err != nil {
