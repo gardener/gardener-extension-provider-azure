@@ -17,14 +17,11 @@ package infrastructure
 import (
 	"context"
 
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
-	"github.com/gardener/gardener/extensions/pkg/terraformer"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -49,28 +46,5 @@ func (a *actuator) Delete(ctx context.Context, infra *extensionsv1alpha1.Infrast
 		return tf.CleanupConfiguration(ctx)
 	}
 
-	config, err := helper.InfrastructureConfigFromInfrastructure(infra)
-	if err != nil {
-		return err
-	}
-
-	values, err := infrastructure.ComputeTerraformerTemplateValues(infra, config, cluster)
-	if err != nil {
-		return err
-	}
-
-	terraformFiles, err := infrastructure.RenderTerraformFiles(values)
-	if err != nil {
-		return err
-	}
-
-	return tf.
-		InitializeWith(ctx, terraformer.DefaultInitializer(a.Client(), terraformFiles.Main, terraformFiles.Variables, terraformFiles.TFVars, terraformer.StateConfigMapInitializerFunc(NoOpStateInitializer))).
-		SetEnvVars(internal.TerraformerEnvVars(infra.Spec.SecretRef)...).
-		Destroy(ctx)
-}
-
-// NoOpStateInitializer is a no-op StateConfigMapInitializerFunc.
-func NoOpStateInitializer(ctx context.Context, c client.Client, namespace, name string, owner *metav1.OwnerReference) error {
-	return nil
+	return tf.SetEnvVars(internal.TerraformerEnvVars(infra.Spec.SecretRef)...).Destroy(ctx)
 }
