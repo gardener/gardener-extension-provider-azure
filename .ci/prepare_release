@@ -1,3 +1,6 @@
 #!/usr/bin/env bash
 
+# update PATH in preparation for golang download by the prepare_release script
+export PATH=/usr/local/go/bin:$PATH
+
 "$(dirname $0)"/../vendor/github.com/gardener/gardener/hack/.ci/prepare_release "$(dirname $0)"/.. github.com/gardener gardener-extension-provider-azure
