@@ -98,6 +98,7 @@ spec:
         - --kubeconfig=/var/lib/csi-provisioner/kubeconfig
         - --timeout=120s
         - --volume-name-prefix=pv-{{ .Release.Namespace }}
+        - --default-fstype=ext4
         - --v=5
         env:
         - name: ADDRESS
