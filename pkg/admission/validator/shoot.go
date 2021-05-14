@@ -19,16 +19,19 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
+	azurevalidation "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/validation"
+
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	"github.com/gardener/gardener/pkg/apis/core"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
-	azurevalidation "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/validation"
 )
 
 var (
@@ -43,6 +46,8 @@ var (
 
 // shoot validates shoots
 type shoot struct {
+	client         client.Client
+	apiReader      client.Reader
 	decoder        runtime.Decoder
 	lenientDecoder runtime.Decoder
 }
@@ -56,6 +61,18 @@ func NewShootValidator() extensionswebhook.Validator {
 func (s *shoot) InjectScheme(scheme *runtime.Scheme) error {
 	s.decoder = serializer.NewCodecFactory(scheme, serializer.EnableStrict).UniversalDecoder()
 	s.lenientDecoder = serializer.NewCodecFactory(scheme).UniversalDecoder()
+	return nil
+}
+
+// InjectClient injects the given client into the validator.
+func (s *shoot) InjectClient(client client.Client) error {
+	s.client = client
+	return nil
+}
+
+// InjectAPIReader injects the given apiReader into the validator.
+func (s *shoot) InjectAPIReader(apiReader client.Reader) error {
+	s.apiReader = apiReader
 	return nil
 }
 
@@ -74,16 +91,20 @@ func (s *shoot) Validate(ctx context.Context, new, old client.Object) error {
 		return s.validateUpdate(oldShoot, shoot)
 	}
 
-	return s.validateCreation(shoot)
+	return s.validateCreation(ctx, shoot)
 }
 
-func (s *shoot) validateCreation(shoot *core.Shoot) error {
+func (s *shoot) validateCreation(ctx context.Context, shoot *core.Shoot) error {
 	infraConfig, err := checkAndDecodeInfrastructureConfig(s.decoder, shoot.Spec.Provider.InfrastructureConfig, infraConfigPath)
 	if err != nil {
 		return err
 	}
 
-	return s.validateShoot(shoot, infraConfig).ToAggregate()
+	if err := s.validateShoot(shoot, infraConfig).ToAggregate(); err != nil {
+		return err
+	}
+
+	return s.validateShootSecret(ctx, shoot)
 }
 
 func (s *shoot) validateShoot(shoot *core.Shoot, infraConfig *azure.InfrastructureConfig) field.ErrorList {
@@ -137,4 +158,26 @@ func (s *shoot) validateUpdate(oldShoot, shoot *core.Shoot) error {
 	allErrs = append(allErrs, s.validateShoot(shoot, infraConfig)...)
 
 	return allErrs.ToAggregate()
+}
+
+func (s *shoot) validateShootSecret(ctx context.Context, shoot *core.Shoot) error {
+	var (
+		secretBinding    = &gardencorev1beta1.SecretBinding{}
+		secretBindingKey = kutil.Key(shoot.Namespace, shoot.Spec.SecretBindingName)
+	)
+	if err := kutil.LookupObject(ctx, s.client, s.apiReader, secretBindingKey, secretBinding); err != nil {
+		return err
+	}
+
+	var (
+		secret    = &corev1.Secret{}
+		secretKey = kutil.Key(secretBinding.SecretRef.Namespace, secretBinding.SecretRef.Name)
+	)
+	// Explicitly use the client.Reader to prevent controller-runtime to start Informer for Secrets
+	// under the hood. The latter increases the memory usage of the component.
+	if err := s.apiReader.Get(ctx, secretKey, secret); err != nil {
+		return err
+	}
+
+	return azurevalidation.ValidateCloudProviderSecret(secret)
 }
