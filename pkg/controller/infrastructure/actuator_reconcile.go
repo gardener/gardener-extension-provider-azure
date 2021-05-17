@@ -41,12 +41,7 @@ func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, infra *ext
 		return err
 	}
 
-	values, err := infrastructure.ComputeTerraformerTemplateValues(infra, config, cluster)
-	if err != nil {
-		return err
-	}
-
-	terraformFiles, err := infrastructure.RenderTerraformFiles(values)
+	terraformFiles, err := infrastructure.RenderTerraformerTemplate(infra, config, cluster)
 	if err != nil {
 		return err
 	}

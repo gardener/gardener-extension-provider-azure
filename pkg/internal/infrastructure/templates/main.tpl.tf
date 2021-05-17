@@ -12,12 +12,12 @@ provider "azurerm" {
 #===============================================
 {{ if .create.resourceGroup -}}
 resource "azurerm_resource_group" "rg" {
-  name     = "{{ required "resourceGroup.name is required" .resourceGroup.name }}"
-  location = "{{ required "azure.region is required" .azure.region }}"
+  name     = "{{ .resourceGroup.name }}"
+  location = "{{ .azure.region }}"
 }
 {{- else -}}
 data "azurerm_resource_group" "rg" {
-  name     = "{{ required "resourceGroup.name is required" .resourceGroup.name }}"
+  name     = "{{ .resourceGroup.name }}"
 }
 {{- end }}
 
@@ -28,21 +28,21 @@ data "azurerm_resource_group" "rg" {
 # VNet
 {{ if .create.vnet -}}
 resource "azurerm_virtual_network" "vnet" {
-  name                = "{{ required "resourceGroup.vnet.name is required" .resourceGroup.vnet.name }}"
+  name                = "{{ .resourceGroup.vnet.name }}"
   resource_group_name = {{ template "resource-group-reference" . }}
-  location            = "{{ required "azure.region is required" .azure.region }}"
-  address_space       = ["{{ required "resourceGroup.vnet.cidr is required" .resourceGroup.vnet.cidr }}"]
+  location            = "{{ .azure.region }}"
+  address_space       = ["{{ .resourceGroup.vnet.cidr }}"]
 }
 {{- else -}}
 data "azurerm_virtual_network" "vnet" {
-  name                = "{{ required "resourceGroup.vnet.name is required" .resourceGroup.vnet.name }}"
-  resource_group_name = "{{ required "resourceGroup.vnet.resourceGroup is required" .resourceGroup.vnet.resourceGroup }}"
+  name                = "{{ .resourceGroup.vnet.name }}"
+  resource_group_name = "{{ .resourceGroup.vnet.resourceGroup }}"
 }
 {{- end }}
 
 # Subnet
 resource "azurerm_subnet" "workers" {
-  name                      = "{{ required "clusterName is required" .clusterName }}-nodes"
+  name                      = "{{ .clusterName }}-nodes"
   {{ if .create.vnet -}}
   virtual_network_name      = azurerm_virtual_network.vnet.name
   resource_group_name       = azurerm_virtual_network.vnet.resource_group_name
@@ -50,14 +50,14 @@ resource "azurerm_subnet" "workers" {
   virtual_network_name      = data.azurerm_virtual_network.vnet.name
   resource_group_name       = data.azurerm_virtual_network.vnet.resource_group_name
   {{- end }}
-  address_prefixes          = ["{{ required "networks.worker is required" .networks.worker }}"]
+  address_prefixes          = ["{{ .networks.worker }}"]
   service_endpoints         = [{{range $index, $serviceEndpoint := .resourceGroup.subnet.serviceEndpoints}}{{if $index}},{{end}}"{{$serviceEndpoint}}"{{end}}]
 }
 
 # RouteTable
 resource "azurerm_route_table" "workers" {
   name                = "worker_route_table"
-  location            = "{{ required "azure.region is required" .azure.region }}"
+  location            = "{{ .azure.region }}"
   resource_group_name = {{ template "resource-group-reference" . }}
 }
 resource "azurerm_subnet_route_table_association" "workers-rt-subnet-association" {
@@ -67,8 +67,8 @@ resource "azurerm_subnet_route_table_association" "workers-rt-subnet-association
 
 # SecurityGroup
 resource "azurerm_network_security_group" "workers" {
-  name                = "{{ required "clusterName is required" .clusterName }}-workers"
-  location            = "{{ required "azure.region is required" .azure.region }}"
+  name                = "{{ .clusterName }}-workers"
+  location            = "{{ .azure.region }}"
   resource_group_name = {{ template "resource-group-reference" . }}
 }
 resource "azurerm_subnet_network_security_group_association" "workers-nsg-subnet-association" {
@@ -82,8 +82,8 @@ resource "azurerm_subnet_network_security_group_association" "workers-nsg-subnet
 #===============================================
 
 resource "azurerm_nat_gateway" "nat" {
-  name                    = "{{ required "clusterName is required" .clusterName }}-nat-gateway"
-  location                = "{{ required "azure.region is required" .azure.region }}"
+  name                    = "{{ .clusterName }}-nat-gateway"
+  location                = "{{ .azure.region }}"
   resource_group_name     = {{ template "resource-group-reference" . }}
   sku_name                = "Standard"
   {{ if .natGateway -}}
@@ -121,8 +121,8 @@ resource "azurerm_subnet_nat_gateway_association" "nat-worker-subnet-association
 #===============================================
 
 data "azurerm_user_assigned_identity" "identity" {
-  name                = "{{ required "identity.name is required" .identity.name }}"
-  resource_group_name = "{{ required "identity.resourceGroup is required" .identity.resourceGroup }}"
+  name                = "{{ .identity.name }}"
+  resource_group_name = "{{ .identity.resourceGroup }}"
 }
 {{- end }}
 
@@ -132,11 +132,11 @@ data "azurerm_user_assigned_identity" "identity" {
 #===============================================
 
 resource "azurerm_availability_set" "workers" {
-  name                         = "{{ required "clusterName is required" .clusterName }}-avset-workers"
-  location                     = "{{ required "azure.region is required" .azure.region }}"
+  name                         = "{{ .clusterName }}-avset-workers"
+  location                     = "{{ .azure.region }}"
   resource_group_name          = {{ template "resource-group-reference" . }}
-  platform_update_domain_count = "{{ required "azure.countUpdateDomains is required" .azure.countUpdateDomains }}"
-  platform_fault_domain_count  = "{{ required "azure.countFaultDomains is required" .azure.countFaultDomains }}"
+  platform_update_domain_count = "{{ .azure.countUpdateDomains }}"
+  platform_fault_domain_count  = "{{ .azure.countFaultDomains }}"
   managed                      = true
 }
 {{- end}}
@@ -215,8 +215,8 @@ data.azurerm_resource_group.rg.name
 {{- define "natgateway-managed-ip" -}}
 # Gardener managed public IP to be attached to the NatGateway.
 resource "azurerm_public_ip" "natip" {
-name                = "{{ required "clusterName is required" .clusterName }}-nat-ip"
-location            = "{{ required "azure.region is required" .azure.region }}"
+name                = "{{ .clusterName }}-nat-ip"
+location            = "{{ .azure.region }}"
 resource_group_name = {{ template "resource-group-reference" . }}
 allocation_method   = "Static"
 sku                 = "Standard"

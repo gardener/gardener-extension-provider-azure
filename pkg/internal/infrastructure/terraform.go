@@ -15,17 +15,17 @@
 package infrastructure
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"strconv"
 
-	"github.com/gardener/gardener/extensions/pkg/controller"
-	"github.com/gardener/gardener/extensions/pkg/terraformer"
-
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
+	"github.com/gardener/gardener/extensions/pkg/controller"
+	"github.com/gardener/gardener/extensions/pkg/terraformer"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
@@ -65,6 +65,33 @@ const (
 var StatusTypeMeta = metav1.TypeMeta{
 	APIVersion: apiv1alpha1.SchemeGroupVersion.String(),
 	Kind:       "InfrastructureStatus",
+}
+
+// RenderTerraformerTemplate renders the azure infrastructure template with the given values.
+func RenderTerraformerTemplate(
+	infra *extensionsv1alpha1.Infrastructure,
+	config *api.InfrastructureConfig,
+	cluster *controller.Cluster,
+) (
+	*TerraformFiles,
+	error,
+) {
+	values, err := ComputeTerraformerTemplateValues(infra, config, cluster)
+	if err != nil {
+		return nil, err
+	}
+
+	var mainTF bytes.Buffer
+
+	if err := mainTemplate.Execute(&mainTF, values); err != nil {
+		return nil, fmt.Errorf("could not render Terraform template: %+v", err)
+	}
+
+	return &TerraformFiles{
+		Main:      mainTF.String(),
+		Variables: variablesTF,
+		TFVars:    terraformTFVars,
+	}, nil
 }
 
 // ComputeTerraformerTemplateValues computes the values for the Azure Terraformer chart.

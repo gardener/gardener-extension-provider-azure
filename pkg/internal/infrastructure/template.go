@@ -15,13 +15,10 @@
 package infrastructure
 
 import (
-	"bytes"
 	_ "embed"
-	"fmt"
 	"text/template"
 
 	"github.com/Masterminds/sprig"
-	"github.com/pkg/errors"
 )
 
 var (
@@ -40,43 +37,9 @@ func init() {
 	mainTemplate, err = template.
 		New("main.tf").
 		Funcs(sprig.TxtFuncMap()).
-		Funcs(
-			map[string]interface{}{
-				"required": required,
-			}).
 		Parse(mainFile)
 
 	if err != nil {
 		panic(err)
 	}
-}
-
-func required(message string, val interface{}) (interface{}, error) {
-	switch val := val.(type) {
-	case string:
-		if val == "" {
-			return nil, errors.Errorf("missing required value %s", message)
-		}
-	default:
-		if val == nil {
-			return nil, errors.Errorf("missing required value %s", message)
-		}
-	}
-	return val, nil
-}
-
-// RenderTerraformFiles renders the templates using data as the input for the template execution and
-// returns the contents of the files used for the Terraformer job.
-func RenderTerraformFiles(data interface{}) (*TerraformFiles, error) {
-	var mainTF bytes.Buffer
-
-	if err := mainTemplate.Execute(&mainTF, data); err != nil {
-		return nil, fmt.Errorf("could not render Terraform template: %+v", err)
-	}
-
-	return &TerraformFiles{
-		Main:      mainTF.String(),
-		Variables: variablesTF,
-		TFVars:    terraformTFVars,
-	}, nil
 }
