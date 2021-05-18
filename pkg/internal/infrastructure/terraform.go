@@ -15,22 +15,18 @@
 package infrastructure
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"strconv"
-
-	"github.com/gardener/gardener/extensions/pkg/controller"
-	"github.com/gardener/gardener/extensions/pkg/terraformer"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-
+	"github.com/gardener/gardener/extensions/pkg/controller"
+	"github.com/gardener/gardener/extensions/pkg/terraformer"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	"github.com/gardener/gardener/pkg/chartrenderer"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 )
@@ -71,9 +67,8 @@ var StatusTypeMeta = metav1.TypeMeta{
 	Kind:       "InfrastructureStatus",
 }
 
-// RenderTerraformerChart renders the azure-infra chart with the given values.
-func RenderTerraformerChart(
-	renderer chartrenderer.Interface,
+// RenderTerraformerTemplate renders the azure infrastructure template with the given values.
+func RenderTerraformerTemplate(
 	infra *extensionsv1alpha1.Infrastructure,
 	config *api.InfrastructureConfig,
 	cluster *controller.Cluster,
@@ -81,25 +76,26 @@ func RenderTerraformerChart(
 	*TerraformFiles,
 	error,
 ) {
-	values, err := ComputeTerraformerChartValues(infra, config, cluster)
+	values, err := ComputeTerraformerTemplateValues(infra, config, cluster)
 	if err != nil {
 		return nil, err
 	}
 
-	release, err := renderer.Render(filepath.Join(azure.InternalChartsPath, "azure-infra"), "azure-infra", infra.Namespace, values)
-	if err != nil {
-		return nil, err
+	var mainTF bytes.Buffer
+
+	if err := mainTemplate.Execute(&mainTF, values); err != nil {
+		return nil, fmt.Errorf("could not render Terraform template: %+v", err)
 	}
 
 	return &TerraformFiles{
-		Main:      release.FileContent("main.tf"),
-		Variables: release.FileContent("variables.tf"),
-		TFVars:    []byte(release.FileContent("terraform.tfvars")),
+		Main:      mainTF.String(),
+		Variables: variablesTF,
+		TFVars:    terraformTFVars,
 	}, nil
 }
 
-// ComputeTerraformerChartValues computes the values for the Azure Terraformer chart.
-func ComputeTerraformerChartValues(
+// ComputeTerraformerTemplateValues computes the values for the Azure Terraformer chart.
+func ComputeTerraformerTemplateValues(
 	infra *extensionsv1alpha1.Infrastructure,
 	config *api.InfrastructureConfig,
 	cluster *controller.Cluster,
@@ -159,6 +155,8 @@ func ComputeTerraformerChartValues(
 		createAvailabilitySet = true
 		outputKeys["availabilitySetID"] = TerraformerOutputKeyAvailabilitySetID
 		outputKeys["availabilitySetName"] = TerraformerOutputKeyAvailabilitySetName
+		outputKeys["countFaultDomains"] = TerraformerOutputKeyCountFaultDomains
+		outputKeys["countUpdateDomains"] = TerraformerOutputKeyCountUpdateDomains
 
 		count, err := findDomainCounts(cluster, infra)
 		if err != nil {
