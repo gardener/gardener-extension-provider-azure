@@ -311,7 +311,6 @@ func checkKubeAPIServerDeployment(dep *appsv1.Deployment) {
 	c := extensionswebhook.ContainerWithName(dep.Spec.Template.Spec.Containers, "kube-apiserver")
 	Expect(c).To(Not(BeNil()))
 	Expect(c.Command).To(ContainElement("--advertise-address=1.2.3.4"))
-	Expect(c.Command).To(ContainElement("--external-hostname=1.2.3.4"))
 }
 
 func checkETCDMain(etcd *druidv1alpha1.Etcd) {
