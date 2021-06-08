@@ -17,11 +17,13 @@ data:
     azure:
       orphanedPublicIPRemedy:
         requeueInterval: {{ required ".Values.config.azure.orphanedPublicIPRemedy.requeueInterval is required" .Values.config.azure.orphanedPublicIPRemedy.requeueInterval }}
+        syncPeriod: {{ required ".Values.config.azure.orphanedPublicIPRemedy.syncPeriod is required" .Values.config.azure.orphanedPublicIPRemedy.syncPeriod }}
         deletionGracePeriod: {{ required ".Values.config.azure.orphanedPublicIPRemedy.deletionGracePeriod is required" .Values.config.azure.orphanedPublicIPRemedy.deletionGracePeriod }}
         maxGetAttempts: {{ required ".Values.config.azure.orphanedPublicIPRemedy.maxGetAttempts is required" .Values.config.azure.orphanedPublicIPRemedy.maxGetAttempts }}
         maxCleanAttempts: {{ required ".Values.config.azure.orphanedPublicIPRemedy.maxReapplyAttempts is required" .Values.config.azure.orphanedPublicIPRemedy.maxCleanAttempts }}
       failedVMRemedy:
         requeueInterval: {{ required ".Values.config.azure.failedVMRemedy.requeueInterval is required" .Values.config.azure.failedVMRemedy.requeueInterval }}
+        syncPeriod: {{ required ".Values.config.azure.failedVMRemedy.syncPeriod is required" .Values.config.azure.failedVMRemedy.syncPeriod }}
         maxGetAttempts: {{ required ".Values.config.azure.failedVMRemedy.maxGetAttempts is required" .Values.config.azure.failedVMRemedy.maxGetAttempts }}
         maxReapplyAttempts: {{ required ".Values.config.azure.failedVMRemedy.maxReapplyAttempts is required" .Values.config.azure.failedVMRemedy.maxReapplyAttempts }}
 {{- end }}
