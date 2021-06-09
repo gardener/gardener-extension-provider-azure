@@ -16,9 +16,16 @@ package validation
 
 import (
 	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+
 	corev1 "k8s.io/api/core/v1"
+)
+
+var (
+	guidRegex = regexp.MustCompile("^[0-9A-Fa-f]{8}-([0-9A-Fa-f]{4}-){3}[0-9A-Fa-f]{12}$")
 )
 
 // ValidateCloudProviderSecret checks whether the given secret contains a valid Azure client credentials.
@@ -32,6 +39,21 @@ func ValidateCloudProviderSecret(secret *corev1.Secret) error {
 		}
 		if len(val) == 0 {
 			return fmt.Errorf("field %q in secret %s cannot be empty", key, secretKey)
+		}
+		switch key {
+		case azure.SubscriptionIDKey, azure.TenantIDKey, azure.ClientIDKey:
+			// subscriptionID, tenantID, and clientID must be valid GUIDs,
+			// see https://docs.microsoft.com/en-us/rest/api/securitycenter/locations/get
+			if !guidRegex.Match(val) {
+				return fmt.Errorf("field %q in secret %s must be a valid GUID", key, secretKey)
+			}
+		case azure.ClientSecretKey:
+			// clientSecret must not contain leading or trailing new lines, as they are known to cause issues
+			// Other whitespace characters such as spaces are intentionally not checked for,
+			// since there is no documentation indicating that they would not be valid
+			if strings.Trim(string(val), "\n\r") != string(val) {
+				return fmt.Errorf("field %q in secret %s must not contain leading or traling new lines", key, secretKey)
+			}
 		}
 	}
 
