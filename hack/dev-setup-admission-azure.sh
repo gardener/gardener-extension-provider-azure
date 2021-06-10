@@ -21,12 +21,10 @@ set -o pipefail
 is_nodeless() {
     nodes_len=$(kubectl get node -o json | jq '.items | length')
     if [[ "$nodes_len" == "0" ]]; then
-      echo "true"
-      return
+      return 0
     fi
 
-    echo "false"
-    return
+    return 1
 }
 
 IP_ROUTE=$(ip route get 1)
