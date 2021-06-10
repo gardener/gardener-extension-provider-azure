@@ -45,7 +45,7 @@ if kubectl -n garden get endpoints "$ADMISSION_ENDPOINT_NAME" &> /dev/null; then
   kubectl -n garden delete endpoints $ADMISSION_ENDPOINT_NAME
 fi
 
-if [[ "$(is_nodeless)" == "true" ]]; then
+if is_nodeless; then
   cat <<EOF | kubectl apply -f -
 kind: Service
 apiVersion: v1
