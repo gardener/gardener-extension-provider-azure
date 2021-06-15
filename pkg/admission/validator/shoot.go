@@ -100,27 +100,32 @@ func (s *shoot) validateCreation(ctx context.Context, shoot *core.Shoot) error {
 		return err
 	}
 
-	if err := s.validateShoot(shoot, infraConfig).ToAggregate(); err != nil {
+	var cpConfig *azure.ControlPlaneConfig
+	if shoot.Spec.Provider.ControlPlaneConfig != nil {
+		cpConfig, err = decodeControlPlaneConfig(s.decoder, shoot.Spec.Provider.ControlPlaneConfig)
+		if err != nil {
+			return err
+		}
+	}
+
+	if err := s.validateShoot(shoot, infraConfig, cpConfig).ToAggregate(); err != nil {
 		return err
 	}
 
 	return s.validateShootSecret(ctx, shoot)
 }
 
-func (s *shoot) validateShoot(shoot *core.Shoot, infraConfig *azure.InfrastructureConfig) field.ErrorList {
+func (s *shoot) validateShoot(shoot *core.Shoot, infraConfig *azure.InfrastructureConfig, cpConfig *azure.ControlPlaneConfig) field.ErrorList {
 	allErrs := field.ErrorList{}
-	// ControlPlaneConfig
-	if shoot.Spec.Provider.ControlPlaneConfig != nil {
-		if _, err := decodeControlPlaneConfig(s.decoder, shoot.Spec.Provider.ControlPlaneConfig); err != nil {
-			allErrs = append(allErrs, field.Forbidden(cpConfigPath, "not allowed to configure an unsupported controlPlaneConfig"))
-		}
-	}
 
 	// Network validation
 	allErrs = append(allErrs, azurevalidation.ValidateNetworking(shoot.Spec.Networking, nwPath)...)
 
 	// Provider validation
 	allErrs = append(allErrs, azurevalidation.ValidateInfrastructureConfig(infraConfig, shoot.Spec.Networking.Nodes, shoot.Spec.Networking.Pods, shoot.Spec.Networking.Services, helper.HasShootVmoAlphaAnnotation(shoot.Annotations), infraConfigPath)...)
+	if cpConfig != nil {
+		allErrs = append(allErrs, azurevalidation.ValidateControlPlaneConfig(cpConfig, shoot.Spec.Kubernetes.Version, cpConfigPath)...)
+	}
 
 	// Shoot workers
 	allErrs = append(allErrs, azurevalidation.ValidateWorkers(shoot.Spec.Provider.Workers, infraConfig.Zoned, workersPath)...)
@@ -147,6 +152,15 @@ func (s *shoot) validateUpdate(oldShoot, shoot *core.Shoot) error {
 		return err
 	}
 
+	// Decode the new controlplane config
+	var cpConfig *azure.ControlPlaneConfig
+	if shoot.Spec.Provider.ControlPlaneConfig != nil {
+		cpConfig, err = decodeControlPlaneConfig(s.decoder, shoot.Spec.Provider.ControlPlaneConfig)
+		if err != nil {
+			return err
+		}
+	}
+
 	var allErrs = field.ErrorList{}
 	if !reflect.DeepEqual(oldInfraConfig, infraConfig) {
 		allErrs = append(allErrs, azurevalidation.ValidateInfrastructureConfigUpdate(oldInfraConfig, infraConfig, metaDataPath)...)
@@ -155,7 +169,7 @@ func (s *shoot) validateUpdate(oldShoot, shoot *core.Shoot) error {
 	allErrs = append(allErrs, azurevalidation.ValidateVmoConfigUpdate(helper.HasShootVmoAlphaAnnotation(oldShoot.Annotations), helper.HasShootVmoAlphaAnnotation(shoot.Annotations), metaDataPath)...)
 	allErrs = append(allErrs, azurevalidation.ValidateWorkersUpdate(oldShoot.Spec.Provider.Workers, shoot.Spec.Provider.Workers, workersPath)...)
 
-	allErrs = append(allErrs, s.validateShoot(shoot, infraConfig)...)
+	allErrs = append(allErrs, s.validateShoot(shoot, infraConfig, cpConfig)...)
 
 	return allErrs.ToAggregate()
 }
