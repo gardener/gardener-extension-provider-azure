@@ -25,6 +25,13 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+const (
+	subscriptionID = "b7ad693a-028a-422c-b064-d76c4586f2b3"
+	tenantID       = "ee16e592-3035-41b9-a217-958f8f75b740"
+	clientID       = "7fc4685d-3c33-40e6-b6bf-7857cab04300"
+	clientSecret   = "clientSecret"
+)
+
 var _ = Describe("Secret validation", func() {
 
 	DescribeTable("#ValidateCloudProviderSecret",
@@ -39,9 +46,9 @@ var _ = Describe("Secret validation", func() {
 
 		Entry("should return error when the subscription ID field is missing",
 			map[string][]byte{
-				azure.TenantIDKey:     []byte("tenant"),
-				azure.ClientIDKey:     []byte("cliendID"),
-				azure.ClientSecretKey: []byte("clientSecret"),
+				azure.TenantIDKey:     []byte(tenantID),
+				azure.ClientIDKey:     []byte(clientID),
+				azure.ClientSecretKey: []byte(clientSecret),
 			},
 			HaveOccurred(),
 		),
@@ -49,76 +56,116 @@ var _ = Describe("Secret validation", func() {
 		Entry("should return error when the subscription ID is empty",
 			map[string][]byte{
 				azure.SubscriptionIDKey: {},
-				azure.TenantIDKey:       []byte("tenant"),
-				azure.ClientIDKey:       []byte("cliendID"),
-				azure.ClientSecretKey:   []byte("clientSecret"),
+				azure.TenantIDKey:       []byte(tenantID),
+				azure.ClientIDKey:       []byte(clientID),
+				azure.ClientSecretKey:   []byte(clientSecret),
+			},
+			HaveOccurred(),
+		),
+
+		Entry("should return error when the subscription ID is not a valid GUID",
+			map[string][]byte{
+				azure.SubscriptionIDKey: append([]byte(subscriptionID), ' '),
+				azure.TenantIDKey:       []byte(tenantID),
+				azure.ClientIDKey:       []byte(clientID),
+				azure.ClientSecretKey:   []byte(clientSecret),
 			},
 			HaveOccurred(),
 		),
 
 		Entry("should return error when the tenant ID field is missing",
 			map[string][]byte{
-				azure.SubscriptionIDKey: []byte("subscription"),
-				azure.ClientIDKey:       []byte("cliendID"),
-				azure.ClientSecretKey:   []byte("clientSecret"),
+				azure.SubscriptionIDKey: []byte(subscriptionID),
+				azure.ClientIDKey:       []byte(clientID),
+				azure.ClientSecretKey:   []byte(clientSecret),
 			},
 			HaveOccurred(),
 		),
 
 		Entry("should return error when the tenant ID is empty",
 			map[string][]byte{
-				azure.SubscriptionIDKey: []byte("subscription"),
+				azure.SubscriptionIDKey: []byte(subscriptionID),
 				azure.TenantIDKey:       {},
-				azure.ClientIDKey:       []byte("cliendID"),
-				azure.ClientSecretKey:   []byte("clientSecret"),
+				azure.ClientIDKey:       []byte(clientID),
+				azure.ClientSecretKey:   []byte(clientSecret),
+			},
+			HaveOccurred(),
+		),
+
+		Entry("should return error when the tenant ID is not a valid GUID",
+			map[string][]byte{
+				azure.SubscriptionIDKey: []byte(subscriptionID),
+				azure.TenantIDKey:       append([]byte(" "), []byte(tenantID)...),
+				azure.ClientIDKey:       []byte(clientID),
+				azure.ClientSecretKey:   []byte(clientSecret),
 			},
 			HaveOccurred(),
 		),
 
 		Entry("should return error when the client ID field is missing",
 			map[string][]byte{
-				azure.SubscriptionIDKey: []byte("subscription"),
-				azure.TenantIDKey:       []byte("tenant"),
-				azure.ClientSecretKey:   []byte("clientSecret"),
+				azure.SubscriptionIDKey: []byte(subscriptionID),
+				azure.TenantIDKey:       []byte(tenantID),
+				azure.ClientSecretKey:   []byte(clientSecret),
 			},
 			HaveOccurred(),
 		),
 
 		Entry("should return error when the client ID is empty",
 			map[string][]byte{
-				azure.SubscriptionIDKey: []byte("subscription"),
-				azure.TenantIDKey:       []byte("tenant"),
+				azure.SubscriptionIDKey: []byte(subscriptionID),
+				azure.TenantIDKey:       []byte(tenantID),
 				azure.ClientIDKey:       {},
-				azure.ClientSecretKey:   []byte("clientSecret"),
+				azure.ClientSecretKey:   []byte(clientSecret),
+			},
+			HaveOccurred(),
+		),
+
+		Entry("should return error when the client ID is not a valid GUID",
+			map[string][]byte{
+				azure.SubscriptionIDKey: []byte(subscriptionID),
+				azure.TenantIDKey:       []byte(tenantID),
+				azure.ClientIDKey:       []byte("foo"),
+				azure.ClientSecretKey:   []byte(clientSecret),
 			},
 			HaveOccurred(),
 		),
 
 		Entry("should return error when the client secret field is missing",
 			map[string][]byte{
-				azure.SubscriptionIDKey: []byte("subscription"),
-				azure.TenantIDKey:       []byte("tenant"),
-				azure.ClientIDKey:       []byte("cliendID"),
+				azure.SubscriptionIDKey: []byte(subscriptionID),
+				azure.TenantIDKey:       []byte(tenantID),
+				azure.ClientIDKey:       []byte(clientID),
 			},
 			HaveOccurred(),
 		),
 
 		Entry("should return error when the client secret is empty",
 			map[string][]byte{
-				azure.SubscriptionIDKey: []byte("subscription"),
-				azure.TenantIDKey:       []byte("tenant"),
-				azure.ClientIDKey:       []byte("cliendID"),
+				azure.SubscriptionIDKey: []byte(subscriptionID),
+				azure.TenantIDKey:       []byte(tenantID),
+				azure.ClientIDKey:       []byte(clientID),
 				azure.ClientSecretKey:   {},
+			},
+			HaveOccurred(),
+		),
+
+		Entry("should return error when the client secret contains a trailing new line",
+			map[string][]byte{
+				azure.SubscriptionIDKey: []byte(subscriptionID),
+				azure.TenantIDKey:       []byte(tenantID),
+				azure.ClientIDKey:       []byte(clientID),
+				azure.ClientSecretKey:   append([]byte(clientSecret), '\n'),
 			},
 			HaveOccurred(),
 		),
 
 		Entry("should succeed when the client credentials are valid",
 			map[string][]byte{
-				azure.SubscriptionIDKey: []byte("subscription"),
-				azure.TenantIDKey:       []byte("tenant"),
-				azure.ClientIDKey:       []byte("cliendID"),
-				azure.ClientSecretKey:   []byte("clientSecret"),
+				azure.SubscriptionIDKey: []byte(subscriptionID),
+				azure.TenantIDKey:       []byte(tenantID),
+				azure.ClientIDKey:       []byte(clientID),
+				azure.ClientSecretKey:   []byte(clientSecret),
 			},
 			BeNil(),
 		),
