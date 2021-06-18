@@ -33,6 +33,15 @@ func FindSubnetByPurpose(subnets []api.Subnet, purpose api.Purpose) (*api.Subnet
 	return nil, fmt.Errorf("cannot find subnet with purpose %q", purpose)
 }
 
+func FindSubnetByPurposeAndZone(subnets []api.Subnet, purpose api.Purpose, zone string) (int, *api.Subnet, error) {
+	for index, subnet := range subnets {
+		if subnet.Purpose == purpose && subnet.Zone != nil && *subnet.Zone == zone {
+			return index, &subnet, nil
+		}
+	}
+	return 0, nil, fmt.Errorf("cannot find subnet with purpose %q and zone %q", purpose, zone)
+}
+
 // FindSecurityGroupByPurpose takes a list of security groups and tries to find the first entry
 // whose purpose matches with the given purpose. If no such entry is found then an error will be
 // returned.
@@ -129,4 +138,8 @@ func HasShootVmoAlphaAnnotation(shootAnnotations map[string]string) bool {
 		return true
 	}
 	return false
+}
+
+func AzureZoneToCoreZone(zone int32) string {
+	return fmt.Sprintf("%d", zone)
 }

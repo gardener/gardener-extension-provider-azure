@@ -15,6 +15,7 @@
 package validation_test
 
 import (
+	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	. "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/validation"
 	"github.com/gardener/gardener/pkg/apis/core"
 
@@ -55,8 +56,8 @@ var _ = Describe("Shoot validation", func() {
 
 	Describe("#ValidateWorkerConfig", func() {
 		var (
-			workers []core.Worker
-			zoned   bool
+			workers     []core.Worker
+			infraConfig *apisazure.InfrastructureConfig
 		)
 
 		BeforeEach(func() {
@@ -81,16 +82,20 @@ var _ = Describe("Shoot validation", func() {
 		Describe("#ValidateWorkers", func() {
 			Context("Non zoned cluster", func() {
 				BeforeEach(func() {
-					zoned = false
+					infraConfig = &apisazure.InfrastructureConfig{
+						Zoned: false,
+					}
 				})
 				It("should pass because workers are configured correctly", func() {
-					errorList := ValidateWorkers(workers, zoned, field.NewPath(""))
+					errorList := ValidateWorkers(workers,
+						infraConfig, field.NewPath(""))
 
 					Expect(errorList).To(BeEmpty())
 				})
 				It("should forbid because zones are configured", func() {
 					workers[0].Zones = []string{"1", "2"}
-					errorList := ValidateWorkers(workers, zoned, field.NewPath("workers"))
+					errorList := ValidateWorkers(workers,
+						infraConfig, field.NewPath("workers"))
 
 					Expect(errorList).To(ConsistOf(
 						PointTo(MatchFields(IgnoreExtras, Fields{
@@ -102,13 +107,16 @@ var _ = Describe("Shoot validation", func() {
 			})
 			Context("Zoned cluster", func() {
 				BeforeEach(func() {
-					zoned = true
+					infraConfig = &apisazure.InfrastructureConfig{
+						Zoned: true,
+					}
 					workers[0].Zones = []string{"1", "2"}
 					workers[1].Zones = []string{"1", "2"}
 				})
 				It("should pass because workers are configured correctly", func() {
 
-					errorList := ValidateWorkers(workers, zoned, field.NewPath(""))
+					errorList := ValidateWorkers(workers,
+						infraConfig, field.NewPath(""))
 
 					Expect(errorList).To(BeEmpty())
 				})
@@ -116,7 +124,8 @@ var _ = Describe("Shoot validation", func() {
 				It("should forbid because volume is not configured", func() {
 					workers[1].Volume = nil
 
-					errorList := ValidateWorkers(workers, zoned, field.NewPath("workers"))
+					errorList := ValidateWorkers(workers,
+						infraConfig, field.NewPath("workers"))
 
 					Expect(errorList).To(ConsistOf(
 						PointTo(MatchFields(IgnoreExtras, Fields{
@@ -132,7 +141,8 @@ var _ = Describe("Shoot validation", func() {
 					workers[0].Volume.Encrypted = pointer.BoolPtr(false)
 					workers[0].DataVolumes = []core.DataVolume{{Encrypted: pointer.BoolPtr(true)}}
 
-					errorList := ValidateWorkers(workers, zoned, field.NewPath("workers"))
+					errorList := ValidateWorkers(workers,
+						infraConfig, field.NewPath("workers"))
 
 					Expect(errorList).To(ConsistOf(
 						PointTo(MatchFields(IgnoreExtras, Fields{
@@ -171,7 +181,8 @@ var _ = Describe("Shoot validation", func() {
 						})
 					}
 
-					errorList := ValidateWorkers(workers, zoned, field.NewPath("workers"))
+					errorList := ValidateWorkers(workers,
+						infraConfig, field.NewPath("workers"))
 
 					Expect(errorList).To(ConsistOf(
 						PointTo(MatchFields(IgnoreExtras, Fields{
@@ -184,7 +195,8 @@ var _ = Describe("Shoot validation", func() {
 				It("should forbid because worker does not specify a zone", func() {
 					workers[0].Zones = nil
 
-					errorList := ValidateWorkers(workers, zoned, field.NewPath("workers"))
+					errorList := ValidateWorkers(workers,
+						infraConfig, field.NewPath("workers"))
 
 					Expect(errorList).To(ConsistOf(
 						PointTo(MatchFields(IgnoreExtras, Fields{
@@ -197,7 +209,8 @@ var _ = Describe("Shoot validation", func() {
 				It("should forbid because worker use zone twice", func() {
 					workers[0].Zones[1] = workers[0].Zones[0]
 
-					errorList := ValidateWorkers(workers, zoned, field.NewPath("workers"))
+					errorList := ValidateWorkers(workers,
+						infraConfig, field.NewPath("workers"))
 
 					Expect(errorList).To(ConsistOf(
 						PointTo(MatchFields(IgnoreExtras, Fields{
@@ -205,6 +218,42 @@ var _ = Describe("Shoot validation", func() {
 							"Field": Equal("workers[0].zones[1]"),
 						})),
 					))
+				})
+
+				Context("multi-zone subnets", func() {
+					BeforeEach(func() {
+						infraConfig = &apisazure.InfrastructureConfig{
+							Zoned: true,
+							Networks: apisazure.NetworkConfig{
+								Zones: []apisazure.Zone{
+									{
+										Name: 1,
+									},
+									{
+										Name: 2,
+									},
+								},
+							},
+						}
+					})
+					It("should forbid using zones not configured in infrastructure", func() {
+						workers[0].Zones[0] = "non-existent"
+						errorList := ValidateWorkers(workers,
+							infraConfig, field.NewPath("workers"))
+
+						Expect(errorList).To(ConsistOf(
+							PointTo(MatchFields(IgnoreExtras, Fields{
+								"Type":  Equal(field.ErrorTypeInvalid),
+								"Field": Equal("workers[0].zones[0]"),
+							})),
+						))
+					})
+					It("should allow zones when configured in infrastructure", func() {
+						errorList := ValidateWorkers(workers,
+							infraConfig, field.NewPath("workers"))
+
+						Expect(errorList).To(BeEmpty())
+					})
 				})
 			})
 		})
