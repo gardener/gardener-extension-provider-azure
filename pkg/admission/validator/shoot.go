@@ -193,5 +193,5 @@ func (s *shoot) validateShootSecret(ctx context.Context, shoot *core.Shoot) erro
 		return err
 	}
 
-	return azurevalidation.ValidateCloudProviderSecret(secret)
+	return azurevalidation.ValidateCloudProviderSecret(secret, nil)
 }

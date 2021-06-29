@@ -35,11 +35,17 @@ const (
 var _ = Describe("Secret validation", func() {
 
 	DescribeTable("#ValidateCloudProviderSecret",
-		func(data map[string][]byte, matcher gomegatypes.GomegaMatcher) {
+		func(data map[string][]byte, oldData map[string][]byte, matcher gomegatypes.GomegaMatcher) {
+			var oldSecret *corev1.Secret
 			secret := &corev1.Secret{
 				Data: data,
 			}
-			err := ValidateCloudProviderSecret(secret)
+			if oldData != nil {
+				oldSecret = &corev1.Secret{
+					Data: oldData,
+				}
+			}
+			err := ValidateCloudProviderSecret(secret, oldSecret)
 
 			Expect(err).To(matcher)
 		},
@@ -50,6 +56,7 @@ var _ = Describe("Secret validation", func() {
 				azure.ClientIDKey:     []byte(clientID),
 				azure.ClientSecretKey: []byte(clientSecret),
 			},
+			nil,
 			HaveOccurred(),
 		),
 
@@ -60,6 +67,7 @@ var _ = Describe("Secret validation", func() {
 				azure.ClientIDKey:       []byte(clientID),
 				azure.ClientSecretKey:   []byte(clientSecret),
 			},
+			nil,
 			HaveOccurred(),
 		),
 
@@ -70,6 +78,7 @@ var _ = Describe("Secret validation", func() {
 				azure.ClientIDKey:       []byte(clientID),
 				azure.ClientSecretKey:   []byte(clientSecret),
 			},
+			nil,
 			HaveOccurred(),
 		),
 
@@ -79,6 +88,7 @@ var _ = Describe("Secret validation", func() {
 				azure.ClientIDKey:       []byte(clientID),
 				azure.ClientSecretKey:   []byte(clientSecret),
 			},
+			nil,
 			HaveOccurred(),
 		),
 
@@ -89,6 +99,7 @@ var _ = Describe("Secret validation", func() {
 				azure.ClientIDKey:       []byte(clientID),
 				azure.ClientSecretKey:   []byte(clientSecret),
 			},
+			nil,
 			HaveOccurred(),
 		),
 
@@ -99,6 +110,7 @@ var _ = Describe("Secret validation", func() {
 				azure.ClientIDKey:       []byte(clientID),
 				azure.ClientSecretKey:   []byte(clientSecret),
 			},
+			nil,
 			HaveOccurred(),
 		),
 
@@ -108,6 +120,7 @@ var _ = Describe("Secret validation", func() {
 				azure.TenantIDKey:       []byte(tenantID),
 				azure.ClientSecretKey:   []byte(clientSecret),
 			},
+			nil,
 			HaveOccurred(),
 		),
 
@@ -118,6 +131,7 @@ var _ = Describe("Secret validation", func() {
 				azure.ClientIDKey:       {},
 				azure.ClientSecretKey:   []byte(clientSecret),
 			},
+			nil,
 			HaveOccurred(),
 		),
 
@@ -128,6 +142,7 @@ var _ = Describe("Secret validation", func() {
 				azure.ClientIDKey:       []byte("foo"),
 				azure.ClientSecretKey:   []byte(clientSecret),
 			},
+			nil,
 			HaveOccurred(),
 		),
 
@@ -137,6 +152,7 @@ var _ = Describe("Secret validation", func() {
 				azure.TenantIDKey:       []byte(tenantID),
 				azure.ClientIDKey:       []byte(clientID),
 			},
+			nil,
 			HaveOccurred(),
 		),
 
@@ -147,6 +163,7 @@ var _ = Describe("Secret validation", func() {
 				azure.ClientIDKey:       []byte(clientID),
 				azure.ClientSecretKey:   {},
 			},
+			nil,
 			HaveOccurred(),
 		),
 
@@ -157,6 +174,7 @@ var _ = Describe("Secret validation", func() {
 				azure.ClientIDKey:       []byte(clientID),
 				azure.ClientSecretKey:   append([]byte(clientSecret), '\n'),
 			},
+			nil,
 			HaveOccurred(),
 		),
 
@@ -166,6 +184,71 @@ var _ = Describe("Secret validation", func() {
 				azure.TenantIDKey:       []byte(tenantID),
 				azure.ClientIDKey:       []byte(clientID),
 				azure.ClientSecretKey:   []byte(clientSecret),
+			},
+			nil,
+			BeNil(),
+		),
+
+		Entry("should return error when the subscription ID is changed",
+			map[string][]byte{
+				azure.SubscriptionIDKey: []byte(subscriptionID),
+				azure.TenantIDKey:       []byte(tenantID),
+				azure.ClientIDKey:       []byte(clientID),
+				azure.ClientSecretKey:   []byte(clientSecret),
+			},
+			map[string][]byte{
+				azure.SubscriptionIDKey: []byte("otherSubscriptionID"),
+				azure.TenantIDKey:       []byte(tenantID),
+				azure.ClientIDKey:       []byte(clientID),
+				azure.ClientSecretKey:   []byte(clientSecret),
+			},
+			HaveOccurred(),
+		),
+
+		Entry("should return error when the tenant ID is changed",
+			map[string][]byte{
+				azure.SubscriptionIDKey: []byte(subscriptionID),
+				azure.TenantIDKey:       []byte(tenantID),
+				azure.ClientIDKey:       []byte(clientID),
+				azure.ClientSecretKey:   []byte(clientSecret),
+			},
+			map[string][]byte{
+				azure.SubscriptionIDKey: []byte(subscriptionID),
+				azure.TenantIDKey:       []byte("otherTenantID"),
+				azure.ClientIDKey:       []byte(clientID),
+				azure.ClientSecretKey:   []byte(clientSecret),
+			},
+			HaveOccurred(),
+		),
+
+		Entry("should succeed when the client ID is changed",
+			map[string][]byte{
+				azure.SubscriptionIDKey: []byte(subscriptionID),
+				azure.TenantIDKey:       []byte(tenantID),
+				azure.ClientIDKey:       []byte(clientID),
+				azure.ClientSecretKey:   []byte(clientSecret),
+			},
+			map[string][]byte{
+				azure.SubscriptionIDKey: []byte(subscriptionID),
+				azure.TenantIDKey:       []byte(tenantID),
+				azure.ClientIDKey:       []byte("otherClientID"),
+				azure.ClientSecretKey:   []byte(clientSecret),
+			},
+			BeNil(),
+		),
+
+		Entry("should succeed when the client secret is changed",
+			map[string][]byte{
+				azure.SubscriptionIDKey: []byte(subscriptionID),
+				azure.TenantIDKey:       []byte(tenantID),
+				azure.ClientIDKey:       []byte(clientID),
+				azure.ClientSecretKey:   []byte(clientSecret),
+			},
+			map[string][]byte{
+				azure.SubscriptionIDKey: []byte(subscriptionID),
+				azure.TenantIDKey:       []byte(tenantID),
+				azure.ClientIDKey:       []byte(clientID),
+				azure.ClientSecretKey:   []byte("otherClientSecret"),
 			},
 			BeNil(),
 		),

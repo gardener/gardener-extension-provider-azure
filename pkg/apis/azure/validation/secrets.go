@@ -22,6 +22,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 )
 
 var (
@@ -29,7 +30,8 @@ var (
 )
 
 // ValidateCloudProviderSecret checks whether the given secret contains a valid Azure client credentials.
-func ValidateCloudProviderSecret(secret *corev1.Secret) error {
+// It also does not allow subscription and tennat IDs to be changed when the secret is still used by shoot clusters.
+func ValidateCloudProviderSecret(secret, oldSecret *corev1.Secret) error {
 	secretKey := fmt.Sprintf("%s/%s", secret.Namespace, secret.Name)
 
 	for _, key := range []string{azure.SubscriptionIDKey, azure.TenantIDKey, azure.ClientIDKey, azure.ClientSecretKey} {
@@ -53,6 +55,14 @@ func ValidateCloudProviderSecret(secret *corev1.Secret) error {
 			// since there is no documentation indicating that they would not be valid
 			if strings.Trim(string(val), "\n\r") != string(val) {
 				return fmt.Errorf("field %q in secret %s must not contain leading or traling new lines", key, secretKey)
+			}
+		}
+	}
+
+	if oldSecret != nil {
+		for _, key := range []string{azure.SubscriptionIDKey, azure.TenantIDKey} {
+			if !equality.Semantic.DeepEqual(secret.Data[key], oldSecret.Data[key]) {
+				return fmt.Errorf("field %q in secret %s cannot be changed for existing shoot clusters", key, secretKey)
 			}
 		}
 	}
