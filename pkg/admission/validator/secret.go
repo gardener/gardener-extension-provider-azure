@@ -46,13 +46,14 @@ func (s *secret) InjectClient(client client.Client) error {
 // Validate checks whether the given new secret is in use by Shoot with provider.type=azure
 // and if yes, it check whether the new secret contains valid client credentials.
 func (s *secret) Validate(ctx context.Context, newObj, oldObj client.Object) error {
+	var oldSecret *corev1.Secret
 	secret, ok := newObj.(*corev1.Secret)
 	if !ok {
 		return fmt.Errorf("wrong object type %T", newObj)
 	}
 
 	if oldObj != nil {
-		oldSecret, ok := oldObj.(*corev1.Secret)
+		oldSecret, ok = oldObj.(*corev1.Secret)
 		if !ok {
 			return fmt.Errorf("wrong object type %T for old object", oldObj)
 		}
@@ -71,5 +72,5 @@ func (s *secret) Validate(ctx context.Context, newObj, oldObj client.Object) err
 		return nil
 	}
 
-	return azurevalidation.ValidateCloudProviderSecret(secret)
+	return azurevalidation.ValidateCloudProviderSecret(secret, oldSecret)
 }
