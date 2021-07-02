@@ -3,11 +3,12 @@ apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: {{ .Values.config.etcd.storage.className }}
+  annotations:
+    resources.gardener.cloud/delete-on-invalid-update: "true"
   labels:
 {{ include "labels" . | indent 4 }}
 provisioner: {{ .Values.config.etcd.storage.provisioner }}
 allowVolumeExpansion: true
 parameters:
   storageaccounttype: Premium_LRS
-  kind: managed
 {{- end }}
