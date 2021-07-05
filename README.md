@@ -1,5 +1,7 @@
 # [Gardener Extension for Azure provider](https://gardener.cloud)
 
+## Please ignore
+
 [![CI Build status](https://concourse.ci.gardener.cloud/api/v1/teams/gardener/pipelines/gardener-extension-provider-azure-master/jobs/master-head-update-job/badge)](https://concourse.ci.gardener.cloud/teams/gardener/pipelines/gardener-extension-provider-azure-master/jobs/master-head-update-job)
 [![Go Report Card](https://goreportcard.com/badge/github.com/gardener/gardener-extension-provider-azure)](https://goreportcard.com/report/github.com/gardener/gardener-extension-provider-azure)
 
@@ -65,3 +67,4 @@ Please find further resources about out project here:
 * [Extensibility API documentation](https://github.com/gardener/gardener/tree/master/docs/extensions)
 * [Gardener Extensions Golang library](https://godoc.org/github.com/gardener/gardener/extensions/pkg)
 * [Gardener API Reference](https://gardener.cloud/api-reference/)
+
