@@ -34,7 +34,6 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	"github.com/gardener/gardener/pkg/utils"
-	"github.com/pkg/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -63,12 +62,6 @@ func (w *workerDelegate) DeployMachineClasses(ctx context.Context) error {
 		if err := w.generateMachineConfig(ctx); err != nil {
 			return err
 		}
-	}
-
-	// Delete any older version of AzureMachineClass CRs.
-	// TODO: Remove this clean-up in future version.
-	if err := w.Client().DeleteAllOf(ctx, &machinev1alpha1.AzureMachineClass{}, client.InNamespace(w.worker.Namespace)); err != nil {
-		return errors.Wrapf(err, "cleaning up older version of Azure machine class CRs failed")
 	}
 
 	return w.seedChartApplier.Apply(ctx, filepath.Join(azure.InternalChartsPath, "machineclass"), w.worker.Namespace, "machineclass", kubernetes.Values(map[string]interface{}{"machineClasses": w.machineClasses}))
@@ -125,12 +118,6 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			return err
 		}
 
-		// Generate the hash for the worker pool.
-		workerPoolHash, err := w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency)
-		if err != nil {
-			return err
-		}
-
 		urn, id, imageSupportAcceleratedNetworking, err := w.findMachineImage(pool.MachineImage.Name, pool.MachineImage.Version)
 		if err != nil {
 			return err
@@ -155,7 +142,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			return err
 		}
 
-		generateMachineClassAndDeployment := func(zone *zoneInfo, machineSet *machineSetInfo) (worker.MachineDeployment, map[string]interface{}) {
+		generateMachineClassAndDeployment := func(zone *zoneInfo, machineSet *machineSetInfo, subnetName, workerPoolHash string) (worker.MachineDeployment, map[string]interface{}) {
 			var (
 				machineDeployment = worker.MachineDeployment{
 					Minimum:              pool.Minimum,
@@ -187,7 +174,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 
 			networkConfig := map[string]interface{}{
 				"vnet":   infrastructureStatus.Networks.VNet.Name,
-				"subnet": nodesSubnet.Name,
+				"subnet": subnetName,
 			}
 			if infrastructureStatus.Networks.VNet.ResourceGroup != nil {
 				networkConfig["vnetResourceGroup"] = *infrastructureStatus.Networks.VNet.ResourceGroup
@@ -238,10 +225,14 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 
 		// VMO
 		if vmoDependency != nil {
+			workerPoolHash, err := w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, nil)
+			if err != nil {
+				return err
+			}
 			machineDeployment, machineClassSpec := generateMachineClassAndDeployment(nil, &machineSetInfo{
 				id:   vmoDependency.ID,
 				kind: "vmo",
-			})
+			}, nodesSubnet.Name, workerPoolHash)
 			machineDeployments = append(machineDeployments, machineDeployment)
 			machineClasses = append(machineClasses, machineClassSpec)
 			continue
@@ -258,10 +249,15 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			// This is necessary to avoid `ExistingAvailabilitySetWasNotDeployedOnAcceleratedNetworkingEnabledCluster` error.
 			acceleratedNetworkAllowed = false
 
+			workerPoolHash, err := w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, nil)
+			if err != nil {
+				return err
+			}
+
 			machineDeployment, machineClassSpec := generateMachineClassAndDeployment(nil, &machineSetInfo{
 				id:   nodesAvailabilitySet.ID,
 				kind: "availabilityset",
-			})
+			}, nodesSubnet.Name, workerPoolHash)
 			machineDeployments = append(machineDeployments, machineDeployment)
 			machineClasses = append(machineClasses, machineClassSpec)
 			continue
@@ -270,11 +266,40 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		// Availability Zones
 		var zoneCount = len(pool.Zones)
 		for zoneIndex, zone := range pool.Zones {
+			var (
+				subnetName     string
+				workerPoolHash string
+			)
+
+			if infrastructureStatus.Networks.Topology == azureapi.TopologyZonal {
+				subnetIndex, nodesSubnet, err := azureapihelper.FindSubnetByPurposeAndZone(infrastructureStatus.Networks.Subnets, azureapi.PurposeNodes, zone)
+				if err != nil {
+					return err
+				}
+				subnetName = nodesSubnet.Name
+				if subnetIndex == 0 {
+					workerPoolHash, err = w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, nil)
+					if err != nil {
+						return err
+					}
+				} else {
+					workerPoolHash, err = w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, &nodesSubnet.Name)
+					if err != nil {
+						return err
+					}
+				}
+			} else {
+				subnetName = nodesSubnet.Name
+				workerPoolHash, err = w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, nil)
+				if err != nil {
+					return err
+				}
+			}
 			machineDeployment, machineClassSpec := generateMachineClassAndDeployment(&zoneInfo{
 				name:  zone,
 				index: int32(zoneIndex),
 				count: int32(zoneCount),
-			}, nil)
+			}, nil, subnetName, workerPoolHash)
 			machineDeployments = append(machineDeployments, machineDeployment)
 			machineClasses = append(machineClasses, machineClassSpec)
 		}
@@ -371,7 +396,7 @@ func SanitizeAzureVMTag(label string) string {
 	return tagRegex.ReplaceAllString(strings.ToLower(label), "_")
 }
 
-func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPool, infrastructureStatus *azureapi.InfrastructureStatus, vmoDependency *azureapi.VmoDependency) (string, error) {
+func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPool, infrastructureStatus *azureapi.InfrastructureStatus, vmoDependency *azureapi.VmoDependency, subnetName *string) (string, error) {
 	var additionalHashData = []string{}
 
 	// Integrate data disks/volumes in the hash.
@@ -392,6 +417,10 @@ func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPo
 	// Include the vmo dependency name into the workerpool hash.
 	if vmoDependency != nil {
 		additionalHashData = append(additionalHashData, vmoDependency.Name)
+	}
+
+	if subnetName != nil {
+		additionalHashData = append(additionalHashData, *subnetName)
 	}
 
 	// Generate the worker pool hash.

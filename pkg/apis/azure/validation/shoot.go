@@ -15,6 +15,8 @@
 package validation
 
 import (
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener/pkg/apis/core"
 	"github.com/gardener/gardener/pkg/apis/core/validation"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -37,7 +39,7 @@ func ValidateNetworking(networking core.Networking, fldPath *field.Path) field.E
 }
 
 // ValidateWorkers validates the workers of a Shoot.
-func ValidateWorkers(workers []core.Worker, zoned bool, fldPath *field.Path) field.ErrorList {
+func ValidateWorkers(workers []core.Worker, infra *azure.InfrastructureConfig, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	for i, worker := range workers {
@@ -55,12 +57,13 @@ func ValidateWorkers(workers []core.Worker, zoned bool, fldPath *field.Path) fie
 			allErrs = append(allErrs, validateDataVolume(&volume, dataVolPath)...)
 		}
 
-		if zoned && len(worker.Zones) == 0 {
+		// Zones validation
+		if infra.Zoned && len(worker.Zones) == 0 {
 			allErrs = append(allErrs, field.Required(fldPath.Index(i).Child("zones"), "at least one zone must be configured for zoned clusters"))
 			continue
 		}
 
-		if !zoned && len(worker.Zones) > 0 {
+		if !infra.Zoned && len(worker.Zones) > 0 {
 			allErrs = append(allErrs, field.Required(fldPath.Index(i).Child("zones"), "zones must not be specified for non zoned clusters"))
 			continue
 		}
@@ -72,6 +75,19 @@ func ValidateWorkers(workers []core.Worker, zoned bool, fldPath *field.Path) fie
 				continue
 			}
 			zones.Insert(zone)
+		}
+
+		if isUsingInfrastructureZones(&infra.Networks) {
+			infraZones := sets.String{}
+			for _, zone := range infra.Networks.Zones {
+				infraZones.Insert(helper.AzureZoneToCoreZone(zone.Name))
+			}
+
+			for zoneIndex, workerZone := range worker.Zones {
+				if !infraZones.Has(workerZone) {
+					allErrs = append(allErrs, field.Invalid(fldPath.Index(i).Child("zones").Index(zoneIndex), workerZone, "zone configuration must be specified in \"infrastructureConfig.networks.zones\""))
+				}
+			}
 		}
 	}
 

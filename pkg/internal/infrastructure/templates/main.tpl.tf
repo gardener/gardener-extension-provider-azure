@@ -4,6 +4,7 @@ provider "azurerm" {
   client_id       = var.CLIENT_ID
   client_secret   = var.CLIENT_SECRET
 
+  skip_provider_registration = "true"
   features {}
 }
 
@@ -29,7 +30,7 @@ data "azurerm_resource_group" "rg" {
 {{ if .create.vnet -}}
 resource "azurerm_virtual_network" "vnet" {
   name                = "{{ .resourceGroup.vnet.name }}"
-  resource_group_name = {{ template "resource-group-reference" . }}
+  resource_group_name = {{ template "resource-group-reference" $ }}
   location            = "{{ .azure.region }}"
   address_space       = ["{{ .resourceGroup.vnet.cidr }}"]
 }
@@ -40,79 +41,130 @@ data "azurerm_virtual_network" "vnet" {
 }
 {{- end }}
 
-# Subnet
-resource "azurerm_subnet" "workers" {
-  name                      = "{{ .clusterName }}-nodes"
-  {{ if .create.vnet -}}
-  virtual_network_name      = azurerm_virtual_network.vnet.name
-  resource_group_name       = azurerm_virtual_network.vnet.resource_group_name
-  {{- else -}}
-  virtual_network_name      = data.azurerm_virtual_network.vnet.name
-  resource_group_name       = data.azurerm_virtual_network.vnet.resource_group_name
-  {{- end }}
-  address_prefixes          = ["{{ .networks.worker }}"]
-  service_endpoints         = [{{range $index, $serviceEndpoint := .resourceGroup.subnet.serviceEndpoints}}{{if $index}},{{end}}"{{$serviceEndpoint}}"{{end}}]
-}
-
 # RouteTable
 resource "azurerm_route_table" "workers" {
   name                = "worker_route_table"
   location            = "{{ .azure.region }}"
-  resource_group_name = {{ template "resource-group-reference" . }}
-}
-resource "azurerm_subnet_route_table_association" "workers-rt-subnet-association" {
-  subnet_id      = azurerm_subnet.workers.id
-  route_table_id = azurerm_route_table.workers.id
+  resource_group_name = {{ template "resource-group-reference" $ }}
 }
 
 # SecurityGroup
 resource "azurerm_network_security_group" "workers" {
   name                = "{{ .clusterName }}-workers"
   location            = "{{ .azure.region }}"
-  resource_group_name = {{ template "resource-group-reference" . }}
+  resource_group_name = {{ template "resource-group-reference" $ }}
 }
-resource "azurerm_subnet_network_security_group_association" "workers-nsg-subnet-association" {
-  subnet_id                 = azurerm_subnet.workers.id
+
+{{- range $index, $subnet := .networks.subnets }}
+{{- $workers := "workers" }}
+{{- $subnetName := printf "%s-nodes" $.clusterName }}
+{{- $subnetOutput := $.outputKeys.subnetName }}
+{{- if $index }}
+{{- $workers = printf "%s-z%d" $workers $index }}
+{{- $subnetName = printf "%s-z%d" $subnetName $index }}
+{{- $subnetOutput = printf "%s-z%d" $subnetOutput $index }}
+{{- end }}
+
+#===============================================
+#= Subnets {{ $subnetName }}
+#===============================================
+
+resource "azurerm_subnet" "{{ $workers }}" {
+  name                      = "{{ $subnetName }}"
+{{ if $.create.vnet -}}
+  virtual_network_name      = azurerm_virtual_network.vnet.name
+  resource_group_name       = azurerm_virtual_network.vnet.resource_group_name
+{{- else -}}
+  virtual_network_name      = data.azurerm_virtual_network.vnet.name
+  resource_group_name       = data.azurerm_virtual_network.vnet.resource_group_name
+{{- end }}
+  address_prefixes          = ["{{ $subnet.cidr }}"]
+  service_endpoints         = [{{ range $index, $serviceEndpoint := $subnet.serviceEndpoints }}{{ if $index }},{{ end }}"{{$serviceEndpoint}}"{{end}}]
+}
+
+resource "azurerm_subnet_route_table_association" "{{ $workers }}-rt-subnet-association" {
+  subnet_id      = azurerm_subnet.{{ $workers }}.id
+  route_table_id = azurerm_route_table.workers.id
+}
+
+resource "azurerm_subnet_network_security_group_association" "{{ $workers }}-nsg-subnet-association" {
+  subnet_id                 = azurerm_subnet.{{ $workers }}.id
   network_security_group_id = azurerm_network_security_group.workers.id
 }
 
-{{ if .create.natGateway -}}
-#===============================================
-#= NAT Gateway
-#===============================================
+output "{{ $subnetOutput }}" {
+  value = azurerm_subnet.{{ $workers }}.name
+}
 
-resource "azurerm_nat_gateway" "nat" {
-  name                    = "{{ .clusterName }}-nat-gateway"
-  location                = "{{ .azure.region }}"
-  resource_group_name     = {{ template "resource-group-reference" . }}
+{{- if $subnet.natGateway.enabled }}
+{{- $natName := "nat" }}
+{{- $natResourceName := printf "%s-nat-gateway" $.clusterName }}
+{{- if $index }}
+{{- $natName = printf "%s-z%d" $natName $index }}
+{{- $natResourceName = printf "%s-z%d" $natResourceName $index }}
+{{- end }}
+#===============================================
+#= NAT Gateway {{ $natName }}
+#===============================================
+resource "azurerm_nat_gateway" "{{ $natName }}" {
+  name                    = "{{ $natResourceName }}"
+  location                = "{{ $.azure.region }}"
+  resource_group_name     = {{ template "resource-group-reference" $ }}
   sku_name                = "Standard"
-  {{ if .natGateway -}}
-  {{ if hasKey .natGateway "idleConnectionTimeoutMinutes" -}}
-  idle_timeout_in_minutes = {{ .natGateway.idleConnectionTimeoutMinutes }}
-  {{- end }}
-  {{ if hasKey .natGateway "zone" -}}
-  zones = [{{ .natGateway.zone | quote }}]
-  {{- end }}
-  {{ if .natGateway.migrateNatGatewayToIPAssociation -}}
-  # TODO(natipmigration) This can be removed in future versions when the ip migration has been completed.
-  public_ip_address_ids   = []
-  {{- end }}
-  {{- end }}
-}
-resource "azurerm_subnet_nat_gateway_association" "nat-worker-subnet-association" {
-  subnet_id      = azurerm_subnet.workers.id
-  nat_gateway_id = azurerm_nat_gateway.nat.id
+{{ if hasKey $subnet.natGateway "idleConnectionTimeoutMinutes" -}}
+  idle_timeout_in_minutes = {{ $subnet.natGateway.idleConnectionTimeoutMinutes }}
+{{- end }}
+{{ if hasKey $subnet.natGateway "zone" -}}
+  zones = [{{ $subnet.natGateway.zone | quote }}]
+{{- end }}
 }
 
-{{ if .natGateway -}}
-{{ if and (hasKey .natGateway "ipAddresses") (hasKey .natGateway "zone") -}}
-{{ template "natgateway-user-provided-public-ips" . }}
-{{- else -}}
-{{ template "natgateway-managed-ip" . }}
+resource "azurerm_subnet_nat_gateway_association" "{{ $natName }}-worker-subnet-association" {
+  subnet_id      = azurerm_subnet.{{ $workers }}.id
+  nat_gateway_id = azurerm_nat_gateway.{{ $natName }}.id
+}
+
+{{ if and (hasKey $subnet.natGateway "ipAddresses") (hasKey $subnet.natGateway "zone") -}}
+#===============================================
+#= NAT Gateway User provided IP
+#===============================================
+{{ range $ipIndex, $ip := .natGateway.ipAddresses -}}
+data "azurerm_public_ip" "{{ $natName }}-ip-user-provided-{{ $ipIndex }}" {
+  name                = "{{ $ip.name }}"
+  resource_group_name = "{{ $ip.resourceGroup }}"
+}
+
+resource "azurerm_nat_gateway_public_ip_association" "{{ $natName }}-ip-user-provided-association-{{ $ipIndex }}" {
+  nat_gateway_id       = azurerm_nat_gateway.{{ $natName }}.id
+  public_ip_address_id = data.azurerm_public_ip.{{ $natName }}-ip-user-provided-{{ $ipIndex }}.id
+}
+
 {{- end }}
 {{- else -}}
-{{ template "natgateway-managed-ip" . }}
+#===============================================
+#= NAT Gateway managed IP
+#===============================================
+{{- $natIpName := printf "%s-ip" $natName}}
+resource "azurerm_public_ip" "{{ $natIpName }}" {
+  name                = "{{ $natResourceName }}-ip"
+  location            = "{{ $.azure.region }}"
+  resource_group_name = {{ template "resource-group-reference" $ }}
+  allocation_method   = "Static"
+  sku                 = "Standard"
+{{ if hasKey .natGateway "zone" -}}
+  zones = [{{ .natGateway.zone | quote }}]
 {{- end }}
+}
+
+resource "azurerm_nat_gateway_public_ip_association" "{{ $natName }}-ip-association" {
+  nat_gateway_id       = azurerm_nat_gateway.{{ $natName }}.id
+  public_ip_address_id = azurerm_public_ip.{{ $natIpName }}.id
+}
+{{- end }}
+
+{{- end }}
+{{- /*- end */}}
+
 {{- end }}
 
 {{ if .identity -}}
@@ -134,19 +186,20 @@ data "azurerm_user_assigned_identity" "identity" {
 resource "azurerm_availability_set" "workers" {
   name                         = "{{ .clusterName }}-avset-workers"
   location                     = "{{ .azure.region }}"
-  resource_group_name          = {{ template "resource-group-reference" . }}
+  resource_group_name          = {{ template "resource-group-reference" $ }}
   platform_update_domain_count = "{{ .azure.countUpdateDomains }}"
   platform_fault_domain_count  = "{{ .azure.countFaultDomains }}"
   managed                      = true
 }
 {{- end}}
 
+
 #===============================================
 //= Output variables
 #===============================================
 
 output "{{ .outputKeys.resourceGroupName }}" {
-  value = {{ template "resource-group-reference" . }}
+  value = {{ template "resource-group-reference" $ }}
 }
 
 {{ if .create.vnet -}}
@@ -157,15 +210,10 @@ output "{{ .outputKeys.vnetName }}" {
 output "{{ .outputKeys.vnetName }}" {
   value = data.azurerm_virtual_network.vnet.name
 }
-
 output "{{ .outputKeys.vnetResourceGroup }}" {
   value = data.azurerm_virtual_network.vnet.resource_group_name
 }
 {{- end}}
-
-output "{{ .outputKeys.subnetName }}" {
-  value = azurerm_subnet.workers.name
-}
 
 output "{{ .outputKeys.routeTableName }}" {
   value = azurerm_route_table.workers.name
@@ -210,36 +258,4 @@ azurerm_resource_group.rg.name
 {{- else -}}
 data.azurerm_resource_group.rg.name
 {{- end}}
-{{- end -}}
-
-{{- define "natgateway-managed-ip" -}}
-# Gardener managed public IP to be attached to the NatGateway.
-resource "azurerm_public_ip" "natip" {
-name                = "{{ .clusterName }}-nat-ip"
-location            = "{{ .azure.region }}"
-resource_group_name = {{ template "resource-group-reference" . }}
-allocation_method   = "Static"
-sku                 = "Standard"
-{{ if .natGateway -}}{{ if hasKey .natGateway "zone" -}}
-zones = [{{ .natGateway.zone | quote }}]
-{{- end }}{{- end }}
-}
-resource "azurerm_nat_gateway_public_ip_association" "natip-association" {
-nat_gateway_id       = azurerm_nat_gateway.nat.id
-public_ip_address_id = azurerm_public_ip.natip.id
-}
-{{- end -}}
-
-{{- define "natgateway-user-provided-public-ips" -}}
-# User provided public IPs to be attached to the NatGateway.
-{{ range $index, $ip := .natGateway.ipAddresses -}}
-data "azurerm_public_ip" "natip-user-provided-{{ $index }}" {
-name                = "{{ $ip.name }}"
-resource_group_name = "{{ $ip.resourceGroup }}"
-}
-resource "azurerm_nat_gateway_public_ip_association" "natip-user-provided-{{ $index }}-association" {
-nat_gateway_id       = azurerm_nat_gateway.nat.id
-public_ip_address_id = data.azurerm_public_ip.natip-user-provided-{{ $index }}.id
-}
-{{ end }}
 {{- end -}}

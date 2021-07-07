@@ -20,7 +20,7 @@ import (
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	. "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/validation"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-
+	"github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	. "github.com/gardener/gardener/pkg/utils/test/matchers"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -42,6 +42,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 		vnetCIDR    = "10.0.0.0/8"
 		invalidCIDR = "invalid-cidr"
 
+		workers      = "10.250.3.0/24"
 		providerPath *field.Path
 	)
 
@@ -49,7 +50,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 		nodes = "10.250.0.0/16"
 		infrastructureConfig = &apisazure.InfrastructureConfig{
 			Networks: apisazure.NetworkConfig{
-				Workers: "10.250.3.0/24",
+				Workers: &workers,
 				VNet: apisazure.VNet{
 					CIDR: &vnetCIDR,
 				},
@@ -146,7 +147,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				nodes = "10.250.3.0/24"
 				infrastructureConfig.ResourceGroup = nil
 				infrastructureConfig.Networks = apisazure.NetworkConfig{
-					Workers: "10.250.3.0/24",
+					Workers: &workers,
 				}
 				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
 				Expect(errorList).To(HaveLen(0))
@@ -181,7 +182,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			})
 
 			It("should forbid invalid workers CIDR", func() {
-				infrastructureConfig.Networks.Workers = invalidCIDR
+				infrastructureConfig.Networks.Workers = &invalidCIDR
 
 				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
 
@@ -193,7 +194,8 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			})
 
 			It("should forbid empty workers CIDR", func() {
-				infrastructureConfig.Networks.Workers = ""
+				emptyStr := ""
+				infrastructureConfig.Networks.Workers = &emptyStr
 
 				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
 
@@ -205,9 +207,22 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					}))
 			})
 
+			It("should forbid nil workers CIDR", func() {
+				infrastructureConfig.Networks.Workers = nil
+
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
+
+				Expect(errorList).To(ConsistOfFields(
+					Fields{
+						"Type":   Equal(field.ErrorTypeForbidden),
+						"Field":  Equal("networks.workers"),
+						"Detail": Equal("either workers or zones must be specified"),
+					}))
+			})
+
 			It("should forbid workers which are not in VNet and Nodes CIDR", func() {
 				notOverlappingCIDR := "1.1.1.1/32"
-				infrastructureConfig.Networks.Workers = notOverlappingCIDR
+				infrastructureConfig.Networks.Workers = &notOverlappingCIDR
 
 				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
 
@@ -251,7 +266,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				serviceCIDR := "100.64.0.5/13"
 				workers := "10.250.3.8/24"
 
-				infrastructureConfig.Networks.Workers = workers
+				infrastructureConfig.Networks.Workers = &workers
 				infrastructureConfig.Networks.VNet = apisazure.VNet{CIDR: &vpcCIDR}
 
 				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodeCIDR, &podCIDR, &serviceCIDR, hasVmoAlphaAnnotation, providerPath)
@@ -421,6 +436,233 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				})
 			})
 		})
+
+		Context("Zones", func() {
+
+			var (
+				zoneName  int32 = 1
+				zoneName1 int32 = 2
+				zoneCIDR        = "10.250.0.0/24"
+				zoneCIDR1       = "10.250.1.0/24"
+			)
+
+			BeforeEach(func() {
+				infrastructureConfig = &apisazure.InfrastructureConfig{
+					Zoned: true,
+					Networks: apisazure.NetworkConfig{
+						VNet: apisazure.VNet{
+							CIDR: &vnetCIDR,
+						},
+						Zones: []apisazure.Zone{
+							{
+								Name: zoneName,
+								CIDR: zoneCIDR,
+							},
+							{
+								Name: zoneName1,
+								CIDR: zoneCIDR1,
+							},
+						},
+					},
+				}
+			})
+
+			It("should succeed", func() {
+				Expect(ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)).To(BeEmpty())
+			})
+
+			It("should succeed with NAT Gateway", func() {
+				infrastructureConfig.Networks.Zones[0].NatGateway = &apisazure.NatGatewayConfig{
+					Enabled: true,
+					Zone:    &zoneName,
+				}
+				infrastructureConfig.Networks.Zones[1].NatGateway = &apisazure.NatGatewayConfig{
+					Enabled: true,
+					Zone:    &zoneName1,
+				}
+				Expect(ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)).To(BeEmpty())
+			})
+
+			It("should succeed with NAT Gateway and  public IPs", func() {
+				infrastructureConfig.Networks.Zones[0].NatGateway = &apisazure.NatGatewayConfig{
+					Enabled: true,
+					Zone:    &zoneName,
+					IPAddresses: []apisazure.PublicIPReference{
+						{
+							Name:          "public-ip-name",
+							ResourceGroup: "public-ip-resource-group",
+							Zone:          zoneName,
+						},
+					},
+				}
+				Expect(ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)).To(BeEmpty())
+
+			})
+
+			It("should forbid non canonical CIDRs", func() {
+				infrastructureConfig.Networks.Zones[0].CIDR = "10.250.0.1/24"
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
+				Expect(errorList).NotTo(BeEmpty())
+				Expect(errorList).To(HaveLen(1))
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":  Equal(field.ErrorTypeInvalid),
+					"Field": Equal("networks.zones[0].cidr"),
+				}))
+			})
+
+			It("should forbid overlapping zone CIDRs", func() {
+				infrastructureConfig.Networks.Zones[0].CIDR = zoneCIDR1
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
+				Expect(errorList).NotTo(BeEmpty())
+				Expect(errorList).To(HaveLen(2))
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.zones[0].cidr"),
+					"Detail": ContainSubstring("subset of"),
+				}, Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.zones[1].cidr"),
+					"Detail": ContainSubstring("subset of"),
+				}))
+			})
+
+			It("should forbid not specifying VNet when using Zones", func() {
+				infrastructureConfig.Networks.VNet = apisazure.VNet{}
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
+				Expect(errorList).NotTo(BeEmpty())
+				Expect(errorList).To(HaveLen(1))
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":   Equal(field.ErrorTypeForbidden),
+					"Field":  Equal("networks.vnet.cidr"),
+					"Detail": Equal("a vnet cidr or vnet reference must be specified when the workers field is not set"),
+				}))
+
+			})
+
+			It("should forbid zone CIDRs which are not in Vnet and Nodes CIDR", func() {
+				vpcCIDR := "10.0.0.0/8"
+				nodeCIDR := "10.150.0.0/16"
+
+				infrastructureConfig.Networks.VNet.CIDR = &vpcCIDR
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodeCIDR, &pods, &services, hasVmoAlphaAnnotation, providerPath)
+
+				Expect(errorList).NotTo(BeEmpty())
+				Expect(errorList).To(HaveLen(2))
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.zones[0].cidr"),
+					"Detail": ContainSubstring("subset of"),
+				}, Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.zones[1].cidr"),
+					"Detail": ContainSubstring("subset of"),
+				}))
+			})
+
+			It("should forbid not specifying zones for NAT gateway", func() {
+				infrastructureConfig.Networks.Zones[0].NatGateway = &apisazure.NatGatewayConfig{
+					Enabled: true,
+				}
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
+				Expect(errorList).NotTo(BeEmpty())
+				Expect(errorList).To(HaveLen(1))
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.zones[0].natGateway.zone"),
+					"Detail": Equal("zone must be specified"),
+				}))
+			})
+
+			It("should forbid specifying incorrect zone for NAT gateway", func() {
+				infrastructureConfig.Networks.Zones[0].NatGateway = &apisazure.NatGatewayConfig{
+					Enabled: true,
+					Zone:    &zoneName1,
+				}
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
+				Expect(errorList).NotTo(BeEmpty())
+				Expect(errorList).To(HaveLen(1))
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.zones[0].natGateway.zone"),
+					"Detail": Equal("natGateway zone must be the same as the configured zone"),
+				}))
+			})
+
+			It("should forbid specifying zone multiple times", func() {
+				infrastructureConfig.Networks.Zones[0].Name = zoneName1
+
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
+				Expect(errorList).NotTo(BeEmpty())
+				Expect(errorList).To(HaveLen(1))
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.zones[1]"),
+					"Detail": Equal("the same zone cannot be specified multiple times"),
+				}))
+			})
+		})
+	})
+
+	Describe("#ValidateInfrastructureConfigAgainstCloudProfile", func() {
+
+		var (
+			region          = "region"
+			zoneName  int32 = 1
+			zoneName1 int32 = 2
+			cp        *v1beta1.CloudProfile
+		)
+
+		BeforeEach(func() {
+			cp = &v1beta1.CloudProfile{
+				Spec: v1beta1.CloudProfileSpec{
+					Regions: []v1beta1.Region{
+						{
+							Name: region,
+							Zones: []v1beta1.AvailabilityZone{
+								{
+									Name: "1",
+								},
+								{
+									Name: "2",
+								},
+							},
+						},
+					},
+				},
+			}
+			infrastructureConfig = &apisazure.InfrastructureConfig{
+				Zoned: true,
+				Networks: apisazure.NetworkConfig{
+					VNet: apisazure.VNet{
+						CIDR: &vnetCIDR,
+					},
+					Zones: []apisazure.Zone{
+						{
+							Name: zoneName,
+						},
+						{
+							Name: zoneName1,
+						},
+					},
+				},
+			}
+		})
+
+		It("should deny zones not present in cloudprofile", func() {
+			infrastructureConfig.Networks.Zones[0].Name = 5
+			errorList := ValidateInfrastructureConfigAgainstCloudProfile(nil, infrastructureConfig, region, cp, providerPath)
+			Expect(errorList).NotTo(BeEmpty())
+			Expect(errorList).To(HaveLen(1))
+			Expect(errorList).To(ConsistOfFields(Fields{
+				"Type":  Equal(field.ErrorTypeNotSupported),
+				"Field": Equal("networks.zones[0].name"),
+			}))
+		})
+		It("should allow zones removed from cloudprofile", func() {
+			cp.Spec.Regions[0].Zones = cp.Spec.Regions[0].Zones[1:]
+			errorList := ValidateInfrastructureConfigAgainstCloudProfile(infrastructureConfig, infrastructureConfig, region, cp, providerPath)
+			Expect(errorList).To(BeEmpty())
+		})
 	})
 
 	Describe("#ValidateInfrastructureConfigUpdate", func() {
@@ -519,6 +761,99 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			Entry("should forbid moving a zoned cluster to a non-zoned cluster", false, true, true),
 			Entry("should forbid moving a non-zoned cluster to a zoned cluster", true, false, true),
 		)
+
+		Context("Infrastructure Zones", func() {
+			BeforeEach(func() {
+				infrastructureConfig.Zoned = true
+			})
+
+			It("transition should succeed", func() {
+				newCIDR := "10.250.250.0/24"
+				newInfra := &apisazure.InfrastructureConfig{
+					Zoned: true,
+					Networks: apisazure.NetworkConfig{
+						VNet: apisazure.VNet{
+							CIDR: &vnetCIDR,
+						},
+						Zones: []apisazure.Zone{
+							{
+								Name: 1,
+								CIDR: workers,
+							},
+							{
+								Name: 2,
+								CIDR: newCIDR,
+							},
+						},
+					},
+				}
+
+				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfra, providerPath)
+				Expect(errorList).To(BeEmpty())
+			})
+			It("should deny transition to multi-subnet if the CIDR is not correct", func() {
+				newCIDR := "10.250.250.0/24"
+				newInfra := &apisazure.InfrastructureConfig{
+					Zoned: true,
+					Networks: apisazure.NetworkConfig{
+						VNet: apisazure.VNet{
+							CIDR: &vnetCIDR,
+						},
+						Zones: []apisazure.Zone{
+							{
+								Name: 1,
+								CIDR: newCIDR,
+							},
+							{
+								Name: 2,
+								CIDR: workers,
+							},
+						},
+					},
+				}
+
+				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfra, providerPath)
+				Expect(errorList).NotTo(BeEmpty())
+				Expect(errorList).To(HaveLen(1))
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":   Equal(field.ErrorTypeForbidden),
+					"Field":  Equal("networks.zones[0].cidr"),
+					"Detail": Equal("when updating to use zones the CIDR must match that of the previous config.networks.workers"),
+				}))
+			})
+
+			It("should deny changing zone information name", func() {
+				zonedInfra := &apisazure.InfrastructureConfig{
+					Zoned: true,
+					Networks: apisazure.NetworkConfig{
+						VNet: apisazure.VNet{
+							CIDR: &vnetCIDR,
+						},
+						Zones: []apisazure.Zone{
+							{
+								Name: 1,
+								CIDR: workers,
+							},
+							{
+								Name: 2,
+								CIDR: workers,
+							},
+						},
+					},
+				}
+
+				newZonedInfra := zonedInfra.DeepCopy()
+				newZonedInfra.Networks.Zones[0].Name = 3
+
+				errorList := ValidateInfrastructureConfigUpdate(zonedInfra, newZonedInfra, providerPath)
+				Expect(errorList).NotTo(BeEmpty())
+				Expect(errorList).To(HaveLen(1))
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":  Equal(field.ErrorTypeInvalid),
+					"Field": Equal("networks.zones[0].name"),
+				}))
+			})
+		})
 	})
 
 	DescribeTable("#ValidateVmoConfigUpdate",

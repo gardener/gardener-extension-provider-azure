@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"path/filepath"
 	"time"
 
@@ -57,9 +58,12 @@ import (
 )
 
 const (
-	VNetCIDR    = "10.250.0.0/16"
-	WorkerCIDR  = "10.250.0.0/19"
 	CountDomain = 1
+)
+
+var (
+	VNetCIDR   = "10.250.0.0/16"
+	WorkerCIDR = "10.250.0.0/19"
 )
 
 var (
@@ -153,7 +157,7 @@ type azureIdentifier struct {
 	resourceGroup     string
 	vnetResourceGroup *string
 	vnet              *string
-	subnet            *string
+	subnets           []string
 }
 
 var _ = Describe("Infrastructure tests", func() {
@@ -333,6 +337,51 @@ var _ = Describe("Infrastructure tests", func() {
 
 			namespace, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
+			err = runTest(ctx, logger, c, clientSet, namespace, providerConfig, false, decoder)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should successfully create a multi zonal NAT Gateway cluster", func() {
+			var (
+				zone1 int32 = 1
+				zone2 int32 = 1
+			)
+			providerConfig := &azurev1alpha1.InfrastructureConfig{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: azurev1alpha1.SchemeGroupVersion.String(),
+					Kind:       "InfrastructureConfig",
+				},
+				Networks: azurev1alpha1.NetworkConfig{
+					VNet: azurev1alpha1.VNet{
+						CIDR: &VNetCIDR,
+					},
+					Zones: []azurev1alpha1.Zone{
+						{
+							Name:             zone1,
+							CIDR:             "10.250.0.0/24",
+							ServiceEndpoints: []string{"Microsoft.Storage"},
+							NatGateway: &azurev1alpha1.NatGatewayConfig{
+								Enabled: true,
+								Zone:    &zone1,
+							},
+						},
+						{
+							Name:             zone2,
+							CIDR:             "10.250.1.0/24",
+							ServiceEndpoints: []string{"Microsoft.Storage"},
+							NatGateway: &azurev1alpha1.NatGatewayConfig{
+								Enabled: true,
+								Zone:    &zone2,
+							},
+						},
+					},
+				},
+				Zoned: true,
+			}
+
+			namespace, err := generateName()
+			Expect(err).ToNot(HaveOccurred())
+
 			err = runTest(ctx, logger, c, clientSet, namespace, providerConfig, false, decoder)
 			Expect(err).ToNot(HaveOccurred())
 		})
@@ -528,7 +577,7 @@ func newInfrastructureConfig(vnet *azurev1alpha1.VNet, id *azurev1alpha1.Identit
 	}
 	nwConfig := azurev1alpha1.NetworkConfig{
 		VNet:             *vnet,
-		Workers:          WorkerCIDR,
+		Workers:          &WorkerCIDR,
 		NatGateway:       nil,
 		ServiceEndpoints: []string{"Microsoft.Storage"},
 	}
@@ -705,8 +754,12 @@ func hasForeignVNet(config *azurev1alpha1.InfrastructureConfig) bool {
 	return config.Networks.VNet.ResourceGroup != nil && config.Networks.VNet.Name != nil
 }
 
-func hasNatGateway(config *azurev1alpha1.InfrastructureConfig) bool {
-	return config.Networks.NatGateway != nil && config.Networks.NatGateway.Enabled
+func hasNatGateway(config *azurev1alpha1.NatGatewayConfig) bool {
+	return config != nil && config.Enabled
+}
+
+func usesNatZones(config *azurev1alpha1.InfrastructureConfig) bool {
+	return config.Networks.Workers == nil
 }
 
 func verifyCreation(
@@ -762,12 +815,6 @@ func verifyCreation(
 	}
 	Expect(vnet.Tags).To(BeEmpty())
 
-	subnetName := infra.Namespace + "-nodes"
-	Expect(vnet.VirtualNetworkPropertiesFormat.Subnets).To(PointTo(ContainElement(MatchFields(IgnoreExtras, Fields{
-		"Name": PointTo(Equal(subnetName)),
-	}))))
-	result.subnet = pointer.StringPtr(subnetName)
-
 	// security groups
 	securityGroupName := infra.Namespace + "-workers"
 	secgroup, err := az.securityGroups.Get(ctx, status.ResourceGroup.Name, securityGroupName, "")
@@ -782,42 +829,64 @@ func verifyCreation(
 	Expect(rt.Location).To(PointTo(Equal(*region)))
 	Expect(rt.Routes).To(Or(BeNil(), PointTo(BeEmpty())))
 
-	// nat gateway
-	if hasNatGateway(config) {
-		// public IP
-		pipName := infra.Namespace + "-nat-ip"
-		pip, err := az.pubIp.Get(ctx, status.ResourceGroup.Name, pipName, "")
-		Expect(err).ToNot(HaveOccurred())
-		Expect(pip.Location).To(PointTo(Equal(*region)))
-		Expect(pip.PublicIPAllocationMethod).To(Equal(network.Static))
-		Expect(pip.Sku.Name).To(Equal(network.PublicIPAddressSkuNameStandard))
-		Expect(pip.PublicIPAddressVersion).To(Equal(network.IPv4))
+	verifySubnet := func(cidr string, serviceEndpoints []string, nat *azurev1alpha1.NatGatewayConfig, index int) {
+		subnetName := indexedName(infra.Namespace+"-nodes", index)
+		Expect(vnet.VirtualNetworkPropertiesFormat.Subnets).To(PointTo(ContainElement(MatchFields(IgnoreExtras, Fields{
+			"Name": PointTo(Equal(subnetName)),
+		}))))
+		result.subnets = append(result.subnets, subnetName)
 
-		ngName := infra.Namespace + "-nat-gateway"
-		ng, err = az.nat.Get(ctx, status.ResourceGroup.Name, ngName, "")
+		// subnets
+		subnet, err := az.subnets.Get(ctx, vnetResourceGroupName, status.Networks.VNet.Name, subnetName, "")
 		Expect(err).ToNot(HaveOccurred())
-		Expect(ng.Location).To(PointTo(Equal(*region)))
-		Expect(ng.Sku.Name).To(Equal(network.NatGatewaySkuNameStandard))
-		Expect(ng.PublicIPAddresses).To(PointTo(ContainElement(HaveEqualID(*pip.ID))))
-		if config.Networks.NatGateway.IdleConnectionTimeoutMinutes != nil {
-			Expect(ng.NatGatewayPropertiesFormat.IdleTimeoutInMinutes).To(PointTo(Equal(*config.Networks.NatGateway.IdleConnectionTimeoutMinutes)))
+		Expect(subnet.AddressPrefix).To(PointTo(Equal(cidr)))
+		Expect(subnet.RouteTable).To(HaveEqualID(*rt.ID))
+		Expect(subnet.NetworkSecurityGroup).To(HaveEqualID(*secgroup.ID))
+		Expect(subnet.ServiceEndpoints).To(PointTo(HaveLen(len(serviceEndpoints))))
+		for _, se := range serviceEndpoints {
+			Expect(subnet.ServiceEndpoints).To(PointTo(ContainElement(MatchFields(IgnoreExtras, Fields{
+				"Service": PointTo(Equal(se)),
+			}))))
+		}
+
+		// nat gateway
+		if hasNatGateway(nat) {
+			ngName := indexedName(infra.Namespace+"-nat-gateway", index)
+			pipName := fmt.Sprintf("%s-ip", ngName)
+
+			// public IP
+			pip, err := az.pubIp.Get(ctx, status.ResourceGroup.Name, pipName, "")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(pip.Location).To(PointTo(Equal(*region)))
+			Expect(pip.PublicIPAllocationMethod).To(Equal(network.Static))
+			Expect(pip.Sku.Name).To(Equal(network.PublicIPAddressSkuNameStandard))
+			Expect(pip.PublicIPAddressVersion).To(Equal(network.IPv4))
+
+			// nat gateway
+			ng, err = az.nat.Get(ctx, status.ResourceGroup.Name, ngName, "")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ng.Location).To(PointTo(Equal(*region)))
+			Expect(ng.Sku.Name).To(Equal(network.NatGatewaySkuNameStandard))
+			Expect(ng.PublicIPAddresses).To(PointTo(ContainElement(HaveEqualID(*pip.ID))))
+			if nat.IdleConnectionTimeoutMinutes != nil {
+				Expect(ng.NatGatewayPropertiesFormat.IdleTimeoutInMinutes).To(PointTo(Equal(*nat.IdleConnectionTimeoutMinutes)))
+			}
+			if nat.Zone != nil {
+				Expect(ng.Zones).To(PointTo(ContainElement(Equal(fmt.Sprintf("%d", *nat.Zone)))))
+			}
+
+			// subnet
+			Expect(subnet.NatGateway).To(HaveEqualID(*ng.ID))
 		}
 	}
 
-	// subnets
-	subnet, err := az.subnets.Get(ctx, vnetResourceGroupName, status.Networks.VNet.Name, subnetName, "")
-	Expect(err).ToNot(HaveOccurred())
-	Expect(subnet.AddressPrefix).To(PointTo(Equal(WorkerCIDR)))
-	Expect(subnet.RouteTable).To(HaveEqualID(*rt.ID))
-	Expect(subnet.NetworkSecurityGroup).To(HaveEqualID(*secgroup.ID))
-	if hasNatGateway(config) {
-		Expect(subnet.NatGateway).To(HaveEqualID(*ng.ID))
-	}
-	Expect(subnet.ServiceEndpoints).To(PointTo(HaveLen(len(config.Networks.ServiceEndpoints))))
-	for _, se := range config.Networks.ServiceEndpoints {
-		Expect(subnet.ServiceEndpoints).To(PointTo(ContainElement(MatchFields(IgnoreExtras, Fields{
-			"Service": PointTo(Equal(se)),
-		}))))
+	if !usesNatZones(config) {
+		verifySubnet(*config.Networks.Workers, config.Networks.ServiceEndpoints, config.Networks.NatGateway, 0)
+	} else {
+		for index, zone := range config.Networks.Zones {
+			By(fmt.Sprintf("verifying for %d", zone.Name))
+			verifySubnet(zone.CIDR, zone.ServiceEndpoints, zone.NatGateway, index)
+		}
 	}
 
 	// availabilitySets
@@ -854,11 +923,18 @@ func verifyDeletion(
 	Expect(err).To(HaveOccurred())
 	Expect(err).To(BeNotFoundError())
 
-	if identifier.vnetResourceGroup != nil &&
-		identifier.vnet != nil &&
-		identifier.subnet != nil {
-		_, err := az.subnets.Get(ctx, *identifier.vnetResourceGroup, *identifier.vnet, *identifier.subnet, "")
-		Expect(err).To(HaveOccurred())
-		Expect(err).To(BeNotFoundError())
+	if identifier.vnetResourceGroup != nil && identifier.vnet != nil {
+		for _, subnet := range identifier.subnets {
+			_, err := az.subnets.Get(ctx, *identifier.vnetResourceGroup, *identifier.vnet, subnet, "")
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(BeNotFoundError())
+		}
 	}
+}
+
+func indexedName(name string, index int) string {
+	if index == 0 {
+		return name
+	}
+	return fmt.Sprintf("%s-z%d", name, index)
 }
