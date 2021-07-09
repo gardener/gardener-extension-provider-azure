@@ -3,6 +3,7 @@ github.com/Azure/azure-pipeline-go/pipeline
 # github.com/Azure/azure-sdk-for-go v49.2.0+incompatible
 ## explicit
 github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2020-06-30/compute
+github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-05-01/dns
 github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi
 github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network
 github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources
@@ -28,6 +29,7 @@ github.com/Azure/go-autorest/autorest/azure/cli
 # github.com/Azure/go-autorest/autorest/date v0.3.0
 github.com/Azure/go-autorest/autorest/date
 # github.com/Azure/go-autorest/autorest/to v0.3.0
+## explicit
 github.com/Azure/go-autorest/autorest/to
 # github.com/Azure/go-autorest/autorest/validation v0.2.0
 github.com/Azure/go-autorest/autorest/validation
@@ -108,6 +110,7 @@ github.com/gardener/gardener/extensions/pkg/controller/controlplane
 github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator
 github.com/gardener/gardener/extensions/pkg/controller/controlplane/mock
 github.com/gardener/gardener/extensions/pkg/controller/csimigration
+github.com/gardener/gardener/extensions/pkg/controller/dnsrecord
 github.com/gardener/gardener/extensions/pkg/controller/error
 github.com/gardener/gardener/extensions/pkg/controller/healthcheck
 github.com/gardener/gardener/extensions/pkg/controller/healthcheck/config

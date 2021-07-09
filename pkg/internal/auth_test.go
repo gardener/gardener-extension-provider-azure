@@ -18,6 +18,7 @@ import (
 	"context"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	. "github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
 
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
@@ -26,8 +27,6 @@ import (
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	. "github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
 var _ = Describe("Azure Auth", func() {
@@ -38,6 +37,7 @@ var _ = Describe("Azure Auth", func() {
 
 		clientAuth *ClientAuth
 		secret     *corev1.Secret
+		dnsSecret  *corev1.Secret
 		secretRef  corev1.SecretReference
 
 		name           string
@@ -62,6 +62,14 @@ var _ = Describe("Azure Auth", func() {
 				azure.SubscriptionIDKey: []byte(subscriptionID),
 			},
 		}
+		dnsSecret = &corev1.Secret{
+			Data: map[string][]byte{
+				azure.DNSClientSecretKey:   []byte(clientSecret),
+				azure.DNSClientIDKey:       []byte(clientID),
+				azure.DNSTenantIDKey:       []byte(tenantID),
+				azure.DNSSubscriptionIDKey: []byte(subscriptionID),
+			},
+		}
 
 		ctx = context.TODO()
 		namespace = "foo"
@@ -78,25 +86,71 @@ var _ = Describe("Azure Auth", func() {
 
 	Describe("#ReadClientAuthDataFromSecret", func() {
 		It("should read the client auth data from the secret", func() {
-			actual, err := ReadClientAuthDataFromSecret(secret)
+			actual, err := ReadClientAuthDataFromSecret(secret, false)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(actual).To(Equal(clientAuth))
 		})
 	})
 
 	Describe("#GetClientAuthData", func() {
-		It("should retrieve the client auth data", func() {
-			var c = mockclient.NewMockClient(ctrl)
-			c.EXPECT().Get(ctx, kutil.Key(namespace, name), gomock.AssignableToTypeOf(&corev1.Secret{})).
-				DoAndReturn(func(_ context.Context, _ client.ObjectKey, actual *corev1.Secret) error {
-					*actual = *secret
-					return nil
-				})
+		Context("DNS keys are not allowed", func() {
+			It("should retrieve the client auth data if non-DNS keys ar used", func() {
+				var c = mockclient.NewMockClient(ctrl)
+				c.EXPECT().Get(ctx, kutil.Key(namespace, name), gomock.AssignableToTypeOf(&corev1.Secret{})).
+					DoAndReturn(func(_ context.Context, _ client.ObjectKey, actual *corev1.Secret) error {
+						*actual = *secret
+						return nil
+					})
 
-			actual, err := GetClientAuthData(ctx, c, secretRef)
+				actual, err := GetClientAuthData(ctx, c, secretRef, false)
 
-			Expect(err).NotTo(HaveOccurred())
-			Expect(actual).To(Equal(clientAuth))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(actual).To(Equal(clientAuth))
+			})
+
+			It("should fail if DNS keys ar used", func() {
+				var c = mockclient.NewMockClient(ctrl)
+				c.EXPECT().Get(ctx, kutil.Key(namespace, name), gomock.AssignableToTypeOf(&corev1.Secret{})).
+					DoAndReturn(func(_ context.Context, _ client.ObjectKey, actual *corev1.Secret) error {
+						*actual = *dnsSecret
+						return nil
+					})
+
+				actual, err := GetClientAuthData(ctx, c, secretRef, false)
+
+				Expect(err).To(HaveOccurred())
+				Expect(actual).To(BeNil())
+			})
+		})
+
+		Context("DNS keys are allowed", func() {
+			It("should retrieve the client auth data if non-DNS keys ar used", func() {
+				var c = mockclient.NewMockClient(ctrl)
+				c.EXPECT().Get(ctx, kutil.Key(namespace, name), gomock.AssignableToTypeOf(&corev1.Secret{})).
+					DoAndReturn(func(_ context.Context, _ client.ObjectKey, actual *corev1.Secret) error {
+						*actual = *secret
+						return nil
+					})
+
+				actual, err := GetClientAuthData(ctx, c, secretRef, true)
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(actual).To(Equal(clientAuth))
+			})
+
+			It("should retrieve the client auth data if DNS keys ar used", func() {
+				var c = mockclient.NewMockClient(ctrl)
+				c.EXPECT().Get(ctx, kutil.Key(namespace, name), gomock.AssignableToTypeOf(&corev1.Secret{})).
+					DoAndReturn(func(_ context.Context, _ client.ObjectKey, actual *corev1.Secret) error {
+						*actual = *dnsSecret
+						return nil
+					})
+
+				actual, err := GetClientAuthData(ctx, c, secretRef, true)
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(actual).To(Equal(clientAuth))
+			})
 		})
 	})
 
@@ -109,7 +163,7 @@ var _ = Describe("Azure Auth", func() {
 					return nil
 				})
 
-			authorizer, subscription, err := GetAuthorizerAndSubscriptionID(ctx, c, secretRef)
+			authorizer, subscription, err := GetAuthorizerAndSubscriptionID(ctx, c, secretRef, false)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(subscription).To(ContainSubstring(subscriptionID))
