@@ -398,7 +398,7 @@ func (vp *valuesProvider) GetConfigChartValues(ctx context.Context, cp *extensio
 	}
 
 	// Get client auth
-	auth, err := internal.GetClientAuthData(ctx, vp.Client(), cp.Spec.SecretRef)
+	auth, err := internal.GetClientAuthData(ctx, vp.Client(), cp.Spec.SecretRef, false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not get service account from secret '%s/%s'", cp.Spec.SecretRef.Namespace, cp.Spec.SecretRef.Name)
 	}
