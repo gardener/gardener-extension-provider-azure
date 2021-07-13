@@ -68,7 +68,7 @@ type DNSZone interface {
 	GetAll(context.Context) (map[string]string, error)
 }
 
-// DNSRecordSet represents an Azure DNS record set client.
+// DNSRecordSet represents an Azure DNS recordset client.
 type DNSRecordSet interface {
 	CreateOrUpdate(context.Context, string, string, string, []string, int64) error
 	Delete(context.Context, string, string, string) error
@@ -104,7 +104,7 @@ type DNSZoneClient struct {
 	client dns.ZonesClient
 }
 
-// DNSRecordSetClient is an implementation of DNSRecordSet for a DNS record set client.
+// DNSRecordSetClient is an implementation of DNSRecordSet for a DNS recordset client.
 type DNSRecordSetClient struct {
 	client dns.RecordSetsClient
 }

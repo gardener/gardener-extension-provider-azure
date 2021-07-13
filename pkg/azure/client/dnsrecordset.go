@@ -16,6 +16,7 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -24,21 +25,40 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 )
 
+// CreateOrUpdate creates or updates the recordset with the given name, record type, values, and TTL in the zone with the given zone ID.
 func (c DNSRecordSetClient) CreateOrUpdate(ctx context.Context, zoneID string, name string, recordType string, values []string, ttl int64) error {
 	resourceGroupName, zoneName := resourceGroupAndZoneNames(zoneID)
-	relativeRecordSetName := strings.TrimSuffix(name, "."+zoneName)
+	relativeRecordSetName, err := getRelativeRecordSetName(name, zoneName)
+	if err != nil {
+		return err
+	}
 	params := dns.RecordSet{
 		RecordSetProperties: newRecordSetProperties(dns.RecordType(recordType), values, ttl),
 	}
-	_, err := c.client.CreateOrUpdate(ctx, resourceGroupName, zoneName, relativeRecordSetName, dns.RecordType(recordType), params, "", "")
+	_, err = c.client.CreateOrUpdate(ctx, resourceGroupName, zoneName, relativeRecordSetName, dns.RecordType(recordType), params, "", "")
 	return err
 }
 
+// Delete deletes the recordset with the given name and record type in the zone with the given zone ID.
 func (c DNSRecordSetClient) Delete(ctx context.Context, zoneID string, name string, recordType string) error {
 	resourceGroupName, zoneName := resourceGroupAndZoneNames(zoneID)
-	relativeRecordSetName := strings.TrimSuffix(name, "."+zoneName)
-	_, err := c.client.Delete(ctx, resourceGroupName, zoneName, relativeRecordSetName, dns.RecordType(recordType), "")
+	relativeRecordSetName, err := getRelativeRecordSetName(name, zoneName)
+	if err != nil {
+		return err
+	}
+	_, err = c.client.Delete(ctx, resourceGroupName, zoneName, relativeRecordSetName, dns.RecordType(recordType), "")
 	return ignoreAzureNotFoundError(err)
+}
+
+func getRelativeRecordSetName(name, zoneName string) (string, error) {
+	if name == zoneName {
+		return "@", nil
+	}
+	suffix := "." + zoneName
+	if !strings.HasSuffix(name, suffix) {
+		return "", fmt.Errorf("name %s does not match zone name %s", name, zoneName)
+	}
+	return strings.TrimSuffix(name, suffix), nil
 }
 
 func newRecordSetProperties(recordType dns.RecordType, values []string, ttl int64) *dns.RecordSetProperties {
