@@ -36,6 +36,36 @@ func (m *MockFactory) EXPECT() *MockFactoryMockRecorder {
 	return m.recorder
 }
 
+// DNSRecordSet mocks base method.
+func (m *MockFactory) DNSRecordSet(arg0 context.Context, arg1 v1.SecretReference) (client.DNSRecordSet, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DNSRecordSet", arg0, arg1)
+	ret0, _ := ret[0].(client.DNSRecordSet)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DNSRecordSet indicates an expected call of DNSRecordSet.
+func (mr *MockFactoryMockRecorder) DNSRecordSet(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DNSRecordSet", reflect.TypeOf((*MockFactory)(nil).DNSRecordSet), arg0, arg1)
+}
+
+// DNSZone mocks base method.
+func (m *MockFactory) DNSZone(arg0 context.Context, arg1 v1.SecretReference) (client.DNSZone, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DNSZone", arg0, arg1)
+	ret0, _ := ret[0].(client.DNSZone)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DNSZone indicates an expected call of DNSZone.
+func (mr *MockFactoryMockRecorder) DNSZone(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DNSZone", reflect.TypeOf((*MockFactory)(nil).DNSZone), arg0, arg1)
+}
+
 // Group mocks base method.
 func (m *MockFactory) Group(arg0 context.Context, arg1 v1.SecretReference) (client.Group, error) {
 	m.ctrl.T.Helper()
