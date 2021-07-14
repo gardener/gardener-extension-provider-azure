@@ -63,7 +63,6 @@ func (e *ensurer) EnsureKubeAPIServerService(ctx context.Context, gctx gcontext.
 		return nil
 	}
 
-	// TODO: Assuming seed kubernetes version is >= 1.12. Validate it correctly
 	if new.Annotations == nil {
 		new.Annotations = make(map[string]string)
 	}

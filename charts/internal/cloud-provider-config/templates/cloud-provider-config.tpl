@@ -28,7 +28,7 @@ cloudProviderRateLimitQPS: {{ ( max .Values.maxNodes 10 ) }}
 cloudProviderRateLimitBucket: 100
 cloudProviderRateLimitQPSWrite: {{ ( max .Values.maxNodes 10 ) }}
 cloudProviderRateLimitBucketWrite: 100
-{{- if and (semverCompare ">= 1.14" .Values.kubernetesVersion) (semverCompare "< 1.18" .Values.kubernetesVersion) }}
+{{- if semverCompare "< 1.18" .Values.kubernetesVersion }}
 cloudProviderBackoffMode: v2
 {{- end }}
 {{- end -}}
@@ -41,12 +41,8 @@ cloudProviderBackoffMode: v2
 
 {{- define "cloud-provider-disk-config" -}}
 {{ include "cloud-provider-config-base" . }}
-{{- if semverCompare "< 1.15" .Values.kubernetesVersion }}
-{{ include "azure-credentials" . }}
-{{- else }}
 {{- if semverCompare ">= 1.18" .Values.kubernetesVersion }}
 {{ include "azure-subscription-info" . }}
 {{- end }}
 useInstanceMetadata: true
-{{- end }}
 {{- end -}}

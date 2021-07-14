@@ -27,7 +27,6 @@ parameters:
 volumeBindingMode: WaitForFirstConsumer
 allowVolumeExpansion: true
 
-{{- if semverCompare ">= 1.13" .Capabilities.KubeVersion.GitVersion }}
 ---
 apiVersion: {{ include "storageclassversion" . }}
 kind: StorageClass
@@ -41,7 +40,6 @@ parameters:
   kind: managed
 volumeBindingMode: WaitForFirstConsumer
 allowVolumeExpansion: true
-{{- end }}
 
 ---
 apiVersion: {{ include "storageclassversion" . }}

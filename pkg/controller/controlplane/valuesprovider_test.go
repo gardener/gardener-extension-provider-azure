@@ -103,7 +103,7 @@ var _ = Describe("ValuesProvider", func() {
 		cidr                    = "10.250.0.0/19"
 		cloudProviderConfigData = "foo"
 
-		k8sVersionLessThan121    = "1.13.4"
+		k8sVersionLessThan121    = "1.15.4"
 		k8sVersionHigherEqual121 = "1.21.4"
 
 		enabledTrue  = map[string]interface{}{"enabled": true}
