@@ -6,6 +6,11 @@ metadata:
   name: csi-driver-node-{{ .role }}
   namespace: {{ .Release.Namespace }}
 spec:
+  resourcePolicy:
+    containerPolicies:
+    - containerName: '*'
+      minAllowed:
+        memory: 25Mi
   targetRef:
     apiVersion: apps/v1
     kind: DaemonSet
