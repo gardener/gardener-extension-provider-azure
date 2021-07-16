@@ -1,4 +1,4 @@
-kubernetesVersion: 1.13.5
+kubernetesVersion: 1.15.5
 tenantId: fooTenant
 subscriptionId: barSub
 aadClientId: fooClient
