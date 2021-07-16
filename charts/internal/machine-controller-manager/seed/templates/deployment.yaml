@@ -48,6 +48,7 @@ spec:
         - --machine-creation-timeout=20m
         - --machine-drain-timeout=2h
         - --machine-health-timeout=10m
+        - --machine-pv-reattach-timeout=150s
         - --namespace={{ .Release.Namespace }}
         - --port={{ .Values.metricsPortAzure }}
         - --target-kubeconfig=/var/lib/machine-controller-manager/kubeconfig
