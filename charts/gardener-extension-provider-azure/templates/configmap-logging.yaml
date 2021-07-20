@@ -33,3 +33,9 @@ data:
         Match               kubernetes.*
         Rule                $tag ^kubernetes\.var\.log\.containers\.(cloud-controller-manager-.+?_.+?_azure-cloud-controller-manager|csi-driver-controller-.+?_.+?_azure-csi) user-exposed.$TAG true
         Emitter_Name        re_emitted-provider-azure
+
+    [FILTER]
+        Name                rewrite_tag
+        Match               kubernetes.*
+        Rule                $tag ^kubernetes\.var\.log\.containers\.machine-controller-manager-.+?_.+?_(machine-controller-manager-provider-azure|azure-machine-controller-manager) user-exposed.$TAG true
+        Emitter_Name        re_emitted-provider-azure-mcm
