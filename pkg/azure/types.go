@@ -65,6 +65,15 @@ const (
 	// ClientSecretKey is the key for the client secret.
 	ClientSecretKey = "clientSecret"
 
+	// DNSSubscriptionIDKey is the key for the subscription ID in DNS secrets.
+	DNSSubscriptionIDKey = "AZURE_SUBSCRIPTION_ID"
+	// DNSTenantIDKey is the key for the tenant ID in DNS secrets.
+	DNSTenantIDKey = "AZURE_TENANT_ID"
+	// DNSClientIDKey is the key for the client ID in DNS secrets.
+	DNSClientIDKey = "AZURE_CLIENT_ID"
+	// DNSClientSecretKey is the key for the client secret in DNS secrets.
+	DNSClientSecretKey = "AZURE_CLIENT_SECRET"
+
 	// StorageAccount is a constant for the key in a cloud provider secret and backup secret that holds the Azure account name.
 	StorageAccount = "storageAccount"
 	// StorageKey is a constant for the key in a cloud provider secret and backup secret that holds the Azure secret storage access key.

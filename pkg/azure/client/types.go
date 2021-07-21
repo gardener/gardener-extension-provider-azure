@@ -18,6 +18,7 @@ import (
 	"context"
 
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2020-06-30/compute"
+	"github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-05-01/dns"
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
 	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-04-01/storage"
 	"github.com/Azure/azure-storage-blob-go/azblob"
@@ -31,6 +32,8 @@ type Factory interface {
 	Storage(context.Context, corev1.SecretReference) (Storage, error)
 	StorageAccount(context.Context, corev1.SecretReference) (StorageAccount, error)
 	Vmss(context.Context, corev1.SecretReference) (Vmss, error)
+	DNSZone(context.Context, corev1.SecretReference) (DNSZone, error)
+	DNSRecordSet(context.Context, corev1.SecretReference) (DNSRecordSet, error)
 }
 
 // Group represents an Azure group client.
@@ -60,6 +63,17 @@ type Vmss interface {
 	Delete(context.Context, string, string) error
 }
 
+// DNSZone represents an Azure DNS zone client.
+type DNSZone interface {
+	GetAll(context.Context) (map[string]string, error)
+}
+
+// DNSRecordSet represents an Azure DNS recordset client.
+type DNSRecordSet interface {
+	CreateOrUpdate(context.Context, string, string, string, []string, int64) error
+	Delete(context.Context, string, string, string) error
+}
+
 // AzureFactory is an implementation of Factory to produce clients for various Azure services.
 type AzureFactory struct {
 	client client.Client
@@ -83,4 +97,14 @@ type GroupClient struct {
 // VmssClient is an implementation of Vmss for a virtual machine scale set client.
 type VmssClient struct {
 	client compute.VirtualMachineScaleSetsClient
+}
+
+// DNSZoneClient is an implementation of DNSZone for a DNS zone client.
+type DNSZoneClient struct {
+	client dns.ZonesClient
+}
+
+// DNSRecordSetClient is an implementation of DNSRecordSet for a DNS recordset client.
+type DNSRecordSetClient struct {
+	client dns.RecordSetsClient
 }

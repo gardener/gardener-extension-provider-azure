@@ -1,0 +1,47 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dnsrecord-external
+  namespace: shoot--foobar--azure
+type: Opaque
+data:
+  AZURE_CLIENT_ID: base64(client-id)
+  AZURE_CLIENT_SECRET: base64(client-secret)
+  AZURE_SUBSCRIPTION_ID: base64(subscription-id)
+  AZURE_TENANT_ID: base64(tenant-id)
+---
+apiVersion: extensions.gardener.cloud/v1alpha1
+kind: Cluster
+metadata:
+  name: shoot--foobar--azure
+spec:
+  cloudProfile:
+    apiVersion: core.gardener.cloud/v1alpha1
+    kind: CloudProfile
+  seed:
+    apiVersion: core.gardener.cloud/v1alpha1
+    kind: Seed
+  shoot:
+    apiVersion: core.gardener.cloud/v1alpha1
+    kind: Shoot
+    status:
+      lastOperation:
+        state: Succeeded
+---
+apiVersion: extensions.gardener.cloud/v1alpha1
+kind: DNSRecord
+metadata:
+  name: dnsrecord-external
+  namespace: shoot--foobar--azure
+spec:
+  type: azure-dns
+  secretRef:
+    name: dnsrecord-external
+    namespace: shoot--foobar--azure
+# zone: dnstest/example.com
+  name: api.azure.foobar.shoot.example.com
+  recordType: A # Use A, CNAME, or TXT
+  values: # list of IP addresses for A records, a single hostname for CNAME records, or a list of texts for TXT records.
+  - 1.2.3.4
+# ttl: 120

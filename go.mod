@@ -8,13 +8,14 @@ require (
 	github.com/Azure/go-autorest/autorest v0.11.12
 	github.com/Azure/go-autorest/autorest/adal v0.9.5
 	github.com/Azure/go-autorest/autorest/azure/auth v0.4.2
+	github.com/Azure/go-autorest/autorest/to v0.3.0
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/sprig v2.22.0+incompatible
 	github.com/ahmetb/gen-crd-api-reference-docs v0.2.0
 	github.com/coreos/go-systemd/v22 v22.1.0
 	github.com/frankban/quicktest v1.9.0 // indirect
 	github.com/gardener/etcd-druid v0.5.0
-	github.com/gardener/gardener v1.26.0
+	github.com/gardener/gardener v1.26.1-0.20210712101613-e8eb807d790f
 	github.com/gardener/gardener-extension-networking-calico v1.7.1-0.20200522070525-f9aa28d3c83a
 	github.com/gardener/machine-controller-manager v0.36.0
 	github.com/gardener/remedy-controller v0.6.0

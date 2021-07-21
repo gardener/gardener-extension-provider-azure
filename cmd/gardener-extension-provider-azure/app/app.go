@@ -26,6 +26,7 @@ import (
 	azurebackupentry "github.com/gardener/gardener-extension-provider-azure/pkg/controller/backupentry"
 	azurecontrolplane "github.com/gardener/gardener-extension-provider-azure/pkg/controller/controlplane"
 	azurecsimigration "github.com/gardener/gardener-extension-provider-azure/pkg/controller/csimigration"
+	azurednsrecord "github.com/gardener/gardener-extension-provider-azure/pkg/controller/dnsrecord"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/healthcheck"
 	azureinfrastructure "github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure"
 	azureworker "github.com/gardener/gardener-extension-provider-azure/pkg/controller/worker"
@@ -85,6 +86,11 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			MaxConcurrentReconciles: 5,
 		}
 
+		// options for the dnsrecord controller
+		dnsRecordCtrlOpts = &controllercmd.ControllerOptions{
+			MaxConcurrentReconciles: 5,
+		}
+
 		// options for the infrastructure controller
 		infraCtrlOpts = &controllercmd.ControllerOptions{
 			MaxConcurrentReconciles: 5,
@@ -116,6 +122,7 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			controllercmd.PrefixOption("backupentry-", backupEntryCtrlOpts),
 			controllercmd.PrefixOption("controlplane-", controlPlaneCtrlOpts),
 			controllercmd.PrefixOption("csimigration-", csiMigrationCtrlOpts),
+			controllercmd.PrefixOption("dnsrecord-", dnsRecordCtrlOpts),
 			controllercmd.PrefixOption("infrastructure-", infraCtrlOpts),
 			controllercmd.PrefixOption("worker-", &workerCtrlOptsUnprefixed),
 			controllercmd.PrefixOption("healthcheck-", healthCheckCtrlOpts),
@@ -177,6 +184,7 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			backupEntryCtrlOpts.Completed().Apply(&azurebackupentry.DefaultAddOptions.Controller)
 			controlPlaneCtrlOpts.Completed().Apply(&azurecontrolplane.DefaultAddOptions.Controller)
 			csiMigrationCtrlOpts.Completed().Apply(&azurecsimigration.DefaultAddOptions.Controller)
+			dnsRecordCtrlOpts.Completed().Apply(&azurednsrecord.DefaultAddOptions.Controller)
 			infraCtrlOpts.Completed().Apply(&azureinfrastructure.DefaultAddOptions.Controller)
 			reconcileOpts.Completed().Apply(&azureinfrastructure.DefaultAddOptions.IgnoreOperationAnnotation)
 			reconcileOpts.Completed().Apply(&azurecontrolplane.DefaultAddOptions.IgnoreOperationAnnotation)

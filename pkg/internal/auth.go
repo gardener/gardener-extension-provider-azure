@@ -24,65 +24,74 @@ import (
 	azureauth "github.com/Azure/go-autorest/autorest/azure/auth"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // ClientAuth represents a Azure Client Auth credentials.
 type ClientAuth struct {
-	// SubscriptionID is the azure subscription ID.
+	// SubscriptionID is the Azure subscription ID.
 	SubscriptionID string
-	// TenantID is the azure tenant id.
+	// TenantID is the Azure tenant ID.
 	TenantID string
-	// ClientID is the azure client id
+	// ClientID is the Azure client ID.
 	ClientID string
-	// ClientSecret is the client secret
+	// ClientSecret is the Azure client secret.
 	ClientSecret string
 }
 
 // GetClientAuthData retrieves the client auth data specified by the secret reference.
-func GetClientAuthData(ctx context.Context, c client.Client, secretRef corev1.SecretReference) (*ClientAuth, error) {
+func GetClientAuthData(ctx context.Context, c client.Client, secretRef corev1.SecretReference, allowDNSKeys bool) (*ClientAuth, error) {
 	secret, err := extensionscontroller.GetSecretByReference(ctx, c, &secretRef)
 	if err != nil {
 		return nil, err
 	}
 
-	return ReadClientAuthDataFromSecret(secret)
+	return ReadClientAuthDataFromSecret(secret, allowDNSKeys)
 }
 
 // ReadClientAuthDataFromSecret reads the client auth details from the given secret.
-func ReadClientAuthDataFromSecret(secret *corev1.Secret) (*ClientAuth, error) {
-	subscriptionID, ok := secret.Data[azure.SubscriptionIDKey]
+func ReadClientAuthDataFromSecret(secret *corev1.Secret, allowDNSKeys bool) (*ClientAuth, error) {
+	var altSubscriptionIDIDKey, altTenantIDKey, altClientIDKey, altClientSecretKey *string
+	if allowDNSKeys {
+		altSubscriptionIDIDKey = pointer.String(azure.DNSSubscriptionIDKey)
+		altTenantIDKey = pointer.String(azure.DNSTenantIDKey)
+		altClientIDKey = pointer.String(azure.DNSClientIDKey)
+		altClientSecretKey = pointer.String(azure.DNSClientSecretKey)
+	}
+
+	subscriptionID, ok := getSecretDataValue(secret, azure.SubscriptionIDKey, altSubscriptionIDIDKey)
 	if !ok {
 		return nil, fmt.Errorf("secret %s/%s doesn't have a subscription ID", secret.Namespace, secret.Name)
 	}
 
-	clientID, ok := secret.Data[azure.ClientIDKey]
-	if !ok {
-		return nil, fmt.Errorf("secret %s/%s doesn't have a client ID", secret.Namespace, secret.Name)
-	}
-
-	tenantID, ok := secret.Data[azure.TenantIDKey]
+	tenantID, ok := getSecretDataValue(secret, azure.TenantIDKey, altTenantIDKey)
 	if !ok {
 		return nil, fmt.Errorf("secret %s/%s doesn't have a tenant ID", secret.Namespace, secret.Name)
 	}
 
-	clientSecret, ok := secret.Data[azure.ClientSecretKey]
+	clientID, ok := getSecretDataValue(secret, azure.ClientIDKey, altClientIDKey)
 	if !ok {
-		return nil, fmt.Errorf("secret %s/%s doesn't have a Client Secret", secret.Namespace, secret.Name)
+		return nil, fmt.Errorf("secret %s/%s doesn't have a client ID", secret.Namespace, secret.Name)
+	}
+
+	clientSecret, ok := getSecretDataValue(secret, azure.ClientSecretKey, altClientSecretKey)
+	if !ok {
+		return nil, fmt.Errorf("secret %s/%s doesn't have a client secret", secret.Namespace, secret.Name)
 	}
 
 	return &ClientAuth{
 		SubscriptionID: string(subscriptionID),
-		ClientID:       string(clientID),
 		TenantID:       string(tenantID),
+		ClientID:       string(clientID),
 		ClientSecret:   string(clientSecret),
 	}, nil
 }
 
 // GetAuthorizerAndSubscriptionID retrieves the client auth data specified by the secret reference
 // to create and return an Azure Authorizer and a subscription id.
-func GetAuthorizerAndSubscriptionID(ctx context.Context, c client.Client, secretRef corev1.SecretReference) (azureautorest.Authorizer, string, error) {
-	clientAuth, err := GetClientAuthData(ctx, c, secretRef)
+func GetAuthorizerAndSubscriptionID(ctx context.Context, c client.Client, secretRef corev1.SecretReference, allowDNSKeys bool) (azureautorest.Authorizer, string, error) {
+	clientAuth, err := GetClientAuthData(ctx, c, secretRef, allowDNSKeys)
 	if err != nil {
 		return nil, "", err
 	}
@@ -94,4 +103,16 @@ func GetAuthorizerAndSubscriptionID(ctx context.Context, c client.Client, secret
 	}
 
 	return authorizer, clientAuth.SubscriptionID, nil
+}
+
+func getSecretDataValue(secret *corev1.Secret, key string, altKey *string) ([]byte, bool) {
+	if value, ok := secret.Data[key]; ok {
+		return value, true
+	}
+	if altKey != nil {
+		if value, ok := secret.Data[*altKey]; ok {
+			return value, true
+		}
+	}
+	return nil, false
 }
