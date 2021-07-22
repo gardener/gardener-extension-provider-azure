@@ -259,18 +259,15 @@ var _ = Describe("Infrastructure tests", func() {
 			foreignName, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
 
+			var cleanupHandle framework.CleanupActionHandle
+			cleanupHandle = framework.AddCleanupAction(func() {
+				Expect(ignoreAzureNotFoundError(teardownResourceGroup(ctx, clientSet, foreignName))).To(Succeed())
+				framework.RemoveCleanupAction(cleanupHandle)
+			})
+
 			Expect(prepareNewResourceGroup(ctx, logger, clientSet, foreignName, *region)).To(Succeed())
 			Expect(prepareNewVNet(ctx, logger, clientSet, foreignName, foreignName, *region, VNetCIDR)).To(Succeed())
 			Expect(prepareNewIdentity(ctx, logger, clientSet, foreignName, foreignName, *region)).To(Succeed())
-
-			var cleanupHandle framework.CleanupActionHandle
-			cleanupHandle = framework.AddCleanupAction(func() {
-				By("foreign ResourceGroup teardown")
-				err := teardownResourceGroup(ctx, clientSet, foreignName)
-				Expect(err).ToNot(HaveOccurred())
-
-				framework.RemoveCleanupAction(cleanupHandle)
-			})
 
 			vnetConfig := &azurev1alpha1.VNet{
 				Name:          pointer.StringPtr(foreignName),
@@ -308,18 +305,15 @@ var _ = Describe("Infrastructure tests", func() {
 			foreignName, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
 
+			var cleanupHandle framework.CleanupActionHandle
+			cleanupHandle = framework.AddCleanupAction(func() {
+				Expect(ignoreAzureNotFoundError(teardownResourceGroup(ctx, clientSet, foreignName))).To(Succeed())
+				framework.RemoveCleanupAction(cleanupHandle)
+			})
+
 			Expect(prepareNewResourceGroup(ctx, logger, clientSet, foreignName, *region)).To(Succeed())
 			Expect(prepareNewVNet(ctx, logger, clientSet, foreignName, foreignName, *region, VNetCIDR)).To(Succeed())
 			Expect(prepareNewIdentity(ctx, logger, clientSet, foreignName, foreignName, *region)).To(Succeed())
-
-			var cleanupHandle framework.CleanupActionHandle
-			cleanupHandle = framework.AddCleanupAction(func() {
-				By("foreign ResourceGroup teardown")
-				err := teardownResourceGroup(ctx, clientSet, foreignName)
-				Expect(err).ToNot(HaveOccurred())
-
-				framework.RemoveCleanupAction(cleanupHandle)
-			})
 
 			vnetConfig := &azurev1alpha1.VNet{
 				Name:          pointer.StringPtr(foreignName),
@@ -357,18 +351,15 @@ var _ = Describe("Infrastructure tests", func() {
 			foreignName, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
 
+			var cleanupHandle framework.CleanupActionHandle
+			cleanupHandle = framework.AddCleanupAction(func() {
+				Expect(ignoreAzureNotFoundError(teardownResourceGroup(ctx, clientSet, foreignName))).To(Succeed())
+				framework.RemoveCleanupAction(cleanupHandle)
+			})
+
 			Expect(prepareNewResourceGroup(ctx, logger, clientSet, foreignName, *region)).To(Succeed())
 			Expect(prepareNewVNet(ctx, logger, clientSet, foreignName, foreignName, *region, VNetCIDR)).To(Succeed())
 			Expect(prepareNewIdentity(ctx, logger, clientSet, foreignName, foreignName, *region)).To(Succeed())
-
-			var cleanupHandle framework.CleanupActionHandle
-			cleanupHandle = framework.AddCleanupAction(func() {
-				By("foreign ResourceGroup teardown")
-				err := teardownResourceGroup(ctx, clientSet, foreignName)
-				Expect(err).ToNot(HaveOccurred())
-
-				framework.RemoveCleanupAction(cleanupHandle)
-			})
 
 			vnetConfig := &azurev1alpha1.VNet{
 				Name:          pointer.StringPtr(foreignName),
@@ -407,9 +398,7 @@ func runTest(
 	logger.Infof("test running in namespace: %s", namespaceName)
 
 	// Cleanup
-	var cleanupHandle framework.CleanupActionHandle
-	cleanupHandle = framework.AddCleanupAction(func() {
-
+	defer func() {
 		By("delete infrastructure")
 		Expect(client.IgnoreNotFound(c.Delete(ctx, infra))).To(Succeed())
 
@@ -430,9 +419,7 @@ func runTest(
 
 		Expect(client.IgnoreNotFound(c.Delete(ctx, namespace))).To(Succeed())
 		Expect(client.IgnoreNotFound(c.Delete(ctx, cluster))).To(Succeed())
-
-		framework.RemoveCleanupAction(cleanupHandle)
-	})
+	}()
 
 	By("create namespace for test execution")
 	namespace = &corev1.Namespace{
@@ -495,7 +482,7 @@ func runTest(
 		return err
 	}
 
-	By("decode infrastucture status")
+	By("decode infrastructure status")
 	if err := c.Get(ctx, client.ObjectKey{Namespace: infra.Namespace, Name: infra.Name}, infra); err != nil {
 		return err
 	}
@@ -861,4 +848,12 @@ func verifyDeletion(
 		Expect(err).To(HaveOccurred())
 		Expect(err).To(BeNotFoundError())
 	}
+}
+
+func ignoreAzureNotFoundError(err error) error {
+	if !IsNotFound(err) {
+		return err
+	}
+
+	return nil
 }
