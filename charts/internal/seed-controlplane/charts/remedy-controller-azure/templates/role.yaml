@@ -16,3 +16,19 @@ rules:
   - configmaps
   verbs:
   - "*"
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - create
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  resourceNames:
+  - remedy-controller-azure-leader-election
+  verbs:
+  - get
+  - watch
+  - update
