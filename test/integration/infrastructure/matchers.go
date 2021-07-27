@@ -31,16 +31,33 @@ func (a *azureNotFoundErrorMatcher) Match(actual interface{}) (success bool, err
 		return false, nil
 	}
 
-	azError, ok := actual.(autorest.DetailedError)
+	azError, ok := actual.(error)
 	if !ok {
-		return false, fmt.Errorf("expected autorest.Detailed error, got %s", format.Object(actual, 1))
+		return false, fmt.Errorf("expected type error, got %s", format.Object(actual, 1))
 	}
 
-	code, ok := azError.StatusCode.(int)
-	if !ok {
-		return false, fmt.Errorf("could not parse response status code")
+	if IsNotFound(azError) {
+		return true, nil
 	}
-	return code == http.StatusNotFound, nil
+
+	return false, nil
+}
+
+func IsNotFound(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	actual, ok := err.(autorest.DetailedError)
+	if !ok {
+		return false
+	}
+
+	if code, ok := actual.StatusCode.(int); !ok || code != http.StatusNotFound {
+		return false
+	}
+
+	return true
 }
 
 func (a *azureNotFoundErrorMatcher) FailureMessage(actual interface{}) (message string) {
