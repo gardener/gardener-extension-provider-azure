@@ -4,6 +4,7 @@ provider "azurerm" {
   client_id       = var.CLIENT_ID
   client_secret   = var.CLIENT_SECRET
 
+  skip_provider_registration = "true"
   features {}
 }
 
