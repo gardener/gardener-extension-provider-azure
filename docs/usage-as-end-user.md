@@ -58,6 +58,13 @@ networks:
   #     zone: 1
   # serviceEndpoints:
   # - Microsoft.Test
+  # zones:
+  #   - name: 1
+  #     cidr: "10.250.0.0/24
+  #   - name: 2
+  #     cidr: "10.250.0.0/24"
+  #     natGateway:
+  #       enabled: false
 zoned: false
 # resourceGroup:
 #   name: mygroup
@@ -100,6 +107,46 @@ In the `identity` section you can specify an [Azure user-assigned managed identi
 **Caution:** Adding, exchanging or removing the identity will require a rolling update of all worker machines in the Shoot cluster.
 
 Apart from the VNet and the worker subnet the Azure extension will also create a dedicated resource group, route tables, security groups, and an availability set (if not using zoned clusters).
+
+### InfrastructureConfig with dedicated subnets per zone
+
+Another deployment option **for zonal clusters only**, is to create and configure a separate subnet per zone. This network configuration is recommended to users that require fine-grained control over their network setup. One prevalent usecase is to create a zone-redundant NAT Gateway deployment by taking advantage of the ability to deploy separate NAT Gateways for each subnet.
+
+For each of these subnets a CIDR range must be speficied. The specified CIDR range must be contained in the VNet CIDR specified above, or the VNet CIDR of your already existing VNet. In addition, the CIDR ranges must not overlap with the ranges of the other subnets.  
+
+_ServiceEndpoints_ and _NatGateways_ can be configured per subnet. Respectively, when `networks.zones` is specified, the fields `networks.workers`, `networks.serviceEndpoints` and `networks.NatGateway` cannot be populated. All the configuration for the subnets must be done inside the respective zone's configuration.
+
+### Migrating to zonal shoots with dedicated subnets per zone
+
+For existing zonal clusters it is possible to migrate to the new network setup with dedicated subnets per zone. The migration works by creating the additional network resources necessary and progressively roll part of your existing nodes to the new setup. To achieve the controlled rolling of your nodes, parts of the existing infrastructure must be preserved which is why the following constraint is imposed:
+
+The first zone specified in the `networks.zones` must use the exact same CIDR range as the current `network.workers`. Here is an example of such migration:
+
+```yaml
+infrastructureConfig:
+  apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+  kind: InfrastructureConfig
+  networks:
+    vnet:
+      cidr: 10.250.0.0/16
+    workers: 10.250.0.0/19
+  zoned: true
+```
+
+to
+
+```yaml
+infrastructureConfig:
+  apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+  kind: InfrastructureConfig
+  networks:
+    vnet:
+      cidr: 10.250.0.0/16
+    zones:
+      - name: 3
+         cidr: 10.250.0.0/19 # note the preservation of the 'workers' CIDR
+  zoned: true
+```
 
 ## `ControlPlaneConfig`
 
@@ -219,6 +266,71 @@ spec:
         vnet:
           cidr: 10.250.0.0/16
         workers: 10.250.0.0/19
+      zoned: true
+    controlPlaneConfig:
+      apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+      kind: ControlPlaneConfig
+    workers:
+    - name: worker-xoluy
+      machine:
+        type: Standard_D4_v3
+      minimum: 2
+      maximum: 2
+      volume:
+        size: 50Gi
+        type: Standard_LRS
+      zones:
+      - "1"
+      - "2"
+  networking:
+    type: calico
+    pods: 100.96.0.0/11
+    nodes: 10.250.0.0/16
+    services: 100.64.0.0/13
+  kubernetes:
+    version: 1.16.1
+  maintenance:
+    autoUpdate:
+      kubernetesVersion: true
+      machineImageVersion: true
+  addons:
+    kubernetesDashboard:
+      enabled: true
+    nginxIngress:
+      enabled: true
+```
+
+## Example `Shoot` manifest (zoned with NAT Gateways per zone)
+
+Please find below an example `Shoot` manifest for a zoned cluster using NAT Gateways per zone:
+
+```yaml
+apiVersion: core.gardener.cloud/v1beta1
+kind: Shoot
+metadata:
+  name: johndoe-azure
+  namespace: garden-dev
+spec:
+  cloudProfileName: azure
+  region: westeurope
+  secretBindingName: core-azure
+  provider:
+    type: azure
+    infrastructureConfig:
+      apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+      kind: InfrastructureConfig
+      networks:
+        vnet:
+          cidr: 10.250.0.0/16
+        zones:
+        - name: 1
+          cidr: 10.250.0.0/24
+          natGateway:
+            enabled: true
+        - name: 2
+          cidr: 10.250.1.0/24
+          natGateway:
+            enabled: true
       zoned: true
     controlPlaneConfig:
       apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
