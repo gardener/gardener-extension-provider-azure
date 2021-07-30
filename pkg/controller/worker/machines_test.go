@@ -360,7 +360,6 @@ var _ = Describe("Machines", func() {
 					}
 					machineClassPool2["osDisk"] = map[string]interface{}{
 						"size": volumeSize,
-						"type": volumeType,
 					}
 
 					machineClasses = map[string]interface{}{"machineClasses": []map[string]interface{}{
