@@ -16,6 +16,7 @@ package controlplane
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 
@@ -33,7 +34,6 @@ import (
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	versionutils "github.com/gardener/gardener/pkg/utils/version"
 	"github.com/go-logr/logr"
-	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -443,7 +443,7 @@ func (e *ensurer) EnsureKubeletCloudProviderConfig(ctx context.Context, _ gconte
 			return nil
 		}
 
-		return errors.Wrapf(err, "could not get secret '%s/%s'", namespace, azure.CloudProviderDiskConfigName)
+		return fmt.Errorf("could not get secret '%s/%s': %w", namespace, azure.CloudProviderDiskConfigName, err)
 	}
 
 	// Check if "cloudprovider.conf" is present
@@ -480,7 +480,7 @@ func (e *ensurer) ensureAcrConfigFile(ctx context.Context, gctx gcontext.GardenC
 	fciCodec := oscutils.NewFileContentInlineCodec()
 	fci, err := fciCodec.Encode([]byte(cm.Data[azure.CloudProviderAcrConfigMapKey]), string(cloudinit.B64FileCodecID))
 	if err != nil {
-		return errors.Wrap(err, "could not encode acr cloud provider config")
+		return fmt.Errorf("could not encode acr cloud provider config: %w", err)
 	}
 
 	// Remove old ACR systemd file(s) before adding a new one.
@@ -504,7 +504,7 @@ func (e *ensurer) ensureAcrConfigFile(ctx context.Context, gctx gcontext.GardenC
 
 func (e *ensurer) getAcrConfigMap(ctx context.Context, cluster *extensionscontroller.Cluster) (*corev1.ConfigMap, error) {
 	if cluster == nil || cluster.Shoot == nil {
-		return nil, errors.New("could not get cluster resource or cluster resource is invalid")
+		return nil, fmt.Errorf("could not get cluster resource or cluster resource is invalid")
 	}
 
 	cm := &corev1.ConfigMap{}
@@ -512,7 +512,7 @@ func (e *ensurer) getAcrConfigMap(ctx context.Context, cluster *extensionscontro
 		if apierrors.IsNotFound(err) {
 			return nil, nil
 		}
-		return nil, errors.Wrapf(err, "could not get acr cloudprovider configmap '%s/%s'", cluster.Shoot.Status.TechnicalID, azure.CloudProviderAcrConfigName)
+		return nil, fmt.Errorf("could not get acr cloudprovider configmap '%s/%s': %w", cluster.Shoot.Status.TechnicalID, azure.CloudProviderAcrConfigName, err)
 	}
 
 	return cm, nil

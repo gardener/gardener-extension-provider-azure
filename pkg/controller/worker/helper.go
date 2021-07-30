@@ -18,13 +18,13 @@ package worker
 
 import (
 	"context"
+	"fmt"
 
 	azureapi "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
-	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/util/retry"
@@ -45,7 +45,7 @@ func (w *workerDelegate) decodeWorkerProviderStatus() (*azureapi.WorkerStatus, e
 	}
 
 	if _, _, err := w.Decoder().Decode(w.worker.Status.ProviderStatus.Raw, nil, workerStatus); err != nil {
-		return nil, errors.Wrapf(err, "could not decode the worker provider status of worker '%s'", kutil.ObjectName(w.worker))
+		return nil, fmt.Errorf("could not decode the worker provider status of worker '%s': %w", kutil.ObjectName(w.worker), err)
 	}
 	return workerStatus, nil
 }
@@ -70,7 +70,7 @@ func (w *workerDelegate) updateWorkerProviderStatus(ctx context.Context, workerS
 
 func (w *workerDelegate) updateWorkerProviderStatusWithError(ctx context.Context, workerStatus *azureapi.WorkerStatus, err error) error {
 	if statusUpdateErr := w.updateWorkerProviderStatus(ctx, workerStatus); statusUpdateErr != nil {
-		return errors.Wrapf(statusUpdateErr, err.Error())
+		return fmt.Errorf("%s: %w", err.Error(), statusUpdateErr)
 	}
 	return err
 }
