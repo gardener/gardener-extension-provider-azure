@@ -16,11 +16,11 @@ package controlplane
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/pkg/errors"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
@@ -104,7 +104,7 @@ func (a *actuator) deleteRemedyControllerResources(ctx context.Context, cp *exte
 	a.logger.Info("Deleting all remaining remedy controller resources")
 	pubipList := &azurev1alpha1.PublicIPAddressList{}
 	if err := a.client.List(ctx, pubipList, client.InNamespace(cp.Namespace)); err != nil {
-		return errors.Wrap(err, "could not list publicipaddresses")
+		return fmt.Errorf("could not list publicipaddresses: %w", err)
 	}
 	for _, pubip := range pubipList.Items {
 		// Add the do-not-clean annotation to the publicipaddress resource
@@ -113,14 +113,14 @@ func (a *actuator) deleteRemedyControllerResources(ctx context.Context, cp *exte
 			pubip.Annotations = add(pubip.Annotations, "azure.remedy.gardener.cloud/do-not-clean", strconv.FormatBool(true))
 			return a.client.Update(ctx, &pubip)
 		}); err != nil {
-			return errors.Wrap(err, "could not add do-not-clean annotation on publicipaddress")
+			return fmt.Errorf("could not add do-not-clean annotation on publicipaddress: %w", err)
 		}
 	}
 	if err := a.client.DeleteAllOf(ctx, &azurev1alpha1.PublicIPAddress{}, client.InNamespace(cp.Namespace)); err != nil {
-		return errors.Wrap(err, "could not delete publicipaddress resources")
+		return fmt.Errorf("could not delete publicipaddress resources: %w", err)
 	}
 	if err := a.client.DeleteAllOf(ctx, &azurev1alpha1.VirtualMachine{}, client.InNamespace(cp.Namespace)); err != nil {
-		return errors.Wrap(err, "could not delete virtualmachine resources")
+		return fmt.Errorf("could not delete virtualmachine resources: %w", err)
 	}
 
 	// Wait until the remaining remedy controller resources have been deleted
@@ -128,12 +128,12 @@ func (a *actuator) deleteRemedyControllerResources(ctx context.Context, cp *exte
 	timeoutCtx1, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
 	if err := kutil.WaitUntilResourcesDeleted(timeoutCtx1, a.client, &azurev1alpha1.PublicIPAddressList{}, 5*time.Second, client.InNamespace(cp.Namespace)); err != nil {
-		return errors.Wrap(err, "could not wait for publicipaddress resources to be deleted")
+		return fmt.Errorf("could not wait for publicipaddress resources to be deleted: %w", err)
 	}
 	timeoutCtx2, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
 	if err := kutil.WaitUntilResourcesDeleted(timeoutCtx2, a.client, &azurev1alpha1.VirtualMachineList{}, 5*time.Second, client.InNamespace(cp.Namespace)); err != nil {
-		return errors.Wrap(err, "could not wait for virtualmachine resources to be deleted")
+		return fmt.Errorf("could not wait for virtualmachine resources to be deleted: %w", err)
 	}
 
 	return nil

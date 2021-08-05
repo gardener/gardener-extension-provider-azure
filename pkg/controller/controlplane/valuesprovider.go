@@ -16,6 +16,7 @@ package controlplane
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -35,7 +36,6 @@ import (
 	"github.com/gardener/gardener/pkg/utils/version"
 
 	"github.com/go-logr/logr"
-	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
@@ -387,26 +387,26 @@ func (vp *valuesProvider) GetConfigChartValues(ctx context.Context, cp *extensio
 	cpConfig := &apisazure.ControlPlaneConfig{}
 	if cp.Spec.ProviderConfig != nil {
 		if _, _, err := vp.Decoder().Decode(cp.Spec.ProviderConfig.Raw, nil, cpConfig); err != nil {
-			return nil, errors.Wrapf(err, "could not decode providerConfig of controlplane '%s'", kutil.ObjectName(cp))
+			return nil, fmt.Errorf("could not decode providerConfig of controlplane '%s': %w", kutil.ObjectName(cp), err)
 		}
 	}
 
 	// Decode infrastructureProviderStatus
 	infraStatus := &apisazure.InfrastructureStatus{}
 	if _, _, err := vp.Decoder().Decode(cp.Spec.InfrastructureProviderStatus.Raw, nil, infraStatus); err != nil {
-		return nil, errors.Wrapf(err, "could not decode infrastructureProviderStatus of controlplane '%s'", kutil.ObjectName(cp))
+		return nil, fmt.Errorf("could not decode infrastructureProviderStatus of controlplane '%s': %w", kutil.ObjectName(cp), err)
 	}
 
 	// Get client auth
 	auth, err := internal.GetClientAuthData(ctx, vp.Client(), cp.Spec.SecretRef, false)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not get service account from secret '%s/%s'", cp.Spec.SecretRef.Namespace, cp.Spec.SecretRef.Name)
+		return nil, fmt.Errorf("could not get service account from secret '%s/%s': %w", cp.Spec.SecretRef.Namespace, cp.Spec.SecretRef.Name, err)
 	}
 
 	// Check if the configmap for the acr access need to be removed.
 	if infraStatus.Identity == nil || !infraStatus.Identity.ACRAccess {
 		if err := vp.removeAcrConfig(ctx, cp.Namespace); err != nil {
-			return nil, errors.Wrap(err, "could not remove acr config map")
+			return nil, fmt.Errorf("could not remove acr config map: %w", err)
 		}
 	}
 
@@ -426,7 +426,7 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 	cpConfig := &apisazure.ControlPlaneConfig{}
 	if cp.Spec.ProviderConfig != nil {
 		if _, _, err := vp.Decoder().Decode(cp.Spec.ProviderConfig.Raw, nil, cpConfig); err != nil {
-			return nil, errors.Wrapf(err, "could not decode providerConfig of controlplane '%s'", kutil.ObjectName(cp))
+			return nil, fmt.Errorf("could not decode providerConfig of controlplane '%s': %w", kutil.ObjectName(cp), err)
 		}
 	}
 
@@ -449,7 +449,7 @@ func (vp *valuesProvider) GetControlPlaneShootChartValues(
 	// Decode infrastructureProviderStatus
 	infraStatus := &apisazure.InfrastructureStatus{}
 	if _, _, err := vp.Decoder().Decode(cp.Spec.InfrastructureProviderStatus.Raw, nil, infraStatus); err != nil {
-		return nil, errors.Wrapf(err, "could not decode infrastructureProviderStatus of controlplane '%s'", kutil.ObjectName(cp))
+		return nil, fmt.Errorf("could not decode infrastructureProviderStatus of controlplane '%s': %w", kutil.ObjectName(cp), err)
 	}
 
 	k8sVersionLessThan121, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, "<", "1.21")
@@ -522,7 +522,7 @@ func (vp *valuesProvider) removeAcrConfig(ctx context.Context, namespace string)
 func getConfigChartValues(infraStatus *apisazure.InfrastructureStatus, cp *extensionsv1alpha1.ControlPlane, cluster *extensionscontroller.Cluster, ca *internal.ClientAuth) (map[string]interface{}, error) {
 	subnetName, routeTableName, securityGroupName, err := getInfraNames(infraStatus)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not determine subnet, availability set, route table or security group name from infrastructureStatus of controlplane '%s'", kutil.ObjectName(cp))
+		return nil, fmt.Errorf("could not determine subnet, availability set, route table or security group name from infrastructureStatus of controlplane '%s': %w", kutil.ObjectName(cp), err)
 	}
 
 	var maxNodes int32
@@ -575,15 +575,15 @@ func appendMachineSetValues(values map[string]interface{}, infraStatus *apisazur
 func getInfraNames(infraStatus *apisazure.InfrastructureStatus) (string, string, string, error) {
 	nodesSubnet, err := azureapihelper.FindSubnetByPurpose(infraStatus.Networks.Subnets, apisazure.PurposeNodes)
 	if err != nil {
-		return "", "", "", errors.Wrapf(err, "could not determine subnet for purpose 'nodes'")
+		return "", "", "", fmt.Errorf("could not determine subnet for purpose 'nodes': %w", err)
 	}
 	nodesRouteTable, err := azureapihelper.FindRouteTableByPurpose(infraStatus.RouteTables, apisazure.PurposeNodes)
 	if err != nil {
-		return "", "", "", errors.Wrapf(err, "could not determine route table for purpose 'nodes'")
+		return "", "", "", fmt.Errorf("could not determine route table for purpose 'nodes': %w", err)
 	}
 	nodesSecurityGroup, err := azureapihelper.FindSecurityGroupByPurpose(infraStatus.SecurityGroups, apisazure.PurposeNodes)
 	if err != nil {
-		return "", "", "", errors.Wrapf(err, "could not determine security group for purpose 'nodes'")
+		return "", "", "", fmt.Errorf("could not determine security group for purpose 'nodes': %w", err)
 	}
 
 	return nodesSubnet.Name, nodesRouteTable.Name, nodesSecurityGroup.Name, nil
