@@ -269,19 +269,20 @@ The prerequisites are that the cluster must be zoned, and the used machine type 
 `Availability Set` based shoot clusters will not be enabled for accelerated networking even if the machine type and operating system support it, this is necessary because all machines from the availability set must be scheduled on special hardware, more daitls can be found [here](https://github.com/MicrosoftDocs/azure-docs/issues/10536).
 Supported machine types are listed in the CloudProfile in `.spec.providerConfig.machineTypes[].acceleratedNetworking` and the supported operating system image versions are defined in `.spec.providerConfig.machineImages[].versions[].acceleratedNetworking`.
 
-### Preview: Shoot clusters with VMSS Orchestration Mode VM (VMO)
+### Preview: Shoot clusters with VMSS Flexible Orchestration (VMSS Flex/VMO)
 
-Azure Shoot clusters can be created with machines which are attached to an [Azure Virtual Machine ScaleSet orchestraion mode VM (VMO)](https://docs.microsoft.com/en-us/azure/virtual-machine-scale-sets/orchestration-modes).
-The orchestraion mode VM of Virtual Machine ScaleSet is currently in preview mode and not yet general available on Azure.
+The machines of an Azure cluster can be created while being attached to an [Azure Virtual Machine ScaleSet with flexible orchestraion](https://docs.microsoft.com/en-us/azure/virtual-machine-scale-sets/virtual-machine-scale-sets-orchestration-modes#scale-sets-with-flexible-orchestration).
+The Virtual Machine ScaleSet with flexible orchestration feature is currently in preview and not yet general available on Azure.
+Subscriptions need to [join the preview](https://docs.microsoft.com/en-us/azure/virtual-machine-scale-sets/virtual-machine-scale-sets-orchestration-modes#register-for-flexible-orchestration-mode) to make use of the feature.
 
-Azure VMO are intended to replace Azure AvailabilitySet for non-zoned Azure Shoot clusters in the mid-term as VMO come with less disadvantages like no blocking machine operations or compability with `Standard` SKU loadbalancer etc.
+Azure VMSS Flex is intended to replace Azure AvailabilitySet for non-zoned Azure Shoot clusters in the mid-term (once the feature goes GA) as VMSS Flex come with less disadvantages like no blocking machine operations or compability with `Standard` SKU loadbalancer etc.
 
-To configure an Azure Shoot cluster which make use of VMO you need to do the following:
+To configure an Azure Shoot cluster which make use of VMSS Flex you need to do the following:
 - The `InfrastructureConfig` of the Shoot configuration need to contain `.zoned=false`
 - Shoot resource need to have the following annotation assigned: `alpha.azure.provider.extensions.gardener.cloud/vmo=true`
 
-Some key facts about VMO based clusters:
-- Unlike regular non-zonal Azure Shoot clusters, which have a primary AvailabilitySet which is shared between all machines in all worker pools of a Shoot cluster, a VMO based cluster has an own VMO for each workerpool
-- In case the configuration of the VMO will change (e.g. amount of fault domains in a region change; configured in the CloudProfile) all machines of the worker pool need to be rolled
-- It is not possible to migrate an existing primary AvailabilitySet based Shoot cluster to VMO based Shoot cluster and vice versa
-- VMO based clusters are using `Standard` SKU LoadBalancers instead of `Basic` SKU LoadBalancers for AvailabilitySet based Shoot clusters
+Some key facts about VMSS Flex based clusters:
+- Unlike regular non-zonal Azure Shoot clusters, which have a primary AvailabilitySet which is shared between all machines in all worker pools of a Shoot cluster, a VMSS Flex based cluster has an own VMSS for each workerpool
+- In case the configuration of the VMSS will change (e.g. amount of fault domains in a region change; configured in the CloudProfile) all machines of the worker pool need to be rolled
+- It is not possible to migrate an existing primary AvailabilitySet based Shoot cluster to VMSS Flex based Shoot cluster and vice versa
+- VMSS Flex based clusters are using `Standard` SKU LoadBalancers instead of `Basic` SKU LoadBalancers for AvailabilitySet based Shoot clusters
