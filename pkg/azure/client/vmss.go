@@ -72,6 +72,9 @@ func (c VmssClient) Create(ctx context.Context, resourceGroupName, name string, 
 func (c VmssClient) Delete(ctx context.Context, resourceGroupName, name string) error {
 	future, err := c.client.Delete(ctx, resourceGroupName, name)
 	if err != nil {
+		if IsAzureAPINotFoundError(err) {
+			return nil
+		}
 		return err
 	}
 	if err := future.WaitForCompletionRef(ctx, c.client.Client); err != nil {
