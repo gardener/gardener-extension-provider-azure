@@ -66,6 +66,21 @@ func (mr *MockFactoryMockRecorder) DNSZone(arg0, arg1 interface{}) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DNSZone", reflect.TypeOf((*MockFactory)(nil).DNSZone), arg0, arg1)
 }
 
+// Disk mocks base method.
+func (m *MockFactory) Disk(arg0 context.Context, arg1 v1.SecretReference) (client.Disk, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Disk", arg0, arg1)
+	ret0, _ := ret[0].(client.Disk)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Disk indicates an expected call of Disk.
+func (mr *MockFactoryMockRecorder) Disk(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Disk", reflect.TypeOf((*MockFactory)(nil).Disk), arg0, arg1)
+}
+
 // Group mocks base method.
 func (m *MockFactory) Group(arg0 context.Context, arg1 v1.SecretReference) (client.Group, error) {
 	m.ctrl.T.Helper()
@@ -79,6 +94,51 @@ func (m *MockFactory) Group(arg0 context.Context, arg1 v1.SecretReference) (clie
 func (mr *MockFactoryMockRecorder) Group(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Group", reflect.TypeOf((*MockFactory)(nil).Group), arg0, arg1)
+}
+
+// NetworkInterface mocks base method.
+func (m *MockFactory) NetworkInterface(arg0 context.Context, arg1 v1.SecretReference) (client.NetworkInterface, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NetworkInterface", arg0, arg1)
+	ret0, _ := ret[0].(client.NetworkInterface)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NetworkInterface indicates an expected call of NetworkInterface.
+func (mr *MockFactoryMockRecorder) NetworkInterface(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetworkInterface", reflect.TypeOf((*MockFactory)(nil).NetworkInterface), arg0, arg1)
+}
+
+// NetworkSecurityGroup mocks base method.
+func (m *MockFactory) NetworkSecurityGroup(arg0 context.Context, arg1 v1.SecretReference) (client.NetworkSecurityGroup, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NetworkSecurityGroup", arg0, arg1)
+	ret0, _ := ret[0].(client.NetworkSecurityGroup)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NetworkSecurityGroup indicates an expected call of NetworkSecurityGroup.
+func (mr *MockFactoryMockRecorder) NetworkSecurityGroup(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetworkSecurityGroup", reflect.TypeOf((*MockFactory)(nil).NetworkSecurityGroup), arg0, arg1)
+}
+
+// PublicIP mocks base method.
+func (m *MockFactory) PublicIP(arg0 context.Context, arg1 v1.SecretReference) (client.PublicIP, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PublicIP", arg0, arg1)
+	ret0, _ := ret[0].(client.PublicIP)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PublicIP indicates an expected call of PublicIP.
+func (mr *MockFactoryMockRecorder) PublicIP(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PublicIP", reflect.TypeOf((*MockFactory)(nil).PublicIP), arg0, arg1)
 }
 
 // Storage mocks base method.
@@ -109,6 +169,36 @@ func (m *MockFactory) StorageAccount(arg0 context.Context, arg1 v1.SecretReferen
 func (mr *MockFactoryMockRecorder) StorageAccount(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StorageAccount", reflect.TypeOf((*MockFactory)(nil).StorageAccount), arg0, arg1)
+}
+
+// Subnet mocks base method.
+func (m *MockFactory) Subnet(arg0 context.Context, arg1 v1.SecretReference) (client.Subnet, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Subnet", arg0, arg1)
+	ret0, _ := ret[0].(client.Subnet)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Subnet indicates an expected call of Subnet.
+func (mr *MockFactoryMockRecorder) Subnet(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Subnet", reflect.TypeOf((*MockFactory)(nil).Subnet), arg0, arg1)
+}
+
+// VirtualMachine mocks base method.
+func (m *MockFactory) VirtualMachine(arg0 context.Context, arg1 v1.SecretReference) (client.VirtualMachine, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "VirtualMachine", arg0, arg1)
+	ret0, _ := ret[0].(client.VirtualMachine)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// VirtualMachine indicates an expected call of VirtualMachine.
+func (mr *MockFactoryMockRecorder) VirtualMachine(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VirtualMachine", reflect.TypeOf((*MockFactory)(nil).VirtualMachine), arg0, arg1)
 }
 
 // Vmss mocks base method.

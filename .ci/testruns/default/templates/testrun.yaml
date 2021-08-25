@@ -49,3 +49,10 @@ spec:
           - name: REGION
             type: env
             value: westeurope
+    - name: bastion-test
+      definition:
+        name: bastion-test
+        config:
+        - name: REGION
+          type: env
+          value: westeurope

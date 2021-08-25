@@ -25,7 +25,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2020-06-30/compute"
+	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	"github.com/gardener/gardener/pkg/utils"
 	"k8s.io/utils/pointer"
 )
@@ -72,7 +72,7 @@ func (w *workerDelegate) reconcileVMO(ctx context.Context, client azureclient.Vm
 
 	// Try to fetch the VMO from Azure as it exists in the status.
 	if existingDependency != nil {
-		vmo, err = client.Get(ctx, resourceGroupName, existingDependency.Name)
+		vmo, err = client.Get(ctx, resourceGroupName, existingDependency.Name, compute.ExpandTypesForGetVMScaleSetsUserData)
 		if err != nil {
 			return nil, err
 		}
@@ -116,7 +116,7 @@ func (w *workerDelegate) cleanupVmoDependencies(ctx context.Context, infrastruct
 	// Delete all vmo workerpool dependencies as the Worker is intended to be deleted.
 	if w.worker.ObjectMeta.DeletionTimestamp != nil {
 		for _, dependency := range workerProviderStatus.VmoDependencies {
-			if err := vmoClient.Delete(ctx, infrastructureStatus.ResourceGroup.Name, dependency.Name); err != nil {
+			if err := vmoClient.Delete(ctx, infrastructureStatus.ResourceGroup.Name, dependency.Name, pointer.Bool(false)); err != nil {
 				return vmoDependencies, err
 			}
 			vmoDependencies = removeVmoDependency(vmoDependencies, dependency)
@@ -137,7 +137,7 @@ func (w *workerDelegate) cleanupVmoDependencies(ctx context.Context, infrastruct
 		}
 
 		// Delete the dependency as no corresponding workerpool exist anymore.
-		if err := vmoClient.Delete(ctx, infrastructureStatus.ResourceGroup.Name, dependency.Name); err != nil {
+		if err := vmoClient.Delete(ctx, infrastructureStatus.ResourceGroup.Name, dependency.Name, pointer.Bool(false)); err != nil {
 			return vmoDependencies, err
 		}
 		vmoDependencies = removeVmoDependency(vmoDependencies, dependency)
@@ -161,7 +161,7 @@ func cleanupOrphanVMODependencies(ctx context.Context, client azureclient.Vmss, 
 			}
 		}
 		if !vmoExists {
-			if err := client.Delete(ctx, resourceGroupName, *vmo.Name); err != nil {
+			if err := client.Delete(ctx, resourceGroupName, *vmo.Name, pointer.Bool(false)); err != nil {
 				return err
 			}
 		}

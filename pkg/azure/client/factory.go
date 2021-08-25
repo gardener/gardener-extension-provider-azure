@@ -19,8 +19,9 @@ import (
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 
-	azurecompute "github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2020-06-30/compute"
+	azurecompute "github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	azuredns "github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-05-01/dns"
+	azurenetwork "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	azureresources "github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
 	azurestorage "github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-04-01/storage"
 	corev1 "k8s.io/api/core/v1"
@@ -88,6 +89,20 @@ func (f AzureFactory) Vmss(ctx context.Context, secretRef corev1.SecretReference
 	}, nil
 }
 
+// VirtualMachine reads the secret from the passed reference and return an Azure virtual machine client.
+func (f AzureFactory) VirtualMachine(ctx context.Context, secretRef corev1.SecretReference) (VirtualMachine, error) {
+	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(ctx, f.client, secretRef, false)
+	if err != nil {
+		return nil, err
+	}
+	virtualMachinesClient := azurecompute.NewVirtualMachinesClient(subscriptionID)
+	virtualMachinesClient.Authorizer = authorizer
+
+	return VirtualMachinesClient{
+		client: virtualMachinesClient,
+	}, nil
+}
+
 // DNSZone reads the secret from the passed reference and return an Azure DNS zone client.
 func (f AzureFactory) DNSZone(ctx context.Context, secretRef corev1.SecretReference) (DNSZone, error) {
 	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(ctx, f.client, secretRef, true)
@@ -113,5 +128,75 @@ func (f AzureFactory) DNSRecordSet(ctx context.Context, secretRef corev1.SecretR
 
 	return DNSRecordSetClient{
 		client: recordSetsClient,
+	}, nil
+}
+
+// NetworkSecurityGroup reads the secret from the passed reference and return an Azure network security group client.
+func (f AzureFactory) NetworkSecurityGroup(ctx context.Context, secretRef corev1.SecretReference) (NetworkSecurityGroup, error) {
+	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(ctx, f.client, secretRef, false)
+	if err != nil {
+		return nil, err
+	}
+	networkSecurityGroupClient := azurenetwork.NewSecurityGroupsClient(subscriptionID)
+	networkSecurityGroupClient.Authorizer = authorizer
+
+	return NetworkSecurityGroupClient{
+		client: networkSecurityGroupClient,
+	}, nil
+}
+
+// PublicIP reads the secret from the passed reference and return an Azure network PublicIPClient.
+func (f AzureFactory) PublicIP(ctx context.Context, secretRef corev1.SecretReference) (PublicIP, error) {
+	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(ctx, f.client, secretRef, false)
+	if err != nil {
+		return nil, err
+	}
+	publicIPClient := azurenetwork.NewPublicIPAddressesClient(subscriptionID)
+	publicIPClient.Authorizer = authorizer
+
+	return PublicIPClient{
+		client: publicIPClient,
+	}, nil
+}
+
+// NetworkInterface reads the secret from the passed reference and return an Azure network interface client.
+func (f AzureFactory) NetworkInterface(ctx context.Context, secretRef corev1.SecretReference) (NetworkInterface, error) {
+	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(ctx, f.client, secretRef, false)
+	if err != nil {
+		return nil, err
+	}
+	networkInterfaceClient := azurenetwork.NewInterfacesClient(subscriptionID)
+	networkInterfaceClient.Authorizer = authorizer
+
+	return NetworkInterfaceClient{
+		client: networkInterfaceClient,
+	}, nil
+}
+
+// Disk reads the secret from the passed reference and return an Azure disk client.
+func (f AzureFactory) Disk(ctx context.Context, secretRef corev1.SecretReference) (Disk, error) {
+	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(ctx, f.client, secretRef, false)
+	if err != nil {
+		return nil, err
+	}
+	disksClient := azurecompute.NewDisksClient(subscriptionID)
+	disksClient.Authorizer = authorizer
+
+	return DisksClient{
+		client: disksClient,
+	}, nil
+}
+
+// Subnet reads the secret from the passed reference and return an Azure Subnet client.
+func (f AzureFactory) Subnet(ctx context.Context, secretRef corev1.SecretReference) (Subnet, error) {
+	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(ctx, f.client, secretRef, false)
+	if err != nil {
+		return nil, err
+	}
+	subnetsClient := azurenetwork.NewSubnetsClient(subscriptionID)
+	subnetsClient.Authorizer = authorizer
+
+	return SubnetsClient{
+		client: subnetsClient,
 	}, nil
 }
