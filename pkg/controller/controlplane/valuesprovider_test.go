@@ -370,8 +370,49 @@ var _ = Describe("ValuesProvider", func() {
 			}))
 		})
 
-		It("should return correct control plane chart values (k8s >= 1.21)", func() {
+		It("should return correct control plane chart values (k8s >= 1.21) with zoned infrastructure", func() {
 			cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil)
+			infrastructureStatus.Zoned = false
+			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+
+			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, checksums, false)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(map[string]interface{}{
+				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
+					"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
+				}),
+				azure.CSIControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
+					"replicas": 1,
+					"podAnnotations": map[string]interface{}{
+						"checksum/secret-" + azure.CSIControllerDiskName:   checksums[azure.CSIControllerDiskName],
+						"checksum/secret-" + azure.CSIControllerFileName:   checksums[azure.CSIControllerFileName],
+						"checksum/secret-" + azure.CSIProvisionerName:      checksums[azure.CSIProvisionerName],
+						"checksum/secret-" + azure.CSIAttacherName:         checksums[azure.CSIAttacherName],
+						"checksum/secret-" + azure.CSISnapshotterName:      checksums[azure.CSISnapshotterName],
+						"checksum/secret-" + azure.CSIResizerName:          checksums[azure.CSIResizerName],
+						"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
+					},
+					"csiSnapshotController": map[string]interface{}{
+						"replicas": 1,
+						"podAnnotations": map[string]interface{}{
+							"checksum/secret-" + azure.CSISnapshotControllerName: checksums[azure.CSISnapshotControllerName],
+						},
+					},
+					"vmType": "vmss",
+				}),
+				azure.RemedyControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
+					"replicas": 1,
+					"podAnnotations": map[string]interface{}{
+						"checksum/secret-" + azure.RemedyControllerName:    checksums[azure.RemedyControllerName],
+						"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
+					},
+				}),
+			}))
+		})
+
+		It("should return correct control plane chart values (k8s >= 1.21) without zoned infrastructure", func() {
+			cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil)
+			infrastructureStatus.Zoned = false
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 
 			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, checksums, false)

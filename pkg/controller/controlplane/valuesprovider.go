@@ -436,7 +436,12 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 	}
 	checksums[azure.CloudProviderConfigName] = utils.ComputeChecksum(cpConfigSecret.Data)
 
-	return getControlPlaneChartValues(cpConfig, cp, cluster, checksums, scaledDown)
+	infraStatus := &apisazure.InfrastructureStatus{}
+	if _, _, err := vp.Decoder().Decode(cp.Spec.InfrastructureProviderStatus.Raw, nil, infraStatus); err != nil {
+		return nil, fmt.Errorf("could not decode infrastructureProviderStatus of controlplane '%s': %w", kutil.ObjectName(cp), err)
+	}
+
+	return getControlPlaneChartValues(cpConfig, cp, cluster, checksums, scaledDown, infraStatus)
 }
 
 // GetControlPlaneShootChartValues returns the values for the control plane shoot chart applied by the generic actuator.
@@ -596,13 +601,14 @@ func getControlPlaneChartValues(
 	cluster *extensionscontroller.Cluster,
 	checksums map[string]string,
 	scaledDown bool,
+	infraStatus *apisazure.InfrastructureStatus,
 ) (map[string]interface{}, error) {
 	ccm, err := getCCMChartValues(cpConfig, cp, cluster, checksums, scaledDown)
 	if err != nil {
 		return nil, err
 	}
 
-	csi, err := getCSIControllerChartValues(cluster, checksums, scaledDown)
+	csi, err := getCSIControllerChartValues(cluster, checksums, scaledDown, infraStatus)
 	if err != nil {
 		return nil, err
 	}
@@ -656,6 +662,7 @@ func getCSIControllerChartValues(
 	cluster *extensionscontroller.Cluster,
 	checksums map[string]string,
 	scaledDown bool,
+	infraStatus *apisazure.InfrastructureStatus,
 ) (map[string]interface{}, error) {
 	k8sVersionLessThan121, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, "<", "1.21")
 	if err != nil {
@@ -666,7 +673,7 @@ func getCSIControllerChartValues(
 		return map[string]interface{}{"enabled": false}, nil
 	}
 
-	return map[string]interface{}{
+	values := map[string]interface{}{
 		"enabled":  true,
 		"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
 		"podAnnotations": map[string]interface{}{
@@ -684,7 +691,13 @@ func getCSIControllerChartValues(
 				"checksum/secret-" + azure.CSISnapshotControllerName: checksums[azure.CSISnapshotControllerName],
 			},
 		},
-	}, nil
+	}
+
+	if azureapihelper.IsVmoRequired(infraStatus) {
+		values["vmType"] = "vmss"
+	}
+
+	return values, nil
 }
 
 // getRemedyControllerChartValues collects and returns the remedy controller chart values.

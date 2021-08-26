@@ -44,7 +44,7 @@ images:
 - name: csi-driver-disk
   sourceRepository: github.com/kubernetes-sigs/azuredisk-csi-driver
   repository: mcr.microsoft.com/k8s/csi/azuredisk-csi
-  tag: "v1.2.0"
+  tag: "v1.6.0"
 - name: csi-driver-file
   sourceRepository: github.com/kubernetes-sigs/azurefile-csi-driver
   repository: mcr.microsoft.com/k8s/csi/azurefile-csi

@@ -44,6 +44,11 @@ spec:
         - --endpoint=$(CSI_ENDPOINT)
         {{- if eq .role "disk" }}
         - --kubeconfig=/var/lib/csi-driver-controller-disk/kubeconfig
+        {{- if hasKey .Values "vmType" }}
+        {{- if eq .Values.vmType "vmss" }}
+        - --disable-avset-nodes=false
+        {{- end }}
+        {{- end }}
         {{- end }}
         {{- if eq .role "file" }}
         - --nodeid=dummy
