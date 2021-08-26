@@ -412,7 +412,7 @@ var _ = Describe("ValuesProvider", func() {
 
 		It("should return correct control plane chart values (k8s >= 1.21) without zoned infrastructure", func() {
 			cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil)
-			infrastructureStatus.Zoned = false
+			infrastructureStatus.Zoned = true
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 
 			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, checksums, false)
