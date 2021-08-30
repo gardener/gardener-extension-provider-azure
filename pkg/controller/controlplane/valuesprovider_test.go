@@ -435,6 +435,7 @@ var _ = Describe("ValuesProvider", func() {
 				},
 				"vpaEnabled":          false,
 				"cloudProviderConfig": "",
+				"kubernetesVersion":   "1.15.4",
 			})
 			csiNodeEnabled = utils.MergeMaps(enabledTrue, map[string]interface{}{
 				"podAnnotations": map[string]interface{}{
@@ -442,6 +443,7 @@ var _ = Describe("ValuesProvider", func() {
 				},
 				"vpaEnabled":          true,
 				"cloudProviderConfig": cloudProviderConfigData,
+				"kubernetesVersion":   "1.21.4",
 			})
 		)
 
