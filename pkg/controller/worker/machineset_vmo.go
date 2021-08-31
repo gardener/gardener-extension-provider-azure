@@ -147,7 +147,7 @@ func (w *workerDelegate) cleanupVmoDependencies(ctx context.Context, infrastruct
 
 func cleanupOrphanVMODependencies(ctx context.Context, client azureclient.Vmss, dependencies []azureapi.VmoDependency, resourceGroupName string) error {
 	vmoListAll, err := client.List(ctx, resourceGroupName)
-	if err != nil {
+	if err != nil && !azureclient.IsAzureAPINotFoundError(err) {
 		return err
 	}
 	vmoList := filterGardenerManagedVmos(vmoListAll)

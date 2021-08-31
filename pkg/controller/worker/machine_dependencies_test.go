@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"time"
 
 	azureapi "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
@@ -27,6 +28,7 @@ import (
 	vmssmock "github.com/gardener/gardener-extension-provider-azure/pkg/mock/vmss"
 
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2020-06-30/compute"
+	"github.com/Azure/go-autorest/autorest"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
@@ -179,6 +181,23 @@ var _ = Describe("MachinesDependencies", func() {
 				w := makeWorker(namespace, region, nil, nil)
 				workerDelegate := wrapNewWorkerDelegate(c, nil, w, nil, factory)
 
+				err := workerDelegate.CleanupMachineDependencies(ctx)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should not cleanup a vmo dependency as resource group is gone", func() {
+				w := makeWorker(namespace, region, nil, infrastructureStatus, pool)
+				w.Status.ProviderStatus = generateWorkerStatusWithVmo(vmoDependency)
+				workerDelegate := wrapNewWorkerDelegate(c, nil, w, cluster, factory)
+
+				vmoClient.EXPECT().List(ctx, resourceGroupName).Return(nil, autorest.DetailedError{
+					Original:   fmt.Errorf("ResourceGroupNotFound"),
+					StatusCode: http.StatusNotFound,
+					Response: &http.Response{
+						StatusCode: http.StatusNotFound,
+					},
+				})
+				expectWorkerProviderStatusUpdateToSucceed(ctx, c, statusWriter)
 				err := workerDelegate.CleanupMachineDependencies(ctx)
 				Expect(err).NotTo(HaveOccurred())
 			})
