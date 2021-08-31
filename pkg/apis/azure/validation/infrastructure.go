@@ -16,14 +16,15 @@ package validation
 import (
 	"fmt"
 
-	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	cidrvalidation "github.com/gardener/gardener/pkg/utils/validation/cidr"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+
+	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 const (
@@ -122,9 +123,9 @@ func validateNetworkConfig(
 	hasVmoAlphaAnnotation bool,
 	fld *field.Path,
 ) field.ErrorList {
-	allErrs := field.ErrorList{}
 
 	var (
+		allErrs     = field.ErrorList{}
 		workersPath = fld.Child("workers")
 		zonesPath   = fld.Child("zones")
 		vNetPath    = fld.Child("vnet")
@@ -139,7 +140,7 @@ func validateNetworkConfig(
 
 	// forbid setting both of {workers, zones}
 	if config.Workers != nil && len(config.Zones) > 0 {
-		allErrs = append(allErrs, field.Forbidden(workersPath, "workers and zones cannot be specified at the same time"))
+		allErrs = append(allErrs, field.Forbidden(workersPath, "workers and zones cannot be specified in parallel"))
 		return allErrs
 	}
 
@@ -155,7 +156,7 @@ func validateNetworkConfig(
 		allErrs = append(allErrs, validateNatGatewayConfig(config.NatGateway, zoned, hasVmoAlphaAnnotation, fld.Child("natGateway"))...)
 	}
 
-	if isUsingInfrastructureZones(config) {
+	if isZonedWithDedicatedSubnets(config) {
 		if !zoned {
 			allErrs = append(allErrs, field.Forbidden(zonesPath, "cannot specify zones in an non-zonal cluster"))
 		}
@@ -349,13 +350,13 @@ func ValidateInfrastructureConfigUpdate(oldConfig, newConfig *apisazure.Infrastr
 		allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Networks.Workers, oldConfig.Networks.Workers, providerPath.Child("networks").Child("workers"))...)
 	}
 
-	if !isUsingInfrastructureZones(&oldConfig.Networks) && isUsingInfrastructureZones(&newConfig.Networks) {
+	if !isZonedWithDedicatedSubnets(&oldConfig.Networks) && isZonedWithDedicatedSubnets(&newConfig.Networks) {
 		if oldConfig.Networks.Workers != nil && *oldConfig.Networks.Workers != newConfig.Networks.Zones[0].CIDR {
 			allErrs = append(allErrs, field.Forbidden(providerPath.Child("networks", "zones").Index(0).Child("cidr"), "when updating to use zones the CIDR must match that of the previous config.networks.workers"))
 		}
 	}
 
-	if isUsingInfrastructureZones(&oldConfig.Networks) && isUsingInfrastructureZones(&newConfig.Networks) {
+	if isZonedWithDedicatedSubnets(&oldConfig.Networks) && isZonedWithDedicatedSubnets(&newConfig.Networks) {
 		var (
 			oldZones = oldConfig.Networks.Zones
 			newZones = newConfig.Networks.Zones
@@ -429,6 +430,6 @@ func isDefaultVnetConfig(vnetConfig *apisazure.VNet) bool {
 	return false
 }
 
-func isUsingInfrastructureZones(netConfig *apisazure.NetworkConfig) bool {
+func isZonedWithDedicatedSubnets(netConfig *apisazure.NetworkConfig) bool {
 	return netConfig.Workers == nil && len(netConfig.Zones) > 0
 }

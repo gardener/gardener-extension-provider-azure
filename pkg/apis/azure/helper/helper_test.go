@@ -41,7 +41,7 @@ var _ = Describe("Helper", func() {
 
 	DescribeTable("#FindSubnetByPurpose",
 		func(subnets []api.Subnet, purpose api.Purpose, expectedSubnet *api.Subnet, expectErr bool) {
-			subnet, err := FindSubnetByPurpose(subnets, purpose)
+			_, subnet, err := FindSubnetByPurpose(subnets, purpose, nil)
 			expectResults(subnet, expectedSubnet, err, expectErr)
 		},
 

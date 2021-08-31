@@ -536,7 +536,7 @@ var _ = Describe("Machines", func() {
 			})
 
 			It("should fail because the infrastructure status cannot be decoded", func() {
-				w.Spec.InfrastructureProviderStatus = &runtime.RawExtension{}
+				w.Spec.InfrastructureProviderStatus = &runtime.RawExtension{Raw: []byte("definitely not correct")}
 				workerDelegate := wrapNewWorkerDelegate(c, chartApplier, w, cluster, nil)
 
 				result, err := workerDelegate.GenerateMachineDeployments(ctx)

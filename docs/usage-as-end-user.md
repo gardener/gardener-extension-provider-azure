@@ -144,9 +144,69 @@ infrastructureConfig:
       cidr: 10.250.0.0/16
     zones:
       - name: 3
-         cidr: 10.250.0.0/19 # note the preservation of the 'workers' CIDR
+        cidr: 10.250.0.0/19 # note the preservation of the 'workers' CIDR
+# optionally add other zones 
+#     - name: 2  
+#       cidr: 10.250.32.0/19
+#       natGateway:
+#         enabled: true
   zoned: true
 ```
+
+Another more advanced example with user-provided public IP addresses for the NAT Gateway and how it can be migrated: 
+
+```yaml
+infrastructureConfig:
+  apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+  kind: InfrastructureConfig
+  networks:
+    vnet:
+      cidr: 10.250.0.0/16
+    workers: 10.250.0.0/19
+    natGateway:
+      enabled: true
+      zone: 1
+      ipAddresses:
+        - name: pip1
+          resourceGroup: group
+          zone: 1
+        - name: pip2
+          resourceGroup: group
+          zone: 1
+  zoned: true
+```
+
+to
+
+```yaml
+infrastructureConfig:
+  apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+  kind: InfrastructureConfig
+  networks:
+    vnet:
+      cidr: 10.250.0.0/16
+    zones:
+      - name: 1
+        cidr: 10.250.0.0/19 # note the preservation of the 'workers' CIDR
+        natGateway:
+          enabled: true
+          zone: 1
+          ipAddresses:
+            - name: pip1
+              resourceGroup: group
+              zone: 1
+            - name: pip2
+              resourceGroup: group
+              zone: 1
+# optionally add other zones 
+#     - name: 2  
+#       cidr: 10.250.32.0/19
+#       natGateway:
+#         enabled: true
+  zoned: true
+```
+
+:warning: The migration to shoots with dedicated subnets per zone is a one-way process. Reverting the shoot to the previous configuration is not supported.
 
 ## `ControlPlaneConfig`
 
@@ -325,10 +385,17 @@ spec:
         zones:
         - name: 1
           cidr: 10.250.0.0/24
+          serviceEndpoints:
+          - Microsoft.Storage
+          - Microsoft.Sql
           natGateway:
             enabled: true
+            idleConnectionTimeoutMinutes: 4
         - name: 2
           cidr: 10.250.1.0/24
+          serviceEndpoints:
+          - Microsoft.Storage
+          - Microsoft.Sql
           natGateway:
             enabled: true
       zoned: true

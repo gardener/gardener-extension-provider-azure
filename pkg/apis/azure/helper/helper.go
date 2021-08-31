@@ -24,22 +24,32 @@ import (
 // FindSubnetByPurpose takes a list of subnets and tries to find the first entry
 // whose purpose matches with the given purpose. If no such entry is found then an error will be
 // returned.
-func FindSubnetByPurpose(subnets []api.Subnet, purpose api.Purpose) (*api.Subnet, error) {
-	for _, subnet := range subnets {
-		if subnet.Purpose == purpose {
-			return &subnet, nil
-		}
-	}
-	return nil, fmt.Errorf("cannot find subnet with purpose %q", purpose)
-}
+// func FindSubnetByPurpose(subnets []api.Subnet, purpose api.Purpose) (*api.Subnet, error) {
+// 	for _, subnet := range subnets {
+// 		if subnet.Purpose == purpose {
+// 			return &subnet, nil
+// 		}
+// 	}
+// 	return nil, fmt.Errorf("cannot find subnet with purpose %q", purpose)
+// }
 
-func FindSubnetByPurposeAndZone(subnets []api.Subnet, purpose api.Purpose, zone string) (int, *api.Subnet, error) {
+// FindSubnetByPurpose takes a list of subnets and tries to find the first entry
+// whose purpose matches with the given purpose.
+// Optionally, if a zone is passed the subnet.Zone must match the value of the zone, in addition to the purpose.
+// It returns an index
+// If no such entry is found then an error will be returned.
+func FindSubnetByPurpose(subnets []api.Subnet, purpose api.Purpose, zone *string) (int, *api.Subnet, error) {
 	for index, subnet := range subnets {
-		if subnet.Purpose == purpose && subnet.Zone != nil && *subnet.Zone == zone {
+		if subnet.Purpose == purpose && (zone == nil || (subnet.Zone != nil && *subnet.Zone == *zone)) {
 			return index, &subnet, nil
 		}
 	}
-	return 0, nil, fmt.Errorf("cannot find subnet with purpose %q and zone %q", purpose, zone)
+
+	errMsg := fmt.Sprintf("cannot find subnet with purpose %q", purpose)
+	if zone != nil {
+		errMsg += fmt.Sprintf(" and zone %q", *zone)
+	}
+	return 0, nil, fmt.Errorf(errMsg)
 }
 
 // FindSecurityGroupByPurpose takes a list of security groups and tries to find the first entry
@@ -140,6 +150,7 @@ func HasShootVmoAlphaAnnotation(shootAnnotations map[string]string) bool {
 	return false
 }
 
+// AzureZoneToCoreZone translates the zone from the string format used in Gardener core objects to the int32 format used by the Azure provider extension.
 func AzureZoneToCoreZone(zone int32) string {
 	return fmt.Sprintf("%d", zone)
 }

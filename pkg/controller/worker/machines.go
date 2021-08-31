@@ -106,7 +106,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		return err
 	}
 
-	nodesSubnet, err := azureapihelper.FindSubnetByPurpose(infrastructureStatus.Networks.Subnets, azureapi.PurposeNodes)
+	_, nodesSubnet, err := azureapihelper.FindSubnetByPurpose(infrastructureStatus.Networks.Subnets, azureapi.PurposeNodes, nil)
 	if err != nil {
 		return err
 	}
@@ -223,12 +223,13 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			return machineDeployment, machineClassSpec
 		}
 
+		workerPoolHash, err := w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, nil)
+		if err != nil {
+			return err
+		}
+
 		// VMO
 		if vmoDependency != nil {
-			workerPoolHash, err := w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, nil)
-			if err != nil {
-				return err
-			}
 			machineDeployment, machineClassSpec := generateMachineClassAndDeployment(nil, &machineSetInfo{
 				id:   vmoDependency.ID,
 				kind: "vmo",
@@ -249,11 +250,6 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			// This is necessary to avoid `ExistingAvailabilitySetWasNotDeployedOnAcceleratedNetworkingEnabledCluster` error.
 			acceleratedNetworkAllowed = false
 
-			workerPoolHash, err := w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, nil)
-			if err != nil {
-				return err
-			}
-
 			machineDeployment, machineClassSpec := generateMachineClassAndDeployment(nil, &machineSetInfo{
 				id:   nodesAvailabilitySet.ID,
 				kind: "availabilityset",
@@ -272,7 +268,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			)
 
 			if infrastructureStatus.Networks.Topology == azureapi.TopologyZonal {
-				subnetIndex, nodesSubnet, err := azureapihelper.FindSubnetByPurposeAndZone(infrastructureStatus.Networks.Subnets, azureapi.PurposeNodes, zone)
+				subnetIndex, nodesSubnet, err := azureapihelper.FindSubnetByPurpose(infrastructureStatus.Networks.Subnets, azureapi.PurposeNodes, &zone)
 				if err != nil {
 					return err
 				}
@@ -287,12 +283,6 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 					if err != nil {
 						return err
 					}
-				}
-			} else {
-				subnetName = nodesSubnet.Name
-				workerPoolHash, err = w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, nil)
-				if err != nil {
-					return err
 				}
 			}
 			machineDeployment, machineClassSpec := generateMachineClassAndDeployment(&zoneInfo{

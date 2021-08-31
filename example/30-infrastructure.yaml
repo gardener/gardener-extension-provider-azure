@@ -79,6 +79,8 @@ spec:
     #   cidr: 10.250.1.0/24
     #   natGateway:
     #     enabled: true
+    #   serviceEndpoints:
+    #   - entry1
     zoned: false
   # resourceGroup:
   #   name: mygroup

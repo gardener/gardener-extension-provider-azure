@@ -89,7 +89,6 @@ func NewTerraformer(logger logr.Logger, restConfig *rest.Config, purpose string,
 		SetTerminationGracePeriodSeconds(630).
 		SetDeadlineCleaning(5 * time.Minute).
 		SetDeadlinePod(15 * time.Minute).
-		SetLogLevel("DEBUG").
 		SetOwnerRef(owner), nil
 }
 
