@@ -21,14 +21,15 @@ import (
 	"fmt"
 	"strconv"
 
-	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
-	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
+
+	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
+	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 )
 
 const (
@@ -218,7 +219,7 @@ func computeNetworkConfig(config *api.InfrastructureConfig) (map[string]interfac
 		subnets = append(subnets, subnet)
 	} else {
 		for _, zone := range config.Networks.Zones {
-			natGateway := generateNatGatewayValues(zone.NatGateway)
+			natGateway := generateZonedNatGatewayValues(zone.NatGateway, zone.Name)
 			zoneConfig := map[string]interface{}{
 				"cidr":             zone.CIDR,
 				"serviceEndpoints": zone.ServiceEndpoints,
@@ -248,6 +249,35 @@ func generateNatGatewayValues(nat *api.NatGatewayConfig) map[string]interface{} 
 
 	if nat.Zone != nil {
 		natGatewayConfig["zone"] = *nat.Zone
+	}
+
+	if len(nat.IPAddresses) > 0 {
+		var ipAddresses = make([]map[string]interface{}, len(nat.IPAddresses))
+		for i, ip := range nat.IPAddresses {
+			ipAddresses[i] = map[string]interface{}{
+				"name":          ip.Name,
+				"resourceGroup": ip.ResourceGroup,
+			}
+		}
+		natGatewayConfig["ipAddresses"] = ipAddresses
+	}
+
+	return natGatewayConfig
+}
+
+func generateZonedNatGatewayValues(nat *api.ZonedNatGatewayConfig, zone int32) map[string]interface{} {
+	natGatewayConfig := map[string]interface{}{
+		"enabled": false,
+	}
+
+	if nat == nil || !nat.Enabled {
+		return natGatewayConfig
+	}
+
+	natGatewayConfig["enabled"] = true
+	natGatewayConfig["zone"] = zone
+	if nat.IdleConnectionTimeoutMinutes != nil {
+		natGatewayConfig["idleConnectionTimeoutMinutes"] = *nat.IdleConnectionTimeoutMinutes
 	}
 
 	if len(nat.IPAddresses) > 0 {
@@ -555,7 +585,7 @@ func isPrimaryAvailabilitySetRequired(infra *extensionsv1alpha1.Infrastructure, 
 		return true, nil
 	}
 
-	// If the infrastructureStatus already exists that mean the Infrastucture is already created.
+	// If the infrastructureStatus already exists that mean the Infrastructure is already created.
 	infrastructureStatus, err := helper.InfrastructureStatusFromInfrastructure(infra)
 	if err != nil {
 		return false, err

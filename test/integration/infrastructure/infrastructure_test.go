@@ -355,18 +355,16 @@ var _ = Describe("Infrastructure tests", func() {
 							Name:             zone1,
 							CIDR:             "10.250.0.0/24",
 							ServiceEndpoints: []string{"Microsoft.Storage"},
-							NatGateway: &azurev1alpha1.NatGatewayConfig{
+							NatGateway: &azurev1alpha1.ZonedNatGatewayConfig{
 								Enabled: true,
-								Zone:    &zone1,
 							},
 						},
 						{
 							Name:             zone2,
 							CIDR:             "10.250.1.0/24",
 							ServiceEndpoints: []string{"Microsoft.Storage"},
-							NatGateway: &azurev1alpha1.NatGatewayConfig{
+							NatGateway: &azurev1alpha1.ZonedNatGatewayConfig{
 								Enabled: true,
-								Zone:    &zone2,
 							},
 						},
 					},
@@ -742,11 +740,7 @@ func hasForeignVNet(config *azurev1alpha1.InfrastructureConfig) bool {
 	return config.Networks.VNet.ResourceGroup != nil && config.Networks.VNet.Name != nil
 }
 
-func hasNatGateway(config *azurev1alpha1.NatGatewayConfig) bool {
-	return config != nil && config.Enabled
-}
-
-func usesNatZones(config *azurev1alpha1.InfrastructureConfig) bool {
+func hasDedicatedSubnets(config *azurev1alpha1.InfrastructureConfig) bool {
 	return config.Networks.Workers == nil
 }
 
@@ -817,7 +811,7 @@ func verifyCreation(
 	Expect(rt.Location).To(PointTo(Equal(*region)))
 	Expect(rt.Routes).To(Or(BeNil(), PointTo(BeEmpty())))
 
-	verifySubnet := func(cidr string, serviceEndpoints []string, nat *azurev1alpha1.NatGatewayConfig, index int) {
+	verifySubnet := func(cidr string, serviceEndpoints []string, natID *string, index int) {
 		subnetName := indexedName(infra.Namespace+"-nodes", index)
 		Expect(vnet.VirtualNetworkPropertiesFormat.Subnets).To(PointTo(ContainElement(MatchFields(IgnoreExtras, Fields{
 			"Name": PointTo(Equal(subnetName)),
@@ -836,44 +830,58 @@ func verifyCreation(
 				"Service": PointTo(Equal(se)),
 			}))))
 		}
-
-		// nat gateway
-		if hasNatGateway(nat) {
-			ngName := indexedName(infra.Namespace+"-nat-gateway", index)
-			pipName := fmt.Sprintf("%s-ip", ngName)
-
-			// public IP
-			pip, err := az.pubIp.Get(ctx, status.ResourceGroup.Name, pipName, "")
-			Expect(err).ToNot(HaveOccurred())
-			Expect(pip.Location).To(PointTo(Equal(*region)))
-			Expect(pip.PublicIPAllocationMethod).To(Equal(network.Static))
-			Expect(pip.Sku.Name).To(Equal(network.PublicIPAddressSkuNameStandard))
-			Expect(pip.PublicIPAddressVersion).To(Equal(network.IPv4))
-
-			// nat gateway
-			ng, err = az.nat.Get(ctx, status.ResourceGroup.Name, ngName, "")
-			Expect(err).ToNot(HaveOccurred())
-			Expect(ng.Location).To(PointTo(Equal(*region)))
-			Expect(ng.Sku.Name).To(Equal(network.NatGatewaySkuNameStandard))
-			Expect(ng.PublicIPAddresses).To(PointTo(ContainElement(HaveEqualID(*pip.ID))))
-			if nat.IdleConnectionTimeoutMinutes != nil {
-				Expect(ng.NatGatewayPropertiesFormat.IdleTimeoutInMinutes).To(PointTo(Equal(*nat.IdleConnectionTimeoutMinutes)))
-			}
-			if nat.Zone != nil {
-				Expect(ng.Zones).To(PointTo(ContainElement(Equal(fmt.Sprintf("%d", *nat.Zone)))))
-			}
-
-			// subnet
+		if natID != nil {
 			Expect(subnet.NatGateway).To(HaveEqualID(*ng.ID))
 		}
 	}
 
-	if !usesNatZones(config) {
-		verifySubnet(*config.Networks.Workers, config.Networks.ServiceEndpoints, config.Networks.NatGateway, 0)
+	verifyNAT := func(zone, timeout *int32, index int) *string {
+		ngName := indexedName(infra.Namespace+"-nat-gateway", index)
+		pipName := fmt.Sprintf("%s-ip", ngName)
+
+		// public IP
+		pip, err := az.pubIp.Get(ctx, status.ResourceGroup.Name, pipName, "")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(pip.Location).To(PointTo(Equal(*region)))
+		Expect(pip.PublicIPAllocationMethod).To(Equal(network.Static))
+		Expect(pip.Sku.Name).To(Equal(network.PublicIPAddressSkuNameStandard))
+		Expect(pip.PublicIPAddressVersion).To(Equal(network.IPv4))
+
+		// nat gateway
+		ng, err = az.nat.Get(ctx, status.ResourceGroup.Name, ngName, "")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(ng.Location).To(PointTo(Equal(*region)))
+		Expect(ng.Sku.Name).To(Equal(network.NatGatewaySkuNameStandard))
+		Expect(ng.PublicIPAddresses).To(PointTo(ContainElement(HaveEqualID(*pip.ID))))
+		if timeout != nil {
+			Expect(ng.NatGatewayPropertiesFormat.IdleTimeoutInMinutes).To(PointTo(Equal(*timeout)))
+		}
+		if zone != nil {
+			Expect(ng.Zones).To(PointTo(ContainElement(Equal(fmt.Sprintf("%d", *zone)))))
+		}
+
+		return ng.ID
+	}
+
+	if !hasDedicatedSubnets(config) {
+		nat := config.Networks.NatGateway
+
+		var natID *string
+		if nat != nil && nat.Enabled {
+			natID = verifyNAT(nat.Zone, nat.IdleConnectionTimeoutMinutes, 0)
+		}
+		verifySubnet(*config.Networks.Workers, config.Networks.ServiceEndpoints, natID, 0)
 	} else {
 		for index, zone := range config.Networks.Zones {
 			By(fmt.Sprintf("verifying for %d", zone.Name))
-			verifySubnet(zone.CIDR, zone.ServiceEndpoints, zone.NatGateway, index)
+
+			nat := zone.NatGateway
+
+			var natID *string
+			if nat != nil && nat.Enabled {
+				natID = verifyNAT(&zone.Name, nat.IdleConnectionTimeoutMinutes, index)
+			}
+			verifySubnet(zone.CIDR, zone.ServiceEndpoints, natID, index)
 		}
 	}
 

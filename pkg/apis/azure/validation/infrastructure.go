@@ -244,7 +244,7 @@ func validateZones(zones []apisazure.Zone, nodes, pods, services cidrvalidation.
 		allErrs = append(allErrs, cidrvalidation.ValidateCIDRIsCanonical(zoneCIDR.GetFieldPath(), zoneCIDR.GetCIDR())...)
 
 		// NAT validation
-		allErrs = append(allErrs, validateZonedNatGatewayConfig(zone.NatGateway, zone.Name, zonePath.Child("name"), zonePath.Child("natGateway"))...)
+		allErrs = append(allErrs, validateZonedNatGatewayConfig(zone.NatGateway, zonePath.Child("natGateway"))...)
 	}
 
 	allErrs = append(allErrs, cidrvalidation.ValidateCIDRParse(zoneCIDRs...)...)
@@ -293,7 +293,23 @@ func validateNatGatewayConfig(natGatewayConfig *apisazure.NatGatewayConfig, zone
 	return allErrs
 }
 
-func validateZonedNatGatewayConfig(natGatewayConfig *apisazure.NatGatewayConfig, zone int32, zoneNamePath, natGatewayPath *field.Path) field.ErrorList {
+func validateNatGatewayIPReference(publicIPReferences []apisazure.PublicIPReference, zone int32, fldPath *field.Path) field.ErrorList {
+	var allErrs = field.ErrorList{}
+	for i, publicIPRef := range publicIPReferences {
+		if publicIPRef.Zone != zone {
+			allErrs = append(allErrs, field.Invalid(fldPath.Index(i).Child("zone"), publicIPRef.Zone, fmt.Sprintf("Public IP can't be used as it is not in the same zone as the NatGateway (zone %d)", zone)))
+		}
+		if publicIPRef.Name == "" {
+			allErrs = append(allErrs, field.Required(fldPath.Index(i).Child("name"), "Name for NatGateway public ip resource is required"))
+		}
+		if publicIPRef.ResourceGroup == "" {
+			allErrs = append(allErrs, field.Required(fldPath.Index(i).Child("resourceGroup"), "ResourceGroup for NatGateway public ip resouce is required"))
+		}
+	}
+	return allErrs
+}
+
+func validateZonedNatGatewayConfig(natGatewayConfig *apisazure.ZonedNatGatewayConfig, natGatewayPath *field.Path) field.ErrorList {
 	var allErrs = field.ErrorList{}
 
 	if natGatewayConfig == nil {
@@ -301,7 +317,7 @@ func validateZonedNatGatewayConfig(natGatewayConfig *apisazure.NatGatewayConfig,
 	}
 
 	if !natGatewayConfig.Enabled {
-		if natGatewayConfig.Zone != nil || natGatewayConfig.IdleConnectionTimeoutMinutes != nil || natGatewayConfig.IPAddresses != nil {
+		if natGatewayConfig.IdleConnectionTimeoutMinutes != nil || natGatewayConfig.IPAddresses != nil {
 			return append(allErrs, field.Invalid(natGatewayPath, natGatewayConfig, "NatGateway is disabled but additional NatGateway config is passed"))
 		}
 		return nil
@@ -311,25 +327,13 @@ func validateZonedNatGatewayConfig(natGatewayConfig *apisazure.NatGatewayConfig,
 		allErrs = append(allErrs, field.Invalid(natGatewayPath.Child("idleConnectionTimeoutMinutes"), *natGatewayConfig.IdleConnectionTimeoutMinutes, "idleConnectionTimeoutMinutes values must range between 4 and 120"))
 	}
 
-	if natGatewayConfig.Zone == nil {
-		allErrs = append(allErrs, field.Invalid(natGatewayPath.Child("zone"), natGatewayConfig.Zone, "zone must be specified"))
-		return allErrs
-	}
-
-	if *natGatewayConfig.Zone != zone {
-		allErrs = append(allErrs, field.Invalid(natGatewayPath.Child("zone"), natGatewayConfig.Zone, "natGateway zone must be the same as the configured zone"))
-	}
-
-	allErrs = append(allErrs, validateNatGatewayIPReference(natGatewayConfig.IPAddresses, *natGatewayConfig.Zone, natGatewayPath.Child("ipAddresses"))...)
+	allErrs = append(allErrs, validateZonedPublicIPReference(natGatewayConfig.IPAddresses, natGatewayPath.Child("ipAddresses"))...)
 	return allErrs
 }
 
-func validateNatGatewayIPReference(publicIPReferences []apisazure.PublicIPReference, zone int32, fldPath *field.Path) field.ErrorList {
+func validateZonedPublicIPReference(publicIPReferences []apisazure.ZonedPublicIPReference, fldPath *field.Path) field.ErrorList {
 	var allErrs = field.ErrorList{}
 	for i, publicIPRef := range publicIPReferences {
-		if publicIPRef.Zone != zone {
-			allErrs = append(allErrs, field.Invalid(fldPath.Index(i).Child("zone"), publicIPRef.Zone, fmt.Sprintf("Public IP can't be used as it is not in the same zone as the NatGateway (zone %d)", zone)))
-		}
 		if publicIPRef.Name == "" {
 			allErrs = append(allErrs, field.Required(fldPath.Index(i).Child("name"), "Name for NatGateway public ip resource is required"))
 		}
@@ -350,9 +354,13 @@ func ValidateInfrastructureConfigUpdate(oldConfig, newConfig *apisazure.Infrastr
 		allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Networks.Workers, oldConfig.Networks.Workers, providerPath.Child("networks").Child("workers"))...)
 	}
 
+	if isZonedWithDedicatedSubnets(&oldConfig.Networks) && !isZonedWithDedicatedSubnets(&newConfig.Networks) {
+		allErrs = append(allErrs, field.Forbidden(providerPath.Child("networks").Child("worker"), "updating the infrastructure configuration from using dedicated subnets per zone to using single subnet is not allowed"))
+	}
+
 	if !isZonedWithDedicatedSubnets(&oldConfig.Networks) && isZonedWithDedicatedSubnets(&newConfig.Networks) {
 		if oldConfig.Networks.Workers != nil && *oldConfig.Networks.Workers != newConfig.Networks.Zones[0].CIDR {
-			allErrs = append(allErrs, field.Forbidden(providerPath.Child("networks", "zones").Index(0).Child("cidr"), "when updating to use zones the CIDR must match that of the previous config.networks.workers"))
+			allErrs = append(allErrs, field.Forbidden(providerPath.Child("networks", "zones").Index(0).Child("cidr"), "when updating InfrastructureConfig to use dedicated subnets per zones, the CIDR must match that of the previous config.networks.workers"))
 		}
 	}
 

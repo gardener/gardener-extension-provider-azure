@@ -112,9 +112,32 @@ Apart from the VNet and the worker subnet the Azure extension will also create a
 
 Another deployment option **for zonal clusters only**, is to create and configure a separate subnet per zone. This network configuration is recommended to users that require fine-grained control over their network setup. One prevalent usecase is to create a zone-redundant NAT Gateway deployment by taking advantage of the ability to deploy separate NAT Gateways for each subnet.
 
-For each of these subnets a CIDR range must be speficied. The specified CIDR range must be contained in the VNet CIDR specified above, or the VNet CIDR of your already existing VNet. In addition, the CIDR ranges must not overlap with the ranges of the other subnets.  
+To use this configuration the following requirements must be met:
+
+- the `zoned` must be set to `true.
+- the `vnet` section must not be empty and must contain a valid configuration. For existing clusters that were not using the `vnet` section, it is enough if `vnet.cidr` filled with the current `networks.worker` value.
+ 
+For each of the target zones a subnet CIDR range must be specified. The specified CIDR range must be contained in the VNet CIDR specified above, or the VNet CIDR of your already existing VNet. In addition, the CIDR ranges must not overlap with the ranges of the other subnets.
 
 _ServiceEndpoints_ and _NatGateways_ can be configured per subnet. Respectively, when `networks.zones` is specified, the fields `networks.workers`, `networks.serviceEndpoints` and `networks.NatGateway` cannot be populated. All the configuration for the subnets must be done inside the respective zone's configuration.
+
+Example:
+
+```yaml
+apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+kind: InfrastructureConfig
+networks:
+  zoned: true
+  vnet: # specify either 'name' and 'resourceGroup' or 'cidr'
+    cidr: 10.250.0.0/16
+  zones:
+    - name: 1
+      cidr: "10.250.0.0/24"
+    - name: 2
+      cidr: "10.250.0.0/24"
+      natGateway:
+        enabled: false
+```
 
 ### Migrating to zonal shoots with dedicated subnets per zone
 
@@ -182,6 +205,7 @@ to
 infrastructureConfig:
   apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
   kind: InfrastructureConfig
+  zoned: true
   networks:
     vnet:
       cidr: 10.250.0.0/16
@@ -190,7 +214,6 @@ infrastructureConfig:
         cidr: 10.250.0.0/19 # note the preservation of the 'workers' CIDR
         natGateway:
           enabled: true
-          zone: 1
           ipAddresses:
             - name: pip1
               resourceGroup: group
@@ -203,10 +226,16 @@ infrastructureConfig:
 #       cidr: 10.250.32.0/19
 #       natGateway:
 #         enabled: true
-  zoned: true
+#         ipAddresses:
+#           - name: new-pip3
+#             resourceGroup: group
 ```
 
 :warning: The migration to shoots with dedicated subnets per zone is a one-way process. Reverting the shoot to the previous configuration is not supported.
+
+:warning: During the migration a subset of the nodes will be rolled to the new subnets. Only the nodes in the `networks.zones[0]` zone will not be rolled. The rollout will be controlled by MCM settings.
+
+:warning: During the migration existing NAT Gateways will be destroyed and recreated. That can lead to a brief disruption of your services.
 
 ## `ControlPlaneConfig`
 

@@ -53,18 +53,6 @@ type NetworkConfig struct {
 	Zones []Zone
 }
 
-// Zone describes the configuration for a subnet that is used for VMs on that region.
-type Zone struct {
-	// Name is the name of the zone and should match with the name the infrastructure provider is using for the zone.
-	Name int32
-	// CIDR is the CIDR range used for the zone's subnet.
-	CIDR string
-	// ServiceEndpoints is a list of Azure ServiceEndpoints which should be associated with the zone's subnet.
-	ServiceEndpoints []string
-	// NatGateway contains the configuration for the NatGateway associated with this subnet.
-	NatGateway *NatGatewayConfig
-}
-
 // NatGatewayConfig contains configuration for the NAT gateway and the attached resources.
 type NatGatewayConfig struct {
 	// Enabled is an indicator if NAT gateway should be deployed.
@@ -85,6 +73,36 @@ type PublicIPReference struct {
 	ResourceGroup string
 	// Zone is the zone in which the public ip is deployed to.
 	Zone int32
+}
+
+// Zone describes the configuration for a subnet that is used for VMs on that region.
+type Zone struct {
+	// Name is the name of the zone and should match with the name the infrastructure provider is using for the zone.
+	Name int32
+	// CIDR is the CIDR range used for the zone's subnet.
+	CIDR string
+	// ServiceEndpoints is a list of Azure ServiceEndpoints which should be associated with the zone's subnet.
+	ServiceEndpoints []string
+	// NatGateway contains the configuration for the NatGateway associated with this subnet.
+	NatGateway *ZonedNatGatewayConfig
+}
+
+// ZonedNatGatewayConfig contains configuration for the NAT gateway and the attached resources.
+type ZonedNatGatewayConfig struct {
+	// Enabled is an indicator if NAT gateway should be deployed.
+	Enabled bool
+	// IdleConnectionTimeoutMinutes specifies the idle connection timeout limit for NAT gateway in minutes.
+	IdleConnectionTimeoutMinutes *int32
+	// IPAddresses is a list of ip addresses which should be assigned to the NAT gateway.
+	IPAddresses []ZonedPublicIPReference
+}
+
+// ZonedPublicIPReference contains information about a public ip.
+type ZonedPublicIPReference struct {
+	// Name is the name of the public ip.
+	Name string
+	// ResourceGroup is the name of the resource group where the public ip is assigned to.
+	ResourceGroup string
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

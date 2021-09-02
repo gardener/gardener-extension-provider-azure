@@ -17,9 +17,6 @@ package validation_test
 import (
 	"fmt"
 
-	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	. "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/validation"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	"github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	. "github.com/gardener/gardener/pkg/utils/test/matchers"
 	. "github.com/onsi/ginkgo"
@@ -28,6 +25,10 @@ import (
 	. "github.com/onsi/gomega/gstruct"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/pointer"
+
+	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	. "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/validation"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 var _ = Describe("InfrastructureConfig validation", func() {
@@ -472,26 +473,22 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			})
 
 			It("should succeed with NAT Gateway", func() {
-				infrastructureConfig.Networks.Zones[0].NatGateway = &apisazure.NatGatewayConfig{
+				infrastructureConfig.Networks.Zones[0].NatGateway = &apisazure.ZonedNatGatewayConfig{
 					Enabled: true,
-					Zone:    &zoneName,
 				}
-				infrastructureConfig.Networks.Zones[1].NatGateway = &apisazure.NatGatewayConfig{
+				infrastructureConfig.Networks.Zones[1].NatGateway = &apisazure.ZonedNatGatewayConfig{
 					Enabled: true,
-					Zone:    &zoneName1,
 				}
 				Expect(ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)).To(BeEmpty())
 			})
 
 			It("should succeed with NAT Gateway and  public IPs", func() {
-				infrastructureConfig.Networks.Zones[0].NatGateway = &apisazure.NatGatewayConfig{
+				infrastructureConfig.Networks.Zones[0].NatGateway = &apisazure.ZonedNatGatewayConfig{
 					Enabled: true,
-					Zone:    &zoneName,
-					IPAddresses: []apisazure.PublicIPReference{
+					IPAddresses: []apisazure.ZonedPublicIPReference{
 						{
 							Name:          "public-ip-name",
 							ResourceGroup: "public-ip-resource-group",
-							Zone:          zoneName,
 						},
 					},
 				}
@@ -556,35 +553,6 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					"Type":   Equal(field.ErrorTypeInvalid),
 					"Field":  Equal("networks.zones[1].cidr"),
 					"Detail": ContainSubstring("subset of"),
-				}))
-			})
-
-			It("should forbid not specifying zones for NAT gateway", func() {
-				infrastructureConfig.Networks.Zones[0].NatGateway = &apisazure.NatGatewayConfig{
-					Enabled: true,
-				}
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
-				Expect(errorList).NotTo(BeEmpty())
-				Expect(errorList).To(HaveLen(1))
-				Expect(errorList).To(ConsistOfFields(Fields{
-					"Type":   Equal(field.ErrorTypeInvalid),
-					"Field":  Equal("networks.zones[0].natGateway.zone"),
-					"Detail": Equal("zone must be specified"),
-				}))
-			})
-
-			It("should forbid specifying incorrect zone for NAT gateway", func() {
-				infrastructureConfig.Networks.Zones[0].NatGateway = &apisazure.NatGatewayConfig{
-					Enabled: true,
-					Zone:    &zoneName1,
-				}
-				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
-				Expect(errorList).NotTo(BeEmpty())
-				Expect(errorList).To(HaveLen(1))
-				Expect(errorList).To(ConsistOfFields(Fields{
-					"Type":   Equal(field.ErrorTypeInvalid),
-					"Field":  Equal("networks.zones[0].natGateway.zone"),
-					"Detail": Equal("natGateway zone must be the same as the configured zone"),
 				}))
 			})
 
@@ -791,6 +759,38 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfra, providerPath)
 				Expect(errorList).To(BeEmpty())
 			})
+
+			It("should deny transition from multi-subnet to single subnet", func() {
+				newInfra := infrastructureConfig
+				oldInfra := &apisazure.InfrastructureConfig{
+					Zoned: true,
+					Networks: apisazure.NetworkConfig{
+						VNet: apisazure.VNet{
+							CIDR: &vnetCIDR,
+						},
+						Zones: []apisazure.Zone{
+							{
+								Name: 1,
+								CIDR: "1.1.1.1/20",
+							},
+							{
+								Name: 2,
+								CIDR: "2.2.2.2/20",
+							},
+						},
+					},
+				}
+
+				errorList := ValidateInfrastructureConfigUpdate(oldInfra, newInfra, providerPath)
+				Expect(errorList).NotTo(BeEmpty())
+				Expect(errorList).To(HaveLen(1))
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":   Equal(field.ErrorTypeForbidden),
+					"Field":  Equal("networks.worker"),
+					"Detail": Equal("updating the infrastructure configuration from using dedicated subnets per zone to using single subnet is not allowed"),
+				}))
+			})
+
 			It("should deny transition to multi-subnet if the CIDR is not correct", func() {
 				newCIDR := "10.250.250.0/24"
 				newInfra := &apisazure.InfrastructureConfig{
@@ -818,7 +818,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeForbidden),
 					"Field":  Equal("networks.zones[0].cidr"),
-					"Detail": Equal("when updating to use zones the CIDR must match that of the previous config.networks.workers"),
+					"Detail": Equal("when updating InfrastructureConfig to use dedicated subnets per zones, the CIDR must match that of the previous config.networks.workers"),
 				}))
 			})
 

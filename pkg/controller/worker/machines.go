@@ -262,17 +262,17 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		// Availability Zones
 		var zoneCount = len(pool.Zones)
 		for zoneIndex, zone := range pool.Zones {
-			var (
-				subnetName     string
-				workerPoolHash string
-			)
+			var ()
 
 			if infrastructureStatus.Networks.Topology == azureapi.TopologyZonal {
-				subnetIndex, nodesSubnet, err := azureapihelper.FindSubnetByPurpose(infrastructureStatus.Networks.Subnets, azureapi.PurposeNodes, &zone)
+				var subnetIndex int
+
+				subnetIndex, nodesSubnet, err = azureapihelper.FindSubnetByPurpose(infrastructureStatus.Networks.Subnets, azureapi.PurposeNodes, &zone)
 				if err != nil {
 					return err
 				}
-				subnetName = nodesSubnet.Name
+
+				// subnetName = zoneSubnet.Name
 				if subnetIndex == 0 {
 					workerPoolHash, err = w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, nil)
 					if err != nil {
@@ -289,7 +289,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				name:  zone,
 				index: int32(zoneIndex),
 				count: int32(zoneCount),
-			}, nil, subnetName, workerPoolHash)
+			}, nil, nodesSubnet.Name, workerPoolHash)
 			machineDeployments = append(machineDeployments, machineDeployment)
 			machineClasses = append(machineClasses, machineClassSpec)
 		}

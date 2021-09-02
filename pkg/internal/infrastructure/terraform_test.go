@@ -447,9 +447,11 @@ var _ = Describe("Terraform", func() {
 
 		Context("cluster using zones", func() {
 			var (
-				TestCIDR  = "10.1.0.0/24"
-				TestCIDR2 = "10.1.1.0/24"
-				VNetCIDR  = "10.1.0.0/16"
+				TestCIDR        = "10.1.0.0/24"
+				TestCIDR2       = "10.1.1.0/24"
+				VNetCIDR        = "10.1.0.0/16"
+				zone1     int32 = 1
+				zone2     int32 = 2
 			)
 
 			BeforeEach(func() {
@@ -459,12 +461,12 @@ var _ = Describe("Terraform", func() {
 					},
 					Zones: []api.Zone{
 						{
-							Name:             1,
+							Name:             zone1,
 							CIDR:             TestCIDR,
 							ServiceEndpoints: []string{},
 						},
 						{
-							Name:             2,
+							Name:             zone2,
 							CIDR:             TestCIDR2,
 							ServiceEndpoints: []string{},
 						},
@@ -494,23 +496,40 @@ var _ = Describe("Terraform", func() {
 			It("should correctly compute terraform chart with zones with NAT", func() {
 				config.Networks.Zones = []api.Zone{
 					{
-						Name:             1,
+						Name:             zone1,
 						CIDR:             TestCIDR,
 						ServiceEndpoints: []string{},
-						NatGateway: &api.NatGatewayConfig{
+						NatGateway: &api.ZonedNatGatewayConfig{
 							Enabled: true,
 						},
 					},
 					{
-						Name:             2,
+						Name:             zone2,
 						CIDR:             TestCIDR2,
 						ServiceEndpoints: []string{},
-						NatGateway: &api.NatGatewayConfig{
+						NatGateway: &api.ZonedNatGatewayConfig{
 							Enabled: true,
 						},
 					},
 				}
-				expectedNatGatewayValues["enabled"] = true
+				expectedNetworksValues["subnets"] = []map[string]interface{}{
+					{
+						"cidr": TestCIDR,
+						"natGateway": map[string]interface{}{
+							"enabled": true,
+							"zone":    zone1,
+						},
+						"serviceEndpoints": []string{},
+					},
+					{
+						"cidr": TestCIDR2,
+						"natGateway": map[string]interface{}{
+							"enabled": true,
+							"zone":    zone2,
+						},
+						"serviceEndpoints": []string{},
+					},
+				}
 
 				values, err := ComputeTerraformerTemplateValues(infra, config, cluster)
 				Expect(err).NotTo(HaveOccurred())
