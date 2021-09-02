@@ -1,5 +1,5 @@
 {{- define "csi-driver-node.csidriver" -}}
-apiVersion: storage.k8s.io/v1
+apiVersion: {{ include "csi-driver-node.storageversion" . }}
 kind: CSIDriver
 metadata:
   name: {{ include (print "csi-driver-node.provisioner-" .role) . }}

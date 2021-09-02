@@ -343,6 +343,14 @@ var _ = Describe("ValuesProvider", func() {
 				"featureGates": map[string]bool{
 					"CustomResourceValidation": true,
 				},
+				"tlsCipherSuites": []string{
+					"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+					"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+					"TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305",
+					"TLS_RSA_WITH_AES_128_CBC_SHA",
+					"TLS_RSA_WITH_AES_256_CBC_SHA",
+					"TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA",
+				},
 			})
 		)
 
@@ -435,6 +443,7 @@ var _ = Describe("ValuesProvider", func() {
 				},
 				"vpaEnabled":          false,
 				"cloudProviderConfig": "",
+				"kubernetesVersion":   "1.15.4",
 			})
 			csiNodeEnabled = utils.MergeMaps(enabledTrue, map[string]interface{}{
 				"podAnnotations": map[string]interface{}{
@@ -442,6 +451,7 @@ var _ = Describe("ValuesProvider", func() {
 				},
 				"vpaEnabled":          true,
 				"cloudProviderConfig": cloudProviderConfigData,
+				"kubernetesVersion":   "1.21.4",
 			})
 		)
 

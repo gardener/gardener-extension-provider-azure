@@ -40,6 +40,7 @@ import (
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	"github.com/gardener/gardener/pkg/controllerutils"
 	"github.com/gardener/gardener/pkg/operation/botanist/component"
+	"github.com/gardener/gardener/pkg/operation/botanist/component/monitoring"
 	"github.com/gardener/gardener/pkg/utils"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 
@@ -267,20 +268,15 @@ func (e *etcd) Deploy(ctx context.Context) error {
 						PodSelector: &metav1.LabelSelector{
 							// TODO: Replace below map with a function call to the to-be-introduced kubeapiserver package.
 							MatchLabels: map[string]string{
-								v1beta1constants.DeprecatedGardenRole: v1beta1constants.GardenRoleControlPlane,
-								v1beta1constants.LabelApp:             v1beta1constants.LabelKubernetes,
-								v1beta1constants.LabelRole:            v1beta1constants.LabelAPIServer,
+								v1beta1constants.GardenRole: v1beta1constants.GardenRoleControlPlane,
+								v1beta1constants.LabelApp:   v1beta1constants.LabelKubernetes,
+								v1beta1constants.LabelRole:  v1beta1constants.LabelAPIServer,
 							},
 						},
 					},
 					{
 						PodSelector: &metav1.LabelSelector{
-							// TODO: Replace below map with a function call to the to-be-introduced prometheus package.
-							MatchLabels: map[string]string{
-								v1beta1constants.DeprecatedGardenRole: "monitoring",
-								v1beta1constants.LabelApp:             "prometheus",
-								v1beta1constants.LabelRole:            "monitoring",
-							},
+							MatchLabels: monitoring.GetPrometheusLabels(),
 						},
 					},
 				},
