@@ -43,6 +43,7 @@ func (a *azureNotFoundErrorMatcher) Match(actual interface{}) (success bool, err
 	return false, nil
 }
 
+// IsNotFound returns true if the given error is a autorest.DetailedError with status code http.StatusNotFound.
 func IsNotFound(err error) bool {
 	if err == nil {
 		return false
