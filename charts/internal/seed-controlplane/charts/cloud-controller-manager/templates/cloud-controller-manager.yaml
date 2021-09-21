@@ -40,6 +40,8 @@ spec:
         {{- if semverCompare "< 1.17" .Values.kubernetesVersion }}
         - /hyperkube
         - cloud-controller-manager
+        {{- else if semverCompare ">=1.21" .Values.kubernetesVersion }}
+        - /usr/local/bin/cloud-controller-manager
         {{- else }}
         - /azure-cloud-controller-manager
         {{- end }}

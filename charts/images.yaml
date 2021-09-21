@@ -29,14 +29,14 @@ images:
   tag: "v1.20.10"
   targetVersion: "1.20.x"
 - name: cloud-controller-manager
-  sourceRepository: github.com/gardener/cloud-provider-azure
-  repository: eu.gcr.io/gardener-project/kubernetes/cloud-provider-azure
-  tag: "v1.21.4"
+  sourceRepository: https://github.com/kubernetes-sigs/cloud-provider-azure
+  repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-controller-manager
+  tag: "v1.1.1"
   targetVersion: "1.21.x"
 - name: cloud-controller-manager
-  sourceRepository: github.com/gardener/cloud-provider-azure
-  repository: eu.gcr.io/gardener-project/kubernetes/cloud-provider-azure
-  tag: "v1.22.0"
+  sourceRepository: https://github.com/kubernetes-sigs/cloud-provider-azure
+  repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-controller-manager
+  tag: "v1.1.1"
   targetVersion: ">= 1.22"
 - name: machine-controller-manager
   sourceRepository: github.com/gardener/machine-controller-manager
