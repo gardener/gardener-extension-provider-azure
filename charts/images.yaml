@@ -31,7 +31,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: https://github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-controller-manager
-  tag: "v1.1.1"
+  tag: "v1.0.5"
   targetVersion: "1.21.x"
 - name: cloud-controller-manager
   sourceRepository: https://github.com/kubernetes-sigs/cloud-provider-azure
