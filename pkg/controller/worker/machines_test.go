@@ -32,6 +32,7 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"github.com/gardener/gardener/pkg/client/kubernetes"
 	mockkubernetes "github.com/gardener/gardener/pkg/client/kubernetes/mock"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
@@ -43,6 +44,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/pointer"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ = Describe("Machines", func() {
@@ -287,6 +289,7 @@ var _ = Describe("Machines", func() {
 					urnMachineClass     map[string]interface{}
 					imageIDMachineClass map[string]interface{}
 					machineDeployments  worker.MachineDeployments
+					machineClasses      map[string]interface{}
 
 					workerPoolHash1, workerPoolHash2 string
 
@@ -377,6 +380,11 @@ var _ = Describe("Machines", func() {
 						"type": volumeType,
 					}
 
+					machineClasses = map[string]interface{}{"machineClasses": []map[string]interface{}{
+						machineClassPool1,
+						machineClassPool2,
+					}}
+
 					machineDeployments = worker.MachineDeployments{
 						{
 							Name:                 machineClassNamePool1,
@@ -406,8 +414,20 @@ var _ = Describe("Machines", func() {
 
 				It("should return the expected machine deployments for profile image types", func() {
 					workerDelegate := wrapNewWorkerDelegate(c, chartApplier, w, cluster, nil)
-					// chartApplier.EXPECT().Apply(ctx, filepath.Join(azure.InternalChartsPath, "machineclass"), namespace, "machineclass", kubernetes.Values(machineClasses)).Return(nil)
-					chartApplier.EXPECT().Apply(ctx, filepath.Join(azure.InternalChartsPath, "machineclass"), namespace, "machineclass", gomock.Any()).Return(nil)
+
+					gomock.InOrder(
+						c.EXPECT().
+							DeleteAllOf(context.TODO(), &machinev1alpha1.AzureMachineClass{}, client.InNamespace(namespace)),
+						chartApplier.
+							EXPECT().
+							Apply(
+								ctx,
+								filepath.Join(azure.InternalChartsPath, "machineclass"),
+								namespace,
+								"machineclass",
+								kubernetes.Values(machineClasses),
+							),
+					)
 
 					// Test workerDelegate.DeployMachineClasses()
 					err := workerDelegate.DeployMachineClasses(ctx)
@@ -523,7 +543,6 @@ var _ = Describe("Machines", func() {
 						Expect(result).To(Equal(machineDeployments))
 					})
 				})
-
 			})
 
 			It("should fail because the version is invalid", func() {
@@ -625,7 +644,6 @@ var _ = Describe("Machines", func() {
 				Expect(resultSettings.NodeConditions).To(Equal(&resultNodeConditions))
 			})
 		})
-
 	})
 
 	Describe("sanitize azure vm tag", func() {
@@ -633,7 +651,6 @@ var _ = Describe("Machines", func() {
 			Expect(SanitizeAzureVMTag("<>%\\&?/a ")).To(Equal("_______a_"))
 		})
 	})
-
 })
 
 func copyMachineClass(def map[string]interface{}) map[string]interface{} {

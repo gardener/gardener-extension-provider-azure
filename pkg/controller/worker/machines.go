@@ -64,6 +64,12 @@ func (w *workerDelegate) DeployMachineClasses(ctx context.Context) error {
 		}
 	}
 
+	// Delete any older version of AzureMachineClass CRs.
+	// TODO: Remove this clean-up in future version.
+	if err := w.Client().DeleteAllOf(ctx, &machinev1alpha1.AzureMachineClass{}, client.InNamespace(w.worker.Namespace)); err != nil {
+		return fmt.Errorf("cleaning up older version of Azure machine class CRs failed: %w", err)
+	}
+
 	return w.seedChartApplier.Apply(ctx, filepath.Join(azure.InternalChartsPath, "machineclass"), w.worker.Namespace, "machineclass", kubernetes.Values(map[string]interface{}{"machineClasses": w.machineClasses}))
 }
 
@@ -106,7 +112,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		return err
 	}
 
-	_, nodesSubnet, err := azureapihelper.FindSubnetByPurpose(infrastructureStatus.Networks.Subnets, azureapi.PurposeNodes, nil)
+	_, nodesSubnet, err := azureapihelper.FindSubnetByPurposeAndZone(infrastructureStatus.Networks.Subnets, azureapi.PurposeNodes, nil)
 	if err != nil {
 		return err
 	}
@@ -262,12 +268,10 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		// Availability Zones
 		var zoneCount = len(pool.Zones)
 		for zoneIndex, zone := range pool.Zones {
-			var ()
-
 			if infrastructureStatus.Networks.Topology == azureapi.TopologyZonal {
 				var subnetIndex int
 
-				subnetIndex, nodesSubnet, err = azureapihelper.FindSubnetByPurpose(infrastructureStatus.Networks.Subnets, azureapi.PurposeNodes, &zone)
+				subnetIndex, nodesSubnet, err = azureapihelper.FindSubnetByPurposeAndZone(infrastructureStatus.Networks.Subnets, azureapi.PurposeNodes, &zone)
 				if err != nil {
 					return err
 				}

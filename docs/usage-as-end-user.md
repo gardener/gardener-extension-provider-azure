@@ -114,12 +114,12 @@ Another deployment option **for zonal clusters only**, is to create and configur
 
 To use this configuration the following requirements must be met:
 
-- the `zoned` must be set to `true.
-- the `vnet` section must not be empty and must contain a valid configuration. For existing clusters that were not using the `vnet` section, it is enough if `vnet.cidr` filled with the current `networks.worker` value.
+- the `zoned` field must be set to `true.
+- the `vnet` section must not be empty and must contain a valid configuration. For existing clusters that were not using the `vnet` section, it is enough if `vnet.cidr` field is set to the current `networks.worker` value.
  
 For each of the target zones a subnet CIDR range must be specified. The specified CIDR range must be contained in the VNet CIDR specified above, or the VNet CIDR of your already existing VNet. In addition, the CIDR ranges must not overlap with the ranges of the other subnets.
 
-_ServiceEndpoints_ and _NatGateways_ can be configured per subnet. Respectively, when `networks.zones` is specified, the fields `networks.workers`, `networks.serviceEndpoints` and `networks.NatGateway` cannot be populated. All the configuration for the subnets must be done inside the respective zone's configuration.
+_ServiceEndpoints_ and _NatGateways_ can be configured per subnet. Respectively, when `networks.zones` is specified, the fields `networks.workers`, `networks.serviceEndpoints` and `networks.natGateway` cannot be set. All the configuration for the subnets must be done inside the respective zone's configuration.
 
 Example:
 

@@ -21,24 +21,12 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
-// FindSubnetByPurpose takes a list of subnets and tries to find the first entry
-// whose purpose matches with the given purpose. If no such entry is found then an error will be
-// returned.
-// func FindSubnetByPurpose(subnets []api.Subnet, purpose api.Purpose) (*api.Subnet, error) {
-// 	for _, subnet := range subnets {
-// 		if subnet.Purpose == purpose {
-// 			return &subnet, nil
-// 		}
-// 	}
-// 	return nil, fmt.Errorf("cannot find subnet with purpose %q", purpose)
-// }
-
-// FindSubnetByPurpose takes a list of subnets and tries to find the first entry
+// FindSubnetByPurposeAndZone takes a list of subnets and tries to find the first entry
 // whose purpose matches with the given purpose.
 // Optionally, if a zone is passed the subnet.Zone must match the value of the zone, in addition to the purpose.
 // It returns an index
 // If no such entry is found then an error will be returned.
-func FindSubnetByPurpose(subnets []api.Subnet, purpose api.Purpose, zone *string) (int, *api.Subnet, error) {
+func FindSubnetByPurposeAndZone(subnets []api.Subnet, purpose api.Purpose, zone *string) (int, *api.Subnet, error) {
 	for index, subnet := range subnets {
 		if subnet.Purpose == purpose && (zone == nil || (subnet.Zone != nil && *subnet.Zone == *zone)) {
 			return index, &subnet, nil
