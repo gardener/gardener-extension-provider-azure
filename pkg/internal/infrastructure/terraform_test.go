@@ -169,7 +169,8 @@ var _ = Describe("Terraform", func() {
 			}
 
 			expectedNatGatewayValues = map[string]interface{}{
-				"enabled": false,
+				"enabled":                          false,
+				"migrateNatGatewayToIPAssociation": false,
 			}
 
 			expectedSubnetValues = map[string]interface{}{
@@ -443,97 +444,143 @@ var _ = Describe("Terraform", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(BeEquivalentTo(expectedValues))
 			})
-		})
 
-		Context("cluster using zones", func() {
-			var (
-				TestCIDR        = "10.1.0.0/24"
-				TestCIDR2       = "10.1.1.0/24"
-				VNetCIDR        = "10.1.0.0/16"
-				zone1     int32 = 1
-				zone2     int32 = 2
-			)
+			Context("cluster using zones", func() {
+				var (
+					TestCIDR        = "10.1.0.0/24"
+					TestCIDR2       = "10.1.1.0/24"
+					VNetCIDR        = "10.1.0.0/16"
+					zone1     int32 = 1
+					zone2     int32 = 2
+				)
 
-			BeforeEach(func() {
-				config.Networks = api.NetworkConfig{
-					VNet: api.VNet{
-						CIDR: &VNetCIDR,
-					},
-					Zones: []api.Zone{
+				BeforeEach(func() {
+					config.Networks = api.NetworkConfig{
+						VNet: api.VNet{
+							CIDR: &VNetCIDR,
+						},
+						Zones: []api.Zone{
+							{
+								Name:             zone1,
+								CIDR:             TestCIDR,
+								ServiceEndpoints: []string{},
+							},
+							{
+								Name:             zone2,
+								CIDR:             TestCIDR2,
+								ServiceEndpoints: []string{},
+							},
+						},
+					}
+
+					expectedNetworksValues["subnets"] = []map[string]interface{}{
+						{
+							"cidr":             TestCIDR,
+							"natGateway":       expectedNatGatewayValues,
+							"serviceEndpoints": []string{},
+						},
+						{
+							"cidr":             TestCIDR2,
+							"natGateway":       expectedNatGatewayValues,
+							"serviceEndpoints": []string{},
+						},
+					}
+				})
+
+				It("should correctly compute terraform chart with zones", func() {
+					values, err := ComputeTerraformerTemplateValues(infra, config, cluster)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(values).To(BeEquivalentTo(expectedValues))
+				})
+
+				It("should correctly compute terraform chart with zones with NAT", func() {
+					config.Networks.Zones = []api.Zone{
 						{
 							Name:             zone1,
 							CIDR:             TestCIDR,
 							ServiceEndpoints: []string{},
+							NatGateway: &api.ZonedNatGatewayConfig{
+								Enabled: true,
+							},
 						},
 						{
 							Name:             zone2,
 							CIDR:             TestCIDR2,
 							ServiceEndpoints: []string{},
+							NatGateway: &api.ZonedNatGatewayConfig{
+								Enabled: true,
+							},
 						},
-					},
-				}
+					}
+					expectedNetworksValues["subnets"] = []map[string]interface{}{
+						{
+							"cidr": TestCIDR,
+							"natGateway": map[string]interface{}{
+								"enabled":                          true,
+								"migrateNatGatewayToIPAssociation": false,
+								"zone":                             zone1,
+							},
+							"serviceEndpoints": []string{},
+						},
+						{
+							"cidr": TestCIDR2,
+							"natGateway": map[string]interface{}{
+								"enabled":                          true,
+								"migrateNatGatewayToIPAssociation": false,
+								"zone":                             zone2,
+							},
+							"serviceEndpoints": []string{},
+						},
+					}
 
-				expectedNetworksValues["subnets"] = []map[string]interface{}{
-					{
-						"cidr":             TestCIDR,
-						"natGateway":       expectedNatGatewayValues,
-						"serviceEndpoints": []string{},
-					},
-					{
-						"cidr":             TestCIDR2,
-						"natGateway":       expectedNatGatewayValues,
-						"serviceEndpoints": []string{},
-					},
-				}
+					values, err := ComputeTerraformerTemplateValues(infra, config, cluster)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(values).To(BeEquivalentTo(expectedValues))
+				})
 			})
 
-			It("should correctly compute terraform chart with zones", func() {
-				values, err := ComputeTerraformerTemplateValues(infra, config, cluster)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(values).To(BeEquivalentTo(expectedValues))
-			})
+			// TODO(natipmigration) This can be removed in future versions when the ip migration has been completed.
+			Context("NatGateway Gardener managed IP migration", func() {
+				BeforeEach(func() {
+					config.Networks.NatGateway = &api.NatGatewayConfig{
+						Enabled: true,
+					}
+					expectedNatGatewayValues["enabled"] = true
+				})
 
-			It("should correctly compute terraform chart with zones with NAT", func() {
-				config.Networks.Zones = []api.Zone{
-					{
-						Name:             zone1,
-						CIDR:             TestCIDR,
-						ServiceEndpoints: []string{},
-						NatGateway: &api.ZonedNatGatewayConfig{
-							Enabled: true,
-						},
-					},
-					{
-						Name:             zone2,
-						CIDR:             TestCIDR2,
-						ServiceEndpoints: []string{},
-						NatGateway: &api.ZonedNatGatewayConfig{
-							Enabled: true,
-						},
-					},
-				}
-				expectedNetworksValues["subnets"] = []map[string]interface{}{
-					{
-						"cidr": TestCIDR,
-						"natGateway": map[string]interface{}{
-							"enabled": true,
-							"zone":    zone1,
-						},
-						"serviceEndpoints": []string{},
-					},
-					{
-						"cidr": TestCIDR2,
-						"natGateway": map[string]interface{}{
-							"enabled": true,
-							"zone":    zone2,
-						},
-						"serviceEndpoints": []string{},
-					},
-				}
+				It("should migrate the NatGateway IP as it is not yet migrated", func() {
+					infrastructureStatus := api.InfrastructureStatus{
+						NatGatewayPublicIPMigrated: false,
+					}
+					infrastructureStatusMarshalled, err := json.Marshal(infrastructureStatus)
+					Expect(err).NotTo(HaveOccurred())
 
-				values, err := ComputeTerraformerTemplateValues(infra, config, cluster)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(values).To(BeEquivalentTo(expectedValues))
+					infra.Status.ProviderStatus = &runtime.RawExtension{
+						Raw: infrastructureStatusMarshalled,
+					}
+
+					expectedNatGatewayValues["migrateNatGatewayToIPAssociation"] = true
+					values, err := ComputeTerraformerTemplateValues(infra, config, cluster)
+					Expect(err).To(Not(HaveOccurred()))
+					Expect(values).To(BeEquivalentTo(expectedValues))
+				})
+
+				It("should not migrate the NatGateway IP as it is already migrated", func() {
+					infrastructureStatus := api.InfrastructureStatus{
+						NatGatewayPublicIPMigrated: true,
+					}
+					infrastructureStatusMarshalled, err := json.Marshal(infrastructureStatus)
+					Expect(err).NotTo(HaveOccurred())
+
+					infra.Status.ProviderStatus = &runtime.RawExtension{
+						Raw: infrastructureStatusMarshalled,
+					}
+
+					expectedNatGatewayValues["migrateNatGatewayToIPAssociation"] = false
+					values, err := ComputeTerraformerTemplateValues(infra, config, cluster)
+					Expect(err).To(Not(HaveOccurred()))
+					Expect(values).To(BeEquivalentTo(expectedValues))
+				})
 			})
 		})
 	})
@@ -599,7 +646,7 @@ var _ = Describe("Terraform", func() {
 					Topology: apiv1alpha1.TopologyZonalSingleSubnet,
 				},
 				Zoned:                      true,
-				NatGatewayPublicIPMigrated: true,
+				NatGatewayPublicIPMigrated: false,
 			}))
 		})
 
@@ -637,7 +684,7 @@ var _ = Describe("Terraform", func() {
 					Topology: apiv1alpha1.TopologyRegional,
 				},
 				Zoned:                      false,
-				NatGatewayPublicIPMigrated: true,
+				NatGatewayPublicIPMigrated: false,
 			}))
 		})
 
@@ -680,7 +727,7 @@ var _ = Describe("Terraform", func() {
 					ACRAccess: false,
 				},
 				Zoned:                      false,
-				NatGatewayPublicIPMigrated: true,
+				NatGatewayPublicIPMigrated: false,
 			}))
 		})
 
@@ -736,7 +783,7 @@ var _ = Describe("Terraform", func() {
 					Topology: apiv1alpha1.TopologyZonal,
 				},
 				Zoned:                      true,
-				NatGatewayPublicIPMigrated: true,
+				NatGatewayPublicIPMigrated: false,
 			}))
 		})
 	})
