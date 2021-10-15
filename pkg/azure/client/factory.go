@@ -19,7 +19,7 @@ import (
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 
-	azurecompute "github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2020-06-30/compute"
+	azurecompute "github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	azuredns "github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-05-01/dns"
 	azureresources "github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
 	azurestorage "github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-04-01/storage"

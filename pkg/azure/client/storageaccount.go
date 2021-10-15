@@ -41,7 +41,8 @@ func (c StorageAccountClient) CreateStorageAccount(ctx context.Context, resource
 		return err
 	}
 
-	return future.WaitForCompletionRef(ctx, c.client.Client)
+	_, err = future.Result(c.client)
+	return err
 }
 
 // ListStorageAccountKey lists the first key of a storage account.

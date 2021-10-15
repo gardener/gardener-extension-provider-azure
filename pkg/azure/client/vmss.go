@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2020-06-30/compute"
+	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 )
 
 // List will list vmss in a resource group.
@@ -41,8 +41,8 @@ func (c VmssClient) List(ctx context.Context, resourceGroupName string) ([]compu
 }
 
 // Get will fetch a vmss.
-func (c VmssClient) Get(ctx context.Context, resourceGroupName, name string) (*compute.VirtualMachineScaleSet, error) {
-	vmo, err := c.client.Get(ctx, resourceGroupName, name)
+func (c VmssClient) Get(ctx context.Context, resourceGroupName, name string, expand compute.ExpandTypesForGetVMScaleSets) (*compute.VirtualMachineScaleSet, error) {
+	vmo, err := c.client.Get(ctx, resourceGroupName, name, expand)
 	if err != nil {
 		if IsAzureAPINotFoundError(err) {
 			return nil, nil
@@ -58,9 +58,6 @@ func (c VmssClient) Create(ctx context.Context, resourceGroupName, name string, 
 	if err != nil {
 		return nil, err
 	}
-	if err := future.WaitForCompletionRef(ctx, c.client.Client); err != nil {
-		return nil, err
-	}
 	vmo, err := future.Result(c.client)
 	if err != nil {
 		return nil, err
@@ -69,15 +66,12 @@ func (c VmssClient) Create(ctx context.Context, resourceGroupName, name string, 
 }
 
 // Delete will delete a vmss.
-func (c VmssClient) Delete(ctx context.Context, resourceGroupName, name string) error {
-	future, err := c.client.Delete(ctx, resourceGroupName, name)
+func (c VmssClient) Delete(ctx context.Context, resourceGroupName, name string, forceDeletion *bool) error {
+	future, err := c.client.Delete(ctx, resourceGroupName, name, forceDeletion)
 	if err != nil {
 		if IsAzureAPINotFoundError(err) {
 			return nil
 		}
-		return err
-	}
-	if err := future.WaitForCompletionRef(ctx, c.client.Client); err != nil {
 		return err
 	}
 	result, err := future.Result(c.client)

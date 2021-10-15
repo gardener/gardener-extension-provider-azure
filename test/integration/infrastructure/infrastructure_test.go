@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2020-06-30/compute"
+	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
@@ -664,9 +664,6 @@ func prepareNewVNet(ctx context.Context, logger *logrus.Entry, az *azureClientSe
 	if err != nil {
 		return err
 	}
-	if err = vNetFuture.WaitForCompletionRef(ctx, az.vnet.Client); err != nil {
-		return err
-	}
 
 	_, err = vNetFuture.Result(az.vnet)
 	return err
@@ -686,7 +683,8 @@ func teardownResourceGroup(ctx context.Context, az *azureClientSet, groupName st
 		return err
 	}
 
-	return future.WaitForCompletionRef(ctx, az.groups.Client)
+	_, err = future.Result(az.groups)
+	return err
 }
 
 func hasForeignVNet(config *azurev1alpha1.InfrastructureConfig) bool {

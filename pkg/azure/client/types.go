@@ -17,7 +17,7 @@ package client
 import (
 	"context"
 
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2020-06-30/compute"
+	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-05-01/dns"
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
 	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-04-01/storage"
@@ -58,9 +58,9 @@ type StorageAccount interface {
 // Vmss represents an Azure virtual machine scale set client.
 type Vmss interface {
 	List(context.Context, string) ([]compute.VirtualMachineScaleSet, error)
-	Get(context.Context, string, string) (*compute.VirtualMachineScaleSet, error)
+	Get(context.Context, string, string, compute.ExpandTypesForGetVMScaleSets) (*compute.VirtualMachineScaleSet, error)
 	Create(context.Context, string, string, *compute.VirtualMachineScaleSet) (*compute.VirtualMachineScaleSet, error)
-	Delete(context.Context, string, string) error
+	Delete(context.Context, string, string, *bool) error
 }
 
 // DNSZone represents an Azure DNS zone client.

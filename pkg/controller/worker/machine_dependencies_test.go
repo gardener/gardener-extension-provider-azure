@@ -27,7 +27,7 @@ import (
 	factorymock "github.com/gardener/gardener-extension-provider-azure/pkg/mock/factory"
 	vmssmock "github.com/gardener/gardener-extension-provider-azure/pkg/mock/vmss"
 
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2020-06-30/compute"
+	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	"github.com/Azure/go-autorest/autorest"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -285,7 +285,7 @@ var _ = Describe("MachinesDependencies", func() {
 
 func expectVmoGetToSucceed(ctx context.Context, c *vmssmock.MockVmss, resourceGroupName, name, id string, faultDomainCount int32) {
 	// As the vmo name (parameter 3) contains a random suffix, we use simply anything of type string for the mock.
-	c.EXPECT().Get(ctx, resourceGroupName, gomock.AssignableToTypeOf("")).Return(&compute.VirtualMachineScaleSet{
+	c.EXPECT().Get(ctx, resourceGroupName, gomock.AssignableToTypeOf(""), compute.ExpandTypesForGetVMScaleSetsUserData).Return(&compute.VirtualMachineScaleSet{
 		ID:   pointer.StringPtr(id),
 		Name: pointer.StringPtr(name),
 		VirtualMachineScaleSetProperties: &compute.VirtualMachineScaleSetProperties{
@@ -308,7 +308,7 @@ func expectVmoCreateToSucceed(ctx context.Context, c *vmssmock.MockVmss, resourc
 
 func expectVmoDeleteToSucceed(ctx context.Context, c *vmssmock.MockVmss, resourceGroupName string) {
 	// As the vmo name (parameter 3) contains a random suffix, we use simply anything of type string for the mock.
-	c.EXPECT().Delete(ctx, resourceGroupName, gomock.AssignableToTypeOf("")).AnyTimes().Return(nil)
+	c.EXPECT().Delete(ctx, resourceGroupName, gomock.AssignableToTypeOf(""), pointer.Bool(false)).AnyTimes().Return(nil)
 }
 
 func generateWorkerStatusWithVmo(vmos ...v1alpha1.VmoDependency) *runtime.RawExtension {
