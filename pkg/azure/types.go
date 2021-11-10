@@ -139,6 +139,8 @@ const (
 	RemedyControllerName = "remedy-controller-azure"
 	// DisableRemedyControllerAnnotation disables the Azure remedy controller (enabled by default)
 	DisableRemedyControllerAnnotation = "azure.provider.extensions.gardener.cloud/disable-remedy-controller"
+	// ExtensionServicePrincipalSecretLabel is the label key of a service principal secret of a certain tenant managed by the extension.
+	ExtensionServicePrincipalSecretLabel = "azure.provider.extensions.gardener.cloud/tenant-id"
 )
 
 var (
