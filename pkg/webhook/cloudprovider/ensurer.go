@@ -29,6 +29,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+var labelSelector = client.MatchingLabels{azure.ExtensionPurposeLabel: azure.ExtensionPurposeServicePrincipalSecret}
+
 // NewEnsurer creates cloudprovider ensurer.
 func NewEnsurer(logger logr.Logger) cloudprovider.Ensurer {
 	return &ensurer{
@@ -68,7 +70,7 @@ func (e *ensurer) EnsureCloudProviderSecret(ctx context.Context, _ gcontext.Gard
 			return err
 		}
 
-		e.logger.Info("mutate %s/%s secret", new.Namespace, new.Name)
+		e.logger.Info("mutate cloudprovider secret", "namespace", new.Namespace, "name", new.Name)
 		new.Data[azure.ClientIDKey] = servicePrincipalSecret.Data[azure.ClientIDKey]
 		new.Data[azure.ClientSecretKey] = servicePrincipalSecret.Data[azure.ClientSecretKey]
 	}
@@ -79,28 +81,35 @@ func (e *ensurer) EnsureCloudProviderSecret(ctx context.Context, _ gcontext.Gard
 func (e *ensurer) fetchTenantServicePrincipalSecret(ctx context.Context, tenantID string) (*corev1.Secret, error) {
 	var (
 		servicePrincipalSecretList = &corev1.SecretList{}
-		labelSelector              = client.MatchingLabels{azure.ExtensionServicePrincipalSecretLabel: tenantID}
+		matchingSecrets            = []*corev1.Secret{}
 	)
 
 	if err := e.client.List(ctx, servicePrincipalSecretList, labelSelector); err != nil {
 		return nil, err
 	}
 
-	if len(servicePrincipalSecretList.Items) == 0 {
-		return nil, fmt.Errorf("found no service principal for Azure tenant %q", tenantID)
-	}
-	if len(servicePrincipalSecretList.Items) > 1 {
-		return nil, fmt.Errorf("found more than one service principal for Azure tenant %q", tenantID)
+	for _, sec := range servicePrincipalSecretList.Items {
+		if !secretContainKey(&sec, azure.TenantIDKey) {
+			e.logger.Info("service principal secret is invalid as it does not contain a tenant id", "namespace", sec.Namespace, "name", sec.Name)
+			continue
+		}
+
+		if string(sec.Data[azure.TenantIDKey]) == tenantID {
+			tmp := &sec
+			matchingSecrets = append(matchingSecrets, tmp)
+		}
 	}
 
-	secret := servicePrincipalSecretList.Items[0]
-	// This is a double check to be sure that the secret label value is in sync
-	// with the content of the secret.
-	if string(secret.Data[azure.TenantIDKey]) != tenantID {
-		return nil, fmt.Errorf("found service principal secret for Azure tenant %q but secret content is invalid", tenantID)
+	if len(matchingSecrets) == 0 {
+		return nil, fmt.Errorf("found no service principal secrets matching to tenant id %q", tenantID)
 	}
 
-	return &secret, nil
+	if len(matchingSecrets) > 1 {
+		err := fmt.Errorf("found more than one service principal matching to tenant id %q", tenantID)
+		return nil, err
+	}
+
+	return matchingSecrets[0], nil
 }
 
 func secretContainKey(secret *corev1.Secret, key string) bool {

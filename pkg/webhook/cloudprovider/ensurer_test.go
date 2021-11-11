@@ -27,7 +27,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	// . "github.com/onsi/gomega/gstruct"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -52,7 +51,7 @@ var _ = Describe("Ensurer", func() {
 		servicePrincipalSecret corev1.Secret
 
 		gctx          = gcontext.NewGardenContext(nil, nil)
-		labelSelector = client.MatchingLabels{"azure.provider.extensions.gardener.cloud/tenant-id": "tenant-id"}
+		labelSelector = client.MatchingLabels{"azure.provider.extensions.gardener.cloud/purpose": "tenant-service-principal-secret"}
 	)
 
 	BeforeEach(func() {
