@@ -37,9 +37,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var (
-	tagRegex = regexp.MustCompile(`[<>%\\&?/ ]`)
-)
+var tagRegex = regexp.MustCompile(`[<>%\\&?/ ]`)
 
 // MachineClassKind yields the name of machine class kind used by Azure provider.
 func (w *workerDelegate) MachineClassKind() string {
@@ -266,18 +264,15 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		}
 
 		// Availability Zones
-		var zoneCount = len(pool.Zones)
+		zoneCount := len(pool.Zones)
 		for zoneIndex, zone := range pool.Zones {
-			if infrastructureStatus.Networks.Topology == azureapi.TopologyZonal {
-				var subnetIndex int
-
-				subnetIndex, nodesSubnet, err = azureapihelper.FindSubnetByPurposeAndZone(infrastructureStatus.Networks.Subnets, azureapi.PurposeNodes, &zone)
+			if infrastructureStatus.Networks.Layout == azureapi.NetworkLayoutMultipleSubnet {
+				_, nodesSubnet, err = azureapihelper.FindSubnetByPurposeAndZone(infrastructureStatus.Networks.Subnets, azureapi.PurposeNodes, &zone)
 				if err != nil {
 					return err
 				}
 
-				// subnetName = zoneSubnet.Name
-				if subnetIndex == 0 {
+				if nodesSubnet.Migrated {
 					workerPoolHash, err = w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, nil)
 					if err != nil {
 						return err
@@ -391,7 +386,7 @@ func SanitizeAzureVMTag(label string) string {
 }
 
 func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPool, infrastructureStatus *azureapi.InfrastructureStatus, vmoDependency *azureapi.VmoDependency, subnetName *string) (string, error) {
-	var additionalHashData = []string{}
+	additionalHashData := []string{}
 
 	// Integrate data disks/volumes in the hash.
 	for _, dv := range pool.DataVolumes {

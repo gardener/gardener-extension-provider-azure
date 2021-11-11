@@ -120,6 +120,7 @@ type ZonedPublicIPReference struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 // InfrastructureStatus contains information about created infrastructure resources.
 type InfrastructureStatus struct {
 	metav1.TypeMeta `json:",inline"`
@@ -153,8 +154,8 @@ type NetworkStatus struct {
 	// Subnets are the subnets that have been created.
 	Subnets []Subnet `json:"subnets"`
 
-	// Topology describes the network topology of the cluster.
-	Topology NetworkTopologyType `json:"topology"`
+	// Layout describes the network layout of the cluster.
+	Layout NetworkLayout `json:"layout"`
 }
 
 // Purpose is a purpose of a subnet.
@@ -167,17 +168,15 @@ const (
 	PurposeInternal Purpose = "internal"
 )
 
-// NetworkTopologyType is the network topology type for the cluster.
-type NetworkTopologyType string
+// NetworkLayout is the network layout type for the cluster.
+type NetworkLayout string
 
 const (
-	// TopologyRegional is a network topology for clusters that do not make use of availability zones.
-	TopologyRegional NetworkTopologyType = "Regional"
-	// TopologyZonalSingleSubnet is a network topology for zonal clusters. Clusters with this topology have a single
-	// subnet that is shared among all availability zones.
-	TopologyZonalSingleSubnet NetworkTopologyType = "ZonalSingleSubnet"
-	// TopologyZonal is a network topology for zonal clusters, where a subnet is created for each availability zone.
-	TopologyZonal NetworkTopologyType = "Zonal"
+	// NetworkLayoutSingleSubnet is a network layout for all clusters. Clusters with this layout have a single
+	// subnet. If the cluster is zoned that subnet is shared among all availability zones.
+	NetworkLayoutSingleSubnet NetworkLayout = "SingleSubnet"
+	// NetworkLayoutMultipleSubnet is a network layout for zonal clusters, where a subnet is created for each availability zone.
+	NetworkLayoutMultipleSubnet NetworkLayout = "MultipleSubnet"
 )
 
 // Subnet is a subnet that was created.
@@ -189,6 +188,9 @@ type Subnet struct {
 	// Zone is the name of the zone for which the subnet was created.
 	// +optional
 	Zone *string `json:"zone,omitempty"`
+	// Migrated is set when the network layout is migrated from NetworkLayoutSingleSubnet to NetworkLayoutMultipleSubnet.
+	// Only the subnet that was used prior to the migration should have this attribute set.
+	Migrated bool `json:"migrated,omitempty"`
 }
 
 // AvailabilitySet contains information about the azure availability set

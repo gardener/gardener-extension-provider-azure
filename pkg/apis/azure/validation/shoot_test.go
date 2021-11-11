@@ -28,7 +28,7 @@ import (
 
 var _ = Describe("Shoot validation", func() {
 	Describe("#ValidateNetworking", func() {
-		var networkingPath = field.NewPath("spec", "networking")
+		networkingPath := field.NewPath("spec", "networking")
 
 		It("should return no error because nodes CIDR was provided", func() {
 			networking := core.Networking{
@@ -114,7 +114,6 @@ var _ = Describe("Shoot validation", func() {
 					workers[1].Zones = []string{"1", "2"}
 				})
 				It("should pass because workers are configured correctly", func() {
-
 					errorList := ValidateWorkers(workers,
 						infraConfig, field.NewPath(""))
 
@@ -220,7 +219,7 @@ var _ = Describe("Shoot validation", func() {
 					))
 				})
 
-				Context("multi-zone subnets", func() {
+				Context("multiple subnet network layout", func() {
 					BeforeEach(func() {
 						infraConfig = &apisazure.InfrastructureConfig{
 							Zoned: true,

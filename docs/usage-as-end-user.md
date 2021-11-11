@@ -110,7 +110,7 @@ Apart from the VNet and the worker subnet the Azure extension will also create a
 
 ### InfrastructureConfig with dedicated subnets per zone
 
-Another deployment option **for zonal clusters only**, is to create and configure a separate subnet per zone. This network configuration is recommended to users that require fine-grained control over their network setup. One prevalent usecase is to create a zone-redundant NAT Gateway deployment by taking advantage of the ability to deploy separate NAT Gateways for each subnet.
+Another deployment option **for zonal clusters only**, is to create and configure a separate subnet per availability zone. This network layout is recommended to users that require fine-grained control over their network setup. One prevalent usecase is to create a zone-redundant NAT Gateway deployment by taking advantage of the ability to deploy separate NAT Gateways for each subnet.
 
 To use this configuration the following requirements must be met:
 
@@ -141,9 +141,9 @@ networks:
 
 ### Migrating to zonal shoots with dedicated subnets per zone
 
-For existing zonal clusters it is possible to migrate to the new network setup with dedicated subnets per zone. The migration works by creating the additional network resources necessary and progressively roll part of your existing nodes to the new setup. To achieve the controlled rolling of your nodes, parts of the existing infrastructure must be preserved which is why the following constraint is imposed:
+For existing zonal clusters it is possible to migrate to a network layout with dedicated subnets per zone. The migration works by creating additional network resources as specified in the configuration and progressively roll part of your existing nodes to use the new resources. To achieve the controlled rollout of your nodes, parts of the existing infrastructure must be preserved which is why the following constraint is imposed:
 
-The first zone specified in the `networks.zones` must use the exact same CIDR range as the current `network.workers`. Here is an example of such migration:
+One of your specified zones must have the exact same CIDR range as the current `network.workers` field. Here is an example of such migration:
 
 ```yaml
 infrastructureConfig:
@@ -169,10 +169,10 @@ infrastructureConfig:
       - name: 3
         cidr: 10.250.0.0/19 # note the preservation of the 'workers' CIDR
 # optionally add other zones 
-#     - name: 2  
-#       cidr: 10.250.32.0/19
-#       natGateway:
-#         enabled: true
+    # - name: 2  
+    #   cidr: 10.250.32.0/19
+    #   natGateway:
+    #     enabled: true
   zoned: true
 ```
 
@@ -227,15 +227,54 @@ infrastructureConfig:
 #       natGateway:
 #         enabled: true
 #         ipAddresses:
-#           - name: new-pip3
+#           - name: pip3
 #             resourceGroup: group
+```
+
+You can apply such change to your shoot by issuing a `kubectl patch` command to replace your current `.spec.provider.infrastructureConfig` section:
+
+```
+$ cat new-infra.json
+
+[
+  {
+    "op": "replace",
+    "path": "/spec/provider/infrastructureConfig",
+    "value": {
+      "apiVersion": "azure.provider.extensions.gardener.cloud/v1alpha1",
+      "kind": "InfrastructureConfig",
+      "networks": {
+        "vnet": {
+          "cidr": "<your-vnet-cidr>"
+        },
+        "zones": [
+          {
+            "name": 1,
+            "cidr": "10.250.0.0/24",
+            "natGateway": {
+              "enabled": true
+            }
+          },
+          {
+            "name": 1,
+            "cidr": "10.250.1.0/24",
+            "natGateway": {
+              "enabled": true
+            }
+          },
+        ]
+      },
+      "zoned": true
+    }
+  }
+]
+
+kubectl patch --type="json" --patch-file new-infra.json shoot <my-shoot>
 ```
 
 :warning: The migration to shoots with dedicated subnets per zone is a one-way process. Reverting the shoot to the previous configuration is not supported.
 
-:warning: During the migration a subset of the nodes will be rolled to the new subnets. Only the nodes in the `networks.zones[0]` zone will not be rolled. The rollout will be controlled by MCM settings.
-
-:warning: During the migration existing NAT Gateways will be destroyed and recreated. That can lead to a brief disruption of your services.
+:warning: During the migration a subset of the nodes will be rolled to the new subnets.
 
 ## `ControlPlaneConfig`
 

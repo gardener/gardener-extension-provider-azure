@@ -409,7 +409,6 @@ var _ = Describe("Machines", func() {
 							MachineConfiguration: &machinev1alpha1.MachineConfiguration{},
 						},
 					}
-
 				})
 
 				It("should return the expected machine deployments for profile image types", func() {
@@ -463,12 +462,13 @@ var _ = Describe("Machines", func() {
 
 						infrastructureStatus = makeInfrastructureStatus(resourceGroupName, vnetName, subnetName, true, &vnetResourceGroupName, &availabilitySetID, &identityID)
 						infrastructureStatus.Networks = apisazure.NetworkStatus{
-							Topology: apisazure.TopologyZonal,
+							Layout: apisazure.NetworkLayoutMultipleSubnet,
 							Subnets: []apisazure.Subnet{
 								{
-									Name:    subnet1,
-									Purpose: apisazure.PurposeNodes,
-									Zone:    &zone1,
+									Name:     subnet1,
+									Purpose:  apisazure.PurposeNodes,
+									Zone:     &zone1,
+									Migrated: true,
 								},
 								{
 									Name:    subnet2,

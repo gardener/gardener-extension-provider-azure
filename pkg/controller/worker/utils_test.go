@@ -157,12 +157,9 @@ func makeCluster(shootVersion, region string, machineTypes []v1alpha1.MachineTyp
 }
 
 func makeInfrastructureStatus(resourceGroupName, vnetName, subnetName string, zoned bool, vnetrg, availabilitySetID, identityID *string) *apiazure.InfrastructureStatus {
-	topology := apiazure.TopologyRegional
-	if zoned {
-		topology = apiazure.TopologyZonalSingleSubnet
-	}
+	layout := apiazure.NetworkLayoutSingleSubnet
 
-	var infrastructureStatus = apiazure.InfrastructureStatus{
+	infrastructureStatus := apiazure.InfrastructureStatus{
 		ResourceGroup: apiazure.ResourceGroup{
 			Name: resourceGroupName,
 		},
@@ -176,7 +173,7 @@ func makeInfrastructureStatus(resourceGroupName, vnetName, subnetName string, zo
 					Name:    subnetName,
 				},
 			},
-			Topology: topology,
+			Layout: layout,
 		},
 		Zoned: zoned,
 	}

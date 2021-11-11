@@ -162,7 +162,6 @@ type azureIdentifier struct {
 }
 
 var _ = Describe("Infrastructure tests", func() {
-
 	var (
 		ctx    = context.Background()
 		logger *logrus.Entry
@@ -339,7 +338,7 @@ var _ = Describe("Infrastructure tests", func() {
 		It("should successfully create a multi zonal NAT Gateway cluster", func() {
 			var (
 				zone1 int32 = 1
-				zone2 int32 = 1
+				zone2 int32 = 2
 			)
 			providerConfig := &azurev1alpha1.InfrastructureConfig{
 				TypeMeta: metav1.TypeMeta{
@@ -811,8 +810,8 @@ func verifyCreation(
 	Expect(rt.Location).To(PointTo(Equal(*region)))
 	Expect(rt.Routes).To(Or(BeNil(), PointTo(BeEmpty())))
 
-	verifySubnet := func(cidr string, serviceEndpoints []string, natID *string, index int) {
-		subnetName := indexedName(infra.Namespace+"-nodes", index)
+	verifySubnet := func(cidr string, serviceEndpoints []string, natID *string, subnetName string) {
+		// subnetName := indexedName(infra.Namespace+"-nodes", index)
 		Expect(vnet.VirtualNetworkPropertiesFormat.Subnets).To(PointTo(ContainElement(MatchFields(IgnoreExtras, Fields{
 			"Name": PointTo(Equal(subnetName)),
 		}))))
@@ -835,8 +834,7 @@ func verifyCreation(
 		}
 	}
 
-	verifyNAT := func(zone, timeout *int32, index int) *string {
-		ngName := indexedName(infra.Namespace+"-nat-gateway", index)
+	verifyNAT := func(zone, timeout *int32, ngName string) *string {
 		pipName := fmt.Sprintf("%s-ip", ngName)
 
 		// public IP
@@ -863,25 +861,29 @@ func verifyCreation(
 		return ng.ID
 	}
 
+	ngBaseName := infra.Namespace + "-nat-gateway"
+	subnetBaseName := infra.Namespace + "-nodes"
 	if !hasDedicatedSubnets(config) {
 		nat := config.Networks.NatGateway
 
 		var natID *string
 		if nat != nil && nat.Enabled {
-			natID = verifyNAT(nat.Zone, nat.IdleConnectionTimeoutMinutes, 0)
+			natID = verifyNAT(nat.Zone, nat.IdleConnectionTimeoutMinutes, ngBaseName)
 		}
-		verifySubnet(*config.Networks.Workers, config.Networks.ServiceEndpoints, natID, 0)
+		verifySubnet(*config.Networks.Workers, config.Networks.ServiceEndpoints, natID, subnetBaseName)
 	} else {
-		for index, zone := range config.Networks.Zones {
+		for _, zone := range config.Networks.Zones {
 			By(fmt.Sprintf("verifying for %d", zone.Name))
 
 			nat := zone.NatGateway
 
 			var natID *string
 			if nat != nil && nat.Enabled {
-				natID = verifyNAT(&zone.Name, nat.IdleConnectionTimeoutMinutes, index)
+				ngName := indexedName(ngBaseName, zone.Name)
+				natID = verifyNAT(&zone.Name, nat.IdleConnectionTimeoutMinutes, ngName)
 			}
-			verifySubnet(zone.CIDR, zone.ServiceEndpoints, natID, index)
+			subnetName := indexedName(subnetBaseName, zone.Name)
+			verifySubnet(zone.CIDR, zone.ServiceEndpoints, natID, subnetName)
 		}
 	}
 
@@ -933,7 +935,7 @@ func verifyDeletion(
 	}
 }
 
-func indexedName(name string, index int) string {
+func indexedName(name string, index int32) string {
 	if index == 0 {
 		return name
 	}

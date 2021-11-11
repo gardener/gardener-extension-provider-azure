@@ -138,7 +138,12 @@ func HasShootVmoAlphaAnnotation(shootAnnotations map[string]string) bool {
 	return false
 }
 
-// AzureZoneToCoreZone translates the zone from the string format used in Gardener core objects to the int32 format used by the Azure provider extension.
-func AzureZoneToCoreZone(zone int32) string {
+// InfrastructureZoneToString translates the zone from the string format used in Gardener core objects to the int32 format used by the Azure provider extension.
+func InfrastructureZoneToString(zone int32) string {
 	return fmt.Sprintf("%d", zone)
+}
+
+// IsUsingSingleSubnetLayout returns true if the infrastructure configuration is using a network setup with a single subnet.
+func IsUsingSingleSubnetLayout(config *api.InfrastructureConfig) bool {
+	return len(config.Networks.Zones) == 0
 }

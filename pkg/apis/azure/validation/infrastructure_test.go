@@ -439,7 +439,6 @@ var _ = Describe("InfrastructureConfig validation", func() {
 		})
 
 		Context("Zones", func() {
-
 			var (
 				zoneName  int32 = 1
 				zoneName1 int32 = 2
@@ -493,7 +492,6 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					},
 				}
 				Expect(ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)).To(BeEmpty())
-
 			})
 
 			It("should forbid non canonical CIDRs", func() {
@@ -533,7 +531,6 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					"Field":  Equal("networks.vnet.cidr"),
 					"Detail": Equal("a vnet cidr or vnet reference must be specified when the workers field is not set"),
 				}))
-
 			})
 
 			It("should forbid zone CIDRs which are not in Vnet and Nodes CIDR", func() {
@@ -572,7 +569,6 @@ var _ = Describe("InfrastructureConfig validation", func() {
 	})
 
 	Describe("#ValidateInfrastructureConfigAgainstCloudProfile", func() {
-
 		var (
 			region          = "region"
 			zoneName  int32 = 1
@@ -702,7 +698,6 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					"Detail": Equal("field is immutable"),
 				}))
 			})
-
 		})
 
 		DescribeTable("Zoned",
@@ -791,8 +786,9 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				}))
 			})
 
-			It("should deny transition to multi-subnet if the CIDR is not correct", func() {
+			It("should deny transition to multi-subnet if the old workers CIDR is not used by any zone", func() {
 				newCIDR := "10.250.250.0/24"
+				newCIDR2 := "10.250.251.0/24"
 				newInfra := &apisazure.InfrastructureConfig{
 					Zoned: true,
 					Networks: apisazure.NetworkConfig{
@@ -806,7 +802,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 							},
 							{
 								Name: 2,
-								CIDR: workers,
+								CIDR: newCIDR2,
 							},
 						},
 					},
@@ -817,12 +813,12 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				Expect(errorList).To(HaveLen(1))
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeForbidden),
-					"Field":  Equal("networks.zones[0].cidr"),
-					"Detail": Equal("when updating InfrastructureConfig to use dedicated subnets per zones, the CIDR must match that of the previous config.networks.workers"),
+					"Field":  Equal("networks.zones"),
+					"Detail": Equal("when updating InfrastructureConfig to use dedicated subnets per zones, the CIDR for one of the zones must match that of the previous config.networks.workers"),
 				}))
 			})
 
-			It("should deny changing zone information name", func() {
+			It("should deny changing zone CIDR", func() {
 				zonedInfra := &apisazure.InfrastructureConfig{
 					Zoned: true,
 					Networks: apisazure.NetworkConfig{
@@ -843,14 +839,14 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				}
 
 				newZonedInfra := zonedInfra.DeepCopy()
-				newZonedInfra.Networks.Zones[0].Name = 3
+				newZonedInfra.Networks.Zones[0].CIDR = "10.0.0.0/24"
 
 				errorList := ValidateInfrastructureConfigUpdate(zonedInfra, newZonedInfra, providerPath)
 				Expect(errorList).NotTo(BeEmpty())
 				Expect(errorList).To(HaveLen(1))
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":  Equal(field.ErrorTypeInvalid),
-					"Field": Equal("networks.zones[0].name"),
+					"Field": Equal("networks.zones[0].cidr"),
 				}))
 			})
 		})

@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
@@ -30,6 +31,7 @@ import (
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 const (
@@ -123,6 +125,7 @@ func ComputeTerraformerTemplateValues(
 			"resourceGroupName": TerraformerOutputKeyResourceGroupName,
 			"vnetName":          TerraformerOutputKeyVNetName,
 			"subnetName":        TerraformerOutputKeySubnetName,
+			"subnetNamePrefix":  TerraformerOutputKeySubnetNamePrefix,
 			"routeTableName":    TerraformerOutputKeyRouteTableName,
 			"securityGroupName": TerraformerOutputKeySecurityGroupName,
 		}
@@ -181,7 +184,14 @@ func ComputeTerraformerTemplateValues(
 		outputKeys["identityClientID"] = TerraformerOutputKeyIdentityClientID
 	}
 
-	networkConfig, err := computeNetworkConfig(infra, config)
+	// we check for the network setup in the spec by chekcing Workers. Single subnet is our base case therefore we check if workers != nil
+	// the base case for our network setup is to have a single subnet. Therefore we chekc
+	var networkConfig map[string]interface{}
+	if helper.IsUsingSingleSubnetLayout(config) {
+		networkConfig, err = computeNetworkConfigSingleSubnetLayout(infra, config)
+	} else {
+		networkConfig, err = computeNetworkConfigMultipleSubnetLayout(infra, config)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -205,34 +215,43 @@ func ComputeTerraformerTemplateValues(
 	return result, nil
 }
 
-func computeNetworkConfig(infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig) (map[string]interface{}, error) {
+func computeNetworkConfigSingleSubnetLayout(infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig) (map[string]interface{}, error) {
 	var (
 		networkCfg = make(map[string]interface{})
 		subnets    []map[string]interface{}
 	)
-	if config.Networks.Workers != nil {
-		natGatewayConfig, err := generateNatGatewayValues(infra, config.Networks.NatGateway)
-		if err != nil {
-			return nil, err
-		}
+	natGatewayConfig, err := generateNatGatewayValues(infra, config.Networks.NatGateway)
+	if err != nil {
+		return nil, err
+	}
 
-		subnet := map[string]interface{}{
-			"cidr":             *config.Networks.Workers,
-			"serviceEndpoints": config.Networks.ServiceEndpoints,
-			"natGateway":       natGatewayConfig,
-		}
+	subnet := map[string]interface{}{
+		"cidr":             *config.Networks.Workers,
+		"serviceEndpoints": config.Networks.ServiceEndpoints,
+		"natGateway":       natGatewayConfig,
+	}
 
-		subnets = append(subnets, subnet)
-	} else {
-		for _, zone := range config.Networks.Zones {
-			natGateway := generateZonedNatGatewayValues(zone.NatGateway, zone.Name)
-			zoneConfig := map[string]interface{}{
-				"cidr":             zone.CIDR,
-				"serviceEndpoints": zone.ServiceEndpoints,
-				"natGateway":       natGateway,
-			}
-			subnets = append(subnets, zoneConfig)
+	subnets = append(subnets, subnet)
+	networkCfg["subnets"] = subnets
+	return networkCfg, nil
+}
+
+func computeNetworkConfigMultipleSubnetLayout(infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig) (map[string]interface{}, error) {
+	var (
+		networkCfg = make(map[string]interface{})
+		subnets    []map[string]interface{}
+	)
+
+	for _, zone := range config.Networks.Zones {
+		migratedZone, ok := infra.Annotations[azure.NetworkLayoutZoneMigrationAnnotation]
+		subnetConfig := map[string]interface{}{
+			"name":             zone.Name,
+			"cidr":             zone.CIDR,
+			"serviceEndpoints": zone.ServiceEndpoints,
+			"natGateway":       generateZonedNatGatewayValues(zone.NatGateway, zone.Name),
+			"migrated":         ok && migratedZone == helper.InfrastructureZoneToString(zone.Name),
 		}
+		subnets = append(subnets, subnetConfig)
 	}
 
 	networkCfg["subnets"] = subnets
@@ -260,7 +279,7 @@ func generateNatGatewayValues(infra *extensionsv1alpha1.Infrastructure, nat *api
 	}
 
 	if len(nat.IPAddresses) > 0 {
-		var ipAddresses = make([]map[string]interface{}, len(nat.IPAddresses))
+		ipAddresses := make([]map[string]interface{}, len(nat.IPAddresses))
 		for i, ip := range nat.IPAddresses {
 			ipAddresses[i] = map[string]interface{}{
 				"name":          ip.Name,
@@ -299,7 +318,7 @@ func generateZonedNatGatewayValues(nat *api.ZonedNatGatewayConfig, zone int32) m
 	}
 
 	if len(nat.IPAddresses) > 0 {
-		var ipAddresses = make([]map[string]interface{}, len(nat.IPAddresses))
+		ipAddresses := make([]map[string]interface{}, len(nat.IPAddresses))
 		for i, ip := range nat.IPAddresses {
 			ipAddresses[i] = map[string]interface{}{
 				"name":          ip.Name,
@@ -336,7 +355,7 @@ type TerraformState struct {
 	// AvailabilitySetName the ID for the created availability set .
 	AvailabilitySetName string
 	// SubnetName is the name of the created subnet.
-	SubnetNames []string
+	Subnets []terraformSubnet
 	// RouteTableName is the name of the route table.
 	RouteTableName string
 	// SecurityGroupName is the name of the security group.
@@ -350,26 +369,22 @@ type TerraformState struct {
 	NatGatewayIPMigrated string
 }
 
+type terraformSubnet struct {
+	name     string
+	zone     *string
+	migrated bool
+}
+
 // ExtractTerraformState extracts the TerraformState from the given Terraformer.
 func ExtractTerraformState(ctx context.Context, tf terraformer.Terraformer, infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig, cluster *controller.Cluster) (*TerraformState, error) {
-	var (
-		outputKeys = []string{
-			TerraformerOutputKeyResourceGroupName,
-			TerraformerOutputKeyRouteTableName,
-			TerraformerOutputKeySecurityGroupName,
-			TerraformerOutputKeyVNetName,
-		}
-	)
-	var subnetOutputKeys []string
-	subnetOutputKeys = append(subnetOutputKeys, TerraformerOutputKeySubnetName)
-	if len(config.Networks.Zones) > 0 {
-		for i := range config.Networks.Zones[1:] {
-			key := fmt.Sprintf("%s%d", TerraformerOutputKeySubnetNamePrefix, i+1)
-			subnetOutputKeys = append(subnetOutputKeys, key)
-		}
+	outputKeys := []string{
+		TerraformerOutputKeyResourceGroupName,
+		TerraformerOutputKeyRouteTableName,
+		TerraformerOutputKeySecurityGroupName,
+		TerraformerOutputKeyVNetName,
 	}
-	outputKeys = append(outputKeys, subnetOutputKeys...)
 
+	outputKeys = append(outputKeys, computeSubnetOutputKeys(infra, config)...)
 	primaryAvSetRequired, err := isPrimaryAvailabilitySetRequired(infra, config, cluster)
 	if err != nil {
 		return nil, err
@@ -392,7 +407,7 @@ func ExtractTerraformState(ctx context.Context, tf terraformer.Terraformer, infr
 		return nil, err
 	}
 
-	var tfState = TerraformState{
+	tfState := TerraformState{
 		VNetName:          vars[TerraformerOutputKeyVNetName],
 		ResourceGroupName: vars[TerraformerOutputKeyResourceGroupName],
 		RouteTableName:    vars[TerraformerOutputKeyRouteTableName],
@@ -423,9 +438,7 @@ func ExtractTerraformState(ctx context.Context, tf terraformer.Terraformer, infr
 		tfState.IdentityClientID = vars[TerraformerOutputKeyIdentityClientID]
 	}
 
-	for _, key := range subnetOutputKeys {
-		tfState.SubnetNames = append(tfState.SubnetNames, vars[key])
-	}
+	tfState.Subnets = computeInfrastructureSubnets(infra, vars)
 
 	if config.Networks.NatGateway != nil && config.Networks.NatGateway.Enabled {
 		tfState.NatGatewayIPMigrated = "true"
@@ -437,7 +450,7 @@ func ExtractTerraformState(ctx context.Context, tf terraformer.Terraformer, infr
 // StatusFromTerraformState computes an InfrastructureStatus from the given
 // Terraform variables.
 func StatusFromTerraformState(config *api.InfrastructureConfig, tfState *TerraformState) *apiv1alpha1.InfrastructureStatus {
-	var infraState = apiv1alpha1.InfrastructureStatus{
+	infraState := apiv1alpha1.InfrastructureStatus{
 		TypeMeta: StatusTypeMeta,
 		ResourceGroup: apiv1alpha1.ResourceGroup{
 			Name: tfState.ResourceGroupName,
@@ -461,33 +474,19 @@ func StatusFromTerraformState(config *api.InfrastructureConfig, tfState *Terrafo
 		infraState.Zoned = true
 	}
 
-	if config.Networks.Workers != nil {
-		if config.Zoned {
-			infraState.Networks.Topology = apiv1alpha1.TopologyZonalSingleSubnet
-		} else {
-			infraState.Networks.Topology = apiv1alpha1.TopologyRegional
-		}
+	if config.Networks.Workers == nil {
+		infraState.Networks.Layout = apiv1alpha1.NetworkLayoutMultipleSubnet
 	} else {
-		infraState.Networks.Topology = apiv1alpha1.TopologyZonal
+		infraState.Networks.Layout = apiv1alpha1.NetworkLayoutSingleSubnet
 	}
 
-	switch infraState.Networks.Topology {
-	case apiv1alpha1.TopologyZonal:
-		for i, subnet := range tfState.SubnetNames {
-			zoneStr := fmt.Sprintf("%d", config.Networks.Zones[i].Name)
-			infraState.Networks.Subnets = append(infraState.Networks.Subnets, apiv1alpha1.Subnet{
-				Name:    subnet,
-				Purpose: apiv1alpha1.PurposeNodes,
-				Zone:    &zoneStr,
-			})
-		}
-	default:
-		for _, subnet := range tfState.SubnetNames {
-			infraState.Networks.Subnets = append(infraState.Networks.Subnets, apiv1alpha1.Subnet{
-				Name:    subnet,
-				Purpose: apiv1alpha1.PurposeNodes,
-			})
-		}
+	for _, subnet := range tfState.Subnets {
+		infraState.Networks.Subnets = append(infraState.Networks.Subnets, apiv1alpha1.Subnet{
+			Name:     subnet.name,
+			Purpose:  apiv1alpha1.PurposeNodes,
+			Zone:     subnet.zone,
+			Migrated: subnet.migrated,
+		})
 	}
 
 	if tfState.VNetResourceGroupName != "" {
@@ -649,4 +648,51 @@ func isNatGatewayIPMigrationRequired(infra *extensionsv1alpha1.Infrastructure, n
 		return false, nil
 	}
 	return true, nil
+}
+
+func computeSubnetOutputKeys(infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig) []string {
+	var subnetOutputKeys []string
+
+	if helper.IsUsingSingleSubnetLayout(config) {
+		subnetOutputKeys = append(subnetOutputKeys, TerraformerOutputKeySubnetName)
+		return subnetOutputKeys
+	}
+
+	migratedZone, ok := infra.Annotations[azure.NetworkLayoutZoneMigrationAnnotation]
+	for _, z := range config.Networks.Zones {
+		outputKey := fmt.Sprintf("%s%d", TerraformerOutputKeySubnetNamePrefix, z.Name)
+		if ok && helper.InfrastructureZoneToString(z.Name) == migratedZone {
+			outputKey = TerraformerOutputKeySubnetName
+		}
+		subnetOutputKeys = append(subnetOutputKeys, outputKey)
+	}
+
+	return subnetOutputKeys
+}
+
+func computeInfrastructureSubnets(infra *extensionsv1alpha1.Infrastructure, vars map[string]string) []terraformSubnet {
+	result := []terraformSubnet{}
+
+	for key, value := range vars {
+		switch {
+		case strings.HasPrefix(key, TerraformerOutputKeySubnetNamePrefix):
+			result = append(result, terraformSubnet{
+				name:     value,
+				zone:     pointer.String(strings.TrimPrefix(key, TerraformerOutputKeySubnetNamePrefix)),
+				migrated: false,
+			})
+		case key == TerraformerOutputKeySubnetName:
+			subnet := terraformSubnet{
+				name: vars[key],
+			}
+			if migratedZone, ok := infra.Annotations[azure.NetworkLayoutZoneMigrationAnnotation]; ok {
+				subnet.migrated = ok
+				subnet.zone = &migratedZone
+			}
+			result = append(result, subnet)
+		default:
+			continue
+		}
+	}
+	return result
 }

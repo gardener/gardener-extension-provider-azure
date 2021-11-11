@@ -55,14 +55,17 @@ resource "azurerm_network_security_group" "workers" {
   resource_group_name = {{ template "resource-group-reference" $ }}
 }
 
-{{- range $index, $subnet := .networks.subnets }}
+{{- range $subnet := .networks.subnets }}
 {{- $workers := "workers" }}
 {{- $subnetName := printf "%s-nodes" $.clusterName }}
 {{- $subnetOutput := $.outputKeys.subnetName }}
-{{- if $index }}
-{{- $workers = printf "%s-z%d" $workers $index }}
-{{- $subnetName = printf "%s-z%d" $subnetName $index }}
-{{- $subnetOutput = printf "%s-z%d" $subnetOutput $index }}
+
+{{- if hasKey $subnet "migrated" }}
+{{- if not $subnet.migrated}}
+{{- $workers = printf "%s-z%d" $workers $subnet.name }}
+{{- $subnetName = printf "%s-z%d" $subnetName $subnet.name }}
+{{- $subnetOutput = printf "%s%d" $.outputKeys.subnetNamePrefix $subnet.name }}
+{{- end }}
 {{- end }}
 
 #===============================================
@@ -71,7 +74,7 @@ resource "azurerm_network_security_group" "workers" {
 
 resource "azurerm_subnet" "{{ $workers }}" {
   name                      = "{{ $subnetName }}"
-{{ if $.create.vnet -}}
+{{- if $.create.vnet }}
   virtual_network_name      = azurerm_virtual_network.vnet.name
   resource_group_name       = azurerm_virtual_network.vnet.resource_group_name
 {{- else -}}
@@ -99,9 +102,12 @@ output "{{ $subnetOutput }}" {
 {{- if $subnet.natGateway.enabled }}
 {{- $natName := "nat" }}
 {{- $natResourceName := printf "%s-nat-gateway" $.clusterName }}
-{{- if $index }}
-{{- $natName = printf "%s-z%d" $natName $index }}
-{{- $natResourceName = printf "%s-z%d" $natResourceName $index }}
+
+{{- if hasKey $subnet "migrated" }}
+{{- if not $subnet.migrated }}
+{{- $natName = printf "%s-z%d" $natName $subnet.name }}
+{{- $natResourceName = printf "%s-z%d" $natResourceName $subnet.name }}
+{{- end }}
 {{- end }}
 #===============================================
 #= NAT Gateway {{ $natName }}
@@ -114,7 +120,7 @@ resource "azurerm_nat_gateway" "{{ $natName }}" {
 {{ if hasKey $subnet.natGateway "idleConnectionTimeoutMinutes" -}}
   idle_timeout_in_minutes = {{ $subnet.natGateway.idleConnectionTimeoutMinutes }}
 {{- end }}
-{{ if hasKey $subnet.natGateway "zone" -}}
+{{- if hasKey $subnet.natGateway "zone" }}
   zones = [{{ $subnet.natGateway.zone | quote }}]
 {{- end }}
 {{ if $subnet.natGateway.migrateNatGatewayToIPAssociation -}}
@@ -155,7 +161,7 @@ resource "azurerm_public_ip" "{{ $natIpName }}" {
   resource_group_name = {{ template "resource-group-reference" $ }}
   allocation_method   = "Static"
   sku                 = "Standard"
-{{ if hasKey .natGateway "zone" -}}
+{{- if hasKey .natGateway "zone" }}
   zones = [{{ .natGateway.zone | quote }}]
 {{- end }}
 }

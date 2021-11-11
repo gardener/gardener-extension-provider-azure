@@ -77,10 +77,10 @@ func ValidateWorkers(workers []core.Worker, infra *azure.InfrastructureConfig, f
 			zones.Insert(zone)
 		}
 
-		if isZonedWithDedicatedSubnets(&infra.Networks) {
+		if !helper.IsUsingSingleSubnetLayout(infra) {
 			infraZones := sets.String{}
 			for _, zone := range infra.Networks.Zones {
-				infraZones.Insert(helper.AzureZoneToCoreZone(zone.Name))
+				infraZones.Insert(helper.InfrastructureZoneToString(zone.Name))
 			}
 
 			for zoneIndex, workerZone := range worker.Zones {

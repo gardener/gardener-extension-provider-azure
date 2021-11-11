@@ -1053,6 +1053,15 @@ NatGatewayConfig
 </tr>
 </tbody>
 </table>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.NetworkLayout">NetworkLayout
+(<code>string</code> alias)</p></h3>
+<p>
+(<em>Appears on:</em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.NetworkStatus">NetworkStatus</a>)
+</p>
+<p>
+<p>NetworkLayout is the network layout type for the cluster.</p>
+</p>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.NetworkStatus">NetworkStatus
 </h3>
 <p>
@@ -1098,28 +1107,19 @@ VNetStatus
 </tr>
 <tr>
 <td>
-<code>topology</code></br>
+<code>layout</code></br>
 <em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.NetworkTopologyType">
-NetworkTopologyType
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.NetworkLayout">
+NetworkLayout
 </a>
 </em>
 </td>
 <td>
-<p>Topology describes the network topology of the cluster.</p>
+<p>Layout describes the network layout of the cluster.</p>
 </td>
 </tr>
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.NetworkTopologyType">NetworkTopologyType
-(<code>string</code> alias)</p></h3>
-<p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.NetworkStatus">NetworkStatus</a>)
-</p>
-<p>
-<p>NetworkTopologyType is the network topology type for the cluster.</p>
-</p>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.PublicIPReference">PublicIPReference
 </h3>
 <p>
@@ -1352,6 +1352,18 @@ string
 <td>
 <em>(Optional)</em>
 <p>Zone is the name of the zone for which the subnet was created.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>migrated</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Migrated is set when the network layout is migrated from NetworkLayoutSingleSubnet to NetworkLayoutMultipleSubnet.
+Only the subnet that was used prior to the migration should have this attribute set.</p>
 </td>
 </tr>
 </tbody>

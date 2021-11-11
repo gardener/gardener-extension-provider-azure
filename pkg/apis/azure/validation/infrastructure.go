@@ -32,6 +32,7 @@ const (
 	natGatewayMaxTimeoutInMinutes int32 = 120
 )
 
+// ValidateInfrastructureConfigAgainstCloudProfile validates the InfrastructureConfig against the CloudProfile.
 func ValidateInfrastructureConfigAgainstCloudProfile(oldInfra, infra *apisazure.InfrastructureConfig, shootRegion string, cloudProfile *gardencorev1beta1.CloudProfile, fld *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
@@ -58,11 +59,22 @@ func validateInfrastructureConfigZones(oldInfra, infra *apisazure.Infrastructure
 	}
 
 	for i, zone := range infra.Networks.Zones {
-		if oldInfra != nil && len(oldInfra.Networks.Zones) > i && oldInfra.Networks.Zones[i].Name == zone.Name {
-			continue
+		// Search if the current zones were alrady present and valid in the old infrastructureConfig and if so, skip further checks.
+		// This safeguards from breaking existing shoots in case a zone has been removed from the CloudProfile.
+		if oldInfra != nil && len(oldInfra.Networks.Zones) > 0 {
+			matchFound := false
+			for _, oldZone := range oldInfra.Networks.Zones {
+				if oldZone.Name == zone.Name {
+					matchFound = true
+					break
+				}
+			}
+			if matchFound {
+				continue
+			}
 		}
 
-		if !azureZones.Has(helper.AzureZoneToCoreZone(zone.Name)) {
+		if !azureZones.Has(helper.InfrastructureZoneToString(zone.Name)) {
 			allErrs = append(allErrs, field.NotSupported(fld.Index(i).Child("name"), zone.Name, azureZones.UnsortedList()))
 		}
 	}
@@ -103,8 +115,7 @@ func ValidateInfrastructureConfig(infra *apisazure.InfrastructureConfig, nodesCI
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("zoned"), infra.Zoned, fmt.Sprintf("specifying a zoned cluster and having the %q annotation is not allowed", azure.ShootVmoUsageAnnotation)))
 	}
 
-	networksPath := fldPath.Child("networks")
-	allErrs = append(allErrs, validateNetworkConfig(&infra.Networks, infra.ResourceGroup, nodes, pods, services, infra.Zoned, hasVmoAlphaAnnotation, networksPath)...)
+	allErrs = append(allErrs, validateNetworkConfig(infra, nodes, pods, services, hasVmoAlphaAnnotation, fldPath)...)
 
 	if infra.Identity != nil && (infra.Identity.Name == "" || infra.Identity.ResourceGroup == "") {
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("identity"), infra.Identity, "specifying an identity requires the name of the identity and the resource group which hosts the identity"))
@@ -114,22 +125,22 @@ func ValidateInfrastructureConfig(infra *apisazure.InfrastructureConfig, nodesCI
 }
 
 func validateNetworkConfig(
-	config *apisazure.NetworkConfig,
-	resourceGroup *apisazure.ResourceGroup,
+	infra *apisazure.InfrastructureConfig,
 	nodes cidrvalidation.CIDR,
 	pods cidrvalidation.CIDR,
 	services cidrvalidation.CIDR,
-	zoned bool,
 	hasVmoAlphaAnnotation bool,
-	fld *field.Path,
+	fldPath *field.Path,
 ) field.ErrorList {
 
 	var (
-		allErrs     = field.ErrorList{}
-		workersPath = fld.Child("workers")
-		zonesPath   = fld.Child("zones")
-		vNetPath    = fld.Child("vnet")
-		workerCIDR  cidrvalidation.CIDR
+		config       = infra.Networks
+		networksPath = fldPath.Child("networks")
+		allErrs      = field.ErrorList{}
+		workersPath  = networksPath.Child("workers")
+		zonesPath    = networksPath.Child("zones")
+		vNetPath     = networksPath.Child("vnet")
+		workerCIDR   cidrvalidation.CIDR
 	)
 
 	// forbid not setting at least one of {workers, zones}
@@ -144,7 +155,7 @@ func validateNetworkConfig(
 		return allErrs
 	}
 
-	if config.Workers != nil {
+	if helper.IsUsingSingleSubnetLayout(infra) {
 		workerCIDR = cidrvalidation.NewCIDR(*config.Workers, workersPath)
 		allErrs = append(allErrs, cidrvalidation.ValidateCIDRParse(workerCIDR)...)
 		allErrs = append(allErrs, cidrvalidation.ValidateCIDRIsCanonical(workersPath, *config.Workers)...)
@@ -153,11 +164,9 @@ func validateNetworkConfig(
 			allErrs = append(allErrs, nodes.ValidateSubset(workerCIDR)...)
 		}
 
-		allErrs = append(allErrs, validateNatGatewayConfig(config.NatGateway, zoned, hasVmoAlphaAnnotation, fld.Child("natGateway"))...)
-	}
-
-	if isZonedWithDedicatedSubnets(config) {
-		if !zoned {
+		allErrs = append(allErrs, validateNatGatewayConfig(config.NatGateway, infra.Zoned, hasVmoAlphaAnnotation, networksPath.Child("natGateway"))...)
+	} else {
+		if !infra.Zoned {
 			allErrs = append(allErrs, field.Forbidden(zonesPath, "cannot specify zones in an non-zonal cluster"))
 		}
 
@@ -171,7 +180,7 @@ func validateNetworkConfig(
 		allErrs = append(allErrs, validateZones(config.Zones, nodes, pods, services, zonesPath)...)
 	}
 
-	allErrs = append(allErrs, validateVnetConfig(config, resourceGroup, workerCIDR, nodes, pods, services, zonesPath, vNetPath)...)
+	allErrs = append(allErrs, validateVnetConfig(&config, infra.ResourceGroup, workerCIDR, nodes, pods, services, zonesPath, vNetPath)...)
 	return allErrs
 }
 
@@ -258,7 +267,7 @@ func validateZones(zones []apisazure.Zone, nodes, pods, services cidrvalidation.
 }
 
 func validateNatGatewayConfig(natGatewayConfig *apisazure.NatGatewayConfig, zoned bool, hasVmoAlphaAnnotation bool, natGatewayPath *field.Path) field.ErrorList {
-	var allErrs = field.ErrorList{}
+	allErrs := field.ErrorList{}
 
 	if natGatewayConfig == nil {
 		return nil
@@ -294,7 +303,7 @@ func validateNatGatewayConfig(natGatewayConfig *apisazure.NatGatewayConfig, zone
 }
 
 func validateNatGatewayIPReference(publicIPReferences []apisazure.PublicIPReference, zone int32, fldPath *field.Path) field.ErrorList {
-	var allErrs = field.ErrorList{}
+	allErrs := field.ErrorList{}
 	for i, publicIPRef := range publicIPReferences {
 		if publicIPRef.Zone != zone {
 			allErrs = append(allErrs, field.Invalid(fldPath.Index(i).Child("zone"), publicIPRef.Zone, fmt.Sprintf("Public IP can't be used as it is not in the same zone as the NatGateway (zone %d)", zone)))
@@ -310,7 +319,7 @@ func validateNatGatewayIPReference(publicIPReferences []apisazure.PublicIPRefere
 }
 
 func validateZonedNatGatewayConfig(natGatewayConfig *apisazure.ZonedNatGatewayConfig, natGatewayPath *field.Path) field.ErrorList {
-	var allErrs = field.ErrorList{}
+	allErrs := field.ErrorList{}
 
 	if natGatewayConfig == nil {
 		return nil
@@ -332,7 +341,7 @@ func validateZonedNatGatewayConfig(natGatewayConfig *apisazure.ZonedNatGatewayCo
 }
 
 func validateZonedPublicIPReference(publicIPReferences []apisazure.ZonedPublicIPReference, fldPath *field.Path) field.ErrorList {
-	var allErrs = field.ErrorList{}
+	allErrs := field.ErrorList{}
 	for i, publicIPRef := range publicIPReferences {
 		if publicIPRef.Name == "" {
 			allErrs = append(allErrs, field.Required(fldPath.Index(i).Child("name"), "Name for NatGateway public ip resource is required"))
@@ -354,32 +363,19 @@ func ValidateInfrastructureConfigUpdate(oldConfig, newConfig *apisazure.Infrastr
 		allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Networks.Workers, oldConfig.Networks.Workers, providerPath.Child("networks").Child("workers"))...)
 	}
 
-	if isZonedWithDedicatedSubnets(&oldConfig.Networks) && !isZonedWithDedicatedSubnets(&newConfig.Networks) {
+	// validate state transitions for the network layouts
+	switch {
+	// if both new and old InfrastructureConfigs use multiple-subnet layout, validate the zones
+	case !helper.IsUsingSingleSubnetLayout(oldConfig) && !helper.IsUsingSingleSubnetLayout(newConfig):
+		allErrs = append(allErrs, validateZonesUpdate(oldConfig, newConfig, providerPath)...)
+	// disallow transitioning from a multiple-subnet to a single-subnet layout
+	case !helper.IsUsingSingleSubnetLayout(oldConfig) && helper.IsUsingSingleSubnetLayout(newConfig):
 		allErrs = append(allErrs, field.Forbidden(providerPath.Child("networks").Child("worker"), "updating the infrastructure configuration from using dedicated subnets per zone to using single subnet is not allowed"))
-	}
-
-	if !isZonedWithDedicatedSubnets(&oldConfig.Networks) && isZonedWithDedicatedSubnets(&newConfig.Networks) {
-		if oldConfig.Networks.Workers != nil && *oldConfig.Networks.Workers != newConfig.Networks.Zones[0].CIDR {
-			allErrs = append(allErrs, field.Forbidden(providerPath.Child("networks", "zones").Index(0).Child("cidr"), "when updating InfrastructureConfig to use dedicated subnets per zones, the CIDR must match that of the previous config.networks.workers"))
-		}
-	}
-
-	if isZonedWithDedicatedSubnets(&oldConfig.Networks) && isZonedWithDedicatedSubnets(&newConfig.Networks) {
-		var (
-			oldZones = oldConfig.Networks.Zones
-			newZones = newConfig.Networks.Zones
-		)
-
-		if len(oldZones) > len(newZones) {
-			allErrs = append(allErrs, field.Forbidden(providerPath.Child("networks", "zones"), "removing zones is not allowed"))
-			return allErrs
-		}
-
-		for i, oldZone := range oldZones {
-			idxPath := providerPath.Child("networks", "zones").Index(i)
-			allErrs = append(allErrs, apivalidation.ValidateImmutableField(oldZone.Name, newConfig.Networks.Zones[i].Name, idxPath.Child("name"))...)
-			allErrs = append(allErrs, apivalidation.ValidateImmutableField(oldZone.CIDR, newConfig.Networks.Zones[i].CIDR, idxPath.Child("cidr"))...)
-		}
+	// validate transition from single-subnet to multiple-subnet layout
+	case helper.IsUsingSingleSubnetLayout(oldConfig) && !helper.IsUsingSingleSubnetLayout(newConfig):
+		allErrs = append(allErrs, validateSingleSubnetToMultipleSubnetTransition(oldConfig, newConfig, providerPath)...)
+	default:
+		allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Networks.Workers, oldConfig.Networks.Workers, providerPath.Child("networks").Child("workers"))...)
 	}
 
 	allErrs = append(allErrs, apivalidation.ValidateImmutableField(oldConfig.Zoned, newConfig.Zoned, providerPath.Child("zoned"))...)
@@ -390,7 +386,7 @@ func ValidateInfrastructureConfigUpdate(oldConfig, newConfig *apisazure.Infrastr
 
 // ValidateVmoConfigUpdate validates the VMO configuration on update.
 func ValidateVmoConfigUpdate(oldShootHasAlphaVmoAnnotation, newShootHasAlphaVmoAnnotation bool, metaDataPath *field.Path) field.ErrorList {
-	var allErrs = field.ErrorList{}
+	allErrs := field.ErrorList{}
 
 	// Check if old shoot has not the vmo alpha annotation and forbid to add it.
 	if !oldShootHasAlphaVmoAnnotation && newShootHasAlphaVmoAnnotation {
@@ -406,7 +402,7 @@ func ValidateVmoConfigUpdate(oldShootHasAlphaVmoAnnotation, newShootHasAlphaVmoA
 }
 
 func validateVnetConfigUpdate(oldNeworkConfig, newNetworkConfig *apisazure.NetworkConfig, networkConfigPath *field.Path) field.ErrorList {
-	var allErrs = field.ErrorList{}
+	allErrs := field.ErrorList{}
 
 	if isExternalVnetUsed(&oldNeworkConfig.VNet) || isDefaultVnetConfig(&oldNeworkConfig.VNet) {
 		allErrs = append(allErrs, apivalidation.ValidateImmutableField(newNetworkConfig.VNet.Name, oldNeworkConfig.VNet.Name, networkConfigPath.Child("vnet", "name"))...)
@@ -416,6 +412,49 @@ func validateVnetConfigUpdate(oldNeworkConfig, newNetworkConfig *apisazure.Netwo
 
 	if oldNeworkConfig.VNet.CIDR != nil && newNetworkConfig.VNet.CIDR == nil {
 		return append(allErrs, field.Invalid(networkConfigPath.Child("vnet", "cidr"), newNetworkConfig.VNet.CIDR, "vnet cidr need to be specified"))
+	}
+
+	return allErrs
+}
+
+func validateSingleSubnetToMultipleSubnetTransition(old, new *apisazure.InfrastructureConfig, fld *field.Path) field.ErrorList {
+	var (
+		allErrs           = field.ErrorList{}
+		foundMatchingCIDR = false
+	)
+
+	for _, zone := range new.Networks.Zones {
+		if zone.CIDR == *old.Networks.Workers {
+			foundMatchingCIDR = true
+			break
+		}
+	}
+
+	if !foundMatchingCIDR {
+		allErrs = append(allErrs, field.Forbidden(fld.Child("networks", "zones"), "when updating InfrastructureConfig to use dedicated subnets per zones, the CIDR for one of the zones must match that of the previous config.networks.workers"))
+	}
+
+	return allErrs
+}
+
+func validateZonesUpdate(old, new *apisazure.InfrastructureConfig, fld *field.Path) field.ErrorList {
+	var (
+		allErrs  = field.ErrorList{}
+		oldZones = old.Networks.Zones
+		newZones = new.Networks.Zones
+	)
+
+	if len(oldZones) > len(newZones) {
+		allErrs = append(allErrs, field.Forbidden(fld.Child("networks", "zones"), "removing zones is not allowed"))
+	}
+
+	for i, newZone := range newZones {
+		for _, oldZone := range oldZones {
+			if newZone.Name == oldZone.Name {
+				idxPath := fld.Child("networks", "zones").Index(i)
+				allErrs = append(allErrs, apivalidation.ValidateImmutableField(new.Networks.Zones[i].CIDR, oldZone.CIDR, idxPath.Child("cidr"))...)
+			}
+		}
 	}
 
 	return allErrs
@@ -436,8 +475,4 @@ func isDefaultVnetConfig(vnetConfig *apisazure.VNet) bool {
 		return true
 	}
 	return false
-}
-
-func isZonedWithDedicatedSubnets(netConfig *apisazure.NetworkConfig) bool {
-	return netConfig.Workers == nil && len(netConfig.Zones) > 0
 }

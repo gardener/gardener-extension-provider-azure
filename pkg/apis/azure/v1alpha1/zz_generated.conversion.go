@@ -715,7 +715,7 @@ func autoConvert_v1alpha1_NetworkStatus_To_azure_NetworkStatus(in *NetworkStatus
 		return err
 	}
 	out.Subnets = *(*[]azure.Subnet)(unsafe.Pointer(&in.Subnets))
-	out.Topology = azure.NetworkTopologyType(in.Topology)
+	out.Layout = azure.NetworkLayout(in.Layout)
 	return nil
 }
 
@@ -729,7 +729,7 @@ func autoConvert_azure_NetworkStatus_To_v1alpha1_NetworkStatus(in *azure.Network
 		return err
 	}
 	out.Subnets = *(*[]Subnet)(unsafe.Pointer(&in.Subnets))
-	out.Topology = NetworkTopologyType(in.Topology)
+	out.Layout = NetworkLayout(in.Layout)
 	return nil
 }
 
@@ -830,6 +830,7 @@ func autoConvert_v1alpha1_Subnet_To_azure_Subnet(in *Subnet, out *azure.Subnet, 
 	out.Name = in.Name
 	out.Purpose = azure.Purpose(in.Purpose)
 	out.Zone = (*string)(unsafe.Pointer(in.Zone))
+	out.Migrated = in.Migrated
 	return nil
 }
 
@@ -842,6 +843,7 @@ func autoConvert_azure_Subnet_To_v1alpha1_Subnet(in *azure.Subnet, out *Subnet, 
 	out.Name = in.Name
 	out.Purpose = Purpose(in.Purpose)
 	out.Zone = (*string)(unsafe.Pointer(in.Zone))
+	out.Migrated = in.Migrated
 	return nil
 }
 

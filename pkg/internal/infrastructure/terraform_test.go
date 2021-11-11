@@ -164,6 +164,7 @@ var _ = Describe("Terraform", func() {
 				"resourceGroupName": TerraformerOutputKeyResourceGroupName,
 				"vnetName":          TerraformerOutputKeyVNetName,
 				"subnetName":        TerraformerOutputKeySubnetName,
+				"subnetNamePrefix":  TerraformerOutputKeySubnetNamePrefix,
 				"routeTableName":    TerraformerOutputKeyRouteTableName,
 				"securityGroupName": TerraformerOutputKeySecurityGroupName,
 			}
@@ -351,7 +352,7 @@ var _ = Describe("Terraform", func() {
 		})
 
 		It("should correctly compute the terraformer chart values for a cluster with Azure Service Endpoints", func() {
-			var serviceEndpointList = []string{testServiceEndpoint}
+			serviceEndpointList := []string{testServiceEndpoint}
 			config.Networks.ServiceEndpoints = serviceEndpointList
 			expectedSubnetValues["serviceEndpoints"] = serviceEndpointList
 			values, err := ComputeTerraformerTemplateValues(infra, config, cluster)
@@ -475,14 +476,18 @@ var _ = Describe("Terraform", func() {
 
 					expectedNetworksValues["subnets"] = []map[string]interface{}{
 						{
+							"name":             int32(1),
 							"cidr":             TestCIDR,
 							"natGateway":       expectedNatGatewayValues,
 							"serviceEndpoints": []string{},
+							"migrated":         false,
 						},
 						{
+							"name":             int32(2),
 							"cidr":             TestCIDR2,
 							"natGateway":       expectedNatGatewayValues,
 							"serviceEndpoints": []string{},
+							"migrated":         false,
 						},
 					}
 				})
@@ -521,6 +526,8 @@ var _ = Describe("Terraform", func() {
 								"zone":                             zone1,
 							},
 							"serviceEndpoints": []string{},
+							"name":             zone1,
+							"migrated":         false,
 						},
 						{
 							"cidr": TestCIDR2,
@@ -530,6 +537,8 @@ var _ = Describe("Terraform", func() {
 								"zone":                             zone2,
 							},
 							"serviceEndpoints": []string{},
+							"name":             zone2,
+							"migrated":         false,
 						},
 					}
 
@@ -608,8 +617,13 @@ var _ = Describe("Terraform", func() {
 				Zoned: false,
 			}
 			state = &TerraformState{
-				VNetName:            vnetName,
-				SubnetNames:         []string{subnetName},
+				VNetName: vnetName,
+				// SubnetNames:         []string{subnetName},
+				Subnets: []terraformSubnet{
+					{
+						name: subnetName,
+					},
+				},
 				RouteTableName:      routeTableName,
 				AvailabilitySetID:   "",
 				AvailabilitySetName: "",
@@ -643,7 +657,7 @@ var _ = Describe("Terraform", func() {
 							Name:    subnetName,
 						},
 					},
-					Topology: apiv1alpha1.TopologyZonalSingleSubnet,
+					Layout: apiv1alpha1.NetworkLayoutSingleSubnet,
 				},
 				Zoned:                      true,
 				NatGatewayPublicIPMigrated: false,
@@ -665,8 +679,10 @@ var _ = Describe("Terraform", func() {
 					{Name: routeTableName, Purpose: apiv1alpha1.PurposeNodes},
 				},
 				AvailabilitySets: []apiv1alpha1.AvailabilitySet{
-					{Name: availabilitySetName, ID: availabilitySetID, Purpose: apiv1alpha1.PurposeNodes,
-						CountFaultDomains: pointer.Int32Ptr(2), CountUpdateDomains: pointer.Int32Ptr(5)},
+					{
+						Name: availabilitySetName, ID: availabilitySetID, Purpose: apiv1alpha1.PurposeNodes,
+						CountFaultDomains: pointer.Int32Ptr(2), CountUpdateDomains: pointer.Int32Ptr(5),
+					},
 				},
 				SecurityGroups: []apiv1alpha1.SecurityGroup{
 					{Name: securityGroupName, Purpose: apiv1alpha1.PurposeNodes},
@@ -681,7 +697,7 @@ var _ = Describe("Terraform", func() {
 							Name:    subnetName,
 						},
 					},
-					Topology: apiv1alpha1.TopologyRegional,
+					Layout: apiv1alpha1.NetworkLayoutSingleSubnet,
 				},
 				Zoned:                      false,
 				NatGatewayPublicIPMigrated: false,
@@ -719,7 +735,7 @@ var _ = Describe("Terraform", func() {
 							Name:    subnetName,
 						},
 					},
-					Topology: apiv1alpha1.TopologyRegional,
+					Layout: apiv1alpha1.NetworkLayoutSingleSubnet,
 				},
 				Identity: &apiv1alpha1.IdentityStatus{
 					ID:        identityID,
@@ -749,7 +765,17 @@ var _ = Describe("Terraform", func() {
 					},
 				},
 			}
-			state.SubnetNames = []string{subnetName1, subnetName2}
+			// state.SubnetNames = []string{subnetName1, subnetName2}
+			state.Subnets = []terraformSubnet{
+				{
+					name: subnetName1,
+					zone: pointer.String(zone1),
+				},
+				{
+					name: subnetName2,
+					zone: pointer.String(zone2),
+				},
+			}
 
 			status := StatusFromTerraformState(config, state)
 			Expect(status).To(Equal(&apiv1alpha1.InfrastructureStatus{
@@ -780,7 +806,7 @@ var _ = Describe("Terraform", func() {
 							Zone:    &zone2,
 						},
 					},
-					Topology: apiv1alpha1.TopologyZonal,
+					Layout: apiv1alpha1.NetworkLayoutMultipleSubnet,
 				},
 				Zoned:                      true,
 				NatGatewayPublicIPMigrated: false,
