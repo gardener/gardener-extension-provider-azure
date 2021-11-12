@@ -34,7 +34,7 @@ var (
 func ValidateCloudProviderSecret(secret, oldSecret *corev1.Secret) error {
 	secretKey := fmt.Sprintf("%s/%s", secret.Namespace, secret.Name)
 
-	for _, key := range []string{azure.SubscriptionIDKey, azure.TenantIDKey, azure.ClientIDKey, azure.ClientSecretKey} {
+	for _, key := range []string{azure.SubscriptionIDKey, azure.TenantIDKey} {
 		val, ok := secret.Data[key]
 		if !ok {
 			return fmt.Errorf("missing %q field in secret %s", key, secretKey)
@@ -42,9 +42,25 @@ func ValidateCloudProviderSecret(secret, oldSecret *corev1.Secret) error {
 		if len(val) == 0 {
 			return fmt.Errorf("field %q in secret %s cannot be empty", key, secretKey)
 		}
+
+		// subscriptionID and tenantID must be valid GUIDs,
+		// see https://docs.microsoft.com/en-us/rest/api/securitycenter/locations/get
+		if !guidRegex.Match(val) {
+			return fmt.Errorf("field %q in secret %s must be a valid GUID", key, secretKey)
+		}
+	}
+
+	for _, key := range []string{azure.ClientIDKey, azure.ClientSecretKey} {
+		val, ok := secret.Data[key]
+		if !ok {
+			continue
+		}
+		if len(val) == 0 {
+			return fmt.Errorf("if field %q in secret %s is set it cannot be empty", key, secretKey)
+		}
 		switch key {
-		case azure.SubscriptionIDKey, azure.TenantIDKey, azure.ClientIDKey:
-			// subscriptionID, tenantID, and clientID must be valid GUIDs,
+		case azure.ClientIDKey:
+			// clientID must be a valid GUID,
 			// see https://docs.microsoft.com/en-us/rest/api/securitycenter/locations/get
 			if !guidRegex.Match(val) {
 				return fmt.Errorf("field %q in secret %s must be a valid GUID", key, secretKey)
