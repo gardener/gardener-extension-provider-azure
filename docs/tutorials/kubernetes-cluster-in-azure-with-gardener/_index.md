@@ -1,45 +1,45 @@
 ---
-title: Create shoot clusters in Azure
+title: Create Shoot Clusters on GCP with Azure
 level: beginner
 category: Getting Started
 scope: app-developer
 ---
 
-# Create shoot clusters in Azure
+### Overview
 
 ### Prerequisites
 
--   You need an Azure account.
--   You have access to the Gardener dashboard and have permissions to create projects.
+- You have created an [Azure account](https://azure.microsoft.com/en-us/).
+- You have access to the Gardener dashboard and have permissions to create projects.
+- You have an Azure Service Principal assigned to your subscription.
 
+### Steps
 
 1. Go to the Gardener dashboard and create a *Project*.
 
-    <img src="images/new_gardener_project.jpg">
+    <img src="images/new-gardener-project.png">
 
 
-2. Get properties of your Azure account/Service Principal.
+2. Get the properties of your Azure AD tenant, Subscription and Service Principal.
     ```
-    Before you can provision and access a Kubernetes cluster on Azure, you need to add the account credentials in Gardener. 
+    Before you can provision and access a Kubernetes cluster on Azure, you need to add the Azure service principal, AD tenant and subscription credentials in Gardener. 
     Gardener needs the credentials to provision and operate the Azure infrastructure for your Kubernetes cluster.
 
-    **Ensure that the account has the `contributor` role.**
+    **Ensure that the Azure service principal has the `Contributor` role within your Subscription assigned.**
     ```
 
 
-    -  Tenant ID
-    
-        The TenantID is also called DirectoryID - https://portal.azure.com/#blade/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/Properties.
-        <img src="images/azuregettenantid.jpg">
+    - Tenant ID
+        To find your TenantID, follow this [guide](https://docs.microsoft.com/en-us/azure/active-directory/fundamentals/active-directory-how-to-find-tenant).
 
-    -  ClientID
+    - SubscriptionID
         Select the subscription.
         <img src="images/azureselectsubscription.jpg">
 
-    - Select the SPN.
+    - Select the Service Principal (SPN).
         <img src="images/azureselectspn.jpg">
 
-    *Note:* The ClientID is also called ApplicationID.
+    *Note:* A service principal consist of a `ClientID` (also called `ApplicationID`) and a Client Secret. For more information, see [here](https://docs.microsoft.com/en-us/azure/active-directory/develop/app-objects-and-service-principals).
     <img src="images/azuregetclientid.jpg">
 
     - Client Secret
@@ -52,7 +52,7 @@ scope: app-developer
 
     <img src="images/gardenernewazuresecret.jpg">
 
-4. Provide the details for the Azure service account.  
+4. Enter the `TenantID`, `SubscriptionID` and the Service Principal credentials (`ClientID` and `ClientSecret`) into the Secret definition.  
     After processing the ticket, you’ll receive the Service Principle credentials via email.
     Copy "Key Value" from the email into "Client Secret".
 
