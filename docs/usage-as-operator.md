@@ -179,14 +179,14 @@ Please make sure the Azure application has the following IAM roles.
 
 ### Gardener managed Service Principals
 
-The operators of the Gardener Azure exenstion can provide a list of managed service principals (technial users) that can be used for Azure Shoots.
-This elimiates the need for users to provide own service principals for their clusters.
+The operators of the Gardener Azure extension can provide a list of managed service principals (technical users) that can be used for Azure Shoots.
+This eliminates the need for users to provide own service principals for their clusters.
 
 The user would need to grant the managed service principal access to their subscription with proper permissions.
 
-As service principals are managed in an Azure Active Directory for each supported Active Directory an own service principal need to be provided.
+As service principals are managed in an Azure Active Directory for each supported Active Directory, an own service principal needs to be provided.
 
-In case the user provide still an own service principal in the Shoot secret this one will be used instead of the managed one provided by the operator.
+In case the user provides an own service principal in the Shoot secret, this one will be used instead of the managed one provided by the operator.
 
 Each managed service principal will be maintained in a `Secret` like that:
 
@@ -205,13 +205,13 @@ data:
 type: Opaque
 ```
 
-The user need still to provide in its Shoot secret a `tenantID` and `subscriptionID`.
+The user needs to provide in its Shoot secret a `tenantID` and `subscriptionID`.
 
 The managed service principal will be assigned based on the `tenantID`.
-In case there is a managed service principal secret with a matching `tenantID` this will be used for the Shoot.
+In case there is a managed service principal secret with a matching `tenantID`, this one will be used for the Shoot.
 If there is no matching managed service principal secret then the next Shoot operation will fail.
 
 One of the benefits of having managed service principals is that the operator control the lifecycle of the service principal and can rotate its secrets.
 
-After the service principal secret has been rotated and the corresponding secret is updated all using Shoot clusters need to be reconciled or the last operation to be retried.
+After the service principal secret has been rotated and the corresponding secret is updated, all Shoot clusters using it need to be reconciled or the last operation to be retried.
 

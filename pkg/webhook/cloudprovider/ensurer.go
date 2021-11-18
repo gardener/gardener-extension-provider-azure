@@ -25,11 +25,8 @@ import (
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-var labelSelector = client.MatchingLabels{azure.ExtensionPurposeLabel: azure.ExtensionPurposeServicePrincipalSecret}
 
 // NewEnsurer creates cloudprovider ensurer.
 func NewEnsurer(logger logr.Logger) cloudprovider.Ensurer {
@@ -39,9 +36,8 @@ func NewEnsurer(logger logr.Logger) cloudprovider.Ensurer {
 }
 
 type ensurer struct {
-	logger  logr.Logger
-	client  client.Client
-	decoder runtime.Decoder
+	logger logr.Logger
+	client client.Client
 }
 
 // InjectClient injects the given client into the ensurer.
@@ -51,8 +47,7 @@ func (e *ensurer) InjectClient(client client.Client) error {
 }
 
 // InjectScheme injects the given scheme into the decoder of the ensurer.
-func (e *ensurer) InjectScheme(scheme *runtime.Scheme) error {
-	e.decoder = serializer.NewCodecFactory(scheme, serializer.EnableStrict).UniversalDecoder()
+func (e *ensurer) InjectScheme(_ *runtime.Scheme) error {
 	return nil
 }
 
@@ -82,6 +77,7 @@ func (e *ensurer) fetchTenantServicePrincipalSecret(ctx context.Context, tenantI
 	var (
 		servicePrincipalSecretList = &corev1.SecretList{}
 		matchingSecrets            = []*corev1.Secret{}
+		labelSelector              = client.MatchingLabels{azure.ExtensionPurposeLabel: azure.ExtensionPurposeServicePrincipalSecret}
 	)
 
 	if err := e.client.List(ctx, servicePrincipalSecretList, labelSelector); err != nil {
@@ -105,8 +101,7 @@ func (e *ensurer) fetchTenantServicePrincipalSecret(ctx context.Context, tenantI
 	}
 
 	if len(matchingSecrets) > 1 {
-		err := fmt.Errorf("found more than one service principal matching to tenant id %q", tenantID)
-		return nil, err
+		return nil, fmt.Errorf("found more than one service principal matching to tenant id %q", tenantID)
 	}
 
 	return matchingSecrets[0], nil

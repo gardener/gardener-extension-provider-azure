@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cloudprovider
+package cloudprovider_test
 
 import (
 	"context"
 	"testing"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/install"
+	. "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/cloudprovider"
 
 	"github.com/gardener/gardener/extensions/pkg/webhook/cloudprovider"
 	gcontext "github.com/gardener/gardener/extensions/pkg/webhook/context"
@@ -30,6 +31,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 )
 
@@ -40,6 +42,7 @@ func TestController(t *testing.T) {
 
 var _ = Describe("Ensurer", func() {
 	var (
+		logger  = log.Log.WithName("azure-cloudprovider-webhook-test")
 		ctx     = context.TODO()
 		ensurer cloudprovider.Ensurer
 		scheme  *runtime.Scheme

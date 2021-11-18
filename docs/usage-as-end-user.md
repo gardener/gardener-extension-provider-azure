@@ -36,15 +36,15 @@ Please consider spreading your Shoots over Service Principals from different Azu
 ### Managed Service Principals
 
 The operators of the Gardener Azure extension can provide managed service principals.
-This eliminate the need for users to provide an own service principal for a Shoot.
+This eliminates the need for users to provide an own service principal for a Shoot.
 
-To make use of a managed service principal the Azure secret of a Shoot cluster must contain only a `subscriptionID` and a `tenantID` field, but no `clientID` and `clientSecret`.
+To make use of a managed service principal, the Azure secret of a Shoot cluster must contain only a `subscriptionID` and a `tenantID` field, but no `clientID` and `clientSecret`.
 Removing those fields from the secret of an existing Shoot will also let it adopt the managed service principal.
 
-Based on the `tenantID` field the Gardener extension will try to assign the managed service principal to the Shoot.
+Based on the `tenantID` field, the Gardener extension will try to assign the managed service principal to the Shoot.
 If no managed service principal can be assigned then the next operation on the Shoot will fail.
 
-⚠️ The managed service principal need to be assigned upfront with proper permissions to the Azure subscription.
+⚠️ The managed service principal need to be assigned to the users Azure subscription with proper permissions before using it.
 
 ## `InfrastructureConfig`
 
