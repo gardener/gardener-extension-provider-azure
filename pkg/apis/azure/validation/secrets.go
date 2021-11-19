@@ -50,28 +50,32 @@ func ValidateCloudProviderSecret(secret, oldSecret *corev1.Secret) error {
 		}
 	}
 
-	for _, key := range []string{azure.ClientIDKey, azure.ClientSecretKey} {
-		val, ok := secret.Data[key]
-		if !ok {
-			continue
+	if clientID, ok := secret.Data[azure.ClientIDKey]; ok {
+		if _, ok := secret.Data[azure.ClientSecretKey]; !ok {
+			return fmt.Errorf("if field %q is passed also field %q must be provided", azure.ClientIDKey, azure.ClientSecretKey)
 		}
-		if len(val) == 0 {
-			return fmt.Errorf("if field %q in secret %s is set it cannot be empty", key, secretKey)
+		if len(clientID) == 0 {
+			return fmt.Errorf("if field %q in secret %s is set it cannot be empty", azure.ClientIDKey, secretKey)
 		}
-		switch key {
-		case azure.ClientIDKey:
-			// clientID must be a valid GUID,
-			// see https://docs.microsoft.com/en-us/rest/api/securitycenter/locations/get
-			if !guidRegex.Match(val) {
-				return fmt.Errorf("field %q in secret %s must be a valid GUID", key, secretKey)
-			}
-		case azure.ClientSecretKey:
-			// clientSecret must not contain leading or trailing new lines, as they are known to cause issues
-			// Other whitespace characters such as spaces are intentionally not checked for,
-			// since there is no documentation indicating that they would not be valid
-			if strings.Trim(string(val), "\n\r") != string(val) {
-				return fmt.Errorf("field %q in secret %s must not contain leading or traling new lines", key, secretKey)
-			}
+		// clientID must be a valid GUID,
+		// see https://docs.microsoft.com/en-us/rest/api/securitycenter/locations/get
+		if !guidRegex.Match(clientID) {
+			return fmt.Errorf("field %q in secret %s must be a valid GUID", azure.ClientIDKey, secretKey)
+		}
+	}
+
+	if clientSecret, ok := secret.Data[azure.ClientSecretKey]; ok {
+		if _, ok := secret.Data[azure.ClientIDKey]; !ok {
+			return fmt.Errorf("if field %q is passed also field %q must be provided", azure.ClientSecretKey, azure.ClientIDKey)
+		}
+		if len(clientSecret) == 0 {
+			return fmt.Errorf("if field %q in secret %s is set it cannot be empty", azure.ClientSecretKey, secretKey)
+		}
+		// clientSecret must not contain leading or trailing new lines, as they are known to cause issues
+		// Other whitespace characters such as spaces are intentionally not checked for,
+		// since there is no documentation indicating that they would not be valid
+		if strings.Trim(string(clientSecret), "\n\r") != string(clientSecret) {
+			return fmt.Errorf("field %q in secret %s must not contain leading or traling new lines", azure.ClientSecretKey, secretKey)
 		}
 	}
 

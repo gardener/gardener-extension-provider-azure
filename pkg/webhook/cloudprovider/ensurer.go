@@ -55,20 +55,22 @@ func (e *ensurer) InjectScheme(_ *runtime.Scheme) error {
 // a service principal clientID and clientSecret (if not present) that match
 // to a corresponding tenantID.
 func (e *ensurer) EnsureCloudProviderSecret(ctx context.Context, _ gcontext.GardenContext, new, _ *corev1.Secret) error {
-	if !secretContainKey(new, azure.TenantIDKey) {
+	if !hasSecretKey(new, azure.TenantIDKey) {
 		return fmt.Errorf("could not mutate cloudprovider secret as %q field is missing", azure.TenantIDKey)
 	}
 
-	if !secretContainKey(new, azure.ClientIDKey) && !secretContainKey(new, azure.ClientSecretKey) {
-		servicePrincipalSecret, err := e.fetchTenantServicePrincipalSecret(ctx, string(new.Data[azure.TenantIDKey]))
-		if err != nil {
-			return err
-		}
-
-		e.logger.Info("mutate cloudprovider secret", "namespace", new.Namespace, "name", new.Name)
-		new.Data[azure.ClientIDKey] = servicePrincipalSecret.Data[azure.ClientIDKey]
-		new.Data[azure.ClientSecretKey] = servicePrincipalSecret.Data[azure.ClientSecretKey]
+	if hasSecretKey(new, azure.ClientIDKey) || hasSecretKey(new, azure.ClientSecretKey) {
+		return nil
 	}
+
+	servicePrincipalSecret, err := e.fetchTenantServicePrincipalSecret(ctx, string(new.Data[azure.TenantIDKey]))
+	if err != nil {
+		return err
+	}
+
+	e.logger.V(5).Info("mutate cloudprovider secret", "namespace", new.Namespace, "name", new.Name)
+	new.Data[azure.ClientIDKey] = servicePrincipalSecret.Data[azure.ClientIDKey]
+	new.Data[azure.ClientSecretKey] = servicePrincipalSecret.Data[azure.ClientSecretKey]
 
 	return nil
 }
@@ -85,7 +87,7 @@ func (e *ensurer) fetchTenantServicePrincipalSecret(ctx context.Context, tenantI
 	}
 
 	for _, sec := range servicePrincipalSecretList.Items {
-		if !secretContainKey(&sec, azure.TenantIDKey) {
+		if !hasSecretKey(&sec, azure.TenantIDKey) {
 			e.logger.Info("service principal secret is invalid as it does not contain a tenant id", "namespace", sec.Namespace, "name", sec.Name)
 			continue
 		}
@@ -107,7 +109,7 @@ func (e *ensurer) fetchTenantServicePrincipalSecret(ctx context.Context, tenantI
 	return matchingSecrets[0], nil
 }
 
-func secretContainKey(secret *corev1.Secret, key string) bool {
+func hasSecretKey(secret *corev1.Secret, key string) bool {
 	if _, ok := secret.Data[key]; ok {
 		return true
 	}

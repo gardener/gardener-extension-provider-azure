@@ -211,7 +211,7 @@ The managed service principal will be assigned based on the `tenantID`.
 In case there is a managed service principal secret with a matching `tenantID`, this one will be used for the Shoot.
 If there is no matching managed service principal secret then the next Shoot operation will fail.
 
-One of the benefits of having managed service principals is that the operator control the lifecycle of the service principal and can rotate its secrets.
+One of the benefits of having managed service principals is that the operator controls the lifecycle of the service principal and can rotate its secrets.
 
 After the service principal secret has been rotated and the corresponding secret is updated, all Shoot clusters using it need to be reconciled or the last operation to be retried.
 

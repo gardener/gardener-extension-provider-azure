@@ -123,6 +123,26 @@ var _ = Describe("Secret validation", func() {
 			BeNil(),
 		),
 
+		Entry("should return error when clientID is provided but no clientSecret",
+			map[string][]byte{
+				azure.SubscriptionIDKey: []byte(subscriptionID),
+				azure.TenantIDKey:       []byte(tenantID),
+				azure.ClientIDKey:       []byte(clientID),
+			},
+			nil,
+			HaveOccurred(),
+		),
+
+		Entry("should return error when clientSecret is provided but no clientID",
+			map[string][]byte{
+				azure.SubscriptionIDKey: []byte(subscriptionID),
+				azure.TenantIDKey:       []byte(tenantID),
+				azure.ClientSecretKey:   []byte(clientSecret),
+			},
+			nil,
+			HaveOccurred(),
+		),
+
 		Entry("should return error when the client ID is empty",
 			map[string][]byte{
 				azure.SubscriptionIDKey: []byte(subscriptionID),
