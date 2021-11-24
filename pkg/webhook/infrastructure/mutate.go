@@ -73,12 +73,14 @@ func NetworkLayoutMigrationMutate(ctx context.Context, logger logr.Logger, newIn
 		return fmt.Errorf("could not mutate object: %v", err)
 	}
 
-	// if the new one has the label then check if you need to remove it
+	// if newInfra already contains the zone migration annotation, check if it is still necessary. Otherwise, remove the
+	// the annotation.
 	if z, ok := newInfra.Annotations[azuretypes.NetworkLayoutZoneMigrationAnnotation]; ok {
 		findMatchingZone := false
 		for _, zone := range newProviderCfg.Networks.Zones {
 			if helper.InfrastructureZoneToString(zone.Name) == z {
 				findMatchingZone = true
+				break
 			}
 		}
 
@@ -97,6 +99,16 @@ func NetworkLayoutMigrationMutate(ctx context.Context, logger logr.Logger, newIn
 		return fmt.Errorf("could not mutate object: %v", err)
 	}
 
+	// if the new configuration is using zones or it is not using multi-subnet layout it is not eligible for the mutation.
+	if !newProviderCfg.Zoned || len(newProviderCfg.Networks.Zones) == 0 {
+		return nil
+	}
+
+	// if the old configuration is not using zones or if it is already using a multi-subnet layout, no mutation is necessary.
+	if !oldProviderCfg.Zoned || len(oldProviderCfg.Networks.Zones) > 0 {
+		return nil
+	}
+
 	if oldInfra.Status.ProviderStatus != nil {
 		oldProviderStatus, err = helper.InfrastructureStatusFromInfrastructure(oldInfra)
 		if err != nil {
@@ -104,18 +116,8 @@ func NetworkLayoutMigrationMutate(ctx context.Context, logger logr.Logger, newIn
 		}
 	}
 
-	// if the new configuration is not zoned or is not using multiple-subnet layout it is not eligible for the mutation.
-	if !newProviderCfg.Zoned || len(newProviderCfg.Networks.Zones) == 0 {
-		return nil
-	}
-
-	// if the old configuration is not zoned and it is already using multiple-subnet layout, no mutation is necessary.
-	if !oldProviderCfg.Zoned || len(oldProviderCfg.Networks.Zones) > 0 {
-		return nil
-	}
-
 	// take care of clusters that have not been reconciliated for a long time (hibernated etc). In this case they may
-	// not have the Layout field populated, so instead rely on the old spec. If the cluster was not a zoned one skip it.
+	// not have the Layout field populated.
 	if oldProviderStatus != nil &&
 		oldProviderStatus.Networks.Layout != "" &&
 		oldProviderStatus.Networks.Layout != azure.NetworkLayoutSingleSubnet {

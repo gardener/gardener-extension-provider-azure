@@ -36,7 +36,7 @@ const (
 func ValidateInfrastructureConfigAgainstCloudProfile(oldInfra, infra *apisazure.InfrastructureConfig, shootRegion string, cloudProfile *gardencorev1beta1.CloudProfile, fld *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	if len(infra.Networks.Zones) == 0 {
+	if helper.IsUsingSingleSubnetLayout(infra) {
 		return allErrs
 	}
 
@@ -155,8 +155,14 @@ func validateNetworkConfig(
 		return allErrs
 	}
 
-	if helper.IsUsingSingleSubnetLayout(infra) {
+	if config.Workers != nil {
 		workerCIDR = cidrvalidation.NewCIDR(*config.Workers, workersPath)
+	}
+
+	allErrs = append(allErrs, validateVnetConfig(&config, infra.ResourceGroup, workerCIDR, nodes, pods, services, zonesPath, vNetPath)...)
+
+	// handle single subnet layout validation.
+	if helper.IsUsingSingleSubnetLayout(infra) {
 		allErrs = append(allErrs, cidrvalidation.ValidateCIDRParse(workerCIDR)...)
 		allErrs = append(allErrs, cidrvalidation.ValidateCIDRIsCanonical(workersPath, *config.Workers)...)
 
@@ -165,22 +171,23 @@ func validateNetworkConfig(
 		}
 
 		allErrs = append(allErrs, validateNatGatewayConfig(config.NatGateway, infra.Zoned, hasVmoAlphaAnnotation, networksPath.Child("natGateway"))...)
-	} else {
-		if !infra.Zoned {
-			allErrs = append(allErrs, field.Forbidden(zonesPath, "cannot specify zones in an non-zonal cluster"))
-		}
-
-		if config.NatGateway != nil {
-			allErrs = append(allErrs, field.Forbidden(workersPath, "natGateway cannot be specified when workers field is missing"))
-		}
-		if len(config.ServiceEndpoints) > 0 {
-			allErrs = append(allErrs, field.Forbidden(workersPath, "serviceEndpoints cannot be specified when workers field is missing"))
-		}
-
-		allErrs = append(allErrs, validateZones(config.Zones, nodes, pods, services, zonesPath)...)
+		return allErrs
 	}
 
-	allErrs = append(allErrs, validateVnetConfig(&config, infra.ResourceGroup, workerCIDR, nodes, pods, services, zonesPath, vNetPath)...)
+	// handle multiple subnet layout validation.
+	if !infra.Zoned {
+		allErrs = append(allErrs, field.Forbidden(zonesPath, "cannot specify zones in an non-zonal cluster"))
+	}
+
+	if config.NatGateway != nil {
+		allErrs = append(allErrs, field.Forbidden(workersPath, "natGateway cannot be specified when workers field is missing"))
+	}
+	if len(config.ServiceEndpoints) > 0 {
+		allErrs = append(allErrs, field.Forbidden(workersPath, "serviceEndpoints cannot be specified when workers field is missing"))
+	}
+
+	allErrs = append(allErrs, validateZones(config.Zones, nodes, pods, services, zonesPath)...)
+
 	return allErrs
 }
 

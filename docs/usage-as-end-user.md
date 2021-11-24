@@ -59,12 +59,12 @@ networks:
   # serviceEndpoints:
   # - Microsoft.Test
   # zones:
-  #   - name: 1
-  #     cidr: "10.250.0.0/24
-  #   - name: 2
-  #     cidr: "10.250.0.0/24"
-  #     natGateway:
-  #       enabled: false
+  # - name: 1
+  #   cidr: "10.250.0.0/24
+  # - name: 2
+  #   cidr: "10.250.0.0/24"
+  #   natGateway:
+  #     enabled: false
 zoned: false
 # resourceGroup:
 #   name: mygroup
@@ -115,8 +115,8 @@ Another deployment option **for zonal clusters only**, is to create and configur
 To use this configuration the following requirements must be met:
 
 - the `zoned` field must be set to `true`.
-- the `vnet` section must not be empty and must contain a valid configuration. For existing clusters that were not using the `vnet` section, it is enough if `vnet.cidr` field is set to the current `networks.worker` value.
- 
+- the `networks.vnet` section must not be empty and must contain a valid configuration. For existing clusters that were not using the `networks.vnet` section, it is enough if `networks.vnet.cidr` field is set to the current `networks.worker` value.
+
 For each of the target zones a subnet CIDR range must be specified. The specified CIDR range must be contained in the VNet CIDR specified above, or the VNet CIDR of your already existing VNet. In addition, the CIDR ranges must not overlap with the ranges of the other subnets.
 
 _ServiceEndpoints_ and _NatGateways_ can be configured per subnet. Respectively, when `networks.zones` is specified, the fields `networks.workers`, `networks.serviceEndpoints` and `networks.natGateway` cannot be set. All the configuration for the subnets must be done inside the respective zone's configuration.
@@ -131,12 +131,12 @@ networks:
   vnet: # specify either 'name' and 'resourceGroup' or 'cidr'
     cidr: 10.250.0.0/16
   zones:
-    - name: 1
-      cidr: "10.250.0.0/24"
-    - name: 2
-      cidr: "10.250.0.0/24"
-      natGateway:
-        enabled: false
+  - name: 1
+    cidr: "10.250.0.0/24"
+  - name: 2
+    cidr: "10.250.0.0/24"
+    natGateway:
+      enabled: false
 ```
 
 ### Migrating to zonal shoots with dedicated subnets per zone

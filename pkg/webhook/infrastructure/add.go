@@ -30,9 +30,7 @@ func AddToManager(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 		return nil, err
 	}
 
-	namespaceSelector := buildSelector(azure.Type)
 	logger.Info("Creating webhook")
-
 	return &extensionswebhook.Webhook{
 		Name:     WebhookName,
 		Target:   extensionswebhook.TargetSeed,
@@ -40,7 +38,7 @@ func AddToManager(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 		Types:    types,
 		Webhook:  &admission.Webhook{Handler: handler},
 		Path:     webhookPath,
-		Selector: namespaceSelector,
+		Selector: buildSelector(azure.Type),
 	}, nil
 }
 

@@ -110,16 +110,12 @@ func ComputeTerraformerTemplateValues(
 ) {
 	var (
 		createResourceGroup   = true
-		createVNet            = true
 		createAvailabilitySet = false
 		resourceGroupName     = infra.Namespace
 
 		identityConfig map[string]interface{}
 		azureConfig    = map[string]interface{}{
 			"region": infra.Spec.Region,
-		}
-		vnetConfig = map[string]interface{}{
-			"name": infra.Namespace,
 		}
 		outputKeys = map[string]interface{}{
 			"resourceGroupName": TerraformerOutputKeyResourceGroupName,
@@ -142,21 +138,12 @@ func ComputeTerraformerTemplateValues(
 		resourceGroupName = config.ResourceGroup.Name
 	}
 
-	// VNet settings.
-	if config.Networks.VNet.Name != nil && config.Networks.VNet.ResourceGroup != nil {
-		// Deploy in existing vNet.
-		createVNet = false
-		vnetConfig["name"] = *config.Networks.VNet.Name
-		vnetConfig["resourceGroup"] = *config.Networks.VNet.ResourceGroup
-		outputKeys["vnetResourceGroup"] = TerraformerOutputKeyVNetResourceGroup
-	} else if config.Networks.VNet.CIDR != nil {
-		// Apply a custom cidr for the vNet.
-		vnetConfig["cidr"] = *config.Networks.VNet.CIDR
-	} else if config.Networks.Workers != nil {
-		// Use worker cidr as default for the vNet.
-		vnetConfig["cidr"] = *config.Networks.Workers
-	} else {
-		return nil, fmt.Errorf("no VNet or workers configuration provided")
+	createVNet, vnetConfig, additionalOutpuKeys, err := generateVNetConfig(&config.Networks, infra.Namespace)
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range additionalOutpuKeys {
+		outputKeys[k] = v
 	}
 
 	if primaryAvSetRequired {
@@ -184,8 +171,6 @@ func ComputeTerraformerTemplateValues(
 		outputKeys["identityClientID"] = TerraformerOutputKeyIdentityClientID
 	}
 
-	// we check for the network setup in the spec by chekcing Workers. Single subnet is our base case therefore we check if workers != nil
-	// the base case for our network setup is to have a single subnet. Therefore we chekc
 	var networkConfig map[string]interface{}
 	if helper.IsUsingSingleSubnetLayout(config) {
 		networkConfig, err = computeNetworkConfigSingleSubnetLayout(infra, config)
@@ -213,6 +198,33 @@ func ComputeTerraformerTemplateValues(
 		"outputKeys":  outputKeys,
 	}
 	return result, nil
+}
+
+func generateVNetConfig(n *api.NetworkConfig, defaultVnetName string) (bool, map[string]interface{}, map[string]interface{}, error) {
+	var (
+		createVNet = true
+		vnetConfig = map[string]interface{}{
+			"name": defaultVnetName,
+		}
+		outputKeys = map[string]interface{}{}
+		err        error
+	)
+
+	switch {
+	case n.VNet.Name != nil && n.VNet.ResourceGroup != nil:
+		createVNet = false
+		vnetConfig["name"] = *n.VNet.Name
+		vnetConfig["resourceGroup"] = *n.VNet.ResourceGroup
+		outputKeys["vnetResourceGroup"] = TerraformerOutputKeyVNetResourceGroup
+	case n.VNet.CIDR != nil:
+		vnetConfig["cidr"] = *n.VNet.CIDR
+	case n.Workers != nil:
+		vnetConfig["cidr"] = *n.Workers
+	default:
+		return false, nil, nil, fmt.Errorf("no VNet or workers configuration provided")
+	}
+
+	return createVNet, vnetConfig, outputKeys, err
 }
 
 func computeNetworkConfigSingleSubnetLayout(infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig) (map[string]interface{}, error) {
@@ -354,7 +366,7 @@ type TerraformState struct {
 	CountUpdateDomains int
 	// AvailabilitySetName the ID for the created availability set .
 	AvailabilitySetName string
-	// SubnetName is the name of the created subnet.
+	// Subnets contain information to identify the created subnets.
 	Subnets []terraformSubnet
 	// RouteTableName is the name of the route table.
 	RouteTableName string

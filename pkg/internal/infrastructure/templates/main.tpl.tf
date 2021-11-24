@@ -171,10 +171,7 @@ resource "azurerm_nat_gateway_public_ip_association" "{{ $natName }}-ip-associat
   public_ip_address_id = azurerm_public_ip.{{ $natIpName }}.id
 }
 {{- end }}
-
 {{- end }}
-{{- /*- end */}}
-
 {{- end }}
 
 {{ if .identity -}}
