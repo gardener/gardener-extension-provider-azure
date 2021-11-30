@@ -88,7 +88,7 @@ func (e *ensurer) fetchTenantServicePrincipalSecret(ctx context.Context, tenantI
 
 	for _, sec := range servicePrincipalSecretList.Items {
 		if !hasSecretKey(&sec, azure.TenantIDKey) {
-			e.logger.Info("service principal secret is invalid as it does not contain a tenant id", "namespace", sec.Namespace, "name", sec.Name)
+			e.logger.V(5).Info("service principal secret is invalid as it does not contain a tenant id", "namespace", sec.Namespace, "name", sec.Name)
 			continue
 		}
 
