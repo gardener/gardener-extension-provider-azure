@@ -44,7 +44,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/pointer"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ = Describe("Machines", func() {
@@ -392,25 +391,20 @@ var _ = Describe("Machines", func() {
 							MachineConfiguration: &machinev1alpha1.MachineConfiguration{},
 						},
 					}
-
 				})
 
 				It("should return the expected machine deployments for profile image types", func() {
 					workerDelegate := wrapNewWorkerDelegate(c, chartApplier, w, cluster, nil)
 
-					gomock.InOrder(
-						c.EXPECT().
-							DeleteAllOf(context.TODO(), &machinev1alpha1.AzureMachineClass{}, client.InNamespace(namespace)),
-						chartApplier.
-							EXPECT().
-							Apply(
-								ctx,
-								filepath.Join(azure.InternalChartsPath, "machineclass"),
-								namespace,
-								"machineclass",
-								kubernetes.Values(machineClasses),
-							),
-					)
+					chartApplier.
+						EXPECT().
+						Apply(
+							ctx,
+							filepath.Join(azure.InternalChartsPath, "machineclass"),
+							namespace,
+							"machineclass",
+							kubernetes.Values(machineClasses),
+						)
 
 					// Test workerDelegate.DeployMachineClasses()
 					err := workerDelegate.DeployMachineClasses(ctx)
