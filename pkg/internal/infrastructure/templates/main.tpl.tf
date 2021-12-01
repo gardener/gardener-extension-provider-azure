@@ -94,10 +94,6 @@ resource "azurerm_nat_gateway" "nat" {
   {{ if hasKey .natGateway "zone" -}}
   zones = [{{ .natGateway.zone | quote }}]
   {{- end }}
-  {{ if .natGateway.migrateNatGatewayToIPAssociation -}}
-  # TODO(natipmigration) This can be removed in future versions when the ip migration has been completed.
-  public_ip_address_ids   = []
-  {{- end }}
   {{- end }}
 }
 resource "azurerm_subnet_nat_gateway_association" "nat-worker-subnet-association" {
