@@ -76,3 +76,11 @@ config:
 gardener:
   seed:
     provider: azure
+
+# servicePrincipals:
+# - tenantID: tenant-1
+#   clientID: spn-1
+#   clientSecret: secret-1
+# - tenantID: tenant-2
+#   clientID: spn-2
+#   clientSecret: secret-2
