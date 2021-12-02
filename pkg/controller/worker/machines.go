@@ -37,9 +37,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var (
-	tagRegex = regexp.MustCompile(`[<>%\\&?/ ]`)
-)
+var tagRegex = regexp.MustCompile(`[<>%\\&?/ ]`)
 
 // MachineClassKind yields the name of machine class kind used by Azure provider.
 func (w *workerDelegate) MachineClassKind() string {
@@ -62,12 +60,6 @@ func (w *workerDelegate) DeployMachineClasses(ctx context.Context) error {
 		if err := w.generateMachineConfig(ctx); err != nil {
 			return err
 		}
-	}
-
-	// Delete any older version of AzureMachineClass CRs.
-	// TODO: Remove this clean-up in future version.
-	if err := w.Client().DeleteAllOf(ctx, &machinev1alpha1.AzureMachineClass{}, client.InNamespace(w.worker.Namespace)); err != nil {
-		return fmt.Errorf("cleaning up older version of Azure machine class CRs failed: %w", err)
 	}
 
 	return w.seedChartApplier.Apply(ctx, filepath.Join(azure.InternalChartsPath, "machineclass"), w.worker.Namespace, "machineclass", kubernetes.Values(map[string]interface{}{"machineClasses": w.machineClasses}))
@@ -267,7 +259,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		}
 
 		// Availability Zones
-		var zoneCount = len(pool.Zones)
+		zoneCount := len(pool.Zones)
 		for zoneIndex, zone := range pool.Zones {
 			machineDeployment, machineClassSpec := generateMachineClassAndDeployment(&zoneInfo{
 				name:  zone,
@@ -371,7 +363,7 @@ func SanitizeAzureVMTag(label string) string {
 }
 
 func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPool, infrastructureStatus *azureapi.InfrastructureStatus, vmoDependency *azureapi.VmoDependency) (string, error) {
-	var additionalHashData = []string{}
+	additionalHashData := []string{}
 
 	// Integrate data disks/volumes in the hash.
 	for _, dv := range pool.DataVolumes {
