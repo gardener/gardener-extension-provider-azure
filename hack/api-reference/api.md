@@ -659,19 +659,6 @@ bool
 <p>Zoned indicates whether the cluster uses zones</p>
 </td>
 </tr>
-<tr>
-<td>
-<code>natGatewayPublicIpMigrated</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>NatGatewayPublicIPMigrated is an indicator if the Gardener managed public ip address is already migrated.
-TODO(natipmigration) This can be removed in future versions when the ip migration has been completed.</p>
-</td>
-</tr>
 </tbody>
 </table>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.MachineImage">MachineImage

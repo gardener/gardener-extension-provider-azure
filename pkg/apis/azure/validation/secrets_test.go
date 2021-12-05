@@ -114,7 +114,26 @@ var _ = Describe("Secret validation", func() {
 			HaveOccurred(),
 		),
 
-		Entry("should return error when the client ID field is missing",
+		Entry("should succeed when client ID and/or client Secret is not provided",
+			map[string][]byte{
+				azure.SubscriptionIDKey: []byte(subscriptionID),
+				azure.TenantIDKey:       []byte(tenantID),
+			},
+			nil,
+			BeNil(),
+		),
+
+		Entry("should return error when clientID is provided but no clientSecret",
+			map[string][]byte{
+				azure.SubscriptionIDKey: []byte(subscriptionID),
+				azure.TenantIDKey:       []byte(tenantID),
+				azure.ClientIDKey:       []byte(clientID),
+			},
+			nil,
+			HaveOccurred(),
+		),
+
+		Entry("should return error when clientSecret is provided but no clientID",
 			map[string][]byte{
 				azure.SubscriptionIDKey: []byte(subscriptionID),
 				azure.TenantIDKey:       []byte(tenantID),
@@ -141,16 +160,6 @@ var _ = Describe("Secret validation", func() {
 				azure.TenantIDKey:       []byte(tenantID),
 				azure.ClientIDKey:       []byte("foo"),
 				azure.ClientSecretKey:   []byte(clientSecret),
-			},
-			nil,
-			HaveOccurred(),
-		),
-
-		Entry("should return error when the client secret field is missing",
-			map[string][]byte{
-				azure.SubscriptionIDKey: []byte(subscriptionID),
-				azure.TenantIDKey:       []byte(tenantID),
-				azure.ClientIDKey:       []byte(clientID),
 			},
 			nil,
 			HaveOccurred(),

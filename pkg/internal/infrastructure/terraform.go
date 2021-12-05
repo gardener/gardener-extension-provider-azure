@@ -273,8 +273,6 @@ func computeNetworkConfigMultipleSubnetLayout(infra *extensionsv1alpha1.Infrastr
 func generateNatGatewayValues(infra *extensionsv1alpha1.Infrastructure, nat *api.NatGatewayConfig) (map[string]interface{}, error) {
 	natGatewayConfig := map[string]interface{}{
 		"enabled": false,
-		// TODO(natipmigration) This can be removed in future versions when the ip migration has been completed.
-		"migrateNatGatewayToIPAssociation": false,
 	}
 
 	if nat == nil || !nat.Enabled {
@@ -300,23 +298,12 @@ func generateNatGatewayValues(infra *extensionsv1alpha1.Infrastructure, nat *api
 		}
 		natGatewayConfig["ipAddresses"] = ipAddresses
 	}
-
-	// Checks if the Gardener managed NatGateway public ip needs to be migrated.
-	// TODO(natipmigration) This can be removed in future versions when the ip migration has been completed.
-	natGatewayIPMigrationRequired, err := isNatGatewayIPMigrationRequired(infra, nat)
-	if err != nil {
-		return nil, err
-	}
-	natGatewayConfig["migrateNatGatewayToIPAssociation"] = natGatewayIPMigrationRequired
-
 	return natGatewayConfig, nil
 }
 
 func generateZonedNatGatewayValues(nat *api.ZonedNatGatewayConfig, zone int32) map[string]interface{} {
 	natGatewayConfig := map[string]interface{}{
 		"enabled": false,
-		// TODO(natipmigration) This can be removed in future versions when the ip migration has been completed.
-		"migrateNatGatewayToIPAssociation": false,
 	}
 
 	if nat == nil || !nat.Enabled {
@@ -376,9 +363,6 @@ type TerraformState struct {
 	IdentityID string
 	// IdentityClientID is the client id of the identity.
 	IdentityClientID string
-	// NatGatewayIPMigrated is the indicator if the nat gateway ip is migrated.
-	// TODO(natipmigration) This can be removed in future versions when the ip migration has been completed.
-	NatGatewayIPMigrated string
 }
 
 type terraformSubnet struct {
@@ -451,11 +435,6 @@ func ExtractTerraformState(ctx context.Context, tf terraformer.Terraformer, infr
 	}
 
 	tfState.Subnets = computeInfrastructureSubnets(infra, vars)
-
-	if config.Networks.NatGateway != nil && config.Networks.NatGateway.Enabled {
-		tfState.NatGatewayIPMigrated = "true"
-	}
-
 	return &tfState, nil
 }
 
@@ -521,11 +500,6 @@ func StatusFromTerraformState(config *api.InfrastructureConfig, tfState *Terrafo
 			CountUpdateDomains: pointer.Int32Ptr(int32(tfState.CountUpdateDomains)),
 			Purpose:            apiv1alpha1.PurposeNodes,
 		})
-	}
-
-	// TODO(natipmigration) This can be removed in future versions when the ip migration has been completed.
-	if tfState.NatGatewayIPMigrated == "true" {
-		infraState.NatGatewayPublicIPMigrated = true
 	}
 
 	return &infraState
@@ -638,28 +612,6 @@ func isPrimaryAvailabilitySetRequired(infra *extensionsv1alpha1.Infrastructure, 
 	}
 
 	return false, nil
-}
-
-// isNatGatewayIPMigrationRequired checks if the Gardener managed NatGateway public ip needs to be migrated.
-// TODO(natipmigration) This can be removed in future versions when the ip migration has been completed.
-func isNatGatewayIPMigrationRequired(infra *extensionsv1alpha1.Infrastructure, nat *api.NatGatewayConfig) (bool, error) {
-	if nat == nil || !nat.Enabled {
-		return false, nil
-	}
-
-	if infra.Status.ProviderStatus == nil {
-		return false, nil
-	}
-
-	infrastructureStatus, err := helper.InfrastructureStatusFromInfrastructure(infra)
-	if err != nil {
-		return false, err
-	}
-
-	if infrastructureStatus.NatGatewayPublicIPMigrated {
-		return false, nil
-	}
-	return true, nil
 }
 
 func computeSubnetOutputKeys(infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig) []string {

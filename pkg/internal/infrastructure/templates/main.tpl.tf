@@ -123,10 +123,6 @@ resource "azurerm_nat_gateway" "{{ $natName }}" {
 {{- if hasKey $subnet.natGateway "zone" }}
   zones = [{{ $subnet.natGateway.zone | quote }}]
 {{- end }}
-{{ if $subnet.natGateway.migrateNatGatewayToIPAssociation -}}
-# TODO(natipmigration) This can be removed in future versions when the ip migration has been completed.
-public_ip_address_ids   = []
-{{- end }}
 }
 
 resource "azurerm_subnet_nat_gateway_association" "{{ $natName }}-worker-subnet-association" {

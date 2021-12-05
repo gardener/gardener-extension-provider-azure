@@ -170,8 +170,7 @@ var _ = Describe("Terraform", func() {
 			}
 
 			expectedNatGatewayValues = map[string]interface{}{
-				"enabled":                          false,
-				"migrateNatGatewayToIPAssociation": false,
+				"enabled": false,
 			}
 
 			expectedSubnetValues = map[string]interface{}{
@@ -521,9 +520,8 @@ var _ = Describe("Terraform", func() {
 						{
 							"cidr": TestCIDR,
 							"natGateway": map[string]interface{}{
-								"enabled":                          true,
-								"migrateNatGatewayToIPAssociation": false,
-								"zone":                             zone1,
+								"enabled": true,
+								"zone":    zone1,
 							},
 							"serviceEndpoints": []string{},
 							"name":             zone1,
@@ -532,9 +530,8 @@ var _ = Describe("Terraform", func() {
 						{
 							"cidr": TestCIDR2,
 							"natGateway": map[string]interface{}{
-								"enabled":                          true,
-								"migrateNatGatewayToIPAssociation": false,
-								"zone":                             zone2,
+								"enabled": true,
+								"zone":    zone2,
 							},
 							"serviceEndpoints": []string{},
 							"name":             zone2,
@@ -544,50 +541,6 @@ var _ = Describe("Terraform", func() {
 
 					values, err := ComputeTerraformerTemplateValues(infra, config, cluster)
 					Expect(err).NotTo(HaveOccurred())
-					Expect(values).To(BeEquivalentTo(expectedValues))
-				})
-			})
-
-			// TODO(natipmigration) This can be removed in future versions when the ip migration has been completed.
-			Context("NatGateway Gardener managed IP migration", func() {
-				BeforeEach(func() {
-					config.Networks.NatGateway = &api.NatGatewayConfig{
-						Enabled: true,
-					}
-					expectedNatGatewayValues["enabled"] = true
-				})
-
-				It("should migrate the NatGateway IP as it is not yet migrated", func() {
-					infrastructureStatus := api.InfrastructureStatus{
-						NatGatewayPublicIPMigrated: false,
-					}
-					infrastructureStatusMarshalled, err := json.Marshal(infrastructureStatus)
-					Expect(err).NotTo(HaveOccurred())
-
-					infra.Status.ProviderStatus = &runtime.RawExtension{
-						Raw: infrastructureStatusMarshalled,
-					}
-
-					expectedNatGatewayValues["migrateNatGatewayToIPAssociation"] = true
-					values, err := ComputeTerraformerTemplateValues(infra, config, cluster)
-					Expect(err).To(Not(HaveOccurred()))
-					Expect(values).To(BeEquivalentTo(expectedValues))
-				})
-
-				It("should not migrate the NatGateway IP as it is already migrated", func() {
-					infrastructureStatus := api.InfrastructureStatus{
-						NatGatewayPublicIPMigrated: true,
-					}
-					infrastructureStatusMarshalled, err := json.Marshal(infrastructureStatus)
-					Expect(err).NotTo(HaveOccurred())
-
-					infra.Status.ProviderStatus = &runtime.RawExtension{
-						Raw: infrastructureStatusMarshalled,
-					}
-
-					expectedNatGatewayValues["migrateNatGatewayToIPAssociation"] = false
-					values, err := ComputeTerraformerTemplateValues(infra, config, cluster)
-					Expect(err).To(Not(HaveOccurred()))
 					Expect(values).To(BeEquivalentTo(expectedValues))
 				})
 			})
@@ -659,8 +612,7 @@ var _ = Describe("Terraform", func() {
 					},
 					Layout: apiv1alpha1.NetworkLayoutSingleSubnet,
 				},
-				Zoned:                      true,
-				NatGatewayPublicIPMigrated: false,
+				Zoned: true,
 			}))
 		})
 
@@ -699,8 +651,7 @@ var _ = Describe("Terraform", func() {
 					},
 					Layout: apiv1alpha1.NetworkLayoutSingleSubnet,
 				},
-				Zoned:                      false,
-				NatGatewayPublicIPMigrated: false,
+				Zoned: false,
 			}))
 		})
 
@@ -742,8 +693,7 @@ var _ = Describe("Terraform", func() {
 					ClientID:  identityClientID,
 					ACRAccess: false,
 				},
-				Zoned:                      false,
-				NatGatewayPublicIPMigrated: false,
+				Zoned: false,
 			}))
 		})
 
@@ -808,8 +758,7 @@ var _ = Describe("Terraform", func() {
 					},
 					Layout: apiv1alpha1.NetworkLayoutMultipleSubnet,
 				},
-				Zoned:                      true,
-				NatGatewayPublicIPMigrated: false,
+				Zoned: true,
 			}))
 		})
 	})

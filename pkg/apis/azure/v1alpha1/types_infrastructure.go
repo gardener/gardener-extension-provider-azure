@@ -140,10 +140,6 @@ type InfrastructureStatus struct {
 	// Zoned indicates whether the cluster uses zones
 	// +optional
 	Zoned bool `json:"zoned,omitempty"`
-	// NatGatewayPublicIPMigrated is an indicator if the Gardener managed public ip address is already migrated.
-	// TODO(natipmigration) This can be removed in future versions when the ip migration has been completed.
-	// +optional
-	NatGatewayPublicIPMigrated bool `json:"natGatewayPublicIpMigrated,omitempty"`
 }
 
 // NetworkStatus is the current status of the infrastructure networks.

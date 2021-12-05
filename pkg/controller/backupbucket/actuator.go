@@ -94,8 +94,5 @@ func (a *actuator) Delete(ctx context.Context, backupBucket *extensionsv1alpha1.
 	}
 
 	// Delete the generated backup secret in the garden namespace.
-	if err := a.deleteBackupBucketGeneratedSecret(ctx, backupBucket); err != nil {
-		return err
-	}
-	return nil
+	return a.deleteBackupBucketGeneratedSecret(ctx, backupBucket)
 }

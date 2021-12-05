@@ -36,7 +36,7 @@ const (
 	defaultNetworkWorkerCidr = "10.250.0.0/19"
 )
 
-type GeneratorConfig struct {
+type generatorConfig struct {
 	networkWorkerCidr                string
 	networkVnetCidr                  string
 	infrastructureProviderConfigPath string
@@ -46,12 +46,12 @@ type GeneratorConfig struct {
 }
 
 var (
-	cfg    *GeneratorConfig
+	cfg    *generatorConfig
 	logger logr.Logger
 )
 
 func addFlags() {
-	cfg = &GeneratorConfig{}
+	cfg = &generatorConfig{}
 	flag.StringVar(&cfg.infrastructureProviderConfigPath, "infrastructure-provider-config-filepath", "", "filepath to the provider specific infrastructure config")
 	flag.StringVar(&cfg.controlplaneProviderConfigPath, "controlplane-provider-config-filepath", "", "filepath to the provider specific controlplane config")
 

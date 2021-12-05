@@ -29,6 +29,7 @@ import (
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// Shoot represents a Shoot cluster created and managed by Gardener.
 type Shoot struct {
 	metav1.TypeMeta
 	// Standard object metadata.
@@ -225,10 +226,11 @@ type DNSProvider struct {
 	Zones *DNSIncludeExclude
 }
 
+// DNSIncludeExclude contains information about which domains shall be included/excluded.
 type DNSIncludeExclude struct {
-	// Include is a list of resources that shall be included.
+	// Include is a list of domains that shall be included.
 	Include []string
-	// Exclude is a list of resources that shall be excluded.
+	// Exclude is a list of domains that shall be excluded.
 	Exclude []string
 }
 
@@ -331,6 +333,8 @@ type ClusterAutoscaler struct {
 	Expander *ExpanderMode
 	// MaxNodeProvisionTime defines how long CA waits for node to be provisioned (default: 20 mins).
 	MaxNodeProvisionTime *metav1.Duration
+	// MaxGracefulTerminationSeconds is the number of seconds CA waits for pod termination when trying to scale down a node (default: 600).
+	MaxGracefulTerminationSeconds *int32
 }
 
 // ExpanderMode is type used for Expander values
@@ -441,6 +445,15 @@ type ServiceAccountConfig struct {
 	// service account token issuer. The issuer will sign issued ID tokens with this private key.
 	// Only useful if service account tokens are also issued by another external system.
 	SigningKeySecret *corev1.LocalObjectReference
+	// ExtendTokenExpiration turns on projected service account expiration extension during token generation, which
+	// helps safe transition from legacy token to bound service account token feature. If this flag is enabled,
+	// admission injected tokens would be extended up to 1 year to prevent unexpected failure during transition,
+	// ignoring value of service-account-max-token-expiration.
+	ExtendTokenExpiration *bool
+	// MaxTokenExpiration is the maximum validity duration of a token created by the service account token issuer. If an
+	// otherwise valid TokenRequest with a validity duration larger than this value is requested, a token will be issued
+	// with a validity duration of this value.
+	MaxTokenExpiration *metav1.Duration
 }
 
 // AuditConfig contains settings for audit of the api server
@@ -934,8 +947,10 @@ type CRI struct {
 type CRIName string
 
 const (
+	// CRINameContainerD is a constant for ContainerD CRI name.
 	CRINameContainerD CRIName = "containerd"
-	CRINameDocker     CRIName = "docker"
+	// CRINameDocker is a constant for Docker CRI name.
+	CRINameDocker CRIName = "docker"
 )
 
 // ContainerRuntime contains information about worker's available container runtime

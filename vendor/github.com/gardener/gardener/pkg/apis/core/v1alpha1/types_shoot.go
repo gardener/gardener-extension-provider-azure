@@ -30,6 +30,7 @@ import (
 // +genclient:method=CreateAdminKubeconfigRequest,verb=create,subresource=adminkubeconfig,input=github.com/gardener/gardener/pkg/apis/authentication/v1alpha1.AdminKubeconfigRequest,result=github.com/gardener/gardener/pkg/apis/authentication/v1alpha1.AdminKubeconfigRequest
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// Shoot represents a Shoot cluster created and managed by Gardener.
 type Shoot struct {
 	metav1.TypeMeta `json:",inline"`
 	// Standard object metadata.
@@ -263,11 +264,12 @@ type DNSProvider struct {
 	Zones *DNSIncludeExclude `json:"zones,omitempty" protobuf:"bytes,5,opt,name=zones"`
 }
 
+// DNSIncludeExclude contains information about which domains shall be included/excluded.
 type DNSIncludeExclude struct {
-	// Include is a list of resources that shall be included.
+	// Include is a list of domains that shall be included.
 	// +optional
 	Include []string `json:"include,omitempty" protobuf:"bytes,1,rep,name=include"`
-	// Exclude is a list of resources that shall be excluded.
+	// Exclude is a list of domains that shall be excluded.
 	// +optional
 	Exclude []string `json:"exclude,omitempty" protobuf:"bytes,2,rep,name=exclude"`
 }
@@ -394,6 +396,9 @@ type ClusterAutoscaler struct {
 	// MaxNodeProvisionTime defines how long CA waits for node to be provisioned (default: 20 mins).
 	// +optional
 	MaxNodeProvisionTime *metav1.Duration `json:"maxNodeProvisionTime,omitempty" protobuf:"bytes,8,opt,name=maxNodeProvisionTime"`
+	// MaxGracefulTerminationSeconds is the number of seconds CA waits for pod termination when trying to scale down a node (default: 600).
+	// +optional
+	MaxGracefulTerminationSeconds *int32 `json:"maxGracefulTerminationSeconds,omitempty" protobuf:"varint,9,opt,name=maxGracefulTerminationSeconds"`
 }
 
 // ExpanderMode is type used for Expander values
@@ -548,6 +553,17 @@ type ServiceAccountConfig struct {
 	// Only useful if service account tokens are also issued by another external system.
 	// +optional
 	SigningKeySecret *corev1.LocalObjectReference `json:"signingKeySecretName,omitempty" protobuf:"bytes,2,opt,name=signingKeySecretName"`
+	// ExtendTokenExpiration turns on projected service account expiration extension during token generation, which
+	// helps safe transition from legacy token to bound service account token feature. If this flag is enabled,
+	// admission injected tokens would be extended up to 1 year to prevent unexpected failure during transition,
+	// ignoring value of service-account-max-token-expiration.
+	// +optional
+	ExtendTokenExpiration *bool `json:"extendTokenExpiration,omitempty" protobuf:"bytes,3,opt,name=extendTokenExpiration"`
+	// MaxTokenExpiration is the maximum validity duration of a token created by the service account token issuer. If an
+	// otherwise valid TokenRequest with a validity duration larger than this value is requested, a token will be issued
+	// with a validity duration of this value.
+	// +optional
+	MaxTokenExpiration *metav1.Duration `json:"maxTokenExpiration,omitempty" protobuf:"bytes,4,opt,name=maxTokenExpiration"`
 }
 
 // AuditConfig contains settings for audit of the api server
@@ -1164,8 +1180,10 @@ type CRI struct {
 type CRIName string
 
 const (
+	// CRINameContainerD is a constant for ContainerD CRI name.
 	CRINameContainerD CRIName = "containerd"
-	CRINameDocker     CRIName = "docker"
+	// CRINameDocker is a constant for Docker CRI name.
+	CRINameDocker CRIName = "docker"
 )
 
 // ContainerRuntime contains information about worker's available container runtime

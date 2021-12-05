@@ -62,12 +62,6 @@ func (w *workerDelegate) DeployMachineClasses(ctx context.Context) error {
 		}
 	}
 
-	// Delete any older version of AzureMachineClass CRs.
-	// TODO: Remove this clean-up in future version.
-	if err := w.Client().DeleteAllOf(ctx, &machinev1alpha1.AzureMachineClass{}, client.InNamespace(w.worker.Namespace)); err != nil {
-		return fmt.Errorf("cleaning up older version of Azure machine class CRs failed: %w", err)
-	}
-
 	return w.seedChartApplier.Apply(ctx, filepath.Join(azure.InternalChartsPath, "machineclass"), w.worker.Namespace, "machineclass", kubernetes.Values(map[string]interface{}{"machineClasses": w.machineClasses}))
 }
 

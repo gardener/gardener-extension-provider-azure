@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
+	"github.com/gardener/gardener/extensions/pkg/controller/common"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
@@ -96,22 +97,36 @@ func (r *reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		return reconcile.Result{}, err
 	}
 
-	logger := r.logger.WithValues("infrastructure", client.ObjectKeyFromObject(infrastructure))
+	logger := r.logger.WithValues("infrastructure", kutil.ObjectName(infrastructure))
 	if extensionscontroller.IsFailed(cluster) {
-		r.logger.Info("Skipping the reconciliation of infrastructure of failed shoot", "infrastructure", kutil.ObjectName(infrastructure))
+		logger.Info("Skipping the reconciliation of infrastructure of failed shoot")
 		return reconcile.Result{}, nil
 	}
 
 	operationType := gardencorev1beta1helper.ComputeOperationType(infrastructure.ObjectMeta, infrastructure.Status.LastOperation)
 
+	if cluster.Shoot != nil && operationType != gardencorev1beta1.LastOperationTypeMigrate {
+		key := "infrastructure:" + kutil.ObjectName(infrastructure)
+		ok, watchdogCtx, cleanup, err := common.GetOwnerCheckResultAndContext(ctx, r.client, infrastructure.Namespace, cluster.Shoot.Name, key)
+		if err != nil {
+			return reconcile.Result{}, err
+		} else if !ok {
+			return reconcile.Result{}, fmt.Errorf("this seed is not the owner of shoot %s", kutil.ObjectName(cluster.Shoot))
+		}
+		ctx = watchdogCtx
+		if cleanup != nil {
+			defer cleanup()
+		}
+	}
+
 	switch {
-	case extensionscontroller.IsMigrated(infrastructure):
+	case extensionscontroller.ShouldSkipOperation(operationType, infrastructure):
 		return reconcile.Result{}, nil
 	case operationType == gardencorev1beta1.LastOperationTypeMigrate:
 		return r.migrate(ctx, logger.WithValues("operation", "migrate"), infrastructure, cluster)
 	case infrastructure.DeletionTimestamp != nil:
 		return r.delete(ctx, logger.WithValues("operation", "delete"), infrastructure, cluster)
-	case infrastructure.Annotations[v1beta1constants.GardenerOperation] == v1beta1constants.GardenerOperationRestore:
+	case operationType == gardencorev1beta1.LastOperationTypeRestore:
 		return r.restore(ctx, logger.WithValues("operation", "restore"), infrastructure, cluster)
 	default:
 		return r.reconcile(ctx, logger.WithValues("operation", "reconcile"), infrastructure, cluster, operationType)

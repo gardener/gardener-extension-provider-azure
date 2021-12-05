@@ -2,7 +2,7 @@ images:
 - name: terraformer
   sourceRepository: github.com/gardener/terraformer
   repository: eu.gcr.io/gardener-project/gardener/terraformer-azure
-  tag: "v2.9.0"
+  tag: "v2.13.0"
 
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes/kubernetes
@@ -26,22 +26,22 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/gardener/cloud-provider-azure
   repository: eu.gcr.io/gardener-project/kubernetes/cloud-provider-azure
-  tag: "v1.20.10"
+  tag: "v1.20.12"
   targetVersion: "1.20.x"
 - name: cloud-controller-manager
   sourceRepository: github.com/gardener/cloud-provider-azure
   repository: eu.gcr.io/gardener-project/kubernetes/cloud-provider-azure
-  tag: "v1.21.4"
+  tag: "v1.21.6"
   targetVersion: "1.21.x"
 - name: cloud-controller-manager
   sourceRepository: github.com/gardener/cloud-provider-azure
   repository: eu.gcr.io/gardener-project/kubernetes/cloud-provider-azure
-  tag: "v1.22.0"
+  tag: "v1.22.3"
   targetVersion: ">= 1.22"
 - name: machine-controller-manager
   sourceRepository: github.com/gardener/machine-controller-manager
   repository: eu.gcr.io/gardener-project/gardener/machine-controller-manager
-  tag: "v0.40.0"
+  tag: "v0.42.0"
 - name: machine-controller-manager-provider-azure
   sourceRepository: github.com/gardener/machine-controller-manager-provider-azure
   repository: eu.gcr.io/gardener-project/gardener/machine-controller-manager-provider-azure
@@ -49,7 +49,7 @@ images:
 - name: csi-driver-disk
   sourceRepository: github.com/kubernetes-sigs/azuredisk-csi-driver
   repository: mcr.microsoft.com/k8s/csi/azuredisk-csi
-  tag: "v1.2.0"
+  tag: "v1.6.0"
 - name: csi-driver-file
   sourceRepository: github.com/kubernetes-sigs/azurefile-csi-driver
   repository: mcr.microsoft.com/k8s/csi/azurefile-csi
@@ -86,4 +86,4 @@ images:
 - name: remedy-controller-azure
   sourceRepository: github.com/gardener/remedy-controller
   repository: eu.gcr.io/gardener-project/gardener/remedy-controller/remedy-controller-azure
-  tag: "v0.8.0"
+  tag: "v0.9.0"
