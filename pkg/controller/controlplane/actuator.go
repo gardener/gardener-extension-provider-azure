@@ -28,6 +28,7 @@ import (
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"github.com/gardener/gardener/pkg/controllerutils"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	azurev1alpha1 "github.com/gardener/remedy-controller/pkg/apis/azure/v1alpha1"
 )
@@ -70,6 +71,9 @@ func (a *actuator) Delete(
 	cluster *extensionscontroller.Cluster,
 ) error {
 	if cp.Spec.Purpose == nil || *cp.Spec.Purpose == extensionsv1alpha1.Normal {
+		if err := a.annotatePublicIPAddresses(ctx, cp); err != nil {
+			return err
+		}
 		// Delete all remaining remedy controller resources
 		if err := a.deleteRemedyControllerResources(ctx, cp); err != nil {
 			return err
@@ -88,20 +92,23 @@ func (a *actuator) Migrate(
 	cp *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
 ) error {
+	// Call Migrate on the composed Actuator so that the controlplane chart is deleted and therefore
+	// the remedy controller is also removed.
+	if err := a.Actuator.Migrate(ctx, cp, cluster); err != nil {
+		return err
+	}
 	if cp.Spec.Purpose == nil || *cp.Spec.Purpose == extensionsv1alpha1.Normal {
 		// Delete all remaining remedy controller resources
-		if err := a.deleteRemedyControllerResources(ctx, cp); err != nil {
+		if err := a.removeFinalizersFromRemedyControllerResources(ctx, cp); err != nil {
 			return err
 		}
+		return a.deleteRemedyControllerResources(ctx, cp)
 	}
-
-	// Call Migrate on the composed Actuator
-	return a.Actuator.Migrate(ctx, cp, cluster)
+	return nil
 }
 
-func (a *actuator) deleteRemedyControllerResources(ctx context.Context, cp *extensionsv1alpha1.ControlPlane) error {
-	// Forcefully delete all remaining remedy controller resources
-	a.logger.Info("Deleting all remaining remedy controller resources")
+func (a *actuator) annotatePublicIPAddresses(ctx context.Context, cp *extensionsv1alpha1.ControlPlane) error {
+	a.logger.Info("Adding do-not-clean annotation on publicipaddresses")
 	pubipList := &azurev1alpha1.PublicIPAddressList{}
 	if err := a.client.List(ctx, pubipList, client.InNamespace(cp.Namespace)); err != nil {
 		return fmt.Errorf("could not list publicipaddresses: %w", err)
@@ -116,6 +123,37 @@ func (a *actuator) deleteRemedyControllerResources(ctx context.Context, cp *exte
 			return fmt.Errorf("could not add do-not-clean annotation on publicipaddress: %w", err)
 		}
 	}
+
+	return nil
+}
+
+func (a *actuator) removeFinalizersFromRemedyControllerResources(ctx context.Context, cp *extensionsv1alpha1.ControlPlane) error {
+	a.logger.Info("Removing finalizers from remedy controller resources")
+	pubipList := &azurev1alpha1.PublicIPAddressList{}
+	if err := a.client.List(ctx, pubipList, client.InNamespace(cp.Namespace)); err != nil {
+		return fmt.Errorf("could not list publicipaddresses: %w", err)
+	}
+	for _, pubip := range pubipList.Items {
+		if err := controllerutils.PatchRemoveFinalizers(ctx, a.client, &pubip, "azure.remedy.gardener.cloud/publicipaddress"); err != nil {
+			return fmt.Errorf("could not remove finalizers from publicipaddress: %w", err)
+		}
+	}
+
+	virtualMachineList := &azurev1alpha1.VirtualMachineList{}
+	if err := a.client.List(ctx, virtualMachineList, client.InNamespace(cp.Namespace)); err != nil {
+		return fmt.Errorf("could not list virtualmachines: %w", err)
+	}
+	for _, virtualMachine := range virtualMachineList.Items {
+		if err := controllerutils.PatchRemoveFinalizers(ctx, a.client, &virtualMachine, "azure.remedy.gardener.cloud/virtualmachine"); err != nil {
+			return fmt.Errorf("could not remove finalizers from virtualmachine: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (a *actuator) deleteRemedyControllerResources(ctx context.Context, cp *extensionsv1alpha1.ControlPlane) error {
+	a.logger.Info("Deleting all remaining remedy controller resources")
 	if err := a.client.DeleteAllOf(ctx, &azurev1alpha1.PublicIPAddress{}, client.InNamespace(cp.Namespace)); err != nil {
 		return fmt.Errorf("could not delete publicipaddress resources: %w", err)
 	}

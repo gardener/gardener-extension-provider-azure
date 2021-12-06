@@ -276,6 +276,7 @@ github.com/gardener/gardener/pkg/utils/kubernetes/unstructured
 github.com/gardener/gardener/pkg/utils/managedresources
 github.com/gardener/gardener/pkg/utils/retry
 github.com/gardener/gardener/pkg/utils/secrets
+github.com/gardener/gardener/pkg/utils/test
 github.com/gardener/gardener/pkg/utils/test/matchers
 github.com/gardener/gardener/pkg/utils/time
 github.com/gardener/gardener/pkg/utils/validation/cidr
