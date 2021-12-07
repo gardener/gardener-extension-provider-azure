@@ -16,9 +16,11 @@ package controlplane
 
 import (
 	"context"
+	"time"
 
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane"
+	controllererror "github.com/gardener/gardener/extensions/pkg/controller/error"
 	azurev1alpha1 "github.com/gardener/remedy-controller/pkg/apis/azure/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -45,7 +47,9 @@ var _ = Describe("Actuator", func() {
 		a        *mockcontrolplane.MockActuator
 		actuator controlplane.Actuator
 
-		newControlPlane = func(purpose *extensionsv1alpha1.Purpose) *extensionsv1alpha1.ControlPlane {
+		gracefulDeletionTimeout      time.Duration
+		gracefulDeletionWaitInterval time.Duration
+		newControlPlane              = func(purpose *extensionsv1alpha1.Purpose) *extensionsv1alpha1.ControlPlane {
 			return &extensionsv1alpha1.ControlPlane{
 				ObjectMeta: metav1.ObjectMeta{Name: "control-plane", Namespace: namespace},
 				Spec: extensionsv1alpha1.ControlPlaneSpec{
@@ -87,8 +91,9 @@ var _ = Describe("Actuator", func() {
 		ctrl = gomock.NewController(GinkgoT())
 		c = mockclient.NewMockClient(ctrl)
 		a = mockcontrolplane.NewMockActuator(ctrl)
-
-		actuator = NewActuator(a, logger)
+		gracefulDeletionTimeout = 10 * time.Second
+		gracefulDeletionWaitInterval = 1 * time.Second
+		actuator = NewActuator(a, logger, gracefulDeletionTimeout, gracefulDeletionWaitInterval)
 
 		err := actuator.(inject.Client).InjectClient(c)
 		Expect(err).NotTo(HaveOccurred())
@@ -99,37 +104,77 @@ var _ = Describe("Actuator", func() {
 	})
 
 	Describe("#Delete", func() {
-		It("should delete remaining remedy controller resources", func() {
-			pubip := newPubip(nil)
+		It("should successfully delete controlplane if there are no remedy controller resources", func() {
 			cp := newControlPlane(nil)
-			c.EXPECT().List(ctx, &azurev1alpha1.PublicIPAddressList{}, client.InNamespace(namespace)).
-				DoAndReturn(func(_ context.Context, list *azurev1alpha1.PublicIPAddressList, _ ...client.ListOption) error {
-					list.Items = []azurev1alpha1.PublicIPAddress{*pubip}
-					return nil
-				})
-			annotatedPubip := newPubip(map[string]string{"azure.remedy.gardener.cloud/do-not-clean": "true"})
-			c.EXPECT().Update(ctx, annotatedPubip).Return(nil)
-			c.EXPECT().DeleteAllOf(ctx, &azurev1alpha1.PublicIPAddress{}, client.InNamespace(namespace)).Return(nil)
-			c.EXPECT().DeleteAllOf(ctx, &azurev1alpha1.VirtualMachine{}, client.InNamespace(namespace)).Return(nil)
+			time := metav1.Now()
+			cp.DeletionTimestamp = &time
 			c.EXPECT().List(gomock.Any(), &azurev1alpha1.PublicIPAddressList{}, client.InNamespace(namespace)).
 				DoAndReturn(func(_ context.Context, list *azurev1alpha1.PublicIPAddressList, _ ...client.ListOption) error {
 					list.Items = []azurev1alpha1.PublicIPAddress{}
 					return nil
-				})
-			c.EXPECT().List(gomock.Any(), &azurev1alpha1.VirtualMachineList{}, client.InNamespace(namespace)).
+				}).Times(2)
+
+			c.EXPECT().List(ctx, &azurev1alpha1.VirtualMachineList{}, client.InNamespace(namespace)).
 				DoAndReturn(func(_ context.Context, list *azurev1alpha1.VirtualMachineList, _ ...client.ListOption) error {
 					list.Items = []azurev1alpha1.VirtualMachine{}
 					return nil
 				})
-			a.EXPECT().Delete(ctx, cp, cluster).Return(nil)
 
+			c.EXPECT().DeleteAllOf(ctx, &azurev1alpha1.PublicIPAddress{}, client.InNamespace(namespace)).Return(nil)
+			c.EXPECT().DeleteAllOf(ctx, &azurev1alpha1.VirtualMachine{}, client.InNamespace(namespace)).Return(nil)
+
+			a.EXPECT().Delete(ctx, cp, cluster).Return(nil)
 			err := actuator.Delete(ctx, cp, cluster)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("should not delete remaining remedy controller resources for controlplane with purpose exposure", func() {
-			exposure := extensionsv1alpha1.Exposure
-			cp := newControlPlane(&exposure)
+		It("should return RequeueAfterError if there are publicipaddresses remaining and timeout is not yet reached", func() {
+			cp := newControlPlane(nil)
+			time := metav1.Now()
+			cp.DeletionTimestamp = &time
+
+			pubip := newPubip(nil)
+			pubipWithFinalizers := pubip.DeepCopy()
+			pubipWithFinalizers.Finalizers = append(pubipWithFinalizers.Finalizers, "azure.remedy.gardener.cloud/publicipaddress")
+
+			c.EXPECT().List(ctx, &azurev1alpha1.PublicIPAddressList{}, client.InNamespace(namespace)).
+				DoAndReturn(func(_ context.Context, list *azurev1alpha1.PublicIPAddressList, _ ...client.ListOption) error {
+					list.Items = []azurev1alpha1.PublicIPAddress{*pubipWithFinalizers}
+					return nil
+				})
+
+			err := actuator.Delete(ctx, cp, cluster)
+			Expect(err).To(MatchError(&controllererror.RequeueAfterError{RequeueAfter: gracefulDeletionWaitInterval}))
+		})
+
+		It("should forcefully remove remedy controller resources after grace period timeout has been reached", func() {
+			cp := newControlPlane(nil)
+			time := metav1.NewTime(time.Now().Add(time.Duration(-2 * gracefulDeletionTimeout)))
+			cp.DeletionTimestamp = &time
+
+			pubip := newPubip(nil)
+			pubipWithFinalizers := pubip.DeepCopy()
+			pubipWithFinalizers.Finalizers = append(pubipWithFinalizers.Finalizers, "azure.remedy.gardener.cloud/publicipaddress")
+			c.EXPECT().List(ctx, &azurev1alpha1.PublicIPAddressList{}, client.InNamespace(namespace)).
+				DoAndReturn(func(_ context.Context, list *azurev1alpha1.PublicIPAddressList, _ ...client.ListOption) error {
+					list.Items = []azurev1alpha1.PublicIPAddress{*pubipWithFinalizers}
+					return nil
+				}).Times(2)
+
+			test.EXPECTPatchWithOptimisticLock(ctx, c, pubip, pubipWithFinalizers)
+			c.EXPECT().DeleteAllOf(ctx, &azurev1alpha1.PublicIPAddress{}, client.InNamespace(namespace)).Return(nil)
+
+			vm := newVirtualMachine()
+			vmWithFinalizers := vm.DeepCopy()
+			vmWithFinalizers.Finalizers = append(vmWithFinalizers.Finalizers, "azure.remedy.gardener.cloud/virtualmachine")
+			c.EXPECT().List(ctx, &azurev1alpha1.VirtualMachineList{}, client.InNamespace(namespace)).
+				DoAndReturn(func(_ context.Context, list *azurev1alpha1.VirtualMachineList, _ ...client.ListOption) error {
+					list.Items = []azurev1alpha1.VirtualMachine{*vmWithFinalizers}
+					return nil
+				})
+			test.EXPECTPatchWithOptimisticLock(ctx, c, vm, vmWithFinalizers)
+			c.EXPECT().DeleteAllOf(ctx, &azurev1alpha1.VirtualMachine{}, client.InNamespace(namespace)).Return(nil)
+
 			a.EXPECT().Delete(ctx, cp, cluster).Return(nil)
 
 			err := actuator.Delete(ctx, cp, cluster)
@@ -163,17 +208,6 @@ var _ = Describe("Actuator", func() {
 				})
 			test.EXPECTPatchWithOptimisticLock(ctx, c, vm, vmWithFinalizers)
 			c.EXPECT().DeleteAllOf(ctx, &azurev1alpha1.VirtualMachine{}, client.InNamespace(namespace)).Return(nil)
-
-			c.EXPECT().List(gomock.Any(), &azurev1alpha1.PublicIPAddressList{}, client.InNamespace(namespace)).
-				DoAndReturn(func(_ context.Context, list *azurev1alpha1.PublicIPAddressList, _ ...client.ListOption) error {
-					list.Items = []azurev1alpha1.PublicIPAddress{}
-					return nil
-				})
-			c.EXPECT().List(gomock.Any(), &azurev1alpha1.VirtualMachineList{}, client.InNamespace(namespace)).
-				DoAndReturn(func(_ context.Context, list *azurev1alpha1.VirtualMachineList, _ ...client.ListOption) error {
-					list.Items = []azurev1alpha1.VirtualMachine{}
-					return nil
-				})
 
 			err := actuator.Migrate(ctx, cp, cluster)
 			Expect(err).NotTo(HaveOccurred())
