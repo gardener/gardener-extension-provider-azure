@@ -156,7 +156,7 @@ func validateVnetConfig(vnetConfig apisazure.VNet, resourceGroupConfig *apisazur
 	// Validate no cidr config is specified at all.
 	if isDefaultVnetConfig(&vnetConfig) {
 		allErrs = append(allErrs, workers.ValidateSubset(nodes)...)
-		allErrs = append(allErrs, workers.ValidateNotSubset(pods, services)...)
+		allErrs = append(allErrs, workers.ValidateNotOverlap(pods, services)...)
 		return allErrs
 	}
 
@@ -164,7 +164,7 @@ func validateVnetConfig(vnetConfig apisazure.VNet, resourceGroupConfig *apisazur
 	allErrs = append(allErrs, vnetCIDR.ValidateParse()...)
 	allErrs = append(allErrs, vnetCIDR.ValidateSubset(nodes)...)
 	allErrs = append(allErrs, vnetCIDR.ValidateSubset(workers)...)
-	allErrs = append(allErrs, vnetCIDR.ValidateNotSubset(pods, services)...)
+	allErrs = append(allErrs, vnetCIDR.ValidateNotOverlap(pods, services)...)
 	allErrs = append(allErrs, cidrvalidation.ValidateCIDRIsCanonical(vnetConfigPath.Child("cidr"), *vnetConfig.CIDR)...)
 
 	return allErrs

@@ -20,8 +20,8 @@ import (
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 
-	extensioncontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"github.com/gardener/gardener/pkg/controllerutils"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
@@ -47,7 +47,7 @@ func (a *actuator) createBackupBucketGeneratedSecret(ctx context.Context, backup
 		return err
 	}
 
-	return extensioncontroller.TryUpdateStatus(ctx, retry.DefaultBackoff, a.client, backupBucket, func() error {
+	return controllerutils.TryUpdateStatus(ctx, retry.DefaultBackoff, a.client, backupBucket, func() error {
 		backupBucket.Status.GeneratedSecretRef = &corev1.SecretReference{
 			Name:      generatedSecret.Name,
 			Namespace: generatedSecret.Namespace,

@@ -229,7 +229,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
-					"Detail": Equal(`must not be a subset of "networks.vnet.cidr" ("10.0.0.0/8")`),
+					"Detail": Equal(`must not overlap with "networks.vnet.cidr" ("10.0.0.0/8")`),
 				}))
 			})
 
@@ -240,7 +240,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
-					"Detail": Equal(`must not be a subset of "networks.vnet.cidr" ("10.0.0.0/8")`),
+					"Detail": Equal(`must not overlap with "networks.vnet.cidr" ("10.0.0.0/8")`),
 				}))
 			})
 
