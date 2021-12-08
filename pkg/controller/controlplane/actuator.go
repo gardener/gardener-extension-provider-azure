@@ -40,9 +40,6 @@ const (
 	GracefulDeletionTimeout = 10 * time.Minute
 )
 
-// TimeNow returns the current time. Exposed for testing.
-var TimeNow = time.Now
-
 // NewActuator creates a new Actuator that acts upon and updates the status of ControlPlane resources.
 func NewActuator(
 	a controlplane.Actuator,
@@ -80,7 +77,7 @@ func (a *actuator) InjectClient(client client.Client) error {
 
 // Delete reconciles the given controlplane and cluster, deleting the additional
 // control plane components as needed.
-// Before delegating to the composed Actuator, it ensures that all remedy controller resources have been deleted.
+// Before delegating to the composed Actuator, it ensures that all remedy controller resources have been deleted gracefully.
 func (a *actuator) Delete(
 	ctx context.Context,
 	cp *extensionsv1alpha1.ControlPlane,
@@ -92,13 +89,13 @@ func (a *actuator) Delete(
 			return err
 		}
 		if meta.LenList(list) != 0 {
-			if time.Now().Sub(cp.DeletionTimestamp.Time) <= a.gracefulDeletionTimeout {
+			if time.Since(cp.DeletionTimestamp.Time) <= a.gracefulDeletionTimeout {
 				a.logger.Info("Some publicipaddresses still exist. Deletion will be retried ...")
 				return &controllererror.RequeueAfterError{
 					RequeueAfter: a.gracefulDeletionWaitInterval,
 				}
 			} else {
-				a.logger.Info("Timeout while waiting for publicipaddresses to be gracefully deleted has expired. They will be forcefully removed.")
+				a.logger.Info("The timeout for waiting for publicipaddresses to be gracefully deleted has expired. They will be forcefully removed.")
 			}
 		}
 	}
@@ -166,12 +163,4 @@ func (a *actuator) forceDeleteRemedyControllerResources(ctx context.Context, cp 
 	}
 
 	return nil
-}
-
-func add(m map[string]string, key, value string) map[string]string {
-	if m == nil {
-		m = make(map[string]string)
-	}
-	m[key] = value
-	return m
 }
