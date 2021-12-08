@@ -245,7 +245,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
-					"Detail": Equal(`must not be a subset of "networks.vnet.cidr" ("10.0.0.0/8")`),
+					"Detail": Equal(`must not overlap with "networks.vnet.cidr" ("10.0.0.0/8")`),
 				}))
 			})
 
@@ -256,7 +256,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
-					"Detail": Equal(`must not be a subset of "networks.vnet.cidr" ("10.0.0.0/8")`),
+					"Detail": Equal(`must not overlap with "networks.vnet.cidr" ("10.0.0.0/8")`),
 				}))
 			})
 
@@ -509,15 +509,11 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				infrastructureConfig.Networks.Zones[0].CIDR = zoneCIDR1
 				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
 				Expect(errorList).NotTo(BeEmpty())
-				Expect(errorList).To(HaveLen(2))
+				Expect(errorList).To(HaveLen(1))
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
-					"Field":  Equal("networks.zones[0].cidr"),
-					"Detail": ContainSubstring("subset of"),
-				}, Fields{
-					"Type":   Equal(field.ErrorTypeInvalid),
 					"Field":  Equal("networks.zones[1].cidr"),
-					"Detail": ContainSubstring("subset of"),
+					"Detail": ContainSubstring("must not overlap"),
 				}))
 			})
 

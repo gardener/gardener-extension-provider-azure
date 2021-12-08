@@ -23,7 +23,6 @@ import (
 	"github.com/coreos/go-systemd/v22/unit"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/csimigration"
-	"github.com/gardener/gardener/extensions/pkg/controller/operatingsystemconfig/oscommon/cloudinit"
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	gcontext "github.com/gardener/gardener/extensions/pkg/webhook/context"
 	"github.com/gardener/gardener/extensions/pkg/webhook/controlplane"
@@ -478,7 +477,7 @@ func (e *ensurer) ensureAcrConfigFile(ctx context.Context, gctx gcontext.GardenC
 
 	// Write the content of the file.
 	fciCodec := oscutils.NewFileContentInlineCodec()
-	fci, err := fciCodec.Encode([]byte(cm.Data[azure.CloudProviderAcrConfigMapKey]), string(cloudinit.B64FileCodecID))
+	fci, err := fciCodec.Encode([]byte(cm.Data[azure.CloudProviderAcrConfigMapKey]), string(extensionsv1alpha1.B64FileCodecID))
 	if err != nil {
 		return fmt.Errorf("could not encode acr cloud provider config: %w", err)
 	}

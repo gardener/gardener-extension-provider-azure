@@ -220,7 +220,7 @@ func validateVnetConfig(networkConfig *apisazure.NetworkConfig, resourceGroupCon
 		}
 
 		allErrs = append(allErrs, workers.ValidateSubset(nodes)...)
-		allErrs = append(allErrs, workers.ValidateNotSubset(pods, services)...)
+		allErrs = append(allErrs, workers.ValidateNotOverlap(pods, services)...)
 		return allErrs
 	}
 
@@ -228,7 +228,7 @@ func validateVnetConfig(networkConfig *apisazure.NetworkConfig, resourceGroupCon
 	allErrs = append(allErrs, vnetCIDR.ValidateParse()...)
 	allErrs = append(allErrs, cidrvalidation.ValidateCIDRIsCanonical(vNetPath.Child("cidr"), *vnetConfig.CIDR)...)
 	allErrs = append(allErrs, vnetCIDR.ValidateSubset(nodes)...)
-	allErrs = append(allErrs, vnetCIDR.ValidateNotSubset(pods, services)...)
+	allErrs = append(allErrs, vnetCIDR.ValidateNotOverlap(pods, services)...)
 	if workers != nil {
 		allErrs = append(allErrs, vnetCIDR.ValidateSubset(workers)...)
 	}
@@ -267,9 +267,10 @@ func validateZones(zones []apisazure.Zone, nodes, pods, services cidrvalidation.
 	if nodes != nil {
 		allErrs = append(allErrs, nodes.ValidateSubset(zoneCIDRs...)...)
 	}
-	allErrs = append(allErrs, cidrvalidation.ValidateCIDROverlap(zoneCIDRs, zoneCIDRs, false)...)
-	allErrs = append(allErrs, cidrvalidation.ValidateCIDROverlap([]cidrvalidation.CIDR{pods, services}, zoneCIDRs, false)...)
 
+	allErrs = append(allErrs, cidrvalidation.ValidateCIDROverlap(zoneCIDRs, false)...)
+	allErrs = append(allErrs, pods.ValidateNotOverlap(zoneCIDRs...)...)
+	allErrs = append(allErrs, services.ValidateNotOverlap(zoneCIDRs...)...)
 	return allErrs
 }
 
@@ -305,7 +306,6 @@ func validateNatGatewayConfig(natGatewayConfig *apisazure.NatGatewayConfig, zone
 		return allErrs
 	}
 	allErrs = append(allErrs, validateNatGatewayIPReference(natGatewayConfig.IPAddresses, *natGatewayConfig.Zone, natGatewayPath.Child("ipAddresses"))...)
-
 	return allErrs
 }
 
@@ -337,10 +337,6 @@ func validateZonedNatGatewayConfig(natGatewayConfig *apisazure.ZonedNatGatewayCo
 			return append(allErrs, field.Invalid(natGatewayPath, natGatewayConfig, "NatGateway is disabled but additional NatGateway config is passed"))
 		}
 		return nil
-	}
-
-	if natGatewayConfig.IdleConnectionTimeoutMinutes != nil && (*natGatewayConfig.IdleConnectionTimeoutMinutes < natGatewayMinTimeoutInMinutes || *natGatewayConfig.IdleConnectionTimeoutMinutes > natGatewayMaxTimeoutInMinutes) {
-		allErrs = append(allErrs, field.Invalid(natGatewayPath.Child("idleConnectionTimeoutMinutes"), *natGatewayConfig.IdleConnectionTimeoutMinutes, "idleConnectionTimeoutMinutes values must range between 4 and 120"))
 	}
 
 	allErrs = append(allErrs, validateZonedPublicIPReference(natGatewayConfig.IPAddresses, natGatewayPath.Child("ipAddresses"))...)
