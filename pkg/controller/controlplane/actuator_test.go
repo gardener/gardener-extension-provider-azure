@@ -20,7 +20,7 @@ import (
 
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane"
-	controllererror "github.com/gardener/gardener/extensions/pkg/controller/error"
+	reconcilerutils "github.com/gardener/gardener/pkg/controllerutils/reconciler"
 	azurev1alpha1 "github.com/gardener/remedy-controller/pkg/apis/azure/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -144,7 +144,7 @@ var _ = Describe("Actuator", func() {
 				})
 
 			err := actuator.Delete(ctx, cp, cluster)
-			Expect(err).To(MatchError(&controllererror.RequeueAfterError{RequeueAfter: gracefulDeletionWaitInterval}))
+			Expect(err).To(MatchError(&reconcilerutils.RequeueAfterError{RequeueAfter: gracefulDeletionWaitInterval}))
 		})
 
 		It("should forcefully remove remedy controller resources after grace period timeout has been reached", func() {

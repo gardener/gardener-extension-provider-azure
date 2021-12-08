@@ -26,9 +26,9 @@ import (
 
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane"
-	controllererror "github.com/gardener/gardener/extensions/pkg/controller/error"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/controllerutils"
+	reconcilerutils "github.com/gardener/gardener/pkg/controllerutils/reconciler"
 	azurev1alpha1 "github.com/gardener/remedy-controller/pkg/apis/azure/v1alpha1"
 )
 
@@ -91,7 +91,7 @@ func (a *actuator) Delete(
 		if meta.LenList(list) != 0 {
 			if time.Since(cp.DeletionTimestamp.Time) <= a.gracefulDeletionTimeout {
 				a.logger.Info("Some publicipaddresses still exist. Deletion will be retried ...")
-				return &controllererror.RequeueAfterError{
+				return &reconcilerutils.RequeueAfterError{
 					RequeueAfter: a.gracefulDeletionWaitInterval,
 				}
 			} else {
