@@ -89,7 +89,7 @@ func (a *actuator) Delete(
 			return err
 		}
 		if meta.LenList(list) != 0 {
-			if time.Since(cp.DeletionTimestamp.Time) <= a.gracefulDeletionTimeout {
+			if time.Since(cp.DeletionTimestamp.Local()) <= a.gracefulDeletionTimeout {
 				a.logger.Info("Some publicipaddresses still exist. Deletion will be retried ...")
 				return &reconcilerutils.RequeueAfterError{
 					RequeueAfter: a.gracefulDeletionWaitInterval,
