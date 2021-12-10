@@ -204,7 +204,7 @@ func ComputeTerraformerTemplateValues(
 }
 
 func generateNatGatewayValues(config *api.InfrastructureConfig) (map[string]interface{}, bool) {
-	var natGatewayConfig = make(map[string]interface{})
+	natGatewayConfig := make(map[string]interface{})
 	if config.Networks.NatGateway == nil || !config.Networks.NatGateway.Enabled {
 		return natGatewayConfig, false
 	}
@@ -218,7 +218,7 @@ func generateNatGatewayValues(config *api.InfrastructureConfig) (map[string]inte
 	}
 
 	if len(config.Networks.NatGateway.IPAddresses) > 0 {
-		var ipAddresses = make([]map[string]interface{}, len(config.Networks.NatGateway.IPAddresses))
+		ipAddresses := make([]map[string]interface{}, len(config.Networks.NatGateway.IPAddresses))
 		for i, ip := range config.Networks.NatGateway.IPAddresses {
 			ipAddresses[i] = map[string]interface{}{
 				"name":          ip.Name,
@@ -270,15 +270,13 @@ type TerraformState struct {
 
 // ExtractTerraformState extracts the TerraformState from the given Terraformer.
 func ExtractTerraformState(ctx context.Context, tf terraformer.Terraformer, infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig, cluster *controller.Cluster) (*TerraformState, error) {
-	var (
-		outputKeys = []string{
-			TerraformerOutputKeyResourceGroupName,
-			TerraformerOutputKeyRouteTableName,
-			TerraformerOutputKeySecurityGroupName,
-			TerraformerOutputKeySubnetName,
-			TerraformerOutputKeyVNetName,
-		}
-	)
+	outputKeys := []string{
+		TerraformerOutputKeyResourceGroupName,
+		TerraformerOutputKeyRouteTableName,
+		TerraformerOutputKeySecurityGroupName,
+		TerraformerOutputKeySubnetName,
+		TerraformerOutputKeyVNetName,
+	}
 
 	primaryAvSetRequired, err := isPrimaryAvailabilitySetRequired(infra, config, cluster)
 	if err != nil {
@@ -302,7 +300,7 @@ func ExtractTerraformState(ctx context.Context, tf terraformer.Terraformer, infr
 		return nil, err
 	}
 
-	var tfState = TerraformState{
+	tfState := TerraformState{
 		VNetName:          vars[TerraformerOutputKeyVNetName],
 		ResourceGroupName: vars[TerraformerOutputKeyResourceGroupName],
 		RouteTableName:    vars[TerraformerOutputKeyRouteTableName],
@@ -345,7 +343,7 @@ func ExtractTerraformState(ctx context.Context, tf terraformer.Terraformer, infr
 // StatusFromTerraformState computes an InfrastructureStatus from the given
 // Terraform variables.
 func StatusFromTerraformState(tfState *TerraformState) *apiv1alpha1.InfrastructureStatus {
-	var infraState = apiv1alpha1.InfrastructureStatus{
+	infraState := apiv1alpha1.InfrastructureStatus{
 		TypeMeta: StatusTypeMeta,
 		ResourceGroup: apiv1alpha1.ResourceGroup{
 			Name: tfState.ResourceGroupName,
@@ -428,7 +426,7 @@ func findDomainCounts(cluster *controller.Cluster, infra *extensionsv1alpha1.Inf
 	)
 
 	if infra.Status.ProviderStatus != nil {
-		infrastructureStatus, err := helper.InfrastructureStatusFromInfrastructure(infra)
+		infrastructureStatus, err := helper.InfrastructureStatusFromRaw(infra.Status.ProviderStatus)
 		if err != nil {
 			return nil, fmt.Errorf("error obtaining update and fault domain counts from infrastructure status: %v", err)
 		}
@@ -492,7 +490,7 @@ func isPrimaryAvailabilitySetRequired(infra *extensionsv1alpha1.Infrastructure, 
 	}
 
 	// If the infrastructureStatus already exists that mean the Infrastucture is already created.
-	infrastructureStatus, err := helper.InfrastructureStatusFromInfrastructure(infra)
+	infrastructureStatus, err := helper.InfrastructureStatusFromRaw(infra.Status.ProviderStatus)
 	if err != nil {
 		return false, err
 	}

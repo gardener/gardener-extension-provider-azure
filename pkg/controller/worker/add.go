@@ -24,10 +24,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
-var (
-	// DefaultAddOptions are the default AddOptions for AddToManager.
-	DefaultAddOptions = AddOptions{}
-)
+// DefaultAddOptions are the default AddOptions for AddToManager.
+var DefaultAddOptions = AddOptions{}
 
 // AddOptions are options to apply when adding the Azure worker controller to the manager.
 type AddOptions struct {
