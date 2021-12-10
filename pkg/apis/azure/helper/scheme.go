@@ -62,12 +62,12 @@ func InfrastructureConfigFromInfrastructure(infra *extensionsv1alpha1.Infrastruc
 	return nil, fmt.Errorf("provider config is not set on the infrastructure resource")
 }
 
-// InfrastructureStatusFromInfrastructure extracts the InfrastructureStatus from the
+// InfrastructureStatusFromRaw extracts the InfrastructureStatus from the
 // ProviderStatus section of the given Infrastructure.
-func InfrastructureStatusFromInfrastructure(infra *extensionsv1alpha1.Infrastructure) (*api.InfrastructureStatus, error) {
+func InfrastructureStatusFromRaw(raw *runtime.RawExtension) (*api.InfrastructureStatus, error) {
 	config := &api.InfrastructureStatus{}
-	if infra.Status.ProviderStatus != nil && infra.Status.ProviderStatus.Raw != nil {
-		if _, _, err := lenientDecoder.Decode(infra.Status.ProviderStatus.Raw, nil, config); err != nil {
+	if raw != nil && raw.Raw != nil {
+		if _, _, err := lenientDecoder.Decode(raw.Raw, nil, config); err != nil {
 			return nil, err
 		}
 		return config, nil
