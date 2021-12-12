@@ -533,7 +533,7 @@ func findDomainCounts(cluster *controller.Cluster, infra *extensionsv1alpha1.Inf
 	)
 
 	if infra.Status.ProviderStatus != nil {
-		infrastructureStatus, err := helper.InfrastructureStatusFromInfrastructure(infra)
+		infrastructureStatus, err := helper.InfrastructureStatusFromRaw(infra.Status.ProviderStatus)
 		if err != nil {
 			return nil, fmt.Errorf("error obtaining update and fault domain counts from infrastructure status: %v", err)
 		}
@@ -596,8 +596,8 @@ func isPrimaryAvailabilitySetRequired(infra *extensionsv1alpha1.Infrastructure, 
 		return true, nil
 	}
 
-	// If the infrastructureStatus already exists that mean the Infrastructure is already created.
-	infrastructureStatus, err := helper.InfrastructureStatusFromInfrastructure(infra)
+	// If the infrastructureStatus already exists that mean the Infrastucture is already created.
+	infrastructureStatus, err := helper.InfrastructureStatusFromRaw(infra.Status.ProviderStatus)
 	if err != nil {
 		return false, err
 	}

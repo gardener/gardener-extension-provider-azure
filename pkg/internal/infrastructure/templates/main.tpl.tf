@@ -77,7 +77,7 @@ resource "azurerm_subnet" "{{ $workers }}" {
 {{- if $.create.vnet }}
   virtual_network_name      = azurerm_virtual_network.vnet.name
   resource_group_name       = azurerm_virtual_network.vnet.resource_group_name
-{{- else -}}
+{{- else }}
   virtual_network_name      = data.azurerm_virtual_network.vnet.name
   resource_group_name       = data.azurerm_virtual_network.vnet.resource_group_name
 {{- end }}

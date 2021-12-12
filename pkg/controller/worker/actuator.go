@@ -31,6 +31,8 @@ import (
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	gardener "github.com/gardener/gardener/pkg/client/kubernetes"
 	"github.com/go-logr/logr"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -79,6 +81,7 @@ func (d *delegateFactory) WorkerDelegate(ctx context.Context, worker *extensions
 
 type workerDelegate struct {
 	common.ClientContext
+	lenientDecoder runtime.Decoder
 
 	seedChartApplier gardener.ChartApplier
 	serverVersion    string
@@ -102,7 +105,8 @@ func NewWorkerDelegate(clientContext common.ClientContext, seedChartApplier gard
 	}
 
 	return &workerDelegate{
-		ClientContext: clientContext,
+		ClientContext:  clientContext,
+		lenientDecoder: serializer.NewCodecFactory(clientContext.Scheme()).UniversalDecoder(),
 
 		seedChartApplier: seedChartApplier,
 		serverVersion:    serverVersion,

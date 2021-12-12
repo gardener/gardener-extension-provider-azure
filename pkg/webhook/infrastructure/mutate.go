@@ -110,7 +110,7 @@ func NetworkLayoutMigrationMutate(ctx context.Context, logger logr.Logger, newIn
 	}
 
 	if oldInfra.Status.ProviderStatus != nil {
-		oldProviderStatus, err = helper.InfrastructureStatusFromInfrastructure(oldInfra)
+		oldProviderStatus, err = helper.InfrastructureStatusFromRaw(oldInfra.Status.ProviderStatus)
 		if err != nil {
 			return fmt.Errorf("could not mutate object: %v", err)
 		}

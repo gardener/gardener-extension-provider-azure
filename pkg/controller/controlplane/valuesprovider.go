@@ -393,9 +393,14 @@ func (vp *valuesProvider) GetConfigChartValues(ctx context.Context, cp *extensio
 	}
 
 	// Decode infrastructureProviderStatus
-	infraStatus := &apisazure.InfrastructureStatus{}
-	if _, _, err := vp.Decoder().Decode(cp.Spec.InfrastructureProviderStatus.Raw, nil, infraStatus); err != nil {
-		return nil, fmt.Errorf("could not decode infrastructureProviderStatus of controlplane '%s': %w", kutil.ObjectName(cp), err)
+	var (
+		infraStatus = &apisazure.InfrastructureStatus{}
+		err         error
+	)
+	if cp.Spec.InfrastructureProviderStatus != nil {
+		if infraStatus, err = azureapihelper.InfrastructureStatusFromRaw(cp.Spec.InfrastructureProviderStatus); err != nil {
+			return nil, fmt.Errorf("could not decode infrastructureProviderStatus of controlplane '%s': %w", kutil.ObjectName(cp), err)
+		}
 	}
 
 	// Get client auth
@@ -437,11 +442,16 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 	}
 	checksums[azure.CloudProviderConfigName] = utils.ComputeChecksum(cpConfigSecret.Data)
 
-	infraStatus := &apisazure.InfrastructureStatus{}
-	if _, _, err := vp.Decoder().Decode(cp.Spec.InfrastructureProviderStatus.Raw, nil, infraStatus); err != nil {
-		return nil, fmt.Errorf("could not decode infrastructureProviderStatus of controlplane '%s': %w", kutil.ObjectName(cp), err)
+	// Decode infrastructureProviderStatus
+	var (
+		infraStatus = &apisazure.InfrastructureStatus{}
+		err         error
+	)
+	if cp.Spec.InfrastructureProviderStatus != nil {
+		if infraStatus, err = azureapihelper.InfrastructureStatusFromRaw(cp.Spec.InfrastructureProviderStatus); err != nil {
+			return nil, fmt.Errorf("could not decode infrastructureProviderStatus of controlplane '%s': %w", kutil.ObjectName(cp), err)
+		}
 	}
-
 	return getControlPlaneChartValues(cpConfig, cp, cluster, checksums, scaledDown, infraStatus)
 }
 
@@ -453,9 +463,14 @@ func (vp *valuesProvider) GetControlPlaneShootChartValues(
 	checksums map[string]string,
 ) (map[string]interface{}, error) {
 	// Decode infrastructureProviderStatus
-	infraStatus := &apisazure.InfrastructureStatus{}
-	if _, _, err := vp.Decoder().Decode(cp.Spec.InfrastructureProviderStatus.Raw, nil, infraStatus); err != nil {
-		return nil, fmt.Errorf("could not decode infrastructureProviderStatus of controlplane '%s': %w", kutil.ObjectName(cp), err)
+	var (
+		infraStatus = &apisazure.InfrastructureStatus{}
+		err         error
+	)
+	if cp.Spec.InfrastructureProviderStatus != nil {
+		if infraStatus, err = azureapihelper.InfrastructureStatusFromRaw(cp.Spec.InfrastructureProviderStatus); err != nil {
+			return nil, fmt.Errorf("could not decode infrastructureProviderStatus of controlplane '%s': %w", kutil.ObjectName(cp), err)
+		}
 	}
 
 	k8sVersionLessThan121, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, "<", "1.21")

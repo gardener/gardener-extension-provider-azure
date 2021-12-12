@@ -29,15 +29,15 @@ import (
 )
 
 func (w *workerDelegate) decodeAzureInfrastructureStatus() (*azureapi.InfrastructureStatus, error) {
-	var infrastructureStatus = &azureapi.InfrastructureStatus{}
-	if _, _, err := w.Decoder().Decode(w.worker.Spec.InfrastructureProviderStatus.Raw, nil, infrastructureStatus); err != nil {
+	infrastructureStatus := &azureapi.InfrastructureStatus{}
+	if _, _, err := w.lenientDecoder.Decode(w.worker.Spec.InfrastructureProviderStatus.Raw, nil, infrastructureStatus); err != nil {
 		return nil, err
 	}
 	return infrastructureStatus, nil
 }
 
 func (w *workerDelegate) decodeWorkerProviderStatus() (*azureapi.WorkerStatus, error) {
-	var workerStatus = &azureapi.WorkerStatus{}
+	workerStatus := &azureapi.WorkerStatus{}
 	if w.worker.Status.ProviderStatus == nil {
 		return workerStatus, nil
 	}
@@ -49,7 +49,7 @@ func (w *workerDelegate) decodeWorkerProviderStatus() (*azureapi.WorkerStatus, e
 }
 
 func (w *workerDelegate) updateWorkerProviderStatus(ctx context.Context, workerStatus *azureapi.WorkerStatus) error {
-	var workerStatusV1alpha1 = &v1alpha1.WorkerStatus{
+	workerStatusV1alpha1 := &v1alpha1.WorkerStatus{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: v1alpha1.SchemeGroupVersion.String(),
 			Kind:       "WorkerStatus",
