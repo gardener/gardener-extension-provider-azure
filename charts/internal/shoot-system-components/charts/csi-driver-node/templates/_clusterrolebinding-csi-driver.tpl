@@ -9,7 +9,13 @@ roleRef:
   kind: ClusterRole
   name: {{ include "csi-driver-node.extensionsGroup" . }}:{{ include "csi-driver-node.name" . }}:csi-driver
 subjects:
+{{- if .Values.global.useTokenRequestor }}
+- kind: ServiceAccount
+  name: csi-driver-node-{{.role }}
+  namespace: kube-system
+{{- else }}
 - kind: ServiceAccount
   name: csi-driver-node-{{ .role }}
   namespace: {{ .Release.Namespace }}
+{{- end }}
 {{- end -}}

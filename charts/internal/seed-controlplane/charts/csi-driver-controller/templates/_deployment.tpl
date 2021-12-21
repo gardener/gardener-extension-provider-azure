@@ -35,6 +35,7 @@ spec:
         networking.gardener.cloud/to-public-networks: allowed
         networking.gardener.cloud/to-shoot-apiserver: allowed
     spec:
+      automountServiceAccountToken: false
       containers:
       - name: azure-csi-driver
         image: {{ index .Values.images (print "csi-driver-" .role) }}
@@ -42,7 +43,11 @@ spec:
         args :
         - --endpoint=$(CSI_ENDPOINT)
         {{- if eq .role "disk" }}
+        {{- if .Values.global.useTokenRequestor }}
+        - --kubeconfig=/var/run/secrets/gardener.cloud/shoot/generic-kubeconfig/kubeconfig
+        {{- else }}
         - --kubeconfig=/var/lib/csi-driver-controller-disk/kubeconfig
+        {{- end }}
         {{- if hasKey .Values "vmType" }}
         {{- if eq .Values.vmType "vmss" }}
         - --disable-avset-nodes=false
@@ -51,7 +56,11 @@ spec:
         {{- end }}
         {{- if eq .role "file" }}
         - --nodeid=dummy
+        {{- if .Values.global.useTokenRequestor }}
+        - --kubeconfig=/var/run/secrets/gardener.cloud/shoot/generic-kubeconfig/kubeconfig
+        {{- else }}
         - --kubeconfig=/var/lib/csi-driver-controller-file/kubeconfig
+        {{- end }}
         {{- end }}
         - --v=5
         env:
@@ -81,12 +90,24 @@ spec:
         - name: socket-dir
           mountPath: {{ .Values.socketPath }}
         {{- if eq .role "disk" }}
+        {{- if .Values.global.useTokenRequestor }}
+        - mountPath: /var/run/secrets/gardener.cloud/shoot/generic-kubeconfig
+          name: kubeconfig-csi-driver-controller-disk
+          readOnly: true
+        {{- else }}
         - name: csi-driver-controller-disk
           mountPath: /var/lib/csi-driver-controller-disk
         {{- end }}
+        {{- end }}
         {{- if eq .role "file" }}
+        {{- if .Values.global.useTokenRequestor }}
+        - mountPath: /var/run/secrets/gardener.cloud/shoot/generic-kubeconfig
+          name: kubeconfig-csi-driver-controller-file
+          readOnly: true
+        {{- else }}
         - name: csi-driver-controller-file
           mountPath: /var/lib/csi-driver-controller-file
+        {{- end }}
         {{- end }}
         - name: cloud-provider-config
           mountPath: /etc/kubernetes/cloudprovider
@@ -99,7 +120,11 @@ spec:
         - --feature-gates=Topology=true
         - --leader-election=true
         - --leader-election-namespace=kube-system
+        {{- if .Values.global.useTokenRequestor }}
+        - --kubeconfig=/var/run/secrets/gardener.cloud/shoot/generic-kubeconfig/kubeconfig
+        {{- else }}
         - --kubeconfig=/var/lib/csi-provisioner/kubeconfig
+        {{- end }}
         - --timeout=120s
         - --volume-name-prefix=pv-{{ .Release.Namespace }}
         - --default-fstype=ext4
@@ -114,15 +139,25 @@ spec:
         volumeMounts:
         - name: socket-dir
           mountPath: {{ .Values.socketPath }}
+        {{- if .Values.global.useTokenRequestor }}
+        - mountPath: /var/run/secrets/gardener.cloud/shoot/generic-kubeconfig
+          name: kubeconfig-csi-provisioner
+          readOnly: true
+        {{- else }}
         - name: csi-provisioner
           mountPath: /var/lib/csi-provisioner
+        {{- end }}
 
       - name: azure-csi-attacher
         image: {{ index .Values.images "csi-attacher" }}
         imagePullPolicy: IfNotPresent
         args:
         - --csi-address=$(ADDRESS)
+        {{- if .Values.global.useTokenRequestor }}
+        - --kubeconfig=/var/run/secrets/gardener.cloud/shoot/generic-kubeconfig/kubeconfig
+        {{- else }}
         - --kubeconfig=/var/lib/csi-attacher/kubeconfig
+        {{- end }}
         - --leader-election
         - --leader-election-namespace=kube-system
         - --v=5
@@ -136,15 +171,25 @@ spec:
         volumeMounts:
         - name: socket-dir
           mountPath: {{ .Values.socketPath }}
+        {{- if .Values.global.useTokenRequestor }}
+        - mountPath: /var/run/secrets/gardener.cloud/shoot/generic-kubeconfig
+          name: kubeconfig-csi-attacher
+          readOnly: true
+        {{- else }}
         - name: csi-attacher
           mountPath: /var/lib/csi-attacher
+        {{- end }}
 
       - name: azure-csi-snapshotter
         image: {{ index .Values.images "csi-snapshotter" }}
         imagePullPolicy: IfNotPresent
         args:
         - --csi-address=$(CSI_ENDPOINT)
+        {{- if .Values.global.useTokenRequestor }}
+        - --kubeconfig=/var/run/secrets/gardener.cloud/shoot/generic-kubeconfig/kubeconfig
+        {{- else }}
         - --kubeconfig=/var/lib/csi-snapshotter/kubeconfig
+        {{- end }}
         - --leader-election
         - --leader-election-namespace=kube-system
         - --snapshot-name-prefix={{ .Release.Namespace }}
@@ -158,15 +203,25 @@ spec:
         volumeMounts:
         - name: socket-dir
           mountPath: {{ .Values.socketPath }}
+        {{- if .Values.global.useTokenRequestor }}
+        - mountPath: /var/run/secrets/gardener.cloud/shoot/generic-kubeconfig
+          name: kubeconfig-csi-snapshotter
+          readOnly: true
+        {{- else }}
         - name: csi-snapshotter
           mountPath: /var/lib/csi-snapshotter
+        {{- end }}
 
       - name: azure-csi-resizer
         image: {{ index .Values.images "csi-resizer" }}
         imagePullPolicy: IfNotPresent
         args:
         - --csi-address=$(ADDRESS)
+        {{- if .Values.global.useTokenRequestor }}
+        - --kubeconfig=/var/run/secrets/gardener.cloud/shoot/generic-kubeconfig/kubeconfig
+        {{- else }}
         - --kubeconfig=/var/lib/csi-resizer/kubeconfig
+        {{- end }}
         - --leader-election=true
         - --leader-election-namespace=kube-system
         - --v=5
@@ -180,8 +235,14 @@ spec:
         volumeMounts:
         - name: socket-dir
           mountPath: {{ .Values.socketPath }}
+        {{- if .Values.global.useTokenRequestor }}
+        - mountPath: /var/run/secrets/gardener.cloud/shoot/generic-kubeconfig
+          name: kubeconfig-csi-resizer
+          readOnly: true
+        {{- else }}
         - name: csi-resizer
           mountPath: /var/lib/csi-resizer
+        {{- end }}
 
       - name: azure-csi-liveness-probe
         image: {{ index .Values.images "csi-liveness-probe" }}
@@ -201,6 +262,88 @@ spec:
       - name: cloud-provider-config
         secret:
           secretName: cloud-provider-config
+      {{- if .Values.global.useTokenRequestor }}
+      - name: kubeconfig-csi-driver-controller-{{ .role }}
+        projected:
+          defaultMode: 420
+          sources:
+            - secret:
+                items:
+                  - key: kubeconfig
+                    path: kubeconfig
+                name: generic-token-kubeconfig
+                optional: false
+            - secret:
+                items:
+                  - key: token
+                    path: token
+                name: shoot-access-csi-driver-controller-{{ .role }}
+                optional: false
+      - name: kubeconfig-csi-attacher
+        projected:
+          defaultMode: 420
+          sources:
+            - secret:
+                items:
+                  - key: kubeconfig
+                    path: kubeconfig
+                name: generic-token-kubeconfig
+                optional: false
+            - secret:
+                items:
+                  - key: token
+                    path: token
+                name: shoot-access-csi-attacher
+                optional: false
+      - name: kubeconfig-csi-provisioner
+        projected:
+          defaultMode: 420
+          sources:
+            - secret:
+                items:
+                  - key: kubeconfig
+                    path: kubeconfig
+                name: generic-token-kubeconfig
+                optional: false
+            - secret:
+                items:
+                  - key: token
+                    path: token
+                name: shoot-access-csi-provisioner
+                optional: false
+      - name: kubeconfig-csi-snapshotter
+        projected:
+          defaultMode: 420
+          sources:
+            - secret:
+                items:
+                  - key: kubeconfig
+                    path: kubeconfig
+                name: generic-token-kubeconfig
+                optional: false
+            - secret:
+                items:
+                  - key: token
+                    path: token
+                name: shoot-access-csi-snapshotter
+                optional: false
+      - name: kubeconfig-csi-resizer
+        projected:
+          defaultMode: 420
+          sources:
+            - secret:
+                items:
+                  - key: kubeconfig
+                    path: kubeconfig
+                name: generic-token-kubeconfig
+                optional: false
+            - secret:
+                items:
+                  - key: token
+                    path: token
+                name: shoot-access-csi-resizer
+                optional: false
+      {{- else }}
       {{- if eq .role "disk" }}
       - name: csi-driver-controller-disk
         secret:
@@ -223,4 +366,5 @@ spec:
       - name: csi-resizer
         secret:
           secretName: csi-resizer
+      {{- end }}
 {{- end -}}

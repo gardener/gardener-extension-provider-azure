@@ -1,3 +1,6 @@
+global:
+  useTokenRequestor: false
+  useProjectedTokenMount: false
 allow-egress:
   enabled: false
 cloud-controller-manager:

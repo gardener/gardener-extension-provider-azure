@@ -143,7 +143,7 @@ var _ = Describe("ValuesProvider", func() {
 		ctrl = gomock.NewController(GinkgoT())
 
 		c = mockclient.NewMockClient(ctrl)
-		vp = NewValuesProvider(logger)
+		vp = NewValuesProvider(logger, true, true)
 
 		err := vp.(inject.Scheme).InjectScheme(scheme)
 		Expect(err).NotTo(HaveOccurred())
@@ -364,6 +364,10 @@ var _ = Describe("ValuesProvider", func() {
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
+				"global": map[string]interface{}{
+					"useTokenRequestor":      true,
+					"useProjectedTokenMount": true,
+				},
 				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
 					"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
 				}),
@@ -386,6 +390,10 @@ var _ = Describe("ValuesProvider", func() {
 			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, checksums, false)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
+				"global": map[string]interface{}{
+					"useTokenRequestor":      true,
+					"useProjectedTokenMount": true,
+				},
 				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
 					"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
 				}),
@@ -426,6 +434,10 @@ var _ = Describe("ValuesProvider", func() {
 			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, checksums, false)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
+				"global": map[string]interface{}{
+					"useTokenRequestor":      true,
+					"useProjectedTokenMount": true,
+				},
 				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
 					"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
 				}),
@@ -467,6 +479,10 @@ var _ = Describe("ValuesProvider", func() {
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
+				"global": map[string]interface{}{
+					"useTokenRequestor":      true,
+					"useProjectedTokenMount": true,
+				},
 				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
 					"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
 				}),
@@ -503,6 +519,10 @@ var _ = Describe("ValuesProvider", func() {
 				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
+					"global": map[string]interface{}{
+						"useTokenRequestor":      true,
+						"useProjectedTokenMount": true,
+					},
 					azure.AllowEgressName:            enabledTrue,
 					azure.CloudControllerManagerName: enabledTrue,
 					azure.CSINodeName:                csiNodeNotEnabled,
@@ -518,6 +538,10 @@ var _ = Describe("ValuesProvider", func() {
 				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
+					"global": map[string]interface{}{
+						"useTokenRequestor":      true,
+						"useProjectedTokenMount": true,
+					},
 					azure.AllowEgressName:            enabledFalse,
 					azure.CloudControllerManagerName: enabledTrue,
 					azure.CSINodeName:                csiNodeNotEnabled,
@@ -550,6 +574,10 @@ var _ = Describe("ValuesProvider", func() {
 				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
+					"global": map[string]interface{}{
+						"useTokenRequestor":      true,
+						"useProjectedTokenMount": true,
+					},
 					azure.AllowEgressName:            enabledTrue,
 					azure.CloudControllerManagerName: enabledTrue,
 					azure.CSINodeName:                csiNodeEnabled,
@@ -565,6 +593,10 @@ var _ = Describe("ValuesProvider", func() {
 				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
+					"global": map[string]interface{}{
+						"useTokenRequestor":      true,
+						"useProjectedTokenMount": true,
+					},
 					azure.AllowEgressName:            enabledFalse,
 					azure.CloudControllerManagerName: enabledTrue,
 					azure.CSINodeName:                csiNodeEnabled,
@@ -580,6 +612,10 @@ var _ = Describe("ValuesProvider", func() {
 				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
+					"global": map[string]interface{}{
+						"useTokenRequestor":      true,
+						"useProjectedTokenMount": true,
+					},
 					azure.AllowEgressName:            enabledTrue,
 					azure.CloudControllerManagerName: enabledTrue,
 					azure.CSINodeName:                csiNodeEnabled,
@@ -600,6 +636,10 @@ var _ = Describe("ValuesProvider", func() {
 				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
+					"global": map[string]interface{}{
+						"useTokenRequestor":      true,
+						"useProjectedTokenMount": true,
+					},
 					azure.AllowEgressName:            enabledTrue,
 					azure.CloudControllerManagerName: enabledTrue,
 					azure.CSINodeName:                csiNodeNotEnabled,
@@ -615,6 +655,10 @@ var _ = Describe("ValuesProvider", func() {
 				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
+					"global": map[string]interface{}{
+						"useTokenRequestor":      true,
+						"useProjectedTokenMount": true,
+					},
 					azure.AllowEgressName:            enabledFalse,
 					azure.CloudControllerManagerName: enabledTrue,
 					azure.CSINodeName:                csiNodeNotEnabled,
