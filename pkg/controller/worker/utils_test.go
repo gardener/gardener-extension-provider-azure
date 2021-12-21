@@ -65,11 +65,7 @@ func encode(obj runtime.Object) []byte {
 }
 
 func expectWorkerProviderStatusUpdateToSucceed(ctx context.Context, c *mockclient.MockClient, statusWriter *mockclient.MockStatusWriter) {
-	c.EXPECT().Get(ctx, gomock.Any(), gomock.AssignableToTypeOf(&extensionsv1alpha1.Worker{})).
-		DoAndReturn(func(_ context.Context, _ client.ObjectKey, worker *extensionsv1alpha1.Worker) error {
-			return nil
-		})
-	statusWriter.EXPECT().Update(ctx, gomock.AssignableToTypeOf(&extensionsv1alpha1.Worker{})).Return(nil)
+	statusWriter.EXPECT().Patch(ctx, gomock.AssignableToTypeOf(&extensionsv1alpha1.Worker{}), gomock.Any()).Return(nil)
 }
 
 func expectGetSecretCallToWork(c *mockclient.MockClient, w *extensionsv1alpha1.Worker) {

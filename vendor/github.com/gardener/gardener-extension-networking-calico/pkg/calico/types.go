@@ -28,6 +28,9 @@ const (
 	CalicoClusterProportionalAutoscalerImageName   = "calico-cpa"
 	ClusterProportionalVerticalAutoscalerImageName = "calico-cpva"
 
+	// MonitoringChartName
+	MonitoringName = "calico-monitoring-config"
+
 	// ReleaseName is the name of the Calico Release
 	ReleaseName = "calico"
 )
@@ -38,6 +41,9 @@ var (
 	// InternalChartsPath is the path to the internal charts
 	InternalChartsPath = filepath.Join(ChartsPath, "internal")
 
-	// ChartPath path for internal Calico Chart
-	ChartPath = filepath.Join(InternalChartsPath, "calico")
+	// CalicoChartPath path for internal Calico Chart
+	CalicoChartPath = filepath.Join(InternalChartsPath, "calico")
+
+	// CalicoMonitoringChartPath  path for internal Calico monitoring chart
+	CalicoMonitoringChartPath = filepath.Join(InternalChartsPath, "calico-monitoring")
 )

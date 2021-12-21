@@ -221,6 +221,11 @@ func SeedSettingShootDNSEnabled(settings *core.SeedSettings) bool {
 	return settings == nil || settings.ShootDNS == nil || settings.ShootDNS.Enabled
 }
 
+// SeedSettingOwnerChecksEnabled returns true if the 'ownerChecks' setting is enabled.
+func SeedSettingOwnerChecksEnabled(settings *core.SeedSettings) bool {
+	return settings == nil || settings.OwnerChecks == nil || settings.OwnerChecks.Enabled
+}
+
 // ShootUsesUnmanagedDNS returns true if the shoot's DNS section is marked as 'unmanaged'.
 func ShootUsesUnmanagedDNS(shoot *core.Shoot) bool {
 	if shoot.Spec.DNS == nil {
@@ -312,6 +317,24 @@ func FindVersionsWithSameMajorMinor(versions []core.ExpirableVersion, version se
 		result = append(result, v)
 	}
 	return result, nil
+}
+
+// GetShootAuditPolicyConfigMapName returns the Shoot's ConfigMap reference name for the audit policy.
+func GetShootAuditPolicyConfigMapName(apiServerConfig *core.KubeAPIServerConfig) string {
+	if ref := GetShootAuditPolicyConfigMapRef(apiServerConfig); ref != nil {
+		return ref.Name
+	}
+	return ""
+}
+
+// GetShootAuditPolicyConfigMapRef returns the Shoot's ConfigMap reference for the audit policy.
+func GetShootAuditPolicyConfigMapRef(apiServerConfig *core.KubeAPIServerConfig) *corev1.ObjectReference {
+	if apiServerConfig != nil &&
+		apiServerConfig.AuditConfig != nil &&
+		apiServerConfig.AuditConfig.AuditPolicy != nil {
+		return apiServerConfig.AuditConfig.AuditPolicy.ConfigMapRef
+	}
+	return nil
 }
 
 // HibernationIsEnabled checks if the given shoot's desired state is hibernated.

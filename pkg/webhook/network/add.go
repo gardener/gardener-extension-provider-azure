@@ -21,7 +21,6 @@ import (
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	"github.com/gardener/gardener/extensions/pkg/webhook/network"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
@@ -34,7 +33,9 @@ func AddToManager(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 	return network.New(mgr, network.Args{
 		CloudProvider:   azure.Type,
 		NetworkProvider: calico.Type,
-		Types:           []client.Object{&extensionsv1alpha1.Network{}},
-		Mutator:         network.NewMutator(logger, mutateNetworkConfig),
+		Types: []extensionswebhook.Type{
+			{Obj: &extensionsv1alpha1.Network{}},
+		},
+		Mutator: network.NewMutator(logger, mutateNetworkConfig),
 	})
 }
