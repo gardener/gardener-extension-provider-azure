@@ -74,6 +74,7 @@ config:
       provisioner: kubernetes.io/azure-disk
 
 gardener:
+  version: ""
   seed:
     provider: azure
 
