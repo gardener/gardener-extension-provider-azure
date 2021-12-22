@@ -30,7 +30,6 @@ spec:
       labels:
         app: csi
         role: controller-{{ .role }}
-        garden.sapcloud.io/role: controlplane
         gardener.cloud/role: controlplane
         networking.gardener.cloud/to-dns: allowed
         networking.gardener.cloud/to-public-networks: allowed
