@@ -24,6 +24,7 @@ import (
 	azureapihelper "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
+
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
@@ -753,7 +754,7 @@ func getControlPlaneShootChartValues(
 	cloudProviderDiskConfigChecksum string,
 ) map[string]interface{} {
 	return map[string]interface{}{
-		azure.AllowEgressName:            map[string]interface{}{"enabled": infraStatus.Zoned},
+		azure.AllowEgressName:            map[string]interface{}{"enabled": infraStatus.Zoned || azureapihelper.IsVmoRequired(infraStatus)},
 		azure.CloudControllerManagerName: map[string]interface{}{"enabled": true},
 		azure.CSINodeName: map[string]interface{}{
 			"enabled":           !k8sVersionLessThan121,
