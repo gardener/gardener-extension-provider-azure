@@ -571,6 +571,21 @@ var _ = Describe("ValuesProvider", func() {
 					azure.RemedyControllerName:       enabledTrue,
 				}))
 			})
+
+			It("should return correct control plane shoot chart values for cluster with vmss flex (vmo, non zoned)", func() {
+				infrastructureStatus.Zoned = false
+				infrastructureStatus.AvailabilitySets = []apisazure.AvailabilitySet{}
+				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values).To(Equal(map[string]interface{}{
+					azure.AllowEgressName:            enabledTrue,
+					azure.CloudControllerManagerName: enabledTrue,
+					azure.CSINodeName:                csiNodeEnabled,
+					azure.RemedyControllerName:       enabledTrue,
+				}))
+			})
 		})
 
 		Context("remedy controller is disabled", func() {
