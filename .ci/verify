@@ -14,4 +14,4 @@ mkdir -p /go/src/github.com/gardener/gardener-extension-provider-azure
 cp -r . /go/src/github.com/gardener/gardener-extension-provider-azure
 cd /go/src/github.com/gardener/gardener-extension-provider-azure
 
-make verify-extended
+make verify-extended check-docforge
