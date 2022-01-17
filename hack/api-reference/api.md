@@ -995,6 +995,7 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Workers is the worker subnet range to create (used for the VMs).</p>
 </td>
 </tr>
@@ -1024,8 +1025,30 @@ NatGatewayConfig
 <p>ServiceEndpoints is a list of Azure ServiceEndpoints which should be associated with the worker subnet.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>zones</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.Zone">
+[]Zone
+</a>
+</em>
+</td>
+<td>
+<p>Zones is a list of zones with their respective configuration.</p>
+</td>
+</tr>
 </tbody>
 </table>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.NetworkLayout">NetworkLayout
+(<code>string</code> alias)</p></h3>
+<p>
+(<em>Appears on:</em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.NetworkStatus">NetworkStatus</a>)
+</p>
+<p>
+<p>NetworkLayout is the network layout type for the cluster.</p>
+</p>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.NetworkStatus">NetworkStatus
 </h3>
 <p>
@@ -1067,6 +1090,19 @@ VNetStatus
 </td>
 <td>
 <p>Subnets are the subnets that have been created.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>layout</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.NetworkLayout">
+NetworkLayout
+</a>
+</em>
+</td>
+<td>
+<p>Layout describes the network layout of the cluster.</p>
 </td>
 </tr>
 </tbody>
@@ -1293,6 +1329,30 @@ Purpose
 <p>Purpose is the purpose for which the subnet was created.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>zone</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Zone is the name of the zone for which the subnet was created.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>migrated</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Migrated is set when the network layout is migrated from NetworkLayoutSingleSubnet to NetworkLayoutMultipleSubnet.
+Only the subnet that was used prior to the migration should have this attribute set.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.VNet">VNet
@@ -1440,6 +1500,170 @@ string
 </td>
 <td>
 <p>Name is the name of the VMO resource on Azure.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.Zone">Zone
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.NetworkConfig">NetworkConfig</a>)
+</p>
+<p>
+<p>Zone describes the configuration for a subnet that is used for VMs on that region.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>Name is the name of the zone and should match with the name the infrastructure provider is using for the zone.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>cidr</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>CIDR is the CIDR range used for the zone&rsquo;s subnet.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceEndpoints</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ServiceEndpoints is a list of Azure ServiceEndpoints which should be associated with the zone&rsquo;s subnet.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>natGateway</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.ZonedNatGatewayConfig">
+ZonedNatGatewayConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>NatGateway contains the configuration for the NatGateway associated with this subnet.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.ZonedNatGatewayConfig">ZonedNatGatewayConfig
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.Zone">Zone</a>)
+</p>
+<p>
+<p>ZonedNatGatewayConfig contains configuration for NAT gateway and the attached resources.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>enabled</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Enabled is an indicator if NAT gateway should be deployed.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>idleConnectionTimeoutMinutes</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>IdleConnectionTimeoutMinutes specifies the idle connection timeout limit for NAT gateway in minutes.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ipAddresses</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.ZonedPublicIPReference">
+[]ZonedPublicIPReference
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>IPAddresses is a list of ip addresses which should be assigned to the NAT gateway.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.ZonedPublicIPReference">ZonedPublicIPReference
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.ZonedNatGatewayConfig">ZonedNatGatewayConfig</a>)
+</p>
+<p>
+<p>ZonedPublicIPReference contains information about a public ip.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name is the name of the public ip.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>resourceGroup</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>ResourceGroup is the name of the resource group where the public ip is assigned to.</p>
 </td>
 </tr>
 </tbody>

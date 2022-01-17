@@ -71,6 +71,13 @@ networks:
   #     zone: 1
   # serviceEndpoints:
   # - Microsoft.Test
+  # zones:
+  # - name: 1
+  #   cidr: "10.250.0.0/24
+  # - name: 2
+  #   cidr: "10.250.0.0/24"
+  #   natGateway:
+  #     enabled: false
 zoned: false
 # resourceGroup:
 #   name: mygroup
@@ -113,6 +120,174 @@ In the `identity` section you can specify an [Azure user-assigned managed identi
 **Caution:** Adding, exchanging or removing the identity will require a rolling update of all worker machines in the Shoot cluster.
 
 Apart from the VNet and the worker subnet the Azure extension will also create a dedicated resource group, route tables, security groups, and an availability set (if not using zoned clusters).
+
+### InfrastructureConfig with dedicated subnets per zone
+
+Another deployment option **for zonal clusters only**, is to create and configure a separate subnet per availability zone. This network layout is recommended to users that require fine-grained control over their network setup. One prevalent usecase is to create a zone-redundant NAT Gateway deployment by taking advantage of the ability to deploy separate NAT Gateways for each subnet.
+
+To use this configuration the following requirements must be met:
+
+- the `zoned` field must be set to `true`.
+- the `networks.vnet` section must not be empty and must contain a valid configuration. For existing clusters that were not using the `networks.vnet` section, it is enough if `networks.vnet.cidr` field is set to the current `networks.worker` value.
+
+For each of the target zones a subnet CIDR range must be specified. The specified CIDR range must be contained in the VNet CIDR specified above, or the VNet CIDR of your already existing VNet. In addition, the CIDR ranges must not overlap with the ranges of the other subnets.
+
+_ServiceEndpoints_ and _NatGateways_ can be configured per subnet. Respectively, when `networks.zones` is specified, the fields `networks.workers`, `networks.serviceEndpoints` and `networks.natGateway` cannot be set. All the configuration for the subnets must be done inside the respective zone's configuration.
+
+Example:
+
+```yaml
+apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+kind: InfrastructureConfig
+networks:
+  zoned: true
+  vnet: # specify either 'name' and 'resourceGroup' or 'cidr'
+    cidr: 10.250.0.0/16
+  zones:
+  - name: 1
+    cidr: "10.250.0.0/24"
+  - name: 2
+    cidr: "10.250.0.0/24"
+    natGateway:
+      enabled: false
+```
+
+### Migrating to zonal shoots with dedicated subnets per zone
+
+For existing zonal clusters it is possible to migrate to a network layout with dedicated subnets per zone. The migration works by creating additional network resources as specified in the configuration and progressively roll part of your existing nodes to use the new resources. To achieve the controlled rollout of your nodes, parts of the existing infrastructure must be preserved which is why the following constraint is imposed:
+
+One of your specified zones must have the exact same CIDR range as the current `network.workers` field. Here is an example of such migration:
+
+```yaml
+infrastructureConfig:
+  apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+  kind: InfrastructureConfig
+  networks:
+    vnet:
+      cidr: 10.250.0.0/16
+    workers: 10.250.0.0/19
+  zoned: true
+```
+
+to
+
+```yaml
+infrastructureConfig:
+  apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+  kind: InfrastructureConfig
+  networks:
+    vnet:
+      cidr: 10.250.0.0/16
+    zones:
+      - name: 3
+        cidr: 10.250.0.0/19 # note the preservation of the 'workers' CIDR
+# optionally add other zones 
+    # - name: 2  
+    #   cidr: 10.250.32.0/19
+    #   natGateway:
+    #     enabled: true
+  zoned: true
+```
+
+Another more advanced example with user-provided public IP addresses for the NAT Gateway and how it can be migrated: 
+
+```yaml
+infrastructureConfig:
+  apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+  kind: InfrastructureConfig
+  networks:
+    vnet:
+      cidr: 10.250.0.0/16
+    workers: 10.250.0.0/19
+    natGateway:
+      enabled: true
+      zone: 1
+      ipAddresses:
+        - name: pip1
+          resourceGroup: group
+          zone: 1
+        - name: pip2
+          resourceGroup: group
+          zone: 1
+  zoned: true
+```
+
+to
+
+```yaml
+infrastructureConfig:
+  apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+  kind: InfrastructureConfig
+  zoned: true
+  networks:
+    vnet:
+      cidr: 10.250.0.0/16
+    zones:
+      - name: 1
+        cidr: 10.250.0.0/19 # note the preservation of the 'workers' CIDR
+        natGateway:
+          enabled: true
+          ipAddresses:
+            - name: pip1
+              resourceGroup: group
+              zone: 1
+            - name: pip2
+              resourceGroup: group
+              zone: 1
+# optionally add other zones 
+#     - name: 2  
+#       cidr: 10.250.32.0/19
+#       natGateway:
+#         enabled: true
+#         ipAddresses:
+#           - name: pip3
+#             resourceGroup: group
+```
+
+You can apply such change to your shoot by issuing a `kubectl patch` command to replace your current `.spec.provider.infrastructureConfig` section:
+
+```
+$ cat new-infra.json
+
+[
+  {
+    "op": "replace",
+    "path": "/spec/provider/infrastructureConfig",
+    "value": {
+      "apiVersion": "azure.provider.extensions.gardener.cloud/v1alpha1",
+      "kind": "InfrastructureConfig",
+      "networks": {
+        "vnet": {
+          "cidr": "<your-vnet-cidr>"
+        },
+        "zones": [
+          {
+            "name": 1,
+            "cidr": "10.250.0.0/24",
+            "natGateway": {
+              "enabled": true
+            }
+          },
+          {
+            "name": 1,
+            "cidr": "10.250.1.0/24",
+            "natGateway": {
+              "enabled": true
+            }
+          },
+        ]
+      },
+      "zoned": true
+    }
+  }
+]
+
+kubectl patch --type="json" --patch-file new-infra.json shoot <my-shoot>
+```
+
+:warning: The migration to shoots with dedicated subnets per zone is a one-way process. Reverting the shoot to the previous configuration is not supported.
+
+:warning: During the migration a subset of the nodes will be rolled to the new subnets.
 
 ## `ControlPlaneConfig`
 
@@ -232,6 +407,78 @@ spec:
         vnet:
           cidr: 10.250.0.0/16
         workers: 10.250.0.0/19
+      zoned: true
+    controlPlaneConfig:
+      apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+      kind: ControlPlaneConfig
+    workers:
+    - name: worker-xoluy
+      machine:
+        type: Standard_D4_v3
+      minimum: 2
+      maximum: 2
+      volume:
+        size: 50Gi
+        type: Standard_LRS
+      zones:
+      - "1"
+      - "2"
+  networking:
+    type: calico
+    pods: 100.96.0.0/11
+    nodes: 10.250.0.0/16
+    services: 100.64.0.0/13
+  kubernetes:
+    version: 1.16.1
+  maintenance:
+    autoUpdate:
+      kubernetesVersion: true
+      machineImageVersion: true
+  addons:
+    kubernetesDashboard:
+      enabled: true
+    nginxIngress:
+      enabled: true
+```
+
+## Example `Shoot` manifest (zoned with NAT Gateways per zone)
+
+Please find below an example `Shoot` manifest for a zoned cluster using NAT Gateways per zone:
+
+```yaml
+apiVersion: core.gardener.cloud/v1beta1
+kind: Shoot
+metadata:
+  name: johndoe-azure
+  namespace: garden-dev
+spec:
+  cloudProfileName: azure
+  region: westeurope
+  secretBindingName: core-azure
+  provider:
+    type: azure
+    infrastructureConfig:
+      apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+      kind: InfrastructureConfig
+      networks:
+        vnet:
+          cidr: 10.250.0.0/16
+        zones:
+        - name: 1
+          cidr: 10.250.0.0/24
+          serviceEndpoints:
+          - Microsoft.Storage
+          - Microsoft.Sql
+          natGateway:
+            enabled: true
+            idleConnectionTimeoutMinutes: 4
+        - name: 2
+          cidr: 10.250.1.0/24
+          serviceEndpoints:
+          - Microsoft.Storage
+          - Microsoft.Sql
+          natGateway:
+            enabled: true
       zoned: true
     controlPlaneConfig:
       apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1

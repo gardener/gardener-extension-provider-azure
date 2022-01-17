@@ -72,6 +72,15 @@ spec:
     #   enabled: false
     # serviceEndpoints:
     # - entry1
+    # zones:
+    # - name: 1
+    #   cidr: 10.250.0.0/24
+    # - name: 2
+    #   cidr: 10.250.1.0/24
+    #   natGateway:
+    #     enabled: true
+    #   serviceEndpoints:
+    #   - entry1
     zoned: false
   # resourceGroup:
   #   name: mygroup

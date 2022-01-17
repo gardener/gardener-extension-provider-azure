@@ -27,7 +27,7 @@ import (
 	"github.com/gardener/gardener/extensions/test/tm/generator"
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	log "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
@@ -80,7 +80,7 @@ func main() {
 			VNet: v1alpha1.VNet{
 				CIDR: &cfg.networkVnetCidr,
 			},
-			Workers: cfg.networkWorkerCidr,
+			Workers: &cfg.networkWorkerCidr,
 		},
 		Zoned: cfg.zoned,
 	}

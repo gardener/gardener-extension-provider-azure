@@ -21,16 +21,22 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
-// FindSubnetByPurpose takes a list of subnets and tries to find the first entry
-// whose purpose matches with the given purpose. If no such entry is found then an error will be
-// returned.
-func FindSubnetByPurpose(subnets []api.Subnet, purpose api.Purpose) (*api.Subnet, error) {
-	for _, subnet := range subnets {
-		if subnet.Purpose == purpose {
-			return &subnet, nil
+// FindSubnetByPurposeAndZone takes a list of subnets and tries to find the first entry whose purpose matches with the given purpose.
+// Optionally, if the zone argument is not nil, the Zone field of a candidate subnet must match that value.
+// FindSubnetByPurposeAndZone returns the index of the subnet in the array and the subnet object.
+//  If no such entry is found then an error will be returned.
+func FindSubnetByPurposeAndZone(subnets []api.Subnet, purpose api.Purpose, zone *string) (int, *api.Subnet, error) {
+	for index, subnet := range subnets {
+		if subnet.Purpose == purpose && (zone == nil || (subnet.Zone != nil && *subnet.Zone == *zone)) {
+			return index, &subnet, nil
 		}
 	}
-	return nil, fmt.Errorf("cannot find subnet with purpose %q", purpose)
+
+	errMsg := fmt.Sprintf("cannot find subnet with purpose %q", purpose)
+	if zone != nil {
+		errMsg += fmt.Sprintf(" and zone %q", *zone)
+	}
+	return 0, nil, fmt.Errorf(errMsg)
 }
 
 // FindSecurityGroupByPurpose takes a list of security groups and tries to find the first entry
@@ -129,4 +135,14 @@ func HasShootVmoAlphaAnnotation(shootAnnotations map[string]string) bool {
 		return true
 	}
 	return false
+}
+
+// InfrastructureZoneToString translates the zone from the string format used in Gardener core objects to the int32 format used by the Azure provider extension.
+func InfrastructureZoneToString(zone int32) string {
+	return fmt.Sprintf("%d", zone)
+}
+
+// IsUsingSingleSubnetLayout returns true if the infrastructure configuration is using a network setup with a single subnet.
+func IsUsingSingleSubnetLayout(config *api.InfrastructureConfig) bool {
+	return len(config.Networks.Zones) == 0
 }

@@ -139,6 +139,12 @@ var _ = Describe("Machines", func() {
 				maxSurgePool2       intstr.IntOrString
 				maxUnavailablePool2 intstr.IntOrString
 
+				namePoolZones           string
+				minPoolZones            int32
+				maxPoolZones            int32
+				maxSurgePoolZones       intstr.IntOrString
+				maxUnavailablePoolZones intstr.IntOrString
+
 				labels map[string]string
 
 				shootVersionMajorMinor string
@@ -147,10 +153,10 @@ var _ = Describe("Machines", func() {
 				machineImages []apiv1alpha1.MachineImages
 				machineTypes  []apiv1alpha1.MachineType
 
-				pool1, pool2         extensionsv1alpha1.WorkerPool
-				infrastructureStatus *apisazure.InfrastructureStatus
-				w                    *extensionsv1alpha1.Worker
-				cluster              *extensionscontroller.Cluster
+				pool1, pool2, poolZones extensionsv1alpha1.WorkerPool
+				infrastructureStatus    *apisazure.InfrastructureStatus
+				w                       *extensionsv1alpha1.Worker
+				cluster                 *extensionscontroller.Cluster
 			)
 
 			BeforeEach(func() {
@@ -187,6 +193,12 @@ var _ = Describe("Machines", func() {
 				labels = map[string]string{"component": "TiDB"}
 
 				namePool2 = "pool-2"
+				minPool2 = 30
+				maxPool2 = 45
+				maxSurgePool2 = intstr.FromInt(10)
+				maxUnavailablePool2 = intstr.FromInt(15)
+
+				namePool2 = "pool-zones"
 				minPool2 = 30
 				maxPool2 = 45
 				maxSurgePool2 = intstr.FromInt(10)
@@ -279,6 +291,11 @@ var _ = Describe("Machines", func() {
 					machineClasses      map[string]interface{}
 
 					workerPoolHash1, workerPoolHash2 string
+
+					zone1   = "1"
+					zone2   = "2"
+					subnet1 = "subnet1"
+					subnet2 = "subnet2"
 				)
 
 				BeforeEach(func() {
@@ -325,7 +342,7 @@ var _ = Describe("Machines", func() {
 						"id": machineImageID,
 					}
 
-					workerPoolHash1, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster, fmt.Sprintf("%dGi", dataVolume1Size), fmt.Sprintf("%dGi", dataVolume2Size), dataVolume2Type, identityID)
+					workerPoolHash1, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster, fmt.Sprintf("%dGi", dataVolume2Size), dataVolume2Type, fmt.Sprintf("%dGi", dataVolume1Size), identityID)
 					workerPoolHash2, _ = worker.WorkerPoolHash(w.Spec.Pools[1], cluster, identityID)
 
 					var (
@@ -420,6 +437,107 @@ var _ = Describe("Machines", func() {
 					Expect(err).NotTo(HaveOccurred())
 					Expect(result).To(Equal(machineDeployments))
 				})
+
+				Describe("#Zonal setup", func() {
+					var (
+						w                *extensionsv1alpha1.Worker
+						workerPoolHashZ1 string
+						workerPoolHashZ2 string
+
+						machineClassNamePool1 string
+						machineClassNamePool2 string
+
+						machineClassWithHashPool1 string
+						machineClassWithHashPool2 string
+						volumeSize                int
+					)
+
+					BeforeEach(func() {
+						volumeSize = 20
+
+						infrastructureStatus = makeInfrastructureStatus(resourceGroupName, vnetName, subnetName, true, &vnetResourceGroupName, &availabilitySetID, &identityID)
+						infrastructureStatus.Networks = apisazure.NetworkStatus{
+							Layout: apisazure.NetworkLayoutMultipleSubnet,
+							Subnets: []apisazure.Subnet{
+								{
+									Name:     subnet1,
+									Purpose:  apisazure.PurposeNodes,
+									Zone:     &zone1,
+									Migrated: true,
+								},
+								{
+									Name:    subnet2,
+									Purpose: apisazure.PurposeNodes,
+									Zone:    &zone2,
+								},
+							},
+						}
+
+						poolZones = extensionsv1alpha1.WorkerPool{
+							Name:           namePoolZones,
+							Minimum:        minPoolZones,
+							Maximum:        maxPoolZones,
+							MaxSurge:       maxSurgePoolZones,
+							MaxUnavailable: maxUnavailablePoolZones,
+							MachineType:    machineType,
+							MachineImage: extensionsv1alpha1.MachineImage{
+								Name:    machineImageName,
+								Version: machineImageVersionID,
+							},
+							Volume: &extensionsv1alpha1.Volume{
+								Size: fmt.Sprintf("%dGi", volumeSize),
+							},
+							UserData: userData,
+							Labels:   labels,
+							Zones:    []string{zone1, zone2},
+						}
+
+						w = makeWorker(namespace, region, &sshKey, infrastructureStatus, poolZones)
+
+						workerPoolHashZ1, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster, identityID)
+						workerPoolHashZ2, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster, identityID, subnet2)
+
+						basename := fmt.Sprintf("%s-%s", namespace, namePoolZones)
+						machineClassNamePool1 = fmt.Sprintf("%s-z%s", basename, zone1)
+						machineClassNamePool2 = fmt.Sprintf("%s-z%s", basename, zone2)
+						machineClassWithHashPool1 = fmt.Sprintf("%s-%s-z%s", basename, workerPoolHashZ1, zone1)
+						machineClassWithHashPool2 = fmt.Sprintf("%s-%s-z%s", basename, workerPoolHashZ2, zone2)
+
+						machineDeployments = worker.MachineDeployments{
+							{
+								Name:                 machineClassNamePool1,
+								ClassName:            machineClassWithHashPool1,
+								SecretName:           machineClassWithHashPool1,
+								Minimum:              minPoolZones,
+								Maximum:              maxPoolZones,
+								MaxSurge:             maxSurgePoolZones,
+								MaxUnavailable:       maxUnavailablePoolZones,
+								Labels:               labels,
+								MachineConfiguration: &machinev1alpha1.MachineConfiguration{},
+							},
+							{
+								Name:                 machineClassNamePool2,
+								ClassName:            machineClassWithHashPool2,
+								SecretName:           machineClassWithHashPool2,
+								Minimum:              minPoolZones,
+								Maximum:              maxPoolZones,
+								MaxSurge:             maxSurgePoolZones,
+								MaxUnavailable:       maxUnavailablePoolZones,
+								Labels:               labels,
+								MachineConfiguration: &machinev1alpha1.MachineConfiguration{},
+							},
+						}
+					})
+
+					It("should return the correct machine deployments for zonal setup", func() {
+						workerDelegate := wrapNewWorkerDelegate(c, chartApplier, w, cluster, nil)
+
+						// Test workerDelegate.GenerateMachineDeployments()
+						result, err := workerDelegate.GenerateMachineDeployments(ctx)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(result).To(Equal(machineDeployments))
+					})
+				})
 			})
 
 			It("should fail because the version is invalid", func() {
@@ -432,7 +550,7 @@ var _ = Describe("Machines", func() {
 			})
 
 			It("should fail because the infrastructure status cannot be decoded", func() {
-				w.Spec.InfrastructureProviderStatus = &runtime.RawExtension{}
+				w.Spec.InfrastructureProviderStatus = &runtime.RawExtension{Raw: []byte("definitely not correct")}
 				workerDelegate := wrapNewWorkerDelegate(c, chartApplier, w, cluster, nil)
 
 				result, err := workerDelegate.GenerateMachineDeployments(ctx)

@@ -595,7 +595,7 @@ func appendMachineSetValues(values map[string]interface{}, infraStatus *apisazur
 
 // getInfraNames determines the subnet, availability set, route table and security group names from the given infrastructure status.
 func getInfraNames(infraStatus *apisazure.InfrastructureStatus) (string, string, string, error) {
-	nodesSubnet, err := azureapihelper.FindSubnetByPurpose(infraStatus.Networks.Subnets, apisazure.PurposeNodes)
+	_, nodesSubnet, err := azureapihelper.FindSubnetByPurposeAndZone(infraStatus.Networks.Subnets, apisazure.PurposeNodes, nil)
 	if err != nil {
 		return "", "", "", fmt.Errorf("could not determine subnet for purpose 'nodes': %w", err)
 	}

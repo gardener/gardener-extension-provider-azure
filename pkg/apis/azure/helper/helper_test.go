@@ -15,6 +15,8 @@
 package helper_test
 
 import (
+	"k8s.io/utils/pointer"
+
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	. "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
@@ -37,18 +39,21 @@ var _ = Describe("Helper", func() {
 		imageID      string      = "/image/id"
 		boolTrue                 = true
 		boolFalse                = false
+		zone                     = "zone"
 	)
 
-	DescribeTable("#FindSubnetByPurpose",
-		func(subnets []api.Subnet, purpose api.Purpose, expectedSubnet *api.Subnet, expectErr bool) {
-			subnet, err := FindSubnetByPurpose(subnets, purpose)
+	DescribeTable("#FindSubnetByPurposeAndZone",
+		func(subnets []api.Subnet, purpose api.Purpose, zone *string, expectedSubnet *api.Subnet, expectErr bool) {
+			_, subnet, err := FindSubnetByPurposeAndZone(subnets, purpose, zone)
 			expectResults(subnet, expectedSubnet, err, expectErr)
 		},
 
-		Entry("list is nil", nil, purpose, nil, true),
-		Entry("empty list", []api.Subnet{}, purpose, nil, true),
-		Entry("entry not found", []api.Subnet{{Name: "bar", Purpose: purposeWrong}}, purpose, nil, true),
-		Entry("entry exists", []api.Subnet{{Name: "bar", Purpose: purpose}}, purpose, &api.Subnet{Name: "bar", Purpose: purpose}, false),
+		Entry("list is nil", nil, purpose, nil, nil, true),
+		Entry("empty list", []api.Subnet{}, purpose, nil, nil, true),
+		Entry("entry not found", []api.Subnet{{Name: "bar", Purpose: purposeWrong}}, purpose, nil, nil, true),
+		Entry("entry exists", []api.Subnet{{Name: "bar", Purpose: purpose}}, purpose, nil, &api.Subnet{Name: "bar", Purpose: purpose}, false),
+		Entry("entry with zone", []api.Subnet{{Name: "bar", Purpose: purpose, Zone: &zone}}, purpose, &zone, &api.Subnet{Name: "bar", Purpose: purpose, Zone: &zone}, false),
+		Entry("entry with zone not found", []api.Subnet{{Name: "bar", Purpose: purpose, Zone: &zone}}, purpose, pointer.String("badzone"), nil, true),
 	)
 
 	DescribeTable("#FindSecurityGroupByPurpose",
