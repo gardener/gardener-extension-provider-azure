@@ -394,7 +394,7 @@ func (e *ensurer) ensureKubeletCommandLineArgs(ctx context.Context, cluster *ext
 }
 
 // EnsureKubeletConfiguration ensures that the kubelet configuration conforms to the provider requirements.
-func (e *ensurer) EnsureKubeletConfiguration(ctx context.Context, gctx gcontext.GardenContext, kubeletVersion *semver.Version, new, old *kubeletconfigv1beta1.KubeletConfiguration) error {
+func (e *ensurer) EnsureKubeletConfiguration(ctx context.Context, gctx gcontext.GardenContext, kubeletVersion *semver.Version, new, _ *kubeletconfigv1beta1.KubeletConfiguration) error {
 	cluster, err := gctx.GetCluster(ctx)
 	if err != nil {
 		return err
@@ -413,7 +413,7 @@ func (e *ensurer) EnsureKubeletConfiguration(ctx context.Context, gctx gcontext.
 		new.FeatureGates["CSIMigration"] = true
 		new.FeatureGates["CSIMigrationAzureDisk"] = true
 		new.FeatureGates["CSIMigrationAzureFile"] = true
-		// kubelets of new worker nodes can directly be started with the `CSIMigrationAzure<*>Complete` feature gates
+		// kubelets of new worker nodes can directly be started with the `InTreePluginAzure<*>Unregister` feature gates
 		new.FeatureGates["InTreePluginAzureDiskUnregister"] = true
 		new.FeatureGates["InTreePluginAzureFileUnregister"] = true
 
@@ -426,7 +426,7 @@ func (e *ensurer) EnsureKubeletConfiguration(ctx context.Context, gctx gcontext.
 }
 
 // ShouldProvisionKubeletCloudProviderConfig returns true if the cloud provider config file should be added to the kubelet configuration.
-func (e *ensurer) ShouldProvisionKubeletCloudProviderConfig(ctx context.Context, gctx gcontext.GardenContext, kubeletVersion *semver.Version) bool {
+func (e *ensurer) ShouldProvisionKubeletCloudProviderConfig(ctx context.Context, gctx gcontext.GardenContext, _ *semver.Version) bool {
 	cluster, err := gctx.GetCluster(ctx)
 	if err != nil {
 		return false
@@ -441,7 +441,7 @@ func (e *ensurer) ShouldProvisionKubeletCloudProviderConfig(ctx context.Context,
 }
 
 // EnsureKubeletCloudProviderConfig ensures that the cloud provider config file conforms to the provider requirements.
-func (e *ensurer) EnsureKubeletCloudProviderConfig(ctx context.Context, _ gcontext.GardenContext, kubeletVersion *semver.Version, data *string, namespace string) error {
+func (e *ensurer) EnsureKubeletCloudProviderConfig(ctx context.Context, _ gcontext.GardenContext, _ *semver.Version, data *string, namespace string) error {
 	secret := &corev1.Secret{}
 	if err := e.client.Get(ctx, kutil.Key(namespace, azure.CloudProviderDiskConfigName), secret); err != nil {
 		if apierrors.IsNotFound(err) {
@@ -462,7 +462,7 @@ func (e *ensurer) EnsureKubeletCloudProviderConfig(ctx context.Context, _ gconte
 	return nil
 }
 
-// EnsureAdditionalFile ensures additional systemd files
+// EnsureAdditionalFiles ensures additional systemd files
 func (e *ensurer) EnsureAdditionalFiles(ctx context.Context, gctx gcontext.GardenContext, new, _ *[]extensionsv1alpha1.File) error {
 	return e.ensureAcrConfigFile(ctx, gctx, new)
 }
