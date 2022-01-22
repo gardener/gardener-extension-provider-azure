@@ -44,8 +44,7 @@ import (
 )
 
 const (
-	acrConfigPath       = "/var/lib/kubelet/acr.conf"
-	csiMigrationVersion = "1.21"
+	acrConfigPath = "/var/lib/kubelet/acr.conf"
 )
 
 // NewEnsurer creates a new controlplane ensurer.
@@ -77,7 +76,7 @@ func (e *ensurer) EnsureKubeAPIServerDeployment(ctx context.Context, gctx gconte
 		return err
 	}
 
-	csiEnabled, csiMigrationComplete, err := csimigration.CheckCSIConditions(cluster, csiMigrationVersion)
+	csiEnabled, csiMigrationComplete, err := csimigration.CheckCSIConditions(cluster, azure.CSIMigrationKubernetesVersion)
 	if err != nil {
 		return err
 	}
@@ -101,7 +100,7 @@ func (e *ensurer) EnsureKubeControllerManagerDeployment(ctx context.Context, gct
 		return err
 	}
 
-	csiEnabled, csiMigrationComplete, err := csimigration.CheckCSIConditions(cluster, csiMigrationVersion)
+	csiEnabled, csiMigrationComplete, err := csimigration.CheckCSIConditions(cluster, azure.CSIMigrationKubernetesVersion)
 	if err != nil {
 		return err
 	}
@@ -126,7 +125,7 @@ func (e *ensurer) EnsureKubeSchedulerDeployment(ctx context.Context, gctx gconte
 		return err
 	}
 
-	csiEnabled, csiMigrationComplete, err := csimigration.CheckCSIConditions(cluster, csiMigrationVersion)
+	csiEnabled, csiMigrationComplete, err := csimigration.CheckCSIConditions(cluster, azure.CSIMigrationKubernetesVersion)
 	if err != nil {
 		return err
 	}
@@ -355,7 +354,7 @@ func (e *ensurer) EnsureKubeletServiceUnitOptions(ctx context.Context, gctx gcon
 		return nil, err
 	}
 
-	csiEnabled, _, err := csimigration.CheckCSIConditions(cluster, csiMigrationVersion)
+	csiEnabled, _, err := csimigration.CheckCSIConditions(cluster, azure.CSIMigrationKubernetesVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -401,7 +400,7 @@ func (e *ensurer) EnsureKubeletConfiguration(ctx context.Context, gctx gcontext.
 		return err
 	}
 
-	csiEnabled, _, err := csimigration.CheckCSIConditions(cluster, csiMigrationVersion)
+	csiEnabled, _, err := csimigration.CheckCSIConditions(cluster, azure.CSIMigrationKubernetesVersion)
 	if err != nil {
 		return err
 	}
@@ -433,7 +432,7 @@ func (e *ensurer) ShouldProvisionKubeletCloudProviderConfig(ctx context.Context,
 		return false
 	}
 
-	csiEnabled, _, err := csimigration.CheckCSIConditions(cluster, csiMigrationVersion)
+	csiEnabled, _, err := csimigration.CheckCSIConditions(cluster, azure.CSIMigrationKubernetesVersion)
 	if err != nil {
 		return false
 	}
