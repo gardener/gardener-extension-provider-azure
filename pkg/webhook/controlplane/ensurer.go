@@ -32,6 +32,7 @@ import (
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	oscutils "github.com/gardener/gardener/pkg/operation/botanist/component/extensions/operatingsystemconfig/utils"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
+	"github.com/gardener/gardener/pkg/utils/version"
 	versionutils "github.com/gardener/gardener/pkg/utils/version"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -361,7 +362,7 @@ func (e *ensurer) EnsureKubeletServiceUnitOptions(ctx context.Context, gctx gcon
 
 	if opt := extensionswebhook.UnitOptionWithSectionAndName(new, "Service", "ExecStart"); opt != nil {
 		command := extensionswebhook.DeserializeCommandLine(opt.Value)
-		command, err := e.ensureKubeletCommandLineArgs(ctx, cluster, command, csiEnabled)
+		command, err := e.ensureKubeletCommandLineArgs(ctx, cluster, command, csiEnabled, kubeletVersion)
 		if err != nil {
 			return nil, err
 		}
@@ -370,10 +371,12 @@ func (e *ensurer) EnsureKubeletServiceUnitOptions(ctx context.Context, gctx gcon
 	return new, nil
 }
 
-func (e *ensurer) ensureKubeletCommandLineArgs(ctx context.Context, cluster *extensionscontroller.Cluster, command []string, csiEnabled bool) ([]string, error) {
+func (e *ensurer) ensureKubeletCommandLineArgs(ctx context.Context, cluster *extensionscontroller.Cluster, command []string, csiEnabled bool, kubeletVersion *semver.Version) ([]string, error) {
 	if csiEnabled {
-		command = extensionswebhook.EnsureStringWithPrefix(command, "--cloud-provider=", "external")
-		command = extensionswebhook.EnsureStringWithPrefix(command, "--enable-controller-attach-detach=", "true")
+		if !version.ConstraintK8sGreaterEqual123.Check(kubeletVersion) {
+			command = extensionswebhook.EnsureStringWithPrefix(command, "--cloud-provider=", "external")
+			command = extensionswebhook.EnsureStringWithPrefix(command, "--enable-controller-attach-detach=", "true")
+		}
 	} else {
 		command = extensionswebhook.EnsureStringWithPrefix(command, "--cloud-provider=", "azure")
 		command = extensionswebhook.EnsureStringWithPrefix(command, "--cloud-config=", "/var/lib/kubelet/cloudprovider.conf")
@@ -414,6 +417,10 @@ func (e *ensurer) EnsureKubeletConfiguration(ctx context.Context, gctx gcontext.
 		// kubelets of new worker nodes can directly be started with the `CSIMigrationAzure<*>Complete` feature gates
 		new.FeatureGates["InTreePluginAzureDiskUnregister"] = true
 		new.FeatureGates["InTreePluginAzureFileUnregister"] = true
+
+		if version.ConstraintK8sGreaterEqual123.Check(kubeletVersion) {
+			new.EnableControllerAttachDetach = pointer.Bool(true)
+		}
 	}
 
 	return nil
