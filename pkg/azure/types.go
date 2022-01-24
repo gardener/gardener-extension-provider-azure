@@ -32,6 +32,8 @@ const (
 
 	// CloudControllerManagerImageName is the name of the cloud-controller-manager image.
 	CloudControllerManagerImageName = "cloud-controller-manager"
+	// CloudNodeManagerImageName is the name of the cloud-node-manager image.
+	CloudNodeManagerImageName = "cloud-node-manager"
 	// CSIDriverDiskImageName is the name of the csi-driver-disk image.
 	CSIDriverDiskImageName = "csi-driver-disk"
 	// CSIDriverFileImageName is the name of the csi-driver-file image.

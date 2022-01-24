@@ -1,0 +1,5 @@
+images:
+  cloud-node-manager: image-repository:image-tag
+
+global:
+  vpaEnabled: false

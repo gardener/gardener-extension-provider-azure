@@ -40,6 +40,8 @@ spec:
         {{- if semverCompare "< 1.17" .Values.kubernetesVersion }}
         - /hyperkube
         - cloud-controller-manager
+        {{- else if semverCompare ">= 1.23" .Values.kubernetesVersion }}
+        - /usr/local/bin/cloud-controller-manager
         {{- else }}
         - /azure-cloud-controller-manager
         {{- end }}
@@ -50,6 +52,10 @@ spec:
         - --cluster-name={{ .Values.clusterName }}
         - --concurrent-service-syncs=1
         - --configure-cloud-routes=true
+        {{- if semverCompare ">= 1.23" .Values.kubernetesVersion }}
+        - --controllers=*,-cloud-node
+        - --route-reconciliation-period=10s
+        {{- end }}
         {{- include "cloud-controller-manager.featureGates" . | trimSuffix "," | indent 8 }}
         {{- if .Values.global.useTokenRequestor }}
         - --kubeconfig=/var/run/secrets/gardener.cloud/shoot/generic-kubeconfig/kubeconfig

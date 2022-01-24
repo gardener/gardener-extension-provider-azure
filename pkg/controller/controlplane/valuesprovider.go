@@ -318,6 +318,9 @@ var (
 			},
 			{
 				Name: azure.CloudControllerManagerName,
+				Images: []string{
+					azure.CloudNodeManagerImageName,
+				},
 				Objects: []*chart.Object{
 					{Type: &rbacv1.ClusterRole{}, Name: "system:controller:cloud-node-controller"},
 					{Type: &rbacv1.ClusterRoleBinding{}, Name: "system:controller:cloud-node-controller"},
@@ -810,18 +813,20 @@ func getControlPlaneShootChartValues(
 		"global": map[string]interface{}{
 			"useTokenRequestor":      useTokenRequestor,
 			"useProjectedTokenMount": useProjectedTokenMount,
+			"vpaEnabled":             gardencorev1beta1helper.ShootWantsVerticalPodAutoscaler(cluster.Shoot),
 		},
 		azure.AllowEgressName:            map[string]interface{}{"enabled": infraStatus.Zoned || azureapihelper.IsVmoRequired(infraStatus)},
 		azure.CloudControllerManagerName: map[string]interface{}{"enabled": true},
 		azure.CSINodeName: map[string]interface{}{
 			"enabled":           !k8sVersionLessThan121,
 			"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
-			"vpaEnabled":        gardencorev1beta1helper.ShootWantsVerticalPodAutoscaler(cluster.Shoot),
 			"podAnnotations": map[string]interface{}{
 				"checksum/configmap-" + azure.CloudProviderDiskConfigName: cloudProviderDiskConfigChecksum,
 			},
 			"cloudProviderConfig": cloudProviderDiskConfig,
 		},
-		azure.RemedyControllerName: map[string]interface{}{"enabled": !disableRemedyController},
+		azure.RemedyControllerName: map[string]interface{}{
+			"enabled": !disableRemedyController,
+		},
 	}
 }
