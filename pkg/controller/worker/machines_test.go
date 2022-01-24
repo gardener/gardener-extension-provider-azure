@@ -35,6 +35,7 @@ import (
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	mockkubernetes "github.com/gardener/gardener/pkg/client/kubernetes/mock"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
+	"github.com/gardener/gardener/pkg/utils"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
@@ -102,6 +103,8 @@ var _ = Describe("Machines", func() {
 		})
 
 		Describe("#GenerateMachineDeployments, #DeployMachineClasses", func() {
+			const azureCSIDiskDriverTopologyKey = "topology.disk.csi.azure.com/zone"
+
 			var (
 				machineImageName      string
 				machineImageVersion   string
@@ -204,7 +207,7 @@ var _ = Describe("Machines", func() {
 				maxSurgePool2 = intstr.FromInt(10)
 				maxUnavailablePool2 = intstr.FromInt(15)
 
-				shootVersionMajorMinor = "1.2"
+				shootVersionMajorMinor = "1.21"
 				shootVersion = shootVersionMajorMinor + ".3"
 
 				machineImages = []apiv1alpha1.MachineImages{
@@ -502,6 +505,8 @@ var _ = Describe("Machines", func() {
 						machineClassNamePool2 = fmt.Sprintf("%s-z%s", basename, zone2)
 						machineClassWithHashPool1 = fmt.Sprintf("%s-%s-z%s", basename, workerPoolHashZ1, zone1)
 						machineClassWithHashPool2 = fmt.Sprintf("%s-%s-z%s", basename, workerPoolHashZ2, zone2)
+						labelsPool1 := utils.MergeStringMaps(labels, map[string]string{azureCSIDiskDriverTopologyKey: zone1})
+						labelsPool2 := utils.MergeStringMaps(labels, map[string]string{azureCSIDiskDriverTopologyKey: zone2})
 
 						machineDeployments = worker.MachineDeployments{
 							{
@@ -512,7 +517,7 @@ var _ = Describe("Machines", func() {
 								Maximum:              maxPoolZones,
 								MaxSurge:             maxSurgePoolZones,
 								MaxUnavailable:       maxUnavailablePoolZones,
-								Labels:               labels,
+								Labels:               labelsPool1,
 								MachineConfiguration: &machinev1alpha1.MachineConfiguration{},
 							},
 							{
@@ -523,7 +528,7 @@ var _ = Describe("Machines", func() {
 								Maximum:              maxPoolZones,
 								MaxSurge:             maxSurgePoolZones,
 								MaxUnavailable:       maxUnavailablePoolZones,
-								Labels:               labels,
+								Labels:               labelsPool2,
 								MachineConfiguration: &machinev1alpha1.MachineConfiguration{},
 							},
 						}

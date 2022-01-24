@@ -26,6 +26,7 @@ import (
 	azureapihelper "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 
+	"github.com/gardener/gardener/extensions/pkg/controller/csimigration"
 	genericworkeractuator "github.com/gardener/gardener/extensions/pkg/controller/worker/genericactuator"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -94,6 +95,10 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		machineImages             []azureapi.MachineImage
 	)
 
+	const (
+		csiMigrationVersion           = "1.21"
+		azureCSIDiskDriverTopologyKey = "topology.disk.csi.azure.com/zone"
+	)
 	infrastructureStatus, err := w.decodeAzureInfrastructureStatus()
 	if err != nil {
 		return err
@@ -105,6 +110,11 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 	}
 
 	_, nodesSubnet, err := azureapihelper.FindSubnetByPurposeAndZone(infrastructureStatus.Networks.Subnets, azureapi.PurposeNodes, nil)
+	if err != nil {
+		return err
+	}
+
+	csiEnabled, _, err := csimigration.CheckCSIConditions(w.cluster, csiMigrationVersion)
 	if err != nil {
 		return err
 	}
@@ -143,11 +153,16 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		generateMachineClassAndDeployment := func(zone *zoneInfo, machineSet *machineSetInfo, subnetName, workerPoolHash string) (worker.MachineDeployment, map[string]interface{}) {
 			var (
 				machineDeployment = worker.MachineDeployment{
-					Minimum:              pool.Minimum,
-					Maximum:              pool.Maximum,
-					MaxSurge:             pool.MaxSurge,
-					MaxUnavailable:       pool.MaxUnavailable,
-					Labels:               pool.Labels,
+					Minimum:        pool.Minimum,
+					Maximum:        pool.Maximum,
+					MaxSurge:       pool.MaxSurge,
+					MaxUnavailable: pool.MaxUnavailable,
+					Labels: func() map[string]string {
+						if csiEnabled && zone != nil {
+							return utils.MergeStringMaps(pool.Labels, map[string]string{azureCSIDiskDriverTopologyKey: zone.name})
+						}
+						return pool.Labels
+					}(),
 					Annotations:          pool.Annotations,
 					Taints:               pool.Taints,
 					MachineConfiguration: genericworkeractuator.ReadMachineConfiguration(pool),
