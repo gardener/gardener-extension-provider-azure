@@ -38,6 +38,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const azureCSIDiskDriverTopologyKey = "topology.disk.csi.azure.com/zone"
+
 var tagRegex = regexp.MustCompile(`[<>%\\&?/ ]`)
 
 // MachineClassKind yields the name of machine class kind used by Azure provider.
@@ -96,8 +98,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 	)
 
 	const (
-		csiMigrationVersion           = "1.21"
-		azureCSIDiskDriverTopologyKey = "topology.disk.csi.azure.com/zone"
+		csiMigrationVersion = "1.21"
 	)
 	infrastructureStatus, err := w.decodeAzureInfrastructureStatus()
 	if err != nil {
@@ -153,16 +154,11 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		generateMachineClassAndDeployment := func(zone *zoneInfo, machineSet *machineSetInfo, subnetName, workerPoolHash string) (worker.MachineDeployment, map[string]interface{}) {
 			var (
 				machineDeployment = worker.MachineDeployment{
-					Minimum:        pool.Minimum,
-					Maximum:        pool.Maximum,
-					MaxSurge:       pool.MaxSurge,
-					MaxUnavailable: pool.MaxUnavailable,
-					Labels: func() map[string]string {
-						if csiEnabled && zone != nil {
-							return utils.MergeStringMaps(pool.Labels, map[string]string{azureCSIDiskDriverTopologyKey: zone.name})
-						}
-						return pool.Labels
-					}(),
+					Minimum:              pool.Minimum,
+					Maximum:              pool.Maximum,
+					MaxSurge:             pool.MaxSurge,
+					MaxUnavailable:       pool.MaxUnavailable,
+					Labels:               addTopologyLabel(pool.Labels, csiEnabled, zone),
 					Annotations:          pool.Annotations,
 					Taints:               pool.Taints,
 					MachineConfiguration: genericworkeractuator.ReadMachineConfiguration(pool),
@@ -392,6 +388,13 @@ func computeDisks(pool extensionsv1alpha1.WorkerPool) (map[string]interface{}, e
 // refer: https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/tag-resources#limitations
 func SanitizeAzureVMTag(label string) string {
 	return tagRegex.ReplaceAllString(strings.ToLower(label), "_")
+}
+
+func addTopologyLabel(labels map[string]string, csiEnabled bool, zone *zoneInfo) map[string]string {
+	if csiEnabled && zone != nil {
+		return utils.MergeStringMaps(labels, map[string]string{azureCSIDiskDriverTopologyKey: zone.name})
+	}
+	return labels
 }
 
 func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPool, infrastructureStatus *azureapi.InfrastructureStatus, vmoDependency *azureapi.VmoDependency, subnetName *string) (string, error) {
