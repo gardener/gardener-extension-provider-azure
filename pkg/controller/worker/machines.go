@@ -26,6 +26,7 @@ import (
 	azureapihelper "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 
+	"github.com/gardener/gardener/extensions/pkg/controller/csimigration"
 	genericworkeractuator "github.com/gardener/gardener/extensions/pkg/controller/worker/genericactuator"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -36,6 +37,8 @@ import (
 	"github.com/gardener/gardener/pkg/utils"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+const azureCSIDiskDriverTopologyKey = "topology.disk.csi.azure.com/zone"
 
 var tagRegex = regexp.MustCompile(`[<>%\\&?/ ]`)
 
@@ -94,6 +97,9 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		machineImages             []azureapi.MachineImage
 	)
 
+	const (
+		csiMigrationVersion = "1.21"
+	)
 	infrastructureStatus, err := w.decodeAzureInfrastructureStatus()
 	if err != nil {
 		return err
@@ -105,6 +111,11 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 	}
 
 	nodesSubnet, err := azureapihelper.FindSubnetByPurpose(infrastructureStatus.Networks.Subnets, azureapi.PurposeNodes)
+	if err != nil {
+		return err
+	}
+
+	csiEnabled, _, err := csimigration.CheckCSIConditions(w.cluster, csiMigrationVersion)
 	if err != nil {
 		return err
 	}
@@ -153,7 +164,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 					Maximum:              pool.Maximum,
 					MaxSurge:             pool.MaxSurge,
 					MaxUnavailable:       pool.MaxUnavailable,
-					Labels:               pool.Labels,
+					Labels:               addTopologyLabel(pool.Labels, csiEnabled, zone),
 					Annotations:          pool.Annotations,
 					Taints:               pool.Taints,
 					MachineConfiguration: genericworkeractuator.ReadMachineConfiguration(pool),
@@ -360,6 +371,13 @@ func computeDisks(pool extensionsv1alpha1.WorkerPool) (map[string]interface{}, e
 // refer: https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/tag-resources#limitations
 func SanitizeAzureVMTag(label string) string {
 	return tagRegex.ReplaceAllString(strings.ToLower(label), "_")
+}
+
+func addTopologyLabel(labels map[string]string, csiEnabled bool, zone *zoneInfo) map[string]string {
+	if csiEnabled && zone != nil {
+		return utils.MergeStringMaps(labels, map[string]string{azureCSIDiskDriverTopologyKey: zone.name})
+	}
+	return labels
 }
 
 func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPool, infrastructureStatus *azureapi.InfrastructureStatus, vmoDependency *azureapi.VmoDependency) (string, error) {
