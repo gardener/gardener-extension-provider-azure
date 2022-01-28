@@ -158,7 +158,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 					Maximum:              pool.Maximum,
 					MaxSurge:             pool.MaxSurge,
 					MaxUnavailable:       pool.MaxUnavailable,
-					Labels:               addTopologyLabel(pool.Labels, csiEnabled, zone),
+					Labels:               addTopologyLabel(pool.Labels, csiEnabled, w.worker.Spec.Region, zone),
 					Annotations:          pool.Annotations,
 					Taints:               pool.Taints,
 					MachineConfiguration: genericworkeractuator.ReadMachineConfiguration(pool),
@@ -390,9 +390,9 @@ func SanitizeAzureVMTag(label string) string {
 	return tagRegex.ReplaceAllString(strings.ToLower(label), "_")
 }
 
-func addTopologyLabel(labels map[string]string, csiEnabled bool, zone *zoneInfo) map[string]string {
+func addTopologyLabel(labels map[string]string, csiEnabled bool, region string, zone *zoneInfo) map[string]string {
 	if csiEnabled && zone != nil {
-		return utils.MergeStringMaps(labels, map[string]string{azureCSIDiskDriverTopologyKey: zone.name})
+		return utils.MergeStringMaps(labels, map[string]string{azureCSIDiskDriverTopologyKey: region + "-" + zone.name})
 	}
 	return labels
 }
