@@ -102,8 +102,6 @@ var _ = Describe("Machines", func() {
 		})
 
 		Describe("#GenerateMachineDeployments, #DeployMachineClasses", func() {
-			const azureCSIDiskDriverTopologyKey = "topology.disk.csi.azure.com/zone"
-
 			var (
 				machineImageName      string
 				machineImageVersion   string
