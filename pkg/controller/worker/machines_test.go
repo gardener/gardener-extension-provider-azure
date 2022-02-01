@@ -192,7 +192,13 @@ var _ = Describe("Machines", func() {
 				maxSurgePool2 = intstr.FromInt(10)
 				maxUnavailablePool2 = intstr.FromInt(15)
 
-				shootVersionMajorMinor = "1.2"
+				namePool2 = "pool-zones"
+				minPool2 = 30
+				maxPool2 = 45
+				maxSurgePool2 = intstr.FromInt(10)
+				maxUnavailablePool2 = intstr.FromInt(15)
+
+				shootVersionMajorMinor = "1.21"
 				shootVersion = shootVersionMajorMinor + ".3"
 
 				machineImages = []apiv1alpha1.MachineImages{
