@@ -429,7 +429,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					}))
 				})
 
-				It("should not return an error for valid values", func() {
+				It("should succeed for valid values", func() {
 					var timeoutValue int32 = 120
 					infrastructureConfig.Zoned = true
 					infrastructureConfig.Networks.NatGateway = &apisazure.NatGatewayConfig{Enabled: true, IdleConnectionTimeoutMinutes: &timeoutValue}
@@ -469,6 +469,10 @@ var _ = Describe("InfrastructureConfig validation", func() {
 
 			It("should succeed", func() {
 				Expect(ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)).To(BeEmpty())
+			})
+
+			It("should succeed for nil service and pod CIDR", func() {
+				Expect(ValidateInfrastructureConfig(infrastructureConfig, &nodes, nil, nil, hasVmoAlphaAnnotation, providerPath)).To(BeEmpty())
 			})
 
 			It("should succeed with NAT Gateway", func() {
