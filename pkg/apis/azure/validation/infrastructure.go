@@ -269,8 +269,12 @@ func validateZones(zones []apisazure.Zone, nodes, pods, services cidrvalidation.
 	}
 
 	allErrs = append(allErrs, cidrvalidation.ValidateCIDROverlap(zoneCIDRs, false)...)
-	allErrs = append(allErrs, pods.ValidateNotOverlap(zoneCIDRs...)...)
-	allErrs = append(allErrs, services.ValidateNotOverlap(zoneCIDRs...)...)
+	if pods != nil {
+		allErrs = append(allErrs, pods.ValidateNotOverlap(zoneCIDRs...)...)
+	}
+	if services != nil {
+		allErrs = append(allErrs, services.ValidateNotOverlap(zoneCIDRs...)...)
+	}
 	return allErrs
 }
 
