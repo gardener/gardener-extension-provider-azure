@@ -149,6 +149,10 @@ const (
 	// ExtensionPurposeServicePrincipalSecret is the label value for a Secret resource
 	// that hold service principal information to a corresponding AD tenant.
 	ExtensionPurposeServicePrincipalSecret = "tenant-service-principal-secret"
+
+	// CSIMigrationKubernetesVersion is a constant for the Kubernetes version for which the Shoot's CSI migration will be
+	// performed.
+	CSIMigrationKubernetesVersion = "1.21"
 )
 
 var (

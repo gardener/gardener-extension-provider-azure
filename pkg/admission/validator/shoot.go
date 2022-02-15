@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azurevalidation "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/validation"
 
@@ -105,7 +105,7 @@ func (s *shoot) validateCreation(ctx context.Context, shoot *core.Shoot, cloudPr
 		return err
 	}
 
-	var cpConfig *azure.ControlPlaneConfig
+	var cpConfig *api.ControlPlaneConfig
 	if shoot.Spec.Provider.ControlPlaneConfig != nil {
 		cpConfig, err = decodeControlPlaneConfig(s.decoder, shoot.Spec.Provider.ControlPlaneConfig)
 		if err != nil {
@@ -120,7 +120,7 @@ func (s *shoot) validateCreation(ctx context.Context, shoot *core.Shoot, cloudPr
 	return s.validateShootSecret(ctx, shoot)
 }
 
-func (s *shoot) validateShoot(shoot *core.Shoot, oldInfraConfig, infraConfig *azure.InfrastructureConfig, cloudProfile *gardencorev1beta1.CloudProfile, cpConfig *azure.ControlPlaneConfig) field.ErrorList {
+func (s *shoot) validateShoot(shoot *core.Shoot, oldInfraConfig, infraConfig *api.InfrastructureConfig, cloudProfile *gardencorev1beta1.CloudProfile, cpConfig *api.ControlPlaneConfig) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	// Network validation
@@ -161,7 +161,7 @@ func (s *shoot) validateUpdate(oldShoot, shoot *core.Shoot, cloudProfile *garden
 	}
 
 	// Decode the new controlplane config
-	var cpConfig *azure.ControlPlaneConfig
+	var cpConfig *api.ControlPlaneConfig
 	if shoot.Spec.Provider.ControlPlaneConfig != nil {
 		cpConfig, err = decodeControlPlaneConfig(s.decoder, shoot.Spec.Provider.ControlPlaneConfig)
 		if err != nil {

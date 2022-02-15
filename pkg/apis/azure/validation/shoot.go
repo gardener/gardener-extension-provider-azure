@@ -15,13 +15,17 @@
 package validation
 
 import (
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"fmt"
+
+	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+
+	"github.com/Masterminds/semver"
 	"github.com/gardener/gardener/pkg/apis/core"
 	"github.com/gardener/gardener/pkg/apis/core/validation"
-	"k8s.io/apimachinery/pkg/util/sets"
-
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -39,39 +43,62 @@ func ValidateNetworking(networking core.Networking, fldPath *field.Path) field.E
 }
 
 // ValidateWorkers validates the workers of a Shoot.
-func ValidateWorkers(workers []core.Worker, infra *azure.InfrastructureConfig, fldPath *field.Path) field.ErrorList {
+func ValidateWorkers(workers []core.Worker, infra *api.InfrastructureConfig, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
+	csiMigrationVersion, err := semver.NewVersion(azure.CSIMigrationKubernetesVersion)
+	if err != nil {
+		allErrs = append(allErrs, field.InternalError(fldPath, err))
+		return allErrs
+	}
+
 	for i, worker := range workers {
+		path := fldPath.Index(i)
+
+		// Ensure the kubelet version is not lower than the version in which the extension performs CSI migration.
+		if worker.Kubernetes != nil && worker.Kubernetes.Version != nil {
+			versionPath := path.Child("kubernetes", "version")
+
+			v, err := semver.NewVersion(*worker.Kubernetes.Version)
+			if err != nil {
+				allErrs = append(allErrs, field.Invalid(versionPath, *worker.Kubernetes.Version, err.Error()))
+				return allErrs
+			}
+
+			if v.LessThan(csiMigrationVersion) {
+				allErrs = append(allErrs, field.Forbidden(versionPath, fmt.Sprintf("cannot use kubelet version (%s) lower than CSI migration version (%s)", v.String(), csiMigrationVersion.String())))
+			}
+		}
+
 		if worker.Volume == nil {
-			allErrs = append(allErrs, field.Required(fldPath.Index(i).Child("volume"), "must not be nil"))
+			allErrs = append(allErrs, field.Required(path.Child("volume"), "must not be nil"))
 		} else {
-			allErrs = append(allErrs, validateVolume(worker.Volume, fldPath.Index(i).Child("volume"))...)
+			allErrs = append(allErrs, validateVolume(worker.Volume, path.Child("volume"))...)
 		}
 
 		if length := len(worker.DataVolumes); length > maxDataVolumeCount {
-			allErrs = append(allErrs, field.TooMany(fldPath.Index(i).Child("dataVolumes"), length, maxDataVolumeCount))
+			allErrs = append(allErrs, field.TooMany(path.Child("dataVolumes"), length, maxDataVolumeCount))
 		}
 		for j, volume := range worker.DataVolumes {
-			dataVolPath := fldPath.Index(i).Child("dataVolumes").Index(j)
+			dataVolPath := path.Child("dataVolumes").Index(j)
 			allErrs = append(allErrs, validateDataVolume(&volume, dataVolPath)...)
 		}
 
 		// Zones validation
 		if infra.Zoned && len(worker.Zones) == 0 {
-			allErrs = append(allErrs, field.Required(fldPath.Index(i).Child("zones"), "at least one zone must be configured for zoned clusters"))
+			allErrs = append(allErrs, field.Required(path.Child("zones"), "at least one zone must be configured for zoned clusters"))
 			continue
 		}
 
 		if !infra.Zoned && len(worker.Zones) > 0 {
-			allErrs = append(allErrs, field.Required(fldPath.Index(i).Child("zones"), "zones must not be specified for non zoned clusters"))
+			allErrs = append(allErrs, field.Required(path.Child("zones"), "zones must not be specified for non zoned clusters"))
 			continue
 		}
 
 		zones := sets.NewString()
 		for j, zone := range worker.Zones {
 			if zones.Has(zone) {
-				allErrs = append(allErrs, field.Invalid(fldPath.Index(i).Child("zones").Index(j), zone, "must only be specified once per worker group"))
+				allErrs = append(allErrs, field.Invalid(path.Child("zones").Index(j), zone, "must only be specified once per worker group"))
 				continue
 			}
 			zones.Insert(zone)
@@ -85,7 +112,7 @@ func ValidateWorkers(workers []core.Worker, infra *azure.InfrastructureConfig, f
 
 			for zoneIndex, workerZone := range worker.Zones {
 				if !infraZones.Has(workerZone) {
-					allErrs = append(allErrs, field.Invalid(fldPath.Index(i).Child("zones").Index(zoneIndex), workerZone, "zone configuration must be specified in \"infrastructureConfig.networks.zones\""))
+					allErrs = append(allErrs, field.Invalid(path.Child("zones").Index(zoneIndex), workerZone, "zone configuration must be specified in \"infrastructureConfig.networks.zones\""))
 				}
 			}
 		}

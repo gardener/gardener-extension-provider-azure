@@ -15,10 +15,10 @@
 package validation_test
 
 import (
-	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	. "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/validation"
-	"github.com/gardener/gardener/pkg/apis/core"
 
+	"github.com/gardener/gardener/pkg/apis/core"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
@@ -32,7 +32,7 @@ var _ = Describe("Shoot validation", func() {
 
 		It("should return no error because nodes CIDR was provided", func() {
 			networking := core.Networking{
-				Nodes: pointer.StringPtr("1.2.3.4/5"),
+				Nodes: pointer.String("1.2.3.4/5"),
 			}
 
 			errorList := ValidateNetworking(networking, networkingPath)
@@ -57,7 +57,7 @@ var _ = Describe("Shoot validation", func() {
 	Describe("#ValidateWorkerConfig", func() {
 		var (
 			workers     []core.Worker
-			infraConfig *apisazure.InfrastructureConfig
+			infraConfig *api.InfrastructureConfig
 		)
 
 		BeforeEach(func() {
@@ -65,14 +65,14 @@ var _ = Describe("Shoot validation", func() {
 				{
 					Name: "worker1",
 					Volume: &core.Volume{
-						Type:       pointer.StringPtr("Volume"),
+						Type:       pointer.String("Volume"),
 						VolumeSize: "30G",
 					},
 				},
 				{
 					Name: "worker2",
 					Volume: &core.Volume{
-						Type:       pointer.StringPtr("Volume"),
+						Type:       pointer.String("Volume"),
 						VolumeSize: "20G",
 					},
 				},
@@ -80,18 +80,51 @@ var _ = Describe("Shoot validation", func() {
 		})
 
 		Describe("#ValidateWorkers", func() {
+			BeforeEach(func() {
+				infraConfig = &api.InfrastructureConfig{}
+			})
+
+			It("should pass when the kubernetes version is equal to the CSI migration version", func() {
+				workers[0].Kubernetes = &core.WorkerKubernetes{Version: pointer.String("1.21.0")}
+
+				errorList := ValidateWorkers(workers, infraConfig, field.NewPath(""))
+
+				Expect(errorList).To(BeEmpty())
+			})
+
+			It("should pass when the kubernetes version is higher to the CSI migration version", func() {
+				workers[0].Kubernetes = &core.WorkerKubernetes{Version: pointer.String("1.22.0")}
+
+				errorList := ValidateWorkers(workers, infraConfig, field.NewPath(""))
+
+				Expect(errorList).To(BeEmpty())
+			})
+
+			It("should not allow when the kubernetes version is lower than the CSI migration version", func() {
+				workers[0].Kubernetes = &core.WorkerKubernetes{Version: pointer.String("1.20.0")}
+
+				errorList := ValidateWorkers(workers, infraConfig, field.NewPath("workers"))
+
+				Expect(errorList).To(ConsistOf(
+					PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":  Equal(field.ErrorTypeForbidden),
+						"Field": Equal("workers[0].kubernetes.version"),
+					})),
+				))
+			})
+
 			Context("Non zoned cluster", func() {
 				BeforeEach(func() {
-					infraConfig = &apisazure.InfrastructureConfig{
-						Zoned: false,
-					}
+					infraConfig.Zoned = false
 				})
+
 				It("should pass because workers are configured correctly", func() {
 					errorList := ValidateWorkers(workers,
 						infraConfig, field.NewPath(""))
 
 					Expect(errorList).To(BeEmpty())
 				})
+
 				It("should forbid because zones are configured", func() {
 					workers[0].Zones = []string{"1", "2"}
 					errorList := ValidateWorkers(workers,
@@ -105,14 +138,14 @@ var _ = Describe("Shoot validation", func() {
 					))
 				})
 			})
+
 			Context("Zoned cluster", func() {
 				BeforeEach(func() {
-					infraConfig = &apisazure.InfrastructureConfig{
-						Zoned: true,
-					}
+					infraConfig.Zoned = true
 					workers[0].Zones = []string{"1", "2"}
 					workers[1].Zones = []string{"1", "2"}
 				})
+
 				It("should pass because workers are configured correctly", func() {
 					errorList := ValidateWorkers(workers,
 						infraConfig, field.NewPath(""))
@@ -176,7 +209,7 @@ var _ = Describe("Shoot validation", func() {
 						workers[0].DataVolumes = append(workers[0].DataVolumes, core.DataVolume{
 							Name:       "foo",
 							VolumeSize: "20Gi",
-							Type:       pointer.StringPtr("foo"),
+							Type:       pointer.String("foo"),
 						})
 					}
 
@@ -221,10 +254,10 @@ var _ = Describe("Shoot validation", func() {
 
 				Context("multiple subnet network layout", func() {
 					BeforeEach(func() {
-						infraConfig = &apisazure.InfrastructureConfig{
+						infraConfig = &api.InfrastructureConfig{
 							Zoned: true,
-							Networks: apisazure.NetworkConfig{
-								Zones: []apisazure.Zone{
+							Networks: api.NetworkConfig{
+								Zones: []api.Zone{
 									{
 										Name: 1,
 									},
@@ -235,6 +268,7 @@ var _ = Describe("Shoot validation", func() {
 							},
 						}
 					})
+
 					It("should forbid using zones not configured in infrastructure", func() {
 						workers[0].Zones[0] = "non-existent"
 						errorList := ValidateWorkers(workers,
@@ -247,6 +281,7 @@ var _ = Describe("Shoot validation", func() {
 							})),
 						))
 					})
+
 					It("should allow zones when configured in infrastructure", func() {
 						errorList := ValidateWorkers(workers,
 							infraConfig, field.NewPath("workers"))
@@ -263,6 +298,7 @@ var _ = Describe("Shoot validation", func() {
 					workers[0].Zones = []string{"1", "2"}
 					workers[1].Zones = []string{"1", "2"}
 				})
+
 				It("should pass because workers are unchanged", func() {
 					newWorkers := copyWorkers(workers)
 					errorList := ValidateWorkersUpdate(workers, newWorkers, field.NewPath("workers"))
