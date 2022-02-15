@@ -14,9 +14,9 @@ require (
 	github.com/ahmetb/gen-crd-api-reference-docs v0.2.0
 	github.com/coreos/go-systemd/v22 v22.3.2
 	github.com/gardener/etcd-druid v0.7.0
-	github.com/gardener/gardener v1.38.1
-	github.com/gardener/gardener-extension-networking-calico v1.7.1-0.20200522070525-f9aa28d3c83a
-	github.com/gardener/machine-controller-manager v0.36.0
+	github.com/gardener/gardener v1.39.4
+	github.com/gardener/gardener-extension-networking-calico v1.19.4
+	github.com/gardener/machine-controller-manager v0.41.0
 	github.com/gardener/remedy-controller v0.6.0
 	github.com/go-logr/logr v0.4.0
 	github.com/golang/mock v1.6.0

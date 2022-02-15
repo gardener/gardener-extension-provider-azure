@@ -21,10 +21,9 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	"github.com/gardener/gardener/pkg/controllerutils"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/util/retry"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -47,13 +46,12 @@ func (a *actuator) createBackupBucketGeneratedSecret(ctx context.Context, backup
 		return err
 	}
 
-	return controllerutils.TryUpdateStatus(ctx, retry.DefaultBackoff, a.client, backupBucket, func() error {
-		backupBucket.Status.GeneratedSecretRef = &corev1.SecretReference{
-			Name:      generatedSecret.Name,
-			Namespace: generatedSecret.Namespace,
-		}
-		return nil
-	})
+	patch := client.MergeFrom(backupBucket.DeepCopy())
+	backupBucket.Status.GeneratedSecretRef = &corev1.SecretReference{
+		Name:      generatedSecret.Name,
+		Namespace: generatedSecret.Namespace,
+	}
+	return a.client.Status().Patch(ctx, backupBucket, patch)
 }
 
 // deleteBackupBucketGeneratedSecret deletes generated secret referred by core BackupBucket resource in garden.

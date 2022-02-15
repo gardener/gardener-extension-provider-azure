@@ -36,6 +36,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -150,6 +151,30 @@ func (b *Botanist) DeployVerticalPodAutoscaler(ctx context.Context) error {
 		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "vpa-recommender", Namespace: b.Shoot.SeedNamespace}},
 		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "vpa-updater", Namespace: b.Shoot.SeedNamespace}},
 	)
+}
+
+func (b *Botanist) determineControllerReplicas(ctx context.Context, deploymentName string, defaultReplicas int32) (int32, error) {
+	isCreateOrRestoreOperation := b.Shoot.GetInfo().Status.LastOperation != nil &&
+		(b.Shoot.GetInfo().Status.LastOperation.Type == gardencorev1beta1.LastOperationTypeCreate ||
+			b.Shoot.GetInfo().Status.LastOperation.Type == gardencorev1beta1.LastOperationTypeRestore)
+
+	if (isCreateOrRestoreOperation && b.Shoot.HibernationEnabled) ||
+		(!isCreateOrRestoreOperation && b.Shoot.HibernationEnabled == b.Shoot.GetInfo().Status.IsHibernated) {
+		// Shoot is being created or restored with .spec.hibernation.enabled=true or
+		// shoot is being reconciled with .spec.hibernation.enabled=.status.isHibernated,
+		// so keep the replicas which are already available.
+		return kutil.CurrentReplicaCountForDeployment(ctx, b.K8sSeedClient.Client(), b.Shoot.SeedNamespace, deploymentName)
+	}
+
+	// If Kube-Apiserver is set to 0 replicas then we also want to return 0 here
+	// since the controller is most likely not able to run w/o communicating to the Apiserver.
+	if pointer.Int32Deref(b.Shoot.Components.ControlPlane.KubeAPIServer.GetAutoscalingReplicas(), 0) == 0 {
+		return 0, nil
+	}
+
+	// Shoot is being reconciled with .spec.hibernation.enabled!=.status.isHibernated, so deploy the controller.
+	// In case the shoot is being hibernated then it will be scaled down to zero later after all machines are gone.
+	return defaultReplicas, nil
 }
 
 // HibernateControlPlane hibernates the entire control plane if the shoot shall be hibernated.

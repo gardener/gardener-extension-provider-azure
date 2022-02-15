@@ -21,11 +21,10 @@ import (
 	azureapi "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 
-	"github.com/gardener/gardener/pkg/controllerutils"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/util/retry"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func (w *workerDelegate) decodeAzureInfrastructureStatus() (*azureapi.InfrastructureStatus, error) {
@@ -60,10 +59,9 @@ func (w *workerDelegate) updateWorkerProviderStatus(ctx context.Context, workerS
 		return err
 	}
 
-	return controllerutils.TryUpdateStatus(ctx, retry.DefaultBackoff, w.Client(), w.worker, func() error {
-		w.worker.Status.ProviderStatus = &runtime.RawExtension{Object: workerStatusV1alpha1}
-		return nil
-	})
+	patch := client.MergeFrom(w.worker.DeepCopy())
+	w.worker.Status.ProviderStatus = &runtime.RawExtension{Object: workerStatusV1alpha1}
+	return w.Client().Status().Patch(ctx, w.worker, patch)
 }
 
 func (w *workerDelegate) updateWorkerProviderStatusWithError(ctx context.Context, workerStatus *azureapi.WorkerStatus, err error) error {
