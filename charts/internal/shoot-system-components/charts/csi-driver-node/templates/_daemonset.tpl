@@ -29,10 +29,14 @@ spec:
       role: driver-{{ .role }}
   template:
     metadata:
-{{- if .Values.podAnnotations }}
+{{- if or .Values.podAnnotations .Values.global.useProjectedTokenMount }}
       annotations:
 {{ toYaml .Values.podAnnotations | indent 8 }}
 {{- end }}
+        {{- if .Values.global.useProjectedTokenMount }}
+        # TODO(rfranzke): Remove in a future release.
+        security.gardener.cloud/trigger: rollout
+        {{- end }}
       labels:
         app: csi
         role: driver-{{ .role }}

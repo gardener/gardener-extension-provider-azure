@@ -18,6 +18,10 @@ spec:
 {{- if .Values.podAnnotations }}
 {{ toYaml .Values.podAnnotations | indent 8 }}
 {{- end }}
+        {{- if .Values.global.useProjectedTokenMount }}
+        # TODO(rfranzke): Remove in a future release.
+        security.gardener.cloud/trigger: rollout
+        {{- end }}
       labels:
         gardener.cloud/role: controlplane
         app: remedy-controller-azure
@@ -35,7 +39,11 @@ spec:
         imagePullPolicy: IfNotPresent
         command:
         - /remedy-controller-azure
+        {{- if .Values.global.useTokenRequestor }}
+        - --target-kubeconfig=/var/run/secrets/gardener.cloud/shoot/generic-kubeconfig/kubeconfig
+        {{- else }}
         - --target-kubeconfig=/var/lib/remedy-controller-azure/kubeconfig
+        {{- end }}
         - --namespace={{ .Release.Namespace }}
         - --config-file=/etc/remedy-controller-azure/config/config.yaml
         - --infrastructure-config=/etc/kubernetes/cloudprovider/cloudprovider.conf
@@ -65,16 +73,41 @@ spec:
 {{ toYaml .Values.resources | indent 10 }}
 {{- end }}
         volumeMounts:
+        {{- if .Values.global.useTokenRequestor }}
+        - mountPath: /var/run/secrets/gardener.cloud/shoot/generic-kubeconfig
+          name: kubeconfig
+          readOnly: true
+        {{- else }}
         - name: remedy-controller-azure
           mountPath: /var/lib/remedy-controller-azure
+        {{- end }}
         - name: config
           mountPath: /etc/remedy-controller-azure/config
         - name: cloud-provider-config
           mountPath: /etc/kubernetes/cloudprovider
       volumes:
+      {{- if .Values.global.useTokenRequestor }}
+      - name: kubeconfig
+        projected:
+          defaultMode: 420
+          sources:
+          - secret:
+              items:
+                - key: kubeconfig
+                  path: kubeconfig
+              name: generic-token-kubeconfig
+              optional: false
+          - secret:
+              items:
+                - key: token
+                  path: token
+              name: shoot-access-remedy-controller-azure
+              optional: false
+      {{- else }}
       - name: remedy-controller-azure
         secret:
           secretName: remedy-controller-azure
+      {{- end }}
       - name: config
         configMap:
           name: remedy-controller-azure-config

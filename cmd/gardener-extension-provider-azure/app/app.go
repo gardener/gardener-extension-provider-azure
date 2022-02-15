@@ -50,8 +50,9 @@ import (
 // NewControllerManagerCommand creates a new command for running a Azure provider controller.
 func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 	var (
-		restOpts = &controllercmd.RESTOptions{}
-		mgrOpts  = &controllercmd.ManagerOptions{
+		generalOpts = &controllercmd.GeneralOptions{}
+		restOpts    = &controllercmd.RESTOptions{}
+		mgrOpts     = &controllercmd.ManagerOptions{
 			LeaderElection:             true,
 			LeaderElectionResourceLock: resourcelock.LeasesResourceLock,
 			LeaderElectionID:           controllercmd.LeaderElectionNameID(azure.Name),
@@ -116,6 +117,7 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 		webhookOptions     = webhookcmd.NewAddToManagerOptions(azure.Name, webhookServerOptions, webhookSwitches)
 
 		aggOption = controllercmd.NewOptionAggregator(
+			generalOpts,
 			restOpts,
 			mgrOpts,
 			controllercmd.PrefixOption("backupbucket-", backupBucketCtrlOpts),
@@ -176,6 +178,20 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 
 			// add common meta types to schema for controller-runtime to use v1.ListOptions
 			metav1.AddToGroupVersion(scheme, machinev1alpha1.SchemeGroupVersion)
+
+			useTokenRequestor, err := controller.UseTokenRequestor(generalOpts.Completed().GardenerVersion)
+			if err != nil {
+				controllercmd.LogErrAndExit(err, "Could not determine whether token requestor should be used")
+			}
+			azurecontrolplane.DefaultAddOptions.UseTokenRequestor = useTokenRequestor
+			azureworker.DefaultAddOptions.UseTokenRequestor = useTokenRequestor
+
+			useProjectedTokenMount, err := controller.UseServiceAccountTokenVolumeProjection(generalOpts.Completed().GardenerVersion)
+			if err != nil {
+				controllercmd.LogErrAndExit(err, "Could not determine whether service account token volume projection should be used")
+			}
+			azurecontrolplane.DefaultAddOptions.UseProjectedTokenMount = useProjectedTokenMount
+			azureworker.DefaultAddOptions.UseProjectedTokenMount = useProjectedTokenMount
 
 			configFileOpts.Completed().ApplyETCDStorage(&azurecontrolplaneexposure.DefaultAddOptions.ETCDStorage)
 			configFileOpts.Completed().ApplyHealthCheckConfig(&healthcheck.DefaultAddOptions.HealthCheckConfig)
