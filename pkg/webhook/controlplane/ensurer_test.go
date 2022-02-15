@@ -18,9 +18,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Masterminds/semver"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 
+	"github.com/Masterminds/semver"
 	"github.com/coreos/go-systemd/v22/unit"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/csimigration"
@@ -34,6 +34,7 @@ import (
 	"github.com/gardener/gardener/pkg/utils/version"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -398,95 +399,56 @@ var _ = Describe("Ensurer", func() {
 			}
 		})
 
-		It("should modify existing elements of kubelet.service unit options (k8s < 1.21)", func() {
-			newUnitOptions := []*unit.UnitOption{
-				{
-					Section: "Service",
-					Name:    "ExecStart",
-					Value: `/opt/bin/hyperkube kubelet \
-    --config=/var/lib/kubelet/config/kubelet \
-    --cloud-provider=azure \
-    --cloud-config=/var/lib/kubelet/cloudprovider.conf`,
-				},
-			}
-
-			c.EXPECT().Get(ctx, acrCmKey, &corev1.ConfigMap{}).Return(apierrors.NewNotFound(schema.GroupResource{}, azure.CloudProviderAcrConfigName))
-
-			opts, err := ensurer.EnsureKubeletServiceUnitOptions(ctx, eContextK8s117, semver.MustParse("1.17.0"), oldUnitOptions, nil)
-			Expect(err).To(Not(HaveOccurred()))
-			Expect(opts).To(Equal(newUnitOptions))
-		})
-
-		It("should modify existing elements of kubelet.service unit options and add acr config (k8s < 1.21)", func() {
-			var (
-				acrCM = &corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: azure.CloudProviderAcrConfigName},
-					Data:       map[string]string{},
-				}
-				newUnitOptions = []*unit.UnitOption{
+		DescribeTable("should modify existing elements of kubelet.service unit options",
+			func(gctx gcontext.GardenContext, kubeletVersion *semver.Version, cloudProvider string, withACRConfig bool, withControllerAttachDetachFlag bool) {
+				newUnitOptions := []*unit.UnitOption{
 					{
 						Section: "Service",
 						Name:    "ExecStart",
 						Value: `/opt/bin/hyperkube kubelet \
-    --config=/var/lib/kubelet/config/kubelet \
+    --config=/var/lib/kubelet/config/kubelet`,
+					},
+				}
+
+				if cloudProvider == "azure" {
+					newUnitOptions[0].Value += ` \
     --cloud-provider=azure \
-    --cloud-config=/var/lib/kubelet/cloudprovider.conf \
-    --azure-container-registry-config=/var/lib/kubelet/acr.conf`,
-					},
+    --cloud-config=/var/lib/kubelet/cloudprovider.conf`
+				} else if cloudProvider == "external" {
+					newUnitOptions[0].Value += ` \
+    --cloud-provider=external`
 				}
-			)
 
-			c.EXPECT().Get(ctx, acrCmKey, &corev1.ConfigMap{}).DoAndReturn(clientGet(acrCM))
-
-			opts, err := ensurer.EnsureKubeletServiceUnitOptions(ctx, eContextK8s117, semver.MustParse("1.17.0"), oldUnitOptions, nil)
-			Expect(err).To(Not(HaveOccurred()))
-			Expect(opts).To(Equal(newUnitOptions))
-		})
-
-		It("should modify existing elements of kubelet.service unit options (k8s >= 1.21)", func() {
-			newUnitOptions := []*unit.UnitOption{
-				{
-					Section: "Service",
-					Name:    "ExecStart",
-					Value: `/opt/bin/hyperkube kubelet \
-    --config=/var/lib/kubelet/config/kubelet \
-    --cloud-provider=external \
-    --enable-controller-attach-detach=true`,
-				},
-			}
-
-			c.EXPECT().Get(ctx, acrCmKey, &corev1.ConfigMap{}).Return(apierrors.NewNotFound(schema.GroupResource{}, azure.CloudProviderAcrConfigName))
-
-			opts, err := ensurer.EnsureKubeletServiceUnitOptions(ctx, eContextK8s121, semver.MustParse("1.21.0"), oldUnitOptions, nil)
-			Expect(err).To(Not(HaveOccurred()))
-			Expect(opts).To(Equal(newUnitOptions))
-		})
-
-		It("should modify existing elements of kubelet.service unit options and add acr config (k8s >= 1.21)", func() {
-			var (
-				acrCM = &corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: azure.CloudProviderAcrConfigName},
-					Data:       map[string]string{},
+				if withControllerAttachDetachFlag {
+					newUnitOptions[0].Value += ` \
+    --enable-controller-attach-detach=true`
 				}
-				newUnitOptions = []*unit.UnitOption{
-					{
-						Section: "Service",
-						Name:    "ExecStart",
-						Value: `/opt/bin/hyperkube kubelet \
-    --config=/var/lib/kubelet/config/kubelet \
-    --cloud-provider=external \
-    --enable-controller-attach-detach=true \
-    --azure-container-registry-config=/var/lib/kubelet/acr.conf`,
-					},
+
+				if withACRConfig {
+					acrCM := &corev1.ConfigMap{
+						ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: azure.CloudProviderAcrConfigName},
+						Data:       map[string]string{},
+					}
+					c.EXPECT().Get(ctx, acrCmKey, &corev1.ConfigMap{}).DoAndReturn(clientGet(acrCM))
+
+					newUnitOptions[0].Value += ` \
+    --azure-container-registry-config=/var/lib/kubelet/acr.conf`
+				} else {
+					c.EXPECT().Get(ctx, acrCmKey, &corev1.ConfigMap{}).Return(apierrors.NewNotFound(schema.GroupResource{}, azure.CloudProviderAcrConfigName))
 				}
-			)
 
-			c.EXPECT().Get(ctx, acrCmKey, &corev1.ConfigMap{}).DoAndReturn(clientGet(acrCM))
+				opts, err := ensurer.EnsureKubeletServiceUnitOptions(ctx, gctx, kubeletVersion, oldUnitOptions, nil)
+				Expect(err).To(Not(HaveOccurred()))
+				Expect(opts).To(Equal(newUnitOptions))
+			},
 
-			opts, err := ensurer.EnsureKubeletServiceUnitOptions(ctx, eContextK8s121, semver.MustParse("1.21.0"), oldUnitOptions, nil)
-			Expect(err).To(Not(HaveOccurred()))
-			Expect(opts).To(Equal(newUnitOptions))
-		})
+			Entry("kubelet < 1.21, w/o acr", eContextK8s117, semver.MustParse("1.17.0"), "azure", false, false),
+			Entry("kubelet < 1.21, w/ acr", eContextK8s117, semver.MustParse("1.17.0"), "azure", true, false),
+			Entry("1.21 <= kubelet < 1.23, w/o acr", eContextK8s121, semver.MustParse("1.21.0"), "external", false, true),
+			Entry("1.21 <= kubelet < 1.23, w/ acr", eContextK8s121, semver.MustParse("1.21.0"), "external", true, true),
+			Entry("kubelet >= 1.23, w/o acr", eContextK8s121, semver.MustParse("1.23.0"), "", false, false),
+			Entry("kubelet >= 1.23, w/ acr", eContextK8s121, semver.MustParse("1.23.0"), "", true, false),
+		)
 	})
 
 	Describe("#EnsureKubeletConfiguration", func() {
@@ -500,36 +462,33 @@ var _ = Describe("Ensurer", func() {
 			}
 		})
 
-		It("should modify existing elements of kubelet configuration (k8s < 1.21)", func() {
-			newKubeletConfig := &kubeletconfigv1beta1.KubeletConfiguration{
-				FeatureGates: map[string]bool{
-					"Foo": true,
-				},
-			}
-			kubeletConfig := *oldKubeletConfig
+		DescribeTable("should modify existing elements of kubelet configuration",
+			func(gctx gcontext.GardenContext, kubeletVersion *semver.Version, withCSIFeatureGates bool, enableControllerAttachDetach *bool) {
+				newKubeletConfig := &kubeletconfigv1beta1.KubeletConfiguration{
+					FeatureGates: map[string]bool{
+						"Foo": true,
+					},
+					EnableControllerAttachDetach: enableControllerAttachDetach,
+				}
+				kubeletConfig := *oldKubeletConfig
 
-			err := ensurer.EnsureKubeletConfiguration(ctx, eContextK8s117, semver.MustParse("1.17.0"), &kubeletConfig, nil)
-			Expect(err).To(Not(HaveOccurred()))
-			Expect(&kubeletConfig).To(Equal(newKubeletConfig))
-		})
+				if withCSIFeatureGates {
+					newKubeletConfig.FeatureGates["CSIMigration"] = true
+					newKubeletConfig.FeatureGates["CSIMigrationAzureDisk"] = true
+					newKubeletConfig.FeatureGates["CSIMigrationAzureFile"] = true
+					newKubeletConfig.FeatureGates["InTreePluginAzureDiskUnregister"] = true
+					newKubeletConfig.FeatureGates["InTreePluginAzureFileUnregister"] = true
+				}
 
-		It("should modify existing elements of kubelet configuration (k8s >= 1.21)", func() {
-			newKubeletConfig := &kubeletconfigv1beta1.KubeletConfiguration{
-				FeatureGates: map[string]bool{
-					"Foo":                             true,
-					"CSIMigration":                    true,
-					"CSIMigrationAzureDisk":           true,
-					"CSIMigrationAzureFile":           true,
-					"InTreePluginAzureDiskUnregister": true,
-					"InTreePluginAzureFileUnregister": true,
-				},
-			}
-			kubeletConfig := *oldKubeletConfig
+				err := ensurer.EnsureKubeletConfiguration(ctx, gctx, kubeletVersion, &kubeletConfig, nil)
+				Expect(err).To(Not(HaveOccurred()))
+				Expect(&kubeletConfig).To(Equal(newKubeletConfig))
+			},
 
-			err := ensurer.EnsureKubeletConfiguration(ctx, eContextK8s121, semver.MustParse("1.21.0"), &kubeletConfig, nil)
-			Expect(err).To(Not(HaveOccurred()))
-			Expect(&kubeletConfig).To(Equal(newKubeletConfig))
-		})
+			Entry("kubelet < 1.21", eContextK8s117, semver.MustParse("1.17.0"), false, nil),
+			Entry("1.21 <= kubelet < 1.23", eContextK8s121, semver.MustParse("1.21.0"), true, nil),
+			Entry("kubelet >= 1.23", eContextK8s121, semver.MustParse("1.23.0"), true, pointer.Bool(true)),
+		)
 	})
 
 	Describe("#ShouldProvisionKubeletCloudProviderConfig", func() {

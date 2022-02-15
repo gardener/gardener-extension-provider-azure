@@ -9,3 +9,6 @@ csi-driver-node:
   enabled: false
 remedy-controller-azure:
   enabled: true
+
+global:
+  vpaEnabled: false

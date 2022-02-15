@@ -1,5 +1,5 @@
 {{- define "csi-driver-node.vpa" -}}
-{{- if .Values.vpaEnabled -}}
+{{- if .Values.global.vpaEnabled -}}
 apiVersion: "autoscaling.k8s.io/v1beta2"
 kind: VerticalPodAutoscaler
 metadata:
