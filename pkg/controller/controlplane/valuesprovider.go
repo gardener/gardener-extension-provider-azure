@@ -212,15 +212,15 @@ func getSecretConfigsFuncs(useTokenRequestor bool) secrets.Interface {
 
 func shootAccessSecretsFunc(namespace string) []*gutil.ShootAccessSecret {
 	return []*gutil.ShootAccessSecret{
-		gutil.NewShootAccessSecret(azure.CloudControllerManagerName, ""),
-		gutil.NewShootAccessSecret(azure.CSIControllerDiskName, ""),
-		gutil.NewShootAccessSecret(azure.CSIControllerFileName, ""),
-		gutil.NewShootAccessSecret(azure.CSIProvisionerName, ""),
-		gutil.NewShootAccessSecret(azure.CSIAttacherName, ""),
-		gutil.NewShootAccessSecret(azure.CSISnapshotterName, ""),
-		gutil.NewShootAccessSecret(azure.CSIResizerName, ""),
-		gutil.NewShootAccessSecret(azure.CSISnapshotControllerName, ""),
-		gutil.NewShootAccessSecret(azure.RemedyControllerName, ""),
+		gutil.NewShootAccessSecret(azure.CloudControllerManagerName, namespace),
+		gutil.NewShootAccessSecret(azure.CSIControllerDiskName, namespace),
+		gutil.NewShootAccessSecret(azure.CSIControllerFileName, namespace),
+		gutil.NewShootAccessSecret(azure.CSIProvisionerName, namespace),
+		gutil.NewShootAccessSecret(azure.CSIAttacherName, namespace),
+		gutil.NewShootAccessSecret(azure.CSISnapshotterName, namespace),
+		gutil.NewShootAccessSecret(azure.CSIResizerName, namespace),
+		gutil.NewShootAccessSecret(azure.CSISnapshotControllerName, namespace),
+		gutil.NewShootAccessSecret(azure.RemedyControllerName, namespace),
 	}
 }
 
