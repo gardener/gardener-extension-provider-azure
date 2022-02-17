@@ -17,7 +17,7 @@ package validation
 import (
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 
-	corevalidation "github.com/gardener/gardener/pkg/apis/core/validation"
+	featurevalidation "github.com/gardener/gardener/pkg/utils/validation/features"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -26,7 +26,7 @@ func ValidateControlPlaneConfig(controlPlaneConfig *apisazure.ControlPlaneConfig
 	allErrs := field.ErrorList{}
 
 	if controlPlaneConfig.CloudControllerManager != nil {
-		allErrs = append(allErrs, corevalidation.ValidateFeatureGates(controlPlaneConfig.CloudControllerManager.FeatureGates, version, fldPath.Child("cloudControllerManager", "featureGates"))...)
+		allErrs = append(allErrs, featurevalidation.ValidateFeatureGates(controlPlaneConfig.CloudControllerManager.FeatureGates, version, fldPath.Child("cloudControllerManager", "featureGates"))...)
 	}
 
 	return allErrs

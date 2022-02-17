@@ -36,7 +36,7 @@ import (
 	"github.com/gardener/gardener/pkg/extensions"
 	"github.com/gardener/gardener/pkg/utils"
 	"github.com/gardener/gardener/test/framework"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	"github.com/sirupsen/logrus"
@@ -161,75 +161,32 @@ type azureIdentifier struct {
 	subnets           []string
 }
 
-var _ = Describe("Infrastructure tests", func() {
-	var (
-		ctx    = context.Background()
-		logger *logrus.Entry
+var (
+	ctx    = context.Background()
+	logger *logrus.Entry
 
-		testEnv   *envtest.Environment
-		c         client.Client
-		mgrCancel context.CancelFunc
-		decoder   runtime.Decoder
+	testEnv   *envtest.Environment
+	c         client.Client
+	mgrCancel context.CancelFunc
+	decoder   runtime.Decoder
 
-		internalChartsPath string
-		clientSet          *azureClientSet
-	)
+	clientSet *azureClientSet
+)
 
-	BeforeSuite(func() {
-		flag.Parse()
-		validateFlags()
+var _ = BeforeSuite(func() {
+	flag.Parse()
+	validateFlags()
 
-		internalChartsPath = azure.InternalChartsPath
-		repoRoot := filepath.Join("..", "..", "..")
-		azure.InternalChartsPath = filepath.Join(repoRoot, azure.InternalChartsPath)
-		logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
+	internalChartsPath := azure.InternalChartsPath
+	repoRoot := filepath.Join("..", "..", "..")
+	azure.InternalChartsPath = filepath.Join(repoRoot, azure.InternalChartsPath)
+	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
-		log := logrus.New()
-		log.SetOutput(GinkgoWriter)
-		logger = logrus.NewEntry(log)
+	log := logrus.New()
+	log.SetOutput(GinkgoWriter)
+	logger = logrus.NewEntry(log)
 
-		By("starting test environment")
-		testEnv = &envtest.Environment{
-			UseExistingCluster: pointer.BoolPtr(true),
-			CRDInstallOptions: envtest.CRDInstallOptions{
-				Paths: []string{
-					filepath.Join(repoRoot, "example", "20-crd-extensions.gardener.cloud_clusters.yaml"),
-					filepath.Join(repoRoot, "example", "20-crd-extensions.gardener.cloud_infrastructures.yaml"),
-				},
-			},
-		}
-
-		cfg, err := testEnv.Start()
-		Expect(err).ToNot(HaveOccurred())
-		mgr, err := manager.New(cfg, manager.Options{
-			MetricsBindAddress: "0",
-		})
-		Expect(err).ToNot(HaveOccurred())
-
-		Expect(extensionsv1alpha1.AddToScheme(mgr.GetScheme())).To(Succeed())
-		Expect(azureinstall.AddToScheme(mgr.GetScheme())).To(Succeed())
-
-		Expect(infrastructure.AddToManager(mgr)).To(Succeed())
-
-		var mgrContext context.Context
-		mgrContext, mgrCancel = context.WithCancel(ctx)
-
-		By("start manager")
-		go func() {
-			err := mgr.Start(mgrContext)
-			Expect(err).ToNot(HaveOccurred())
-		}()
-
-		c = mgr.GetClient()
-		Expect(c).ToNot(BeNil())
-		decoder = serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder()
-
-		authorizer, err := getAuthorizer(*tenantId, *clientId, *clientSecret)
-		Expect(err).ToNot(HaveOccurred())
-		clientSet = newAzureClientSet(*subscriptionId, authorizer)
-	})
-
-	AfterSuite(func() {
+	DeferCleanup(func() {
 		defer func() {
 			By("stopping manager")
 			mgrCancel()
@@ -244,6 +201,48 @@ var _ = Describe("Infrastructure tests", func() {
 		azure.InternalChartsPath = internalChartsPath
 	})
 
+	By("starting test environment")
+	testEnv = &envtest.Environment{
+		UseExistingCluster: pointer.BoolPtr(true),
+		CRDInstallOptions: envtest.CRDInstallOptions{
+			Paths: []string{
+				filepath.Join(repoRoot, "example", "20-crd-extensions.gardener.cloud_clusters.yaml"),
+				filepath.Join(repoRoot, "example", "20-crd-extensions.gardener.cloud_infrastructures.yaml"),
+			},
+		},
+	}
+
+	cfg, err := testEnv.Start()
+	Expect(err).ToNot(HaveOccurred())
+	mgr, err := manager.New(cfg, manager.Options{
+		MetricsBindAddress: "0",
+	})
+	Expect(err).ToNot(HaveOccurred())
+
+	Expect(extensionsv1alpha1.AddToScheme(mgr.GetScheme())).To(Succeed())
+	Expect(azureinstall.AddToScheme(mgr.GetScheme())).To(Succeed())
+
+	Expect(infrastructure.AddToManager(mgr)).To(Succeed())
+
+	var mgrContext context.Context
+	mgrContext, mgrCancel = context.WithCancel(ctx)
+
+	By("start manager")
+	go func() {
+		err := mgr.Start(mgrContext)
+		Expect(err).ToNot(HaveOccurred())
+	}()
+
+	c = mgr.GetClient()
+	Expect(c).ToNot(BeNil())
+	decoder = serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder()
+
+	authorizer, err := getAuthorizer(*tenantId, *clientId, *clientSecret)
+	Expect(err).ToNot(HaveOccurred())
+	clientSet = newAzureClientSet(*subscriptionId, authorizer)
+})
+
+var _ = Describe("Infrastructure tests", func() {
 	Context("AvailabilitySet cluster", func() {
 		AfterEach(func() {
 			framework.RunCleanupActions()
