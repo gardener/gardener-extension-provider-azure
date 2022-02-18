@@ -3,7 +3,7 @@ module github.com/gardener/gardener-extension-provider-azure
 go 1.16
 
 require (
-	github.com/Azure/azure-sdk-for-go v49.2.0+incompatible
+	github.com/Azure/azure-sdk-for-go v61.1.0+incompatible
 	github.com/Azure/azure-storage-blob-go v0.7.0
 	github.com/Azure/go-autorest/autorest v0.11.18
 	github.com/Azure/go-autorest/autorest/adal v0.9.13
@@ -19,12 +19,15 @@ require (
 	github.com/gardener/machine-controller-manager v0.41.0
 	github.com/gardener/remedy-controller v0.6.0
 	github.com/go-logr/logr v0.4.0
+	github.com/gofrs/uuid v4.2.0+incompatible // indirect
 	github.com/golang/mock v1.6.0
+	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/ginkgo/v2 v2.1.0
 	github.com/onsi/gomega v1.18.0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/pflag v1.0.5
+	golang.org/x/crypto v0.0.0-20210421170649-83a5a9bb288b
 	golang.org/x/tools v0.1.7
 	k8s.io/api v0.22.2
 	k8s.io/apiextensions-apiserver v0.22.2

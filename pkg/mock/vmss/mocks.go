@@ -8,7 +8,7 @@ import (
 	context "context"
 	reflect "reflect"
 
-	compute "github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2020-06-30/compute"
+	compute "github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -51,32 +51,32 @@ func (mr *MockVmssMockRecorder) Create(arg0, arg1, arg2, arg3 interface{}) *gomo
 }
 
 // Delete mocks base method.
-func (m *MockVmss) Delete(arg0 context.Context, arg1, arg2 string) error {
+func (m *MockVmss) Delete(arg0 context.Context, arg1, arg2 string, arg3 *bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Delete", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "Delete", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Delete indicates an expected call of Delete.
-func (mr *MockVmssMockRecorder) Delete(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockVmssMockRecorder) Delete(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockVmss)(nil).Delete), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockVmss)(nil).Delete), arg0, arg1, arg2, arg3)
 }
 
 // Get mocks base method.
-func (m *MockVmss) Get(arg0 context.Context, arg1, arg2 string) (*compute.VirtualMachineScaleSet, error) {
+func (m *MockVmss) Get(arg0 context.Context, arg1, arg2 string, arg3 compute.ExpandTypesForGetVMScaleSets) (*compute.VirtualMachineScaleSet, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(*compute.VirtualMachineScaleSet)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Get indicates an expected call of Get.
-func (mr *MockVmssMockRecorder) Get(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockVmssMockRecorder) Get(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockVmss)(nil).Get), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockVmss)(nil).Get), arg0, arg1, arg2, arg3)
 }
 
 // List mocks base method.

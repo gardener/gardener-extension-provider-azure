@@ -169,3 +169,14 @@ integration-test-infra:
 		--client-id='$(shell cat $(CLIENT_ID_FILE))' \
 		--client-secret='$(shell cat $(CLIENT_SECRET_FILE))' \
 		--region=$(REGION)
+
+.PHONY: integration-test-bastion
+integration-test-bastion:
+	@go test -timeout=0 -mod=vendor ./test/integration/bastion \
+		--v -ginkgo.v -ginkgo.progress \
+		--kubeconfig=${KUBECONFIG} \
+		--subscription-id='$(shell cat $(SUBSCRIPTION_ID_FILE))' \
+		--tenant-id='$(shell cat $(TENANT_ID_FILE))' \
+		--client-id='$(shell cat $(CLIENT_ID_FILE))' \
+		--client-secret='$(shell cat $(CLIENT_SECRET_FILE))' \
+		--region=$(REGION)
