@@ -249,7 +249,7 @@ var _ = Describe("Infrastructure tests", func() {
 		})
 
 		It("should successfully create and delete AvailabilitySet cluster creating new vNet", func() {
-			providerConfig := newInfrastructureConfig(nil, nil, false, false)
+			providerConfig := newInfrastructureConfig(nil, nil, nil, false)
 
 			namespace, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
@@ -280,7 +280,7 @@ var _ = Describe("Infrastructure tests", func() {
 				Name:          foreignName,
 				ResourceGroup: foreignName,
 			}
-			providerConfig := newInfrastructureConfig(vnetConfig, identityConfig, false, false)
+			providerConfig := newInfrastructureConfig(vnetConfig, nil, identityConfig, false)
 
 			namespace, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
@@ -295,7 +295,7 @@ var _ = Describe("Infrastructure tests", func() {
 		})
 
 		It("should successfully create and delete a zonal cluster without NatGateway creating new vNet", func() {
-			providerConfig := newInfrastructureConfig(nil, nil, false, true)
+			providerConfig := newInfrastructureConfig(nil, nil, nil, true)
 
 			namespace, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
@@ -326,7 +326,55 @@ var _ = Describe("Infrastructure tests", func() {
 				Name:          foreignName,
 				ResourceGroup: foreignName,
 			}
-			providerConfig := newInfrastructureConfig(vnetConfig, identityConfig, true, true)
+			natGatewayConfig := &azurev1alpha1.NatGatewayConfig{
+				Enabled: true,
+			}
+			providerConfig := newInfrastructureConfig(vnetConfig, natGatewayConfig, identityConfig, true)
+
+			namespace, err := generateName()
+			Expect(err).ToNot(HaveOccurred())
+			err = runTest(ctx, logger, c, clientSet, namespace, providerConfig, false, decoder)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should successfully create and delete a zonal cluster with Nat Gateway using user provided public IPs", func() {
+			foreignName, err := generateName()
+			Expect(err).ToNot(HaveOccurred())
+
+			var cleanupHandle framework.CleanupActionHandle
+			cleanupHandle = framework.AddCleanupAction(func() {
+				Expect(ignoreAzureNotFoundError(teardownResourceGroup(ctx, clientSet, foreignName))).To(Succeed())
+				framework.RemoveCleanupAction(cleanupHandle)
+			})
+
+			var (
+				zone       int32 = 1
+				natIPName1       = "nat-ip-1"
+				natIPName2       = "nat-ip-2"
+			)
+
+			Expect(prepareNewResourceGroup(ctx, logger, clientSet, foreignName, *region)).To(Succeed())
+			Expect(prepareNewNatIp(ctx, logger, clientSet, foreignName, natIPName1, *region, fmt.Sprintf("%d", zone))).To(Succeed())
+			Expect(prepareNewNatIp(ctx, logger, clientSet, foreignName, natIPName2, *region, fmt.Sprintf("%d", zone))).To(Succeed())
+
+			natGatewayConfig := &azurev1alpha1.NatGatewayConfig{
+				Enabled: true,
+				Zone:    &zone,
+				IPAddresses: []azurev1alpha1.PublicIPReference{
+					{
+						Name:          natIPName1,
+						ResourceGroup: foreignName,
+						Zone:          zone,
+					},
+					{
+						Name:          natIPName2,
+						ResourceGroup: foreignName,
+						Zone:          zone,
+					},
+				},
+			}
+
+			providerConfig := newInfrastructureConfig(nil, natGatewayConfig, nil, true)
 
 			namespace, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
@@ -384,7 +432,7 @@ var _ = Describe("Infrastructure tests", func() {
 		})
 
 		It("should successfully create and delete VMO cluster without NatGateway creating new vNet", func() {
-			providerConfig := newInfrastructureConfig(nil, nil, false, false)
+			providerConfig := newInfrastructureConfig(nil, nil, nil, false)
 
 			namespace, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
@@ -415,7 +463,10 @@ var _ = Describe("Infrastructure tests", func() {
 				Name:          foreignName,
 				ResourceGroup: foreignName,
 			}
-			providerConfig := newInfrastructureConfig(vnetConfig, identityConfig, true, false)
+			natGatewayConfig := &azurev1alpha1.NatGatewayConfig{
+				Enabled: true,
+			}
+			providerConfig := newInfrastructureConfig(vnetConfig, natGatewayConfig, identityConfig, false)
 
 			namespace, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
@@ -553,7 +604,7 @@ func generateName() (string, error) {
 	return "azure-infrastructure-it--" + suffix, nil
 }
 
-func newInfrastructureConfig(vnet *azurev1alpha1.VNet, id *azurev1alpha1.IdentityConfig, natGateway, zoned bool) *azurev1alpha1.InfrastructureConfig {
+func newInfrastructureConfig(vnet *azurev1alpha1.VNet, natGateway *azurev1alpha1.NatGatewayConfig, id *azurev1alpha1.IdentityConfig, zoned bool) *azurev1alpha1.InfrastructureConfig {
 	if vnet == nil {
 		vnet = &azurev1alpha1.VNet{
 			CIDR: pointer.StringPtr(VNetCIDR),
@@ -566,10 +617,8 @@ func newInfrastructureConfig(vnet *azurev1alpha1.VNet, id *azurev1alpha1.Identit
 		ServiceEndpoints: []string{"Microsoft.Storage"},
 	}
 
-	if natGateway {
-		nwConfig.NatGateway = &azurev1alpha1.NatGatewayConfig{
-			Enabled: true,
-		}
+	if natGateway != nil {
+		nwConfig.NatGateway = natGateway
 	}
 
 	return &azurev1alpha1.InfrastructureConfig{
@@ -728,6 +777,23 @@ func prepareNewIdentity(ctx context.Context, logger *logrus.Entry, az *azureClie
 	return err
 }
 
+func prepareNewNatIp(ctx context.Context, logger *logrus.Entry, az *azureClientSet, groupName, pubIpName, location, zone string) error {
+	logger.Infof("generating new nat ip %s/%s", groupName, pubIpName)
+	_, err := az.pubIp.CreateOrUpdate(ctx, groupName, pubIpName, network.PublicIPAddress{
+		Name: pointer.String(pubIpName),
+		Sku: &network.PublicIPAddressSku{
+			Name: network.PublicIPAddressSkuNameStandard,
+		},
+		Zones:    &[]string{zone},
+		Location: &location,
+		PublicIPAddressPropertiesFormat: &network.PublicIPAddressPropertiesFormat{
+			PublicIPAllocationMethod: network.Static,
+			PublicIPAddressVersion:   network.IPv4,
+		},
+	})
+	return err
+}
+
 func teardownResourceGroup(ctx context.Context, az *azureClientSet, groupName string) error {
 	future, err := az.groups.Delete(ctx, groupName)
 	if err != nil {
@@ -836,23 +902,27 @@ func verifyCreation(
 		}
 	}
 
-	verifyNAT := func(zone, timeout *int32, ngName string) *string {
-		pipName := fmt.Sprintf("%s-ip", ngName)
+	type pubIpRef struct {
+		Name          string
+		ResourceGroup string
+	}
 
-		// public IP
-		pip, err := az.pubIp.Get(ctx, status.ResourceGroup.Name, pipName, "")
-		Expect(err).ToNot(HaveOccurred())
-		Expect(pip.Location).To(PointTo(Equal(*region)))
-		Expect(pip.PublicIPAllocationMethod).To(Equal(network.Static))
-		Expect(pip.Sku.Name).To(Equal(network.PublicIPAddressSkuNameStandard))
-		Expect(pip.PublicIPAddressVersion).To(Equal(network.IPv4))
-
-		// nat gateway
+	verifyNAT := func(zone, timeout *int32, ngName string, ipNames []pubIpRef) *string {
 		ng, err = az.nat.Get(ctx, status.ResourceGroup.Name, ngName, "")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ng.Location).To(PointTo(Equal(*region)))
 		Expect(ng.Sku.Name).To(Equal(network.NatGatewaySkuNameStandard))
-		Expect(ng.PublicIPAddresses).To(PointTo(ContainElement(HaveEqualID(*pip.ID))))
+
+		// public IP
+		for _, ipName := range ipNames {
+			pip, err := az.pubIp.Get(ctx, ipName.ResourceGroup, ipName.Name, "")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(pip.Location).To(PointTo(Equal(*region)))
+			Expect(pip.PublicIPAllocationMethod).To(Equal(network.Static))
+			Expect(pip.Sku.Name).To(Equal(network.PublicIPAddressSkuNameStandard))
+			Expect(pip.PublicIPAddressVersion).To(Equal(network.IPv4))
+			Expect(ng.PublicIPAddresses).To(PointTo(ContainElement(HaveEqualID(*pip.ID))))
+		}
 		if timeout != nil {
 			Expect(ng.NatGatewayPropertiesFormat.IdleTimeoutInMinutes).To(PointTo(Equal(*timeout)))
 		}
@@ -870,7 +940,24 @@ func verifyCreation(
 
 		var natID *string
 		if nat != nil && nat.Enabled {
-			natID = verifyNAT(nat.Zone, nat.IdleConnectionTimeoutMinutes, ngBaseName)
+			ngName := indexedName(ngBaseName, 0)
+			ipNames := []pubIpRef{}
+
+			if len(nat.IPAddresses) > 0 {
+				for _, ipRef := range nat.IPAddresses {
+					ipNames = append(ipNames, pubIpRef{
+						Name:          ipRef.Name,
+						ResourceGroup: ipRef.ResourceGroup,
+					})
+				}
+			} else {
+				ipNames = []pubIpRef{{
+					Name:          fmt.Sprintf("%s-ip", ngName),
+					ResourceGroup: status.ResourceGroup.Name,
+				}}
+			}
+
+			natID = verifyNAT(nat.Zone, nat.IdleConnectionTimeoutMinutes, ngName, ipNames)
 		}
 		verifySubnet(*config.Networks.Workers, config.Networks.ServiceEndpoints, natID, subnetBaseName)
 	} else {
@@ -882,7 +969,23 @@ func verifyCreation(
 			var natID *string
 			if nat != nil && nat.Enabled {
 				ngName := indexedName(ngBaseName, zone.Name)
-				natID = verifyNAT(&zone.Name, nat.IdleConnectionTimeoutMinutes, ngName)
+				ipNames := []pubIpRef{}
+
+				if len(nat.IPAddresses) > 0 {
+					for _, ipRef := range nat.IPAddresses {
+						ipNames = append(ipNames, pubIpRef{
+							Name:          ipRef.Name,
+							ResourceGroup: ipRef.ResourceGroup,
+						})
+					}
+				} else {
+					ipNames = []pubIpRef{{
+						Name:          fmt.Sprintf("%s-ip", ngName),
+						ResourceGroup: status.ResourceGroup.Name,
+					}}
+				}
+
+				natID = verifyNAT(&zone.Name, nat.IdleConnectionTimeoutMinutes, ngName, ipNames)
 			}
 			subnetName := indexedName(subnetBaseName, zone.Name)
 			verifySubnet(zone.CIDR, zone.ServiceEndpoints, natID, subnetName)
