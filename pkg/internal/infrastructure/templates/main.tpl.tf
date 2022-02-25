@@ -134,7 +134,7 @@ resource "azurerm_subnet_nat_gateway_association" "{{ $natName }}-worker-subnet-
 #===============================================
 #= NAT Gateway User provided IP
 #===============================================
-{{ range $ipIndex, $ip := .natGateway.ipAddresses -}}
+{{ range $ipIndex, $ip := .natGateway.ipAddresses }}
 data "azurerm_public_ip" "{{ $natName }}-ip-user-provided-{{ $ipIndex }}" {
   name                = "{{ $ip.name }}"
   resource_group_name = "{{ $ip.resourceGroup }}"
@@ -144,8 +144,7 @@ resource "azurerm_nat_gateway_public_ip_association" "{{ $natName }}-ip-user-pro
   nat_gateway_id       = azurerm_nat_gateway.{{ $natName }}.id
   public_ip_address_id = data.azurerm_public_ip.{{ $natName }}-ip-user-provided-{{ $ipIndex }}.id
 }
-
-{{- end }}
+{{ end }}
 {{- else -}}
 #===============================================
 #= NAT Gateway managed IP
