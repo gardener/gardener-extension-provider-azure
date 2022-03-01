@@ -17,10 +17,10 @@ package controlplane
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -28,6 +28,8 @@ import (
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
 	"github.com/gardener/gardener/pkg/utils"
+	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
+
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -48,9 +50,10 @@ const (
 
 var _ = Describe("ValuesProvider", func() {
 	var (
-		ctrl   *gomock.Controller
-		ctx    = context.TODO()
-		logger = log.Log.WithName("test")
+		ctrl    *gomock.Controller
+		ctx     = context.TODO()
+		logger  = log.Log.WithName("test")
+		fakeErr = fmt.Errorf("fake err")
 
 		c  *mockclient.MockClient
 		vp genericactuator.ValuesProvider
@@ -135,6 +138,7 @@ var _ = Describe("ValuesProvider", func() {
 			azure.CSISnapshotterName:                     "6a5bfc847638c499062f7fb44e31a30a9760bf4179e1dbf85e0ff4b4f162cd68",
 			azure.CSIResizerName:                         "a77e663ba1af340fb3dd7f6f8a1be47c7aa9e658198695480641e6b934c0b9ed",
 			azure.CSISnapshotControllerName:              "84cba346d2e2cf96c3811b55b01f57bdd9b9bcaed7065760470942d267984eaf",
+			azure.CSISnapshotValidation:                  "452097220f89011daa2543876c3f3184f5064a12be454ae32e2ad205ec55823c",
 			azure.RemedyControllerName:                   "84cba346d2e2cf96c3811b55b01f57bdd9b9bcaed7065760470942d267984eaf",
 		}
 	)
@@ -414,6 +418,12 @@ var _ = Describe("ValuesProvider", func() {
 							"checksum/secret-" + azure.CSISnapshotControllerName: checksums[azure.CSISnapshotControllerName],
 						},
 					},
+					"csiSnapshotValidationWebhook": map[string]interface{}{
+						"replicas": 1,
+						"podAnnotations": map[string]interface{}{
+							"checksum/secret-" + azure.CSISnapshotValidation: checksums[azure.CSISnapshotValidation],
+						},
+					},
 					"vmType": "vmss",
 				}),
 				azure.RemedyControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
@@ -456,6 +466,12 @@ var _ = Describe("ValuesProvider", func() {
 						"replicas": 1,
 						"podAnnotations": map[string]interface{}{
 							"checksum/secret-" + azure.CSISnapshotControllerName: checksums[azure.CSISnapshotControllerName],
+						},
+					},
+					"csiSnapshotValidationWebhook": map[string]interface{}{
+						"replicas": 1,
+						"podAnnotations": map[string]interface{}{
+							"checksum/secret-" + azure.CSISnapshotValidation: checksums[azure.CSISnapshotValidation],
 						},
 					},
 				}),
@@ -523,6 +539,12 @@ var _ = Describe("ValuesProvider", func() {
 		Context("k8s < 1.21", func() {
 			It("should return correct control plane shoot chart values for zoned cluster", func() {
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+				csiNode := utils.MergeMaps(csiNodeNotEnabled, map[string]interface{}{
+					"webhookConfig": map[string]interface{}{
+						"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+						"caBundle": "",
+					},
+				})
 
 				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
 				Expect(err).NotTo(HaveOccurred())
@@ -530,7 +552,7 @@ var _ = Describe("ValuesProvider", func() {
 					"global":                         globalVpaDisabled,
 					azure.AllowEgressName:            enabledTrue,
 					azure.CloudControllerManagerName: enabledTrue,
-					azure.CSINodeName:                csiNodeNotEnabled,
+					azure.CSINodeName:                csiNode,
 					azure.RemedyControllerName:       enabledTrue,
 				}))
 			})
@@ -539,6 +561,12 @@ var _ = Describe("ValuesProvider", func() {
 				infrastructureStatus.Zoned = false
 				infrastructureStatus.AvailabilitySets = []apisazure.AvailabilitySet{primaryAvailabilitySet}
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+				csiNode := utils.MergeMaps(csiNodeNotEnabled, map[string]interface{}{
+					"webhookConfig": map[string]interface{}{
+						"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+						"caBundle": "",
+					},
+				})
 
 				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
 				Expect(err).NotTo(HaveOccurred())
@@ -546,7 +574,7 @@ var _ = Describe("ValuesProvider", func() {
 					"global":                         globalVpaDisabled,
 					azure.AllowEgressName:            enabledFalse,
 					azure.CloudControllerManagerName: enabledTrue,
-					azure.CSINodeName:                csiNodeNotEnabled,
+					azure.CSINodeName:                csiNode,
 					azure.RemedyControllerName:       enabledTrue,
 				}))
 			})
@@ -571,15 +599,31 @@ var _ = Describe("ValuesProvider", func() {
 				cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil)
 			})
 
+			It("should return error when ca secret is not found", func() {
+				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+				c.EXPECT().Get(ctx, kutil.Key(cp.Namespace, string(v1beta1constants.SecretNameCACluster)), gomock.AssignableToTypeOf(&corev1.Secret{})).Return(fakeErr)
+
+				_, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
+				Expect(err).To(HaveOccurred())
+			})
+
 			It("should return correct control plane shoot chart values for zoned cluster", func() {
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+				c.EXPECT().Get(ctx, kutil.Key(cp.Namespace, string(v1beta1constants.SecretNameCACluster)), gomock.AssignableToTypeOf(&corev1.Secret{}))
+				csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
+					"webhookConfig": map[string]interface{}{
+						"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+						"caBundle": "",
+					},
+				})
+
 				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
 					"global":                         globalVpaEnabled,
 					azure.AllowEgressName:            enabledTrue,
 					azure.CloudControllerManagerName: enabledTrue,
-					azure.CSINodeName:                csiNodeEnabled,
+					azure.CSINodeName:                csiNode,
 					azure.RemedyControllerName:       enabledTrue,
 				}))
 			})
@@ -588,6 +632,13 @@ var _ = Describe("ValuesProvider", func() {
 				infrastructureStatus.Zoned = false
 				infrastructureStatus.AvailabilitySets = []apisazure.AvailabilitySet{primaryAvailabilitySet}
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+				c.EXPECT().Get(ctx, kutil.Key(cp.Namespace, string(v1beta1constants.SecretNameCACluster)), gomock.AssignableToTypeOf(&corev1.Secret{}))
+				csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
+					"webhookConfig": map[string]interface{}{
+						"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+						"caBundle": "",
+					},
+				})
 
 				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
 				Expect(err).NotTo(HaveOccurred())
@@ -595,7 +646,7 @@ var _ = Describe("ValuesProvider", func() {
 					"global":                         globalVpaEnabled,
 					azure.AllowEgressName:            enabledFalse,
 					azure.CloudControllerManagerName: enabledTrue,
-					azure.CSINodeName:                csiNodeEnabled,
+					azure.CSINodeName:                csiNode,
 					azure.RemedyControllerName:       enabledTrue,
 				}))
 			})
@@ -604,6 +655,13 @@ var _ = Describe("ValuesProvider", func() {
 				infrastructureStatus.Zoned = false
 				infrastructureStatus.AvailabilitySets = []apisazure.AvailabilitySet{}
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+				c.EXPECT().Get(ctx, kutil.Key(cp.Namespace, string(v1beta1constants.SecretNameCACluster)), gomock.AssignableToTypeOf(&corev1.Secret{}))
+				csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
+					"webhookConfig": map[string]interface{}{
+						"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+						"caBundle": "",
+					},
+				})
 
 				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
 				Expect(err).NotTo(HaveOccurred())
@@ -611,7 +669,7 @@ var _ = Describe("ValuesProvider", func() {
 					"global":                         globalVpaEnabled,
 					azure.AllowEgressName:            enabledTrue,
 					azure.CloudControllerManagerName: enabledTrue,
-					azure.CSINodeName:                csiNodeEnabled,
+					azure.CSINodeName:                csiNode,
 					azure.RemedyControllerName:       enabledTrue,
 				}))
 			})
@@ -626,13 +684,20 @@ var _ = Describe("ValuesProvider", func() {
 
 			It("should return correct control plane shoot chart values for zoned cluster", func() {
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+				csiNode := utils.MergeMaps(csiNodeNotEnabled, map[string]interface{}{
+					"webhookConfig": map[string]interface{}{
+						"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+						"caBundle": "",
+					},
+				})
+
 				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
 					"global":                         globalVpaDisabled,
 					azure.AllowEgressName:            enabledTrue,
 					azure.CloudControllerManagerName: enabledTrue,
-					azure.CSINodeName:                csiNodeNotEnabled,
+					azure.CSINodeName:                csiNode,
 					azure.RemedyControllerName:       enabledFalse,
 				}))
 			})
@@ -641,6 +706,12 @@ var _ = Describe("ValuesProvider", func() {
 				infrastructureStatus.Zoned = false
 				infrastructureStatus.AvailabilitySets = []apisazure.AvailabilitySet{primaryAvailabilitySet}
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+				csiNode := utils.MergeMaps(csiNodeNotEnabled, map[string]interface{}{
+					"webhookConfig": map[string]interface{}{
+						"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+						"caBundle": "",
+					},
+				})
 
 				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
 				Expect(err).NotTo(HaveOccurred())
@@ -648,7 +719,7 @@ var _ = Describe("ValuesProvider", func() {
 					"global":                         globalVpaDisabled,
 					azure.AllowEgressName:            enabledFalse,
 					azure.CloudControllerManagerName: enabledTrue,
-					azure.CSINodeName:                csiNodeNotEnabled,
+					azure.CSINodeName:                csiNode,
 					azure.RemedyControllerName:       enabledFalse,
 				}))
 			})

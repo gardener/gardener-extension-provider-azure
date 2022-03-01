@@ -24,8 +24,6 @@ import (
 	azureapihelper "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
-
-	"github.com/Masterminds/semver"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
@@ -37,9 +35,13 @@ import (
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	"github.com/gardener/gardener/pkg/utils/secrets"
 	"github.com/gardener/gardener/pkg/utils/version"
+
+	"github.com/Masterminds/semver"
 	"github.com/go-logr/logr"
+	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -67,6 +69,15 @@ func getSecretConfigsFuncs(useTokenRequestor bool) secrets.Interface {
 						Name:       azure.CloudControllerManagerName + "-server",
 						CommonName: azure.CloudControllerManagerName,
 						DNSNames:   kutil.DNSNamesForService(azure.CloudControllerManagerName, clusterName),
+						CertType:   secrets.ServerCert,
+						SigningCA:  cas[v1beta1constants.SecretNameCACluster],
+					},
+				},
+				&secrets.ControlPlaneSecretConfig{
+					CertificateSecretConfig: &secrets.CertificateSecretConfig{
+						Name:       azure.CSISnapshotValidation,
+						CommonName: azure.UsernamePrefix + azure.CSISnapshotValidation,
+						DNSNames:   kutil.DNSNamesForService(azure.CSISnapshotValidation, clusterName),
 						CertType:   secrets.ServerCert,
 						SigningCA:  cas[v1beta1constants.SecretNameCACluster],
 					},
@@ -277,6 +288,7 @@ var (
 					azure.CSIResizerImageName,
 					azure.CSILivenessProbeImageName,
 					azure.CSISnapshotControllerImageName,
+					azure.CSISnapshotValidationWebhookImageName,
 				},
 				Objects: []*chart.Object{
 					// csi-driver-controllers
@@ -288,6 +300,10 @@ var (
 					// csi-snapshot-controller
 					{Type: &appsv1.Deployment{}, Name: azure.CSISnapshotControllerName},
 					{Type: &autoscalingv1beta2.VerticalPodAutoscaler{}, Name: azure.CSISnapshotControllerName + "-vpa"},
+					// csi-snapshot-validation-webhook
+					{Type: &appsv1.Deployment{}, Name: azure.CSISnapshotValidation},
+					{Type: &corev1.Service{}, Name: azure.CSISnapshotValidation},
+					{Type: &networkingv1.NetworkPolicy{}, Name: "allow-kube-apiserver-to-csi-snapshot-validation"},
 				},
 			},
 			{
@@ -375,6 +391,8 @@ var (
 					{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.CSIResizerName},
 					{Type: &rbacv1.Role{}, Name: azure.UsernamePrefix + azure.CSIResizerName},
 					{Type: &rbacv1.RoleBinding{}, Name: azure.UsernamePrefix + azure.CSIResizerName},
+					// csi-snapshot-validation-webhook
+					{Type: &admissionregistrationv1.ValidatingWebhookConfiguration{}, Name: azure.CSISnapshotValidation},
 				},
 			},
 			{
@@ -503,45 +521,9 @@ func (vp *valuesProvider) GetControlPlaneShootChartValues(
 	ctx context.Context,
 	cp *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
-	checksums map[string]string,
-) (
-	map[string]interface{},
-	error,
-) {
-	// Decode infrastructureProviderStatus
-	var (
-		infraStatus = &apisazure.InfrastructureStatus{}
-		err         error
-	)
-	if cp.Spec.InfrastructureProviderStatus != nil {
-		if infraStatus, err = azureapihelper.InfrastructureStatusFromRaw(cp.Spec.InfrastructureProviderStatus); err != nil {
-			return nil, fmt.Errorf("could not decode infrastructureProviderStatus of controlplane '%s': %w", kutil.ObjectName(cp), err)
-		}
-	}
-
-	k8sVersionLessThan121, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, "<", azure.CSIMigrationKubernetesVersion)
-	if err != nil {
-		return nil, err
-	}
-
-	var (
-		cloudProviderDiskConfig         string
-		cloudProviderDiskConfigChecksum string
-	)
-
-	if !k8sVersionLessThan121 {
-		secret := &corev1.Secret{}
-		if err := vp.Client().Get(ctx, kutil.Key(cp.Namespace, azure.CloudProviderDiskConfigName), secret); err != nil {
-			return nil, err
-		}
-
-		cloudProviderDiskConfig = string(secret.Data[azure.CloudProviderConfigMapKey])
-		cloudProviderDiskConfigChecksum = utils.ComputeChecksum(secret.Data)
-	}
-
-	disableRemedyController := cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] == "true"
-
-	return getControlPlaneShootChartValues(cluster, infraStatus, k8sVersionLessThan121, disableRemedyController, cloudProviderDiskConfig, cloudProviderDiskConfigChecksum, vp.useTokenRequestor, vp.useProjectedTokenMount), nil
+	_ map[string]string,
+) (map[string]interface{}, error) {
+	return getControlPlaneShootChartValues(ctx, cp, cluster, vp.Client(), vp.useTokenRequestor, vp.useProjectedTokenMount)
 }
 
 // GetControlPlaneShootCRDsChartValues returns the values for the control plane shoot CRDs chart applied by the generic actuator.
@@ -768,6 +750,12 @@ func getCSIControllerChartValues(
 				"checksum/secret-" + azure.CSISnapshotControllerName: checksums[azure.CSISnapshotControllerName],
 			},
 		},
+		"csiSnapshotValidationWebhook": map[string]interface{}{
+			"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
+			"podAnnotations": map[string]interface{}{
+				"checksum/secret-" + azure.CSISnapshotValidation: checksums[azure.CSISnapshotValidation],
+			},
+		},
 	}
 
 	if azureapihelper.IsVmoRequired(infraStatus) {
@@ -800,15 +788,53 @@ func getRemedyControllerChartValues(
 
 // getControlPlaneShootChartValues collects and returns the control plane shoot chart values.
 func getControlPlaneShootChartValues(
+	ctx context.Context,
+	cp *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
-	infraStatus *apisazure.InfrastructureStatus,
-	k8sVersionLessThan121 bool,
-	disableRemedyController bool,
-	cloudProviderDiskConfig string,
-	cloudProviderDiskConfigChecksum string,
+	client client.Client,
 	useTokenRequestor bool,
 	useProjectedTokenMount bool,
-) map[string]interface{} {
+) (
+	map[string]interface{},
+	error,
+) {
+	var (
+		infraStatus                     = &apisazure.InfrastructureStatus{}
+		cloudProviderDiskConfig         string
+		cloudProviderDiskConfigChecksum string
+		caBundle                        string
+		err                             error
+	)
+	if cp.Spec.InfrastructureProviderStatus != nil {
+		if infraStatus, err = azureapihelper.InfrastructureStatusFromRaw(cp.Spec.InfrastructureProviderStatus); err != nil {
+			return nil, fmt.Errorf("could not decode infrastructureProviderStatus of controlplane '%s': %w", kutil.ObjectName(cp), err)
+		}
+	}
+
+	k8sVersionLessThan121, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, "<", azure.CSIMigrationKubernetesVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	if !k8sVersionLessThan121 {
+		secret := &corev1.Secret{}
+		if err := client.Get(ctx, kutil.Key(cp.Namespace, azure.CloudProviderDiskConfigName), secret); err != nil {
+			return nil, err
+		}
+
+		cloudProviderDiskConfig = string(secret.Data[azure.CloudProviderConfigMapKey])
+		cloudProviderDiskConfigChecksum = utils.ComputeChecksum(secret.Data)
+
+		// get the ca.crt for caBundle of the snapshot-validation webhook
+		if err := client.Get(ctx, kutil.Key(cp.Namespace, string(v1beta1constants.SecretNameCACluster)), secret); err != nil {
+			return nil, err
+		}
+
+		caBundle = string(secret.Data["ca.crt"])
+	}
+
+	disableRemedyController := cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] == "true"
+
 	return map[string]interface{}{
 		"global": map[string]interface{}{
 			"useTokenRequestor":      useTokenRequestor,
@@ -824,9 +850,13 @@ func getControlPlaneShootChartValues(
 				"checksum/configmap-" + azure.CloudProviderDiskConfigName: cloudProviderDiskConfigChecksum,
 			},
 			"cloudProviderConfig": cloudProviderDiskConfig,
+			"webhookConfig": map[string]interface{}{
+				"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+				"caBundle": caBundle,
+			},
 		},
 		azure.RemedyControllerName: map[string]interface{}{
 			"enabled": !disableRemedyController,
 		},
-	}
+	}, err
 }
