@@ -77,7 +77,16 @@ func TerraformerEnvVars(secretRef corev1.SecretReference) []corev1.EnvVar {
 }
 
 // NewTerraformer initializes a new Terraformer.
-func NewTerraformer(logger logr.Logger, restConfig *rest.Config, purpose string, infra *extensionsv1alpha1.Infrastructure) (terraformer.Terraformer, error) {
+func NewTerraformer(
+	logger logr.Logger,
+	restConfig *rest.Config,
+	purpose string,
+	infra *extensionsv1alpha1.Infrastructure,
+	useProjectedTokenMount bool,
+) (
+	terraformer.Terraformer,
+	error,
+) {
 	tf, err := terraformer.NewForConfig(logger, restConfig, purpose, infra.Namespace, infra.Name, imagevector.TerraformerImage())
 	if err != nil {
 		return nil, err
@@ -85,6 +94,7 @@ func NewTerraformer(logger logr.Logger, restConfig *rest.Config, purpose string,
 
 	owner := metav1.NewControllerRef(infra, extensionsv1alpha1.SchemeGroupVersion.WithKind(extensionsv1alpha1.InfrastructureResource))
 	return tf.
+		UseProjectedTokenMount(useProjectedTokenMount).
 		SetTerminationGracePeriodSeconds(630).
 		SetDeadlineCleaning(5 * time.Minute).
 		SetDeadlinePod(15 * time.Minute).
@@ -92,8 +102,17 @@ func NewTerraformer(logger logr.Logger, restConfig *rest.Config, purpose string,
 }
 
 // NewTerraformerWithAuth initializes a new Terraformer that has the azure auth credentials.
-func NewTerraformerWithAuth(logger logr.Logger, restConfig *rest.Config, purpose string, infra *extensionsv1alpha1.Infrastructure) (terraformer.Terraformer, error) {
-	tf, err := NewTerraformer(logger, restConfig, purpose, infra)
+func NewTerraformerWithAuth(
+	logger logr.Logger,
+	restConfig *rest.Config,
+	purpose string,
+	infra *extensionsv1alpha1.Infrastructure,
+	useProjectedTokenMount bool,
+) (
+	terraformer.Terraformer,
+	error,
+) {
+	tf, err := NewTerraformer(logger, restConfig, purpose, infra, useProjectedTokenMount)
 	if err != nil {
 		return nil, err
 	}
