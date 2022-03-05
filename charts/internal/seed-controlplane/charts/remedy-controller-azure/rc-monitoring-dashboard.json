@@ -1276,7 +1276,7 @@
       "30d"
     ]
   },
-  "timezone": "",
+  "timezone": "utc",
   "title": "Remedy Controller",
   "uid": "remedy-controller-azure",
   "version": 7
