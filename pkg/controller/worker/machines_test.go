@@ -41,6 +41,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -150,6 +151,10 @@ var _ = Describe("Machines", func() {
 
 				labels map[string]string
 
+				nodeCapacity      corev1.ResourceList
+				nodeTemplateZone1 machinev1alpha1.NodeTemplate
+				nodeTemplateZone2 machinev1alpha1.NodeTemplate
+
 				shootVersionMajorMinor string
 				shootVersion           string
 
@@ -194,6 +199,26 @@ var _ = Describe("Machines", func() {
 				maxUnavailablePool1 = intstr.FromInt(2)
 
 				labels = map[string]string{"component": "TiDB"}
+
+				nodeCapacity = corev1.ResourceList{
+					"cpu":    resource.MustParse("8"),
+					"gpu":    resource.MustParse("1"),
+					"memory": resource.MustParse("128Gi"),
+				}
+
+				nodeTemplateZone1 = machinev1alpha1.NodeTemplate{
+					Capacity:     nodeCapacity,
+					InstanceType: machineType,
+					Region:       region,
+					Zone:         "",
+				}
+
+				nodeTemplateZone2 = machinev1alpha1.NodeTemplate{
+					Capacity:     nodeCapacity,
+					InstanceType: machineType,
+					Region:       region,
+					Zone:         "",
+				}
 
 				namePool2 = "pool-2"
 				minPool2 = 30
@@ -240,6 +265,9 @@ var _ = Describe("Machines", func() {
 					MaxSurge:       maxSurgePool1,
 					MaxUnavailable: maxUnavailablePool1,
 					MachineType:    machineType,
+					NodeTemplate: &extensionsv1alpha1.NodeTemplate{
+						Capacity: nodeCapacity,
+					},
 					MachineImage: extensionsv1alpha1.MachineImage{
 						Name:    machineImageName,
 						Version: machineImageVersion,
@@ -269,6 +297,9 @@ var _ = Describe("Machines", func() {
 					MaxSurge:       maxSurgePool2,
 					MaxUnavailable: maxUnavailablePool2,
 					MachineType:    machineType,
+					NodeTemplate: &extensionsv1alpha1.NodeTemplate{
+						Capacity: nodeCapacity,
+					},
 					MachineImage: extensionsv1alpha1.MachineImage{
 						Name:    machineImageName,
 						Version: machineImageVersionID,
@@ -361,6 +392,9 @@ var _ = Describe("Machines", func() {
 
 					addNameAndSecretsToMachineClass(machineClassPool1, machineClassWithHashPool1, w.Spec.SecretRef)
 					addNameAndSecretsToMachineClass(machineClassPool2, machineClassWithHashPool2, w.Spec.SecretRef)
+
+					machineClassPool1["nodeTemplate"] = nodeTemplateZone1
+					machineClassPool2["nodeTemplate"] = nodeTemplateZone2
 
 					machineClassPool1["dataDisks"] = []map[string]interface{}{
 						{
