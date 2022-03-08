@@ -16,7 +16,7 @@ require (
 	github.com/gardener/etcd-druid v0.7.0
 	github.com/gardener/gardener v1.43.2
 	github.com/gardener/gardener-extension-networking-calico v1.19.4
-	github.com/gardener/machine-controller-manager v0.41.0
+	github.com/gardener/machine-controller-manager v0.43.1
 	github.com/gardener/remedy-controller v0.6.0
 	github.com/go-logr/logr v1.2.0
 	github.com/gofrs/uuid v4.2.0+incompatible // indirect
