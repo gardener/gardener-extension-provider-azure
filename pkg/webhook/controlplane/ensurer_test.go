@@ -445,8 +445,8 @@ var _ = Describe("Ensurer", func() {
 			Entry("kubelet < 1.21, w/ acr", eContextK8s117, semver.MustParse("1.17.0"), "azure", true, false),
 			Entry("1.21 <= kubelet < 1.23, w/o acr", eContextK8s121, semver.MustParse("1.21.0"), "external", false, true),
 			Entry("1.21 <= kubelet < 1.23, w/ acr", eContextK8s121, semver.MustParse("1.21.0"), "external", true, true),
-			Entry("kubelet >= 1.23, w/o acr", eContextK8s121, semver.MustParse("1.23.0"), "", false, false),
-			Entry("kubelet >= 1.23, w/ acr", eContextK8s121, semver.MustParse("1.23.0"), "", true, false),
+			Entry("kubelet >= 1.23, w/o acr", eContextK8s121, semver.MustParse("1.23.0"), "external", false, false),
+			Entry("kubelet >= 1.23, w/ acr", eContextK8s121, semver.MustParse("1.23.0"), "external", true, false),
 		)
 	})
 
