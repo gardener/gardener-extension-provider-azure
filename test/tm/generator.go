@@ -24,7 +24,7 @@ import (
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 
-	"github.com/gardener/gardener/extensions/test/tm/generator"
+	"github.com/gardener/gardener/extensions/test/testmachinery/generator"
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -110,7 +110,7 @@ func validate() error {
 	if err := generator.ValidateString(&cfg.controlplaneProviderConfigPath); err != nil {
 		return fmt.Errorf("error validating controlplane provider config path: %w", err)
 	}
-	//Optional Parameters
+	// Optional Parameters
 	if err := generator.ValidateString(&cfg.networkVnetCidr); err != nil {
 		logger.Info("Parameter network-vnet-cidr is not set, using default.", "value", defaultNetworkVnetCIDR)
 		cfg.networkVnetCidr = defaultNetworkVnetCIDR
