@@ -147,40 +147,40 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := aggOption.Complete(); err != nil {
-				return fmt.Errorf("Error completing options: %w", err)
+				return fmt.Errorf("error completing options: %w", err)
 			}
 
 			util.ApplyClientConnectionConfigurationToRESTConfig(configFileOpts.Completed().Config.ClientConnection, restOpts.Completed().Config)
 
 			if workerReconcileOpts.Completed().DeployCRDs {
 				if err := worker.ApplyMachineResourcesForConfig(ctx, restOpts.Completed().Config); err != nil {
-					return fmt.Errorf("Error ensuring the machine CRDs: %w", err)
+					return fmt.Errorf("error ensuring the machine CRDs: %w", err)
 				}
 			}
 
 			mgr, err := manager.New(restOpts.Completed().Config, mgrOpts.Completed().Options())
 			if err != nil {
-				return fmt.Errorf("Could not instantiate manager: %w", err)
+				return fmt.Errorf("could not instantiate manager: %w", err)
 			}
 
 			scheme := mgr.GetScheme()
 			if err := controller.AddToScheme(scheme); err != nil {
-				return fmt.Errorf("Could not update manager scheme: %w", err)
+				return fmt.Errorf("could not update manager scheme: %w", err)
 			}
 			if err := azureinstall.AddToScheme(scheme); err != nil {
-				return fmt.Errorf("Could not update manager scheme: %w", err)
+				return fmt.Errorf("could not update manager scheme: %w", err)
 			}
 			if err := druidv1alpha1.AddToScheme(scheme); err != nil {
-				return fmt.Errorf("Could not update manager scheme: %w", err)
+				return fmt.Errorf("could not update manager scheme: %w", err)
 			}
 			if err := autoscalingv1beta2.AddToScheme(scheme); err != nil {
-				return fmt.Errorf("Could not update manager scheme: %w", err)
+				return fmt.Errorf("could not update manager scheme: %w", err)
 			}
 			if err := machinev1alpha1.AddToScheme(scheme); err != nil {
-				return fmt.Errorf("Could not update manager scheme: %w", err)
+				return fmt.Errorf("could not update manager scheme: %w", err)
 			}
 			if err := azurev1alpha1.AddToScheme(scheme); err != nil {
-				return fmt.Errorf("Could not update manager scheme: %w", err)
+				return fmt.Errorf("could not update manager scheme: %w", err)
 			}
 
 			// add common meta types to schema for controller-runtime to use v1.ListOptions
@@ -188,14 +188,14 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 
 			useTokenRequestor, err := controller.UseTokenRequestor(generalOpts.Completed().GardenerVersion)
 			if err != nil {
-				return fmt.Errorf("Could not determine whether token requestor should be used: %w", err)
+				return fmt.Errorf("could not determine whether token requestor should be used: %w", err)
 			}
 			azurecontrolplane.DefaultAddOptions.UseTokenRequestor = useTokenRequestor
 			azureworker.DefaultAddOptions.UseTokenRequestor = useTokenRequestor
 
 			useProjectedTokenMount, err := controller.UseServiceAccountTokenVolumeProjection(generalOpts.Completed().GardenerVersion)
 			if err != nil {
-				return fmt.Errorf("Could not determine whether service account token volume projection should be used: %w", err)
+				return fmt.Errorf("could not determine whether service account token volume projection should be used: %w", err)
 			}
 			azurecontrolplane.DefaultAddOptions.UseProjectedTokenMount = useProjectedTokenMount
 			azureinfrastructure.DefaultAddOptions.UseProjectedTokenMount = useProjectedTokenMount
