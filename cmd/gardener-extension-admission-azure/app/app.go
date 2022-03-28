@@ -28,6 +28,7 @@ import (
 	"github.com/gardener/gardener/pkg/apis/core/install"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"github.com/spf13/cobra"
+	"k8s.io/component-base/version/verflag"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
@@ -56,6 +57,8 @@ func NewAdmissionCommand(ctx context.Context) *cobra.Command {
 		Use: fmt.Sprintf("admission-%s", providerazure.Type),
 
 		RunE: func(cmd *cobra.Command, args []string) error {
+			verflag.PrintAndExitIfRequested()
+
 			if err := aggOption.Complete(); err != nil {
 				controllercmd.LogErrAndExit(err, "error completing options")
 			}
@@ -88,6 +91,7 @@ func NewAdmissionCommand(ctx context.Context) *cobra.Command {
 		},
 	}
 
+	verflag.AddFlags(cmd.Flags())
 	aggOption.AddFlags(cmd.Flags())
 
 	return cmd
