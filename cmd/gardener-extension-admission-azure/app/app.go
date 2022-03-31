@@ -60,18 +60,18 @@ func NewAdmissionCommand(ctx context.Context) *cobra.Command {
 			verflag.PrintAndExitIfRequested()
 
 			if err := aggOption.Complete(); err != nil {
-				controllercmd.LogErrAndExit(err, "error completing options")
+				return fmt.Errorf("error completing options: %w", err)
 			}
 
 			mgr, err := manager.New(restOpts.Completed().Config, mgrOpts.Completed().Options())
 			if err != nil {
-				controllercmd.LogErrAndExit(err, "could not instantiate manager")
+				return fmt.Errorf("could not instantiate manager: %w", err)
 			}
 
 			install.Install(mgr.GetScheme())
 
 			if err := azureinstall.AddToScheme(mgr.GetScheme()); err != nil {
-				controllercmd.LogErrAndExit(err, "could not update manager scheme")
+				return fmt.Errorf("could not update manager scheme: %w", err)
 			}
 
 			if err := mgr.GetFieldIndexer().IndexField(ctx, &gardencorev1beta1.SecretBinding{}, index.SecretRefNamespaceField, index.SecretRefNamespaceIndexerFunc); err != nil {
