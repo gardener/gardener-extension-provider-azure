@@ -13,6 +13,13 @@ socketPath: /csi/csi.sock
 global:
   vpaEnabled: false
 
+webhookConfig:
+  url: https://service-name.service-namespace/volumesnapshot
+  caBundle: |
+    -----BEGIN CERTIFICATE-----
+    ...
+    -----END CERTIFICATE-----
+
 resources:
   driver:
     requests:
