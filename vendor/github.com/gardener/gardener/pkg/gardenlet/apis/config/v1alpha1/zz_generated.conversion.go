@@ -28,6 +28,7 @@ import (
 	v1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	config "github.com/gardener/gardener/pkg/gardenlet/apis/config"
 	corev1 "k8s.io/api/core/v1"
+	resource "k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	conversion "k8s.io/apimachinery/pkg/conversion"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -443,6 +444,16 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}); err != nil {
 		return err
 	}
+	if err := s.AddGeneratedConversionFunc((*ShootSecretControllerConfiguration)(nil), (*config.ShootSecretControllerConfiguration)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ShootSecretControllerConfiguration_To_config_ShootSecretControllerConfiguration(a.(*ShootSecretControllerConfiguration), b.(*config.ShootSecretControllerConfiguration), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*config.ShootSecretControllerConfiguration)(nil), (*ShootSecretControllerConfiguration)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_config_ShootSecretControllerConfiguration_To_v1alpha1_ShootSecretControllerConfiguration(a.(*config.ShootSecretControllerConfiguration), b.(*ShootSecretControllerConfiguration), scope)
+	}); err != nil {
+		return err
+	}
 	if err := s.AddGeneratedConversionFunc((*ShootStateSyncControllerConfiguration)(nil), (*config.ShootStateSyncControllerConfiguration)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_v1alpha1_ShootStateSyncControllerConfiguration_To_config_ShootStateSyncControllerConfiguration(a.(*ShootStateSyncControllerConfiguration), b.(*config.ShootStateSyncControllerConfiguration), scope)
 	}); err != nil {
@@ -842,6 +853,7 @@ func autoConvert_v1alpha1_GardenLoki_To_config_GardenLoki(in *GardenLoki, out *c
 	} else {
 		out.Priority = nil
 	}
+	out.Storage = (*resource.Quantity)(unsafe.Pointer(in.Storage))
 	return nil
 }
 
@@ -858,6 +870,7 @@ func autoConvert_config_GardenLoki_To_v1alpha1_GardenLoki(in *config.GardenLoki,
 	} else {
 		out.Priority = nil
 	}
+	out.Storage = (*resource.Quantity)(unsafe.Pointer(in.Storage))
 	return nil
 }
 
@@ -1047,6 +1060,7 @@ func autoConvert_v1alpha1_GardenletControllerConfiguration_To_config_GardenletCo
 	out.ShootStateSync = (*config.ShootStateSyncControllerConfiguration)(unsafe.Pointer(in.ShootStateSync))
 	out.SeedAPIServerNetworkPolicy = (*config.SeedAPIServerNetworkPolicyControllerConfiguration)(unsafe.Pointer(in.SeedAPIServerNetworkPolicy))
 	out.ManagedSeed = (*config.ManagedSeedControllerConfiguration)(unsafe.Pointer(in.ManagedSeed))
+	out.ShootSecret = (*config.ShootSecretControllerConfiguration)(unsafe.Pointer(in.ShootSecret))
 	return nil
 }
 
@@ -1070,6 +1084,7 @@ func autoConvert_config_GardenletControllerConfiguration_To_v1alpha1_GardenletCo
 	out.ShootStateSync = (*ShootStateSyncControllerConfiguration)(unsafe.Pointer(in.ShootStateSync))
 	out.SeedAPIServerNetworkPolicy = (*SeedAPIServerNetworkPolicyControllerConfiguration)(unsafe.Pointer(in.SeedAPIServerNetworkPolicy))
 	out.ManagedSeed = (*ManagedSeedControllerConfiguration)(unsafe.Pointer(in.ManagedSeed))
+	out.ShootSecret = (*ShootSecretControllerConfiguration)(unsafe.Pointer(in.ShootSecret))
 	return nil
 }
 
@@ -1125,6 +1140,7 @@ func Convert_config_LoadBalancerServiceConfig_To_v1alpha1_LoadBalancerServiceCon
 }
 
 func autoConvert_v1alpha1_Logging_To_config_Logging(in *Logging, out *config.Logging, s conversion.Scope) error {
+	out.Enabled = (*bool)(unsafe.Pointer(in.Enabled))
 	out.FluentBit = (*config.FluentBit)(unsafe.Pointer(in.FluentBit))
 	if in.Loki != nil {
 		in, out := &in.Loki, &out.Loki
@@ -1145,6 +1161,7 @@ func Convert_v1alpha1_Logging_To_config_Logging(in *Logging, out *config.Logging
 }
 
 func autoConvert_config_Logging_To_v1alpha1_Logging(in *config.Logging, out *Logging, s conversion.Scope) error {
+	out.Enabled = (*bool)(unsafe.Pointer(in.Enabled))
 	out.FluentBit = (*FluentBit)(unsafe.Pointer(in.FluentBit))
 	if in.Loki != nil {
 		in, out := &in.Loki, &out.Loki
@@ -1207,6 +1224,7 @@ func autoConvert_v1alpha1_ManagedSeedControllerConfiguration_To_config_ManagedSe
 	out.SyncPeriod = (*v1.Duration)(unsafe.Pointer(in.SyncPeriod))
 	out.WaitSyncPeriod = (*v1.Duration)(unsafe.Pointer(in.WaitSyncPeriod))
 	out.SyncJitterPeriod = (*v1.Duration)(unsafe.Pointer(in.SyncJitterPeriod))
+	out.JitterUpdates = (*bool)(unsafe.Pointer(in.JitterUpdates))
 	return nil
 }
 
@@ -1220,6 +1238,7 @@ func autoConvert_config_ManagedSeedControllerConfiguration_To_v1alpha1_ManagedSe
 	out.SyncPeriod = (*v1.Duration)(unsafe.Pointer(in.SyncPeriod))
 	out.WaitSyncPeriod = (*v1.Duration)(unsafe.Pointer(in.WaitSyncPeriod))
 	out.SyncJitterPeriod = (*v1.Duration)(unsafe.Pointer(in.SyncJitterPeriod))
+	out.JitterUpdates = (*bool)(unsafe.Pointer(in.JitterUpdates))
 	return nil
 }
 
@@ -1628,6 +1647,26 @@ func autoConvert_config_ShootNodeLogging_To_v1alpha1_ShootNodeLogging(in *config
 // Convert_config_ShootNodeLogging_To_v1alpha1_ShootNodeLogging is an autogenerated conversion function.
 func Convert_config_ShootNodeLogging_To_v1alpha1_ShootNodeLogging(in *config.ShootNodeLogging, out *ShootNodeLogging, s conversion.Scope) error {
 	return autoConvert_config_ShootNodeLogging_To_v1alpha1_ShootNodeLogging(in, out, s)
+}
+
+func autoConvert_v1alpha1_ShootSecretControllerConfiguration_To_config_ShootSecretControllerConfiguration(in *ShootSecretControllerConfiguration, out *config.ShootSecretControllerConfiguration, s conversion.Scope) error {
+	out.ConcurrentSyncs = (*int)(unsafe.Pointer(in.ConcurrentSyncs))
+	return nil
+}
+
+// Convert_v1alpha1_ShootSecretControllerConfiguration_To_config_ShootSecretControllerConfiguration is an autogenerated conversion function.
+func Convert_v1alpha1_ShootSecretControllerConfiguration_To_config_ShootSecretControllerConfiguration(in *ShootSecretControllerConfiguration, out *config.ShootSecretControllerConfiguration, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ShootSecretControllerConfiguration_To_config_ShootSecretControllerConfiguration(in, out, s)
+}
+
+func autoConvert_config_ShootSecretControllerConfiguration_To_v1alpha1_ShootSecretControllerConfiguration(in *config.ShootSecretControllerConfiguration, out *ShootSecretControllerConfiguration, s conversion.Scope) error {
+	out.ConcurrentSyncs = (*int)(unsafe.Pointer(in.ConcurrentSyncs))
+	return nil
+}
+
+// Convert_config_ShootSecretControllerConfiguration_To_v1alpha1_ShootSecretControllerConfiguration is an autogenerated conversion function.
+func Convert_config_ShootSecretControllerConfiguration_To_v1alpha1_ShootSecretControllerConfiguration(in *config.ShootSecretControllerConfiguration, out *ShootSecretControllerConfiguration, s conversion.Scope) error {
+	return autoConvert_config_ShootSecretControllerConfiguration_To_v1alpha1_ShootSecretControllerConfiguration(in, out, s)
 }
 
 func autoConvert_v1alpha1_ShootStateSyncControllerConfiguration_To_config_ShootStateSyncControllerConfiguration(in *ShootStateSyncControllerConfiguration, out *config.ShootStateSyncControllerConfiguration, s conversion.Scope) error {
