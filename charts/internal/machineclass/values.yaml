@@ -21,6 +21,14 @@ machineClasses:
     name: cloudprovider
     namespace: shoot-namespace
   machineType: Standard_DS1_V2
+  nodeTemplate:
+    capacity:
+      cpu: 1
+      gpu: 0
+      memory: 3072Mi
+    instanceType: Standard_DS1_V2
+    region: westeurope
+    zone: westeurope-1
   image:
     urn: "CoreOS:CoreOS:Stable:1576.5.0"
     #id: "/subscriptions/<subscription ID where the gallery is located>/resourceGroups/myGalleryRG/providers/Microsoft.Compute/galleries/myGallery/images/myImageDefinition/versions/1.0.0"

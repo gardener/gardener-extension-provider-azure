@@ -201,6 +201,20 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				machineClassSpec["zone"] = zone.name
 			}
 
+			if pool.NodeTemplate != nil {
+				var zoneName string
+
+				if zone != nil {
+					zoneName = w.worker.Spec.Region + "-" + zone.name
+				}
+				machineClassSpec["nodeTemplate"] = machinev1alpha1.NodeTemplate{
+					Capacity:     pool.NodeTemplate.Capacity,
+					InstanceType: pool.MachineType,
+					Region:       w.worker.Spec.Region,
+					Zone:         zoneName,
+				}
+			}
+
 			if machineSet != nil {
 				machineClassSpec["machineSet"] = map[string]interface{}{
 					"kind": machineSet.kind,
