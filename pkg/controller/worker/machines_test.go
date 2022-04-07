@@ -210,14 +210,14 @@ var _ = Describe("Machines", func() {
 					Capacity:     nodeCapacity,
 					InstanceType: machineType,
 					Region:       region,
-					Zone:         "",
+					Zone:         "no-zone",
 				}
 
 				nodeTemplateZone2 = machinev1alpha1.NodeTemplate{
 					Capacity:     nodeCapacity,
 					InstanceType: machineType,
 					Region:       region,
-					Zone:         "",
+					Zone:         "no-zone",
 				}
 
 				namePool2 = "pool-2"

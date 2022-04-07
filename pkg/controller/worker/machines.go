@@ -202,7 +202,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			}
 
 			if pool.NodeTemplate != nil {
-				var zoneName string
+				zoneName := "no-zone"
 
 				if zone != nil {
 					zoneName = w.worker.Spec.Region + "-" + zone.name
