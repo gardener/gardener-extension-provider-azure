@@ -8,6 +8,12 @@ roleRef:
   kind: ClusterRole
   name: {{ include "csi-driver-node.extensionsGroup" . }}:{{ include "csi-driver-node.name" . }}:csi-driver-controller-disk
 subjects:
+{{- if .Values.global.useTokenRequestor }}
+- kind: ServiceAccount
+  name: csi-driver-controller-disk
+  namespace: kube-system
+{{- else }}
 - apiGroup: rbac.authorization.k8s.io
   kind: User
   name: {{ include "csi-driver-node.extensionsGroup" . }}:{{ include "csi-driver-node.name" . }}:csi-driver-controller-disk
+{{- end }}
