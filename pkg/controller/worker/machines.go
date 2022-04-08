@@ -202,7 +202,11 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			}
 
 			if pool.NodeTemplate != nil {
-				var zoneName string
+				//	Currently Zone field is mandatory, and passing it an
+				//	empty string turns it to `null` string during marshalling which fails CRD validation
+				//	so setting it to a dummy value `no-zone`
+				//	TODO: Zone field in nodeTemplate optional and not to pass it in case of non-zonal setup
+				zoneName := "no-zone"
 
 				if zone != nil {
 					zoneName = w.worker.Spec.Region + "-" + zone.name
