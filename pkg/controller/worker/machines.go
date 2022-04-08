@@ -202,6 +202,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			}
 
 			if pool.NodeTemplate != nil {
+				//TODO: make Zone field in nodeTemplate optional and not to pass it in case of non-zonal setup
 				zoneName := "no-zone"
 
 				if zone != nil {
