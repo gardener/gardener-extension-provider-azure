@@ -76,8 +76,15 @@ func TerraformerEnvVars(secretRef corev1.SecretReference) []corev1.EnvVar {
 	}}
 }
 
-// NewTerraformer initializes a new Terraformer.
-func NewTerraformer(
+var (
+	// NewTerraformer initializes a new Terraformer. Exposed for testing
+	NewTerraformer = defaultNewTerraformer
+
+	// NewTerraformerWithAuth initializes a new Terraformer that has the azure auth credentials. Exposed for testing
+	NewTerraformerWithAuth = defaultNewTerraformerWithAuth
+)
+
+func defaultNewTerraformer(
 	logger logr.Logger,
 	restConfig *rest.Config,
 	purpose string,
@@ -101,8 +108,7 @@ func NewTerraformer(
 		SetOwnerRef(owner), nil
 }
 
-// NewTerraformerWithAuth initializes a new Terraformer that has the azure auth credentials.
-func NewTerraformerWithAuth(
+func defaultNewTerraformerWithAuth(
 	logger logr.Logger,
 	restConfig *rest.Config,
 	purpose string,

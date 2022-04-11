@@ -16,6 +16,7 @@ package infrastructure
 
 import (
 	"context"
+	"encoding/json"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	infrainternal "github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
@@ -30,6 +31,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
+
+// InfrastructureState represents the last known State of an Infrastructure resource.
+// It is saved after a reconciliation and used during restore operations.
+type InfrastructureState struct {
+	// SavedProviderStatus contains the infrastructure's ProviderStatus.
+	SavedProviderStatus *runtime.RawExtension `json:"savedProviderStatus,omitempty"`
+	// TerraformState contains the state of the applied terraform config.
+	TerraformState *runtime.RawExtension `json:"terraformState,omitempty"`
+}
 
 type actuator struct {
 	logger logr.Logger
@@ -51,18 +61,32 @@ func (a *actuator) updateProviderStatus(ctx context.Context, tf terraformer.Terr
 		return err
 	}
 
-	state, err := tf.GetRawState(ctx)
+	terraformState, err := tf.GetRawState(ctx)
 	if err != nil {
 		return err
 	}
 
-	stateByte, err := state.Marshal()
+	stateByte, err := terraformState.Marshal()
+	if err != nil {
+		return err
+	}
+
+	infraState := &InfrastructureState{
+		SavedProviderStatus: &runtime.RawExtension{
+			Object: status,
+		},
+		TerraformState: &runtime.RawExtension{
+			Raw: stateByte,
+		},
+	}
+
+	infraStateBytes, err := json.Marshal(infraState)
 	if err != nil {
 		return err
 	}
 
 	patch := client.MergeFrom(infra.DeepCopy())
 	infra.Status.ProviderStatus = &runtime.RawExtension{Object: status}
-	infra.Status.State = &runtime.RawExtension{Raw: stateByte}
+	infra.Status.State = &runtime.RawExtension{Raw: infraStateBytes}
 	return a.Client().Status().Patch(ctx, infra, patch)
 }

@@ -121,6 +121,7 @@ github.com/gardener/gardener/extensions/pkg/controller/worker/genericactuator
 github.com/gardener/gardener/extensions/pkg/controller/worker/helper
 github.com/gardener/gardener/extensions/pkg/predicate
 github.com/gardener/gardener/extensions/pkg/terraformer
+github.com/gardener/gardener/extensions/pkg/terraformer/mock
 github.com/gardener/gardener/extensions/pkg/util
 github.com/gardener/gardener/extensions/pkg/util/index
 github.com/gardener/gardener/extensions/pkg/util/secret
