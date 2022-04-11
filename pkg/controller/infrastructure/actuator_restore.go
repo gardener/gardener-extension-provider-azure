@@ -16,6 +16,7 @@ package infrastructure
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
@@ -26,9 +27,22 @@ import (
 // Restore implements infrastructure.Actuator.
 func (a *actuator) Restore(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
 	logger := a.logger.WithValues("infrastructure", client.ObjectKeyFromObject(infra), "operation", "restore")
-	terraformState, err := terraformer.UnmarshalRawState(infra.Status.State)
+
+	infraState := &InfrastructureState{}
+	if err := json.Unmarshal(infra.Status.State.Raw, infraState); err != nil {
+		return err
+	}
+
+	terraformState, err := terraformer.UnmarshalRawState(infraState.TerraformState)
 	if err != nil {
 		return err
 	}
+
+	patch := client.MergeFrom(infra.DeepCopy())
+	infra.Status.ProviderStatus = infraState.SavedProviderStatus
+	if err := a.Client().Status().Patch(ctx, infra, patch); err != nil {
+		return err
+	}
+
 	return a.reconcile(ctx, logger, infra, cluster, terraformer.CreateOrUpdateState{State: &terraformState.Data})
 }
