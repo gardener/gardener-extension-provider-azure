@@ -122,8 +122,9 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			Namespace: os.Getenv("WEBHOOK_CONFIG_NAMESPACE"),
 		}
 
+		gardenerVersion    = new(string)
 		controllerSwitches = azurecmd.ControllerSwitchOptions()
-		webhookSwitches    = azurecmd.WebhookSwitchOptions()
+		webhookSwitches    = azurecmd.WebhookSwitchOptions(gardenerVersion)
 		webhookOptions     = webhookcmd.NewAddToManagerOptions(azure.Name, webhookServerOptions, webhookSwitches)
 
 		aggOption = controllercmd.NewOptionAggregator(
@@ -192,6 +193,7 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			// add common meta types to schema for controller-runtime to use v1.ListOptions
 			metav1.AddToGroupVersion(scheme, machinev1alpha1.SchemeGroupVersion)
 
+			*gardenerVersion = generalOpts.Completed().GardenerVersion
 			useTokenRequestor, err := controller.UseTokenRequestor(generalOpts.Completed().GardenerVersion)
 			if err != nil {
 				return fmt.Errorf("could not determine whether token requestor should be used: %w", err)
