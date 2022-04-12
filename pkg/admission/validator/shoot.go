@@ -179,6 +179,9 @@ func (s *shoot) validateUpdate(oldShoot, shoot *core.Shoot, cloudProfile *garden
 
 	allErrs = append(allErrs, s.validateShoot(shoot, oldInfraConfig, infraConfig, cloudProfile, cpConfig)...)
 
+	// TODO(dkistner) remove this once csi-driver async operation issues are resolved.
+	allErrs = append(allErrs, azurevalidation.ValidateUpgradeV120ToV121(shoot, oldShoot, specPath.Child("kubernetes", "version"))...)
+
 	return allErrs.ToAggregate()
 }
 
