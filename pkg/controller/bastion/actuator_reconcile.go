@@ -16,6 +16,7 @@ package bastion
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"time"
@@ -273,6 +274,10 @@ func ensureNic(ctx context.Context, factory azureclient.Factory, opt *Options, p
 	subnet, err := getSubnet(ctx, factory, opt)
 	if err != nil {
 		return nil, err
+	}
+
+	if subnet == nil || *subnet.ID == "" {
+		return nil, errors.New("virtual network subnet must be not empty")
 	}
 
 	parameters := nicDefine(opt, publicIP, subnet)
