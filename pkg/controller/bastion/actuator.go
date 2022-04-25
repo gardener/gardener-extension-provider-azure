@@ -189,15 +189,7 @@ func getSubnet(ctx context.Context, factory azureclient.Factory, opt *Options) (
 		return nil, err
 	}
 
-	subnet, err := subnetClient.Get(ctx, opt.ResourceGroupName, opt.VirtualNetwork, opt.Subnetwork, "")
-	if err != nil {
-		if azureclient.IsAzureAPINotFoundError(err) {
-			logger.Info("subnet not found,", "subnet_name", opt.Subnetwork)
-			return nil, nil
-		}
-		return nil, err
-	}
-	return subnet, nil
+	return subnetClient.Get(ctx, opt.ResourceGroupName, opt.VirtualNetwork, opt.Subnetwork, "")
 }
 
 func deleteSecurityRuleDefinitionsByName(rulesArr *[]network.SecurityRule, namesToRemove ...string) bool {
