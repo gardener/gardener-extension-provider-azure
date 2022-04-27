@@ -35,7 +35,12 @@ func (a *actuator) Delete(ctx context.Context, bastion *extensionsv1alpha1.Basti
 
 	var factory = azureclient.NewAzureClientFactory(a.client)
 
-	opt, err := DetermineOptions(bastion, cluster)
+	infrastructureStatus, err := getInfrastructureStatus(ctx, a, cluster)
+	if err != nil {
+		return err
+	}
+
+	opt, err := DetermineOptions(bastion, cluster, infrastructureStatus.ResourceGroup.Name)
 	if err != nil {
 		return err
 	}

@@ -30,6 +30,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
+	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
@@ -51,6 +53,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
@@ -151,16 +154,19 @@ var (
 	logger *logrus.Entry
 
 	extensionscluster *extensionsv1alpha1.Cluster
+	worker            *extensionsv1alpha1.Worker
+	bastion           *extensionsv1alpha1.Bastion
 	controllercluster *controller.Cluster
 	options           *bastionctrl.Options
-	bastion           *extensionsv1alpha1.Bastion
 	secret            *corev1.Secret
 
-	testEnv   *envtest.Environment
-	c         client.Client
-	mgrCancel context.CancelFunc
-	clientSet *azureClientSet
-	name      string
+	testEnv    *envtest.Environment
+	c          client.Client
+	mgrCancel  context.CancelFunc
+	clientSet  *azureClientSet
+	name       string
+	vNetName   string
+	subnetName string
 )
 
 var _ = BeforeSuite(func() {
@@ -168,6 +174,8 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	name = fmt.Sprintf("azure-bastion-it--%s", randString)
+	vNetName = name
+	subnetName = vNetName + "-nodes"
 
 	myPublicIP, err = getMyPublicIPWithMask()
 	Expect(err).NotTo(HaveOccurred())
@@ -193,6 +201,7 @@ var _ = BeforeSuite(func() {
 			Paths: []string{
 				filepath.Join(repoRoot, "example", "20-crd-extensions.gardener.cloud_clusters.yaml"),
 				filepath.Join(repoRoot, "example", "20-crd-extensions.gardener.cloud_bastions.yaml"),
+				filepath.Join(repoRoot, "example", "20-crd-extensions.gardener.cloud_workers.yaml"),
 			},
 		},
 	}
@@ -227,6 +236,7 @@ var _ = BeforeSuite(func() {
 
 	extensionscluster, controllercluster = createClusters(name)
 	bastion, options = createBastion(controllercluster, name)
+	worker = createWorker(name)
 
 	secret = &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -259,7 +269,7 @@ var _ = Describe("Bastion tests", func() {
 
 	It("should successfully create and delete", func() {
 		resourceGroupName := name
-		vNetName := name
+
 		securityGroupName := name + "-workers"
 
 		By("setup Infrastructure")
@@ -271,7 +281,7 @@ var _ = Describe("Bastion tests", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		By("setup Virtual Network")
-		err = prepareNewVNet(ctx, logger, clientSet, resourceGroupName, vNetName, *region, VNetCIDR, sg)
+		err = prepareNewVNet(ctx, logger, clientSet, resourceGroupName, vNetName, subnetName, *region, VNetCIDR, sg)
 		Expect(err).NotTo(HaveOccurred())
 
 		framework.AddCleanupAction(func() {
@@ -280,9 +290,9 @@ var _ = Describe("Bastion tests", func() {
 		})
 
 		By("create namespace for test execution")
-		setupEnvironmentObjects(ctx, c, namespace(name), secret, extensionscluster)
+		setupEnvironmentObjects(ctx, c, namespace(name), secret, extensionscluster, worker)
 		framework.AddCleanupAction(func() {
-			teardownShootEnvironment(ctx, c, namespace(name), secret, extensionscluster)
+			teardownShootEnvironment(ctx, c, namespace(name), secret, extensionscluster, worker)
 		})
 
 		By("setup bastion")
@@ -413,9 +423,9 @@ func prepareSecurityGroup(ctx context.Context, logger *logrus.Entry, resourceGro
 	return future.Result(az.securityGroups)
 }
 
-func prepareNewVNet(ctx context.Context, logger *logrus.Entry, az *azureClientSet, groupName, vNetName, location, cidr string, nsg network.SecurityGroup) error {
-	logger.Infof("generating new VNet: %s/%s", groupName, vNetName)
-	vNetFuture, err := az.vnet.CreateOrUpdate(ctx, groupName, vNetName, network.VirtualNetwork{
+func prepareNewVNet(ctx context.Context, logger *logrus.Entry, az *azureClientSet, resourceGroupName, vNetName, subnetName, location, cidr string, nsg network.SecurityGroup) error {
+	logger.Infof("generating new resource Group/VNet/subnetName: %s/%s/%s", resourceGroupName, vNetName, subnetName)
+	vNetFuture, err := az.vnet.CreateOrUpdate(ctx, resourceGroupName, vNetName, network.VirtualNetwork{
 		VirtualNetworkPropertiesFormat: &network.VirtualNetworkPropertiesFormat{
 			AddressSpace: &network.AddressSpace{
 				AddressPrefixes: &[]string{
@@ -424,7 +434,7 @@ func prepareNewVNet(ctx context.Context, logger *logrus.Entry, az *azureClientSe
 			},
 			Subnets: &[]network.Subnet{
 				{
-					Name: to.StringPtr(groupName + "-nodes"),
+					Name: to.StringPtr(subnetName),
 					SubnetPropertiesFormat: &network.SubnetPropertiesFormat{
 						AddressPrefix:        to.StringPtr(cidr),
 						NetworkSecurityGroup: &nsg,
@@ -477,17 +487,19 @@ func namespace(name string) *corev1.Namespace {
 	}
 }
 
-func setupEnvironmentObjects(ctx context.Context, c client.Client, namespace *corev1.Namespace, secret *corev1.Secret, cluster *extensionsv1alpha1.Cluster) {
+func setupEnvironmentObjects(ctx context.Context, c client.Client, namespace *corev1.Namespace, secret *corev1.Secret, cluster *extensionsv1alpha1.Cluster, worker *extensionsv1alpha1.Worker) {
 	Expect(c.Create(ctx, namespace)).To(Succeed())
 	Expect(c.Create(ctx, cluster)).To(Succeed())
 	Expect(c.Create(ctx, secret)).To(Succeed())
-
+	Expect(c.Create(ctx, worker)).To(Succeed())
 }
 
-func teardownShootEnvironment(ctx context.Context, c client.Client, namespace *corev1.Namespace, secret *corev1.Secret, cluster *extensionsv1alpha1.Cluster) {
+func teardownShootEnvironment(ctx context.Context, c client.Client, namespace *corev1.Namespace, secret *corev1.Secret, cluster *extensionsv1alpha1.Cluster, worker *extensionsv1alpha1.Worker) {
+	Expect(client.IgnoreNotFound(c.Delete(ctx, worker))).To(Succeed())
 	Expect(client.IgnoreNotFound(c.Delete(ctx, secret))).To(Succeed())
 	Expect(client.IgnoreNotFound(c.Delete(ctx, cluster))).To(Succeed())
 	Expect(client.IgnoreNotFound(c.Delete(ctx, namespace))).To(Succeed())
+
 }
 
 func createBastion(cluster *controller.Cluster, name string) (*extensionsv1alpha1.Bastion, *bastionctrl.Options) {
@@ -509,10 +521,42 @@ func createBastion(cluster *controller.Cluster, name string) (*extensionsv1alpha
 		},
 	}
 
-	options, err := bastionctrl.DetermineOptions(bastion, cluster)
+	options, err := bastionctrl.DetermineOptions(bastion, cluster, name)
 	Expect(err).NotTo(HaveOccurred())
 
 	return bastion, options
+}
+
+func createWorker(name string) *extensionsv1alpha1.Worker {
+	return &extensionsv1alpha1.Worker{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: name,
+		},
+		Spec: extensionsv1alpha1.WorkerSpec{
+			DefaultSpec: extensionsv1alpha1.DefaultSpec{
+				Type: azure.Type,
+			},
+			InfrastructureProviderStatus: &runtime.RawExtension{
+				Object: &apisazure.InfrastructureStatus{
+					ResourceGroup: apisazure.ResourceGroup{
+						Name: name,
+					},
+					Networks: apisazure.NetworkStatus{
+						Layout: apisazure.NetworkLayout("SingleSubnet"),
+						VNet:   apisazure.VNetStatus{Name: vNetName},
+						Subnets: []apisazure.Subnet{
+							{
+								Purpose: apisazure.PurposeNodes,
+								Name:    subnetName,
+							},
+						},
+					},
+				},
+			},
+			Pools: []extensionsv1alpha1.WorkerPool{},
+		},
+	}
 }
 
 func createInfrastructureConfig() *azurev1alpha1.InfrastructureConfig {
@@ -532,6 +576,10 @@ func createShoot(infrastructureConfig []byte) *gardencorev1beta1.Shoot {
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "core.gardener.cloud/v1beta1",
 			Kind:       "Shoot",
+		},
+
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
 		},
 		Spec: gardencorev1beta1.ShootSpec{
 			Region:            *region,
@@ -626,40 +674,22 @@ func verifyDeletion(ctx context.Context, az *azureClientSet, options *bastionctr
 }
 
 func checkSecurityRuleDoesNotExist(ctx context.Context, az *azureClientSet, options *bastionctrl.Options, securityRuleName string) {
-	_, err := az.securityRules.Get(ctx, options.ResourceGroupName, options.SecurityGroupName, securityRuleName)
+	//does not have authorization to performsecurityRules get due to global rule. use security group to check it.
+	sg, err := az.securityGroups.Get(ctx, options.ResourceGroupName, options.SecurityGroupName, "")
+	Expect(len(*sg.SecurityRules)).To(Equal(0))
 	Expect(ignoreAzureNotFoundError(err)).To(Succeed())
 }
 
-func checkSecurityRuleslExists(ctx context.Context, az *azureClientSet, options *bastionctrl.Options, securityRuleName string) {
-	nsgRule, err := az.securityRules.Get(ctx, options.ResourceGroupName, options.SecurityGroupName, securityRuleName)
-	Expect(err).NotTo(HaveOccurred())
-	Expect(*nsgRule.Name).To(Equal(securityRuleName))
-}
-
 func verifyCreation(ctx context.Context, az *azureClientSet, options *bastionctrl.Options) {
-	By("checkNSGExists")
+	By("RuleExist")
+	//does not have authorization to performsecurityRules get due to global rule. use security group to check it.
+	sg, err := az.securityGroups.Get(ctx, options.ResourceGroupName, options.SecurityGroupName, "")
+	Expect(err).NotTo(HaveOccurred())
+
 	// bastion NSG - Check Ingress / Egress firewalls created
-	checkSecurityRuleslExists(ctx, az, options, bastionctrl.NSGIngressAllowSSHResourceNameIPv4(options.BastionInstanceName))
-	checkSecurityRuleslExists(ctx, az, options, bastionctrl.NSGEgressDenyAllResourceName(options.BastionInstanceName))
-	checkSecurityRuleslExists(ctx, az, options, bastionctrl.NSGEgressAllowOnlyResourceName(options.BastionInstanceName))
-
-	By("checking NSG-allow-ssh rule SSHPortOpen,Public Source Ranges")
-	result, err := az.securityRules.Get(ctx, options.ResourceGroupName, options.SecurityGroupName, bastionctrl.NSGIngressAllowSSHResourceNameIPv4(options.BastionInstanceName))
-	Expect(err).NotTo(HaveOccurred())
-	Expect(*result.DestinationPortRange).To(Equal("22"))
-	Expect(*result.SourceAddressPrefixes).To(Equal([]string{myPublicIP}))
-	Expect(result.SourceAddressPrefix).To(BeNil())
-
-	By("checking Firewall-deny-all rule")
-	result, err = az.securityRules.Get(ctx, options.ResourceGroupName, options.SecurityGroupName, bastionctrl.NSGEgressDenyAllResourceName(options.BastionInstanceName))
-	Expect(err).NotTo(HaveOccurred())
-	Expect(result.Protocol).To(Equal(network.SecurityRuleProtocolAsterisk))
-	Expect(result.DestinationAddressPrefix).To(Equal(to.StringPtr("*")))
-
-	By("checking Firewall-egress-worker rule")
-	result, err = az.securityRules.Get(ctx, options.ResourceGroupName, options.SecurityGroupName, bastionctrl.NSGEgressAllowOnlyResourceName(options.BastionInstanceName))
-	Expect(err).NotTo(HaveOccurred())
-	Expect(*result.DestinationAddressPrefix).To(Equal(options.WorkersCIDR))
+	bastionctrl.RuleExist(pointer.StringPtr(bastionctrl.NSGIngressAllowSSHResourceNameIPv4(options.BastionInstanceName)), sg.SecurityRules)
+	bastionctrl.RuleExist(pointer.StringPtr(bastionctrl.NSGEgressDenyAllResourceName(options.BastionInstanceName)), sg.SecurityRules)
+	bastionctrl.RuleExist(pointer.StringPtr(bastionctrl.NSGEgressAllowOnlyResourceName(options.BastionInstanceName)), sg.SecurityRules)
 
 	By("checking bastion instance")
 	//bastion instance

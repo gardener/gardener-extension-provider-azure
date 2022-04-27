@@ -183,19 +183,19 @@ func getPublicIP(ctx context.Context, factory azureclient.Factory, opt *Options)
 	return ip, nil
 }
 
-func getSubnet(ctx context.Context, factory azureclient.Factory, opt *Options) (*network.Subnet, error) {
+func getSubnet(ctx context.Context, factory azureclient.Factory, vNet, subnetWork string, opt *Options) (*network.Subnet, error) {
 	subnetClient, err := factory.Subnet(ctx, opt.SecretReference)
 	if err != nil {
 		return nil, err
 	}
 
-	subnet, err := subnetClient.Get(ctx, opt.ResourceGroupName, opt.VirtualNetwork, opt.Subnetwork, "")
+	subnet, err := subnetClient.Get(ctx, opt.ResourceGroupName, vNet, subnetWork, "")
 	if err != nil {
 		return nil, err
 	}
 
 	if subnet == nil {
-		logger.Info("subnet not found,", "subnet_name", opt.Subnetwork)
+		logger.Info("subnet not found,", "subnet_name", subnetWork)
 		return nil, nil
 	}
 

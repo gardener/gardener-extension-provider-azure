@@ -161,13 +161,11 @@ var _ = Describe("Bastion test", func() {
 
 	Describe("Determine options", func() {
 		It("should return options", func() {
-			options, err := DetermineOptions(bastion, cluster)
+			options, err := DetermineOptions(bastion, cluster, "cluster1")
 			Expect(err).To(Not(HaveOccurred()))
 
 			Expect(options.BastionInstanceName).To(Equal("cluster1-bastionName1-bastion-1cdc8"))
-			Expect(options.Subnetwork).To(Equal("cluster1-nodes"))
 			Expect(options.BastionPublicIPName).To(Equal("cluster1-bastionName1-bastion-1cdc8-public-ip"))
-			Expect(options.VirtualNetwork).To(Equal("cluster1"))
 			Expect(options.SecretReference).To(Equal(corev1.SecretReference{
 				Namespace: "cluster1",
 				Name:      "cloudprovider",
