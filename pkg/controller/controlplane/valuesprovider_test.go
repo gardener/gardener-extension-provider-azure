@@ -17,10 +17,10 @@ package controlplane
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -28,8 +28,8 @@ import (
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
 	"github.com/gardener/gardener/pkg/utils"
-	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
-
+	secretsmanager "github.com/gardener/gardener/pkg/utils/secrets/manager"
+	fakesecretsmanager "github.com/gardener/gardener/pkg/utils/secrets/manager/fake"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -39,6 +39,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 )
@@ -51,10 +52,12 @@ const (
 
 var _ = Describe("ValuesProvider", func() {
 	var (
-		ctrl    *gomock.Controller
-		ctx     = context.TODO()
-		logger  = log.Log.WithName("test")
-		fakeErr = fmt.Errorf("fake err")
+		ctrl   *gomock.Controller
+		ctx    = context.TODO()
+		logger = log.Log.WithName("test")
+
+		fakeClient         client.Client
+		fakeSecretsManager secretsmanager.Interface
 
 		c  *mockclient.MockClient
 		vp genericactuator.ValuesProvider
@@ -135,6 +138,9 @@ var _ = Describe("ValuesProvider", func() {
 
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
+
+		fakeClient = fakeclient.NewClientBuilder().Build()
+		fakeSecretsManager = fakesecretsmanager.New(fakeClient, namespace)
 
 		c = mockclient.NewMockClient(ctrl)
 		vp = NewValuesProvider(logger)
@@ -343,6 +349,9 @@ var _ = Describe("ValuesProvider", func() {
 					"TLS_RSA_WITH_AES_256_CBC_SHA",
 					"TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA",
 				},
+				"secrets": map[string]interface{}{
+					"server": "cloud-controller-manager-server",
+				},
 			})
 		)
 
@@ -352,7 +361,7 @@ var _ = Describe("ValuesProvider", func() {
 
 		It("should return correct control plane chart values (k8s < 1.21)", func() {
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, checksums, false)
+			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, fakeSecretsManager, checksums, false)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
@@ -377,7 +386,7 @@ var _ = Describe("ValuesProvider", func() {
 			infrastructureStatus.Zoned = false
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 
-			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, checksums, false)
+			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, fakeSecretsManager, checksums, false)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
 				"global": map[string]interface{}{
@@ -396,6 +405,9 @@ var _ = Describe("ValuesProvider", func() {
 					},
 					"csiSnapshotValidationWebhook": map[string]interface{}{
 						"replicas": 1,
+						"secrets": map[string]interface{}{
+							"server": "csi-snapshot-validation-server",
+						},
 					},
 					"vmType": "vmss",
 				}),
@@ -413,7 +425,7 @@ var _ = Describe("ValuesProvider", func() {
 			infrastructureStatus.Zoned = true
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 
-			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, checksums, false)
+			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, fakeSecretsManager, checksums, false)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
 				"global": map[string]interface{}{
@@ -432,6 +444,9 @@ var _ = Describe("ValuesProvider", func() {
 					},
 					"csiSnapshotValidationWebhook": map[string]interface{}{
 						"replicas": 1,
+						"secrets": map[string]interface{}{
+							"server": "csi-snapshot-validation-server",
+						},
 					},
 				}),
 				azure.RemedyControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
@@ -449,7 +464,7 @@ var _ = Describe("ValuesProvider", func() {
 			})
 
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, checksums, false)
+			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, fakeSecretsManager, checksums, false)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
@@ -499,7 +514,7 @@ var _ = Describe("ValuesProvider", func() {
 					},
 				})
 
-				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
 					"global":                         globalVpaDisabled,
@@ -521,7 +536,7 @@ var _ = Describe("ValuesProvider", func() {
 					},
 				})
 
-				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
 					"global":                         globalVpaDisabled,
@@ -552,17 +567,8 @@ var _ = Describe("ValuesProvider", func() {
 				cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil)
 			})
 
-			It("should return error when ca secret is not found", func() {
-				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-				c.EXPECT().Get(ctx, kutil.Key(cp.Namespace, string(v1beta1constants.SecretNameCACluster)), gomock.AssignableToTypeOf(&corev1.Secret{})).Return(fakeErr)
-
-				_, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
-				Expect(err).To(HaveOccurred())
-			})
-
 			It("should return correct control plane shoot chart values for zoned cluster", func() {
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-				c.EXPECT().Get(ctx, kutil.Key(cp.Namespace, string(v1beta1constants.SecretNameCACluster)), gomock.AssignableToTypeOf(&corev1.Secret{}))
 				csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
 					"webhookConfig": map[string]interface{}{
 						"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
@@ -570,7 +576,7 @@ var _ = Describe("ValuesProvider", func() {
 					},
 				})
 
-				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
 					"global":                         globalVpaEnabled,
@@ -585,7 +591,6 @@ var _ = Describe("ValuesProvider", func() {
 				infrastructureStatus.Zoned = false
 				infrastructureStatus.AvailabilitySets = []apisazure.AvailabilitySet{primaryAvailabilitySet}
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-				c.EXPECT().Get(ctx, kutil.Key(cp.Namespace, string(v1beta1constants.SecretNameCACluster)), gomock.AssignableToTypeOf(&corev1.Secret{}))
 				csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
 					"webhookConfig": map[string]interface{}{
 						"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
@@ -593,7 +598,7 @@ var _ = Describe("ValuesProvider", func() {
 					},
 				})
 
-				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
 					"global":                         globalVpaEnabled,
@@ -608,7 +613,6 @@ var _ = Describe("ValuesProvider", func() {
 				infrastructureStatus.Zoned = false
 				infrastructureStatus.AvailabilitySets = []apisazure.AvailabilitySet{}
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-				c.EXPECT().Get(ctx, kutil.Key(cp.Namespace, string(v1beta1constants.SecretNameCACluster)), gomock.AssignableToTypeOf(&corev1.Secret{}))
 				csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
 					"webhookConfig": map[string]interface{}{
 						"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
@@ -616,7 +620,7 @@ var _ = Describe("ValuesProvider", func() {
 					},
 				})
 
-				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
 					"global":                         globalVpaEnabled,
@@ -644,7 +648,7 @@ var _ = Describe("ValuesProvider", func() {
 					},
 				})
 
-				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
 					"global":                         globalVpaDisabled,
@@ -666,7 +670,7 @@ var _ = Describe("ValuesProvider", func() {
 					},
 				})
 
-				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
 					"global":                         globalVpaDisabled,
