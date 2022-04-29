@@ -101,18 +101,6 @@ func shootAccessSecretsFunc(namespace string) []*gutil.ShootAccessSecret {
 }
 
 var (
-	legacySecretNamesToCleanup = []string{
-		azure.CloudControllerManagerName,
-		azure.CSIControllerDiskName,
-		azure.CSIControllerFileName,
-		azure.CSIProvisionerName,
-		azure.CSIAttacherName,
-		azure.CSISnapshotterName,
-		azure.CSIResizerName,
-		azure.CSISnapshotControllerName,
-		azure.RemedyControllerName,
-	}
-
 	configChart = &chart.Chart{
 		Name: "cloud-provider-config",
 		Path: filepath.Join(azure.InternalChartsPath, "cloud-provider-config"),
