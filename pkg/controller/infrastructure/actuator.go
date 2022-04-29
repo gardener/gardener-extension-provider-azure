@@ -44,14 +44,14 @@ type InfrastructureState struct {
 type actuator struct {
 	logger logr.Logger
 	common.RESTConfigContext
-	useProjectedTokenMount bool
+	disableProjectedTokenMount bool
 }
 
 // NewActuator creates a new infrastructure.Actuator.
-func NewActuator(useProjectedTokenMount bool) infrastructure.Actuator {
+func NewActuator(disableProjectedTokenMount bool) infrastructure.Actuator {
 	return &actuator{
-		logger:                 log.Log.WithName("infrastructure-actuator"),
-		useProjectedTokenMount: useProjectedTokenMount,
+		logger:                     log.Log.WithName("infrastructure-actuator"),
+		disableProjectedTokenMount: disableProjectedTokenMount,
 	}
 }
 
