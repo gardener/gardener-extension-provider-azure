@@ -199,14 +199,12 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 				return fmt.Errorf("could not determine whether token requestor should be used: %w", err)
 			}
 			azurecontrolplane.DefaultAddOptions.UseTokenRequestor = useTokenRequestor
-			azureworker.DefaultAddOptions.UseTokenRequestor = useTokenRequestor
 
 			useProjectedTokenMount, err := controller.UseServiceAccountTokenVolumeProjection(generalOpts.Completed().GardenerVersion)
 			if err != nil {
 				return fmt.Errorf("could not determine whether service account token volume projection should be used: %w", err)
 			}
 			azurecontrolplane.DefaultAddOptions.UseProjectedTokenMount = useProjectedTokenMount
-			azureworker.DefaultAddOptions.UseProjectedTokenMount = useProjectedTokenMount
 
 			configFileOpts.Completed().ApplyETCDStorage(&azurecontrolplaneexposure.DefaultAddOptions.ETCDStorage)
 			configFileOpts.Completed().ApplyHealthCheckConfig(&healthcheck.DefaultAddOptions.HealthCheckConfig)
