@@ -50,7 +50,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	autoscalingv1beta2 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1beta2"
+	autoscalingv1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -138,7 +138,7 @@ var (
 					{Type: &corev1.Service{}, Name: azure.CloudControllerManagerName},
 					{Type: &appsv1.Deployment{}, Name: azure.CloudControllerManagerName},
 					{Type: &corev1.ConfigMap{}, Name: azure.CloudControllerManagerName + "-observability-config"},
-					{Type: &autoscalingv1beta2.VerticalPodAutoscaler{}, Name: azure.CloudControllerManagerName + "-vpa"},
+					{Type: &autoscalingv1.VerticalPodAutoscaler{}, Name: azure.CloudControllerManagerName + "-vpa"},
 				},
 			},
 			{
@@ -159,11 +159,11 @@ var (
 					{Type: &appsv1.Deployment{}, Name: azure.CSIControllerDiskName},
 					{Type: &appsv1.Deployment{}, Name: azure.CSIControllerFileName},
 					{Type: &corev1.ConfigMap{}, Name: azure.CSIControllerObservabilityConfigName},
-					{Type: &autoscalingv1beta2.VerticalPodAutoscaler{}, Name: azure.CSIControllerDiskName + "-vpa"},
-					{Type: &autoscalingv1beta2.VerticalPodAutoscaler{}, Name: azure.CSIControllerFileName + "-vpa"},
+					{Type: &autoscalingv1.VerticalPodAutoscaler{}, Name: azure.CSIControllerDiskName + "-vpa"},
+					{Type: &autoscalingv1.VerticalPodAutoscaler{}, Name: azure.CSIControllerFileName + "-vpa"},
 					// csi-snapshot-controller
 					{Type: &appsv1.Deployment{}, Name: azure.CSISnapshotControllerName},
-					{Type: &autoscalingv1beta2.VerticalPodAutoscaler{}, Name: azure.CSISnapshotControllerName + "-vpa"},
+					{Type: &autoscalingv1.VerticalPodAutoscaler{}, Name: azure.CSISnapshotControllerName + "-vpa"},
 					// csi-snapshot-validation-webhook
 					{Type: &appsv1.Deployment{}, Name: azure.CSISnapshotValidation},
 					{Type: &corev1.Service{}, Name: azure.CSISnapshotValidation},
@@ -176,7 +176,7 @@ var (
 				Objects: []*chart.Object{
 					{Type: &appsv1.Deployment{}, Name: azure.RemedyControllerName},
 					{Type: &corev1.ConfigMap{}, Name: azure.RemedyControllerName + "-config"},
-					{Type: &autoscalingv1beta2.VerticalPodAutoscaler{}, Name: azure.RemedyControllerName + "-vpa"},
+					{Type: &autoscalingv1.VerticalPodAutoscaler{}, Name: azure.RemedyControllerName + "-vpa"},
 					{Type: &rbacv1.Role{}, Name: azure.RemedyControllerName},
 					{Type: &rbacv1.RoleBinding{}, Name: azure.RemedyControllerName},
 					{Type: &corev1.ServiceAccount{}, Name: azure.RemedyControllerName},
