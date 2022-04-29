@@ -216,7 +216,7 @@ spec:
               items:
               - key: kubeconfig
                 path: kubeconfig
-              name: generic-token-kubeconfig
+              name: {{ .Values.global.genericTokenKubeconfigSecretName }}
               optional: false
           - secret:
               items:
@@ -232,7 +232,7 @@ spec:
               items:
               - key: kubeconfig
                 path: kubeconfig
-              name: generic-token-kubeconfig
+              name: {{ .Values.global.genericTokenKubeconfigSecretName }}
               optional: false
           - secret:
               items:
@@ -248,7 +248,7 @@ spec:
               items:
               - key: kubeconfig
                 path: kubeconfig
-              name: generic-token-kubeconfig
+              name: {{ .Values.global.genericTokenKubeconfigSecretName }}
               optional: false
           - secret:
               items:
@@ -264,7 +264,7 @@ spec:
               items:
               - key: kubeconfig
                 path: kubeconfig
-              name: generic-token-kubeconfig
+              name: {{ .Values.global.genericTokenKubeconfigSecretName }}
               optional: false
           - secret:
               items:
@@ -280,7 +280,7 @@ spec:
               items:
               - key: kubeconfig
                 path: kubeconfig
-              name: generic-token-kubeconfig
+              name: {{ .Values.global.genericTokenKubeconfigSecretName }}
               optional: false
           - secret:
               items:

@@ -515,6 +515,9 @@ func getControlPlaneChartValues(
 	}
 
 	return map[string]interface{}{
+		"global": map[string]interface{}{
+			"genericTokenKubeconfigSecretName": extensionscontroller.GenericTokenKubeconfigSecretNameFromCluster(cluster),
+		},
 		azure.CloudControllerManagerName: ccm,
 		azure.CSIControllerName:          csi,
 		azure.RemedyControllerName:       remedy,
@@ -541,10 +544,8 @@ func getCCMChartValues(
 		"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
 		"podNetwork":        extensionscontroller.GetPodNetwork(cluster),
 		"podAnnotations": map[string]interface{}{
-			"checksum/secret-" + azure.CloudControllerManagerName:             checksums[azure.CloudControllerManagerName],
-			"checksum/secret-" + azure.CloudControllerManagerName + "-server": checksums[azure.CloudControllerManagerName+"-server"],
-			"checksum/secret-" + v1beta1constants.SecretNameCloudProvider:     checksums[v1beta1constants.SecretNameCloudProvider],
-			"checksum/secret-" + azure.CloudProviderConfigName:                checksums[azure.CloudProviderConfigName],
+			"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
+			"checksum/secret-" + azure.CloudProviderConfigName:            checksums[azure.CloudProviderConfigName],
 		},
 		"podLabels": map[string]interface{}{
 			v1beta1constants.LabelPodMaintenanceRestart: "true",
@@ -576,28 +577,16 @@ func getCSIControllerChartValues(
 	}
 
 	values := map[string]interface{}{
-		"enabled":  true,
-		"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
+		"enabled": true,
 		"podAnnotations": map[string]interface{}{
-			"checksum/secret-" + azure.CSIControllerDiskName:   checksums[azure.CSIControllerDiskName],
-			"checksum/secret-" + azure.CSIControllerFileName:   checksums[azure.CSIControllerFileName],
-			"checksum/secret-" + azure.CSIProvisionerName:      checksums[azure.CSIProvisionerName],
-			"checksum/secret-" + azure.CSIAttacherName:         checksums[azure.CSIAttacherName],
-			"checksum/secret-" + azure.CSISnapshotterName:      checksums[azure.CSISnapshotterName],
-			"checksum/secret-" + azure.CSIResizerName:          checksums[azure.CSIResizerName],
 			"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
 		},
+		"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
 		"csiSnapshotController": map[string]interface{}{
 			"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
-			"podAnnotations": map[string]interface{}{
-				"checksum/secret-" + azure.CSISnapshotControllerName: checksums[azure.CSISnapshotControllerName],
-			},
 		},
 		"csiSnapshotValidationWebhook": map[string]interface{}{
 			"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
-			"podAnnotations": map[string]interface{}{
-				"checksum/secret-" + azure.CSISnapshotValidation: checksums[azure.CSISnapshotValidation],
-			},
 		},
 	}
 
@@ -623,7 +612,6 @@ func getRemedyControllerChartValues(
 		"enabled":  true,
 		"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
 		"podAnnotations": map[string]interface{}{
-			"checksum/secret-" + azure.RemedyControllerName:    checksums[azure.RemedyControllerName],
 			"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
 		},
 	}, nil
