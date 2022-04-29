@@ -147,7 +147,7 @@ var _ = Describe("ValuesProvider", func() {
 		ctrl = gomock.NewController(GinkgoT())
 
 		c = mockclient.NewMockClient(ctrl)
-		vp = NewValuesProvider(logger, true, true)
+		vp = NewValuesProvider(logger)
 
 		err := vp.(inject.Scheme).InjectScheme(scheme)
 		Expect(err).NotTo(HaveOccurred())
@@ -368,10 +368,6 @@ var _ = Describe("ValuesProvider", func() {
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
-				"global": map[string]interface{}{
-					"useTokenRequestor":      true,
-					"useProjectedTokenMount": true,
-				},
 				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
 					"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
 				}),
@@ -394,10 +390,6 @@ var _ = Describe("ValuesProvider", func() {
 			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, checksums, false)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
-				"global": map[string]interface{}{
-					"useTokenRequestor":      true,
-					"useProjectedTokenMount": true,
-				},
 				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
 					"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
 				}),
@@ -444,10 +436,6 @@ var _ = Describe("ValuesProvider", func() {
 			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, checksums, false)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
-				"global": map[string]interface{}{
-					"useTokenRequestor":      true,
-					"useProjectedTokenMount": true,
-				},
 				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
 					"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
 				}),
@@ -495,10 +483,6 @@ var _ = Describe("ValuesProvider", func() {
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
-				"global": map[string]interface{}{
-					"useTokenRequestor":      true,
-					"useProjectedTokenMount": true,
-				},
 				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
 					"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
 				}),
@@ -518,14 +502,10 @@ var _ = Describe("ValuesProvider", func() {
 				"kubernetesVersion":   "1.15.4",
 			})
 			globalVpaDisabled = map[string]interface{}{
-				"useTokenRequestor":      true,
-				"useProjectedTokenMount": true,
-				"vpaEnabled":             false,
+				"vpaEnabled": false,
 			}
 			globalVpaEnabled = map[string]interface{}{
-				"useTokenRequestor":      true,
-				"useProjectedTokenMount": true,
-				"vpaEnabled":             true,
+				"vpaEnabled": true,
 			}
 			csiNodeEnabled = utils.MergeMaps(enabledTrue, map[string]interface{}{
 				"podAnnotations": map[string]interface{}{
