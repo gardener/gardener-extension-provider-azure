@@ -39,12 +39,12 @@ require (
 	k8s.io/component-base v0.23.3
 	k8s.io/kubelet v0.23.3
 	k8s.io/utils v0.0.0-20211116205334-6203023598ed
-	sigs.k8s.io/controller-runtime v0.11.0
+	sigs.k8s.io/controller-runtime v0.11.1
 	sigs.k8s.io/controller-tools v0.8.0
 )
 
 replace (
-	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.11.0 // keep this value in sync with sigs.k8s.io/controller-runtime
+	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.11.1 // keep this value in sync with sigs.k8s.io/controller-runtime
 	k8s.io/api => k8s.io/api v0.23.2
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.23.2
 	k8s.io/apimachinery => k8s.io/apimachinery v0.23.2
