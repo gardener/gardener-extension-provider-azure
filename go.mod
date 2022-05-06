@@ -27,7 +27,7 @@ require (
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/pflag v1.0.5
-	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
+	golang.org/x/crypto v0.0.0-20220427172511-eb4f295cb31f
 	golang.org/x/tools v0.1.9
 	k8s.io/api v0.23.3
 	k8s.io/apiextensions-apiserver v0.23.3
@@ -45,6 +45,7 @@ require (
 
 replace (
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.11.0 // keep this value in sync with sigs.k8s.io/controller-runtime
+	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20220427172511-eb4f295cb31f
 	k8s.io/api => k8s.io/api v0.23.2
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.23.2
 	k8s.io/apimachinery => k8s.io/apimachinery v0.23.2
