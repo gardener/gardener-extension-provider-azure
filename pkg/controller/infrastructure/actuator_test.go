@@ -48,10 +48,10 @@ import (
 )
 
 const (
-	name                   = "az"
-	namespace              = "shoot--foobar--az"
-	region                 = "region"
-	useProjectedTokenMount = true
+	name                       = "az"
+	namespace                  = "shoot--foobar--az"
+	region                     = "region"
+	disableProjectedTokenMount = false
 )
 
 var _ = Describe("Actuator", func() {
@@ -79,7 +79,7 @@ var _ = Describe("Actuator", func() {
 
 		ctx = context.TODO()
 
-		a = NewActuator(useProjectedTokenMount)
+		a = NewActuator(disableProjectedTokenMount)
 		err := a.(inject.Client).InjectClient(c)
 		Expect(err).NotTo(HaveOccurred())
 		err = a.(inject.Config).InjectConfig(&rest.Config{})

@@ -7,11 +7,6 @@ roleRef:
   kind: ClusterRole
   name: {{ include "remedy-controller-azure.extensionsGroup" . }}:{{ include "remedy-controller-azure.name" . }}:remedy-controller-azure
 subjects:
-{{- if .Values.global.useTokenRequestor }}
 - kind: ServiceAccount
   name: remedy-controller-azure
   namespace: kube-system
-{{- else }}
-- kind: User
-  name: {{ include "remedy-controller-azure.extensionsGroup" . }}:{{ include "remedy-controller-azure.name" . }}:remedy-controller-azure
-{{- end }}

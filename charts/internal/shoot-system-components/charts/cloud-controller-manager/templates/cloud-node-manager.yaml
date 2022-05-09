@@ -7,9 +7,7 @@ metadata:
     k8s-app: cloud-node-manager
   name: cloud-node-manager
   namespace: {{ .Release.Namespace }}
-{{- if .Values.global.useProjectedTokenMount }}
 automountServiceAccountToken: false
-{{- end }}
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
@@ -57,10 +55,6 @@ spec:
         k8s-app: cloud-node-manager
       annotations:
         cluster-autoscaler.kubernetes.io/daemonset-pod: "true"
-        {{- if .Values.global.useProjectedTokenMount }}
-        # TODO(rfranzke): Remove in a future release.
-        security.gardener.cloud/trigger: rollout
-        {{- end }}
     spec:
       priorityClassName: system-node-critical
       serviceAccountName: cloud-node-manager

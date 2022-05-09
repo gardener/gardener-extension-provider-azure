@@ -17,10 +17,10 @@ package controlplane
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -28,8 +28,8 @@ import (
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
 	"github.com/gardener/gardener/pkg/utils"
-	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
-
+	secretsmanager "github.com/gardener/gardener/pkg/utils/secrets/manager"
+	fakesecretsmanager "github.com/gardener/gardener/pkg/utils/secrets/manager/fake"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -39,21 +39,25 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 )
 
 const (
-	namespace       = "test"
-	maxNodes  int32 = 0
+	namespace                              = "test"
+	maxNodes                         int32 = 0
+	genericTokenKubeconfigSecretName       = "generic-token-kubeconfig-92e9ae14"
 )
 
 var _ = Describe("ValuesProvider", func() {
 	var (
-		ctrl    *gomock.Controller
-		ctx     = context.TODO()
-		logger  = log.Log.WithName("test")
-		fakeErr = fmt.Errorf("fake err")
+		ctrl   *gomock.Controller
+		ctx    = context.TODO()
+		logger = log.Log.WithName("test")
+
+		fakeClient         client.Client
+		fakeSecretsManager secretsmanager.Interface
 
 		c  *mockclient.MockClient
 		vp genericactuator.ValuesProvider
@@ -127,27 +131,19 @@ var _ = Describe("ValuesProvider", func() {
 		}
 
 		checksums = map[string]string{
-			v1beta1constants.SecretNameCloudProvider:     "8bafb35ff1ac60275d62e1cbd495aceb511fb354f74a20f7d06ecb48b3a68432",
-			azure.CloudProviderDiskConfigName:            "77627eb2343b9f2dc2fca3cce35f2f9eec55783aa5f7dac21c473019e5825de2",
-			azure.CloudControllerManagerName:             "3d791b164a808638da9a8df03924be2a41e34cd664e42231c00fe369e3588272",
-			azure.CloudControllerManagerName + "-server": "6dff2a2e6f14444b66d8e4a351c049f7e89ee24ba3eaab95dbec40ba6bdebb52",
-			azure.CSIControllerDiskName:                  "77627eb2343b9f2dc2fca3cce35f2f9eec55783aa5f7dac21c473019e5825de2",
-			azure.CSIControllerFileName:                  "d8a928b2043db77e340b523547bf16cb4aa483f0645fe0a290ed1f20aab76257",
-			azure.CSIProvisionerName:                     "65b1dac6b50673535cff480564c2e5c71077ed19b1b6e0e2291207225bdf77d4",
-			azure.CSIAttacherName:                        "3f22909841cdbb80e5382d689d920309c0a7d995128e52c79773f9608ed7c289",
-			azure.CSISnapshotterName:                     "6a5bfc847638c499062f7fb44e31a30a9760bf4179e1dbf85e0ff4b4f162cd68",
-			azure.CSIResizerName:                         "a77e663ba1af340fb3dd7f6f8a1be47c7aa9e658198695480641e6b934c0b9ed",
-			azure.CSISnapshotControllerName:              "84cba346d2e2cf96c3811b55b01f57bdd9b9bcaed7065760470942d267984eaf",
-			azure.CSISnapshotValidation:                  "452097220f89011daa2543876c3f3184f5064a12be454ae32e2ad205ec55823c",
-			azure.RemedyControllerName:                   "84cba346d2e2cf96c3811b55b01f57bdd9b9bcaed7065760470942d267984eaf",
+			v1beta1constants.SecretNameCloudProvider: "8bafb35ff1ac60275d62e1cbd495aceb511fb354f74a20f7d06ecb48b3a68432",
+			azure.CloudProviderDiskConfigName:        "77627eb2343b9f2dc2fca3cce35f2f9eec55783aa5f7dac21c473019e5825de2",
 		}
 	)
 
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
 
+		fakeClient = fakeclient.NewClientBuilder().Build()
+		fakeSecretsManager = fakesecretsmanager.New(fakeClient, namespace)
+
 		c = mockclient.NewMockClient(ctrl)
-		vp = NewValuesProvider(logger, true, true)
+		vp = NewValuesProvider(logger)
 
 		err := vp.(inject.Scheme).InjectScheme(scheme)
 		Expect(err).NotTo(HaveOccurred())
@@ -336,10 +332,8 @@ var _ = Describe("ValuesProvider", func() {
 				"kubernetesVersion": k8sVersionLessThan121,
 				"podNetwork":        cidr,
 				"podAnnotations": map[string]interface{}{
-					"checksum/secret-cloud-controller-manager":        "3d791b164a808638da9a8df03924be2a41e34cd664e42231c00fe369e3588272",
-					"checksum/secret-cloud-controller-manager-server": "6dff2a2e6f14444b66d8e4a351c049f7e89ee24ba3eaab95dbec40ba6bdebb52",
-					"checksum/secret-cloudprovider":                   "8bafb35ff1ac60275d62e1cbd495aceb511fb354f74a20f7d06ecb48b3a68432",
-					"checksum/secret-cloud-provider-config":           "77627eb2343b9f2dc2fca3cce35f2f9eec55783aa5f7dac21c473019e5825de2",
+					"checksum/secret-cloudprovider":         "8bafb35ff1ac60275d62e1cbd495aceb511fb354f74a20f7d06ecb48b3a68432",
+					"checksum/secret-cloud-provider-config": "77627eb2343b9f2dc2fca3cce35f2f9eec55783aa5f7dac21c473019e5825de2",
 				},
 				"podLabels": map[string]interface{}{
 					"maintenance.gardener.cloud/restart": "true",
@@ -355,6 +349,9 @@ var _ = Describe("ValuesProvider", func() {
 					"TLS_RSA_WITH_AES_256_CBC_SHA",
 					"TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA",
 				},
+				"secrets": map[string]interface{}{
+					"server": "cloud-controller-manager-server",
+				},
 			})
 		)
 
@@ -364,13 +361,12 @@ var _ = Describe("ValuesProvider", func() {
 
 		It("should return correct control plane chart values (k8s < 1.21)", func() {
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, checksums, false)
+			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, fakeSecretsManager, checksums, false)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
 				"global": map[string]interface{}{
-					"useTokenRequestor":      true,
-					"useProjectedTokenMount": true,
+					"genericTokenKubeconfigSecretName": genericTokenKubeconfigSecretName,
 				},
 				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
 					"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
@@ -379,7 +375,6 @@ var _ = Describe("ValuesProvider", func() {
 				azure.RemedyControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
 					"replicas": 1,
 					"podAnnotations": map[string]interface{}{
-						"checksum/secret-" + azure.RemedyControllerName:    checksums[azure.RemedyControllerName],
 						"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
 					},
 				}),
@@ -391,12 +386,11 @@ var _ = Describe("ValuesProvider", func() {
 			infrastructureStatus.Zoned = false
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 
-			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, checksums, false)
+			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, fakeSecretsManager, checksums, false)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
 				"global": map[string]interface{}{
-					"useTokenRequestor":      true,
-					"useProjectedTokenMount": true,
+					"genericTokenKubeconfigSecretName": genericTokenKubeconfigSecretName,
 				},
 				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
 					"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
@@ -404,24 +398,15 @@ var _ = Describe("ValuesProvider", func() {
 				azure.CSIControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
 					"replicas": 1,
 					"podAnnotations": map[string]interface{}{
-						"checksum/secret-" + azure.CSIControllerDiskName:   checksums[azure.CSIControllerDiskName],
-						"checksum/secret-" + azure.CSIControllerFileName:   checksums[azure.CSIControllerFileName],
-						"checksum/secret-" + azure.CSIProvisionerName:      checksums[azure.CSIProvisionerName],
-						"checksum/secret-" + azure.CSIAttacherName:         checksums[azure.CSIAttacherName],
-						"checksum/secret-" + azure.CSISnapshotterName:      checksums[azure.CSISnapshotterName],
-						"checksum/secret-" + azure.CSIResizerName:          checksums[azure.CSIResizerName],
 						"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
 					},
 					"csiSnapshotController": map[string]interface{}{
 						"replicas": 1,
-						"podAnnotations": map[string]interface{}{
-							"checksum/secret-" + azure.CSISnapshotControllerName: checksums[azure.CSISnapshotControllerName],
-						},
 					},
 					"csiSnapshotValidationWebhook": map[string]interface{}{
 						"replicas": 1,
-						"podAnnotations": map[string]interface{}{
-							"checksum/secret-" + azure.CSISnapshotValidation: checksums[azure.CSISnapshotValidation],
+						"secrets": map[string]interface{}{
+							"server": "csi-snapshot-validation-server",
 						},
 					},
 					"vmType": "vmss",
@@ -429,7 +414,6 @@ var _ = Describe("ValuesProvider", func() {
 				azure.RemedyControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
 					"replicas": 1,
 					"podAnnotations": map[string]interface{}{
-						"checksum/secret-" + azure.RemedyControllerName:    checksums[azure.RemedyControllerName],
 						"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
 					},
 				}),
@@ -441,12 +425,11 @@ var _ = Describe("ValuesProvider", func() {
 			infrastructureStatus.Zoned = true
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 
-			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, checksums, false)
+			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, fakeSecretsManager, checksums, false)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
 				"global": map[string]interface{}{
-					"useTokenRequestor":      true,
-					"useProjectedTokenMount": true,
+					"genericTokenKubeconfigSecretName": genericTokenKubeconfigSecretName,
 				},
 				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
 					"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
@@ -454,31 +437,21 @@ var _ = Describe("ValuesProvider", func() {
 				azure.CSIControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
 					"replicas": 1,
 					"podAnnotations": map[string]interface{}{
-						"checksum/secret-" + azure.CSIControllerDiskName:   checksums[azure.CSIControllerDiskName],
-						"checksum/secret-" + azure.CSIControllerFileName:   checksums[azure.CSIControllerFileName],
-						"checksum/secret-" + azure.CSIProvisionerName:      checksums[azure.CSIProvisionerName],
-						"checksum/secret-" + azure.CSIAttacherName:         checksums[azure.CSIAttacherName],
-						"checksum/secret-" + azure.CSISnapshotterName:      checksums[azure.CSISnapshotterName],
-						"checksum/secret-" + azure.CSIResizerName:          checksums[azure.CSIResizerName],
 						"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
 					},
 					"csiSnapshotController": map[string]interface{}{
 						"replicas": 1,
-						"podAnnotations": map[string]interface{}{
-							"checksum/secret-" + azure.CSISnapshotControllerName: checksums[azure.CSISnapshotControllerName],
-						},
 					},
 					"csiSnapshotValidationWebhook": map[string]interface{}{
 						"replicas": 1,
-						"podAnnotations": map[string]interface{}{
-							"checksum/secret-" + azure.CSISnapshotValidation: checksums[azure.CSISnapshotValidation],
+						"secrets": map[string]interface{}{
+							"server": "csi-snapshot-validation-server",
 						},
 					},
 				}),
 				azure.RemedyControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
 					"replicas": 1,
 					"podAnnotations": map[string]interface{}{
-						"checksum/secret-" + azure.RemedyControllerName:    checksums[azure.RemedyControllerName],
 						"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
 					},
 				}),
@@ -491,13 +464,12 @@ var _ = Describe("ValuesProvider", func() {
 			})
 
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, checksums, false)
+			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, fakeSecretsManager, checksums, false)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
 				"global": map[string]interface{}{
-					"useTokenRequestor":      true,
-					"useProjectedTokenMount": true,
+					"genericTokenKubeconfigSecretName": genericTokenKubeconfigSecretName,
 				},
 				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
 					"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
@@ -518,14 +490,10 @@ var _ = Describe("ValuesProvider", func() {
 				"kubernetesVersion":   "1.15.4",
 			})
 			globalVpaDisabled = map[string]interface{}{
-				"useTokenRequestor":      true,
-				"useProjectedTokenMount": true,
-				"vpaEnabled":             false,
+				"vpaEnabled": false,
 			}
 			globalVpaEnabled = map[string]interface{}{
-				"useTokenRequestor":      true,
-				"useProjectedTokenMount": true,
-				"vpaEnabled":             true,
+				"vpaEnabled": true,
 			}
 			csiNodeEnabled = utils.MergeMaps(enabledTrue, map[string]interface{}{
 				"podAnnotations": map[string]interface{}{
@@ -546,7 +514,7 @@ var _ = Describe("ValuesProvider", func() {
 					},
 				})
 
-				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
 					"global":                         globalVpaDisabled,
@@ -568,7 +536,7 @@ var _ = Describe("ValuesProvider", func() {
 					},
 				})
 
-				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
 					"global":                         globalVpaDisabled,
@@ -599,17 +567,8 @@ var _ = Describe("ValuesProvider", func() {
 				cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil)
 			})
 
-			It("should return error when ca secret is not found", func() {
-				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-				c.EXPECT().Get(ctx, kutil.Key(cp.Namespace, string(v1beta1constants.SecretNameCACluster)), gomock.AssignableToTypeOf(&corev1.Secret{})).Return(fakeErr)
-
-				_, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
-				Expect(err).To(HaveOccurred())
-			})
-
 			It("should return correct control plane shoot chart values for zoned cluster", func() {
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-				c.EXPECT().Get(ctx, kutil.Key(cp.Namespace, string(v1beta1constants.SecretNameCACluster)), gomock.AssignableToTypeOf(&corev1.Secret{}))
 				csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
 					"webhookConfig": map[string]interface{}{
 						"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
@@ -617,7 +576,7 @@ var _ = Describe("ValuesProvider", func() {
 					},
 				})
 
-				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
 					"global":                         globalVpaEnabled,
@@ -632,7 +591,6 @@ var _ = Describe("ValuesProvider", func() {
 				infrastructureStatus.Zoned = false
 				infrastructureStatus.AvailabilitySets = []apisazure.AvailabilitySet{primaryAvailabilitySet}
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-				c.EXPECT().Get(ctx, kutil.Key(cp.Namespace, string(v1beta1constants.SecretNameCACluster)), gomock.AssignableToTypeOf(&corev1.Secret{}))
 				csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
 					"webhookConfig": map[string]interface{}{
 						"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
@@ -640,7 +598,7 @@ var _ = Describe("ValuesProvider", func() {
 					},
 				})
 
-				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
 					"global":                         globalVpaEnabled,
@@ -655,7 +613,6 @@ var _ = Describe("ValuesProvider", func() {
 				infrastructureStatus.Zoned = false
 				infrastructureStatus.AvailabilitySets = []apisazure.AvailabilitySet{}
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-				c.EXPECT().Get(ctx, kutil.Key(cp.Namespace, string(v1beta1constants.SecretNameCACluster)), gomock.AssignableToTypeOf(&corev1.Secret{}))
 				csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
 					"webhookConfig": map[string]interface{}{
 						"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
@@ -663,7 +620,7 @@ var _ = Describe("ValuesProvider", func() {
 					},
 				})
 
-				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
 					"global":                         globalVpaEnabled,
@@ -691,7 +648,7 @@ var _ = Describe("ValuesProvider", func() {
 					},
 				})
 
-				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
 					"global":                         globalVpaDisabled,
@@ -713,7 +670,7 @@ var _ = Describe("ValuesProvider", func() {
 					},
 				})
 
-				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, checksums)
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
 					"global":                         globalVpaDisabled,
@@ -821,6 +778,11 @@ func generateCluster(cidr, k8sVersion string, vpaEnabled bool, shootAnnotations 
 	}
 
 	return &extensionscontroller.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{
+				"generic-token-kubeconfig.secret.gardener.cloud/name": genericTokenKubeconfigSecretName,
+			},
+		},
 		Shoot: &shoot,
 	}
 }

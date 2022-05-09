@@ -1,6 +1,6 @@
 global:
-  useTokenRequestor: false
-  useProjectedTokenMount: false
+  genericTokenKubeconfigSecretName: generic-token-kubeconfig
+
 cloud-controller-manager:
   enabled: true
 csi-driver-controller:
