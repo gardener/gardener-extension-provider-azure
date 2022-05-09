@@ -20,6 +20,19 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
 )
 
+// Get gets a resource group. If the requested resource group not exists nil will be returned.
+func (c GroupClient) Get(ctx context.Context, resourceGroupName string) (*resources.Group, error) {
+	resourceGroup, err := c.client.Get(ctx, resourceGroupName)
+	if err != nil {
+		if IsAzureAPINotFoundError(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &resourceGroup, nil
+}
+
 // CreateOrUpdate creates a resource group or update an existing resource group.
 func (c GroupClient) CreateOrUpdate(ctx context.Context, resourceGroupName, region string) error {
 	if _, err := c.client.CreateOrUpdate(ctx, resourceGroupName, resources.Group{
