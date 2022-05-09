@@ -1,4 +1,4 @@
-{{- if semverCompare ">= 1.23" .Capabilities.KubeVersion.GitVersion -}}
+{{- if semverCompare ">= 1.21" .Capabilities.KubeVersion.GitVersion -}}
 ---
 apiVersion: v1
 kind: ServiceAccount
