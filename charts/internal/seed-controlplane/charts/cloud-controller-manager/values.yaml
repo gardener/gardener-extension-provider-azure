@@ -11,7 +11,7 @@ images:
   cloud-controller-manager: image-repository:image-tag
 resources:
   requests:
-    cpu: 940m
+    cpu: 21m
     memory: 64M
   limits:
     memory: 8Gi
