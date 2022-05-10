@@ -21,24 +21,27 @@ webhookConfig:
     -----END CERTIFICATE-----
 
 resources:
-  driver:
+  csiDriverDisk:
     requests:
       cpu: 20m
       memory: 50Mi
     limits:
-      cpu: 100m
-      memory: 80Mi
+      memory: 400Mi
+  csiDriverFile:
+    requests:
+      cpu: 20m
+      memory: 50Mi
+    limits:
+      memory: 400Mi
   nodeDriverRegistrar:
     requests:
-      cpu: 10m
+      cpu: 11m
       memory: 32Mi
     limits:
-      cpu: 30m
-      memory: 50Mi
+      memory: 200Mi
   livenessProbe:
     requests:
-      cpu: 10m
+      cpu: 11m
       memory: 32Mi
     limits:
-      cpu: 30m
-      memory: 50Mi
+      memory: 150Mi

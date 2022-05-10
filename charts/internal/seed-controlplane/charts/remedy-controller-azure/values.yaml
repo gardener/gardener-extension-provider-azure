@@ -5,10 +5,9 @@ images:
 resources:
   requests:
     cpu: 50m
-    memory: 64Mi
+    memory: 72M 
   limits:
-    cpu: 200m
-    memory: 256Mi
+    memory: 1.4Gi
 
 manager:
   metricsPort: 10258

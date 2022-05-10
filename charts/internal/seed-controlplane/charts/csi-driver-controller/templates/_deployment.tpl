@@ -60,10 +60,18 @@ spec:
           value: unix://{{ .Values.socketPath }}/csi.sock
         - name: AZURE_CREDENTIAL_FILE
           value: /etc/kubernetes/cloudprovider/cloudprovider.conf
-{{- if .Values.resources.driver }}
+        {{- if eq .role "disk" }}
+        {{- if .Values.resources.csiDriverDisk }}
         resources:
-{{ toYaml .Values.resources.driver | indent 10 }}
-{{- end }}
+{{ toYaml .Values.resources.csiDriverDisk  | indent 10 }}
+        {{- end }}
+        {{- end }}
+        {{- if eq .role "file" }}
+        {{- if .Values.resources.csiDriverFile }}
+        resources:
+{{ toYaml .Values.resources.csiDriverFile | indent 10 }}
+        {{- end }}
+        {{- end }}
         ports:
         - name: healthz
           containerPort: 9808
