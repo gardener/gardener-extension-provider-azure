@@ -20,42 +20,36 @@ resources:
       cpu: 20m
       memory: 50Mi
     limits:
-      cpu: 50m
       memory: 80Mi
   provisioner:
     requests:
       cpu: 10m
       memory: 32Mi
     limits:
-      cpu: 30m
       memory: 50Mi
   attacher:
     requests:
       cpu: 10m
       memory: 32Mi
     limits:
-      cpu: 30m
       memory: 50Mi
   snapshotter:
     requests:
       cpu: 10m
       memory: 32Mi
     limits:
-      cpu: 30m
       memory: 50Mi
   resizer:
     requests:
       cpu: 10m
       memory: 32Mi
     limits:
-      cpu: 30m
       memory: 50Mi
   livenessProbe:
     requests:
       cpu: 10m
       memory: 32Mi
     limits:
-      cpu: 30m
       memory: 50Mi
 
 csiSnapshotController:
