@@ -45,6 +45,7 @@ type Factory interface {
 
 // Group represents an Azure group client.
 type Group interface {
+	Get(context.Context, string) (*resources.Group, error)
 	CreateOrUpdate(context.Context, string, string) error
 	DeleteIfExits(context.Context, string) error
 }
@@ -118,6 +119,8 @@ type Disk interface {
 // Subnet represents an Azure Subnet client.
 type Subnet interface {
 	Get(ctx context.Context, resourceGroupName string, vnetName string, name string, expander string) (*network.Subnet, error)
+	List(context.Context, string, string) ([]network.Subnet, error)
+	Delete(context.Context, string, string, string) error
 }
 
 // AzureFactory is an implementation of Factory to produce clients for various Azure services.

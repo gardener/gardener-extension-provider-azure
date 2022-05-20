@@ -18,6 +18,7 @@ import (
 	"context"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
+	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 
@@ -27,6 +28,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+var (
+	// NewAzureClientFactory initializes a new AzureClientFactory. Exposed for testing.
+	NewAzureClientFactory = newAzureClientFactory
+)
+
+func newAzureClientFactory(client client.Client) azureclient.Factory {
+	return azureclient.NewAzureClientFactory(client)
+}
 
 // Delete implements infrastructure.Actuator.
 func (a *actuator) Delete(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
@@ -41,17 +51,35 @@ func (a *actuator) Delete(ctx context.Context, infra *extensionsv1alpha1.Infrast
 		return err
 	}
 
+	config, err := helper.InfrastructureConfigFromInfrastructure(infra)
+	if err != nil {
+		return err
+	}
+
+	azureClientFactory := NewAzureClientFactory(a.Client())
+	resourceGroupExists, err := infrastructure.IsShootResourceGroupAvailable(ctx, azureClientFactory, infra, config)
+	if err != nil {
+		return err
+	}
+
+	if !resourceGroupExists {
+		if err := infrastructure.DeleteNodeSubnetIfExists(ctx, azureClientFactory, infra, config); err != nil {
+			return err
+		}
+
+		if err := tf.RemoveTerraformerFinalizerFromConfig(ctx); err != nil {
+			return err
+		}
+
+		return tf.CleanupConfiguration(ctx)
+	}
+
 	// If the Terraform state is empty then we can exit early as we didn't create anything. Though, we clean up potentially
 	// created configmaps/secrets related to the Terraformer.
 	stateIsEmpty := tf.IsStateEmpty(ctx)
 	if stateIsEmpty {
 		a.logger.Info("exiting early as infrastructure state is empty - nothing to do")
 		return tf.CleanupConfiguration(ctx)
-	}
-
-	config, err := helper.InfrastructureConfigFromInfrastructure(infra)
-	if err != nil {
-		return err
 	}
 
 	terraformFiles, err := infrastructure.RenderTerraformerTemplate(infra, config, cluster)

@@ -22,11 +22,14 @@ import (
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
+	azureclientmocks "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client/mock"
 	. "github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 	infrainternal "github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 	"github.com/go-logr/logr"
 
+	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
 	"github.com/gardener/gardener/extensions/pkg/controller/infrastructure"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
 	mockterraform "github.com/gardener/gardener/extensions/pkg/terraformer/mock"
@@ -44,6 +47,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	"k8s.io/utils/pointer"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 )
 
@@ -204,7 +208,26 @@ var _ = Describe("Actuator", func() {
 	})
 
 	Describe("#Delete", func() {
+		var (
+			azureClientFactory *azureclientmocks.MockFactory
+			azureGroupClient   *azureclientmocks.MockGroup
+			resourceGroupName  string
+		)
+
+		BeforeEach(func() {
+			azureClientFactory = azureclientmocks.NewMockFactory(ctrl)
+			azureGroupClient = azureclientmocks.NewMockGroup(ctrl)
+			resourceGroupName = infra.Namespace
+
+			NewAzureClientFactory = func(c client.Client) azureclient.Factory {
+				return azureClientFactory
+			}
+		})
+
 		It("should delete the Infrastructure", func() {
+			azureClientFactory.EXPECT().Group(ctx, infra.Spec.SecretRef).Return(azureGroupClient, nil)
+			azureGroupClient.EXPECT().Get(ctx, infra.Namespace).Return(&resources.Group{Name: &resourceGroupName}, nil)
+
 			tf.EXPECT().EnsureCleanedUp(ctx)
 			tf.EXPECT().IsStateEmpty(ctx).Return(false)
 			tf.EXPECT().InitializeWith(ctx, gomock.Any()).Return(tf)
@@ -217,6 +240,9 @@ var _ = Describe("Actuator", func() {
 		})
 
 		It("should exit early if the Infrastructure's terraform state is empty", func() {
+			azureClientFactory.EXPECT().Group(ctx, infra.Spec.SecretRef).Return(azureGroupClient, nil)
+			azureGroupClient.EXPECT().Get(ctx, infra.Namespace).Return(&resources.Group{Name: &resourceGroupName}, nil)
+
 			tf.EXPECT().EnsureCleanedUp(ctx)
 			tf.EXPECT().IsStateEmpty(ctx).Return(true)
 			tf.EXPECT().CleanupConfiguration(ctx)
@@ -241,6 +267,9 @@ var _ = Describe("Actuator", func() {
 		})
 
 		It("should return error if terraform state is empty and cleaning up the terraform config fails", func() {
+			azureClientFactory.EXPECT().Group(ctx, infra.Spec.SecretRef).Return(azureGroupClient, nil)
+			azureGroupClient.EXPECT().Get(ctx, infra.Namespace).Return(&resources.Group{Name: &resourceGroupName}, nil)
+
 			tf.EXPECT().EnsureCleanedUp(ctx)
 			tf.EXPECT().IsStateEmpty(ctx).Return(true)
 			tf.EXPECT().CleanupConfiguration(ctx).Return(errors.New("could not clean up terraform config"))
@@ -249,6 +278,9 @@ var _ = Describe("Actuator", func() {
 		})
 
 		It("should return an error if terraform can not be destroyed", func() {
+			azureClientFactory.EXPECT().Group(ctx, infra.Spec.SecretRef).Return(azureGroupClient, nil)
+			azureGroupClient.EXPECT().Get(ctx, infra.Namespace).Return(&resources.Group{Name: &resourceGroupName}, nil)
+
 			tf.EXPECT().EnsureCleanedUp(ctx)
 			tf.EXPECT().IsStateEmpty(ctx).Return(false)
 			tf.EXPECT().InitializeWith(ctx, gomock.Any()).Return(tf)
