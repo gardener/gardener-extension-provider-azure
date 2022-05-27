@@ -125,7 +125,7 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 		gardenerVersion    = new(string)
 		controllerSwitches = azurecmd.ControllerSwitchOptions()
 		webhookSwitches    = azurecmd.WebhookSwitchOptions(gardenerVersion)
-		webhookOptions     = webhookcmd.NewAddToManagerOptions(azure.Name, webhookServerOptions, webhookSwitches)
+		webhookOptions     = webhookcmd.NewAddToManagerOptions(azure.Name, azure.Type, webhookServerOptions, webhookSwitches)
 
 		aggOption = controllercmd.NewOptionAggregator(
 			generalOpts,
@@ -211,7 +211,7 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			reconcileOpts.Completed().Apply(&azurebastion.DefaultAddOptions.IgnoreOperationAnnotation)
 			workerCtrlOpts.Completed().Apply(&azureworker.DefaultAddOptions.Controller)
 
-			if _, _, err := webhookOptions.Completed().AddToManager(ctx, mgr); err != nil {
+			if _, err := webhookOptions.Completed().AddToManager(ctx, mgr); err != nil {
 				return fmt.Errorf("could not add webhooks to manager: %w", err)
 			}
 

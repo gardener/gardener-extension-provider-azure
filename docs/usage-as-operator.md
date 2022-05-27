@@ -13,9 +13,9 @@ This section describes, how the configuration for `CloudProfile`s looks like for
 ### `CloudProfileConfig`
 
 The cloud profile configuration contains information about the real machine image IDs in the Azure environment (image `urn` or `id`).
-You have to map every version that you specify in `.spec.machineImages[].versions` to an available VM image in your subscription. 
-The VM can be from the [Azure Marketplace](https://azuremarketplace.microsoft.com/en-us/marketplace/apps?filters=virtual-machine-images) identified via an `urn` 
-or a custom VM image identified by `id` from a shared image gallery.  
+You have to map every version that you specify in `.spec.machineImages[].versions` to an available VM image in your subscription.
+The VM can be from the [Azure Marketplace](https://azuremarketplace.microsoft.com/en-us/marketplace/apps?filters=virtual-machine-images) identified via an `urn`
+or a custom VM image identified by `id` from a shared image gallery.
 
 An example `CloudProfileConfig` for the Azure extension looks as follows:
 
@@ -132,7 +132,7 @@ The location/region where the backups will be stored defaults to the region of t
 The region of the backup can be different from where the Seed cluster is running.
 However, usually it makes sense to pick the same region for the backup bucket as used for the Seed cluster.
 
-Please find below an example `Seed` manifest (partly) that configures backups using Azure Blob storage. 
+Please find below an example `Seed` manifest (partly) that configures backups using Azure Blob storage.
 
 ```yaml
 ---
