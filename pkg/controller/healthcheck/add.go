@@ -92,12 +92,11 @@ func RegisterHealthChecks(mgr manager.Manager, opts healthcheck.DefaultAddArgs) 
 				HealthCheck:   general.NewSeedDeploymentHealthChecker(azure.CSISnapshotControllerName),
 				PreCheckFunc:  csiEnabledPreCheckFunc,
 			},
-			// TODO(acumino): Enable this health check in v1.28
-			// {
-			// 	ConditionType: string(gardencorev1beta1.ShootControlPlaneHealthy),
-			// 	HealthCheck:   general.NewSeedDeploymentHealthChecker(azure.CSISnapshotValidation),
-			// 	PreCheckFunc:  csiEnabledPreCheckFunc,
-			// },
+			{
+				ConditionType: string(gardencorev1beta1.ShootControlPlaneHealthy),
+				HealthCheck:   general.NewSeedDeploymentHealthChecker(azure.CSISnapshotValidation),
+				PreCheckFunc:  csiEnabledPreCheckFunc,
+			},
 			{
 				ConditionType: string(gardencorev1beta1.ShootSystemComponentsHealthy),
 				HealthCheck:   general.CheckManagedResource(genericcontrolplaneactuator.ControlPlaneShootChartResourceName),
