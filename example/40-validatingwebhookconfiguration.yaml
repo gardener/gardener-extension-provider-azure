@@ -15,6 +15,7 @@ webhooks:
     - UPDATE
     resources:
     - cloudprofiles
+    - secretbindings
     - shoots
   failurePolicy: Fail
   # Please make sure you are running `gardener@v1.42` or later before enabling this
@@ -40,7 +41,9 @@ webhooks:
     resources:
     - secrets
   failurePolicy: Fail
-  objectSelector: {}
+  objectSelector:
+    matchLabels:
+      provider.shoot.gardener.cloud/azure: "true"
   namespaceSelector: {}
   sideEffects: None
   admissionReviewVersions:
