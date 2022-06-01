@@ -64,10 +64,10 @@ csiSnapshotController:
   podAnnotations: {}
   resources:
     requests:
-      cpu: 10m
+      cpu: 33m
       memory: 32Mi
     limits:
-      memory: 50Mi
+      memory: 2.2Gi 
 
 csiSnapshotValidationWebhook:
   replica: 1
