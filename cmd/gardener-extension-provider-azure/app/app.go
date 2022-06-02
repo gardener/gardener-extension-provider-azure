@@ -36,6 +36,7 @@ import (
 	azurebastion "github.com/gardener/gardener-extension-provider-azure/pkg/controller/bastion"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	controllercmd "github.com/gardener/gardener/extensions/pkg/controller/cmd"
+	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
 	"github.com/gardener/gardener/extensions/pkg/util"
 	webhookcmd "github.com/gardener/gardener/extensions/pkg/webhook/cmd"
@@ -125,7 +126,13 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 		gardenerVersion    = new(string)
 		controllerSwitches = azurecmd.ControllerSwitchOptions()
 		webhookSwitches    = azurecmd.WebhookSwitchOptions(gardenerVersion)
-		webhookOptions     = webhookcmd.NewAddToManagerOptions(azure.Name, azure.Type, webhookServerOptions, webhookSwitches)
+		webhookOptions     = webhookcmd.NewAddToManagerOptions(
+			azure.Name,
+			genericactuator.ShootWebhooksResourceName,
+			genericactuator.ShootWebhookNamespaceSelector(azure.Type),
+			webhookServerOptions,
+			webhookSwitches,
+		)
 
 		aggOption = controllercmd.NewOptionAggregator(
 			generalOpts,

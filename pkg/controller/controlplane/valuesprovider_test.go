@@ -357,6 +357,11 @@ var _ = Describe("ValuesProvider", func() {
 
 		BeforeEach(func() {
 			c.EXPECT().Get(ctx, controlPlaneConfigSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(controlPlaneConfigSecret))
+
+			By("creating secrets managed outside of this package for whose secretsmanager.Get() will be called")
+			Expect(fakeClient.Create(context.TODO(), &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "ca-provider-azure-controlplane", Namespace: namespace}})).To(Succeed())
+			Expect(fakeClient.Create(context.TODO(), &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "csi-snapshot-validation-server", Namespace: namespace}})).To(Succeed())
+			Expect(fakeClient.Create(context.TODO(), &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "cloud-controller-manager-server", Namespace: namespace}})).To(Succeed())
 		})
 
 		It("should return correct control plane chart values (k8s < 1.21)", func() {
@@ -503,6 +508,13 @@ var _ = Describe("ValuesProvider", func() {
 				"kubernetesVersion":   "1.21.4",
 			})
 		)
+
+		BeforeEach(func() {
+			By("creating secrets managed outside of this package for whose secretsmanager.Get() will be called")
+			Expect(fakeClient.Create(context.TODO(), &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "ca-provider-azure-controlplane", Namespace: namespace}})).To(Succeed())
+			Expect(fakeClient.Create(context.TODO(), &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "csi-snapshot-validation-server", Namespace: namespace}})).To(Succeed())
+			Expect(fakeClient.Create(context.TODO(), &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "cloud-controller-manager-server", Namespace: namespace}})).To(Succeed())
+		})
 
 		Context("k8s < 1.21", func() {
 			It("should return correct control plane shoot chart values for zoned cluster", func() {
