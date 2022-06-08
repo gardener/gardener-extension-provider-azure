@@ -149,21 +149,25 @@ func getNetworkSecurityGroup(ctx context.Context, factory azureclient.Factory, o
 	return nsgResp, nil
 }
 
-func getWorkersCIDR(cluster *controller.Cluster) (string, error) {
-	InfrastructureConfig := &api.InfrastructureConfig{}
-	err := json.Unmarshal(cluster.Shoot.Spec.Provider.InfrastructureConfig.Raw, InfrastructureConfig)
+func getWorkersCIDR(cluster *controller.Cluster) ([]string, error) {
+	infrastructureConfig := &api.InfrastructureConfig{}
+	err := json.Unmarshal(cluster.Shoot.Spec.Provider.InfrastructureConfig.Raw, infrastructureConfig)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	if len(InfrastructureConfig.Networks.Zones) > 1 {
-		logger.Error(nil, "the current version of bastion-azure doesn't support multiple zones")
+	if len(infrastructureConfig.Networks.Zones) > 1 {
+		var res []string
+		for _, z := range infrastructureConfig.Networks.Zones {
+			res = append(res, z.CIDR)
+			return res, nil
+		}
 	}
 
-	if InfrastructureConfig.Networks.Workers != nil {
-		return *InfrastructureConfig.Networks.Workers, nil
+	if infrastructureConfig.Networks.Workers != nil {
+		return []string{*infrastructureConfig.Networks.Workers}, nil
 	}
-	return "", fmt.Errorf("InfrastructureConfig.Networks.Workers is nil")
+	return nil, fmt.Errorf("InfrastructureConfig.Networks.Workers is nil")
 }
 
 func getPublicIP(ctx context.Context, factory azureclient.Factory, opt *Options) (*network.PublicIPAddress, error) {

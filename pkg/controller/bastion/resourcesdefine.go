@@ -33,7 +33,8 @@ func nicDefine(opt *Options, publicIP *network.PublicIPAddress, subnet *network.
 					Name: to.StringPtr("ipConfig1"),
 					InterfaceIPConfigurationPropertiesFormat: &network.InterfaceIPConfigurationPropertiesFormat{
 						Subnet: &network.Subnet{
-							ID: subnet.ID},
+							ID: subnet.ID,
+						},
 						PrivateIPAllocationMethod: network.Dynamic,
 						PublicIPAddress:           publicIP,
 					},
@@ -150,15 +151,15 @@ func nsgEgressAllowSSHToWorkerIPv4(opt *Options) network.SecurityRule {
 	return network.SecurityRule{
 		Name: to.StringPtr(NSGEgressAllowOnlyResourceName(opt.BastionInstanceName)),
 		SecurityRulePropertiesFormat: &network.SecurityRulePropertiesFormat{
-			Protocol:                 network.SecurityRuleProtocolTCP,
-			SourceAddressPrefix:      &opt.PrivateIPAddressV4,
-			SourcePortRange:          to.StringPtr("*"),
-			DestinationAddressPrefix: to.StringPtr(opt.WorkersCIDR),
-			DestinationPortRange:     to.StringPtr(SSHPort),
-			Access:                   network.SecurityRuleAccessAllow,
-			Direction:                network.SecurityRuleDirectionOutbound,
-			Priority:                 to.Int32Ptr(401),
-			Description:              to.StringPtr("Allow Bastion egress to Shoot workers ipv4"),
+			Protocol:                   network.SecurityRuleProtocolTCP,
+			SourceAddressPrefix:        &opt.PrivateIPAddressV4,
+			SourcePortRange:            to.StringPtr("*"),
+			DestinationAddressPrefixes: to.StringSlicePtr(opt.WorkersCIDR),
+			DestinationPortRange:       to.StringPtr(SSHPort),
+			Access:                     network.SecurityRuleAccessAllow,
+			Direction:                  network.SecurityRuleDirectionOutbound,
+			Priority:                   to.Int32Ptr(401),
+			Description:                to.StringPtr("Allow Bastion egress to Shoot workers ipv4"),
 		},
 	}
 }

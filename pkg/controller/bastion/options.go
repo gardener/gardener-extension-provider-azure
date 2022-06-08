@@ -26,8 +26,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-//Maximum length for "base" name due to fact that we use this name to name other Azure resources,
-//https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules
+// Maximum length for "base" name due to fact that we use this name to name other Azure resources,
+// https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules
 const maxLengthForBaseName = 33
 
 // Options contains provider-related information required for setting up
@@ -46,7 +46,7 @@ type Options struct {
 	NicID               string
 	DiskName            string
 	SecretReference     corev1.SecretReference
-	WorkersCIDR         string
+	WorkersCIDR         []string
 	CIDRs               []string
 	Tags                map[string]*string
 }
