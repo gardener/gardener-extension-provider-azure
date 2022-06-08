@@ -70,10 +70,6 @@ func (a *actuator) Reconcile(ctx context.Context, bastion *extensionsv1alpha1.Ba
 		return err
 	}
 
-	if infrastructureStatus.Networks.Layout != "SingleSubnet" {
-		return fmt.Errorf("unsupported network layout %s", infrastructureStatus.Networks.Layout)
-	}
-
 	if infrastructureStatus.Networks.VNet.Name == "" || len(infrastructureStatus.Networks.Subnets) == 0 {
 		return errors.New("virtual network name and subnet must be set")
 	}
