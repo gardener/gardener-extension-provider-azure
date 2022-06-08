@@ -74,6 +74,6 @@ kind: VolumeSnapshotClass
 metadata:
   name: default
   annotations:
-    snapshot.storage.kubernetes.io/is-default-class: “true”
+    snapshot.storage.kubernetes.io/is-default-class: "true"
 driver: disk.csi.azure.com
 deletionPolicy: Delete
