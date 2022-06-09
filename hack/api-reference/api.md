@@ -16,7 +16,7 @@ Resource Types:
 </li><li>
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.InfrastructureConfig">InfrastructureConfig</a>
 </li><li>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.WorkerStatus">WorkerStatus</a>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig</a>
 </li></ul>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.CloudProfileConfig">CloudProfileConfig
 </h3>
@@ -236,10 +236,10 @@ bool
 </tr>
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.WorkerStatus">WorkerStatus
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig
 </h3>
 <p>
-<p>WorkerStatus contains information about created worker resources.</p>
+<p>WorkerConfig contains configuration settings for the worker nodes.</p>
 </p>
 <table>
 <thead>
@@ -264,38 +264,18 @@ azure.provider.extensions.gardener.cloud/v1alpha1
 <code>kind</code></br>
 string
 </td>
-<td><code>WorkerStatus</code></td>
+<td><code>WorkerConfig</code></td>
 </tr>
 <tr>
 <td>
-<code>machineImages</code></br>
+<code>nodeTemplate</code></br>
 <em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.MachineImage">
-[]MachineImage
-</a>
+github.com/gardener/gardener/pkg/apis/extensions/v1alpha1.NodeTemplate
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>MachineImages is a list of machine images that have been used in this worker. Usually, the extension controller
-gets the mapping from name/version to the provider-specific machine image data in its componentconfig. However, if
-a version that is still in use gets removed from this componentconfig it cannot reconcile anymore existing <code>Worker</code>
-resources that are still using this version. Hence, it stores the used versions in the provider status to ensure
-reconciliation is possible.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>vmoDependencies</code></br>
-<em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.VmoDependency">
-[]VmoDependency
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>VmoDependencies is a list of external VirtualMachineScaleSet Orchestration Mode VM (VMO) dependencies.</p>
+<p>NodeTemplate contains resource information of the machine which is used by Cluster Autoscaler to generate nodeTemplate during scaling a nodeGroup from zero.</p>
 </td>
 </tr>
 </tbody>
@@ -1500,6 +1480,53 @@ string
 </td>
 <td>
 <p>Name is the name of the VMO resource on Azure.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.WorkerStatus">WorkerStatus
+</h3>
+<p>
+<p>WorkerStatus contains information about created worker resources.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>machineImages</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.MachineImage">
+[]MachineImage
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MachineImages is a list of machine images that have been used in this worker. Usually, the extension controller
+gets the mapping from name/version to the provider-specific machine image data in its componentconfig. However, if
+a version that is still in use gets removed from this componentconfig it cannot reconcile anymore existing <code>Worker</code>
+resources that are still using this version. Hence, it stores the used versions in the provider status to ensure
+reconciliation is possible.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>vmoDependencies</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.VmoDependency">
+[]VmoDependency
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>VmoDependencies is a list of external VirtualMachineScaleSet Orchestration Mode VM (VMO) dependencies.</p>
 </td>
 </tr>
 </tbody>
