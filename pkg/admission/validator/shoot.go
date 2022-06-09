@@ -126,6 +126,16 @@ func (s *shoot) validateShoot(shoot *core.Shoot, oldInfraConfig, infraConfig *ap
 	// Shoot workers
 	allErrs = append(allErrs, azurevalidation.ValidateWorkers(shoot.Spec.Provider.Workers, infraConfig, workersPath)...)
 
+	for i, worker := range shoot.Spec.Provider.Workers {
+		workerFldPath := workersPath.Index(i)
+		workerConfig, err := decodeWorkerConfig(s.decoder, worker.ProviderConfig)
+		if err != nil {
+			allErrs = append(allErrs, field.Invalid(workerFldPath.Child("providerConfig"), err, "invalid providerConfig"))
+		} else {
+			allErrs = append(allErrs, azurevalidation.ValidateWorkerConfig(workerConfig, workerFldPath.Child("providerConfig"))...)
+		}
+	}
+
 	return allErrs
 }
 
