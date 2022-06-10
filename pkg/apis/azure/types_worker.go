@@ -28,6 +28,9 @@ type WorkerConfig struct {
 	NodeTemplate *extensionsv1alpha1.NodeTemplate
 }
 
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 // WorkerStatus contains information about created worker resources.
 type WorkerStatus struct {
 	metav1.TypeMeta
