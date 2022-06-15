@@ -46,9 +46,9 @@ var _ = Describe("ValidateWorkerConfig", func() {
 		It("should return no errors for a valid nodetemplate configuration", func() {
 			worker.NodeTemplate = &extensionsv1alpha1.NodeTemplate{
 				Capacity: corev1.ResourceList{
-					"cpu":    resource.MustParse("1"),
-					"memory": resource.MustParse("50Gi"),
-					"gpu":    resource.MustParse("0"),
+					corev1.ResourceCPU:    resource.MustParse("1"),
+					corev1.ResourceMemory: resource.MustParse("50Gi"),
+					"gpu":                 resource.MustParse("0"),
 				},
 			}
 			Expect(ValidateWorkerConfig(worker, fldPath)).To(BeEmpty())
@@ -76,9 +76,9 @@ var _ = Describe("ValidateWorkerConfig", func() {
 		It("should return error when resource value is negative", func() {
 			worker.NodeTemplate = &extensionsv1alpha1.NodeTemplate{
 				Capacity: corev1.ResourceList{
-					"cpu":    resource.MustParse("1"),
-					"memory": resource.MustParse("-50Gi"),
-					"gpu":    resource.MustParse("0"),
+					corev1.ResourceCPU:    resource.MustParse("1"),
+					corev1.ResourceMemory: resource.MustParse("-50Gi"),
+					"gpu":                 resource.MustParse("0"),
 				},
 			}
 

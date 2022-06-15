@@ -42,7 +42,7 @@ func validateNodeTemplate(nodeTemplate *extensionsv1alpha1.NodeTemplate, fldPath
 	if nodeTemplate == nil {
 		return nil
 	}
-	for _, capacityAttribute := range []corev1.ResourceName{"cpu", "gpu", "memory"} {
+	for _, capacityAttribute := range []corev1.ResourceName{corev1.ResourceCPU, "gpu", corev1.ResourceMemory} {
 		value, ok := nodeTemplate.Capacity[capacityAttribute]
 		if !ok {
 			allErrs = append(allErrs, field.Required(fldPath.Child("nodeTemplate").Child("capacity"), fmt.Sprintf("%s is a mandatory field", capacityAttribute)))
