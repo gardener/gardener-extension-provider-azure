@@ -136,6 +136,27 @@ func (e *ensurer) EnsureKubeSchedulerDeployment(ctx context.Context, gctx gconte
 	return nil
 }
 
+// EnsureClusterAutoscalerDeployment ensures that the cluster-autoscaler deployment conforms to the provider requirements.
+func (e *ensurer) EnsureClusterAutoscalerDeployment(ctx context.Context, gctx gcontext.GardenContext, new, _ *appsv1.Deployment) error {
+	template := &new.Spec.Template
+	ps := &template.Spec
+
+	cluster, err := gctx.GetCluster(ctx)
+	if err != nil {
+		return err
+	}
+
+	csiEnabled, csiMigrationComplete, err := csimigration.CheckCSIConditions(cluster, azure.CSIMigrationKubernetesVersion)
+	if err != nil {
+		return err
+	}
+
+	if c := extensionswebhook.ContainerWithName(ps.Containers, "cluster-autoscaler"); c != nil {
+		ensureClusterAutoscalerCommandLineArgs(c, csiEnabled, csiMigrationComplete)
+	}
+	return nil
+}
+
 func ensureKubeAPIServerCommandLineArgs(c *corev1.Container, csiEnabled, csiMigrationComplete bool) {
 	if csiEnabled {
 		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
@@ -197,6 +218,25 @@ func ensureKubeControllerManagerCommandLineArgs(c *corev1.Container, csiEnabled,
 }
 
 func ensureKubeSchedulerCommandLineArgs(c *corev1.Container, csiEnabled, csiMigrationComplete bool) {
+	if csiEnabled {
+		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
+			"CSIMigration=true", ",")
+		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
+			"CSIMigrationAzureDisk=true", ",")
+		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
+			"CSIMigrationAzureFile=true", ",")
+
+		if csiMigrationComplete {
+			c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
+				"InTreePluginAzureDiskUnregister=true", ",")
+			c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
+				"InTreePluginAzureFileUnregister=true", ",")
+			return
+		}
+	}
+}
+
+func ensureClusterAutoscalerCommandLineArgs(c *corev1.Container, csiEnabled, csiMigrationComplete bool) {
 	if csiEnabled {
 		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 			"CSIMigration=true", ",")
