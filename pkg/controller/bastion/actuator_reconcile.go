@@ -70,10 +70,6 @@ func (a *actuator) Reconcile(ctx context.Context, bastion *extensionsv1alpha1.Ba
 		return err
 	}
 
-	if infrastructureStatus.Networks.Layout != "SingleSubnet" {
-		return fmt.Errorf("unsupported network layout %s", infrastructureStatus.Networks.Layout)
-	}
-
 	if infrastructureStatus.Networks.VNet.Name == "" || len(infrastructureStatus.Networks.Subnets) == 0 {
 		return errors.New("virtual network name and subnet must be set")
 	}
@@ -127,10 +123,13 @@ func (a *actuator) Reconcile(ctx context.Context, bastion *extensionsv1alpha1.Ba
 }
 
 func getInfrastructureStatus(ctx context.Context, a *actuator, cluster *extensions.Cluster) (*azure.InfrastructureStatus, error) {
-	var infrastructureStatus *azure.InfrastructureStatus
+	var (
+		infrastructureStatus *azure.InfrastructureStatus
+		err                  error
+	)
+
 	worker := &extensionsv1alpha1.Worker{}
-	err := a.client.Get(ctx, client.ObjectKey{Namespace: cluster.ObjectMeta.Name, Name: cluster.Shoot.Name}, worker)
-	if err != nil {
+	if err = a.client.Get(ctx, client.ObjectKey{Namespace: cluster.ObjectMeta.Name, Name: cluster.Shoot.Name}, worker); err != nil {
 		return nil, err
 	}
 
@@ -284,7 +283,6 @@ func ensureComputeInstance(ctx context.Context, logger logr.Logger, bastion *ext
 	publickey, err := createSSHPublicKey()
 	if err != nil {
 		return err
-
 	}
 	parameters := computeInstanceDefine(opt, bastion, publickey)
 
@@ -389,7 +387,6 @@ func expectedNSGRulesPresentAndValid(existingRules *[]network.SecurityRule, expe
 	for _, desRule := range *expectedRules {
 		ruleExistAndValid := false
 		for _, existingRule := range *existingRules {
-
 			// compare firewall rules by its names because names here kind of "IDs"
 			if equalNotNil(desRule.Name, existingRule.Name) {
 				if notEqualNotNil(desRule.SourceAddressPrefix, existingRule.SourceAddressPrefix) {
@@ -400,7 +397,6 @@ func expectedNSGRulesPresentAndValid(existingRules *[]network.SecurityRule, expe
 				}
 				ruleExistAndValid = true
 			}
-
 		}
 		if !ruleExistAndValid {
 			return false
