@@ -26,19 +26,21 @@ import (
 )
 
 var (
-	profileURN = "publisher:offer:sku:1.2.4"
-	profileID  = "/subscription/image/id"
+	profileURN              = "publisher:offer:sku:1.2.4"
+	profileID               = "/subscription/image/id"
+	profileCommunityImageId = "/CommunityGalleries/myGallery/Images/myImage/Versions/1.2.4"
 )
 
 var _ = Describe("Helper", func() {
 	var (
-		purpose      api.Purpose = "foo"
-		purposeWrong api.Purpose = "baz"
-		urn          string      = "publisher:offer:sku:version"
-		imageID      string      = "/image/id"
-		boolTrue                 = true
-		boolFalse                = false
-		zone                     = "zone"
+		purpose          api.Purpose = "foo"
+		purposeWrong     api.Purpose = "baz"
+		urn              string      = "publisher:offer:sku:version"
+		imageID          string      = "/image/id"
+		communityImageId string      = "/CommunityGalleries/myGallery/Images/myImage/Versions/1.0.0"
+		boolTrue                     = true
+		boolFalse                    = false
+		zone                         = "zone"
 	)
 
 	DescribeTable("#FindSubnetByPurposeAndZone",
@@ -103,6 +105,7 @@ var _ = Describe("Helper", func() {
 		Entry("entry not found (no version)", []api.MachineImage{{Name: "bar", Version: "1.2.3", URN: &urn}}, "bar", "1.2.4", nil, true),
 		Entry("entry exists(urn)", []api.MachineImage{{Name: "bar", Version: "1.2.3", URN: &urn}}, "bar", "1.2.3", &api.MachineImage{Name: "bar", Version: "1.2.3", URN: &urn}, false),
 		Entry("entry exists(id)", []api.MachineImage{{Name: "bar", Version: "1.2.3", ID: &imageID}}, "bar", "1.2.3", &api.MachineImage{Name: "bar", Version: "1.2.3", ID: &imageID}, false),
+		Entry("entry exists(communityGalleryImageID)", []api.MachineImage{{Name: "bar", Version: "1.2.3", CommunityGalleryImageID: &communityImageId}}, "bar", "1.2.3", &api.MachineImage{Name: "bar", Version: "1.2.3", CommunityGalleryImageID: &communityImageId}, false),
 		Entry("entry exists(accelerated networking active)", []api.MachineImage{{Name: "bar", Version: "1.2.3", URN: &urn, AcceleratedNetworking: &boolTrue}}, "bar", "1.2.3", &api.MachineImage{Name: "bar", Version: "1.2.3", URN: &urn, AcceleratedNetworking: &boolTrue}, false),
 		Entry("entry exists(accelerated networking inactive)", []api.MachineImage{{Name: "bar", Version: "1.2.3", URN: &urn, AcceleratedNetworking: &boolFalse}}, "bar", "1.2.3", &api.MachineImage{Name: "bar", Version: "1.2.3", URN: &urn, AcceleratedNetworking: &boolFalse}, false),
 	)
@@ -136,13 +139,15 @@ var _ = Describe("Helper", func() {
 		Entry("list is nil", nil, "ubuntu", "1", nil),
 
 		Entry("profile empty list", []api.MachineImages{}, "ubuntu", "1", nil),
-		Entry("profile entry not found (image does not exist)", makeProfileMachineImages("debian", "1", "3"), "ubuntu", "1", nil),
-		Entry("profile entry not found (version does not exist)", makeProfileMachineImages("ubuntu", "2", "4"), "ubuntu", "1", nil),
-		Entry("profile entry(urn)", makeProfileMachineImages("ubuntu", "1", "3"), "ubuntu", "1", &api.MachineImage{Name: "ubuntu", Version: "1", URN: &profileURN}),
-		Entry("profile entry(id)", makeProfileMachineImages("ubuntu", "1", "3"), "ubuntu", "3", &api.MachineImage{Name: "ubuntu", Version: "3", ID: &profileID}),
+		Entry("profile entry not found (image does not exist)", makeProfileMachineImages("debian", "1", "3", "5"), "ubuntu", "1", nil),
+		Entry("profile entry not found (version does not exist)", makeProfileMachineImages("ubuntu", "2", "4", "6"), "ubuntu", "1", nil),
+		Entry("profile entry(urn)", makeProfileMachineImages("ubuntu", "1", "3", "5"), "ubuntu", "1", &api.MachineImage{Name: "ubuntu", Version: "1", URN: &profileURN}),
+		Entry("profile entry(id)", makeProfileMachineImages("ubuntu", "1", "3", "5"), "ubuntu", "3", &api.MachineImage{Name: "ubuntu", Version: "3", ID: &profileID}),
+		Entry("profile entry(communiyGalleryId)", makeProfileMachineImages("ubuntu", "1", "3", "5"), "ubuntu", "5", &api.MachineImage{Name: "ubuntu", Version: "5", CommunityGalleryImageID: &profileCommunityImageId}),
 
-		Entry("valid image reference, only urn", makeProfileMachineImageWithIDandURN("ubuntu", "1", &profileURN, nil), "ubuntu", "1", &api.MachineImage{Name: "ubuntu", Version: "1", URN: &profileURN}),
-		Entry("valid image reference, only id", makeProfileMachineImageWithIDandURN("ubuntu", "1", nil, &profileID), "ubuntu", "1", &api.MachineImage{Name: "ubuntu", Version: "1", ID: &profileID}),
+		Entry("valid image reference, only urn", makeProfileMachineImageWithIDandURN("ubuntu", "1", &profileURN, nil, nil), "ubuntu", "1", &api.MachineImage{Name: "ubuntu", Version: "1", URN: &profileURN}),
+		Entry("valid image reference, only id", makeProfileMachineImageWithIDandURN("ubuntu", "1", nil, &profileID, nil), "ubuntu", "1", &api.MachineImage{Name: "ubuntu", Version: "1", ID: &profileID}),
+		Entry("valid image reference, only communityGalleryImageID", makeProfileMachineImageWithIDandURN("ubuntu", "1", nil, nil, &profileCommunityImageId), "ubuntu", "1", &api.MachineImage{Name: "ubuntu", Version: "1", CommunityGalleryImageID: &profileCommunityImageId}),
 	)
 
 	DescribeTable("#IsVmoRequired",
@@ -182,7 +187,7 @@ var _ = Describe("Helper", func() {
 	)
 })
 
-func makeProfileMachineImages(name, urnVersion, idVersion string) []api.MachineImages {
+func makeProfileMachineImages(name, urnVersion, idVersion, communityGalleryImageIdVersion string) []api.MachineImages {
 	return []api.MachineImages{
 		{
 			Name: name,
@@ -195,20 +200,25 @@ func makeProfileMachineImages(name, urnVersion, idVersion string) []api.MachineI
 					Version: idVersion,
 					ID:      &profileID,
 				},
+				{
+					Version:                 communityGalleryImageIdVersion,
+					CommunityGalleryImageID: &profileCommunityImageId,
+				},
 			},
 		},
 	}
 }
 
-func makeProfileMachineImageWithIDandURN(name, version string, urn, id *string) []api.MachineImages {
+func makeProfileMachineImageWithIDandURN(name, version string, urn, id, communityGalleryImageID *string) []api.MachineImages {
 	return []api.MachineImages{
 		{
 			Name: name,
 			Versions: []api.MachineImageVersion{
 				{
-					Version: version,
-					URN:     urn,
-					ID:      id,
+					Version:                 version,
+					URN:                     urn,
+					ID:                      id,
+					CommunityGalleryImageID: communityGalleryImageID,
 				},
 			},
 		},

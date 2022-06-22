@@ -58,6 +58,8 @@ providerSpec:
       imageReference:
 {{- if $machineClass.image.id }}
         id: {{ $machineClass.image.id }}
+{{- else if $machineClass.image.communityGalleryImageID }}
+        communityGalleryImageID: {{ $machineClass.image.communityGalleryImageID }}
 {{- else }}
         urn: {{ $machineClass.image.urn }}
 {{- end }}

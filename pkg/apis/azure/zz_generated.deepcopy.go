@@ -304,6 +304,11 @@ func (in *MachineImage) DeepCopyInto(out *MachineImage) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.CommunityGalleryImageID != nil {
+		in, out := &in.CommunityGalleryImageID, &out.CommunityGalleryImageID
+		*out = new(string)
+		**out = **in
+	}
 	if in.AcceleratedNetworking != nil {
 		in, out := &in.AcceleratedNetworking, &out.AcceleratedNetworking
 		*out = new(bool)
@@ -332,6 +337,11 @@ func (in *MachineImageVersion) DeepCopyInto(out *MachineImageVersion) {
 	}
 	if in.ID != nil {
 		in, out := &in.ID, &out.ID
+		*out = new(string)
+		**out = **in
+	}
+	if in.CommunityGalleryImageID != nil {
+		in, out := &in.CommunityGalleryImageID, &out.CommunityGalleryImageID
 		*out = new(string)
 		**out = **in
 	}
