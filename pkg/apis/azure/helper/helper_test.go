@@ -145,9 +145,12 @@ var _ = Describe("Helper", func() {
 		Entry("profile entry(id)", makeProfileMachineImages("ubuntu", "1", "3", "5"), "ubuntu", "3", &api.MachineImage{Name: "ubuntu", Version: "3", ID: &profileID}),
 		Entry("profile entry(communiyGalleryId)", makeProfileMachineImages("ubuntu", "1", "3", "5"), "ubuntu", "5", &api.MachineImage{Name: "ubuntu", Version: "5", CommunityGalleryImageID: &profileCommunityImageId}),
 
-		Entry("valid image reference, only urn", makeProfileMachineImageWithIDandURN("ubuntu", "1", &profileURN, nil, nil), "ubuntu", "1", &api.MachineImage{Name: "ubuntu", Version: "1", URN: &profileURN}),
-		Entry("valid image reference, only id", makeProfileMachineImageWithIDandURN("ubuntu", "1", nil, &profileID, nil), "ubuntu", "1", &api.MachineImage{Name: "ubuntu", Version: "1", ID: &profileID}),
-		Entry("valid image reference, only communityGalleryImageID", makeProfileMachineImageWithIDandURN("ubuntu", "1", nil, nil, &profileCommunityImageId), "ubuntu", "1", &api.MachineImage{Name: "ubuntu", Version: "1", CommunityGalleryImageID: &profileCommunityImageId}),
+		Entry("valid image reference, only urn", makeProfileMachineImageWithURNandIDandCommunityGalleryID("ubuntu", "1", &profileURN, nil, nil),
+			"ubuntu", "1", &api.MachineImage{Name: "ubuntu", Version: "1", URN: &profileURN}),
+		Entry("valid image reference, only id", makeProfileMachineImageWithURNandIDandCommunityGalleryID("ubuntu", "1", nil, &profileID, nil),
+			"ubuntu", "1", &api.MachineImage{Name: "ubuntu", Version: "1", ID: &profileID}),
+		Entry("valid image reference, only communityGalleryImageID", makeProfileMachineImageWithURNandIDandCommunityGalleryID("ubuntu", "1", nil, nil, &profileCommunityImageId),
+			"ubuntu", "1", &api.MachineImage{Name: "ubuntu", Version: "1", CommunityGalleryImageID: &profileCommunityImageId}),
 	)
 
 	DescribeTable("#IsVmoRequired",
@@ -209,7 +212,7 @@ func makeProfileMachineImages(name, urnVersion, idVersion, communityGalleryImage
 	}
 }
 
-func makeProfileMachineImageWithIDandURN(name, version string, urn, id, communityGalleryImageID *string) []api.MachineImages {
+func makeProfileMachineImageWithURNandIDandCommunityGalleryID(name, version string, urn, id, communityGalleryImageID *string) []api.MachineImages {
 	return []api.MachineImages{
 		{
 			Name: name,

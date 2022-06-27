@@ -69,7 +69,7 @@ func ValidateCloudProfileConfig(cloudProfile *apisazure.CloudProfileConfig, fldP
 				} else if len(strings.Split(*version.CommunityGalleryImageID, "/")) != 7 {
 					allErrs = append(allErrs, field.Invalid(jdxPath.Child("communityGalleryImageID"),
 						version.CommunityGalleryImageID, "please use the format `/CommunityGalleries/<gallery id>/Images/<image id>/versions/<version id>` for the communityGalleryImageID"))
-				} else if strings.Split(*version.CommunityGalleryImageID, "/")[1] != "CommunityGalleries" {
+				} else if !strings.EqualFold(strings.Split(*version.CommunityGalleryImageID, "/")[1], "CommunityGalleries") {
 					allErrs = append(allErrs, field.Invalid(jdxPath.Child("communityGalleryImageID"),
 						version.CommunityGalleryImageID, "communityGalleryImageID must start with '/CommunityGalleries/' prefix"))
 				}
