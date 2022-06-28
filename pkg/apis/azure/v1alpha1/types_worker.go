@@ -50,6 +50,9 @@ type MachineImage struct {
 	// ID is the VM image ID
 	// +optional
 	ID *string `json:"id,omitempty"`
+	// CommunityGalleryImageID is the Community Image Gallery image id.
+	// +optional
+	CommunityGalleryImageID *string `json:"communityGalleryImageID,omitempty"`
 	// AcceleratedNetworking is an indicator if the image supports Azure accelerated networking.
 	// +optional
 	AcceleratedNetworking *bool `json:"acceleratedNetworking,omitempty"`

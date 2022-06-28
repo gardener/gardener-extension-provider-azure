@@ -59,6 +59,8 @@ type MachineImageVersion struct {
 	URN *string
 	// ID is the Shared Image Gallery image id.
 	ID *string
+	// CommunityGalleryImageID is the Community Image Gallery image id, it has the format '/CommunityGalleries/myGallery/Images/myImage/Versions/myVersion'
+	CommunityGalleryImageID *string
 	// AcceleratedNetworking is an indicator if the image supports Azure accelerated networking.
 	AcceleratedNetworking *bool
 }

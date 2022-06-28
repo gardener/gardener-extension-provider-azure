@@ -50,9 +50,9 @@ func ValidateCloudProfileConfig(cloudProfile *apisazure.CloudProfileConfig, fldP
 			if len(version.Version) == 0 {
 				allErrs = append(allErrs, field.Required(jdxPath.Child("version"), "must provide a version"))
 			}
-			if (version.URN == nil && version.ID == nil) || (version.URN != nil && version.ID != nil) {
-				allErrs = append(allErrs, field.Required(jdxPath, "must provide either urn or id"))
-			}
+
+			allErrs = append(allErrs, validateProvidedImageIdCount(version, jdxPath)...)
+
 			if version.URN != nil {
 				if len(*version.URN) == 0 {
 					allErrs = append(allErrs, field.Required(jdxPath.Child("urn"), "urn cannot be empty when defined"))
@@ -63,7 +63,42 @@ func ValidateCloudProfileConfig(cloudProfile *apisazure.CloudProfileConfig, fldP
 			if version.ID != nil && len(*version.ID) == 0 {
 				allErrs = append(allErrs, field.Required(jdxPath.Child("id"), "id cannot be empty when defined"))
 			}
+			if version.CommunityGalleryImageID != nil {
+				if len(*version.CommunityGalleryImageID) == 0 {
+					allErrs = append(allErrs, field.Required(jdxPath.Child("communityGalleryImageID"), "communityGalleryImageID cannot be empty when defined"))
+				} else if len(strings.Split(*version.CommunityGalleryImageID, "/")) != 7 {
+					allErrs = append(allErrs, field.Invalid(jdxPath.Child("communityGalleryImageID"),
+						version.CommunityGalleryImageID, "please use the format `/CommunityGalleries/<gallery id>/Images/<image id>/versions/<version id>` for the communityGalleryImageID"))
+				} else if !strings.EqualFold(strings.Split(*version.CommunityGalleryImageID, "/")[1], "CommunityGalleries") {
+					allErrs = append(allErrs, field.Invalid(jdxPath.Child("communityGalleryImageID"),
+						version.CommunityGalleryImageID, "communityGalleryImageID must start with '/CommunityGalleries/' prefix"))
+				}
+			}
 		}
+	}
+
+	return allErrs
+}
+
+// validateProvidedImageIdCount validates that only one of urn/id/communityGalleryImageID is provided
+func validateProvidedImageIdCount(version apisazure.MachineImageVersion, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	idCount := 0
+
+	if version.URN != nil {
+		idCount++
+	}
+
+	if version.ID != nil {
+		idCount++
+	}
+
+	if version.CommunityGalleryImageID != nil {
+		idCount++
+	}
+
+	if idCount != 1 {
+		allErrs = append(allErrs, field.Required(fldPath, "must provide either urn, id or communityGalleryImageID"))
 	}
 
 	return allErrs

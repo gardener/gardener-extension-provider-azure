@@ -27,8 +27,9 @@ import (
 )
 
 var (
-	urn = "Publisher:Offer:Sku:Version"
-	id  = "/subscription/id/image/id"
+	urn                     = "Publisher:Offer:Sku:Version"
+	id                      = "/subscription/id/image/id"
+	communityGalleryImageID = "/CommunityGalleries/id/Images/myImageDefinition/versions/version"
 )
 
 var _ = Describe("CloudProfileConfig validation", func() {
@@ -140,16 +141,15 @@ var _ = Describe("CloudProfileConfig validation", func() {
 				Entry("empty id", "", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeRequired), "Field": Equal("root.machineImages[0].versions[0].id")})))),
 			)
 
-			DescribeTable("forbid invalid image reference coniguration",
-				func(urn, id *string, matcher gomegatypes.GomegaMatcher) {
+			DescribeTable("forbid unsupported communityGalleryImageID",
+				func(communityGalleryImageID string, matcher gomegatypes.GomegaMatcher) {
 					cloudProfileConfig.MachineImages = []apisazure.MachineImages{
 						{
-							Name: "my-image",
+							Name: "my-communiyImage",
 							Versions: []apisazure.MachineImageVersion{
 								{
-									Version: "1.2.3",
-									ID:      id,
-									URN:     urn,
+									Version:                 "1.2.3",
+									CommunityGalleryImageID: &communityGalleryImageID,
 								},
 							},
 						},
@@ -159,15 +159,51 @@ var _ = Describe("CloudProfileConfig validation", func() {
 
 					Expect(errorList).To(matcher)
 				},
-				Entry("only valid URN", &urn, nil, BeEmpty()),
-				Entry("only valid ID", nil, &id, BeEmpty()),
-				Entry("urn and id are nil", nil, nil, ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+				Entry("correct id", communityGalleryImageID, BeEmpty()),
+				Entry("incorrect number of parts id", "/too/little/parts/id", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeInvalid), "Field": Equal("root.machineImages[0].versions[0].communityGalleryImageID")})))),
+				Entry("incorrect number of parts id", "/there/are/way/too/many/parts/in/this/id", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeInvalid), "Field": Equal("root.machineImages[0].versions[0].communityGalleryImageID")})))),
+				Entry("does not start with correct prefix", "/somegallery/id/Images/myImageDefinition/versions/version", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeInvalid), "Field": Equal("root.machineImages[0].versions[0].communityGalleryImageID")})))),
+			)
+
+			DescribeTable("forbid invalid image reference configuration",
+				func(urn, id *string, communityGalleryImageID *string, matcher gomegatypes.GomegaMatcher) {
+					cloudProfileConfig.MachineImages = []apisazure.MachineImages{
+						{
+							Name: "my-image",
+							Versions: []apisazure.MachineImageVersion{
+								{
+									Version:                 "1.2.3",
+									ID:                      id,
+									CommunityGalleryImageID: communityGalleryImageID,
+									URN:                     urn,
+								},
+							},
+						},
+					}
+
+					errorList := ValidateCloudProfileConfig(cloudProfileConfig, root)
+
+					Expect(errorList).To(matcher)
+				},
+				Entry("only valid URN", &urn, nil, nil, BeEmpty()),
+				Entry("only valid ID", nil, &id, nil, BeEmpty()),
+				Entry("only valid CommunityGalleryImageID", nil, nil, &communityGalleryImageID, BeEmpty()),
+				Entry("urn, id and communityGalleryImageID are nil", nil, nil, nil, ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
 					"Field": Equal("root.machineImages[0].versions[0]")})))),
-				Entry("urn and id are non-empty", &urn, &id, ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+				Entry("urn and id are non-empty", &urn, &id, nil, ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
 					"Field": Equal("root.machineImages[0].versions[0]")})))),
-				Entry("urn and id are empty", pointer.StringPtr(""), pointer.StringPtr(""), ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+				Entry("urn and communityGalleryImageID are non-empty", &urn, nil, &communityGalleryImageID, ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeRequired),
+					"Field": Equal("root.machineImages[0].versions[0]")})))),
+				Entry("id and communityGalleryImageID are non-empty", nil, &id, &communityGalleryImageID, ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeRequired),
+					"Field": Equal("root.machineImages[0].versions[0]")})))),
+				Entry("urn, id and communityGalleryImageID are non-empty", &urn, &id, &communityGalleryImageID, ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeRequired),
+					"Field": Equal("root.machineImages[0].versions[0]")})))),
+				Entry("urn, id and communityGalleryImageID are empty", pointer.StringPtr(""), pointer.StringPtr(""), pointer.StringPtr(""), ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
 					"Field": Equal("root.machineImages[0].versions[0]"),
 				})), PointTo(MatchFields(IgnoreExtras, Fields{
@@ -176,6 +212,9 @@ var _ = Describe("CloudProfileConfig validation", func() {
 				})), PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
 					"Field": Equal("root.machineImages[0].versions[0].urn"),
+				})), PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeRequired),
+					"Field": Equal("root.machineImages[0].versions[0].communityGalleryImageID"),
 				})))))
 
 			It("should forbid unsupported machine image version configuration", func() {

@@ -32,6 +32,7 @@ machineClasses:
   image:
     urn: "CoreOS:CoreOS:Stable:1576.5.0"
     #id: "/subscriptions/<subscription ID where the gallery is located>/resourceGroups/myGalleryRG/providers/Microsoft.Compute/galleries/myGallery/images/myImageDefinition/versions/1.0.0"
+    #communityGalleryImageID: "/CommunityGalleries/<community gallery id>/Images/myImageDefinition/versions/1.0.0"
   osDisk:
     size: 50
     #type: Standard_LRS
@@ -58,6 +59,7 @@ machineClasses:
   image:
     #urn: "CoreOS:CoreOS:Stable:1576.5.0"
     id: "/subscriptions/<subscription ID where the gallery is located>/resourceGroups/myGalleryRG/providers/Microsoft.Compute/galleries/myGallery/images/myImageDefinition/versions/1.0.0"
+    #communityGalleryImageID: "/CommunityGalleries/<community gallery id>/Images/myImageDefinition/versions/1.0.0"
   osDisk:
     size: 50
     type: Standard_LRS
@@ -90,6 +92,7 @@ machineClasses:
   image:
     #urn: "CoreOS:CoreOS:Stable:1576.5.0"
     id: "/subscriptions/<subscription ID where the gallery is located>/resourceGroups/myGalleryRG/providers/Microsoft.Compute/galleries/myGallery/images/myImageDefinition/versions/1.0.0"
+    #communityGalleryImageID: "/CommunityGalleries/<community gallery id>/Images/myImageDefinition/versions/1.0.0"
   osDisk:
     size: 50
     type: Standard_LRS

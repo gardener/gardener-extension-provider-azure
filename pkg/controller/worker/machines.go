@@ -127,21 +127,24 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			return err
 		}
 
-		urn, id, imageSupportAcceleratedNetworking, err := w.findMachineImage(pool.MachineImage.Name, pool.MachineImage.Version)
+		urn, id, communityGalleryImageID, imageSupportAcceleratedNetworking, err := w.findMachineImage(pool.MachineImage.Name, pool.MachineImage.Version)
 		if err != nil {
 			return err
 		}
 		machineImages = appendMachineImage(machineImages, azureapi.MachineImage{
-			Name:                  pool.MachineImage.Name,
-			Version:               pool.MachineImage.Version,
-			URN:                   urn,
-			ID:                    id,
-			AcceleratedNetworking: imageSupportAcceleratedNetworking,
+			Name:                    pool.MachineImage.Name,
+			Version:                 pool.MachineImage.Version,
+			URN:                     urn,
+			ID:                      id,
+			CommunityGalleryImageID: communityGalleryImageID,
+			AcceleratedNetworking:   imageSupportAcceleratedNetworking,
 		})
 
 		image := map[string]interface{}{}
 		if urn != nil {
 			image["urn"] = *urn
+		} else if communityGalleryImageID != nil {
+			image["communityGalleryImageID"] = *communityGalleryImageID
 		} else {
 			image["id"] = *id
 		}

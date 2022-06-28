@@ -12,10 +12,9 @@ This section describes, how the configuration for `CloudProfile`s looks like for
 
 ### `CloudProfileConfig`
 
-The cloud profile configuration contains information about the real machine image IDs in the Azure environment (image `urn` or `id`).
+The cloud profile configuration contains information about the real machine image IDs in the Azure environment (image `urn`, `id` or `communityGalleryImageID`).
 You have to map every version that you specify in `.spec.machineImages[].versions` to an available VM image in your subscription.
-The VM can be from the [Azure Marketplace](https://azuremarketplace.microsoft.com/en-us/marketplace/apps?filters=virtual-machine-images) identified via an `urn`
-or a custom VM image identified by `id` from a shared image gallery.
+The VM image can be either from the [Azure Marketplace](https://azuremarketplace.microsoft.com/en-us/marketplace/apps?filters=virtual-machine-images) and will then get identified via an `urn`,, it can be a custom VM image from a shared image gallery and is then identified by its `id` or it can be from a community image gallery and is then identified by its `communityGalleryImageID`.
 
 An example `CloudProfileConfig` for the Azure extension looks as follows:
 
@@ -42,6 +41,10 @@ machineImages:
   versions:
   - version: 1.0.0
     id: "/subscriptions/<subscription ID where the gallery is located>/resourceGroups/myGalleryRG/providers/Microsoft.Compute/galleries/myGallery/images/myImageDefinition/versions/1.0.0"
+- name: GardenLinuxCommunityImage
+  versions:
+  - version: 1.0.0
+    communityGalleryImageID: "/CommunityGalleries/gardenlinux-567905d8-921f-4a85-b423-1fbf4e249d90/Images/gardenlinux/Versions/576.1.1"
 ```
 
 The cloud profile configuration contains information about the update via `.countUpdateDomains[]` and failure domain via `.countFaultDomains[]` counts in the Azure regions you want to offer.

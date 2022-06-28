@@ -45,6 +45,8 @@ type MachineImage struct {
 	URN *string
 	// ID is the VM image ID
 	ID *string
+	// CommunityGalleryImageID is the Community Image Gallery image id.
+	CommunityGalleryImageID *string
 	// AcceleratedNetworking is an indicator if the image supports Azure accelerated networking.
 	AcceleratedNetworking *bool
 }
