@@ -71,6 +71,13 @@ Gardener allows you to create a Kubernetes cluster on different infrastructure p
     >After completing these steps, you should see your newly created secret in the *Infrastructure Secrets* section.
 
     <img src="images/secret-stored.png">
+    
+1. Register resource providers for your subscription.
+    1. go to your azure dashboard
+    1. go to subscriptions -> <your_subscription>
+    1. pick resource providers from the sidebar
+      1. register microsoft.Network
+      1. register microsoft.Compute
 
 1. To create a new cluster, choose *Clusters* and then the plus sign in the upper right corner.
 
