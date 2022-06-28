@@ -21,12 +21,15 @@ import (
 	"net"
 	"time"
 
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	ctrlerror "github.com/gardener/gardener/pkg/controllerutils/reconciler"
+	"github.com/gardener/gardener/pkg/extensions"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -52,7 +55,12 @@ func (a *actuator) Reconcile(ctx context.Context, bastion *extensionsv1alpha1.Ba
 		factory = azureclient.NewAzureClientFactory(a.client)
 	)
 
-	opt, err := DetermineOptions(bastion, cluster)
+	infrastructureStatus, err := getInfrastructureStatus(ctx, a, cluster)
+	if err != nil {
+		return err
+	}
+
+	opt, err := DetermineOptions(bastion, cluster, infrastructureStatus.ResourceGroup.Name)
 	if err != nil {
 		return err
 	}
@@ -62,7 +70,11 @@ func (a *actuator) Reconcile(ctx context.Context, bastion *extensionsv1alpha1.Ba
 		return err
 	}
 
-	nic, err := ensureNic(ctx, factory, opt, publicIP)
+	if infrastructureStatus.Networks.VNet.Name == "" || len(infrastructureStatus.Networks.Subnets) == 0 {
+		return errors.New("virtual network name and subnet must be set")
+	}
+
+	nic, err := ensureNic(ctx, factory, opt, infrastructureStatus.Networks.VNet.Name, infrastructureStatus.Networks.Subnets[0].Name, publicIP)
 	if err != nil {
 		return err
 	}
@@ -108,6 +120,31 @@ func (a *actuator) Reconcile(ctx context.Context, bastion *extensionsv1alpha1.Ba
 	patch := client.MergeFrom(bastion.DeepCopy())
 	bastion.Status.Ingress = endpoints.public
 	return a.client.Status().Patch(ctx, bastion, patch)
+}
+
+func getInfrastructureStatus(ctx context.Context, a *actuator, cluster *extensions.Cluster) (*azure.InfrastructureStatus, error) {
+	var (
+		infrastructureStatus *azure.InfrastructureStatus
+		err                  error
+	)
+
+	worker := &extensionsv1alpha1.Worker{}
+	if err = a.client.Get(ctx, client.ObjectKey{Namespace: cluster.ObjectMeta.Name, Name: cluster.Shoot.Name}, worker); err != nil {
+		return nil, err
+	}
+
+	if worker == nil || worker.Spec.InfrastructureProviderStatus == nil {
+		return nil, errors.New("infrastructure provider status must be not empty for worker")
+	}
+
+	if infrastructureStatus, err = helper.InfrastructureStatusFromRaw(worker.Spec.InfrastructureProviderStatus); err != nil {
+		return nil, err
+	}
+
+	if infrastructureStatus.ResourceGroup.Name == "" {
+		return nil, errors.New("resource group name must be not empty for infrastructure provider status")
+	}
+	return infrastructureStatus, nil
 }
 
 func getPrivateIPv4Address(nic *network.Interface) (string, error) {
@@ -246,7 +283,6 @@ func ensureComputeInstance(ctx context.Context, logger logr.Logger, bastion *ext
 	publickey, err := createSSHPublicKey()
 	if err != nil {
 		return err
-
 	}
 	parameters := computeInstanceDefine(opt, bastion, publickey)
 
@@ -257,7 +293,7 @@ func ensureComputeInstance(ctx context.Context, logger logr.Logger, bastion *ext
 	return nil
 }
 
-func ensureNic(ctx context.Context, factory azureclient.Factory, opt *Options, publicIP *network.PublicIPAddress) (*network.Interface, error) {
+func ensureNic(ctx context.Context, factory azureclient.Factory, opt *Options, vNet, subnetWork string, publicIP *network.PublicIPAddress) (*network.Interface, error) {
 	nic, err := getNic(ctx, factory, opt)
 	if err != nil {
 		return nil, err
@@ -271,7 +307,7 @@ func ensureNic(ctx context.Context, factory azureclient.Factory, opt *Options, p
 
 	logger.Info("create new bastion compute instance nic")
 
-	subnet, err := getSubnet(ctx, factory, opt)
+	subnet, err := getSubnet(ctx, factory, vNet, subnetWork, opt)
 	if err != nil {
 		return nil, err
 	}
@@ -351,7 +387,6 @@ func expectedNSGRulesPresentAndValid(existingRules *[]network.SecurityRule, expe
 	for _, desRule := range *expectedRules {
 		ruleExistAndValid := false
 		for _, existingRule := range *existingRules {
-
 			// compare firewall rules by its names because names here kind of "IDs"
 			if equalNotNil(desRule.Name, existingRule.Name) {
 				if notEqualNotNil(desRule.SourceAddressPrefix, existingRule.SourceAddressPrefix) {
@@ -362,7 +397,6 @@ func expectedNSGRulesPresentAndValid(existingRules *[]network.SecurityRule, expe
 				}
 				ruleExistAndValid = true
 			}
-
 		}
 		if !ruleExistAndValid {
 			return false
@@ -388,7 +422,7 @@ func addOrReplaceNsgRulesDefinition(existingRules *[]network.SecurityRule, desir
 
 	// filter rules intended to be replaced
 	for _, existentRule := range *existingRules {
-		if ruleExist(existentRule.Name, desiredRules) {
+		if RuleExist(existentRule.Name, desiredRules) {
 			continue
 		}
 		result = append(result, existentRule)
@@ -403,7 +437,8 @@ func addOrReplaceNsgRulesDefinition(existingRules *[]network.SecurityRule, desir
 	*existingRules = result
 }
 
-func ruleExist(ruleName *string, rules *[]network.SecurityRule) bool {
+// RuleExist checks if the rule with the given name is present in the list of rules.
+func RuleExist(ruleName *string, rules *[]network.SecurityRule) bool {
 	if ruleName == nil {
 		return false
 	}

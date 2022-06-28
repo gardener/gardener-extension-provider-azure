@@ -155,25 +155,23 @@ var _ = Describe("Bastion test", func() {
 		It("getWorkersCIDR", func() {
 			cidr, err := getWorkersCIDR(createAzureTestCluster())
 			Expect(err).To(Not(HaveOccurred()))
-			Expect(cidr).To(Equal("10.250.0.0/16"))
+			Expect(cidr).To(Equal([]string{"10.250.0.0/16"}))
 		})
 	})
 
 	Describe("Determine options", func() {
 		It("should return options", func() {
-			options, err := DetermineOptions(bastion, cluster)
+			options, err := DetermineOptions(bastion, cluster, "cluster1")
 			Expect(err).To(Not(HaveOccurred()))
 
 			Expect(options.BastionInstanceName).To(Equal("cluster1-bastionName1-bastion-1cdc8"))
-			Expect(options.Subnetwork).To(Equal("cluster1-nodes"))
 			Expect(options.BastionPublicIPName).To(Equal("cluster1-bastionName1-bastion-1cdc8-public-ip"))
-			Expect(options.VirtualNetwork).To(Equal("cluster1"))
 			Expect(options.SecretReference).To(Equal(corev1.SecretReference{
 				Namespace: "cluster1",
 				Name:      "cloudprovider",
 			}))
 			Expect(options.CIDRs).To(Equal([]string{"213.69.151.0/24"}))
-			Expect(options.WorkersCIDR).To(Equal("10.250.0.0/16"))
+			Expect(options.WorkersCIDR).To(Equal([]string{"10.250.0.0/16"}))
 			Expect(options.DiskName).To(Equal("cluster1-bastionName1-bastion-1cdc8-disk"))
 			Expect(options.Location).To(Equal("westeurope"))
 			Expect(options.ResourceGroupName).To(Equal("cluster1"))
@@ -240,7 +238,6 @@ var _ = Describe("Bastion test", func() {
 			res, err := ingressPermissions(bastion)
 			Expect(err).To(Not(HaveOccurred()))
 			Expect(res[0]).To(Equal("213.69.151.0/24"))
-
 		})
 		It("Should throw an error with invalid CIDR entry", func() {
 			bastion.Spec.Ingress = []extensionsv1alpha1.BastionIngressPolicy{
@@ -263,7 +260,6 @@ var _ = Describe("Bastion test", func() {
 			res, err := ingressPermissions(bastion)
 			Expect(err).To(Not(HaveOccurred()))
 			Expect(res[0]).To(Equal("2001:1db8:85a3:1111:1111:8a2e:1370:7334/128"))
-
 		})
 	})
 
@@ -277,7 +273,6 @@ var _ = Describe("Bastion test", func() {
 		})
 
 		It("Should return single security rule and keep with NIL name", func() {
-
 			original := &[]network.SecurityRule{
 				{Name: nil},
 				{Name: pointer.String("ruleName1")},
@@ -332,7 +327,6 @@ var _ = Describe("Bastion test", func() {
 			Expect(err).To(Not(HaveOccurred()))
 		})
 	})
-
 })
 
 func createShootTestStruct() *gardencorev1beta1.Shoot {
@@ -344,7 +338,9 @@ func createShootTestStruct() *gardencorev1beta1.Shoot {
 			Provider: gardencorev1beta1.Provider{
 				InfrastructureConfig: &runtime.RawExtension{
 					Raw: []byte(json),
-				}}},
+				},
+			},
+		},
 	}
 }
 

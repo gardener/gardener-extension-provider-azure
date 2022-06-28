@@ -26,14 +26,14 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-//Maximum length for "base" name due to fact that we use this name to name other Azure resources,
-//https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules
+// Maximum length for "base" name due to fact that we use this name to name other Azure resources,
+// https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules
 const maxLengthForBaseName = 33
 
 // Options contains provider-related information required for setting up
 // a bastion instance. This struct combines precomputed values like the
 // bastion instance name with the IDs of pre-existing cloud provider
-// resources, like the nic name, subnet name etc.
+// resources, like the nic name etc.
 type Options struct {
 	BastionInstanceName string
 	BastionPublicIPName string
@@ -45,17 +45,15 @@ type Options struct {
 	NicName             string
 	NicID               string
 	DiskName            string
-	Subnetwork          string
-	VirtualNetwork      string
 	SecretReference     corev1.SecretReference
-	WorkersCIDR         string
+	WorkersCIDR         []string
 	CIDRs               []string
 	Tags                map[string]*string
 }
 
 // DetermineOptions determines the information that are required to reconcile a Bastion on Azure. This
 // function does not create any IaaS resources.
-func DetermineOptions(bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster) (*Options, error) {
+func DetermineOptions(bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster, resourceGroup string) (*Options, error) {
 	clusterName := cluster.ObjectMeta.Name
 	baseResourceName, err := generateBastionBaseResourceName(clusterName, bastion.Name)
 	if err != nil {
@@ -84,15 +82,13 @@ func DetermineOptions(bastion *extensionsv1alpha1.Bastion, cluster *controller.C
 
 	return &Options{
 		BastionInstanceName: baseResourceName,
-		Subnetwork:          nodesResourceName(clusterName),
 		BastionPublicIPName: publicIPResourceName(baseResourceName),
-		VirtualNetwork:      clusterName,
 		SecretReference:     secretReference,
 		CIDRs:               cidrs,
 		WorkersCIDR:         workersCidr,
 		DiskName:            DiskResourceName(baseResourceName),
 		Location:            cluster.Shoot.Spec.Region,
-		ResourceGroupName:   cluster.ObjectMeta.Name,
+		ResourceGroupName:   resourceGroup,
 		NicName:             NicResourceName(baseResourceName),
 		Tags:                tags,
 		SecurityGroupName:   NSGName(clusterName),
