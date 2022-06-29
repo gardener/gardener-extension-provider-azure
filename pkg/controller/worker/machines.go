@@ -154,7 +154,14 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			return err
 		}
 
-		generateMachineClassAndDeployment := func(zone *zoneInfo, machineSet *machineSetInfo, subnetName, workerPoolHash string) (worker.MachineDeployment, map[string]interface{}) {
+		workerConfig := &azureapi.WorkerConfig{}
+		if pool.ProviderConfig != nil && pool.ProviderConfig.Raw != nil {
+			if _, _, err := w.Decoder().Decode(pool.ProviderConfig.Raw, nil, workerConfig); err != nil {
+				return fmt.Errorf("could not decode provider config: %+v", err)
+			}
+		}
+
+		generateMachineClassAndDeployment := func(zone *zoneInfo, machineSet *machineSetInfo, subnetName, workerPoolHash string, workerConfig *azureapi.WorkerConfig) (worker.MachineDeployment, map[string]interface{}) {
 			var (
 				machineDeployment = worker.MachineDeployment{
 					Minimum:              pool.Minimum,
@@ -214,11 +221,21 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				if zone != nil {
 					zoneName = w.worker.Spec.Region + "-" + zone.name
 				}
-				machineClassSpec["nodeTemplate"] = machinev1alpha1.NodeTemplate{
-					Capacity:     pool.NodeTemplate.Capacity,
-					InstanceType: pool.MachineType,
-					Region:       w.worker.Spec.Region,
-					Zone:         zoneName,
+
+				if workerConfig.NodeTemplate != nil {
+					machineClassSpec["nodeTemplate"] = machinev1alpha1.NodeTemplate{
+						Capacity:     workerConfig.NodeTemplate.Capacity,
+						InstanceType: pool.MachineType,
+						Region:       w.worker.Spec.Region,
+						Zone:         zoneName,
+					}
+				} else if pool.NodeTemplate != nil {
+					machineClassSpec["nodeTemplate"] = machinev1alpha1.NodeTemplate{
+						Capacity:     pool.NodeTemplate.Capacity,
+						InstanceType: pool.MachineType,
+						Region:       w.worker.Spec.Region,
+						Zone:         zoneName,
+					}
 				}
 			}
 
@@ -263,7 +280,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			machineDeployment, machineClassSpec := generateMachineClassAndDeployment(nil, &machineSetInfo{
 				id:   vmoDependency.ID,
 				kind: "vmo",
-			}, nodesSubnet.Name, workerPoolHash)
+			}, nodesSubnet.Name, workerPoolHash, workerConfig)
 			machineDeployments = append(machineDeployments, machineDeployment)
 			machineClasses = append(machineClasses, machineClassSpec)
 			continue
@@ -283,7 +300,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			machineDeployment, machineClassSpec := generateMachineClassAndDeployment(nil, &machineSetInfo{
 				id:   nodesAvailabilitySet.ID,
 				kind: "availabilityset",
-			}, nodesSubnet.Name, workerPoolHash)
+			}, nodesSubnet.Name, workerPoolHash, workerConfig)
 			machineDeployments = append(machineDeployments, machineDeployment)
 			machineClasses = append(machineClasses, machineClassSpec)
 			continue
@@ -314,7 +331,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				name:  zone,
 				index: int32(zoneIndex),
 				count: int32(zoneCount),
-			}, nil, nodesSubnet.Name, workerPoolHash)
+			}, nil, nodesSubnet.Name, workerPoolHash, workerConfig)
 			machineDeployments = append(machineDeployments, machineDeployment)
 			machineClasses = append(machineClasses, machineClassSpec)
 		}

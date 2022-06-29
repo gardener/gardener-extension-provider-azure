@@ -310,7 +310,7 @@ If you don't want to configure anything for the `cloudControllerManager` simply 
 
 ## `WorkerConfig`
 
-The Azure extension does not support a specific `WorkerConfig` yet, however, it supports encryption for volumes plus support for additional data volumes per machine.
+The Azure extension supports encryption for volumes plus support for additional data volumes per machine.
 Please note that you cannot specify the `encrypted` flag for Azure disks as they are encrypted by default/out-of-the-box.
 For each data volume, you have to specify a name.
 The following YAML is a snippet of a `Shoot` resource:
@@ -329,6 +329,26 @@ spec:
         type: Standard_LRS
         size: 25Gi
 ```
+
+Additionally, it supports for other Azure-specific values and could be configured under `.spec.provider.workers[].providerConfig`
+
+An example `WorkerConfig` for the Azure extension looks like:
+
+```yaml
+apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+kind: WorkerConfig
+nodeTemplate: # (to be specified only if the node capacity would be different from cloudprofile info during runtime)
+  capacity:
+    cpu: 2
+    gpu: 1
+    memory: 50Gi
+```
+
+The `.nodeTemplate` is used to specify resource information of the machine during runtime. This then helps in Scale-from-Zero. 
+Some points to note for this field:
+    - Currently only cpu, gpu and memory are configurable.
+    - a change in the value lead to a rolling update of the machine in the workerpool
+    - all the resources needs to be specified
 
 ## Example `Shoot` manifest (non-zoned)
 
@@ -366,6 +386,14 @@ spec:
       volume:
         size: 50Gi
         type: Standard_LRS
+#      providerConfig:
+#        apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+#        kind: WorkerConfig
+#        nodeTemplate: # (to be specified only if the node capacity would be different from cloudprofile info during runtime)
+#          capacity:
+#            cpu: 2
+#            gpu: 1
+#            memory: 50Gi
   networking:
     type: calico
     pods: 100.96.0.0/11

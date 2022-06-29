@@ -16,6 +16,8 @@ Resource Types:
 </li><li>
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.InfrastructureConfig">InfrastructureConfig</a>
 </li><li>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig</a>
+</li><li>
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.WorkerStatus">WorkerStatus</a>
 </li></ul>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.CloudProfileConfig">CloudProfileConfig
@@ -232,6 +234,50 @@ bool
 <td>
 <em>(Optional)</em>
 <p>Zoned indicates whether the cluster uses availability zones.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig
+</h3>
+<p>
+<p>WorkerConfig contains configuration settings for the worker nodes.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code></br>
+string</td>
+<td>
+<code>
+azure.provider.extensions.gardener.cloud/v1alpha1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code></br>
+string
+</td>
+<td><code>WorkerConfig</code></td>
+</tr>
+<tr>
+<td>
+<code>nodeTemplate</code></br>
+<em>
+github.com/gardener/gardener/pkg/apis/extensions/v1alpha1.NodeTemplate
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>NodeTemplate contains resource information of the machine which is used by Cluster Autoscaler to generate nodeTemplate during scaling a nodeGroup from zero.</p>
 </td>
 </tr>
 </tbody>

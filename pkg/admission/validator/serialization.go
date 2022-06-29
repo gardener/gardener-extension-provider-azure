@@ -22,6 +22,19 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+func decodeWorkerConfig(decoder runtime.Decoder, worker *runtime.RawExtension) (*azure.WorkerConfig, error) {
+	if worker == nil {
+		return nil, nil
+	}
+
+	workerConfig := &azure.WorkerConfig{}
+	if err := util.Decode(decoder, worker.Raw, workerConfig); err != nil {
+		return nil, err
+	}
+
+	return workerConfig, nil
+}
+
 func decodeControlPlaneConfig(decoder runtime.Decoder, cp *runtime.RawExtension) (*azure.ControlPlaneConfig, error) {
 	controlPlaneConfig := &azure.ControlPlaneConfig{}
 	if err := util.Decode(decoder, cp.Raw, controlPlaneConfig); err != nil {
