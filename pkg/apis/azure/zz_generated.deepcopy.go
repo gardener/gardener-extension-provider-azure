@@ -605,6 +605,11 @@ func (in *VNet) DeepCopyInto(out *VNet) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.DDosProtectionPlanID != nil {
+		in, out := &in.DDosProtectionPlanID, &out.DDosProtectionPlanID
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 

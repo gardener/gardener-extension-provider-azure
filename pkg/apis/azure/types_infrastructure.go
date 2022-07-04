@@ -208,6 +208,8 @@ type VNet struct {
 	ResourceGroup *string
 	// CIDR is the VNet CIDR
 	CIDR *string
+	// DDosProtectionPlanID is the id of a ddos protection plan assigned to the vnet.
+	DDosProtectionPlanID *string
 }
 
 // VNetStatus contains the VNet name.

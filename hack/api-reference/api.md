@@ -1478,6 +1478,18 @@ string
 <p>CIDR is the VNet CIDR</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>ddosProtectionPlanID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DDosProtectionPlanID is the id of a ddos protection plan assigned to the vnet.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.VNetStatus">VNetStatus

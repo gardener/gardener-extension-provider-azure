@@ -44,6 +44,8 @@ var _ = Describe("InfrastructureConfig validation", func() {
 
 		workers      = "10.250.3.0/24"
 		providerPath *field.Path
+
+		ddosProtectionPlanID string
 	)
 
 	BeforeEach(func() {
@@ -57,6 +59,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			},
 		}
 		hasVmoAlphaAnnotation = false
+		ddosProtectionPlanID = "/subscriptions/test/resourceGroups/test/providers/Microsoft.Network/ddosProtectionPlans/test-ddos-protection-plan"
 	})
 
 	Describe("#ValidateInfrastructureConfig", func() {
@@ -151,6 +154,30 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				}
 				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
 				Expect(errorList).To(HaveLen(0))
+			})
+
+			It("should allow to provide a ddos protection plan for a managed vnet", func() {
+				nodes = "10.250.3.0/24"
+				infrastructureConfig.ResourceGroup = nil
+				infrastructureConfig.Networks.VNet.DDosProtectionPlanID = &ddosProtectionPlanID
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
+				Expect(errorList).To(HaveLen(0))
+			})
+
+			It("should forbid providing an ddos protection plan to an existing vnet", func() {
+				name := "existing-vnet"
+				infrastructureConfig.Networks.VNet = apisazure.VNet{
+					Name:                 &name,
+					ResourceGroup:        &resourceGroup,
+					DDosProtectionPlanID: &ddosProtectionPlanID,
+				}
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
+
+				Expect(errorList).To(ConsistOfFields(
+					Fields{
+						"Type":  Equal(field.ErrorTypeForbidden),
+						"Field": Equal("networks.vnet.ddosProtectionPlanID"),
+					}))
 			})
 		})
 

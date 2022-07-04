@@ -33,6 +33,12 @@ resource "azurerm_virtual_network" "vnet" {
   resource_group_name = {{ template "resource-group-reference" $ }}
   location            = "{{ .azure.region }}"
   address_space       = ["{{ .resourceGroup.vnet.cidr }}"]
+  {{- if .resourceGroup.vnet.ddosProtectionPlanID }}
+  ddos_protection_plan {
+    id = "{{ .resourceGroup.vnet.ddosProtectionPlanID }}"
+    enable = true
+  }
+  {{- end }}
 }
 {{- else -}}
 data "azurerm_virtual_network" "vnet" {

@@ -210,6 +210,10 @@ func validateVnetConfig(networkConfig *apisazure.NetworkConfig, resourceGroupCon
 		if resourceGroupConfig != nil && *networkConfig.VNet.ResourceGroup == resourceGroupConfig.Name {
 			allErrs = append(allErrs, field.Invalid(vNetPath.Child("resourceGroup"), *vnetConfig.ResourceGroup, "the vnet resource group must not be the same as the cluster resource group"))
 		}
+
+		if networkConfig.VNet.DDosProtectionPlanID != nil {
+			allErrs = append(allErrs, field.Forbidden(vNetPath.Child("ddosProtectionPlanID"), "cannot assign a ddos protection plan to a vnet not managed by Gardener"))
+		}
 		return allErrs
 	}
 

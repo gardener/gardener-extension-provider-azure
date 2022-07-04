@@ -232,6 +232,9 @@ type VNet struct {
 	// CIDR is the VNet CIDR
 	// +optional
 	CIDR *string `json:"cidr,omitempty"`
+	// DDosProtectionPlanID is the id of a ddos protection plan assigned to the vnet.
+	// +optional
+	DDosProtectionPlanID *string `json:"ddosProtectionPlanID,omitempty"`
 }
 
 // VNetStatus contains the VNet name.

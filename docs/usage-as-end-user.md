@@ -60,6 +60,7 @@ networks:
     # name: my-vnet
     # resourceGroup: my-vnet-resource-group
     cidr: 10.250.0.0/16
+    # ddosProtectionPlanID: /subscriptions/test/resourceGroups/test/providers/Microsoft.Network/ddosProtectionPlans/test-ddos-protection-plan
   workers: 10.250.0.0/19
   # natGateway:
   #   enabled: false
@@ -100,6 +101,7 @@ The `networks.vnet` section describes whether you want to create the shoot clust
 * If `networks.vnet.cidr` is given then you have to specify the VNet CIDR of a new VNet that will be created during shoot creation.
 You can freely choose a private CIDR range.
 * Either `networks.vnet.name` and `neworks.vnet.resourceGroup` or `networks.vnet.cidr` must be present, but not both at the same time.
+* The `networks.vnet.ddosProtectionPlanID` field can be used to specify the id of a ddos protection plan which should be assigned to the VNet. This will only work for a VNet managed by Gardener. For externally managed VNets the ddos protection plan must be assigned by other means.
 
 The `networks.workers` section describes the CIDR for a subnet that is used for all shoot worker nodes, i.e., VMs which later run your applications.
 The specified CIDR range must be contained in the VNet CIDR specified above, or the VNet CIDR of your already existing VNet.
