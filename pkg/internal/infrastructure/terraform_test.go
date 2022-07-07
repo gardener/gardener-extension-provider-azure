@@ -382,6 +382,22 @@ var _ = Describe("Terraform", func() {
 			Expect(values).To(BeEquivalentTo(expectedValues))
 		})
 
+		It("should correctly compute terraform chart values with ddos protection plan id assigned to the vnet", func() {
+			var ddosProtectionPlanID = "/subscriptions/test/resourceGroups/test/providers/Microsoft.Network/ddosProtectionPlans/test-ddos-protection-plan"
+
+			config.Networks.VNet.DDosProtectionPlanID = &ddosProtectionPlanID
+
+			expectedResourceGroupValues["vnet"] = map[string]interface{}{
+				"name":                 infra.Namespace,
+				"cidr":                 *config.Networks.Workers,
+				"ddosProtectionPlanID": ddosProtectionPlanID,
+			}
+
+			values, err := ComputeTerraformerTemplateValues(infra, config, cluster)
+			Expect(err).To(Not(HaveOccurred()))
+			Expect(values).To(BeEquivalentTo(expectedValues))
+		})
+
 		Context("NatGateway", func() {
 			It("should correctly compute terraform chart values with NatGateway", func() {
 				config.Networks.NatGateway = &api.NatGatewayConfig{

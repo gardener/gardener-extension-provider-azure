@@ -224,6 +224,10 @@ func generateVNetConfig(n *api.NetworkConfig, defaultVnetName string) (bool, map
 		return false, nil, nil, fmt.Errorf("no VNet or workers configuration provided")
 	}
 
+	if createVNet && n.VNet.DDosProtectionPlanID != nil {
+		vnetConfig["ddosProtectionPlanID"] = *n.VNet.DDosProtectionPlanID
+	}
+
 	return createVNet, vnetConfig, outputKeys, err
 }
 

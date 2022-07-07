@@ -67,6 +67,7 @@ spec:
       # name: my-vnet
       # resourceGroup: my-vnet-group
         cidr: 10.250.0.0/16
+      # ddosProtectionPlanID: /subscriptions/test/resourceGroups/test/providers/Microsoft.Network/ddosProtectionPlans/test-ddos-protection-plan
       workers: 10.250.0.0/19
     # natGateway:
     #   enabled: false

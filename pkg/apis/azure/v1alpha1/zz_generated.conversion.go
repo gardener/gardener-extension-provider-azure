@@ -870,6 +870,7 @@ func autoConvert_v1alpha1_VNet_To_azure_VNet(in *VNet, out *azure.VNet, s conver
 	out.Name = (*string)(unsafe.Pointer(in.Name))
 	out.ResourceGroup = (*string)(unsafe.Pointer(in.ResourceGroup))
 	out.CIDR = (*string)(unsafe.Pointer(in.CIDR))
+	out.DDosProtectionPlanID = (*string)(unsafe.Pointer(in.DDosProtectionPlanID))
 	return nil
 }
 
@@ -882,6 +883,7 @@ func autoConvert_azure_VNet_To_v1alpha1_VNet(in *azure.VNet, out *VNet, s conver
 	out.Name = (*string)(unsafe.Pointer(in.Name))
 	out.ResourceGroup = (*string)(unsafe.Pointer(in.ResourceGroup))
 	out.CIDR = (*string)(unsafe.Pointer(in.CIDR))
+	out.DDosProtectionPlanID = (*string)(unsafe.Pointer(in.DDosProtectionPlanID))
 	return nil
 }
 
