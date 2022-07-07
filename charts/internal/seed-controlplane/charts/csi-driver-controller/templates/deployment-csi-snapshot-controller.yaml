@@ -27,6 +27,7 @@ spec:
         networking.gardener.cloud/to-public-networks: allowed
         networking.gardener.cloud/to-shoot-apiserver: allowed
     spec:
+      priorityClassName: gardener-system-200
       automountServiceAccountToken: false
       containers:
       - name: azure-csi-snapshot-controller
