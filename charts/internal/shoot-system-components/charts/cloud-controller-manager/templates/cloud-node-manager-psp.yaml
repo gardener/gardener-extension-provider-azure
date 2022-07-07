@@ -5,7 +5,7 @@ kind: PodSecurityPolicy
 metadata:
   name: extensions.gardener.cloud.provider-azure.cloud-node-manager
 spec:
-  privileged: true
+  privileged: false
   volumes:
   - projected
   hostNetwork: true
