@@ -11,8 +11,9 @@ Every shoot cluster references a `SecretBinding` which itself references a `Secr
 The `SecretBinding` is configurable in the [Shoot cluster](https://github.com/gardener/gardener/blob/master/example/90-shoot.yaml) with the field `secretBindingName`.
 
 Create an [Azure Application and Service Principle](https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal) and obtain its credentials.
-Please make sure the Azure application has the following IAM roles.
-- [Contributor](https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#contributor)
+
+Please ensure that the Azure application (spn) has the IAM actions defined [here](azure-permissions.md) assigned.
+If no fine-grained permissions/actions required then simply assign the [Contributor](https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#contributor) role.
 
 The example below demonstrates how the secret containing the client credentials of the Azure Application has to look like:
 
