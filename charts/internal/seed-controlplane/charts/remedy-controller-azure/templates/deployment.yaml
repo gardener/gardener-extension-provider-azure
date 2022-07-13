@@ -29,6 +29,7 @@ spec:
         networking.gardener.cloud/from-prometheus: allowed
     spec:
       serviceAccountName: remedy-controller-azure
+      priorityClassName: gardener-system-300
       containers:
       - name: remedy-controller-azure
         image: {{ index .Values.images "remedy-controller-azure" }}

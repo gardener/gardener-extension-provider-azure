@@ -36,6 +36,7 @@ spec:
         networking.gardener.cloud/to-shoot-apiserver: allowed
     spec:
       automountServiceAccountToken: false
+      priorityClassName: gardener-system-300
       containers:
       - name: azure-csi-driver
         image: {{ index .Values.images (print "csi-driver-" .role) }}
