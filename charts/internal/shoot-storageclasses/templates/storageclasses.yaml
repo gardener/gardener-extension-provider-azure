@@ -9,7 +9,7 @@ metadata:
     resources.gardener.cloud/delete-on-invalid-update: "true"
 provisioner: disk.csi.azure.com
 parameters:
-  skuName: Standard_LRS
+  skuName: StandardSSD_LRS
   kind: managed
 volumeBindingMode: WaitForFirstConsumer
 allowVolumeExpansion: true
