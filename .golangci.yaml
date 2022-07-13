@@ -17,3 +17,7 @@ issues:
   - package-comments # package comment should be of the form
   - indent-error-flow # if block ends with a return statement, so drop this else and outdent its block
   - "exported: (type|func) name will be used as .* by other packages, and that stutters;"
+  exclude-rules:
+  - linters:
+    - staticcheck
+    text: "SA1019:" # Excludes messages where deprecated variables are used
