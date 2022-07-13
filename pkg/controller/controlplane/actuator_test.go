@@ -33,6 +33,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 )
@@ -161,7 +162,7 @@ var _ = Describe("Actuator", func() {
 					return nil
 				}).Times(2)
 
-			test.EXPECTPatchWithOptimisticLock(ctx, c, pubip, pubipWithFinalizers)
+			test.EXPECTPatchWithOptimisticLock(ctx, c, pubip, pubipWithFinalizers, types.MergePatchType)
 			c.EXPECT().DeleteAllOf(ctx, &azurev1alpha1.PublicIPAddress{}, client.InNamespace(namespace)).Return(nil)
 
 			vm := newVirtualMachine()
@@ -172,7 +173,7 @@ var _ = Describe("Actuator", func() {
 					list.Items = []azurev1alpha1.VirtualMachine{*vmWithFinalizers}
 					return nil
 				})
-			test.EXPECTPatchWithOptimisticLock(ctx, c, vm, vmWithFinalizers)
+			test.EXPECTPatchWithOptimisticLock(ctx, c, vm, vmWithFinalizers, types.MergePatchType)
 			c.EXPECT().DeleteAllOf(ctx, &azurev1alpha1.VirtualMachine{}, client.InNamespace(namespace)).Return(nil)
 
 			a.EXPECT().Delete(ctx, cp, cluster).Return(nil)
@@ -195,7 +196,7 @@ var _ = Describe("Actuator", func() {
 					list.Items = []azurev1alpha1.PublicIPAddress{*pubipWithFinalizers}
 					return nil
 				})
-			test.EXPECTPatchWithOptimisticLock(ctx, c, pubip, pubipWithFinalizers)
+			test.EXPECTPatchWithOptimisticLock(ctx, c, pubip, pubipWithFinalizers, types.MergePatchType)
 			c.EXPECT().DeleteAllOf(ctx, &azurev1alpha1.PublicIPAddress{}, client.InNamespace(namespace)).Return(nil)
 
 			vm := newVirtualMachine()
@@ -206,7 +207,7 @@ var _ = Describe("Actuator", func() {
 					list.Items = []azurev1alpha1.VirtualMachine{*vmWithFinalizers}
 					return nil
 				})
-			test.EXPECTPatchWithOptimisticLock(ctx, c, vm, vmWithFinalizers)
+			test.EXPECTPatchWithOptimisticLock(ctx, c, vm, vmWithFinalizers, types.MergePatchType)
 			c.EXPECT().DeleteAllOf(ctx, &azurev1alpha1.VirtualMachine{}, client.InNamespace(namespace)).Return(nil)
 
 			err := actuator.Migrate(ctx, cp, cluster)
