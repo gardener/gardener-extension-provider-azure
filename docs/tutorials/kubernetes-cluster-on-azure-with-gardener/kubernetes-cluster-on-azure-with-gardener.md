@@ -27,8 +27,8 @@ Gardener allows you to create a Kubernetes cluster on different infrastructure p
     Before you can provision and access a Kubernetes cluster on Azure, you need to add the Azure service principal, AD tenant and subscription credentials in Gardener.
     Gardener needs the credentials to provision and operate the Azure infrastructure for your Kubernetes cluster.
 
-    **Ensure that the Azure service princiapl has the actions defined [here](../../azure-permissions.md) within your Subscription assigned.
-    If no fine-grained permission/actions required then simply the buildin `Contributer` role can be assigned.**
+    **Ensure that the Azure service principal has the actions defined [here](../../azure-permissions.md) within your Subscription assigned.
+    If no fine-grained permission/actions are required then simply the buildin `Contributor` role can be assigned.**
 
 
     - Tenant ID
