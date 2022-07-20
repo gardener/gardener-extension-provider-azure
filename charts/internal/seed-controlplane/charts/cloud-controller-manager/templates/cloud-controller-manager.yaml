@@ -45,7 +45,7 @@ spec:
         {{- else }}
         - /azure-cloud-controller-manager
         {{- end }}
-        - --allocate-node-cidrs=true
+        - --allocate-node-cidrs=false
         - --cloud-provider=azure
         - --cloud-config=/etc/kubernetes/cloudprovider/cloudprovider.conf
         - --cluster-cidr={{ .Values.podNetwork }}
