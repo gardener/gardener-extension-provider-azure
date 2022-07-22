@@ -40,12 +40,14 @@ spec:
         {{- if semverCompare "< 1.17" .Values.kubernetesVersion }}
         - /hyperkube
         - cloud-controller-manager
+        - --allocate-node-cidrs=true
         {{- else if semverCompare ">= 1.23" .Values.kubernetesVersion }}
         - /usr/local/bin/cloud-controller-manager
+        - --allocate-node-cidrs=false
         {{- else }}
         - /azure-cloud-controller-manager
+        - --allocate-node-cidrs=true
         {{- end }}
-        - --allocate-node-cidrs=false
         - --cloud-provider=azure
         - --cloud-config=/etc/kubernetes/cloudprovider/cloudprovider.conf
         - --cluster-cidr={{ .Values.podNetwork }}
