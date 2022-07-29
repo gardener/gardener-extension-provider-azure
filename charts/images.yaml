@@ -77,35 +77,35 @@ images:
 - name: csi-provisioner
   sourceRepository: github.com/kubernetes-csi/external-provisioner
   repository: k8s.gcr.io/sig-storage/csi-provisioner
-  tag: "v2.1.1"
+  tag: "v3.2.0"
 - name: csi-attacher
   sourceRepository: github.com/kubernetes-csi/external-attacher
   repository: k8s.gcr.io/sig-storage/csi-attacher
-  tag: "v3.3.0"
+  tag: "v3.4.0"
 - name: csi-snapshotter
   sourceRepository: github.com/kubernetes-csi/external-snapshotter
   repository: k8s.gcr.io/sig-storage/csi-snapshotter
-  tag: "v3.0.3"
+  tag: "v4.2.1"
 - name: csi-snapshot-controller
   sourceRepository: github.com/kubernetes-csi/external-snapshotter
   repository: k8s.gcr.io/sig-storage/snapshot-controller
-  tag: "v3.0.3"
+  tag: "v4.2.1"
 - name: csi-snapshot-validation-webhook
   sourceRepository: github.com/kubernetes-csi/external-snapshotter
   repository: k8s.gcr.io/sig-storage/snapshot-validation-webhook
-  tag: "v3.0.3"
+  tag: "v4.2.1"
 - name: csi-resizer
   sourceRepository: github.com/kubernetes-csi/external-resizer
   repository: k8s.gcr.io/sig-storage/csi-resizer
-  tag: "v1.1.0"
+  tag: "v1.5.0"
 - name: csi-node-driver-registrar
   sourceRepository: github.com/kubernetes-csi/node-driver-registrar
   repository: k8s.gcr.io/sig-storage/csi-node-driver-registrar
-  tag: "v2.1.0"
+  tag: "v2.5.1"
 - name: csi-liveness-probe
   sourceRepository: github.com/kubernetes-csi/livenessprobe
   repository: k8s.gcr.io/sig-storage/livenessprobe
-  tag: "v2.3.0"
+  tag: "v2.7.0"
 
 - name: remedy-controller-azure
   sourceRepository: github.com/gardener/remedy-controller
