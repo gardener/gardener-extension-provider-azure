@@ -185,12 +185,19 @@ func getPublicIP(ctx context.Context, log logr.Logger, factory azureclient.Facto
 }
 
 func getSubnet(ctx context.Context, log logr.Logger, factory azureclient.Factory, vNet, subnetWork string, opt *Options) (*network.Subnet, error) {
+	var sg string
 	subnetClient, err := factory.Subnet(ctx, opt.SecretReference)
 	if err != nil {
 		return nil, err
 	}
 
-	subnet, err := subnetClient.Get(ctx, opt.ResourceGroupName, vNet, subnetWork, "")
+	if opt.MyVnetEnabled {
+		sg = opt.MyVnetResourceGroupName
+	} else {
+		sg = opt.ResourceGroupName
+	}
+
+	subnet, err := subnetClient.Get(ctx, sg, vNet, subnetWork, "")
 	if err != nil {
 		return nil, err
 	}

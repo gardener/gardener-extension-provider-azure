@@ -16,10 +16,12 @@ package bastion
 
 import (
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"net"
 
 	"github.com/Azure/go-autorest/autorest/to"
+	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -35,20 +37,22 @@ const maxLengthForBaseName = 33
 // bastion instance name with the IDs of pre-existing cloud provider
 // resources, like the nic name etc.
 type Options struct {
-	BastionInstanceName string
-	BastionPublicIPName string
-	PrivateIPAddressV4  string
-	PrivateIPAddressV6  string
-	ResourceGroupName   string
-	SecurityGroupName   string
-	Location            string
-	NicName             string
-	NicID               string
-	DiskName            string
-	SecretReference     corev1.SecretReference
-	WorkersCIDR         []string
-	CIDRs               []string
-	Tags                map[string]*string
+	BastionInstanceName     string
+	BastionPublicIPName     string
+	PrivateIPAddressV4      string
+	PrivateIPAddressV6      string
+	ResourceGroupName       string
+	MyVnetEnabled           bool
+	MyVnetResourceGroupName string
+	SecurityGroupName       string
+	Location                string
+	NicName                 string
+	NicID                   string
+	DiskName                string
+	SecretReference         corev1.SecretReference
+	WorkersCIDR             []string
+	CIDRs                   []string
+	Tags                    map[string]*string
 }
 
 // DetermineOptions determines the information that are required to reconcile a Bastion on Azure. This
@@ -79,19 +83,31 @@ func DetermineOptions(bastion *extensionsv1alpha1.Bastion, cluster *controller.C
 		"Name": &baseResourceName,
 		"Type": to.StringPtr("gardenctl"),
 	}
-
+	infrastructureConfig := &api.InfrastructureConfig{}
+	if err = json.Unmarshal(cluster.Shoot.Spec.Provider.InfrastructureConfig.Raw, infrastructureConfig); err != nil {
+		return nil, err
+	}
+	// own vnet enabled if own vnet resourceGroup exist
+	myVnetEnabled := false
+	vNetrg := ""
+	if infrastructureConfig.Networks.VNet.ResourceGroup != nil && *infrastructureConfig.Networks.VNet.ResourceGroup != "" {
+		vNetrg = *infrastructureConfig.Networks.VNet.ResourceGroup
+		myVnetEnabled = true
+	}
 	return &Options{
-		BastionInstanceName: baseResourceName,
-		BastionPublicIPName: publicIPResourceName(baseResourceName),
-		SecretReference:     secretReference,
-		CIDRs:               cidrs,
-		WorkersCIDR:         workersCidr,
-		DiskName:            DiskResourceName(baseResourceName),
-		Location:            cluster.Shoot.Spec.Region,
-		ResourceGroupName:   resourceGroup,
-		NicName:             NicResourceName(baseResourceName),
-		Tags:                tags,
-		SecurityGroupName:   NSGName(clusterName),
+		BastionInstanceName:     baseResourceName,
+		BastionPublicIPName:     publicIPResourceName(baseResourceName),
+		SecretReference:         secretReference,
+		CIDRs:                   cidrs,
+		WorkersCIDR:             workersCidr,
+		DiskName:                DiskResourceName(baseResourceName),
+		Location:                cluster.Shoot.Spec.Region,
+		ResourceGroupName:       resourceGroup,
+		MyVnetEnabled:           myVnetEnabled,
+		MyVnetResourceGroupName: vNetrg,
+		NicName:                 NicResourceName(baseResourceName),
+		Tags:                    tags,
+		SecurityGroupName:       NSGName(clusterName),
 	}, nil
 }
 

@@ -67,10 +67,6 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 		return err
 	}
 
-	if infrastructureStatus.Networks.VNet.Name == "" || len(infrastructureStatus.Networks.Subnets) == 0 {
-		return errors.New("virtual network name and subnet must be set")
-	}
-
 	nic, err := ensureNic(ctx, log, factory, opt, infrastructureStatus.Networks.VNet.Name, infrastructureStatus.Networks.Subnets[0].Name, publicIP)
 	if err != nil {
 		return err
@@ -140,6 +136,14 @@ func getInfrastructureStatus(ctx context.Context, a *actuator, cluster *extensio
 
 	if infrastructureStatus.ResourceGroup.Name == "" {
 		return nil, errors.New("resource group name must be not empty for infrastructure provider status")
+	}
+
+	if infrastructureStatus.Networks.VNet.Name == "" {
+		return nil, errors.New("virtual network name must be not empty for infrastructure provider status")
+	}
+
+	if len(infrastructureStatus.Networks.Subnets) == 0 {
+		return nil, errors.New("subnets name must be not empty for infrastructure provider status")
 	}
 	return infrastructureStatus, nil
 }

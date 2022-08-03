@@ -15,6 +15,10 @@
 package bastion
 
 import (
+	"encoding/json"
+
+	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/gardener/gardener/extensions/pkg/controller"
@@ -42,10 +46,14 @@ var _ = Describe("Bastion test", func() {
 		maxLengthForResource int
 	)
 	BeforeEach(func() {
-		cluster = createAzureTestCluster()
+		vNetCIDR := api.VNet{
+			CIDR: pointer.String("10.0.0.1/32"),
+		}
+		cluster = createAzureTestCluster(vNetCIDR)
 		bastion = createTestBastion()
 		ctrl = gomock.NewController(GinkgoT())
 		maxLengthForResource = 63
+
 	})
 	AfterEach(func() {
 		ctrl.Finish()
@@ -153,7 +161,7 @@ var _ = Describe("Bastion test", func() {
 
 	Describe("getWorkersCIDR", func() {
 		It("getWorkersCIDR", func() {
-			cidr, err := getWorkersCIDR(createAzureTestCluster())
+			cidr, err := getWorkersCIDR(cluster)
 			Expect(err).To(Not(HaveOccurred()))
 			Expect(cidr).To(Equal([]string{"10.250.0.0/16"}))
 		})
@@ -181,6 +189,20 @@ var _ = Describe("Bastion test", func() {
 				"Type": to.StringPtr("gardenctl"),
 			}))
 			Expect(options.SecurityGroupName).To(Equal("cluster1-workers"))
+		})
+	})
+
+	Describe("Determine options own vnet name and resourceGroup", func() {
+		It("should return options", func() {
+			vNetCIDR := api.VNet{
+				Name:          pointer.String("my-vnet"),
+				ResourceGroup: pointer.String("my-vnet-resource-group"),
+			}
+			cluster = createAzureTestCluster(vNetCIDR)
+			options, err := DetermineOptions(bastion, cluster, "cluster1")
+			Expect(err).To(Not(HaveOccurred()))
+			Expect(options.MyVnetResourceGroupName).To(Equal("my-vnet-resource-group"))
+			Expect(options.MyVnetEnabled).To(BeTrue())
 		})
 	})
 
@@ -329,25 +351,36 @@ var _ = Describe("Bastion test", func() {
 	})
 })
 
-func createShootTestStruct() *gardencorev1beta1.Shoot {
-	json := `{"apiVersion": "azure.provider.extensions.gardener.cloud/v1alpha1","kind": "InfrastructureConfig", "networks": {"workers": "10.250.0.0/16"}}`
+func createShootTestStruct(vNet api.VNet) *gardencorev1beta1.Shoot {
+	config := &api.InfrastructureConfig{
+		Networks: api.NetworkConfig{
+			VNet:             vNet,
+			Workers:          pointer.String("10.250.0.0/16"),
+			ServiceEndpoints: []string{},
+		},
+		Zoned: true,
+	}
+
+	infrastructureConfigBytes, err := json.Marshal(config)
+	Expect(err).NotTo(HaveOccurred())
+
 	return &gardencorev1beta1.Shoot{
 		Spec: gardencorev1beta1.ShootSpec{
 			Region:            "westeurope",
 			SecretBindingName: v1beta1constants.SecretNameCloudProvider,
 			Provider: gardencorev1beta1.Provider{
 				InfrastructureConfig: &runtime.RawExtension{
-					Raw: []byte(json),
+					Raw: infrastructureConfigBytes,
 				},
 			},
 		},
 	}
 }
 
-func createAzureTestCluster() *extensions.Cluster {
+func createAzureTestCluster(vNet api.VNet) *extensions.Cluster {
 	return &controller.Cluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "cluster1"},
-		Shoot:      createShootTestStruct(),
+		Shoot:      createShootTestStruct(vNet),
 		CloudProfile: &gardencorev1beta1.CloudProfile{
 			Spec: gardencorev1beta1.CloudProfileSpec{
 				Regions: []gardencorev1beta1.Region{
