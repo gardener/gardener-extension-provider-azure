@@ -20,7 +20,9 @@ import (
 
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 
+	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/utils/strings/slices"
 )
 
 // ValidateCloudProfileConfig validates a CloudProfileConfig object.
@@ -74,6 +76,7 @@ func ValidateCloudProfileConfig(cloudProfile *apisazure.CloudProfileConfig, fldP
 						version.CommunityGalleryImageID, "communityGalleryImageID must start with '/CommunityGalleries/' prefix"))
 				}
 			}
+
 			if version.SharedGalleryImageID != nil {
 				if len(*version.SharedGalleryImageID) == 0 {
 					allErrs = append(allErrs, field.Required(jdxPath.Child("sharedGalleryImageID"), "SharedGalleryImageID cannot be empty when defined"))
@@ -84,6 +87,10 @@ func ValidateCloudProfileConfig(cloudProfile *apisazure.CloudProfileConfig, fldP
 					allErrs = append(allErrs, field.Invalid(jdxPath.Child("sharedGalleryImageID"),
 						version.SharedGalleryImageID, "SharedGalleryImageID must start with '/SharedGalleries/' prefix"))
 				}
+			}
+
+			if !slices.Contains(v1beta1constants.ValidArchitectures, *version.Architecture) {
+				allErrs = append(allErrs, field.NotSupported(jdxPath.Child("architecture"), *version.Architecture, v1beta1constants.ValidArchitectures))
 			}
 		}
 	}
