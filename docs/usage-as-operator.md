@@ -15,6 +15,7 @@ This section describes, how the configuration for `CloudProfile`s looks like for
 The cloud profile configuration contains information about the real machine image IDs in the Azure environment (image `urn`, `id`, `communityGalleryImageID` or `sharedGalleryImageID`).
 You have to map every version that you specify in `.spec.machineImages[].versions` to an available VM image in your subscription.
 The VM image can be either from the [Azure Marketplace](https://azuremarketplace.microsoft.com/en-us/marketplace/apps?filters=virtual-machine-images) and will then get identified via a `urn`, it can be a custom VM image from a shared image gallery and is then identified  `sharedGalleryImageID`, or it can be from a community image gallery and is then identified by its `communityGalleryImageID`. You can use `id` field also to specifiy the image location in the azure compute gallery (in which case it would have a different kind of path) but it is not recommended as it sometimes faces problems in cross subscription image sharing.
+For each machine image version an `architecture` field can be specified which specifies the CPU architecture of the machine on which given machine image can be used.
 
 An example `CloudProfileConfig` for the Azure extension looks as follows:
 
@@ -36,6 +37,7 @@ machineImages:
   versions:
   - version: 2135.6.0
     urn: "CoreOS:CoreOS:Stable:2135.6.0"
+    # architecture: amd64 # optional
     acceleratedNetworking: true
 - name: myimage
   versions:
@@ -121,9 +123,11 @@ spec:
       versions:
       - version: 2303.3.0
         urn: CoreOS:CoreOS:Stable:2303.3.0
+        # architecture: amd64 # optional
         acceleratedNetworking: true
       - version: 2135.6.0
         urn: "CoreOS:CoreOS:Stable:2135.6.0"
+        # architecture: amd64 # optional
 ```
 
 ## `Seed` resource
