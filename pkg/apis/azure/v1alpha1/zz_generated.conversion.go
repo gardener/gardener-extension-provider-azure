@@ -572,6 +572,7 @@ func autoConvert_v1alpha1_MachineImage_To_azure_MachineImage(in *MachineImage, o
 	out.CommunityGalleryImageID = (*string)(unsafe.Pointer(in.CommunityGalleryImageID))
 	out.SharedGalleryImageID = (*string)(unsafe.Pointer(in.SharedGalleryImageID))
 	out.AcceleratedNetworking = (*bool)(unsafe.Pointer(in.AcceleratedNetworking))
+	out.Architecture = (*string)(unsafe.Pointer(in.Architecture))
 	return nil
 }
 
@@ -588,6 +589,7 @@ func autoConvert_azure_MachineImage_To_v1alpha1_MachineImage(in *azure.MachineIm
 	out.CommunityGalleryImageID = (*string)(unsafe.Pointer(in.CommunityGalleryImageID))
 	out.SharedGalleryImageID = (*string)(unsafe.Pointer(in.SharedGalleryImageID))
 	out.AcceleratedNetworking = (*bool)(unsafe.Pointer(in.AcceleratedNetworking))
+	out.Architecture = (*string)(unsafe.Pointer(in.Architecture))
 	return nil
 }
 
@@ -603,6 +605,7 @@ func autoConvert_v1alpha1_MachineImageVersion_To_azure_MachineImageVersion(in *M
 	out.CommunityGalleryImageID = (*string)(unsafe.Pointer(in.CommunityGalleryImageID))
 	out.SharedGalleryImageID = (*string)(unsafe.Pointer(in.SharedGalleryImageID))
 	out.AcceleratedNetworking = (*bool)(unsafe.Pointer(in.AcceleratedNetworking))
+	out.Architecture = (*string)(unsafe.Pointer(in.Architecture))
 	return nil
 }
 
@@ -618,6 +621,7 @@ func autoConvert_azure_MachineImageVersion_To_v1alpha1_MachineImageVersion(in *a
 	out.CommunityGalleryImageID = (*string)(unsafe.Pointer(in.CommunityGalleryImageID))
 	out.SharedGalleryImageID = (*string)(unsafe.Pointer(in.SharedGalleryImageID))
 	out.AcceleratedNetworking = (*bool)(unsafe.Pointer(in.AcceleratedNetworking))
+	out.Architecture = (*string)(unsafe.Pointer(in.Architecture))
 	return nil
 }
 

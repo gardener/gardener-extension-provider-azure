@@ -806,6 +806,18 @@ bool
 <p>AcceleratedNetworking is an indicator if the image supports Azure accelerated networking.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>architecture</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Architecture is the CPU architecture of the machine image.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.MachineImageVersion">MachineImageVersion
@@ -894,6 +906,18 @@ bool
 <td>
 <em>(Optional)</em>
 <p>AcceleratedNetworking is an indicator if the image supports Azure accelerated networking.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>architecture</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Architecture is the CPU architecture of the machine image.</p>
 </td>
 </tr>
 </tbody>

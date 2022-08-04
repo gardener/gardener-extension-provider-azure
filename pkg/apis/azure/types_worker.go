@@ -62,6 +62,8 @@ type MachineImage struct {
 	SharedGalleryImageID *string
 	// AcceleratedNetworking is an indicator if the image supports Azure accelerated networking.
 	AcceleratedNetworking *bool
+	// Architecture is the CPU architecture of the machine image.
+	Architecture *string
 }
 
 // VmoDependency is dependency reference for a workerpool to a VirtualMachineScaleSet Orchestration Mode VM (VMO).

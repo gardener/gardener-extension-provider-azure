@@ -72,6 +72,9 @@ type MachineImageVersion struct {
 	// AcceleratedNetworking is an indicator if the image supports Azure accelerated networking.
 	// +optional
 	AcceleratedNetworking *bool `json:"acceleratedNetworking,omitempty"`
+	// Architecture is the CPU architecture of the machine image.
+	// +optional
+	Architecture *string `json:"architecture,omitempty"`
 }
 
 // MachineType contains provider specific information to a machine type.
