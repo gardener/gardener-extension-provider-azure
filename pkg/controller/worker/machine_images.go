@@ -46,8 +46,8 @@ func (w *workerDelegate) UpdateMachineImagesStatus(ctx context.Context) error {
 	return nil
 }
 
-func (w *workerDelegate) findMachineImage(name, version string) (urn, id, communityGalleryImageID *string, sharedGalleryImageID *string, acceleratedNetworking *bool, err error) {
-	machineImage, err := helper.FindImageFromCloudProfile(w.cloudProfileConfig, name, version)
+func (w *workerDelegate) findMachineImage(name, version string, architecture *string) (urn, id, communityGalleryImageID *string, sharedGalleryImageID *string, acceleratedNetworking *bool, err error) {
+	machineImage, err := helper.FindImageFromCloudProfile(w.cloudProfileConfig, name, version, architecture)
 	if err == nil {
 		return machineImage.URN, machineImage.ID, machineImage.CommunityGalleryImageID, machineImage.SharedGalleryImageID, machineImage.AcceleratedNetworking, nil
 	}
@@ -59,19 +59,19 @@ func (w *workerDelegate) findMachineImage(name, version string) (urn, id, commun
 			return nil, nil, nil, nil, nil, fmt.Errorf("could not decode worker status of worker '%s': %w", kutil.ObjectName(w.worker), err)
 		}
 
-		machineImage, err := helper.FindMachineImage(workerStatus.MachineImages, name, version)
+		machineImage, err := helper.FindMachineImage(workerStatus.MachineImages, name, version, architecture)
 		if err != nil {
-			return nil, nil, nil, nil, nil, worker.ErrorMachineImageNotFound(name, version)
+			return nil, nil, nil, nil, nil, worker.ErrorMachineImageNotFound(name, version, *architecture)
 		}
 
 		return machineImage.URN, machineImage.ID, machineImage.CommunityGalleryImageID, machineImage.SharedGalleryImageID, machineImage.AcceleratedNetworking, nil
 	}
 
-	return nil, nil, nil, nil, nil, worker.ErrorMachineImageNotFound(name, version)
+	return nil, nil, nil, nil, nil, worker.ErrorMachineImageNotFound(name, version, *architecture)
 }
 
 func appendMachineImage(machineImages []api.MachineImage, machineImage api.MachineImage) []api.MachineImage {
-	if _, err := helper.FindMachineImage(machineImages, machineImage.Name, machineImage.Version); err != nil {
+	if _, err := helper.FindMachineImage(machineImages, machineImage.Name, machineImage.Version, machineImage.Architecture); err != nil {
 		return append(machineImages, machineImage)
 	}
 	return machineImages

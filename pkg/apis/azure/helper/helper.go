@@ -19,6 +19,7 @@ import (
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	"k8s.io/utils/pointer"
 )
 
 // FindSubnetByPurposeAndZone takes a list of subnets and tries to find the first entry whose purpose matches with the given purpose.
@@ -76,15 +77,15 @@ func FindAvailabilitySetByPurpose(availabilitySets []api.AvailabilitySet, purpos
 }
 
 // FindMachineImage takes a list of machine images and tries to find the first entry
-// whose name, version, and zone matches with the given name, version, and zone. If no such entry is
+// whose name, version, architecture and zone matches with the given name, version, and zone. If no such entry is
 // found then an error will be returned.
-func FindMachineImage(machineImages []api.MachineImage, name, version string) (*api.MachineImage, error) {
+func FindMachineImage(machineImages []api.MachineImage, name, version string, architecture *string) (*api.MachineImage, error) {
 	for _, machineImage := range machineImages {
-		if machineImage.Name == name && machineImage.Version == version {
+		if machineImage.Name == name && machineImage.Version == version && pointer.StringEqual(architecture, machineImage.Architecture) {
 			return &machineImage, nil
 		}
 	}
-	return nil, fmt.Errorf("no machine image with name %q, version %q found", name, version)
+	return nil, fmt.Errorf("no machine image found with name %q, architecture %q and version %q", name, *architecture, version)
 }
 
 // FindDomainCountByRegion takes a region and the domain counts and finds the count for the given region.
@@ -98,16 +99,16 @@ func FindDomainCountByRegion(domainCounts []api.DomainCount, region string) (int
 }
 
 // FindImageFromCloudProfile takes a list of machine images, and the desired image name and version. It tries
-// to find the image with the given name and version. If it cannot be found then an error
+// to find the image with the given name, architecture and version. If it cannot be found then an error
 // is returned.
-func FindImageFromCloudProfile(cloudProfileConfig *api.CloudProfileConfig, imageName, imageVersion string) (*api.MachineImage, error) {
+func FindImageFromCloudProfile(cloudProfileConfig *api.CloudProfileConfig, imageName, imageVersion string, architecture *string) (*api.MachineImage, error) {
 	if cloudProfileConfig != nil {
 		for _, machineImage := range cloudProfileConfig.MachineImages {
 			if machineImage.Name != imageName {
 				continue
 			}
 			for _, version := range machineImage.Versions {
-				if imageVersion == version.Version {
+				if imageVersion == version.Version && pointer.StringEqual(architecture, version.Architecture) {
 					return &api.MachineImage{
 						Name:                    imageName,
 						Version:                 version.Version,
@@ -116,13 +117,14 @@ func FindImageFromCloudProfile(cloudProfileConfig *api.CloudProfileConfig, image
 						SharedGalleryImageID:    version.SharedGalleryImageID,
 						CommunityGalleryImageID: version.CommunityGalleryImageID,
 						AcceleratedNetworking:   version.AcceleratedNetworking,
+						Architecture:            version.Architecture,
 					}, nil
 				}
 			}
 		}
 	}
 
-	return nil, fmt.Errorf("could not find an image for name %q in version %q", imageName, imageVersion)
+	return nil, fmt.Errorf("no machine image found with name %q, architecture %q and version %q", imageName, *architecture, imageVersion)
 }
 
 // IsVmoRequired determines if VMO is required.
