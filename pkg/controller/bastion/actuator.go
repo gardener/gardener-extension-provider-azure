@@ -197,10 +197,11 @@ func getSubnet(ctx context.Context, factory azureclient.Factory, vNet, subnetWor
 	if err != nil {
 		return nil, err
 	}
-
 	if subnet == nil {
-		logger.Info("subnet not found,", "subnet_name", subnetWork)
-		return nil, nil
+		return nil, fmt.Errorf("unable to get virtual network subnet on Azure, subnet_name: %s", subnetWork)
+	}
+	if *subnet.ID == "" {
+		return nil, fmt.Errorf("virtual network subnet ID is empty, subnet_name: %s", subnetWork)
 	}
 
 	return subnet, nil

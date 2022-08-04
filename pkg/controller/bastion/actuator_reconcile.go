@@ -312,10 +312,6 @@ func ensureNic(ctx context.Context, factory azureclient.Factory, opt *Options, v
 		return nil, err
 	}
 
-	if subnet == nil || *subnet.ID == "" {
-		return nil, errors.New("virtual network subnet must be not empty")
-	}
-
 	parameters := nicDefine(opt, publicIP, subnet)
 
 	nicClient, err := factory.NetworkInterface(ctx, opt.SecretReference)
