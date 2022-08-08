@@ -185,6 +185,7 @@ spec:
         - --leader-election=true
         - --leader-election-namespace=kube-system
         - --v=5
+        - --handle-volume-inuse-error=false
         env:
         - name: ADDRESS
           value: {{ .Values.socketPath }}/csi.sock
