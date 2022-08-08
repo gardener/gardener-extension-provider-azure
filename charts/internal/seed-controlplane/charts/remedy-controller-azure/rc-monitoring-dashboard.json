@@ -409,14 +409,14 @@
           "refId": "A"
         },
         {
-          "expr": "kube_pod_container_resource_limits_memory_bytes{pod=~\"remedy-controller-azure-(.+)\",job=\"kube-kubelet-seed\"}",
+          "expr": "kube_pod_container_resource_limits{resource=\"memory\", unit=\"byte\", pod=~\"remedy-controller-azure-(.+)\",job=\"kube-kubelet-seed\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "limits ({{pod}})",
           "refId": "B"
         },
         {
-          "expr": "kube_pod_container_resource_requests_memory_bytes{pod=~\"remedy-controller-azure-(.+)\",job=\"kube-kubelet-seed\"}",
+          "expr": "kube_pod_container_resource_requests{resource=\"memory\", unit=\"byte\", pod=~\"remedy-controller-azure-(.+)\",job=\"kube-kubelet-seed\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "requests ({{pod}})",
@@ -508,14 +508,14 @@
           "refId": "A"
         },
         {
-          "expr": "kube_pod_container_resource_limits_cpu_cores{pod=~\"remedy-controller-azure-(.+)\",job=\"kube-kubelet-seed\"}",
+          "expr": "kube_pod_container_resource_limits{resource=\"cpu\", unit=\"core\", pod=~\"remedy-controller-azure-(.+)\",job=\"kube-kubelet-seed\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "limits ({{pod}})",
           "refId": "B"
         },
         {
-          "expr": "kube_pod_container_resource_requests_cpu_cores{pod=~\"remedy-controller-azure-(.+)\",job=\"kube-kubelet-seed\"}",
+          "expr": "kube_pod_container_resource_requests{resource=\"cpu\", unit=\"core\", pod=~\"remedy-controller-azure-(.+)\",job=\"kube-kubelet-seed\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "requests ({{pod}})",
@@ -1197,7 +1197,7 @@
         "align": false,
         "alignLevel": null
       }
-    }    
+    }
   ],
   "schemaVersion": 18,
   "style": "dark",
