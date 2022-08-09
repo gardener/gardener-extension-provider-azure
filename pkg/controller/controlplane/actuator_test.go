@@ -94,7 +94,7 @@ var _ = Describe("Actuator", func() {
 		a = mockcontrolplane.NewMockActuator(ctrl)
 		gracefulDeletionTimeout = 10 * time.Second
 		gracefulDeletionWaitInterval = 1 * time.Second
-		actuator = NewActuator(a, logger, gracefulDeletionTimeout, gracefulDeletionWaitInterval)
+		actuator = NewActuator(a, gracefulDeletionTimeout, gracefulDeletionWaitInterval)
 
 		err := actuator.(inject.Client).InjectClient(c)
 		Expect(err).NotTo(HaveOccurred())
@@ -124,8 +124,8 @@ var _ = Describe("Actuator", func() {
 			c.EXPECT().DeleteAllOf(ctx, &azurev1alpha1.PublicIPAddress{}, client.InNamespace(namespace)).Return(nil)
 			c.EXPECT().DeleteAllOf(ctx, &azurev1alpha1.VirtualMachine{}, client.InNamespace(namespace)).Return(nil)
 
-			a.EXPECT().Delete(ctx, cp, cluster).Return(nil)
-			err := actuator.Delete(ctx, cp, cluster)
+			a.EXPECT().Delete(ctx, logger, cp, cluster).Return(nil)
+			err := actuator.Delete(ctx, logger, cp, cluster)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -144,7 +144,7 @@ var _ = Describe("Actuator", func() {
 					return nil
 				})
 
-			err := actuator.Delete(ctx, cp, cluster)
+			err := actuator.Delete(ctx, logger, cp, cluster)
 			Expect(err).To(MatchError(&reconcilerutils.RequeueAfterError{RequeueAfter: gracefulDeletionWaitInterval}))
 		})
 
@@ -176,9 +176,9 @@ var _ = Describe("Actuator", func() {
 			test.EXPECTPatchWithOptimisticLock(ctx, c, vm, vmWithFinalizers, types.MergePatchType)
 			c.EXPECT().DeleteAllOf(ctx, &azurev1alpha1.VirtualMachine{}, client.InNamespace(namespace)).Return(nil)
 
-			a.EXPECT().Delete(ctx, cp, cluster).Return(nil)
+			a.EXPECT().Delete(ctx, logger, cp, cluster).Return(nil)
 
-			err := actuator.Delete(ctx, cp, cluster)
+			err := actuator.Delete(ctx, logger, cp, cluster)
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
@@ -186,7 +186,7 @@ var _ = Describe("Actuator", func() {
 	Describe("#Migrate", func() {
 		It("should remove finalizers from remedy controller resources and then delete them", func() {
 			cp := newControlPlane(nil)
-			a.EXPECT().Migrate(ctx, cp, cluster).Return(nil)
+			a.EXPECT().Migrate(ctx, logger, cp, cluster).Return(nil)
 
 			pubip := newPubip(nil)
 			pubipWithFinalizers := pubip.DeepCopy()
@@ -210,16 +210,16 @@ var _ = Describe("Actuator", func() {
 			test.EXPECTPatchWithOptimisticLock(ctx, c, vm, vmWithFinalizers, types.MergePatchType)
 			c.EXPECT().DeleteAllOf(ctx, &azurev1alpha1.VirtualMachine{}, client.InNamespace(namespace)).Return(nil)
 
-			err := actuator.Migrate(ctx, cp, cluster)
+			err := actuator.Migrate(ctx, logger, cp, cluster)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should neither remove finalizers from remaining remedy controller resources nor delete them for controlplane with purpose exposure", func() {
 			exposure := extensionsv1alpha1.Exposure
 			cp := newControlPlane(&exposure)
-			a.EXPECT().Migrate(ctx, cp, cluster).Return(nil)
+			a.EXPECT().Migrate(ctx, logger, cp, cluster).Return(nil)
 
-			err := actuator.Migrate(ctx, cp, cluster)
+			err := actuator.Migrate(ctx, logger, cp, cluster)
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})

@@ -42,15 +42,13 @@ const (
 type actuator struct {
 	client             client.Client
 	azureClientFactory azureclient.Factory
-	logger             logr.Logger
 }
 
 // NewActuator creates a new dnsrecord.Actuator.
-func NewActuator(client client.Client, azureClientFactory azureclient.Factory, logger logr.Logger) dnsrecord.Actuator {
+func NewActuator(client client.Client, azureClientFactory azureclient.Factory) dnsrecord.Actuator {
 	return &actuator{
 		client:             client,
 		azureClientFactory: azureClientFactory,
-		logger:             logger.WithName("azure-dnsrecord-actuator"),
 	}
 }
 
@@ -61,7 +59,7 @@ func (a *actuator) InjectClient(client client.Client) error {
 }
 
 // Reconcile reconciles the DNSRecord.
-func (a *actuator) Reconcile(ctx context.Context, dns *extensionsv1alpha1.DNSRecord, cluster *extensionscontroller.Cluster) error {
+func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, cluster *extensionscontroller.Cluster) error {
 	// Create Azure DNS zone and recordset clients
 	dnsZoneClient, err := a.azureClientFactory.DNSZone(ctx, dns.Spec.SecretRef)
 	if err != nil {
@@ -73,14 +71,14 @@ func (a *actuator) Reconcile(ctx context.Context, dns *extensionsv1alpha1.DNSRec
 	}
 
 	// Determine DNS zone ID
-	zone, err := a.getZone(ctx, dns, dnsZoneClient)
+	zone, err := a.getZone(ctx, log, dns, dnsZoneClient)
 	if err != nil {
 		return err
 	}
 
 	// Create or update DNS recordset
 	ttl := extensionsv1alpha1helper.GetDNSRecordTTL(dns.Spec.TTL)
-	a.logger.Info("Creating or updating DNS recordset", "zone", zone, "name", dns.Spec.Name, "type", dns.Spec.RecordType, "values", dns.Spec.Values, "dnsrecord", kutil.ObjectName(dns))
+	log.Info("Creating or updating DNS recordset", "zone", zone, "name", dns.Spec.Name, "type", dns.Spec.RecordType, "values", dns.Spec.Values, "dnsrecord", kutil.ObjectName(dns))
 	if err := dnsRecordSetClient.CreateOrUpdate(ctx, zone, dns.Spec.Name, string(dns.Spec.RecordType), dns.Spec.Values, ttl); err != nil {
 		return &reconcilerutils.RequeueAfterError{
 			Cause:        fmt.Errorf("could not create or update DNS recordset in zone %s with name %s, type %s, and values %v: %+v", zone, dns.Spec.Name, dns.Spec.RecordType, dns.Spec.Values, err),
@@ -91,7 +89,7 @@ func (a *actuator) Reconcile(ctx context.Context, dns *extensionsv1alpha1.DNSRec
 	// Delete meta DNS recordset if exists
 	if dns.Status.LastOperation == nil || dns.Status.LastOperation.Type == gardencorev1beta1.LastOperationTypeCreate {
 		name, recordType := dnsrecord.GetMetaRecordName(dns.Spec.Name), "TXT"
-		a.logger.Info("Deleting meta DNS recordset", "zone", zone, "name", name, "type", recordType, "dnsrecord", kutil.ObjectName(dns))
+		log.Info("Deleting meta DNS recordset", "zone", zone, "name", name, "type", recordType, "dnsrecord", kutil.ObjectName(dns))
 		if err := dnsRecordSetClient.Delete(ctx, zone, name, recordType); err != nil {
 			return &reconcilerutils.RequeueAfterError{
 				Cause:        fmt.Errorf("could not delete meta DNS recordset in zone %s with name %s and type %s: %+v", zone, name, recordType, err),
@@ -107,7 +105,7 @@ func (a *actuator) Reconcile(ctx context.Context, dns *extensionsv1alpha1.DNSRec
 }
 
 // Delete deletes the DNSRecord.
-func (a *actuator) Delete(ctx context.Context, dns *extensionsv1alpha1.DNSRecord, cluster *extensionscontroller.Cluster) error {
+func (a *actuator) Delete(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, cluster *extensionscontroller.Cluster) error {
 	// Create Azure DNS zone and recordset clients
 	dnsZoneClient, err := a.azureClientFactory.DNSZone(ctx, dns.Spec.SecretRef)
 	if err != nil {
@@ -119,13 +117,13 @@ func (a *actuator) Delete(ctx context.Context, dns *extensionsv1alpha1.DNSRecord
 	}
 
 	// Determine DNS zone ID
-	zone, err := a.getZone(ctx, dns, dnsZoneClient)
+	zone, err := a.getZone(ctx, log, dns, dnsZoneClient)
 	if err != nil {
 		return err
 	}
 
 	// Delete DNS recordset
-	a.logger.Info("Deleting DNS recordset", "zone", zone, "name", dns.Spec.Name, "type", dns.Spec.RecordType, "dnsrecord", kutil.ObjectName(dns))
+	log.Info("Deleting DNS recordset", "zone", zone, "name", dns.Spec.Name, "type", dns.Spec.RecordType, "dnsrecord", kutil.ObjectName(dns))
 	if err := dnsRecordSetClient.Delete(ctx, zone, dns.Spec.Name, string(dns.Spec.RecordType)); err != nil {
 		return &reconcilerutils.RequeueAfterError{
 			Cause:        fmt.Errorf("could not delete DNS recordset in zone %s with name %s and type %s: %+v", zone, dns.Spec.Name, dns.Spec.RecordType, err),
@@ -137,16 +135,16 @@ func (a *actuator) Delete(ctx context.Context, dns *extensionsv1alpha1.DNSRecord
 }
 
 // Restore restores the DNSRecord.
-func (a *actuator) Restore(ctx context.Context, dns *extensionsv1alpha1.DNSRecord, cluster *extensionscontroller.Cluster) error {
-	return a.Reconcile(ctx, dns, cluster)
+func (a *actuator) Restore(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, cluster *extensionscontroller.Cluster) error {
+	return a.Reconcile(ctx, log, dns, cluster)
 }
 
 // Migrate migrates the DNSRecord.
-func (a *actuator) Migrate(ctx context.Context, dns *extensionsv1alpha1.DNSRecord, cluster *extensionscontroller.Cluster) error {
+func (a *actuator) Migrate(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, cluster *extensionscontroller.Cluster) error {
 	return nil
 }
 
-func (a *actuator) getZone(ctx context.Context, dns *extensionsv1alpha1.DNSRecord, dnsZoneClient azureclient.DNSZone) (string, error) {
+func (a *actuator) getZone(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, dnsZoneClient azureclient.DNSZone) (string, error) {
 	switch {
 	case dns.Spec.Zone != nil && *dns.Spec.Zone != "":
 		return *dns.Spec.Zone, nil
@@ -162,7 +160,7 @@ func (a *actuator) getZone(ctx context.Context, dns *extensionsv1alpha1.DNSRecor
 				RequeueAfter: requeueAfterOnProviderError,
 			}
 		}
-		a.logger.Info("Got DNS zones", "zones", zones, "dnsrecord", kutil.ObjectName(dns))
+		log.Info("Got DNS zones", "zones", zones, "dnsrecord", kutil.ObjectName(dns))
 		zone := dnsrecord.FindZoneForName(zones, dns.Spec.Name)
 		if zone == "" {
 			return "", fmt.Errorf("could not find DNS zone for name %s", dns.Spec.Name)

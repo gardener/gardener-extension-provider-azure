@@ -43,13 +43,11 @@ const (
 // NewActuator creates a new Actuator that acts upon and updates the status of ControlPlane resources.
 func NewActuator(
 	a controlplane.Actuator,
-	logger logr.Logger,
 	gracefulDeletionTimeout time.Duration,
 	gracefulDeletionWaitInterval time.Duration,
 ) controlplane.Actuator {
 	return &actuator{
 		Actuator:                     a,
-		logger:                       logger.WithName("azure-controlplane-actuator"),
 		gracefulDeletionTimeout:      gracefulDeletionTimeout,
 		gracefulDeletionWaitInterval: gracefulDeletionWaitInterval,
 	}
@@ -59,7 +57,6 @@ func NewActuator(
 type actuator struct {
 	controlplane.Actuator
 	client                       client.Client
-	logger                       logr.Logger
 	gracefulDeletionTimeout      time.Duration
 	gracefulDeletionWaitInterval time.Duration
 }
@@ -80,6 +77,7 @@ func (a *actuator) InjectClient(client client.Client) error {
 // Before delegating to the composed Actuator, it ensures that all remedy controller resources have been deleted gracefully.
 func (a *actuator) Delete(
 	ctx context.Context,
+	log logr.Logger,
 	cp *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
 ) error {
@@ -90,24 +88,24 @@ func (a *actuator) Delete(
 		}
 		if meta.LenList(list) != 0 {
 			if time.Since(cp.DeletionTimestamp.Time) <= a.gracefulDeletionTimeout {
-				a.logger.Info("Some publicipaddresses still exist. Deletion will be retried ...")
+				log.Info("Some publicipaddresses still exist. Deletion will be retried ...")
 				return &reconcilerutils.RequeueAfterError{
 					RequeueAfter: a.gracefulDeletionWaitInterval,
 				}
 			} else {
-				a.logger.Info("The timeout for waiting for publicipaddresses to be gracefully deleted has expired. They will be forcefully removed.")
+				log.Info("The timeout for waiting for publicipaddresses to be gracefully deleted has expired. They will be forcefully removed.")
 			}
 		}
 	}
 
 	// Call Delete on the composed Actuator
-	if err := a.Actuator.Delete(ctx, cp, cluster); err != nil {
+	if err := a.Actuator.Delete(ctx, log, cp, cluster); err != nil {
 		return err
 	}
 
 	if cp.Spec.Purpose == nil || *cp.Spec.Purpose == extensionsv1alpha1.Normal {
 		// Delete all remaining remedy controller resources
-		return a.forceDeleteRemedyControllerResources(ctx, cp)
+		return a.forceDeleteRemedyControllerResources(ctx, log, cp)
 	}
 	return nil
 }
@@ -117,23 +115,24 @@ func (a *actuator) Delete(
 // Before delegating to the composed Actuator, it ensures that all remedy controller resources have been deleted.
 func (a *actuator) Migrate(
 	ctx context.Context,
+	log logr.Logger,
 	cp *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
 ) error {
 	// Call Migrate on the composed Actuator so that the controlplane chart is deleted and therefore
 	// the remedy controller is also removed.
-	if err := a.Actuator.Migrate(ctx, cp, cluster); err != nil {
+	if err := a.Actuator.Migrate(ctx, log, cp, cluster); err != nil {
 		return err
 	}
 	if cp.Spec.Purpose == nil || *cp.Spec.Purpose == extensionsv1alpha1.Normal {
 		// Delete all remaining remedy controller resources
-		return a.forceDeleteRemedyControllerResources(ctx, cp)
+		return a.forceDeleteRemedyControllerResources(ctx, log, cp)
 	}
 	return nil
 }
 
-func (a *actuator) forceDeleteRemedyControllerResources(ctx context.Context, cp *extensionsv1alpha1.ControlPlane) error {
-	a.logger.Info("Removing finalizers from remedy controller resources")
+func (a *actuator) forceDeleteRemedyControllerResources(ctx context.Context, log logr.Logger, cp *extensionsv1alpha1.ControlPlane) error {
+	log.Info("Removing finalizers from remedy controller resources")
 	pubipList := &azurev1alpha1.PublicIPAddressList{}
 	if err := a.client.List(ctx, pubipList, client.InNamespace(cp.Namespace)); err != nil {
 		return fmt.Errorf("could not list publicipaddresses: %w", err)
@@ -154,7 +153,7 @@ func (a *actuator) forceDeleteRemedyControllerResources(ctx context.Context, cp 
 		}
 	}
 
-	a.logger.Info("Deleting all remaining remedy controller resources")
+	log.Info("Deleting all remaining remedy controller resources")
 	if err := a.client.DeleteAllOf(ctx, &azurev1alpha1.PublicIPAddress{}, client.InNamespace(cp.Namespace)); err != nil {
 		return fmt.Errorf("could not delete publicipaddress resources: %w", err)
 	}
