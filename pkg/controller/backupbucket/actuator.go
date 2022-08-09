@@ -18,24 +18,20 @@ import (
 	"context"
 
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
+	"github.com/go-logr/logr"
 
 	"github.com/gardener/gardener/extensions/pkg/controller/backupbucket"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	"github.com/go-logr/logr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type actuator struct {
 	backupbucket.Actuator
 	client client.Client
-	logger logr.Logger
 }
 
 func newActuator() backupbucket.Actuator {
-	return &actuator{
-		logger: log.Log.WithName("azure-backupbucket-actuator"),
-	}
+	return &actuator{}
 }
 
 func (a *actuator) InjectClient(client client.Client) error {
@@ -43,7 +39,7 @@ func (a *actuator) InjectClient(client client.Client) error {
 	return nil
 }
 
-func (a *actuator) Reconcile(ctx context.Context, backupBucket *extensionsv1alpha1.BackupBucket) error {
+func (a *actuator) Reconcile(ctx context.Context, _ logr.Logger, backupBucket *extensionsv1alpha1.BackupBucket) error {
 	var factory = azureclient.NewAzureClientFactory(a.client)
 
 	// If the generated secret in the backupbucket status not exists that means
@@ -66,7 +62,7 @@ func (a *actuator) Reconcile(ctx context.Context, backupBucket *extensionsv1alph
 	return storageClient.CreateContainerIfNotExists(ctx, backupBucket.Name)
 }
 
-func (a *actuator) Delete(ctx context.Context, backupBucket *extensionsv1alpha1.BackupBucket) error {
+func (a *actuator) Delete(ctx context.Context, _ logr.Logger, backupBucket *extensionsv1alpha1.BackupBucket) error {
 	// If the backupBucket has no generated secret in the status that means
 	// no backupbucket exists and therefore there is no need for deletion.
 	if backupBucket.Status.GeneratedSecretRef == nil {

@@ -28,13 +28,10 @@ import (
 
 type actuator struct {
 	client client.Client
-	logger logr.Logger
 }
 
 func newActuator() genericactuator.BackupEntryDelegate {
-	return &actuator{
-		logger: logger,
-	}
+	return &actuator{}
 }
 
 func (a *actuator) InjectClient(client client.Client) error {
@@ -42,11 +39,11 @@ func (a *actuator) InjectClient(client client.Client) error {
 	return nil
 }
 
-func (a *actuator) GetETCDSecretData(ctx context.Context, be *extensionsv1alpha1.BackupEntry, backupSecretData map[string][]byte) (map[string][]byte, error) {
+func (a *actuator) GetETCDSecretData(ctx context.Context, _ logr.Logger, be *extensionsv1alpha1.BackupEntry, backupSecretData map[string][]byte) (map[string][]byte, error) {
 	return backupSecretData, nil
 }
 
-func (a *actuator) Delete(ctx context.Context, backupEntry *extensionsv1alpha1.BackupEntry) error {
+func (a *actuator) Delete(ctx context.Context, _ logr.Logger, backupEntry *extensionsv1alpha1.BackupEntry) error {
 	factory := azureclient.NewAzureClientFactory(a.client)
 	storageClient, err := factory.Storage(ctx, backupEntry.Spec.SecretRef)
 	if err != nil {

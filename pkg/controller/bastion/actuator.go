@@ -23,13 +23,13 @@ import (
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
+	"github.com/go-logr/logr"
 	"golang.org/x/crypto/ssh"
 
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/bastion"
-	"github.com/go-logr/logr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -40,13 +40,10 @@ const (
 
 type actuator struct {
 	client client.Client
-	logger logr.Logger
 }
 
 func newActuator() bastion.Actuator {
-	return &actuator{
-		logger: logger,
-	}
+	return &actuator{}
 }
 
 func (a *actuator) InjectClient(client client.Client) error {
@@ -97,7 +94,7 @@ func createOrUpdateNetworkSecGroup(ctx context.Context, factory azureclient.Fact
 	return nil
 }
 
-func getBastionInstance(ctx context.Context, factory azureclient.Factory, opt *Options) (*compute.VirtualMachine, error) {
+func getBastionInstance(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*compute.VirtualMachine, error) {
 	vmClient, err := factory.VirtualMachine(ctx, opt.SecretReference)
 	if err != nil {
 		return nil, err
@@ -106,7 +103,7 @@ func getBastionInstance(ctx context.Context, factory azureclient.Factory, opt *O
 	instance, err := vmClient.Get(ctx, opt.ResourceGroupName, opt.BastionInstanceName, compute.InstanceViewTypesInstanceView)
 	if err != nil {
 		if azureclient.IsAzureAPINotFoundError(err) {
-			logger.Info("Instance not found,", "instance_name", opt.BastionInstanceName)
+			log.Info("Instance not found,", "instance_name", opt.BastionInstanceName)
 			return nil, nil
 		}
 		return nil, err
@@ -114,7 +111,7 @@ func getBastionInstance(ctx context.Context, factory azureclient.Factory, opt *O
 	return instance, nil
 }
 
-func getNic(ctx context.Context, factory azureclient.Factory, opt *Options) (*network.Interface, error) {
+func getNic(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*network.Interface, error) {
 	nicClient, err := factory.NetworkInterface(ctx, opt.SecretReference)
 	if err != nil {
 		return nil, err
@@ -123,7 +120,7 @@ func getNic(ctx context.Context, factory azureclient.Factory, opt *Options) (*ne
 	nic, err := nicClient.Get(ctx, opt.ResourceGroupName, opt.NicName, "")
 	if err != nil {
 		if azureclient.IsAzureAPINotFoundError(err) {
-			logger.Info("Nic not found,", "nic_name", opt.NicName)
+			log.Info("Nic not found,", "nic_name", opt.NicName)
 			return nil, nil
 		}
 		return nil, err
@@ -132,7 +129,7 @@ func getNic(ctx context.Context, factory azureclient.Factory, opt *Options) (*ne
 	return nic, nil
 }
 
-func getNetworkSecurityGroup(ctx context.Context, factory azureclient.Factory, opt *Options) (*network.SecurityGroup, error) {
+func getNetworkSecurityGroup(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*network.SecurityGroup, error) {
 	nsgClient, err := factory.NetworkSecurityGroup(ctx, opt.SecretReference)
 	if err != nil {
 		return nil, err
@@ -141,7 +138,7 @@ func getNetworkSecurityGroup(ctx context.Context, factory azureclient.Factory, o
 	nsgResp, err := nsgClient.Get(ctx, opt.ResourceGroupName, opt.SecurityGroupName, "")
 	if err != nil {
 		if azureclient.IsAzureAPINotFoundError(err) {
-			logger.Error(err, "Network Security Group not found, test environment?", "nsg_name", opt.SecurityGroupName)
+			log.Error(err, "Network Security Group not found, test environment?", "nsg_name", opt.SecurityGroupName)
 			return nil, err
 		}
 		return nil, err
@@ -170,7 +167,7 @@ func getWorkersCIDR(cluster *controller.Cluster) ([]string, error) {
 	return nil, fmt.Errorf("InfrastructureConfig.Networks.Workers is nil")
 }
 
-func getPublicIP(ctx context.Context, factory azureclient.Factory, opt *Options) (*network.PublicIPAddress, error) {
+func getPublicIP(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*network.PublicIPAddress, error) {
 	ipClient, err := factory.PublicIP(ctx, opt.SecretReference)
 	if err != nil {
 		return nil, err
@@ -179,7 +176,7 @@ func getPublicIP(ctx context.Context, factory azureclient.Factory, opt *Options)
 	ip, err := ipClient.Get(ctx, opt.ResourceGroupName, opt.BastionPublicIPName, "")
 	if err != nil {
 		if azureclient.IsAzureAPINotFoundError(err) {
-			logger.Info("public IP not found,", "publicIP_name", opt.BastionPublicIPName)
+			log.Info("public IP not found,", "publicIP_name", opt.BastionPublicIPName)
 			return nil, nil
 		}
 		return nil, err
@@ -187,7 +184,7 @@ func getPublicIP(ctx context.Context, factory azureclient.Factory, opt *Options)
 	return ip, nil
 }
 
-func getSubnet(ctx context.Context, factory azureclient.Factory, vNet, subnetWork string, opt *Options) (*network.Subnet, error) {
+func getSubnet(ctx context.Context, log logr.Logger, factory azureclient.Factory, vNet, subnetWork string, opt *Options) (*network.Subnet, error) {
 	subnetClient, err := factory.Subnet(ctx, opt.SecretReference)
 	if err != nil {
 		return nil, err
@@ -199,7 +196,7 @@ func getSubnet(ctx context.Context, factory azureclient.Factory, vNet, subnetWor
 	}
 
 	if subnet == nil {
-		logger.Info("subnet not found,", "subnet_name", subnetWork)
+		log.Info("subnet not found,", "subnet_name", subnetWork)
 		return nil, nil
 	}
 
