@@ -22,6 +22,7 @@ import (
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
@@ -138,8 +139,11 @@ func (a *actuator) forceDeleteRemedyControllerResources(ctx context.Context, log
 		return fmt.Errorf("could not list publicipaddresses: %w", err)
 	}
 	for _, pubip := range pubipList.Items {
-		if err := controllerutils.PatchRemoveFinalizers(ctx, a.client, &pubip, "azure.remedy.gardener.cloud/publicipaddress"); err != nil {
-			return fmt.Errorf("could not remove finalizers from publicipaddress: %w", err)
+		finalizerString := "azure.remedy.gardener.cloud/publicipaddress"
+		if controllerutil.ContainsFinalizer(&pubip, finalizerString) {
+			if err := controllerutils.RemoveFinalizers(ctx, a.client, &pubip, finalizerString); err != nil {
+				return fmt.Errorf("could not remove finalizers from publicipaddress: %w", err)
+			}
 		}
 	}
 
@@ -148,8 +152,11 @@ func (a *actuator) forceDeleteRemedyControllerResources(ctx context.Context, log
 		return fmt.Errorf("could not list virtualmachines: %w", err)
 	}
 	for _, virtualMachine := range virtualMachineList.Items {
-		if err := controllerutils.PatchRemoveFinalizers(ctx, a.client, &virtualMachine, "azure.remedy.gardener.cloud/virtualmachine"); err != nil {
-			return fmt.Errorf("could not remove finalizers from virtualmachine: %w", err)
+		finalizerString := "azure.remedy.gardener.cloud/virtualmachine"
+		if controllerutil.ContainsFinalizer(&virtualMachine, finalizerString) {
+			if err := controllerutils.RemoveFinalizers(ctx, a.client, &virtualMachine, finalizerString); err != nil {
+				return fmt.Errorf("could not remove finalizers from virtualmachine: %w", err)
+			}
 		}
 	}
 
