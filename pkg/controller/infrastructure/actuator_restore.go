@@ -21,13 +21,12 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"github.com/go-logr/logr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Restore implements infrastructure.Actuator.
-func (a *actuator) Restore(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
-	logger := a.logger.WithValues("infrastructure", client.ObjectKeyFromObject(infra), "operation", "restore")
-
+func (a *actuator) Restore(ctx context.Context, log logr.Logger, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
 	infraState := &InfrastructureState{}
 	if err := json.Unmarshal(infra.Status.State.Raw, infraState); err != nil {
 		return err
@@ -44,5 +43,5 @@ func (a *actuator) Restore(ctx context.Context, infra *extensionsv1alpha1.Infras
 		return err
 	}
 
-	return a.reconcile(ctx, logger, infra, cluster, terraformer.CreateOrUpdateState{State: &terraformState.Data})
+	return a.reconcile(ctx, log, infra, cluster, terraformer.CreateOrUpdateState{State: &terraformState.Data})
 }

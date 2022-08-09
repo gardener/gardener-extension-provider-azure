@@ -48,6 +48,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 )
 
@@ -62,6 +63,7 @@ var _ = Describe("Actuator", func() {
 	var (
 		ctrl               *gomock.Controller
 		c                  *mockclient.MockClient
+		log                logr.Logger
 		tf                 *mockterraform.MockTerraformer
 		ctx                context.Context
 		a                  infrastructure.Actuator
@@ -82,6 +84,7 @@ var _ = Describe("Actuator", func() {
 		c.EXPECT().Status().Return(c).AnyTimes()
 
 		ctx = context.TODO()
+		log = logf.Log.WithName("test")
 
 		a = NewActuator(disableProjectedTokenMount)
 		err := a.(inject.Client).InjectClient(c)
@@ -173,19 +176,19 @@ var _ = Describe("Actuator", func() {
 
 			test.EXPECTPatch(ctx, c, expectedInfra, infra.DeepCopy(), types.MergePatchType)
 
-			err = a.Reconcile(ctx, infra, cluster)
+			err = a.Reconcile(ctx, log, infra, cluster)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should return an error if infrastructure provider config does not exist", func() {
 			infra.Spec.ProviderConfig = nil
-			err := a.Reconcile(ctx, infra, cluster)
+			err := a.Reconcile(ctx, log, infra, cluster)
 			Expect(err).To(HaveOccurred())
 		})
 
 		It("should return an error if infrastructure provider config is not properly set", func() {
 			infra.Spec.ProviderConfig.Raw = nil
-			err := a.Reconcile(ctx, infra, cluster)
+			err := a.Reconcile(ctx, log, infra, cluster)
 			Expect(err).To(HaveOccurred())
 		})
 
@@ -195,14 +198,14 @@ var _ = Describe("Actuator", func() {
 					return nil, errors.New("could not create terraform")
 				},
 			)()
-			err := a.Reconcile(ctx, infra, cluster)
+			err := a.Reconcile(ctx, log, infra, cluster)
 			Expect(err).To(HaveOccurred())
 		})
 
 		It("should return an error if terraform config can not be applied", func() {
 			tf.EXPECT().InitializeWith(ctx, gomock.Any()).Return(tf)
 			tf.EXPECT().Apply(ctx).Return(errors.New("could not apply terraform config"))
-			err := a.Reconcile(ctx, infra, cluster)
+			err := a.Reconcile(ctx, log, infra, cluster)
 			Expect(err).To(HaveOccurred())
 		})
 	})
@@ -235,7 +238,7 @@ var _ = Describe("Actuator", func() {
 			envVars := internal.TerraformerEnvVars(infra.Spec.SecretRef)
 			tf.EXPECT().SetEnvVars(envVars).Return(tf)
 			tf.EXPECT().Destroy(ctx)
-			err := a.Delete(ctx, infra, cluster)
+			err := a.Delete(ctx, log, infra, cluster)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -246,7 +249,7 @@ var _ = Describe("Actuator", func() {
 			tf.EXPECT().EnsureCleanedUp(ctx)
 			tf.EXPECT().IsStateEmpty(ctx).Return(true)
 			tf.EXPECT().CleanupConfiguration(ctx)
-			err := a.Delete(ctx, infra, cluster)
+			err := a.Delete(ctx, log, infra, cluster)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -256,13 +259,13 @@ var _ = Describe("Actuator", func() {
 					return nil, errors.New("could not create terraform")
 				},
 			)()
-			err := a.Delete(ctx, infra, cluster)
+			err := a.Delete(ctx, log, infra, cluster)
 			Expect(err).To(HaveOccurred())
 		})
 
 		It("should return an error if running terraform pod cannot be cleaned up", func() {
 			tf.EXPECT().EnsureCleanedUp(ctx).Return(errors.New("could not clean up"))
-			err := a.Delete(ctx, infra, cluster)
+			err := a.Delete(ctx, log, infra, cluster)
 			Expect(err).To(HaveOccurred())
 		})
 
@@ -273,7 +276,7 @@ var _ = Describe("Actuator", func() {
 			tf.EXPECT().EnsureCleanedUp(ctx)
 			tf.EXPECT().IsStateEmpty(ctx).Return(true)
 			tf.EXPECT().CleanupConfiguration(ctx).Return(errors.New("could not clean up terraform config"))
-			err := a.Delete(ctx, infra, cluster)
+			err := a.Delete(ctx, log, infra, cluster)
 			Expect(err).To(HaveOccurred())
 		})
 
@@ -287,7 +290,7 @@ var _ = Describe("Actuator", func() {
 			envVars := internal.TerraformerEnvVars(infra.Spec.SecretRef)
 			tf.EXPECT().SetEnvVars(envVars).Return(tf)
 			tf.EXPECT().Destroy(ctx).Return(errors.New("could not destroy terraform"))
-			err := a.Delete(ctx, infra, cluster)
+			err := a.Delete(ctx, log, infra, cluster)
 			Expect(err).To(HaveOccurred())
 		})
 	})
@@ -312,7 +315,7 @@ var _ = Describe("Actuator", func() {
 			expectedInfraAfterRestore := expectedInfra.DeepCopy()
 			expectedInfraAfterRestore.Status.ProviderStatus = &runtime.RawExtension{Object: providerStatus}
 			test.EXPECTPatch(ctx, c, expectedInfraAfterRestore, expectedInfra.DeepCopy(), types.MergePatchType)
-			err = a.Restore(ctx, infra, cluster)
+			err = a.Restore(ctx, log, infra, cluster)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -361,7 +364,7 @@ var _ = Describe("Actuator", func() {
 			expectedInfraAfterRestore := expectedInfra.DeepCopy()
 			expectedInfraAfterRestore.Status.ProviderStatus = &runtime.RawExtension{Object: providerStatus}
 			test.EXPECTPatch(ctx, c, expectedInfraAfterRestore, expectedInfra.DeepCopy(), types.MergePatchType)
-			err = a.Restore(ctx, infra, cluster)
+			err = a.Restore(ctx, log, infra, cluster)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -381,7 +384,7 @@ var _ = Describe("Actuator", func() {
 			expectedInfra.Status.ProviderStatus = &runtime.RawExtension{Raw: raw}
 			test.EXPECTPatch(ctx, c, expectedInfra, infra, types.MergePatchType)
 
-			err = a.Restore(ctx, infra, cluster)
+			err = a.Restore(ctx, log, infra, cluster)
 			Expect(err).To(HaveOccurred())
 		})
 
@@ -399,7 +402,7 @@ var _ = Describe("Actuator", func() {
 			tf.EXPECT().InitializeWith(ctx, gomock.Any()).Return(tf)
 			tf.EXPECT().Apply(ctx).Return(errors.New("could not apply terraform config"))
 
-			err = a.Restore(ctx, infra, cluster)
+			err = a.Restore(ctx, log, infra, cluster)
 			Expect(err).To(HaveOccurred())
 		})
 	})
@@ -408,7 +411,7 @@ var _ = Describe("Actuator", func() {
 		It("should migrate the Infrastructure", func() {
 			tf.EXPECT().CleanupConfiguration(ctx)
 			tf.EXPECT().RemoveTerraformerFinalizerFromConfig(ctx)
-			err := a.Migrate(ctx, infra, cluster)
+			err := a.Migrate(ctx, log, infra, cluster)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -418,20 +421,20 @@ var _ = Describe("Actuator", func() {
 					return nil, errors.New("could not create terraform")
 				},
 			)()
-			err := a.Migrate(ctx, infra, cluster)
+			err := a.Migrate(ctx, log, infra, cluster)
 			Expect(err).To(HaveOccurred())
 		})
 
 		It("should return error if cleaning up terraform configuration fails", func() {
 			tf.EXPECT().CleanupConfiguration(ctx).Return(errors.New("could not clean up terraform config"))
-			err := a.Migrate(ctx, infra, cluster)
+			err := a.Migrate(ctx, log, infra, cluster)
 			Expect(err).To(HaveOccurred())
 		})
 
 		It("should return error if removal of finalizers on terraform resources fails", func() {
 			tf.EXPECT().CleanupConfiguration(ctx)
 			tf.EXPECT().RemoveTerraformerFinalizerFromConfig(ctx).Return(errors.New("could not clean up finalizers"))
-			err := a.Migrate(ctx, infra, cluster)
+			err := a.Migrate(ctx, log, infra, cluster)
 			Expect(err).To(HaveOccurred())
 		})
 	})
