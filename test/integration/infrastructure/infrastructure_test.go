@@ -34,12 +34,13 @@ import (
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/extensions"
+	"github.com/gardener/gardener/pkg/logger"
 	"github.com/gardener/gardener/pkg/utils"
 	"github.com/gardener/gardener/test/framework"
+	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
-	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -162,8 +163,8 @@ type azureIdentifier struct {
 }
 
 var (
-	ctx    = context.Background()
-	logger *logrus.Entry
+	ctx = context.Background()
+	log logr.Logger
 
 	testEnv   *envtest.Environment
 	c         client.Client
@@ -180,11 +181,10 @@ var _ = BeforeSuite(func() {
 	internalChartsPath := azure.InternalChartsPath
 	repoRoot := filepath.Join("..", "..", "..")
 	azure.InternalChartsPath = filepath.Join(repoRoot, azure.InternalChartsPath)
-	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
-	log := logrus.New()
-	log.SetOutput(GinkgoWriter)
-	logger = logrus.NewEntry(log)
+	logf.SetLogger(logger.MustNewZapLogger(logger.DebugLevel, logger.FormatJSON, zap.WriteTo(GinkgoWriter)))
+
+	log = logf.Log.WithName("infrastructure-test")
 
 	DeferCleanup(func() {
 		defer func() {
@@ -258,7 +258,7 @@ var _ = Describe("Infrastructure tests", func() {
 			namespace, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
 
-			err = runTest(ctx, logger, c, clientSet, namespace, providerConfig, false, decoder)
+			err = runTest(ctx, log, c, clientSet, namespace, providerConfig, false, decoder)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -272,9 +272,9 @@ var _ = Describe("Infrastructure tests", func() {
 				framework.RemoveCleanupAction(cleanupHandle)
 			})
 
-			Expect(prepareNewResourceGroup(ctx, logger, clientSet, foreignName, *region)).To(Succeed())
-			Expect(prepareNewVNet(ctx, logger, clientSet, foreignName, foreignName, *region, VNetCIDR)).To(Succeed())
-			Expect(prepareNewIdentity(ctx, logger, clientSet, foreignName, foreignName, *region)).To(Succeed())
+			Expect(prepareNewResourceGroup(ctx, log, clientSet, foreignName, *region)).To(Succeed())
+			Expect(prepareNewVNet(ctx, log, clientSet, foreignName, foreignName, *region, VNetCIDR)).To(Succeed())
+			Expect(prepareNewIdentity(ctx, log, clientSet, foreignName, foreignName, *region)).To(Succeed())
 
 			vnetConfig := &azurev1alpha1.VNet{
 				Name:          pointer.StringPtr(foreignName),
@@ -288,7 +288,7 @@ var _ = Describe("Infrastructure tests", func() {
 
 			namespace, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
-			err = runTest(ctx, logger, c, clientSet, namespace, providerConfig, false, decoder)
+			err = runTest(ctx, log, c, clientSet, namespace, providerConfig, false, decoder)
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
@@ -304,7 +304,7 @@ var _ = Describe("Infrastructure tests", func() {
 			namespace, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
 
-			err = runTest(ctx, logger, c, clientSet, namespace, providerConfig, false, decoder)
+			err = runTest(ctx, log, c, clientSet, namespace, providerConfig, false, decoder)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -318,9 +318,9 @@ var _ = Describe("Infrastructure tests", func() {
 				framework.RemoveCleanupAction(cleanupHandle)
 			})
 
-			Expect(prepareNewResourceGroup(ctx, logger, clientSet, foreignName, *region)).To(Succeed())
-			Expect(prepareNewVNet(ctx, logger, clientSet, foreignName, foreignName, *region, VNetCIDR)).To(Succeed())
-			Expect(prepareNewIdentity(ctx, logger, clientSet, foreignName, foreignName, *region)).To(Succeed())
+			Expect(prepareNewResourceGroup(ctx, log, clientSet, foreignName, *region)).To(Succeed())
+			Expect(prepareNewVNet(ctx, log, clientSet, foreignName, foreignName, *region, VNetCIDR)).To(Succeed())
+			Expect(prepareNewIdentity(ctx, log, clientSet, foreignName, foreignName, *region)).To(Succeed())
 
 			vnetConfig := &azurev1alpha1.VNet{
 				Name:          pointer.StringPtr(foreignName),
@@ -337,7 +337,7 @@ var _ = Describe("Infrastructure tests", func() {
 
 			namespace, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
-			err = runTest(ctx, logger, c, clientSet, namespace, providerConfig, false, decoder)
+			err = runTest(ctx, log, c, clientSet, namespace, providerConfig, false, decoder)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -357,9 +357,9 @@ var _ = Describe("Infrastructure tests", func() {
 				natIPName2       = "nat-ip-2"
 			)
 
-			Expect(prepareNewResourceGroup(ctx, logger, clientSet, foreignName, *region)).To(Succeed())
-			Expect(prepareNewNatIp(ctx, logger, clientSet, foreignName, natIPName1, *region, fmt.Sprintf("%d", zone))).To(Succeed())
-			Expect(prepareNewNatIp(ctx, logger, clientSet, foreignName, natIPName2, *region, fmt.Sprintf("%d", zone))).To(Succeed())
+			Expect(prepareNewResourceGroup(ctx, log, clientSet, foreignName, *region)).To(Succeed())
+			Expect(prepareNewNatIp(ctx, log, clientSet, foreignName, natIPName1, *region, fmt.Sprintf("%d", zone))).To(Succeed())
+			Expect(prepareNewNatIp(ctx, log, clientSet, foreignName, natIPName2, *region, fmt.Sprintf("%d", zone))).To(Succeed())
 
 			natGatewayConfig := &azurev1alpha1.NatGatewayConfig{
 				Enabled: true,
@@ -382,7 +382,7 @@ var _ = Describe("Infrastructure tests", func() {
 
 			namespace, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
-			err = runTest(ctx, logger, c, clientSet, namespace, providerConfig, false, decoder)
+			err = runTest(ctx, log, c, clientSet, namespace, providerConfig, false, decoder)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -425,7 +425,7 @@ var _ = Describe("Infrastructure tests", func() {
 			namespace, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
 
-			err = runTest(ctx, logger, c, clientSet, namespace, providerConfig, false, decoder)
+			err = runTest(ctx, log, c, clientSet, namespace, providerConfig, false, decoder)
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
@@ -441,7 +441,7 @@ var _ = Describe("Infrastructure tests", func() {
 			namespace, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
 
-			err = runTest(ctx, logger, c, clientSet, namespace, providerConfig, true, decoder)
+			err = runTest(ctx, log, c, clientSet, namespace, providerConfig, true, decoder)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -455,9 +455,9 @@ var _ = Describe("Infrastructure tests", func() {
 				framework.RemoveCleanupAction(cleanupHandle)
 			})
 
-			Expect(prepareNewResourceGroup(ctx, logger, clientSet, foreignName, *region)).To(Succeed())
-			Expect(prepareNewVNet(ctx, logger, clientSet, foreignName, foreignName, *region, VNetCIDR)).To(Succeed())
-			Expect(prepareNewIdentity(ctx, logger, clientSet, foreignName, foreignName, *region)).To(Succeed())
+			Expect(prepareNewResourceGroup(ctx, log, clientSet, foreignName, *region)).To(Succeed())
+			Expect(prepareNewVNet(ctx, log, clientSet, foreignName, foreignName, *region, VNetCIDR)).To(Succeed())
+			Expect(prepareNewIdentity(ctx, log, clientSet, foreignName, foreignName, *region)).To(Succeed())
 
 			vnetConfig := &azurev1alpha1.VNet{
 				Name:          pointer.StringPtr(foreignName),
@@ -474,7 +474,7 @@ var _ = Describe("Infrastructure tests", func() {
 
 			namespace, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
-			err = runTest(ctx, logger, c, clientSet, namespace, providerConfig, true, decoder)
+			err = runTest(ctx, log, c, clientSet, namespace, providerConfig, true, decoder)
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
@@ -482,7 +482,7 @@ var _ = Describe("Infrastructure tests", func() {
 
 func runTest(
 	ctx context.Context,
-	logger *logrus.Entry,
+	log logr.Logger,
 	c client.Client,
 	az *azureClientSet,
 	namespaceName string,
@@ -496,7 +496,7 @@ func runTest(
 		infra      *extensionsv1alpha1.Infrastructure
 		identifier azureIdentifier
 	)
-	logger.Infof("test running in namespace: %s", namespaceName)
+	log.Info("test running in namespace: %s", namespaceName)
 
 	// Cleanup
 	defer func() {
@@ -507,7 +507,7 @@ func runTest(
 		err := extensions.WaitUntilExtensionObjectDeleted(
 			ctx,
 			c,
-			logger,
+			log,
 			infra,
 			extensionsv1alpha1.InfrastructureResource,
 			10*time.Second,
@@ -572,7 +572,7 @@ func runTest(
 	if err := extensions.WaitUntilExtensionObjectReady(
 		ctx,
 		c,
-		logger,
+		log,
 		infra,
 		extensionsv1alpha1.InfrastructureResource,
 		10*time.Second,
@@ -741,16 +741,16 @@ func newInfrastructure(namespace string, providerConfig *azurev1alpha1.Infrastru
 	}, nil
 }
 
-func prepareNewResourceGroup(ctx context.Context, logger *logrus.Entry, az *azureClientSet, groupName, location string) error {
-	logger.Infof("generating new ResourceGroups: %s", groupName)
+func prepareNewResourceGroup(ctx context.Context, log logr.Logger, az *azureClientSet, groupName, location string) error {
+	log.Info("generating new ResourceGroups: %s", groupName)
 	_, err := az.groups.CreateOrUpdate(ctx, groupName, resources.Group{
 		Location: pointer.StringPtr(location),
 	})
 	return err
 }
 
-func prepareNewVNet(ctx context.Context, logger *logrus.Entry, az *azureClientSet, groupName, vNetName, location, cidr string) error {
-	logger.Infof("generating new VNet: %s/%s", groupName, vNetName)
+func prepareNewVNet(ctx context.Context, log logr.Logger, az *azureClientSet, groupName, vNetName, location, cidr string) error {
+	log.Info("generating new VNet: %s/%s", groupName, vNetName)
 	vNetFuture, err := az.vnet.CreateOrUpdate(ctx, groupName, vNetName, network.VirtualNetwork{
 		VirtualNetworkPropertiesFormat: &network.VirtualNetworkPropertiesFormat{
 			AddressSpace: &network.AddressSpace{
@@ -773,16 +773,16 @@ func prepareNewVNet(ctx context.Context, logger *logrus.Entry, az *azureClientSe
 	return err
 }
 
-func prepareNewIdentity(ctx context.Context, logger *logrus.Entry, az *azureClientSet, groupName, idName, location string) error {
-	logger.Infof("generating new Identity %s/%s", groupName, idName)
+func prepareNewIdentity(ctx context.Context, log logr.Logger, az *azureClientSet, groupName, idName, location string) error {
+	log.Info("generating new Identity %s/%s", groupName, idName)
 	_, err := az.msi.CreateOrUpdate(ctx, groupName, idName, msi.Identity{
 		Location: pointer.StringPtr(location),
 	})
 	return err
 }
 
-func prepareNewNatIp(ctx context.Context, logger *logrus.Entry, az *azureClientSet, groupName, pubIpName, location, zone string) error {
-	logger.Infof("generating new nat ip %s/%s", groupName, pubIpName)
+func prepareNewNatIp(ctx context.Context, log logr.Logger, az *azureClientSet, groupName, pubIpName, location, zone string) error {
+	log.Info("generating new nat ip %s/%s", groupName, pubIpName)
 	_, err := az.pubIp.CreateOrUpdate(ctx, groupName, pubIpName, network.PublicIPAddress{
 		Name: pointer.String(pubIpName),
 		Sku: &network.PublicIPAddressSku{
