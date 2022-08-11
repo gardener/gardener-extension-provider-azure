@@ -104,7 +104,6 @@ type azureClientSet struct {
 	interfaces     network.InterfacesClient
 	securityGroups network.SecurityGroupsClient
 	pubIp          network.PublicIPAddressesClient
-	securityRules  network.SecurityRulesClient
 }
 
 func newAzureClientSet(subscriptionId string, authorizer autorest.Authorizer) *azureClientSet {
@@ -133,7 +132,6 @@ func newAzureClientSet(subscriptionId string, authorizer autorest.Authorizer) *a
 		interfaces:     interfacesClient,
 		securityGroups: securityGroupsClient,
 		pubIp:          pubIpClient,
-		securityRules:  securityRulesClient,
 	}
 }
 
@@ -674,7 +672,7 @@ func verifyDeletion(ctx context.Context, az *azureClientSet, options *bastionctr
 }
 
 func checkSecurityRuleDoesNotExist(ctx context.Context, az *azureClientSet, options *bastionctrl.Options, securityRuleName string) {
-	//does not have authorization to performsecurityRules get due to global rule. use security group to check it.
+	// does not have authorization to performsecurityRules get due to global rule. use security group to check it.
 	sg, err := az.securityGroups.Get(ctx, options.ResourceGroupName, options.SecurityGroupName, "")
 	Expect(len(*sg.SecurityRules)).To(Equal(0))
 	Expect(ignoreAzureNotFoundError(err)).To(Succeed())
@@ -682,7 +680,7 @@ func checkSecurityRuleDoesNotExist(ctx context.Context, az *azureClientSet, opti
 
 func verifyCreation(ctx context.Context, az *azureClientSet, options *bastionctrl.Options) {
 	By("RuleExist")
-	//does not have authorization to performsecurityRules get due to global rule. use security group to check it.
+	// does not have authorization to performsecurityRules get due to global rule. use security group to check it.
 	sg, err := az.securityGroups.Get(ctx, options.ResourceGroupName, options.SecurityGroupName, "")
 	Expect(err).NotTo(HaveOccurred())
 
@@ -692,13 +690,13 @@ func verifyCreation(ctx context.Context, az *azureClientSet, options *bastionctr
 	bastionctrl.RuleExist(pointer.StringPtr(bastionctrl.NSGEgressAllowOnlyResourceName(options.BastionInstanceName)), sg.SecurityRules)
 
 	By("checking bastion instance")
-	//bastion instance
+	// bastion instance
 	vm, err := az.vm.Get(ctx, options.ResourceGroupName, options.BastionInstanceName, compute.InstanceViewTypesUserData)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(*vm.Name).To(Equal(options.BastionInstanceName))
 
 	By("checking bastion ingress IPs exist")
-	//bastion ingress IPs exist
+	// bastion ingress IPs exist
 	nic, err := az.interfaces.Get(ctx, options.ResourceGroupName, options.NicName, "")
 	Expect(err).NotTo(HaveOccurred())
 	internalIP := *(*(*nic.InterfacePropertiesFormat).IPConfigurations)[0].PrivateIPAddress
@@ -711,12 +709,12 @@ func verifyCreation(ctx context.Context, az *azureClientSet, options *bastionctr
 	Expect(externalIP).NotTo(BeNil())
 
 	By("checking bastion disks exists")
-	//bastion Disk exists
+	// bastion Disk exists
 	disk, err := az.disk.Get(ctx, options.ResourceGroupName, options.DiskName)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(*disk.Name).To(Equal(bastionctrl.DiskResourceName(options.BastionInstanceName)))
 
 	By("checking userData matches the constant")
-	//userdata ssh-public-key validation
+	// userdata ssh-public-key validation
 	Expect(*vm.UserData).To(Equal(base64.StdEncoding.EncodeToString([]byte(userDataConst))))
 }
