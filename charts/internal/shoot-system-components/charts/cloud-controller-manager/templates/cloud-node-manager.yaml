@@ -72,6 +72,11 @@ spec:
         effect: NoExecute
       - operator: "Exists"
         effect: NoSchedule
+      {{- if semverCompare ">= 1.19" .Capabilities.KubeVersion.GitVersion }}
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      {{- end }}
       containers:
       - name: cloud-node-manager
         image: {{ index .Values.images "cloud-node-manager" }}
