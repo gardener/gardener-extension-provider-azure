@@ -40,7 +40,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 )
 
@@ -52,9 +51,8 @@ const (
 
 var _ = Describe("ValuesProvider", func() {
 	var (
-		ctrl   *gomock.Controller
-		ctx    = context.TODO()
-		logger = log.Log.WithName("test")
+		ctrl *gomock.Controller
+		ctx  = context.TODO()
 
 		fakeClient         client.Client
 		fakeSecretsManager secretsmanager.Interface
@@ -143,7 +141,7 @@ var _ = Describe("ValuesProvider", func() {
 		fakeSecretsManager = fakesecretsmanager.New(fakeClient, namespace)
 
 		c = mockclient.NewMockClient(ctrl)
-		vp = NewValuesProvider(logger)
+		vp = NewValuesProvider()
 
 		err := vp.(inject.Scheme).InjectScheme(scheme)
 		Expect(err).NotTo(HaveOccurred())

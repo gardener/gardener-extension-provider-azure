@@ -26,11 +26,12 @@ import (
 	"path/filepath"
 	"time"
 
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	azureinstall "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/install"
+	azurev1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	bastionctrl "github.com/gardener/gardener-extension-provider-azure/pkg/controller/bastion"
+	. "github.com/gardener/gardener-extension-provider-azure/test/integration/bastion"
 
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
@@ -44,11 +45,12 @@ import (
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/extensions"
+	"github.com/gardener/gardener/pkg/logger"
 	gardenerutils "github.com/gardener/gardener/pkg/utils"
 	"github.com/gardener/gardener/test/framework"
+	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -56,13 +58,9 @@ import (
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
-
-	azureinstall "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/install"
-	azurev1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
-
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	bastionctrl "github.com/gardener/gardener-extension-provider-azure/pkg/controller/bastion"
-	. "github.com/gardener/gardener-extension-provider-azure/test/integration/bastion"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 var VNetCIDR = "10.250.0.0/16"
@@ -148,8 +146,8 @@ func getAuthorizer(tenantId, clientId, clientSecret string) (autorest.Authorizer
 }
 
 var (
-	ctx    = context.Background()
-	logger *logrus.Entry
+	ctx = context.Background()
+	log logr.Logger
 
 	extensionscluster *extensionsv1alpha1.Cluster
 	worker            *extensionsv1alpha1.Worker
@@ -184,13 +182,11 @@ var _ = BeforeSuite(func() {
 	repoRoot := filepath.Join("..", "..", "..")
 
 	// enable manager logs
-	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
+	logf.SetLogger(logger.MustNewZapLogger(logger.DebugLevel, logger.FormatJSON, zap.WriteTo(GinkgoWriter)))
 
-	log := logrus.New()
-	log.SetOutput(GinkgoWriter)
-	logger = logrus.NewEntry(log)
+	log = logf.Log.WithName("bastion-test")
 
-	logger.Info("test environment client publicIP: ", myPublicIP)
+	log.Info("test environment client publicIP: ", myPublicIP)
 
 	By("starting test environment")
 	testEnv = &envtest.Environment{
@@ -271,15 +267,15 @@ var _ = Describe("Bastion tests", func() {
 		securityGroupName := name + "-workers"
 
 		By("setup Infrastructure")
-		err := prepareNewResourceGroup(ctx, logger, clientSet, resourceGroupName, *region)
+		err := prepareNewResourceGroup(ctx, log, clientSet, resourceGroupName, *region)
 		Expect(err).NotTo(HaveOccurred())
 
 		By("setup Network Security Group")
-		sg, err := prepareSecurityGroup(ctx, logger, resourceGroupName, securityGroupName, clientSet, *region)
+		sg, err := prepareSecurityGroup(ctx, log, resourceGroupName, securityGroupName, clientSet, *region)
 		Expect(err).NotTo(HaveOccurred())
 
 		By("setup Virtual Network")
-		err = prepareNewVNet(ctx, logger, clientSet, resourceGroupName, vNetName, subnetName, *region, VNetCIDR, sg)
+		err = prepareNewVNet(ctx, log, clientSet, resourceGroupName, vNetName, subnetName, *region, VNetCIDR, sg)
 		Expect(err).NotTo(HaveOccurred())
 
 		framework.AddCleanupAction(func() {
@@ -298,7 +294,7 @@ var _ = Describe("Bastion tests", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		framework.AddCleanupAction(func() {
-			teardownBastion(ctx, logger, c, bastion)
+			teardownBastion(ctx, log, c, bastion)
 
 			By("verify bastion deletion")
 			verifyDeletion(ctx, clientSet, options)
@@ -308,7 +304,7 @@ var _ = Describe("Bastion tests", func() {
 		Expect(extensions.WaitUntilExtensionObjectReady(
 			ctx,
 			c,
-			logger,
+			log,
 			bastion,
 			extensionsv1alpha1.BastionResource,
 			30*time.Second,
@@ -400,16 +396,16 @@ func verifyPort42IsClosed(ctx context.Context, c client.Client, bastion *extensi
 	Expect(conn).To(BeNil())
 }
 
-func prepareNewResourceGroup(ctx context.Context, logger *logrus.Entry, az *azureClientSet, groupName, location string) error {
-	logger.Infof("generating new ResourceGroups: %s", groupName)
+func prepareNewResourceGroup(ctx context.Context, log logr.Logger, az *azureClientSet, groupName, location string) error {
+	log.Info("generating new ResourceGroups: %s", groupName)
 	_, err := az.groups.CreateOrUpdate(ctx, groupName, resources.Group{
 		Location: to.StringPtr(location),
 	})
 	return err
 }
 
-func prepareSecurityGroup(ctx context.Context, logger *logrus.Entry, resourceGroupName string, securityGroupName string, az *azureClientSet, location string) (network.SecurityGroup, error) {
-	logger.Infof("generating new SecurityGroups: %s", securityGroupName)
+func prepareSecurityGroup(ctx context.Context, log logr.Logger, resourceGroupName string, securityGroupName string, az *azureClientSet, location string) (network.SecurityGroup, error) {
+	log.Info("generating new SecurityGroups: %s", securityGroupName)
 	future, err := az.securityGroups.CreateOrUpdate(ctx, resourceGroupName, securityGroupName, network.SecurityGroup{
 		Location: to.StringPtr(location),
 	})
@@ -421,8 +417,8 @@ func prepareSecurityGroup(ctx context.Context, logger *logrus.Entry, resourceGro
 	return future.Result(az.securityGroups)
 }
 
-func prepareNewVNet(ctx context.Context, logger *logrus.Entry, az *azureClientSet, resourceGroupName, vNetName, subnetName, location, cidr string, nsg network.SecurityGroup) error {
-	logger.Infof("generating new resource Group/VNet/subnetName: %s/%s/%s", resourceGroupName, vNetName, subnetName)
+func prepareNewVNet(ctx context.Context, log logr.Logger, az *azureClientSet, resourceGroupName, vNetName, subnetName, location, cidr string, nsg network.SecurityGroup) error {
+	log.Info("generating new resource Group/VNet/subnetName: %s/%s/%s", resourceGroupName, vNetName, subnetName)
 	vNetFuture, err := az.vnet.CreateOrUpdate(ctx, resourceGroupName, vNetName, network.VirtualNetwork{
 		VirtualNetworkPropertiesFormat: &network.VirtualNetworkPropertiesFormat{
 			AddressSpace: &network.AddressSpace{
@@ -638,12 +634,12 @@ func createClusters(name string) (*extensionsv1alpha1.Cluster, *controller.Clust
 	return extensionscluster, cluster
 }
 
-func teardownBastion(ctx context.Context, logger *logrus.Entry, c client.Client, bastion *extensionsv1alpha1.Bastion) {
+func teardownBastion(ctx context.Context, log logr.Logger, c client.Client, bastion *extensionsv1alpha1.Bastion) {
 	By("delete bastion")
 	Expect(client.IgnoreNotFound(c.Delete(ctx, bastion))).To(Succeed())
 
 	By("wait until bastion is deleted")
-	err := extensions.WaitUntilExtensionObjectDeleted(ctx, c, logger, bastion, extensionsv1alpha1.BastionResource, 10*time.Second, 16*time.Minute)
+	err := extensions.WaitUntilExtensionObjectDeleted(ctx, c, log, bastion, extensionsv1alpha1.BastionResource, 10*time.Second, 16*time.Minute)
 	Expect(err).NotTo(HaveOccurred())
 }
 
