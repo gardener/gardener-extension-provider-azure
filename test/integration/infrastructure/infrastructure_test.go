@@ -496,7 +496,7 @@ func runTest(
 		infra      *extensionsv1alpha1.Infrastructure
 		identifier azureIdentifier
 	)
-	log.Info("test running in namespace: %s", namespaceName)
+	log.Info("test running in namespace", "namespaceName", namespaceName)
 
 	// Cleanup
 	defer func() {
@@ -742,7 +742,7 @@ func newInfrastructure(namespace string, providerConfig *azurev1alpha1.Infrastru
 }
 
 func prepareNewResourceGroup(ctx context.Context, log logr.Logger, az *azureClientSet, groupName, location string) error {
-	log.Info("generating new ResourceGroups: %s", groupName)
+	log.Info("generating new ResourceGroups", "groupName", groupName)
 	_, err := az.groups.CreateOrUpdate(ctx, groupName, resources.Group{
 		Location: pointer.StringPtr(location),
 	})
@@ -750,7 +750,7 @@ func prepareNewResourceGroup(ctx context.Context, log logr.Logger, az *azureClie
 }
 
 func prepareNewVNet(ctx context.Context, log logr.Logger, az *azureClientSet, groupName, vNetName, location, cidr string) error {
-	log.Info("generating new VNet: %s/%s", groupName, vNetName)
+	log.Info("generating new VNet", "groupName", groupName, "vNetName", vNetName)
 	vNetFuture, err := az.vnet.CreateOrUpdate(ctx, groupName, vNetName, network.VirtualNetwork{
 		VirtualNetworkPropertiesFormat: &network.VirtualNetworkPropertiesFormat{
 			AddressSpace: &network.AddressSpace{
@@ -774,7 +774,7 @@ func prepareNewVNet(ctx context.Context, log logr.Logger, az *azureClientSet, gr
 }
 
 func prepareNewIdentity(ctx context.Context, log logr.Logger, az *azureClientSet, groupName, idName, location string) error {
-	log.Info("generating new Identity %s/%s", groupName, idName)
+	log.Info("generating new Identity", "groupName", groupName, "idName", idName)
 	_, err := az.msi.CreateOrUpdate(ctx, groupName, idName, msi.Identity{
 		Location: pointer.StringPtr(location),
 	})
@@ -782,7 +782,7 @@ func prepareNewIdentity(ctx context.Context, log logr.Logger, az *azureClientSet
 }
 
 func prepareNewNatIp(ctx context.Context, log logr.Logger, az *azureClientSet, groupName, pubIpName, location, zone string) error {
-	log.Info("generating new nat ip %s/%s", groupName, pubIpName)
+	log.Info("generating new nat ip", "groupName", groupName, "pubIpName", pubIpName)
 	_, err := az.pubIp.CreateOrUpdate(ctx, groupName, pubIpName, network.PublicIPAddress{
 		Name: pointer.String(pubIpName),
 		Sku: &network.PublicIPAddressSku{
