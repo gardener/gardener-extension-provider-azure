@@ -192,20 +192,6 @@ var _ = Describe("Bastion test", func() {
 		})
 	})
 
-	Describe("Determine options own vnet name and resourceGroup", func() {
-		It("should return options", func() {
-			vNetCIDR := api.VNet{
-				Name:          pointer.String("my-vnet"),
-				ResourceGroup: pointer.String("my-vnet-resource-group"),
-			}
-			cluster = createAzureTestCluster(vNetCIDR)
-			options, err := DetermineOptions(bastion, cluster, "cluster1")
-			Expect(err).To(Not(HaveOccurred()))
-			Expect(options.MyVnetResourceGroupName).To(Equal("my-vnet-resource-group"))
-			Expect(options.MyVnetEnabled).To(BeTrue())
-		})
-	})
-
 	Describe("check Names generations", func() {
 		It("should generate idempotent name", func() {
 			expected := "clusterName-shortName-bastion-79641"

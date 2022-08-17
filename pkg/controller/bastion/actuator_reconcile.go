@@ -67,7 +67,7 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 		return err
 	}
 
-	nic, err := ensureNic(ctx, log, factory, opt, infrastructureStatus.Networks.VNet.Name, infrastructureStatus.Networks.Subnets[0].Name, publicIP)
+	nic, err := ensureNic(ctx, log, factory, infrastructureStatus, opt, publicIP)
 	if err != nil {
 		return err
 	}
@@ -294,7 +294,7 @@ func ensureComputeInstance(ctx context.Context, log logr.Logger, bastion *extens
 	return nil
 }
 
-func ensureNic(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options, vNet, subnetWork string, publicIP *network.PublicIPAddress) (*network.Interface, error) {
+func ensureNic(ctx context.Context, log logr.Logger, factory azureclient.Factory, infrastructureStatus *azure.InfrastructureStatus, opt *Options, publicIP *network.PublicIPAddress) (*network.Interface, error) {
 	nic, err := getNic(ctx, log, factory, opt)
 	if err != nil {
 		return nil, err
@@ -308,7 +308,7 @@ func ensureNic(ctx context.Context, log logr.Logger, factory azureclient.Factory
 
 	log.Info("create new bastion compute instance nic")
 
-	subnet, err := getSubnet(ctx, log, factory, vNet, subnetWork, opt)
+	subnet, err := getSubnet(ctx, log, factory, infrastructureStatus, opt)
 	if err != nil {
 		return nil, err
 	}
