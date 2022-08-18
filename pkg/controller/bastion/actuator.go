@@ -21,15 +21,15 @@ import (
 	"encoding/json"
 	"fmt"
 
-	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
-	"github.com/go-logr/logr"
-	"golang.org/x/crypto/ssh"
 
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/bastion"
+	"github.com/go-logr/logr"
+	"golang.org/x/crypto/ssh"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -147,7 +147,7 @@ func getNetworkSecurityGroup(ctx context.Context, log logr.Logger, factory azure
 }
 
 func getWorkersCIDR(cluster *controller.Cluster) ([]string, error) {
-	infrastructureConfig := &api.InfrastructureConfig{}
+	infrastructureConfig := &azure.InfrastructureConfig{}
 	err := json.Unmarshal(cluster.Shoot.Spec.Provider.InfrastructureConfig.Raw, infrastructureConfig)
 	if err != nil {
 		return nil, err
@@ -184,19 +184,26 @@ func getPublicIP(ctx context.Context, log logr.Logger, factory azureclient.Facto
 	return ip, nil
 }
 
-func getSubnet(ctx context.Context, log logr.Logger, factory azureclient.Factory, vNet, subnetWork string, opt *Options) (*network.Subnet, error) {
+func getSubnet(ctx context.Context, log logr.Logger, factory azureclient.Factory, infrastructureStatus *azure.InfrastructureStatus, opt *Options) (*network.Subnet, error) {
+	var sg string
 	subnetClient, err := factory.Subnet(ctx, opt.SecretReference)
 	if err != nil {
 		return nil, err
 	}
 
-	subnet, err := subnetClient.Get(ctx, opt.ResourceGroupName, vNet, subnetWork, "")
+	if infrastructureStatus.Networks.VNet.ResourceGroup != nil {
+		sg = *infrastructureStatus.Networks.VNet.ResourceGroup
+	} else {
+		sg = opt.ResourceGroupName
+	}
+
+	subnet, err := subnetClient.Get(ctx, sg, infrastructureStatus.Networks.VNet.Name, infrastructureStatus.Networks.Subnets[0].Name, "")
 	if err != nil {
 		return nil, err
 	}
 
 	if subnet == nil {
-		log.Info("subnet not found,", "subnet_name", subnetWork)
+		log.Info("subnet not found,", "subnet_name", infrastructureStatus.Networks.Subnets[0].Name)
 		return nil, nil
 	}
 

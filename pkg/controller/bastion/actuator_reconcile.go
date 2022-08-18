@@ -67,11 +67,7 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 		return err
 	}
 
-	if infrastructureStatus.Networks.VNet.Name == "" || len(infrastructureStatus.Networks.Subnets) == 0 {
-		return errors.New("virtual network name and subnet must be set")
-	}
-
-	nic, err := ensureNic(ctx, log, factory, opt, infrastructureStatus.Networks.VNet.Name, infrastructureStatus.Networks.Subnets[0].Name, publicIP)
+	nic, err := ensureNic(ctx, log, factory, infrastructureStatus, opt, publicIP)
 	if err != nil {
 		return err
 	}
@@ -140,6 +136,14 @@ func getInfrastructureStatus(ctx context.Context, a *actuator, cluster *extensio
 
 	if infrastructureStatus.ResourceGroup.Name == "" {
 		return nil, errors.New("resource group name must be not empty for infrastructure provider status")
+	}
+
+	if infrastructureStatus.Networks.VNet.Name == "" {
+		return nil, errors.New("virtual network name must be not empty for infrastructure provider status")
+	}
+
+	if len(infrastructureStatus.Networks.Subnets) == 0 {
+		return nil, errors.New("subnets name must be not empty for infrastructure provider status")
 	}
 	return infrastructureStatus, nil
 }
@@ -290,7 +294,7 @@ func ensureComputeInstance(ctx context.Context, log logr.Logger, bastion *extens
 	return nil
 }
 
-func ensureNic(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options, vNet, subnetWork string, publicIP *network.PublicIPAddress) (*network.Interface, error) {
+func ensureNic(ctx context.Context, log logr.Logger, factory azureclient.Factory, infrastructureStatus *azure.InfrastructureStatus, opt *Options, publicIP *network.PublicIPAddress) (*network.Interface, error) {
 	nic, err := getNic(ctx, log, factory, opt)
 	if err != nil {
 		return nil, err
@@ -304,7 +308,7 @@ func ensureNic(ctx context.Context, log logr.Logger, factory azureclient.Factory
 
 	log.Info("create new bastion compute instance nic")
 
-	subnet, err := getSubnet(ctx, log, factory, vNet, subnetWork, opt)
+	subnet, err := getSubnet(ctx, log, factory, infrastructureStatus, opt)
 	if err != nil {
 		return nil, err
 	}
