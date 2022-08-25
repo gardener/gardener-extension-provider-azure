@@ -7,8 +7,9 @@ metadata:
     resources.gardener.cloud/delete-on-invalid-update: "true"
   labels:
 {{ include "labels" . | indent 4 }}
-provisioner: {{ .Values.config.etcd.storage.provisioner }}
 allowVolumeExpansion: true
+provisioner: {{ .Values.config.etcd.storage.provisioner }}
+volumeBindingMode: {{ .Values.config.etcd.storage.volumeBindingMode }}
 parameters:
   storageaccounttype: Premium_LRS
 {{- end }}
