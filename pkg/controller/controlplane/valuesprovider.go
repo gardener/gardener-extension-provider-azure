@@ -37,7 +37,6 @@ import (
 	"github.com/gardener/gardener/pkg/utils/chart"
 	gutil "github.com/gardener/gardener/pkg/utils/gardener"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
-	"github.com/gardener/gardener/pkg/utils/secrets"
 	secretutils "github.com/gardener/gardener/pkg/utils/secrets"
 	secretsmanager "github.com/gardener/gardener/pkg/utils/secrets/manager"
 	"github.com/gardener/gardener/pkg/utils/version"
@@ -76,7 +75,7 @@ func secretConfigsFunc(namespace string) []extensionssecretsmanager.SecretConfig
 				Name:                        cloudControllerManagerServerName,
 				CommonName:                  azure.CloudControllerManagerName,
 				DNSNames:                    kutil.DNSNamesForService(azure.CloudControllerManagerName, namespace),
-				CertType:                    secrets.ServerCert,
+				CertType:                    secretutils.ServerCert,
 				SkipPublishingCACertificate: true,
 			},
 			Options: []secretsmanager.GenerateOption{secretsmanager.SignedByCA(caNameControlPlane)},
@@ -710,6 +709,7 @@ func getControlPlaneShootChartValues(
 				"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
 				"caBundle": caBundle,
 			},
+			"pspDisabled": gardencorev1beta1helper.IsPSPDisabled(cluster.Shoot),
 		},
 		azure.RemedyControllerName: map[string]interface{}{
 			"enabled": !disableRemedyController,

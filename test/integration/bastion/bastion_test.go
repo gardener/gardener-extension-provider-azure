@@ -186,7 +186,7 @@ var _ = BeforeSuite(func() {
 
 	log = logf.Log.WithName("bastion-test")
 
-	log.Info("test environment client publicIP: ", myPublicIP)
+	log.Info("test environment client publicIP", "publicIP", myPublicIP)
 
 	By("starting test environment")
 	testEnv = &envtest.Environment{
@@ -397,7 +397,7 @@ func verifyPort42IsClosed(ctx context.Context, c client.Client, bastion *extensi
 }
 
 func prepareNewResourceGroup(ctx context.Context, log logr.Logger, az *azureClientSet, groupName, location string) error {
-	log.Info("generating new ResourceGroups: %s", groupName)
+	log.Info("generating new ResourceGroups", "groupName", groupName)
 	_, err := az.groups.CreateOrUpdate(ctx, groupName, resources.Group{
 		Location: to.StringPtr(location),
 	})
@@ -405,7 +405,7 @@ func prepareNewResourceGroup(ctx context.Context, log logr.Logger, az *azureClie
 }
 
 func prepareSecurityGroup(ctx context.Context, log logr.Logger, resourceGroupName string, securityGroupName string, az *azureClientSet, location string) (network.SecurityGroup, error) {
-	log.Info("generating new SecurityGroups: %s", securityGroupName)
+	log.Info("generating new SecurityGroups", "securityGroupName", securityGroupName)
 	future, err := az.securityGroups.CreateOrUpdate(ctx, resourceGroupName, securityGroupName, network.SecurityGroup{
 		Location: to.StringPtr(location),
 	})
@@ -418,7 +418,7 @@ func prepareSecurityGroup(ctx context.Context, log logr.Logger, resourceGroupNam
 }
 
 func prepareNewVNet(ctx context.Context, log logr.Logger, az *azureClientSet, resourceGroupName, vNetName, subnetName, location, cidr string, nsg network.SecurityGroup) error {
-	log.Info("generating new resource Group/VNet/subnetName: %s/%s/%s", resourceGroupName, vNetName, subnetName)
+	log.Info("generating new resource Group/VNet/subnetName", "resourceGroupName", resourceGroupName, " vNetName", vNetName, "subnetName", subnetName)
 	vNetFuture, err := az.vnet.CreateOrUpdate(ctx, resourceGroupName, vNetName, network.VirtualNetwork{
 		VirtualNetworkPropertiesFormat: &network.VirtualNetworkPropertiesFormat{
 			AddressSpace: &network.AddressSpace{
