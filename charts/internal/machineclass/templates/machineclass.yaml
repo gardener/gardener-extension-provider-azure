@@ -60,6 +60,8 @@ providerSpec:
         id: {{ $machineClass.image.id }}
 {{- else if $machineClass.image.communityGalleryImageID }}
         communityGalleryImageID: {{ $machineClass.image.communityGalleryImageID }}
+{{- else if $machineClass.image.sharedGalleryImageID }}
+        sharedGalleryImageID: {{ $machineClass.image.sharedGalleryImageID }}
 {{- else }}
         urn: {{ $machineClass.image.urn }}
 {{- end }}

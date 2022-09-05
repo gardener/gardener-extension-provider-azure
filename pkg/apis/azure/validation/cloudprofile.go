@@ -74,13 +74,24 @@ func ValidateCloudProfileConfig(cloudProfile *apisazure.CloudProfileConfig, fldP
 						version.CommunityGalleryImageID, "communityGalleryImageID must start with '/CommunityGalleries/' prefix"))
 				}
 			}
+			if version.SharedGalleryImageID != nil {
+				if len(*version.SharedGalleryImageID) == 0 {
+					allErrs = append(allErrs, field.Required(jdxPath.Child("sharedGalleryImageID"), "SharedGalleryImageID cannot be empty when defined"))
+				} else if len(strings.Split(*version.SharedGalleryImageID, "/")) != 7 {
+					allErrs = append(allErrs, field.Invalid(jdxPath.Child("sharedGalleryImageID"),
+						version.SharedGalleryImageID, "please use the format `/SharedGalleries/<sharedGalleryName>/Images/<sharedGalleryImageName>/Versions/<sharedGalleryImageVersionName>` for the SharedGalleryImageID"))
+				} else if !strings.EqualFold(strings.Split(*version.SharedGalleryImageID, "/")[1], "SharedGalleries") {
+					allErrs = append(allErrs, field.Invalid(jdxPath.Child("sharedGalleryImageID"),
+						version.SharedGalleryImageID, "SharedGalleryImageID must start with '/SharedGalleries/' prefix"))
+				}
+			}
 		}
 	}
 
 	return allErrs
 }
 
-// validateProvidedImageIdCount validates that only one of urn/id/communityGalleryImageID is provided
+// validateProvidedImageIdCount validates that only one of urn/id/communityGalleryImageID/sharedGalleryImageID is provided
 func validateProvidedImageIdCount(version apisazure.MachineImageVersion, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	idCount := 0
@@ -97,8 +108,12 @@ func validateProvidedImageIdCount(version apisazure.MachineImageVersion, fldPath
 		idCount++
 	}
 
+	if version.SharedGalleryImageID != nil {
+		idCount++
+	}
+
 	if idCount != 1 {
-		allErrs = append(allErrs, field.Required(fldPath, "must provide either urn, id or communityGalleryImageID"))
+		allErrs = append(allErrs, field.Required(fldPath, "must provide either urn, id, sharedGalleryImageID or communityGalleryImageID"))
 	}
 
 	return allErrs

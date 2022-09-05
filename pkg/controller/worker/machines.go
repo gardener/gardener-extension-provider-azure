@@ -127,7 +127,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			return err
 		}
 
-		urn, id, communityGalleryImageID, imageSupportAcceleratedNetworking, err := w.findMachineImage(pool.MachineImage.Name, pool.MachineImage.Version)
+		urn, id, communityGalleryImageID, sharedGalleryImageID, imageSupportAcceleratedNetworking, err := w.findMachineImage(pool.MachineImage.Name, pool.MachineImage.Version)
 		if err != nil {
 			return err
 		}
@@ -137,6 +137,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			URN:                     urn,
 			ID:                      id,
 			CommunityGalleryImageID: communityGalleryImageID,
+			SharedGalleryImageID:    sharedGalleryImageID,
 			AcceleratedNetworking:   imageSupportAcceleratedNetworking,
 		})
 
@@ -145,6 +146,8 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			image["urn"] = *urn
 		} else if communityGalleryImageID != nil {
 			image["communityGalleryImageID"] = *communityGalleryImageID
+		} else if sharedGalleryImageID != nil {
+			image["sharedGalleryImageID"] = *sharedGalleryImageID
 		} else {
 			image["id"] = *id
 		}

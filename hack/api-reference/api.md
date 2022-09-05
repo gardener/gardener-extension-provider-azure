@@ -784,6 +784,18 @@ string
 </tr>
 <tr>
 <td>
+<code>sharedGalleryImageID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SharedGalleryImageID is the Shared Image Gallery image id.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>acceleratedNetworking</code></br>
 <em>
 bool
@@ -858,6 +870,18 @@ string
 <td>
 <em>(Optional)</em>
 <p>CommunityGalleryImageID is the Community Image Gallery image id, it has the format &lsquo;/CommunityGalleries/myGallery/Images/myImage/Versions/myVersion&rsquo;</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>sharedGalleryImageID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SharedGalleryImageID is the Shared Image Gallery image id, it has the format &lsquo;/SharedGalleries/sharedGalleryName/Images/sharedGalleryImageName/Versions/sharedGalleryImageVersionName&rsquo;</p>
 </td>
 </tr>
 <tr>

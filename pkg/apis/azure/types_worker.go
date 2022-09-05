@@ -58,6 +58,8 @@ type MachineImage struct {
 	ID *string
 	// CommunityGalleryImageID is the Community Image Gallery image id.
 	CommunityGalleryImageID *string
+	// SharedGalleryImageID is the Shared Image Gallery image id.
+	SharedGalleryImageID *string
 	// AcceleratedNetworking is an indicator if the image supports Azure accelerated networking.
 	AcceleratedNetworking *bool
 }
