@@ -46,7 +46,6 @@ func (w *workerDelegate) UpdateMachineImagesStatus(ctx context.Context) error {
 	return nil
 }
 
-// return sharedGalleryImageID as well
 func (w *workerDelegate) findMachineImage(name, version string) (urn, id, communityGalleryImageID *string, sharedGalleryImageID *string, acceleratedNetworking *bool, err error) {
 	machineImage, err := helper.FindImageFromCloudProfile(w.cloudProfileConfig, name, version)
 	if err == nil {

@@ -14,7 +14,7 @@ This section describes, how the configuration for `CloudProfile`s looks like for
 
 The cloud profile configuration contains information about the real machine image IDs in the Azure environment (image `urn`, `id`, `communityGalleryImageID` or `sharedGalleryImageID`).
 You have to map every version that you specify in `.spec.machineImages[].versions` to an available VM image in your subscription.
-The VM image can be either from the [Azure Marketplace](https://azuremarketplace.microsoft.com/en-us/marketplace/apps?filters=virtual-machine-images) and will then get identified via a `urn`, it can be a custom VM image identified by its `id`, it can be from a shared image gallery and is then identified by a `sharedGalleryImageID`, or it can be from a community image gallery and is then identified by its `communityGalleryImageID`.
+The VM image can be either from the [Azure Marketplace](https://azuremarketplace.microsoft.com/en-us/marketplace/apps?filters=virtual-machine-images) and will then get identified via a `urn`, it can be a custom VM image from a shared image gallery and is then identified  `sharedGalleryImageID`, or it can be from a community image gallery and is then identified by its `communityGalleryImageID`. You can use `id` field also to specifiy the image location in the azure compute gallery (in which case it would have a different kind of path) but it is not recommended as it sometimes faces problems in cross subscription image sharing.
 
 An example `CloudProfileConfig` for the Azure extension looks as follows:
 
