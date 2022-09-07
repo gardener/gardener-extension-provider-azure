@@ -111,9 +111,11 @@ var _ = Describe("Machines", func() {
 				machineImageVersion            string
 				machineImageVersionID          string
 				machineImageVersionCommunityID string
+				machineImageVersionSharedID    string
 				machineImageURN                string
 				machineImageID                 string
 				machineImageCommunityID        string
+				machineImageSharedID           string
 
 				resourceGroupName     string
 				vnetResourceGroupName string
@@ -151,6 +153,12 @@ var _ = Describe("Machines", func() {
 				maxSurgePool3       intstr.IntOrString
 				maxUnavailablePool3 intstr.IntOrString
 
+				namePool4           string
+				minPool4            int32
+				maxPool4            int32
+				maxSurgePool4       intstr.IntOrString
+				maxUnavailablePool4 intstr.IntOrString
+
 				namePoolZones           string
 				minPoolZones            int32
 				maxPoolZones            int32
@@ -163,6 +171,7 @@ var _ = Describe("Machines", func() {
 				nodeTemplateZone1 machinev1alpha1.NodeTemplate
 				nodeTemplateZone2 machinev1alpha1.NodeTemplate
 				nodeTemplateZone3 machinev1alpha1.NodeTemplate
+				nodeTemplateZone4 machinev1alpha1.NodeTemplate
 
 				shootVersionMajorMinor string
 				shootVersion           string
@@ -170,10 +179,10 @@ var _ = Describe("Machines", func() {
 				machineImages []apiv1alpha1.MachineImages
 				machineTypes  []apiv1alpha1.MachineType
 
-				pool1, pool2, pool3, poolZones extensionsv1alpha1.WorkerPool
-				infrastructureStatus           *apisazure.InfrastructureStatus
-				w                              *extensionsv1alpha1.Worker
-				cluster                        *extensionscontroller.Cluster
+				pool1, pool2, pool3, pool4, poolZones extensionsv1alpha1.WorkerPool
+				infrastructureStatus                  *apisazure.InfrastructureStatus
+				w                                     *extensionsv1alpha1.Worker
+				cluster                               *extensionscontroller.Cluster
 			)
 
 			BeforeEach(func() {
@@ -181,9 +190,11 @@ var _ = Describe("Machines", func() {
 				machineImageVersion = "1"
 				machineImageVersionID = "2"
 				machineImageVersionCommunityID = "3"
+				machineImageVersionSharedID = "4"
 				machineImageURN = "bar:baz:foo:123"
 				machineImageID = "/shared/image/gallery/image/id"
 				machineImageCommunityID = "/CommunityGalleries/gallery/Images/image/Versions/123"
+				machineImageSharedID = "/SharedGalleries/gallery/Images/image/Versions/123"
 
 				resourceGroupName = "my-rg"
 				vnetResourceGroupName = "my-vnet-rg"
@@ -238,6 +249,13 @@ var _ = Describe("Machines", func() {
 					Zone:         "no-zone",
 				}
 
+				nodeTemplateZone4 = machinev1alpha1.NodeTemplate{
+					Capacity:     nodeCapacity,
+					InstanceType: machineType,
+					Region:       region,
+					Zone:         "no-zone",
+				}
+
 				namePool2 = "pool-zones"
 				minPool2 = 30
 				maxPool2 = 45
@@ -249,6 +267,12 @@ var _ = Describe("Machines", func() {
 				maxPool3 = 5
 				maxSurgePool3 = intstr.FromInt(2)
 				maxUnavailablePool3 = intstr.FromInt(2)
+
+				namePool4 = "pool-4"
+				minPool4 = 2
+				maxPool4 = 6
+				maxSurgePool4 = intstr.FromInt(1)
+				maxUnavailablePool4 = intstr.FromInt(2)
 
 				shootVersionMajorMinor = "1.21"
 				shootVersion = shootVersionMajorMinor + ".3"
@@ -269,6 +293,10 @@ var _ = Describe("Machines", func() {
 							{
 								Version:                 machineImageVersionCommunityID,
 								CommunityGalleryImageID: &machineImageCommunityID,
+							},
+							{
+								Version:              machineImageVersionSharedID,
+								SharedGalleryImageID: &machineImageSharedID,
 							},
 						},
 					},
@@ -356,9 +384,31 @@ var _ = Describe("Machines", func() {
 					Labels: labels,
 				}
 
+				pool4 = extensionsv1alpha1.WorkerPool{
+					Name:           namePool4,
+					Minimum:        minPool4,
+					Maximum:        maxPool4,
+					MaxSurge:       maxSurgePool4,
+					MaxUnavailable: maxUnavailablePool4,
+					MachineType:    machineType,
+					NodeTemplate: &extensionsv1alpha1.NodeTemplate{
+						Capacity: nodeCapacity,
+					},
+					MachineImage: extensionsv1alpha1.MachineImage{
+						Name:    machineImageName,
+						Version: machineImageVersionSharedID,
+					},
+					UserData: userData,
+					Volume: &extensionsv1alpha1.Volume{
+						Size: fmt.Sprintf("%dGi", volumeSize),
+						Type: &volumeType,
+					},
+					Labels: labels,
+				}
+
 				cluster = makeCluster(shootVersion, region, machineTypes, machineImages, 0)
 				infrastructureStatus = makeInfrastructureStatus(resourceGroupName, vnetName, subnetName, false, &vnetResourceGroupName, &availabilitySetID, &identityID)
-				w = makeWorker(namespace, region, &sshKey, infrastructureStatus, pool1, pool2, pool3)
+				w = makeWorker(namespace, region, &sshKey, infrastructureStatus, pool1, pool2, pool3, pool4)
 			})
 
 			Describe("machine images", func() {
@@ -366,10 +416,11 @@ var _ = Describe("Machines", func() {
 					urnMachineClass                     map[string]interface{}
 					imageIDMachineClass                 map[string]interface{}
 					communityGalleryImageIDMachineClass map[string]interface{}
+					sharedGalleryImageIDMachineClass    map[string]interface{}
 					machineDeployments                  worker.MachineDeployments
 					machineClasses                      map[string]interface{}
 
-					workerPoolHash1, workerPoolHash2, workerPoolHash3 string
+					workerPoolHash1, workerPoolHash2, workerPoolHash3, workerPoolHash4 string
 
 					zone1   = "1"
 					zone2   = "2"
@@ -426,31 +477,42 @@ var _ = Describe("Machines", func() {
 						"communityGalleryImageID": machineImageCommunityID,
 					}
 
+					sharedGalleryImageIDMachineClass = copyMachineClass(defaultMachineClass)
+					sharedGalleryImageIDMachineClass["image"] = map[string]interface{}{
+						"sharedGalleryImageID": machineImageSharedID,
+					}
+
 					workerPoolHash1, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster, fmt.Sprintf("%dGi", dataVolume2Size), dataVolume2Type, fmt.Sprintf("%dGi", dataVolume1Size), identityID)
 					workerPoolHash2, _ = worker.WorkerPoolHash(w.Spec.Pools[1], cluster, identityID)
 					workerPoolHash3, _ = worker.WorkerPoolHash(w.Spec.Pools[2], cluster, identityID)
+					workerPoolHash4, _ = worker.WorkerPoolHash(w.Spec.Pools[3], cluster, identityID)
 
 					var (
 						machineClassPool1 = copyMachineClass(urnMachineClass)
 						machineClassPool2 = copyMachineClass(imageIDMachineClass)
 						machineClassPool3 = copyMachineClass(communityGalleryImageIDMachineClass)
+						machineClassPool4 = copyMachineClass(sharedGalleryImageIDMachineClass)
 
 						machineClassNamePool1 = fmt.Sprintf("%s-%s", namespace, namePool1)
 						machineClassNamePool2 = fmt.Sprintf("%s-%s", namespace, namePool2)
 						machineClassNamePool3 = fmt.Sprintf("%s-%s", namespace, namePool3)
+						machineClassNamePool4 = fmt.Sprintf("%s-%s", namespace, namePool4)
 
 						machineClassWithHashPool1 = fmt.Sprintf("%s-%s", machineClassNamePool1, workerPoolHash1)
 						machineClassWithHashPool2 = fmt.Sprintf("%s-%s", machineClassNamePool2, workerPoolHash2)
 						machineClassWithHashPool3 = fmt.Sprintf("%s-%s", machineClassNamePool3, workerPoolHash3)
+						machineClassWithHashPool4 = fmt.Sprintf("%s-%s", machineClassNamePool4, workerPoolHash4)
 					)
 
 					addNameAndSecretsToMachineClass(machineClassPool1, machineClassWithHashPool1, w.Spec.SecretRef)
 					addNameAndSecretsToMachineClass(machineClassPool2, machineClassWithHashPool2, w.Spec.SecretRef)
 					addNameAndSecretsToMachineClass(machineClassPool3, machineClassWithHashPool3, w.Spec.SecretRef)
+					addNameAndSecretsToMachineClass(machineClassPool4, machineClassWithHashPool4, w.Spec.SecretRef)
 
 					machineClassPool1["nodeTemplate"] = nodeTemplateZone1
 					machineClassPool2["nodeTemplate"] = nodeTemplateZone2
 					machineClassPool3["nodeTemplate"] = nodeTemplateZone3
+					machineClassPool4["nodeTemplate"] = nodeTemplateZone4
 
 					machineClassPool1["dataDisks"] = []map[string]interface{}{
 						{
@@ -475,11 +537,16 @@ var _ = Describe("Machines", func() {
 						"size": volumeSize,
 						"type": volumeType,
 					}
+					machineClassPool4["osDisk"] = map[string]interface{}{
+						"size": volumeSize,
+						"type": volumeType,
+					}
 
 					machineClasses = map[string]interface{}{"machineClasses": []map[string]interface{}{
 						machineClassPool1,
 						machineClassPool2,
 						machineClassPool3,
+						machineClassPool4,
 					}}
 
 					machineDeployments = worker.MachineDeployments{
@@ -513,6 +580,17 @@ var _ = Describe("Machines", func() {
 							Maximum:              maxPool3,
 							MaxSurge:             maxSurgePool3,
 							MaxUnavailable:       maxUnavailablePool3,
+							Labels:               labels,
+							MachineConfiguration: &machinev1alpha1.MachineConfiguration{},
+						},
+						{
+							Name:                 machineClassNamePool4,
+							ClassName:            machineClassWithHashPool4,
+							SecretName:           machineClassWithHashPool4,
+							Minimum:              minPool4,
+							Maximum:              maxPool4,
+							MaxSurge:             maxSurgePool4,
+							MaxUnavailable:       maxUnavailablePool4,
 							Labels:               labels,
 							MachineConfiguration: &machinev1alpha1.MachineConfiguration{},
 						},

@@ -66,6 +66,9 @@ type MachineImageVersion struct {
 	// CommunityGalleryImageID is the Community Image Gallery image id, it has the format '/CommunityGalleries/myGallery/Images/myImage/Versions/myVersion'
 	// +optional
 	CommunityGalleryImageID *string `json:"communityGalleryImageID,omitempty"`
+	// SharedGalleryImageID is the Shared Image Gallery image id, it has the format '/SharedGalleries/sharedGalleryName/Images/sharedGalleryImageName/Versions/sharedGalleryImageVersionName'
+	// +optional
+	SharedGalleryImageID *string `json:"sharedGalleryImageID,omitempty"`
 	// AcceleratedNetworking is an indicator if the image supports Azure accelerated networking.
 	// +optional
 	AcceleratedNetworking *bool `json:"acceleratedNetworking,omitempty"`

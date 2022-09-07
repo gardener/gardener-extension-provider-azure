@@ -46,28 +46,28 @@ func (w *workerDelegate) UpdateMachineImagesStatus(ctx context.Context) error {
 	return nil
 }
 
-func (w *workerDelegate) findMachineImage(name, version string) (urn, id, communityGalleryImageID *string, acceleratedNetworking *bool, err error) {
+func (w *workerDelegate) findMachineImage(name, version string) (urn, id, communityGalleryImageID *string, sharedGalleryImageID *string, acceleratedNetworking *bool, err error) {
 	machineImage, err := helper.FindImageFromCloudProfile(w.cloudProfileConfig, name, version)
 	if err == nil {
-		return machineImage.URN, machineImage.ID, machineImage.CommunityGalleryImageID, machineImage.AcceleratedNetworking, nil
+		return machineImage.URN, machineImage.ID, machineImage.CommunityGalleryImageID, machineImage.SharedGalleryImageID, machineImage.AcceleratedNetworking, nil
 	}
 
 	// Try to look up machine image in worker provider status as it was not found in componentconfig.
 	if providerStatus := w.worker.Status.ProviderStatus; providerStatus != nil {
 		workerStatus := &api.WorkerStatus{}
 		if _, _, err := w.Decoder().Decode(providerStatus.Raw, nil, workerStatus); err != nil {
-			return nil, nil, nil, nil, fmt.Errorf("could not decode worker status of worker '%s': %w", kutil.ObjectName(w.worker), err)
+			return nil, nil, nil, nil, nil, fmt.Errorf("could not decode worker status of worker '%s': %w", kutil.ObjectName(w.worker), err)
 		}
 
 		machineImage, err := helper.FindMachineImage(workerStatus.MachineImages, name, version)
 		if err != nil {
-			return nil, nil, nil, nil, worker.ErrorMachineImageNotFound(name, version)
+			return nil, nil, nil, nil, nil, worker.ErrorMachineImageNotFound(name, version)
 		}
 
-		return machineImage.URN, machineImage.ID, machineImage.CommunityGalleryImageID, machineImage.AcceleratedNetworking, nil
+		return machineImage.URN, machineImage.ID, machineImage.CommunityGalleryImageID, machineImage.SharedGalleryImageID, machineImage.AcceleratedNetworking, nil
 	}
 
-	return nil, nil, nil, nil, worker.ErrorMachineImageNotFound(name, version)
+	return nil, nil, nil, nil, nil, worker.ErrorMachineImageNotFound(name, version)
 }
 
 func appendMachineImage(machineImages []api.MachineImage, machineImage api.MachineImage) []api.MachineImage {
