@@ -534,6 +534,14 @@ func getControlPlaneChartValues(
 	}, nil
 }
 
+func getCCMPodLabels() map[string]string {
+	return map[string]string{
+		v1beta1constants.GardenRole: v1beta1constants.GardenRoleControlPlane,
+		v1beta1constants.LabelApp:   v1beta1constants.LabelKubernetes,
+		v1beta1constants.LabelRole:  azure.CloudControllerManagerName,
+	}
+}
+
 // getCCMChartValues collects and returns the CCM chart values.
 func getCCMChartValues(
 	cpConfig *apisazure.ControlPlaneConfig,
@@ -553,9 +561,14 @@ func getCCMChartValues(
 		return nil, fmt.Errorf("secret %q not found", cloudControllerManagerServerName)
 	}
 
+	replicas := 1
+	if extensionscontroller.IsHAControlPlaneConfigured(cluster) {
+		replicas = 2
+	}
+
 	values := map[string]interface{}{
 		"enabled":           true,
-		"replicas":          extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
+		"replicas":          extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, replicas),
 		"clusterName":       cp.Namespace,
 		"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
 		"podNetwork":        extensionscontroller.GetPodNetwork(cluster),
@@ -574,6 +587,10 @@ func getCCMChartValues(
 
 	if cpConfig.CloudControllerManager != nil {
 		values["featureGates"] = cpConfig.CloudControllerManager.FeatureGates
+	}
+
+	if tsc := extensionscontroller.GetTopologySpreadConstraintsForExtensionComponent(cluster, getCCMPodLabels()); tsc != nil {
+		values["tsc"] = tsc
 	}
 
 	return values, nil
