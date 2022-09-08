@@ -22,16 +22,35 @@ spec:
         cpu: {{ .Values.resources.csiDriverFile.requests.cpu }}
       {{- end }}
       {{- end }}
+      maxAllowed:
+      {{- if eq .role "disk" }}
+      {{- if .Values.vpa.resourcePolicy.csiDriverDisk }}
+        memory: {{ .Values.vpa.resourcePolicy.csiDriverDisk.maxAllowed.memory }}
+        cpu: {{ .Values.vpa.resourcePolicy.csiDriverDisk.maxAllowed.cpu }}
+      {{- end }}
+      {{- end }}
+      {{- if eq .role "file" }}
+      {{- if .Values.resources.csiDriverFile  }}
+        memory: {{ .Values.vpa.resourcePolicy.csiDriverFile.maxAllowed.memory }}
+        cpu: {{ .Values.vpa.resourcePolicy.csiDriverFile.maxAllowed.cpu }}
+      {{- end }}
+      {{- end }}
       controlledValues: RequestsOnly
     - containerName: csi-node-driver-registrar
       minAllowed:
         cpu: {{ .Values.resources.nodeDriverRegistrar.requests.cpu }}
         memory: {{ .Values.resources.nodeDriverRegistrar.requests.memory }}
+      maxAllowed:
+        cpu: {{ .Values.vpa.resourcePolicy.nodeDriverRegistrar.maxAllowed.cpu }}
+        memory: {{ .Values.vpa.resourcePolicy.nodeDriverRegistrar.maxAllowed.memory }}
       controlledValues: RequestsOnly
     - containerName: csi-liveness-probe
       minAllowed:
         cpu: {{ .Values.resources.livenessProbe.requests.cpu }}
         memory: {{ .Values.resources.livenessProbe.requests.memory }}
+      maxAllowed:
+        cpu: {{ .Values.vpa.resourcePolicy.livenessProbe.maxAllowed.cpu }}
+        memory: {{ .Values.vpa.resourcePolicy.livenessProbe.maxAllowed.memory }}
       controlledValues: RequestsOnly
   targetRef:
     apiVersion: apps/v1
