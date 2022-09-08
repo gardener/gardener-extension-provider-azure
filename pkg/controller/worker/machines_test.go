@@ -738,6 +738,15 @@ var _ = Describe("Machines", func() {
 				Expect(result).To(BeNil())
 			})
 
+			It("should fail because the machine image for given architecture cannot be found", func() {
+				w.Spec.Pools[0].Architecture = pointer.String("arm64")
+				workerDelegate := wrapNewWorkerDelegate(c, chartApplier, w, cluster, nil)
+
+				result, err := workerDelegate.GenerateMachineDeployments(ctx)
+				Expect(err).To(HaveOccurred())
+				Expect(result).To(BeNil())
+			})
+
 			It("should fail because the infrastructure status cannot be decoded", func() {
 				w.Spec.InfrastructureProviderStatus = &runtime.RawExtension{Raw: []byte("definitely not correct")}
 				workerDelegate := wrapNewWorkerDelegate(c, chartApplier, w, cluster, nil)

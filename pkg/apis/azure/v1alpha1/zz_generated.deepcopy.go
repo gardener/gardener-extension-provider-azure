@@ -320,6 +320,11 @@ func (in *MachineImage) DeepCopyInto(out *MachineImage) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.Architecture != nil {
+		in, out := &in.Architecture, &out.Architecture
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 
@@ -359,6 +364,11 @@ func (in *MachineImageVersion) DeepCopyInto(out *MachineImageVersion) {
 	if in.AcceleratedNetworking != nil {
 		in, out := &in.AcceleratedNetworking, &out.AcceleratedNetworking
 		*out = new(bool)
+		**out = **in
+	}
+	if in.Architecture != nil {
+		in, out := &in.Architecture, &out.Architecture
+		*out = new(string)
 		**out = **in
 	}
 	return

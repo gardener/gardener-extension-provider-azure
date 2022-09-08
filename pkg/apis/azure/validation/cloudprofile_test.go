@@ -59,8 +59,9 @@ var _ = Describe("CloudProfileConfig validation", func() {
 						Name: "ubuntu",
 						Versions: []apisazure.MachineImageVersion{
 							{
-								Version: "Version",
-								URN:     &urn,
+								Version:      "Version",
+								URN:          &urn,
+								Architecture: pointer.String("amd64"),
 							},
 						},
 					},
@@ -69,6 +70,11 @@ var _ = Describe("CloudProfileConfig validation", func() {
 		})
 
 		Context("machine image validation", func() {
+			It("should allow valid cloudProfileConfig", func() {
+				errorList := ValidateCloudProfileConfig(cloudProfileConfig, root)
+				Expect(errorList).To(BeEmpty())
+			})
+
 			It("should enforce that at least one machine image has been defined", func() {
 				cloudProfileConfig.MachineImages = []apisazure.MachineImages{}
 
@@ -94,6 +100,16 @@ var _ = Describe("CloudProfileConfig validation", func() {
 				}))))
 			})
 
+			It("should forbid unsupported machine image architecture", func() {
+				cloudProfileConfig.MachineImages[0].Versions[0].Architecture = pointer.String("foo")
+
+				errorList := ValidateCloudProfileConfig(cloudProfileConfig, root)
+				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeNotSupported),
+					"Field": Equal("root.machineImages[0].versions[0].architecture"),
+				}))))
+			})
+
 			DescribeTable("forbid unsupported machine image urn",
 				func(urn string, matcher gomegatypes.GomegaMatcher) {
 					cloudProfileConfig.MachineImages = []apisazure.MachineImages{
@@ -101,8 +117,9 @@ var _ = Describe("CloudProfileConfig validation", func() {
 							Name: "my-image",
 							Versions: []apisazure.MachineImageVersion{
 								{
-									Version: "1.2.3",
-									URN:     &urn,
+									Version:      "1.2.3",
+									URN:          &urn,
+									Architecture: pointer.String("amd64"),
 								},
 							},
 						},
@@ -127,8 +144,9 @@ var _ = Describe("CloudProfileConfig validation", func() {
 							Name: "my-image",
 							Versions: []apisazure.MachineImageVersion{
 								{
-									Version: "1.2.3",
-									ID:      &id,
+									Version:      "1.2.3",
+									ID:           &id,
+									Architecture: pointer.String("amd64"),
 								},
 							},
 						},
@@ -151,6 +169,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 								{
 									Version:                 "1.2.3",
 									CommunityGalleryImageID: &communityGalleryImageID,
+									Architecture:            pointer.String("amd64"),
 								},
 							},
 						},
@@ -175,6 +194,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 								{
 									Version:              "1.2.3",
 									SharedGalleryImageID: &sharedGalleryImageID,
+									Architecture:         pointer.String("amd64"),
 								},
 							},
 						},
@@ -202,6 +222,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 									CommunityGalleryImageID: communityGalleryImageID,
 									SharedGalleryImageID:    sharedGalleryImageID,
 									URN:                     urn,
+									Architecture:            pointer.String("amd64"),
 								},
 							},
 						},
@@ -269,7 +290,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 				cloudProfileConfig.MachineImages = []apisazure.MachineImages{
 					{
 						Name:     "abc",
-						Versions: []apisazure.MachineImageVersion{{}},
+						Versions: []apisazure.MachineImageVersion{{Architecture: pointer.String("amd64")}},
 					},
 				}
 

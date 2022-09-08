@@ -65,6 +65,8 @@ type MachineImageVersion struct {
 	SharedGalleryImageID *string
 	// AcceleratedNetworking is an indicator if the image supports Azure accelerated networking.
 	AcceleratedNetworking *bool
+	// Architecture is the CPU architecture of the machine image.
+	Architecture *string
 }
 
 // MachineType contains provider specific information to a machine type.

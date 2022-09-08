@@ -25,6 +25,7 @@ import (
 	azureapi "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	azureapihelper "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	"k8s.io/utils/pointer"
 
 	"github.com/gardener/gardener/extensions/pkg/controller/csimigration"
 	genericworkeractuator "github.com/gardener/gardener/extensions/pkg/controller/worker/genericactuator"
@@ -127,7 +128,9 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			return err
 		}
 
-		urn, id, communityGalleryImageID, sharedGalleryImageID, imageSupportAcceleratedNetworking, err := w.findMachineImage(pool.MachineImage.Name, pool.MachineImage.Version)
+		arch := pointer.StringDeref(pool.Architecture, v1beta1constants.ArchitectureAMD64)
+
+		urn, id, communityGalleryImageID, sharedGalleryImageID, imageSupportAcceleratedNetworking, err := w.findMachineImage(pool.MachineImage.Name, pool.MachineImage.Version, &arch)
 		if err != nil {
 			return err
 		}
@@ -139,6 +142,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			CommunityGalleryImageID: communityGalleryImageID,
 			SharedGalleryImageID:    sharedGalleryImageID,
 			AcceleratedNetworking:   imageSupportAcceleratedNetworking,
+			Architecture:            &arch,
 		})
 
 		image := map[string]interface{}{}
