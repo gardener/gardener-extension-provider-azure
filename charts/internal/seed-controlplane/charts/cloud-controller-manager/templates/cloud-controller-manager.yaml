@@ -38,11 +38,7 @@ spec:
         image: {{ index .Values.images "cloud-controller-manager" }}
         imagePullPolicy: IfNotPresent
         command:
-        {{- if semverCompare "< 1.17" .Values.kubernetesVersion }}
-        - /hyperkube
-        - cloud-controller-manager
-        - --allocate-node-cidrs=true
-        {{- else if semverCompare ">= 1.23" .Values.kubernetesVersion }}
+        {{- if semverCompare ">= 1.23" .Values.kubernetesVersion }}
         - /usr/local/bin/cloud-controller-manager
         - --allocate-node-cidrs=false
         {{- else }}
