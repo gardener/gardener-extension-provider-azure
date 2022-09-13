@@ -70,7 +70,7 @@ func expectWorkerProviderStatusUpdateToSucceed(ctx context.Context, c *mockclien
 
 func expectGetSecretCallToWork(c *mockclient.MockClient, w *extensionsv1alpha1.Worker) {
 	c.EXPECT().Get(context.TODO(), kutil.Key(w.Spec.SecretRef.Namespace, w.Spec.SecretRef.Name), &corev1.Secret{}).DoAndReturn(
-		func(_ context.Context, __ client.ObjectKey, secret *corev1.Secret) error {
+		func(_ context.Context, __ client.ObjectKey, secret *corev1.Secret, _ ...client.GetOption) error {
 			secret.Data = map[string][]byte{
 				azure.ClientIDKey:       []byte("client-id"),
 				azure.ClientSecretKey:   []byte("client-secret"),

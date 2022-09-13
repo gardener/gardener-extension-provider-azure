@@ -89,7 +89,7 @@ var _ = Describe("SecretBinding validator", func() {
 
 		It("should return err when the corresponding Secret is not valid", func() {
 			apiReader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).
-				DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *corev1.Secret) error {
+				DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *corev1.Secret, _ ...client.GetOption) error {
 					secret := &corev1.Secret{Data: map[string][]byte{
 						"foo": []byte("bar"),
 					}}
@@ -103,7 +103,7 @@ var _ = Describe("SecretBinding validator", func() {
 
 		It("should return nil when the corresponding Secret is valid", func() {
 			apiReader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).
-				DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *corev1.Secret) error {
+				DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *corev1.Secret, _ ...client.GetOption) error {
 					secret := &corev1.Secret{Data: map[string][]byte{
 						azure.SubscriptionIDKey: []byte("b7ad693a-028a-422c-b064-d76c4586f2b3"),
 						azure.TenantIDKey:       []byte("ee16e592-3035-41b9-a217-958f8f75b740"),
