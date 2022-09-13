@@ -28,8 +28,6 @@ import (
 
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
-	certificatesv1 "k8s.io/api/certificates/v1"
-	certificatesv1beta1 "k8s.io/api/certificates/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -105,9 +103,10 @@ func nameAndNamespace(namespaceOrName string, nameOpt ...string) (namespace, nam
 
 // Key creates a new client.ObjectKey from the given parameters.
 // There are only two ways to call this function:
-// - If only namespaceOrName is set, then a client.ObjectKey with name set to namespaceOrName is returned.
-// - If namespaceOrName and one nameOpt is given, then a client.ObjectKey with namespace set to namespaceOrName
-//   and name set to nameOpt[0] is returned.
+//   - If only namespaceOrName is set, then a client.ObjectKey with name set to namespaceOrName is returned.
+//   - If namespaceOrName and one nameOpt is given, then a client.ObjectKey with namespace set to namespaceOrName
+//     and name set to nameOpt[0] is returned.
+//
 // For all other cases, this method panics.
 func Key(namespaceOrName string, nameOpt ...string) client.ObjectKey {
 	namespace, name := nameAndNamespace(namespaceOrName, nameOpt...)
@@ -116,9 +115,10 @@ func Key(namespaceOrName string, nameOpt ...string) client.ObjectKey {
 
 // ObjectMeta creates a new metav1.ObjectMeta from the given parameters.
 // There are only two ways to call this function:
-// - If only namespaceOrName is set, then a metav1.ObjectMeta with name set to namespaceOrName is returned.
-// - If namespaceOrName and one nameOpt is given, then a metav1.ObjectMeta with namespace set to namespaceOrName
-//   and name set to nameOpt[0] is returned.
+//   - If only namespaceOrName is set, then a metav1.ObjectMeta with name set to namespaceOrName is returned.
+//   - If namespaceOrName and one nameOpt is given, then a metav1.ObjectMeta with namespace set to namespaceOrName
+//     and name set to nameOpt[0] is returned.
+//
 // For all other cases, this method panics.
 func ObjectMeta(namespaceOrName string, nameOpt ...string) metav1.ObjectMeta {
 	namespace, name := nameAndNamespace(namespaceOrName, nameOpt...)
@@ -631,24 +631,6 @@ func MostRecentCompleteLogs(
 	}
 
 	return fmt.Sprintf("%s\n...\n%s", firstLogLines, lastLogLines), nil
-}
-
-// IgnoreAlreadyExists returns nil on AlreadyExists errors.
-// All other values that are not AlreadyExists errors or nil are returned unmodified.
-func IgnoreAlreadyExists(err error) error {
-	if apierrors.IsAlreadyExists(err) {
-		return nil
-	}
-	return err
-}
-
-// CertificatesV1beta1UsagesToCertificatesV1Usages converts []certificatesv1beta1.KeyUsage to []certificatesv1.KeyUsage.
-func CertificatesV1beta1UsagesToCertificatesV1Usages(usages []certificatesv1beta1.KeyUsage) []certificatesv1.KeyUsage {
-	var out []certificatesv1.KeyUsage
-	for _, u := range usages {
-		out = append(out, certificatesv1.KeyUsage(u))
-	}
-	return out
 }
 
 // NewKubeconfig returns a new kubeconfig structure.
