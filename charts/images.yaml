@@ -48,12 +48,22 @@ images:
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-controller-manager
   tag: "v1.24.8"
-  targetVersion: ">= 1.24"
+  targetVersion: "1.24.x"
 - name: cloud-node-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-node-manager
   tag: "v1.24.8"
-  targetVersion: ">= 1.24"
+  targetVersion: "1.24.x"
+- name: cloud-controller-manager
+  sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
+  repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-controller-manager
+  tag: "v1.25.2"
+  targetVersion: ">= 1.25"
+- name: cloud-node-manager
+  sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
+  repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-node-manager
+  tag: "v1.25.2"
+  targetVersion: ">= 1.25"
 - name: machine-controller-manager
   sourceRepository: github.com/gardener/machine-controller-manager
   repository: eu.gcr.io/gardener-project/gardener/machine-controller-manager
