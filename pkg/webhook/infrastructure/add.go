@@ -53,7 +53,7 @@ func AddToManager(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 		Target:   extensionswebhook.TargetSeed,
 		Provider: azure.Type,
 		Types:    types,
-		Webhook:  &admission.Webhook{Handler: handler},
+		Webhook:  &admission.Webhook{Handler: handler, RecoverPanic: true},
 		Path:     webhookPath,
 		Selector: buildSelector(azure.Type),
 	}, nil
