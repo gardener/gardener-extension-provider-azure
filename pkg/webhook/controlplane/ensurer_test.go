@@ -66,20 +66,6 @@ var _ = Describe("Ensurer", func() {
 		c       *mockclient.MockClient
 
 		dummyContext   = gcontext.NewGardenContext(nil, nil)
-		eContextK8s116 = gcontext.NewInternalGardenContext(
-			&extensionscontroller.Cluster{
-				Shoot: &gardencorev1beta1.Shoot{
-					Spec: gardencorev1beta1.ShootSpec{
-						Kubernetes: gardencorev1beta1.Kubernetes{
-							Version: "1.16.0",
-						},
-					},
-					Status: gardencorev1beta1.ShootStatus{
-						TechnicalID: namespace,
-					},
-				},
-			},
-		)
 		eContextK8s117 = gcontext.NewInternalGardenContext(
 			&extensionscontroller.Cluster{
 				Shoot: &gardencorev1beta1.Shoot{
@@ -178,15 +164,6 @@ var _ = Describe("Ensurer", func() {
 			}
 		})
 
-		It("should add missing elements to kube-apiserver deployment (k8s < 1.17)", func() {
-			c.EXPECT().Get(ctx, key, &corev1.Secret{}).DoAndReturn(clientGet(secret))
-
-			err := ensurer.EnsureKubeAPIServerDeployment(ctx, eContextK8s116, dep, nil)
-			Expect(err).To(Not(HaveOccurred()))
-
-			checkKubeAPIServerDeployment(dep, annotations, "1.16.0", false)
-		})
-
 		It("should add missing elements to kube-apiserver deployment (k8s >= 1.17, < 1.21)", func() {
 			c.EXPECT().Get(ctx, key, &corev1.Secret{}).DoAndReturn(clientGet(secret))
 
@@ -242,8 +219,8 @@ var _ = Describe("Ensurer", func() {
 
 			c.EXPECT().Get(ctx, key, &corev1.Secret{}).DoAndReturn(clientGet(secret))
 
-			Expect(ensurer.EnsureKubeAPIServerDeployment(ctx, eContextK8s116, dep, nil)).To(Not(HaveOccurred()))
-			checkKubeAPIServerDeployment(dep, annotations, "1.16.0", false)
+			Expect(ensurer.EnsureKubeAPIServerDeployment(ctx, eContextK8s117, dep, nil)).To(Not(HaveOccurred()))
+			checkKubeAPIServerDeployment(dep, annotations, "1.17.0", false)
 		})
 	})
 
@@ -265,15 +242,6 @@ var _ = Describe("Ensurer", func() {
 					},
 				},
 			}
-		})
-
-		It("should add missing elements to kube-controller-manager deployment (k8s < 1.17)", func() {
-			c.EXPECT().Get(ctx, key, &corev1.Secret{}).DoAndReturn(clientGet(secret))
-
-			err := ensurer.EnsureKubeControllerManagerDeployment(ctx, eContextK8s116, dep, nil)
-			Expect(err).To(Not(HaveOccurred()))
-
-			checkKubeControllerManagerDeployment(dep, annotations, kubeControllerManagerLabels, "1.16.4", false)
 		})
 
 		It("should add missing elements to kube-controller-manager deployment (k8s >= 1.17, k8s < 1.21)", func() {
@@ -330,9 +298,9 @@ var _ = Describe("Ensurer", func() {
 
 			c.EXPECT().Get(ctx, key, &corev1.Secret{}).DoAndReturn(clientGet(secret))
 
-			err := ensurer.EnsureKubeControllerManagerDeployment(ctx, eContextK8s116, dep, nil)
+			err := ensurer.EnsureKubeControllerManagerDeployment(ctx, eContextK8s117, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
-			checkKubeControllerManagerDeployment(dep, annotations, kubeControllerManagerLabels, "1.16.0", false)
+			checkKubeControllerManagerDeployment(dep, annotations, kubeControllerManagerLabels, "1.17.0", false)
 		})
 	})
 
@@ -617,7 +585,6 @@ func checkKubeAPIServerDeployment(dep *appsv1.Deployment, annotations map[string
 }
 
 func checkKubeControllerManagerDeployment(dep *appsv1.Deployment, annotations, labels map[string]string, k8sVersion string, needsCSIMigrationCompletedFeatureGates bool) {
-	k8sVersionLessThan117, _ := version.CompareVersions(k8sVersion, "<", "1.17")
 	k8sVersionAtLeast121, _ := version.CompareVersions(k8sVersion, ">=", "1.21")
 
 	// Check that the kube-controller-manager container still exists and contains all needed command line args,
@@ -634,12 +601,10 @@ func checkKubeControllerManagerDeployment(dep *appsv1.Deployment, annotations, l
 		Expect(dep.Spec.Template.Annotations).To(Equal(annotations))
 		Expect(dep.Spec.Template.Labels).To(Equal(labels))
 		Expect(dep.Spec.Template.Spec.Volumes).To(ContainElement(cloudProviderConfigVolume))
-		if !k8sVersionLessThan117 {
-			Expect(c.VolumeMounts).To(ContainElement(etcSSLVolumeMount))
-			Expect(dep.Spec.Template.Spec.Volumes).To(ContainElement(etcSSLVolume))
-			Expect(c.VolumeMounts).To(ContainElement(usrShareCaCertsVolumeMount))
-			Expect(dep.Spec.Template.Spec.Volumes).To(ContainElement(usrShareCaCertsVolume))
-		}
+		Expect(c.VolumeMounts).To(ContainElement(etcSSLVolumeMount))
+		Expect(dep.Spec.Template.Spec.Volumes).To(ContainElement(etcSSLVolume))
+		Expect(c.VolumeMounts).To(ContainElement(usrShareCaCertsVolumeMount))
+		Expect(dep.Spec.Template.Spec.Volumes).To(ContainElement(usrShareCaCertsVolume))
 		if k8sVersionAtLeast121 {
 			Expect(c.Command).To(ContainElement("--feature-gates=CSIMigration=true,CSIMigrationAzureDisk=true,CSIMigrationAzureFile=true"))
 		}
