@@ -23,6 +23,8 @@ import (
 	"strings"
 	"time"
 
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	"github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	"github.com/gardener/gardener/pkg/utils/retry"
 
@@ -40,6 +42,7 @@ import (
 	clientcmdv1 "k8s.io/client-go/tools/clientcmd/api/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 // TruncateLabelValue truncates a string at 63 characters so it's suitable for a label value.
@@ -660,10 +663,13 @@ func NewKubeconfig(contextName string, cluster clientcmdv1.Cluster, authInfo cli
 }
 
 // ObjectKeyForCreateWebhooks creates an object key for an object handled by webhooks registered for CREATE verbs.
-func ObjectKeyForCreateWebhooks(obj client.Object) client.ObjectKey {
+func ObjectKeyForCreateWebhooks(obj client.Object, req admission.Request) client.ObjectKey {
 	namespace := obj.GetNamespace()
-	if len(namespace) == 0 {
-		namespace = metav1.NamespaceDefault
+
+	// In webhooks the namespace is not always set in objects due to https://github.com/kubernetes/kubernetes/issues/88282,
+	// so try to get the namespace information from the request directly, otherwise the object is presumably not namespaced.
+	if len(namespace) == 0 && len(req.Namespace) != 0 {
+		namespace = req.Namespace
 	}
 
 	name := obj.GetName()
@@ -672,4 +678,42 @@ func ObjectKeyForCreateWebhooks(obj client.Object) client.ObjectKey {
 	}
 
 	return client.ObjectKey{Namespace: namespace, Name: name}
+}
+
+// GetTopologySpreadConstraints returns the required topology spread constraints based
+// on the passed `failureToleranceType`.
+func GetTopologySpreadConstraints(failureToleranceType *gardencorev1beta1.FailureToleranceType, maxReplicas int32, labelSelector metav1.LabelSelector) []corev1.TopologySpreadConstraint {
+	const criticalMaxReplicaCount = 6
+
+	whenUnsatisfiable := corev1.DoNotSchedule
+	if failureToleranceType == nil {
+		// Spread should be a best-effort only if no HA is configured.
+		whenUnsatisfiable = corev1.ScheduleAnyway
+	}
+
+	constraints := []corev1.TopologySpreadConstraint{
+		{
+			TopologyKey:       corev1.LabelHostname,
+			MaxSkew:           1,
+			WhenUnsatisfiable: whenUnsatisfiable,
+			LabelSelector:     &labelSelector,
+		},
+	}
+
+	if helper.IsFailureToleranceTypeZone(failureToleranceType) {
+		maxSkew := int32(1)
+		// Increase maxSkew if there can be >= 6 replicas, see https://github.com/kubernetes/kubernetes/issues/109364.
+		if maxReplicas >= criticalMaxReplicaCount {
+			maxSkew = 2
+		}
+
+		constraints = append(constraints, corev1.TopologySpreadConstraint{
+			TopologyKey:       corev1.LabelTopologyZone,
+			MaxSkew:           maxSkew,
+			WhenUnsatisfiable: corev1.DoNotSchedule,
+			LabelSelector:     &labelSelector,
+		})
+	}
+
+	return constraints
 }
