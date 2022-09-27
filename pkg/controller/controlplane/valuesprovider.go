@@ -691,13 +691,17 @@ func getControlPlaneShootChartValues(
 	}
 
 	disableRemedyController := cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] == "true"
+	pspDisabled := gardencorev1beta1helper.IsPSPDisabled(cluster.Shoot)
 
 	return map[string]interface{}{
 		"global": map[string]interface{}{
 			"vpaEnabled": gardencorev1beta1helper.ShootWantsVerticalPodAutoscaler(cluster.Shoot),
 		},
-		azure.AllowEgressName:            map[string]interface{}{"enabled": infraStatus.Zoned || azureapihelper.IsVmoRequired(infraStatus)},
-		azure.CloudControllerManagerName: map[string]interface{}{"enabled": true},
+		azure.AllowEgressName: map[string]interface{}{"enabled": infraStatus.Zoned || azureapihelper.IsVmoRequired(infraStatus)},
+		azure.CloudControllerManagerName: map[string]interface{}{
+			"enabled":     true,
+			"pspDisabled": pspDisabled,
+		},
 		azure.CSINodeName: map[string]interface{}{
 			"enabled":           !k8sVersionLessThan121,
 			"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
@@ -709,7 +713,7 @@ func getControlPlaneShootChartValues(
 				"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
 				"caBundle": caBundle,
 			},
-			"pspDisabled": gardencorev1beta1helper.IsPSPDisabled(cluster.Shoot),
+			"pspDisabled": pspDisabled,
 		},
 		azure.RemedyControllerName: map[string]interface{}{
 			"enabled": !disableRemedyController,

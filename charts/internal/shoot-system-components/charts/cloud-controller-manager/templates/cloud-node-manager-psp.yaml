@@ -1,4 +1,4 @@
-{{- if semverCompare ">= 1.23" .Capabilities.KubeVersion.GitVersion -}}
+{{- if and (semverCompare ">= 1.23" .Capabilities.KubeVersion.GitVersion) (not .Values.pspDisabled) -}}
 ---
 apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
