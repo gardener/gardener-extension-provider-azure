@@ -22,6 +22,7 @@ metadata:
   labels:
     app: csi
     role: driver-{{ .role }}
+    gardener.cloud/role: system-component
 spec:
   selector:
     matchLabels:
@@ -36,6 +37,7 @@ spec:
       labels:
         app: csi
         role: driver-{{ .role }}
+        gardener.cloud/role: system-component
     spec:
       hostNetwork: true
       priorityClassName: system-node-critical
