@@ -16,6 +16,7 @@ package healthcheck
 
 import (
 	"context"
+	"k8s.io/utils/pointer"
 	"time"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
@@ -41,7 +42,11 @@ var (
 	defaultSyncPeriod = time.Second * 30
 	// DefaultAddOptions are the default DefaultAddArgs for AddToManager.
 	DefaultAddOptions = healthcheck.DefaultAddArgs{
-		HealthCheckConfig: healthcheckconfig.HealthCheckConfig{SyncPeriod: metav1.Duration{Duration: defaultSyncPeriod}},
+		HealthCheckConfig: healthcheckconfig.HealthCheckConfig{SyncPeriod: metav1.Duration{Duration: defaultSyncPeriod},
+			ShootRESTOptions: &healthcheckconfig.RESTOptions{
+				QPS:   pointer.Float32(100),
+				Burst: pointer.Int(130),
+			}},
 	}
 )
 
