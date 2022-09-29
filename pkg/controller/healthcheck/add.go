@@ -16,8 +16,9 @@ package healthcheck
 
 import (
 	"context"
-	"k8s.io/utils/pointer"
 	"time"
+
+	"k8s.io/utils/pointer"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	healthcheckconfig "github.com/gardener/gardener/extensions/pkg/apis/config"

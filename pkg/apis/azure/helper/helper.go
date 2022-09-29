@@ -25,7 +25,8 @@ import (
 // FindSubnetByPurposeAndZone takes a list of subnets and tries to find the first entry whose purpose matches with the given purpose.
 // Optionally, if the zone argument is not nil, the Zone field of a candidate subnet must match that value.
 // FindSubnetByPurposeAndZone returns the index of the subnet in the array and the subnet object.
-//  If no such entry is found then an error will be returned.
+//
+//	If no such entry is found then an error will be returned.
 func FindSubnetByPurposeAndZone(subnets []api.Subnet, purpose api.Purpose, zone *string) (int, *api.Subnet, error) {
 	for index, subnet := range subnets {
 		if subnet.Purpose == purpose && (zone == nil || (subnet.Zone != nil && *subnet.Zone == *zone)) {
