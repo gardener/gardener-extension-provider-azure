@@ -42,6 +42,7 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	corev1 "k8s.io/api/core/v1"
+	schedulingv1 "k8s.io/api/scheduling/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -244,6 +245,16 @@ var _ = BeforeSuite(func() {
 	authorizer, err := getAuthorizer(*tenantId, *clientId, *clientSecret)
 	Expect(err).ToNot(HaveOccurred())
 	clientSet = newAzureClientSet(*subscriptionId, authorizer)
+
+	priorityClass := &schedulingv1.PriorityClass{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: v1beta1constants.PriorityClassNameShootControlPlane300,
+		},
+		Description:   "PriorityClass for Shoot control plane components",
+		GlobalDefault: false,
+		Value:         999998300,
+	}
+	Expect(client.IgnoreAlreadyExists(c.Create(ctx, priorityClass))).To(BeNil())
 })
 
 var _ = Describe("Infrastructure tests", func() {
