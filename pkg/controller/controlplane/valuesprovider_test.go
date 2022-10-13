@@ -506,6 +506,10 @@ var _ = Describe("ValuesProvider", func() {
 				"cloudProviderConfig": cloudProviderConfigData,
 				"kubernetesVersion":   "1.21.4",
 			})
+			cloudControllerManager = map[string]interface{}{
+				"enabled":     true,
+				"pspDisabled": false,
+			}
 		)
 
 		BeforeEach(func() {
@@ -531,7 +535,7 @@ var _ = Describe("ValuesProvider", func() {
 				Expect(values).To(Equal(map[string]interface{}{
 					"global":                         globalVpaDisabled,
 					azure.AllowEgressName:            enabledTrue,
-					azure.CloudControllerManagerName: enabledTrue,
+					azure.CloudControllerManagerName: cloudControllerManager,
 					azure.CSINodeName:                csiNode,
 					azure.RemedyControllerName:       enabledTrue,
 				}))
@@ -554,7 +558,7 @@ var _ = Describe("ValuesProvider", func() {
 				Expect(values).To(Equal(map[string]interface{}{
 					"global":                         globalVpaDisabled,
 					azure.AllowEgressName:            enabledFalse,
-					azure.CloudControllerManagerName: enabledTrue,
+					azure.CloudControllerManagerName: cloudControllerManager,
 					azure.CSINodeName:                csiNode,
 					azure.RemedyControllerName:       enabledTrue,
 				}))
@@ -595,7 +599,7 @@ var _ = Describe("ValuesProvider", func() {
 				Expect(values).To(Equal(map[string]interface{}{
 					"global":                         globalVpaEnabled,
 					azure.AllowEgressName:            enabledTrue,
-					azure.CloudControllerManagerName: enabledTrue,
+					azure.CloudControllerManagerName: cloudControllerManager,
 					azure.CSINodeName:                csiNode,
 					azure.RemedyControllerName:       enabledTrue,
 				}))
@@ -618,7 +622,7 @@ var _ = Describe("ValuesProvider", func() {
 				Expect(values).To(Equal(map[string]interface{}{
 					"global":                         globalVpaEnabled,
 					azure.AllowEgressName:            enabledFalse,
-					azure.CloudControllerManagerName: enabledTrue,
+					azure.CloudControllerManagerName: cloudControllerManager,
 					azure.CSINodeName:                csiNode,
 					azure.RemedyControllerName:       enabledTrue,
 				}))
@@ -641,7 +645,7 @@ var _ = Describe("ValuesProvider", func() {
 				Expect(values).To(Equal(map[string]interface{}{
 					"global":                         globalVpaEnabled,
 					azure.AllowEgressName:            enabledTrue,
-					azure.CloudControllerManagerName: enabledTrue,
+					azure.CloudControllerManagerName: cloudControllerManager,
 					azure.CSINodeName:                csiNode,
 					azure.RemedyControllerName:       enabledTrue,
 				}))
@@ -670,7 +674,7 @@ var _ = Describe("ValuesProvider", func() {
 				Expect(values).To(Equal(map[string]interface{}{
 					"global":                         globalVpaDisabled,
 					azure.AllowEgressName:            enabledTrue,
-					azure.CloudControllerManagerName: enabledTrue,
+					azure.CloudControllerManagerName: cloudControllerManager,
 					azure.CSINodeName:                csiNode,
 					azure.RemedyControllerName:       enabledFalse,
 				}))
@@ -693,7 +697,7 @@ var _ = Describe("ValuesProvider", func() {
 				Expect(values).To(Equal(map[string]interface{}{
 					"global":                         globalVpaDisabled,
 					azure.AllowEgressName:            enabledFalse,
-					azure.CloudControllerManagerName: enabledTrue,
+					azure.CloudControllerManagerName: cloudControllerManager,
 					azure.CSINodeName:                csiNode,
 					azure.RemedyControllerName:       enabledFalse,
 				}))
@@ -723,7 +727,7 @@ var _ = Describe("ValuesProvider", func() {
 				Expect(values).To(Equal(map[string]interface{}{
 					"global":                         globalVpaDisabled,
 					azure.AllowEgressName:            enabledTrue,
-					azure.CloudControllerManagerName: enabledTrue,
+					azure.CloudControllerManagerName: cloudControllerManager,
 					azure.CSINodeName:                csiNode,
 					azure.RemedyControllerName:       enabledTrue,
 				}))
@@ -746,13 +750,16 @@ var _ = Describe("ValuesProvider", func() {
 					},
 					"pspDisabled": true,
 				})
+				cloudControllerManagerPSPDisabled := utils.MergeMaps(cloudControllerManager, map[string]interface{}{
+					"pspDisabled": true,
+				})
 
 				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
 					"global":                         globalVpaDisabled,
 					azure.AllowEgressName:            enabledTrue,
-					azure.CloudControllerManagerName: enabledTrue,
+					azure.CloudControllerManagerName: cloudControllerManagerPSPDisabled,
 					azure.CSINodeName:                csiNode,
 					azure.RemedyControllerName:       enabledTrue,
 				}))
