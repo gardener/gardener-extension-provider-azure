@@ -697,7 +697,7 @@ func getControlPlaneShootChartValues(
 		"global": map[string]interface{}{
 			"vpaEnabled": gardencorev1beta1helper.ShootWantsVerticalPodAutoscaler(cluster.Shoot),
 		},
-		azure.AllowEgressName: map[string]interface{}{"enabled": infraStatus.Zoned || azureapihelper.IsVmoRequired(infraStatus)},
+		azure.AllowEgressName: map[string]interface{}{"enabled": azureapihelper.ShouldDeployEgressChart(infraStatus, cluster)},
 		azure.CloudControllerManagerName: map[string]interface{}{
 			"enabled":     true,
 			"pspDisabled": pspDisabled,
