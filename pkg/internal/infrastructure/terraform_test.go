@@ -670,6 +670,22 @@ var _ = Describe("Terraform", func() {
 				Zoned: false,
 			}))
 		})
+		It("should add NatGateway config to infrastructure status", func() {
+			config.Networks.Zones = []api.Zone{{Name: 1, NatGateway: &api.ZonedNatGatewayConfig{Enabled: true}}, {Name: 2, NatGateway: &api.ZonedNatGatewayConfig{Enabled: true}}}
+			state.Subnets = []terraformSubnet{
+				{
+					name: "subnet1",
+					zone: pointer.String("1"),
+				},
+				{
+					name: "subnet2",
+					zone: pointer.String("2"),
+				},
+			}
+			status := StatusFromTerraformState(config, state)
+			Expect(status.Networks.Subnets[0].NatGateway).To(Equal(true))
+			Expect(status.Networks.Subnets[1].NatGateway).To(Equal(true))
+		})
 
 		It("should correctly compute the status for cluster with identity", func() {
 			var (
@@ -724,14 +740,19 @@ var _ = Describe("Terraform", func() {
 			config.Networks = api.NetworkConfig{
 				Zones: []api.Zone{
 					{
-						Name: 1,
+						Name:       1,
+						NatGateway: &api.ZonedNatGatewayConfig{Enabled: true},
 					},
 					{
-						Name: 2,
+						Name:       2,
+						NatGateway: &api.ZonedNatGatewayConfig{Enabled: true},
+					},
+					{
+						Name:       3,
+						NatGateway: nil, // check that nil does not panic
 					},
 				},
 			}
-			// state.SubnetNames = []string{subnetName1, subnetName2}
 			state.Subnets = []terraformSubnet{
 				{
 					name: subnetName1,
@@ -762,14 +783,16 @@ var _ = Describe("Terraform", func() {
 					},
 					Subnets: []apiv1alpha1.Subnet{
 						{
-							Purpose: apiv1alpha1.PurposeNodes,
-							Name:    subnetName1,
-							Zone:    &zone1,
+							Purpose:    apiv1alpha1.PurposeNodes,
+							Name:       subnetName1,
+							Zone:       &zone1,
+							NatGateway: true,
 						},
 						{
-							Purpose: apiv1alpha1.PurposeNodes,
-							Name:    subnetName2,
-							Zone:    &zone2,
+							Purpose:    apiv1alpha1.PurposeNodes,
+							Name:       subnetName2,
+							Zone:       &zone2,
+							NatGateway: true,
 						},
 					},
 					Layout: apiv1alpha1.NetworkLayoutMultipleSubnet,

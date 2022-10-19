@@ -236,7 +236,7 @@ func computeNetworkConfigSingleSubnetLayout(infra *extensionsv1alpha1.Infrastruc
 		networkCfg = make(map[string]interface{})
 		subnets    []map[string]interface{}
 	)
-	natGatewayConfig, err := generateNatGatewayValues(infra, config.Networks.NatGateway)
+	natGatewayConfig, err := generateNatGatewayValues(config.Networks.NatGateway)
 	if err != nil {
 		return nil, err
 	}
@@ -274,7 +274,22 @@ func computeNetworkConfigMultipleSubnetLayout(infra *extensionsv1alpha1.Infrastr
 	return networkCfg, nil
 }
 
-func generateNatGatewayValues(infra *extensionsv1alpha1.Infrastructure, nat *api.NatGatewayConfig) (map[string]interface{}, error) {
+func getSubnetsNatGatewayValues(config *api.InfrastructureConfig) []map[string]interface{} {
+	var (
+		subnets []map[string]interface{}
+	)
+
+	for _, zone := range config.Networks.Zones {
+		if zone.NatGateway == nil {
+			continue
+		} else {
+			subnets = append(subnets, generateZonedNatGatewayValues(zone.NatGateway, zone.Name))
+		}
+	}
+	return subnets
+}
+
+func generateNatGatewayValues(nat *api.NatGatewayConfig) (map[string]interface{}, error) {
 	natGatewayConfig := map[string]interface{}{
 		"enabled": false,
 	}
@@ -483,6 +498,7 @@ func StatusFromTerraformState(config *api.InfrastructureConfig, tfState *Terrafo
 			Migrated: subnet.migrated,
 		})
 	}
+	setNatGatewayConfigForSubnets(config, &infraState)
 
 	if tfState.VNetResourceGroupName != "" {
 		infraState.Networks.VNet.ResourceGroup = &tfState.VNetResourceGroupName
@@ -505,8 +521,18 @@ func StatusFromTerraformState(config *api.InfrastructureConfig, tfState *Terrafo
 			Purpose:            apiv1alpha1.PurposeNodes,
 		})
 	}
-
 	return &infraState
+}
+
+func setNatGatewayConfigForSubnets(config *api.InfrastructureConfig, infraState *apiv1alpha1.InfrastructureStatus) {
+	subnetsNatGatewayValues := getSubnetsNatGatewayValues(config)
+	for _, subnet := range subnetsNatGatewayValues {
+		for j := range infraState.Networks.Subnets {
+			if fmt.Sprint(subnet["zone"]) == *infraState.Networks.Subnets[j].Zone {
+				infraState.Networks.Subnets[j].NatGateway = subnet["enabled"].(bool)
+			}
+		}
+	}
 }
 
 // ComputeStatus computes the status based on the Terraformer and the given InfrastructureConfig.
