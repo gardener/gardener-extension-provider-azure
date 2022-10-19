@@ -167,7 +167,8 @@ type Subnet struct {
 	Zone *string
 	// Migrated is set when the network layout is migrated from NetworkLayoutSingleSubnet to NetworkLayoutMultipleSubnet.
 	// Only the subnet that was used prior to the migration should have this attribute set.
-	Migrated bool
+	Migrated   bool
+	NatGateway bool
 }
 
 // AvailabilitySet contains information about the azure availability set

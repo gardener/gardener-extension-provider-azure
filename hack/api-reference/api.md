@@ -1471,6 +1471,17 @@ bool
 Only the subnet that was used prior to the migration should have this attribute set.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>NatGateway</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>NatGateway is enabled</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.VNet">VNet
