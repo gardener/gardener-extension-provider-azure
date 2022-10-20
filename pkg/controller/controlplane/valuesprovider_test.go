@@ -563,6 +563,86 @@ var _ = Describe("ValuesProvider", func() {
 					azure.RemedyControllerName:       enabledTrue,
 				}))
 			})
+			It("should disable egress if all node subnets of zoned cluster have NAT gateway", func() {
+				infrastructureStatus.Zoned = true
+				infrastructureStatus.Networks.Subnets = []apisazure.Subnet{
+					{
+						Name:       "subnet-abcd1234-nodes",
+						Purpose:    "nodes",
+						NatGateway: true,
+					},
+					{
+						Name:       "subnet-abcd5678-nodes",
+						Purpose:    "internal",
+						NatGateway: false,
+					},
+				}
+				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values[azure.AllowEgressName]).To(Equal(enabledFalse))
+			})
+			It("should enable egress if not all node subnets of zoned cluster have NAT gateway", func() {
+				infrastructureStatus.Zoned = true
+				infrastructureStatus.Networks.Subnets = []apisazure.Subnet{
+					{
+						Name:       "subnet-abcd1234-nodes",
+						Purpose:    "nodes",
+						NatGateway: true,
+					},
+					{
+						Name:       "subnet-abcd5678-nodes",
+						Purpose:    "nodes",
+						NatGateway: false,
+					},
+				}
+				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values[azure.AllowEgressName]).To(Equal(enabledTrue))
+			})
+			It("should disable egress for cluster with vmss flex (vmo, non zoned) and NAT for subnets", func() {
+				infrastructureStatus.Zoned = false
+				infrastructureStatus.AvailabilitySets = []apisazure.AvailabilitySet{}
+				infrastructureStatus.Networks.Subnets = []apisazure.Subnet{
+					{
+						Name:       "subnet-abcd1234-nodes",
+						Purpose:    "nodes",
+						NatGateway: true,
+					},
+					{
+						Name:       "subnet-abcd5678-nodes",
+						Purpose:    "nodes",
+						NatGateway: true,
+					},
+				}
+				cluster = generateCluster(cidr, k8sVersionLessThan121, false, map[string]string{azure.ShootVmoUsageAnnotation: "true"})
+				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values[azure.AllowEgressName]).To(Equal(enabledFalse))
+			})
+			It("should enable egress for cluster with vmss flex (vmo, non zoned) if not all subnets have NAT", func() {
+				infrastructureStatus.Zoned = false
+				infrastructureStatus.AvailabilitySets = []apisazure.AvailabilitySet{}
+				infrastructureStatus.Networks.Subnets = []apisazure.Subnet{
+					{
+						Name:       "subnet-abcd1234-nodes",
+						Purpose:    "nodes",
+						NatGateway: true,
+					},
+					{
+						Name:       "subnet-abcd5678-nodes",
+						Purpose:    "nodes",
+						NatGateway: false, // TODO purpose matters?
+					},
+				}
+				cluster = generateCluster(cidr, k8sVersionLessThan121, false, map[string]string{azure.ShootVmoUsageAnnotation: "true"})
+				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values[azure.AllowEgressName]).To(Equal(enabledTrue))
+			})
 		})
 
 		Context("k8s >= 1.21", func() {
