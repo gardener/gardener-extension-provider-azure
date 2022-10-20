@@ -138,14 +138,15 @@ func IsVmoRequired(infrastructureStatus *api.InfrastructureStatus) bool {
 	return !infrastructureStatus.Zoned && len(infrastructureStatus.AvailabilitySets) == 0
 }
 
+// ShouldDeployEgressChart determines if chart should be deployed
 func ShouldDeployEgressChart(infraStatus *api.InfrastructureStatus, cluster *extensions.Cluster) bool {
 	case1 := !infraStatus.Zoned && len(infraStatus.AvailabilitySets) != 0
-	case2 := !infraStatus.Zoned && HasShootVmoAlphaAnnotation(cluster.Shoot.Annotations) && AllNatEnabled(infraStatus.Networks.Subnets)
-	case3 := infraStatus.Zoned && AllNatEnabled(GetAllPurposeNodes(infraStatus.Networks.Subnets))
+	case2 := !infraStatus.Zoned && HasShootVmoAlphaAnnotation(cluster.Shoot.Annotations) && allNatEnabled(infraStatus.Networks.Subnets)
+	case3 := infraStatus.Zoned && allNatEnabled(getAllPurposeNodes(infraStatus.Networks.Subnets))
 	return !(case1 || case2 || case3)
 }
 
-func AllNatEnabled(subnets []api.Subnet) bool {
+func allNatEnabled(subnets []api.Subnet) bool {
 	for _, v := range subnets {
 		if !v.HasNatGateway() {
 			return false
@@ -154,7 +155,7 @@ func AllNatEnabled(subnets []api.Subnet) bool {
 	return true
 }
 
-func GetAllPurposeNodes(subnets []api.Subnet) []api.Subnet {
+func getAllPurposeNodes(subnets []api.Subnet) []api.Subnet {
 	res := []api.Subnet{}
 	for _, v := range subnets {
 		if v.Purpose == api.PurposeNodes {

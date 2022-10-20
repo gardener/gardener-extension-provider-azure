@@ -171,6 +171,7 @@ type Subnet struct {
 	NatGatewayName *string
 }
 
+// HasNatGateway returns if NAT is enabled
 func (s Subnet) HasNatGateway() bool {
 	return s.NatGatewayName != nil
 }

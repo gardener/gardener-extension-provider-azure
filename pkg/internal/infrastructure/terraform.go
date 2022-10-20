@@ -562,6 +562,8 @@ func ComputeStatus(ctx context.Context, tf terraformer.Terraformer, infra *exten
 	return status, nil
 }
 
+// StatusFromTerraformState computes an InfrastructureStatus from the given
+// Terraform variables.
 func StatusFromTerraformState(cluster *controller.Cluster, config *api.InfrastructureConfig, tfState *TerraformState) *apiv1alpha1.InfrastructureStatus {
 	status := statusFromTerraformStateWithoutNatGateway(config, tfState)
 	setNatGatewayConfigForSubnets(cluster.ObjectMeta.Name, config, status)

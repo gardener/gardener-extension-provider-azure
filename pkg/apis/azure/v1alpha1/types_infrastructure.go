@@ -191,6 +191,11 @@ type Subnet struct {
 	NatGatewayName *string
 }
 
+// HasNatGateway returns if NAT is enabled
+func (s Subnet) HasNatGateway() bool {
+	return s.NatGatewayName != nil
+}
+
 // AvailabilitySet contains information about the azure availability set
 type AvailabilitySet struct {
 	// Purpose is the purpose of the availability set
