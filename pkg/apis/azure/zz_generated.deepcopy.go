@@ -594,6 +594,11 @@ func (in *Subnet) DeepCopyInto(out *Subnet) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.NatGatewayName != nil {
+		in, out := &in.NatGatewayName, &out.NatGatewayName
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 

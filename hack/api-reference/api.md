@@ -1473,13 +1473,13 @@ Only the subnet that was used prior to the migration should have this attribute 
 </tr>
 <tr>
 <td>
-<code>NatGateway</code></br>
+<code>NatGatewayName</code></br>
 <em>
-bool
+string
 </em>
 </td>
 <td>
-<p>NatGateway is enabled</p>
+<p>NatGatewayName is enabled</p>
 </td>
 </tr>
 </tbody>
