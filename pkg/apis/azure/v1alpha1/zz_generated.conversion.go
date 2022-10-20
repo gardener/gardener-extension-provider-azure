@@ -853,7 +853,7 @@ func autoConvert_v1alpha1_Subnet_To_azure_Subnet(in *Subnet, out *azure.Subnet, 
 	out.Purpose = azure.Purpose(in.Purpose)
 	out.Zone = (*string)(unsafe.Pointer(in.Zone))
 	out.Migrated = in.Migrated
-	out.NatGateway = in.NatGateway
+	out.NatGatewayName = (*string)(unsafe.Pointer(in.NatGatewayName))
 	return nil
 }
 
@@ -867,7 +867,7 @@ func autoConvert_azure_Subnet_To_v1alpha1_Subnet(in *azure.Subnet, out *Subnet, 
 	out.Purpose = Purpose(in.Purpose)
 	out.Zone = (*string)(unsafe.Pointer(in.Zone))
 	out.Migrated = in.Migrated
-	out.NatGateway = in.NatGateway
+	out.NatGatewayName = (*string)(unsafe.Pointer(in.NatGatewayName))
 	return nil
 }
 

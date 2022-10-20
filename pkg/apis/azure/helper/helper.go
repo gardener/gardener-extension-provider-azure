@@ -147,7 +147,7 @@ func ShouldDeployEgressChart(infraStatus *api.InfrastructureStatus, cluster *ext
 
 func AllNatEnabled(subnets []api.Subnet) bool {
 	for _, v := range subnets {
-		if !v.NatGateway {
+		if !v.HasNatGateway() {
 			return false
 		}
 	}

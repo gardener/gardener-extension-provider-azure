@@ -16,6 +16,7 @@ package infrastructure
 
 import (
 	"encoding/json"
+	"testing"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
@@ -31,6 +32,16 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
 )
+
+func TestNatGatewayName(t *testing.T) {
+	if getNatGatewayName("cluster", apiv1alpha1.Subnet{Name: "1", Migrated: false}) != "cluster-nat-gateway-z1" {
+		t.Fatal("unexpected nat gateway name")
+	}
+	res := getNatGatewayName("cluster", apiv1alpha1.Subnet{Name: "1", Migrated: true})
+	if res != "cluster-nat-gateway" {
+		t.Fatal("unexpected nat gateway name " + res)
+	}
+}
 
 func makeCluster(pods, services string, region string, countFaultDomain, countUpdateDomain int32) *controller.Cluster {
 	var (
@@ -68,6 +79,10 @@ func makeCluster(pods, services string, region string, countFaultDomain, countUp
 		Shoot:        &shoot,
 		CloudProfile: &cloudProfile,
 	}
+}
+
+func getNamedCluster(name string) *controller.Cluster {
+	return &controller.Cluster{ObjectMeta: metav1.ObjectMeta{Name: name}}
 }
 
 var _ = Describe("Terraform", func() {
@@ -603,7 +618,7 @@ var _ = Describe("Terraform", func() {
 
 		It("should correctly compute the status for zoned cluster", func() {
 			config.Zoned = true
-			status := StatusFromTerraformState(config, state)
+			status := statusFromTerraformStateWithoutNatGateway(config, state)
 			Expect(status).To(Equal(&apiv1alpha1.InfrastructureStatus{
 				TypeMeta: StatusTypeMeta,
 				ResourceGroup: apiv1alpha1.ResourceGroup{
@@ -637,7 +652,7 @@ var _ = Describe("Terraform", func() {
 			state.AvailabilitySetName = availabilitySetName
 			state.CountFaultDomains = 2
 			state.CountUpdateDomains = 5
-			status := StatusFromTerraformState(config, state)
+			status := statusFromTerraformStateWithoutNatGateway(config, state)
 			Expect(status).To(Equal(&apiv1alpha1.InfrastructureStatus{
 				TypeMeta: StatusTypeMeta,
 				ResourceGroup: apiv1alpha1.ResourceGroup{
@@ -682,9 +697,10 @@ var _ = Describe("Terraform", func() {
 					zone: pointer.String("2"),
 				},
 			}
-			status := StatusFromTerraformState(config, state)
-			Expect(status.Networks.Subnets[0].NatGateway).To(Equal(true))
-			Expect(status.Networks.Subnets[1].NatGateway).To(Equal(true))
+			status := StatusFromTerraformState(getNamedCluster("cluster"), config, state)
+
+			Expect(*status.Networks.Subnets[0].NatGatewayName).To(Equal("cluster-nat-gateway-zsubnet1"))
+			Expect(*status.Networks.Subnets[1].NatGatewayName).To(Equal("cluster-nat-gateway-zsubnet2"))
 		})
 
 		It("should correctly compute the status for cluster with identity", func() {
@@ -695,7 +711,7 @@ var _ = Describe("Terraform", func() {
 			state.IdentityID = identityID
 			state.IdentityClientID = identityClientID
 
-			status := StatusFromTerraformState(config, state)
+			status := statusFromTerraformStateWithoutNatGateway(config, state)
 			Expect(status).To(Equal(&apiv1alpha1.InfrastructureStatus{
 				TypeMeta: StatusTypeMeta,
 				ResourceGroup: apiv1alpha1.ResourceGroup{
@@ -764,7 +780,7 @@ var _ = Describe("Terraform", func() {
 				},
 			}
 
-			status := StatusFromTerraformState(config, state)
+			status := StatusFromTerraformState(getNamedCluster("cluster"), config, state)
 			Expect(status).To(Equal(&apiv1alpha1.InfrastructureStatus{
 				TypeMeta: StatusTypeMeta,
 				ResourceGroup: apiv1alpha1.ResourceGroup{
@@ -783,16 +799,16 @@ var _ = Describe("Terraform", func() {
 					},
 					Subnets: []apiv1alpha1.Subnet{
 						{
-							Purpose:    apiv1alpha1.PurposeNodes,
-							Name:       subnetName1,
-							Zone:       &zone1,
-							NatGateway: true,
+							Purpose:        apiv1alpha1.PurposeNodes,
+							Name:           subnetName1,
+							Zone:           &zone1,
+							NatGatewayName: pointer.String("cluster-nat-gateway-z" + subnetName1),
 						},
 						{
-							Purpose:    apiv1alpha1.PurposeNodes,
-							Name:       subnetName2,
-							Zone:       &zone2,
-							NatGateway: true,
+							Purpose:        apiv1alpha1.PurposeNodes,
+							Name:           subnetName2,
+							Zone:           &zone2,
+							NatGatewayName: pointer.String("cluster-nat-gateway-z" + subnetName2),
 						},
 					},
 					Layout: apiv1alpha1.NetworkLayoutMultipleSubnet,

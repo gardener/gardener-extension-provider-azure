@@ -457,9 +457,9 @@ func ExtractTerraformState(ctx context.Context, tf terraformer.Terraformer, infr
 	return &tfState, nil
 }
 
-// StatusFromTerraformState computes an InfrastructureStatus from the given
+// statusFromTerraformStateWithoutNatGateway computes an InfrastructureStatus from the given
 // Terraform variables.
-func StatusFromTerraformState(config *api.InfrastructureConfig, tfState *TerraformState) *apiv1alpha1.InfrastructureStatus {
+func statusFromTerraformStateWithoutNatGateway(config *api.InfrastructureConfig, tfState *TerraformState) *apiv1alpha1.InfrastructureStatus {
 	infraState := apiv1alpha1.InfrastructureStatus{
 		TypeMeta: StatusTypeMeta,
 		ResourceGroup: apiv1alpha1.ResourceGroup{
@@ -498,7 +498,6 @@ func StatusFromTerraformState(config *api.InfrastructureConfig, tfState *Terrafo
 			Migrated: subnet.migrated,
 		})
 	}
-	setNatGatewayConfigForSubnets(config, &infraState)
 
 	if tfState.VNetResourceGroupName != "" {
 		infraState.Networks.VNet.ResourceGroup = &tfState.VNetResourceGroupName
@@ -524,15 +523,27 @@ func StatusFromTerraformState(config *api.InfrastructureConfig, tfState *Terrafo
 	return &infraState
 }
 
-func setNatGatewayConfigForSubnets(config *api.InfrastructureConfig, infraState *apiv1alpha1.InfrastructureStatus) {
+func setNatGatewayConfigForSubnets(clusterName string, config *api.InfrastructureConfig, infraState *apiv1alpha1.InfrastructureStatus) {
 	subnetsNatGatewayValues := getSubnetsNatGatewayValues(config)
 	for _, subnet := range subnetsNatGatewayValues {
 		for j := range infraState.Networks.Subnets {
 			if fmt.Sprint(subnet["zone"]) == *infraState.Networks.Subnets[j].Zone {
-				infraState.Networks.Subnets[j].NatGateway = subnet["enabled"].(bool)
+				enabled := subnet["enabled"].(bool)
+				if enabled {
+					name := getNatGatewayName(clusterName, infraState.Networks.Subnets[j])
+					infraState.Networks.Subnets[j].NatGatewayName = &name
+				}
 			}
 		}
 	}
+}
+
+func getNatGatewayName(clusterName string, subnet apiv1alpha1.Subnet) string {
+	name := fmt.Sprintf("%s-nat-gateway", clusterName)
+	if !subnet.Migrated {
+		name = fmt.Sprintf("%s-z%s", name, subnet.Name)
+	}
+	return name
 }
 
 // ComputeStatus computes the status based on the Terraformer and the given InfrastructureConfig.
@@ -541,7 +552,7 @@ func ComputeStatus(ctx context.Context, tf terraformer.Terraformer, infra *exten
 	if err != nil {
 		return nil, err
 	}
-	status := StatusFromTerraformState(config, state)
+	status := StatusFromTerraformState(cluster, config, state)
 
 	// Check if ACR access should be configured.
 	if config.Identity != nil && config.Identity.ACRAccess != nil && *config.Identity.ACRAccess && status.Identity != nil {
@@ -549,6 +560,12 @@ func ComputeStatus(ctx context.Context, tf terraformer.Terraformer, infra *exten
 	}
 
 	return status, nil
+}
+
+func StatusFromTerraformState(cluster *controller.Cluster, config *api.InfrastructureConfig, tfState *TerraformState) *apiv1alpha1.InfrastructureStatus {
+	status := statusFromTerraformStateWithoutNatGateway(config, tfState)
+	setNatGatewayConfigForSubnets(cluster.ObjectMeta.Name, config, status)
+	return status
 }
 
 type domainCounts struct {
