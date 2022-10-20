@@ -567,14 +567,14 @@ var _ = Describe("ValuesProvider", func() {
 				infrastructureStatus.Zoned = true
 				infrastructureStatus.Networks.Subnets = []apisazure.Subnet{
 					{
-						Name:       "subnet-abcd1234-nodes",
-						Purpose:    "nodes",
-						NatGateway: true,
+						Name:           "subnet-abcd1234-nodes",
+						Purpose:        "nodes",
+						NatGatewayName: pointer.String("name"),
 					},
 					{
-						Name:       "subnet-abcd5678-nodes",
-						Purpose:    "internal",
-						NatGateway: false,
+						Name:           "subnet-abcd5678-nodes",
+						Purpose:        "internal",
+						NatGatewayName: pointer.String("name"),
 					},
 				}
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
@@ -586,14 +586,14 @@ var _ = Describe("ValuesProvider", func() {
 				infrastructureStatus.Zoned = true
 				infrastructureStatus.Networks.Subnets = []apisazure.Subnet{
 					{
-						Name:       "subnet-abcd1234-nodes",
-						Purpose:    "nodes",
-						NatGateway: true,
+						Name:           "subnet-abcd1234-nodes",
+						Purpose:        "nodes",
+						NatGatewayName: pointer.String("name"),
 					},
 					{
-						Name:       "subnet-abcd5678-nodes",
-						Purpose:    "nodes",
-						NatGateway: false,
+						Name:           "subnet-abcd5678-nodes",
+						Purpose:        "nodes",
+						NatGatewayName: nil,
 					},
 				}
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
@@ -606,14 +606,14 @@ var _ = Describe("ValuesProvider", func() {
 				infrastructureStatus.AvailabilitySets = []apisazure.AvailabilitySet{}
 				infrastructureStatus.Networks.Subnets = []apisazure.Subnet{
 					{
-						Name:       "subnet-abcd1234-nodes",
-						Purpose:    "nodes",
-						NatGateway: true,
+						Name:           "subnet-abcd1234-nodes",
+						Purpose:        "nodes",
+						NatGatewayName: pointer.String("name"),
 					},
 					{
-						Name:       "subnet-abcd5678-nodes",
-						Purpose:    "nodes",
-						NatGateway: true,
+						Name:           "subnet-abcd5678-nodes",
+						Purpose:        "nodes",
+						NatGatewayName: pointer.String("name"),
 					},
 				}
 				cluster = generateCluster(cidr, k8sVersionLessThan121, false, map[string]string{azure.ShootVmoUsageAnnotation: "true"})
@@ -627,14 +627,14 @@ var _ = Describe("ValuesProvider", func() {
 				infrastructureStatus.AvailabilitySets = []apisazure.AvailabilitySet{}
 				infrastructureStatus.Networks.Subnets = []apisazure.Subnet{
 					{
-						Name:       "subnet-abcd1234-nodes",
-						Purpose:    "nodes",
-						NatGateway: true,
+						Name:           "subnet-abcd1234-nodes",
+						Purpose:        "nodes",
+						NatGatewayName: pointer.String("name"),
 					},
 					{
-						Name:       "subnet-abcd5678-nodes",
-						Purpose:    "nodes",
-						NatGateway: false, // TODO purpose matters?
+						Name:           "subnet-abcd5678-nodes",
+						Purpose:        "nodes",
+						NatGatewayName: nil, // TODO purpose matters?
 					},
 				}
 				cluster = generateCluster(cidr, k8sVersionLessThan121, false, map[string]string{azure.ShootVmoUsageAnnotation: "true"})
