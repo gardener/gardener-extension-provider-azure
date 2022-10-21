@@ -633,9 +633,8 @@ func getRemedyControllerChartValues(
 ) (map[string]interface{}, error) {
 	disableRemedyController := cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] == "true"
 	if disableRemedyController {
-		return map[string]interface{}{"enabled": false}, nil
+		return map[string]interface{}{"enabled": false, "replicas": 0}, nil
 	}
-
 	return map[string]interface{}{
 		"enabled":  true,
 		"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
