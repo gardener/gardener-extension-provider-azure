@@ -33,6 +33,7 @@ import (
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"github.com/gardener/gardener/pkg/extensions"
 	"github.com/gardener/gardener/pkg/utils"
 	"github.com/gardener/gardener/pkg/utils/chart"
 	gutil "github.com/gardener/gardener/pkg/utils/gardener"
@@ -690,7 +691,6 @@ func getControlPlaneShootChartValues(
 		caBundle = string(caSecret.Data[secretutils.DataKeyCertificateBundle])
 	}
 
-	disableRemedyController := cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] == "true"
 	pspDisabled := gardencorev1beta1helper.IsPSPDisabled(cluster.Shoot)
 
 	return map[string]interface{}{
@@ -715,8 +715,17 @@ func getControlPlaneShootChartValues(
 			},
 			"pspDisabled": pspDisabled,
 		},
-		azure.RemedyControllerName: map[string]interface{}{
-			"enabled": !disableRemedyController,
-		},
+		azure.RemedyControllerName: remedyControllerValues(cluster),
 	}, err
+}
+
+func remedyControllerValues(cluster *extensions.Cluster) map[string]interface{} {
+	disableRemedyController := cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] == "true"
+	values := map[string]interface{}{
+		"enabled": !disableRemedyController,
+	}
+	if disableRemedyController {
+		values["replicas"] = 0
+	}
+	return values
 }

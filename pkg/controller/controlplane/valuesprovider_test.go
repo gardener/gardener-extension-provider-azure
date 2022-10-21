@@ -112,8 +112,9 @@ var _ = Describe("ValuesProvider", func() {
 		k8sVersionLessThan121    = "1.17.1"
 		k8sVersionHigherEqual121 = "1.21.4"
 
-		enabledTrue  = map[string]interface{}{"enabled": true}
-		enabledFalse = map[string]interface{}{"enabled": false}
+		enabledTrue    = map[string]interface{}{"enabled": true}
+		enabledFalse   = map[string]interface{}{"enabled": false}
+		remedyDisabled = map[string]interface{}{"enabled": false, "replicas": 0}
 
 		// Azure Container Registry
 		azureContainerRegistryConfigMap = &corev1.ConfigMap{
@@ -671,12 +672,13 @@ var _ = Describe("ValuesProvider", func() {
 
 				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
 				Expect(err).NotTo(HaveOccurred())
+
 				Expect(values).To(Equal(map[string]interface{}{
 					"global":                         globalVpaDisabled,
 					azure.AllowEgressName:            enabledTrue,
 					azure.CloudControllerManagerName: cloudControllerManager,
 					azure.CSINodeName:                csiNode,
-					azure.RemedyControllerName:       enabledFalse,
+					azure.RemedyControllerName:       remedyDisabled,
 				}))
 			})
 
@@ -699,7 +701,7 @@ var _ = Describe("ValuesProvider", func() {
 					azure.AllowEgressName:            enabledFalse,
 					azure.CloudControllerManagerName: cloudControllerManager,
 					azure.CSINodeName:                csiNode,
-					azure.RemedyControllerName:       enabledFalse,
+					azure.RemedyControllerName:       remedyDisabled,
 				}))
 			})
 		})
