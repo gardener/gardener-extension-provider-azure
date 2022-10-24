@@ -114,7 +114,7 @@ var _ = Describe("ValuesProvider", func() {
 
 		enabledTrue    = map[string]interface{}{"enabled": true}
 		enabledFalse   = map[string]interface{}{"enabled": false}
-		remedyDisabled = map[string]interface{}{"enabled": false, "replicas": 0}
+		remedyDisabled = map[string]interface{}{"enabled": true, "replicas": 0}
 
 		// Azure Container Registry
 		azureContainerRegistryConfigMap = &corev1.ConfigMap{
