@@ -30,3 +30,13 @@ func IsAzureAPINotFoundError(err error) bool {
 	}
 	return false
 }
+
+func IsAzureAPIUnauthorized(err error) bool {
+	switch e := err.(type) {
+	case autorest.DetailedError:
+		if e.Response.StatusCode == http.StatusUnauthorized {
+			return true
+		}
+	}
+	return false
+}
