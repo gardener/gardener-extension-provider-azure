@@ -31,6 +31,7 @@ func IsAzureAPINotFoundError(err error) bool {
 	return false
 }
 
+// IsAzureAPIUnauthorized tries to determine if the API error is due to unauthorized access
 func IsAzureAPIUnauthorized(err error) bool {
 	switch e := err.(type) {
 	case autorest.DetailedError:
