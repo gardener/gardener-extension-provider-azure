@@ -1,5 +1,5 @@
 ---
-title: Create a Kubernetes cluster on Azure with Gardener
+title: Create a Kubernetes Cluster on Azure with Gardener
 level: beginner
 category: Getting Started
 scope: app-developer
