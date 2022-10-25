@@ -112,8 +112,9 @@ var _ = Describe("ValuesProvider", func() {
 		k8sVersionLessThan121    = "1.17.1"
 		k8sVersionHigherEqual121 = "1.21.4"
 
-		enabledTrue  = map[string]interface{}{"enabled": true}
-		enabledFalse = map[string]interface{}{"enabled": false}
+		enabledTrue    = map[string]interface{}{"enabled": true}
+		enabledFalse   = map[string]interface{}{"enabled": false}
+		remedyDisabled = map[string]interface{}{"enabled": true, "replicas": 0}
 
 		// Azure Container Registry
 		azureContainerRegistryConfigMap = &corev1.ConfigMap{
@@ -479,7 +480,7 @@ var _ = Describe("ValuesProvider", func() {
 					"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
 				}),
 				azure.CSIControllerName:    enabledFalse,
-				azure.RemedyControllerName: enabledFalse,
+				azure.RemedyControllerName: remedyDisabled,
 			}))
 		})
 	})
