@@ -17,6 +17,7 @@ package client
 import (
 	"context"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-05-01/dns"
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
@@ -41,6 +42,12 @@ type Factory interface {
 	NetworkInterface(ctx context.Context, secretRef corev1.SecretReference) (NetworkInterface, error)
 	Disk(ctx context.Context, secretRef corev1.SecretReference) (Disk, error)
 	Subnet(ctx context.Context, secretRef corev1.SecretReference) (Subnet, error)
+	ResourceGroup(ctx context.Context, secretRef corev1.SecretReference) (ResourceGroup, error)
+}
+
+type ResourceGroup interface {
+	CreateOrUpdate(ctx context.Context, resourceGroupName, location string) error
+	Delete(ctx context.Context, resourceGroupName string) error
 }
 
 // Group represents an Azure group client.
@@ -148,6 +155,11 @@ type VmssClient struct {
 	client compute.VirtualMachineScaleSetsClient
 }
 
+type ResourceGroupClient struct {
+	client *armresources.ResourceGroupsClient
+}
+
+// VnetClient is an implmenetation of Vnet for a virtual network client.
 type VnetClient struct {
 	client network.VirtualNetworksClient
 }
