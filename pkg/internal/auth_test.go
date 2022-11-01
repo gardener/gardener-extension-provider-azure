@@ -84,9 +84,9 @@ var _ = Describe("Azure Auth", func() {
 		ctrl.Finish()
 	})
 
-	Describe("#ReadClientAuthDataFromSecret", func() {
+	Describe("#NewClientAuthDataFromSecret", func() {
 		It("should read the client auth data from the secret", func() {
-			actual, err := ReadClientAuthDataFromSecret(secret, false)
+			actual, err := NewClientAuthDataFromSecret(secret, false)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(actual).To(Equal(clientAuth))
 		})

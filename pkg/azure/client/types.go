@@ -148,6 +148,10 @@ type VmssClient struct {
 	client compute.VirtualMachineScaleSetsClient
 }
 
+type VnetClient struct {
+	client network.VirtualNetworksClient
+}
+
 // VirtualMachinesClient is an implementation of Vm for a virtual machine client.
 type VirtualMachinesClient struct {
 	client compute.VirtualMachinesClient
