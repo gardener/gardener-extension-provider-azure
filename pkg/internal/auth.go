@@ -20,6 +20,7 @@ import (
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	azureautorest "github.com/Azure/go-autorest/autorest"
 	azureauth "github.com/Azure/go-autorest/autorest/azure/auth"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
@@ -40,6 +41,10 @@ type ClientAuth struct {
 	ClientSecret string
 }
 
+func (clientAuth ClientAuth) GetAzClientCredentials() (*azidentity.ClientSecretCredential, error) {
+	return azidentity.NewClientSecretCredential(clientAuth.TenantID, clientAuth.ClientID, clientAuth.ClientSecret, nil)
+}
+
 // GetClientAuthData retrieves the client auth data specified by the secret reference.
 func GetClientAuthData(ctx context.Context, c client.Client, secretRef corev1.SecretReference, allowDNSKeys bool) (*ClientAuth, error) {
 	secret, err := extensionscontroller.GetSecretByReference(ctx, c, &secretRef)
@@ -47,11 +52,11 @@ func GetClientAuthData(ctx context.Context, c client.Client, secretRef corev1.Se
 		return nil, err
 	}
 
-	return ReadClientAuthDataFromSecret(secret, allowDNSKeys)
+	return NewClientAuthDataFromSecret(secret, allowDNSKeys)
 }
 
-// ReadClientAuthDataFromSecret reads the client auth details from the given secret.
-func ReadClientAuthDataFromSecret(secret *corev1.Secret, allowDNSKeys bool) (*ClientAuth, error) {
+// NewClientAuthDataFromSecret reads the client auth details from the given secret.
+func NewClientAuthDataFromSecret(secret *corev1.Secret, allowDNSKeys bool) (*ClientAuth, error) {
 	var altSubscriptionIDIDKey, altTenantIDKey, altClientIDKey, altClientSecretKey *string
 	if allowDNSKeys {
 		altSubscriptionIDIDKey = pointer.String(azure.DNSSubscriptionIDKey)
@@ -96,7 +101,6 @@ func GetAuthorizerAndSubscriptionID(ctx context.Context, c client.Client, secret
 		return nil, "", err
 	}
 	clientCredentialsConfig := azureauth.NewClientCredentialsConfig(clientAuth.ClientID, clientAuth.ClientSecret, clientAuth.TenantID)
-
 	authorizer, err := clientCredentialsConfig.Authorizer()
 	if err != nil {
 		return nil, "", err

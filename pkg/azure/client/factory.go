@@ -17,13 +17,12 @@ package client
 import (
 	"context"
 
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
-
 	azurecompute "github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	azuredns "github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-05-01/dns"
 	azurenetwork "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	azureresources "github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
 	azurestorage "github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-04-01/storage"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -47,6 +46,19 @@ func (f AzureFactory) Group(ctx context.Context, secretRef corev1.SecretReferenc
 	return GroupClient{
 		client: groupClient,
 	}, nil
+}
+
+func (f AzureFactory) Vnet(ctx context.Context, secretRef corev1.SecretReference) (*VnetClient, error) {
+	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(ctx, f.client, secretRef, false)
+	if err != nil {
+		return nil, err
+	}
+	vnetClient := azurenetwork.NewVirtualNetworksClient(subscriptionID)
+	vnetClient.Authorizer = authorizer
+	return &VnetClient{
+		client: vnetClient,
+	}, nil
+
 }
 
 // Storage reads the secret from the passed reference and return an Azure (blob) storage client.
