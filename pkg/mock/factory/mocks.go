@@ -141,6 +141,21 @@ func (mr *MockFactoryMockRecorder) PublicIP(arg0, arg1 interface{}) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PublicIP", reflect.TypeOf((*MockFactory)(nil).PublicIP), arg0, arg1)
 }
 
+// ResourceGroup mocks base method.
+func (m *MockFactory) ResourceGroup(arg0 context.Context, arg1 v1.SecretReference) (client.ResourceGroup, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResourceGroup", arg0, arg1)
+	ret0, _ := ret[0].(client.ResourceGroup)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ResourceGroup indicates an expected call of ResourceGroup.
+func (mr *MockFactoryMockRecorder) ResourceGroup(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResourceGroup", reflect.TypeOf((*MockFactory)(nil).ResourceGroup), arg0, arg1)
+}
+
 // Storage mocks base method.
 func (m *MockFactory) Storage(arg0 context.Context, arg1 v1.SecretReference) (client.Storage, error) {
 	m.ctrl.T.Helper()
