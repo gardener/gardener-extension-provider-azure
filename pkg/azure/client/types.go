@@ -47,11 +47,6 @@ type Factory interface {
 	ResourceGroup(ctx context.Context, secretRef corev1.SecretReference) (ResourceGroup, error)
 }
 
-type ResourceGroup interface {
-	CreateOrUpdate(ctx context.Context, resourceGroupName, location string) error
-	Delete(ctx context.Context, resourceGroupName string) error
-}
-
 // Group represents an Azure group client.
 type Group interface {
 	Get(context.Context, string) (*resources.Group, error)
@@ -130,6 +125,12 @@ type Subnet interface {
 	Get(ctx context.Context, resourceGroupName string, vnetName string, name string, expander string) (*armnetwork.SubnetsClientGetResponse, error)
 	List(context.Context, string, string) ([]*armnetwork.Subnet, error)
 	Delete(context.Context, string, string, string) error
+}
+
+// ResourceGroup represents an Azure ResourceGroup client.
+type ResourceGroup interface {
+	CreateOrUpdate(ctx context.Context, resourceGroupName, location string) error
+	Delete(ctx context.Context, resourceGroupName string) error
 }
 
 // AzureFactory is an implementation of Factory to produce clients for various Azure services.
