@@ -8,6 +8,7 @@ import (
 )
 
 // TODO create interface
+// TODO ddos Protection plan id in caller .. (use json unmarshall?)
 func (v VnetClient) Create(ctx context.Context, resourceGroupName string, name string, parameters armnetwork.VirtualNetwork) (err error) {
 	poller, err := v.client.BeginCreateOrUpdate(ctx, resourceGroupName, name, parameters, nil)
 	if err != nil {

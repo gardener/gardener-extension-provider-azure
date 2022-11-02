@@ -24,6 +24,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	"github.com/gardener/gardener/extensions/pkg/controller"
@@ -184,7 +185,7 @@ func getPublicIP(ctx context.Context, log logr.Logger, factory azureclient.Facto
 	return ip, nil
 }
 
-func getSubnet(ctx context.Context, log logr.Logger, factory azureclient.Factory, infrastructureStatus *azure.InfrastructureStatus, opt *Options) (*network.Subnet, error) {
+func getSubnet(ctx context.Context, log logr.Logger, factory azureclient.Factory, infrastructureStatus *azure.InfrastructureStatus, opt *Options) (*armnetwork.SubnetsClientGetResponse, error) {
 	var sg string
 	subnetClient, err := factory.Subnet(ctx, opt.SecretReference)
 	if err != nil {
