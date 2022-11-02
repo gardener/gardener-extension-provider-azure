@@ -4,56 +4,25 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 )
 
-// idempotent
-//
-//	network.VirtualNetwork{
-//		Location: to.StringPtr(config.Location()),
-//		VirtualNetworkPropertiesFormat: &network.VirtualNetworkPropertiesFormat{
-//			AddressSpace: &network.AddressSpace{
-//				AddressPrefixes: &[]string{"10.0.0.0/8"},
-//			},
-//		},
-//	})}
-//
-// with subnet
-//
-//	VirtualNetworkPropertiesFormat{
-//		AddressSpace: &network.AddressSpace{
-//			AddressPrefixes: &[]string{"10.0.0.0/8"},
-//		}``,
-//		Subnets: &[]network.Subnet{
-//			{
-//				Name: to.StringPtr(subnet1Name),
-//				SubnetPropertiesFormat: &network.SubnetPropertiesFormat{
-//					AddressPrefix: to.StringPtr("10.0.0.0/16"),
-//				},
-//			},
-//			{
-//				Name: to.StringPtr(subnet2Name),
-//				SubnetPropertiesFormat: &network.SubnetPropertiesFormat{
-//					AddressPrefix: to.StringPtr("10.1.0.0/16"),
-//				},
-//			},
-//		},
-//	},
-func (v VnetClient) Create(ctx context.Context, resourceGroupName string, name string, parameters network.VirtualNetwork) (vnet network.VirtualNetwork, err error) {
-	future, err := v.client.CreateOrUpdate(
-		ctx, resourceGroupName, name, parameters)
+// TODO create interface
+func (v VnetClient) Create(ctx context.Context, resourceGroupName string, name string, parameters armnetwork.VirtualNetwork) (err error) {
+	poller, err := v.client.BeginCreateOrUpdate(ctx, resourceGroupName, name, parameters, nil)
 	if err != nil {
-		return vnet, fmt.Errorf("cannot create virtual network: %v", err)
+		return fmt.Errorf("cannot create virtual network: %v", err)
 	}
-
-	err = future.WaitForCompletionRef(ctx, v.client.Client)
-	if err != nil {
-		return vnet, fmt.Errorf("cannot get the vnet create or update future response: %v", err)
-	}
-	return future.Result(v.client)
+	_, err = poller.PollUntilDone(ctx, nil)
+	return err
 }
 
-// DeleteVirtualNetwork deletes a virtual network given an existing virtual network
-func (v VnetClient) Delete(ctx context.Context, resourceGroup, vnetName string) (result network.VirtualNetworksDeleteFuture, err error) {
-	return v.client.Delete(ctx, resourceGroup, vnetName)
+// Delete a given an existing virtual network
+func (v VnetClient) Delete(ctx context.Context, resourceGroup, vnetName string) (err error) {
+	poller, err := v.client.BeginDelete(ctx, resourceGroup, vnetName, nil)
+	if err != nil {
+		return err
+	}
+	_, err = poller.PollUntilDone(ctx, nil)
+	return err
 }

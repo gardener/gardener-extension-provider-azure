@@ -17,6 +17,7 @@ package client
 import (
 	"context"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	azurecompute "github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	azuredns "github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-05-01/dns"
 	azurenetwork "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
@@ -49,12 +50,18 @@ func (f AzureFactory) Group(ctx context.Context, secretRef corev1.SecretReferenc
 }
 
 func (f AzureFactory) Vnet(ctx context.Context, secretRef corev1.SecretReference) (*VnetClient, error) {
-	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(ctx, f.client, secretRef, false)
+	auth, err := internal.GetClientAuthData(ctx, f.client, secretRef, false)
 	if err != nil {
 		return nil, err
 	}
-	vnetClient := azurenetwork.NewVirtualNetworksClient(subscriptionID)
-	vnetClient.Authorizer = authorizer
+	cred, err := auth.GetAzClientCredentials()
+	if err != nil {
+		return nil, err
+	}
+	vnetClient, err := armnetwork.NewVirtualNetworksClient(auth.SubscriptionID, cred, nil)
+	if err != nil {
+		return nil, err
+	}
 	return &VnetClient{
 		client: vnetClient,
 	}, nil
