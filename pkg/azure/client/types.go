@@ -17,6 +17,7 @@ package client
 import (
 	"context"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-05-01/dns"
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
@@ -149,7 +150,7 @@ type VmssClient struct {
 }
 
 type VnetClient struct {
-	client network.VirtualNetworksClient
+	client *armnetwork.VirtualNetworksClient
 }
 
 // VirtualMachinesClient is an implementation of Vm for a virtual machine client.
