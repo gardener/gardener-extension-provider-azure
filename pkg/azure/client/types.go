@@ -17,6 +17,7 @@ package client
 import (
 	"context"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-05-01/dns"
@@ -208,4 +209,8 @@ type SecurityGroupClient struct {
 
 type NatGatewayClient struct {
 	client *armnetwork.NatGatewaysClient
+}
+
+type AvailabilitySetClient struct {
+	client *armcompute.AvailabilitySetsClient
 }
