@@ -32,13 +32,13 @@ import (
 // ClientAuth represents a Azure Client Auth credentials.
 type ClientAuth struct {
 	// SubscriptionID is the Azure subscription ID.
-	SubscriptionID string
+	SubscriptionID string `yaml:"subscriptionID"`
 	// TenantID is the Azure tenant ID.
-	TenantID string
+	TenantID string `yaml:"tenantID"`
 	// ClientID is the Azure client ID.
-	ClientID string
+	ClientID string `yaml:"clientID"`
 	// ClientSecret is the Azure client secret.
-	ClientSecret string
+	ClientSecret string `yaml:"clientSecret"`
 }
 
 func (clientAuth ClientAuth) GetAzClientCredentials() (*azidentity.ClientSecretCredential, error) {
