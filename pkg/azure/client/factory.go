@@ -17,7 +17,6 @@ package client
 import (
 	"context"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	azurecompute "github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	azuredns "github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-05-01/dns"
 	azurenetwork "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
@@ -33,19 +32,6 @@ func NewAzureClientFactory(client client.Client) Factory {
 	return AzureFactory{
 		client: client,
 	}
-}
-
-func (f AzureFactory) ResourceGroup(ctx context.Context, secretRef corev1.SecretReference) (ResourceGroup, error) {
-	auth, err := internal.GetClientAuthData(ctx, f.client, secretRef, false)
-	if err != nil {
-		return nil, err
-	}
-	cred, err := auth.GetAzClientCredentials()
-	if err != nil {
-		return nil, err
-	}
-	client, err := armresources.NewResourceGroupsClient(auth.SubscriptionID, cred, nil)
-	return ResourceGroupClient{client}, err
 }
 
 // Group reads the secret from the passed reference and return an Azure resource group client.
