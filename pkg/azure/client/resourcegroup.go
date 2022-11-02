@@ -9,6 +9,8 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
+// TODO move to group.go?
+
 func CreateOrUpdateResourceGroup(ctx context.Context, resourceGroupName, location string, clientAuth internal.ClientAuth) (*armresources.ResourceGroup, error) {
 	cred, err := clientAuth.GetAzClientCredentials()
 	if err != nil {

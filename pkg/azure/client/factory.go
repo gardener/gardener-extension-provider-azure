@@ -49,25 +49,6 @@ func (f AzureFactory) Group(ctx context.Context, secretRef corev1.SecretReferenc
 	}, nil
 }
 
-func (f AzureFactory) Vnet(ctx context.Context, secretRef corev1.SecretReference) (*VnetClient, error) {
-	auth, err := internal.GetClientAuthData(ctx, f.client, secretRef, false)
-	if err != nil {
-		return nil, err
-	}
-	cred, err := auth.GetAzClientCredentials()
-	if err != nil {
-		return nil, err
-	}
-	vnetClient, err := armnetwork.NewVirtualNetworksClient(auth.SubscriptionID, cred, nil)
-	if err != nil {
-		return nil, err
-	}
-	return &VnetClient{
-		client: vnetClient,
-	}, nil
-
-}
-
 // Storage reads the secret from the passed reference and return an Azure (blob) storage client.
 func (f AzureFactory) Storage(ctx context.Context, secretRef corev1.SecretReference) (Storage, error) {
 	serviceURL, err := newStorageClient(ctx, f.client, &secretRef)
@@ -206,15 +187,39 @@ func (f AzureFactory) Disk(ctx context.Context, secretRef corev1.SecretReference
 	}, nil
 }
 
-// Subnet reads the secret from the passed reference and return an Azure Subnet client.
-func (f AzureFactory) Subnet(ctx context.Context, secretRef corev1.SecretReference) (Subnet, error) {
-	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(ctx, f.client, secretRef, false)
+func (f AzureFactory) Vnet(ctx context.Context, secretRef corev1.SecretReference) (*VnetClient, error) {
+	auth, err := internal.GetClientAuthData(ctx, f.client, secretRef, false)
 	if err != nil {
 		return nil, err
 	}
-	subnetsClient := azurenetwork.NewSubnetsClient(subscriptionID)
-	subnetsClient.Authorizer = authorizer
+	cred, err := auth.GetAzClientCredentials()
+	if err != nil {
+		return nil, err
+	}
+	vnetClient, err := armnetwork.NewVirtualNetworksClient(auth.SubscriptionID, cred, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &VnetClient{
+		client: vnetClient,
+	}, nil
 
+}
+
+// Subnet reads the secret from the passed reference and return an Azure Subnet client.
+func (f AzureFactory) Subnet(ctx context.Context, secretRef corev1.SecretReference) (Subnet, error) {
+	auth, err := internal.GetClientAuthData(ctx, f.client, secretRef, false)
+	if err != nil {
+		return nil, err
+	}
+	cred, err := auth.GetAzClientCredentials()
+	if err != nil {
+		return nil, err
+	}
+	subnetsClient, err := armnetwork.NewSubnetsClient(auth.SubscriptionID, cred, nil)
+	if err != nil {
+		return nil, err
+	}
 	return SubnetsClient{
 		client: subnetsClient,
 	}, nil

@@ -119,8 +119,8 @@ type Disk interface {
 
 // Subnet represents an Azure Subnet client.
 type Subnet interface {
-	Get(ctx context.Context, resourceGroupName string, vnetName string, name string, expander string) (*network.Subnet, error)
-	List(context.Context, string, string) ([]network.Subnet, error)
+	Get(ctx context.Context, resourceGroupName string, vnetName string, name string, expander string) (*armnetwork.SubnetsClientGetResponse, error)
+	List(context.Context, string, string) ([]*armnetwork.Subnet, error)
 	Delete(context.Context, string, string, string) error
 }
 
@@ -195,5 +195,13 @@ type DisksClient struct {
 
 // SubnetsClient is an implementation of Subnet for a Subnet client.
 type SubnetsClient struct {
-	client network.SubnetsClient
+	client *armnetwork.SubnetsClient
+}
+
+type RouteTableClient struct {
+	client *armnetwork.RouteTablesClient
+}
+
+type SecurityGroupClient struct {
+	client *armnetwork.SecurityGroupsClient
 }
