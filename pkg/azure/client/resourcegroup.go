@@ -49,5 +49,5 @@ func DeleteResourceGroup(ctx context.Context, resourceGroupName, location, subsr
 		return err
 	}
 	_, err = resourceGroupResp.PollUntilDone(ctx, nil)
-	return nil
+	return err
 }

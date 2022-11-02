@@ -205,3 +205,7 @@ type RouteTableClient struct {
 type SecurityGroupClient struct {
 	client *armnetwork.SecurityGroupsClient
 }
+
+type NatGatewayClient struct {
+	client *armnetwork.NatGatewaysClient
+}
