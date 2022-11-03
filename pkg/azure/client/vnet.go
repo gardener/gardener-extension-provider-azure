@@ -5,7 +5,17 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
+
+func NewVnetClient(auth internal.ClientAuth) (*VnetClient, error) {
+	cred, err := auth.GetAzClientCredentials()
+	if err != nil {
+		return nil, err
+	}
+	client, err := armnetwork.NewVirtualNetworksClient(auth.SubscriptionID, cred, nil)
+	return &VnetClient{client}, err
+}
 
 // TODO create interface
 // TODO ddos Protection plan id in caller .. (use json unmarshall?)
@@ -26,4 +36,9 @@ func (v VnetClient) Delete(ctx context.Context, resourceGroup, vnetName string) 
 	}
 	_, err = poller.PollUntilDone(ctx, nil)
 	return err
+}
+
+func (v VnetClient) Get(ctx context.Context, resourceGroupName, name string) (armnetwork.VirtualNetworksClientGetResponse, error) {
+	res, err := v.client.Get(ctx, resourceGroupName, name, nil)
+	return res, err
 }

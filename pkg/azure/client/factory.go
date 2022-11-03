@@ -206,18 +206,7 @@ func (f AzureFactory) Vnet(ctx context.Context, secretRef corev1.SecretReference
 	if err != nil {
 		return nil, err
 	}
-	cred, err := auth.GetAzClientCredentials()
-	if err != nil {
-		return nil, err
-	}
-	vnetClient, err := armnetwork.NewVirtualNetworksClient(auth.SubscriptionID, cred, nil)
-	if err != nil {
-		return nil, err
-	}
-	return &VnetClient{
-		client: vnetClient,
-	}, nil
-
+	return NewVnetClient(*auth)
 }
 
 // Subnet reads the secret from the passed reference and return an Azure Subnet client.
