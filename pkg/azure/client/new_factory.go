@@ -9,7 +9,7 @@ import (
 
 type NewFactory interface {
 	ResourceGroup() (ResourceGroup, error)
-	Vnet() (VnetClient, error)
+	Vnet() (Vnet, error)
 }
 
 type newFactory struct {
@@ -27,8 +27,7 @@ func (f newFactory) ResourceGroup() (ResourceGroup, error) {
 	return ResourceGroupClient{c}, err
 }
 
-// TODO interface
-func (f newFactory) Vnet() (VnetClient, error) {
+func (f newFactory) Vnet() (Vnet, error) {
 	c, err := armnetwork.NewVirtualNetworksClient(f.auth.SubscriptionID, f.cred, nil)
 	return VnetClient{c}, err
 }

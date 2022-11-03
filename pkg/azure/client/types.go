@@ -134,6 +134,13 @@ type ResourceGroup interface {
 	IsExisting(ctx context.Context, resourceGroupName string) (bool, error)
 }
 
+// Vnet represents an Azure Virtual Network client.
+type Vnet interface {
+	CreateOrUpdate(ctx context.Context, resourceGroupName string, name string, parameters armnetwork.VirtualNetwork) (err error)
+	Delete(ctx context.Context, resourceGroupName, name string) error
+	Get(ctx context.Context, resourceGroupName, name string) (armnetwork.VirtualNetworksClientGetResponse, error)
+}
+
 // AzureFactory is an implementation of Factory to produce clients for various Azure services.
 type AzureFactory struct {
 	client client.Client
