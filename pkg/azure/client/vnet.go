@@ -17,9 +17,8 @@ func NewVnetClient(auth internal.ClientAuth) (*VnetClient, error) {
 	return &VnetClient{client}, err
 }
 
-// TODO create interface
 // TODO ddos Protection plan id in caller .. (use json unmarshall?)
-func (v VnetClient) Create(ctx context.Context, resourceGroupName string, name string, parameters armnetwork.VirtualNetwork) (err error) {
+func (v VnetClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, name string, parameters armnetwork.VirtualNetwork) (err error) {
 	poller, err := v.client.BeginCreateOrUpdate(ctx, resourceGroupName, name, parameters, nil)
 	if err != nil {
 		return fmt.Errorf("cannot create virtual network: %v", err)

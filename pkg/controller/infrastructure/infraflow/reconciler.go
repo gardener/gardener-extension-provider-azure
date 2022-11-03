@@ -38,7 +38,7 @@ func (f FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha1
 						AddressSpace: &armnetwork.AddressSpace{AddressPrefixes: []*string{cfg.Networks.VNet.CIDR}},
 					},
 				}
-				err := vnetClient.Create(ctx, cfg.ResourceGroup.Name, *cfg.Networks.VNet.Name, parameters)
+				err := vnetClient.CreateOrUpdate(ctx, cfg.ResourceGroup.Name, *cfg.Networks.VNet.Name, parameters)
 				log.Info("Created Vnet", *cfg.Networks.VNet.Name)
 				return err
 			}
