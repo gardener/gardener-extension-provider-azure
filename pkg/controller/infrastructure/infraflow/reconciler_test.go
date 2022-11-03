@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"io/ioutil"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow"
@@ -22,23 +23,36 @@ type ProviderSecret struct {
 var _ = Describe("FlowReconciler", func() {
 	Context("with resource group in cfg", func() {
 		resourceGroupName := "t-i545428"
-		client, err := client.NewResourceGroupsClient(readAuthFromFile("/Users/I545428/dev/azsecret.yaml"))
-		It("should reconcile resource group", func() {
+		vnetName := "vnet-i545428"
+		cfg := &azure.InfrastructureConfig{
+			ResourceGroup: &azure.ResourceGroup{Name: resourceGroupName},
+			Networks: azure.NetworkConfig{VNet: azure.VNet{Name: to.Ptr(vnetName),
+				CIDR: to.Ptr("10.0.0.0/8")}},
+		}
+		infra := &v1alpha1.Infrastructure{Spec: v1alpha1.InfrastructureSpec{Region: "westeurope"}}
+
+		auth := readAuthFromFile("/Users/I545428/dev/azsecret.yaml")
+		factory, err := client.NewAzureClientFactoryV2(auth)
+		Expect(err).To(BeNil())
+		rclient, err := factory.ResourceGroup()
+		Expect(err).To(BeNil())
+		vclient, err := factory.Vnet()
+		Expect(err).To(BeNil())
+		It("should reconcile resource group and vnet", func() {
+			sut := infraflow.FlowReconciler{Factory: factory}
+			err = sut.Reconcile(context.TODO(), infra, cfg)
 			Expect(err).To(BeNil())
 
-			sut := infraflow.FlowReconciler{Client: client}
-			cfg := &azure.InfrastructureConfig{
-				ResourceGroup: &azure.ResourceGroup{Name: resourceGroupName},
-			}
-			infra := &v1alpha1.Infrastructure{Spec: v1alpha1.InfrastructureSpec{Region: "westeurope"}}
-			sut.Reconcile(context.TODO(), infra, cfg)
-
-			exists, err := client.IsExisting(context.TODO(), resourceGroupName)
+			exists, err := rclient.IsExisting(context.TODO(), resourceGroupName)
 			Expect(err).To(BeNil())
 			Expect(exists).To(BeTrue())
+
+			vnet, err := vclient.Get(context.TODO(), resourceGroupName, vnetName)
+			Expect(err).To(BeNil())
+			Expect(*vnet.Name).To(Equal(vnetName))
 		})
 		AfterEach(func() {
-			err := client.Delete(context.TODO(), resourceGroupName)
+			err := rclient.Delete(context.TODO(), resourceGroupName)
 			Expect(err).NotTo(HaveOccurred())
 		})
 

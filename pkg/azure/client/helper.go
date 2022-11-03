@@ -17,6 +17,7 @@ package client
 import (
 	"net/http"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/go-autorest/autorest"
 )
 
@@ -25,6 +26,10 @@ func IsAzureAPINotFoundError(err error) bool {
 	switch e := err.(type) {
 	case autorest.DetailedError:
 		if e.Response != nil && e.Response.StatusCode == http.StatusNotFound {
+			return true
+		}
+	case *azcore.ResponseError:
+		if e.StatusCode == http.StatusNotFound {
 			return true
 		}
 	}

@@ -131,6 +131,7 @@ type Subnet interface {
 type ResourceGroup interface {
 	CreateOrUpdate(ctx context.Context, resourceGroupName, location string) error
 	Delete(ctx context.Context, resourceGroupName string) error
+	IsExisting(ctx context.Context, resourceGroupName string) (bool, error)
 }
 
 // AzureFactory is an implementation of Factory to produce clients for various Azure services.
