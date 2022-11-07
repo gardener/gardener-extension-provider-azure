@@ -156,6 +156,21 @@ func (mr *MockFactoryMockRecorder) ResourceGroup(arg0, arg1 interface{}) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResourceGroup", reflect.TypeOf((*MockFactory)(nil).ResourceGroup), arg0, arg1)
 }
 
+// RouteTables mocks base method.
+func (m *MockFactory) RouteTables(arg0 context.Context, arg1 v1.SecretReference) (client.RouteTables, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RouteTables", arg0, arg1)
+	ret0, _ := ret[0].(client.RouteTables)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RouteTables indicates an expected call of RouteTables.
+func (mr *MockFactoryMockRecorder) RouteTables(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RouteTables", reflect.TypeOf((*MockFactory)(nil).RouteTables), arg0, arg1)
+}
+
 // Storage mocks base method.
 func (m *MockFactory) Storage(arg0 context.Context, arg1 v1.SecretReference) (client.Storage, error) {
 	m.ctrl.T.Helper()

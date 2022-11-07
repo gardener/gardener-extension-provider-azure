@@ -31,7 +31,7 @@ func (f FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha1
 func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig) *flow.Graph {
 	g := flow.NewGraph("Azure infrastructure reconcilation")
 
-	createResourceGroup := func(ctx context.Context) error {
+	fnCreateResourceGroup := func(ctx context.Context) error {
 		if cfg.ResourceGroup != nil {
 			rgClient, err := f.Factory.ResourceGroup()
 			if err != nil {
@@ -41,9 +41,9 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 		}
 		return nil
 	}
-	resourceGroup := f.AddTask(g, "resource group creation", createResourceGroup)
+	resourceGroup := f.AddTask(g, "resource group creation", fnCreateResourceGroup)
 
-	createVnet := func(ctx context.Context) error {
+	fnCreateVnet := func(ctx context.Context) error {
 		vnetClient, err := f.Factory.Vnet()
 		if err != nil {
 			return err
@@ -61,7 +61,24 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 		}
 		return nil
 	}
-	f.AddTask(g, "vnet creation", createVnet, shared.Dependencies(resourceGroup))
+	vnet := f.AddTask(g, "vnet creation", fnCreateVnet, shared.Dependencies(resourceGroup))
+
+	fnCreateRoutes := func(ctx context.Context) error {
+		rclient, err := f.Factory.RouteTables()
+		routeTableName := "worker_route_table" // #TODO set in infraconfig? (default injection)
+		if err != nil {
+			return err
+		}
+		parameters := armnetwork.RouteTable{
+			Location: to.Ptr(infra.Spec.Region),
+			//Properties: &armnetwork.RouteTablePropertiesFormat{
+			//},
+		}
+		err = rclient.CreateOrUpdate(ctx, cfg.ResourceGroup.Name, routeTableName, parameters)
+		//log.Info("Created Vnet", *cfg.Networks.VNet.Name)
+		return err
+	}
+	f.AddTask(g, "route table creation", fnCreateRoutes, shared.Dependencies(vnet))
 	return g
 
 }

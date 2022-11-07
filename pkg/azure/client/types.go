@@ -45,6 +45,14 @@ type Factory interface {
 	Disk(ctx context.Context, secretRef corev1.SecretReference) (Disk, error)
 	Subnet(ctx context.Context, secretRef corev1.SecretReference) (Subnet, error)
 	ResourceGroup(ctx context.Context, secretRef corev1.SecretReference) (ResourceGroup, error)
+	RouteTables(ctx context.Context, secretRef corev1.SecretReference) (RouteTables, error)
+}
+
+// RouteTables is a client for the Azure RouteTable service.
+type RouteTables interface {
+	CreateOrUpdate(ctx context.Context, resourceGroupName, routeTableName string, parameters armnetwork.RouteTable) (err error)
+	Delete(ctx context.Context, resourceGroupName, name string) (err error)
+	Get(ctx context.Context, resourceGroupName, name string) (armnetwork.RouteTablesClientGetResponse, error)
 }
 
 // Group represents an Azure group client.
@@ -220,7 +228,7 @@ type SubnetsClient struct {
 	client *armnetwork.SubnetsClient
 }
 
-type RouteTableClient struct {
+type RouteTablesClient struct {
 	client *armnetwork.RouteTablesClient
 }
 

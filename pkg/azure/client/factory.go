@@ -227,3 +227,11 @@ func (f AzureFactory) Subnet(ctx context.Context, secretRef corev1.SecretReferen
 		client: subnetsClient,
 	}, nil
 }
+
+func (f AzureFactory) RouteTables(ctx context.Context, secretRef corev1.SecretReference) (RouteTables, error) {
+	auth, err := internal.GetClientAuthData(ctx, f.client, secretRef, false)
+	if err != nil {
+		return nil, err
+	}
+	return NewRouteTablesClient(*auth)
+}
