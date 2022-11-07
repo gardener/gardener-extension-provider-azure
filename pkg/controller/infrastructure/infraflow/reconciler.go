@@ -9,18 +9,66 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow/shared"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
+	"github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils/flow"
 	"k8s.io/utils/pointer"
 )
 
+// values for TerraformAdapter resources
+const TfResourceGroup = "resourceGroup"
+const TfVnet = "vnet"
+const TfAvailabilitySet = "availabilitySet"
+
+type TerraformAdapter struct {
+	values map[string]interface{}
+}
+
+func NewTerraformAdapter(infra *extensionsv1alpha1.Infrastructure, config *azure.InfrastructureConfig, cluster *controller.Cluster) (TerraformAdapter, error) {
+	tfValues, err := infrastructure.ComputeTerraformerTemplateValues(infra, config, cluster) // use for migration of values..
+	return TerraformAdapter{tfValues}, err
+}
+
+// TODO not needed due to Create/Update?
+func (t TerraformAdapter) isCreate(resource string) bool {
+	create := t.values["create"].(map[string]bool)
+	return create[resource]
+}
+
+func (t TerraformAdapter) Vnet() vnetTf {
+	cm := t.values["resourceGroup"].(map[string]interface{})
+	return vnetTf(cm["vnet"].(map[string]interface{}))
+}
+
+func (t TerraformAdapter) ResourceGroup() string {
+	return t.values["resourceGroup"].(map[string]interface{})["name"].(string)
+}
+
+func (t TerraformAdapter) Region() string {
+	return t.values["azure"].(map[string]interface{})["region"].(string)
+}
+
+func (t TerraformAdapter) ClusterName() string {
+	return t.values["clusterName"].(string)
+}
+
+type vnetTf (map[string]interface{})
+
+//func (v vnetTf) CIDR() *string {
+//	return v["cidr"].(*string)
+//}
+
 type FlowReconciler struct {
 	Factory client.NewFactory
 }
 
-func (f FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig) error {
-	//infrastructure.ComputeTerraformerTemplateValues(infra,cfg,) // use for migration of values..
-	g := f.buildReconcileGraph(ctx, infra, cfg)
+func (f FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, cluster *controller.Cluster) error {
+	tfAdapter, err := NewTerraformAdapter(infra, cfg, cluster)
+	if err != nil {
+		return err
+	}
+	g := f.buildReconcileGraph(ctx, infra, cfg, tfAdapter)
 	fl := g.Compile()
 	if err := fl.Run(ctx, flow.Opts{}); err != nil {
 		return flow.Causes(err)
@@ -28,10 +76,8 @@ func (f FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha1
 	return nil
 }
 
-func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig) *flow.Graph {
-	g := flow.NewGraph("Azure infrastructure reconcilation")
-
-	fnCreateResourceGroup := func(ctx context.Context) error {
+func (f FlowReconciler) reconcileResourceGroup(infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig) flow.TaskFn {
+	return func(ctx context.Context) error {
 		if cfg.ResourceGroup != nil {
 			rgClient, err := f.Factory.ResourceGroup()
 			if err != nil {
@@ -41,9 +87,55 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 		}
 		return nil
 	}
-	resourceGroup := f.AddTask(g, "resource group creation", fnCreateResourceGroup)
+}
 
-	fnCreateVnet := func(ctx context.Context) error {
+func (f FlowReconciler) reconcileResourceGroupFromTf(tf TerraformAdapter) flow.TaskFn {
+	return func(ctx context.Context) error {
+		rgClient, err := f.Factory.ResourceGroup()
+		if err != nil {
+			return err
+		}
+		return rgClient.CreateOrUpdate(ctx, tf.ResourceGroup(), tf.Region())
+	}
+}
+
+func (f FlowReconciler) reconcileVnetFromTf(tf TerraformAdapter) flow.TaskFn {
+	return func(ctx context.Context) error {
+		parameters := armnetwork.VirtualNetwork{
+			Location: to.Ptr(tf.Region()),
+			Properties: &armnetwork.VirtualNetworkPropertiesFormat{
+				AddressSpace: &armnetwork.AddressSpace{},
+			},
+		}
+
+		cidr, ok := tf.Vnet()["cidr"]
+		if ok {
+			parameters.Properties.AddressSpace.AddressPrefixes = []*string{to.Ptr(cidr.(string))}
+		}
+
+		ddosId, ok := tf.Vnet()["ddosProtectionPlanID"]
+		if ok {
+			ddosIdString := ddosId.(string)
+			parameters.Properties.EnableDdosProtection = to.Ptr(true)
+			parameters.Properties.DdosProtectionPlan = &armnetwork.SubResource{ID: to.Ptr(ddosIdString)}
+		}
+
+		rgroup := tf.ResourceGroup()
+		vnet := tf.Vnet()["name"].(string)
+		fmt.Println(vnet)
+		fmt.Println(rgroup)
+
+		vnetClient, err := f.Factory.Vnet()
+		if err != nil {
+			return err
+		}
+		return vnetClient.CreateOrUpdate(ctx, rgroup, vnet, parameters)
+		//log.Info("Created Vnet", *cfg.Networks.VNet.Name)
+	}
+}
+
+func (f FlowReconciler) reconcileVnetFromConfig(infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig) flow.TaskFn {
+	return func(ctx context.Context) error {
 		vnetClient, err := f.Factory.Vnet()
 		if err != nil {
 			return err
@@ -61,9 +153,28 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 		}
 		return nil
 	}
-	vnet := f.AddTask(g, "vnet creation", fnCreateVnet, shared.Dependencies(resourceGroup))
+}
 
-	fnCreateRoutes := func(ctx context.Context) error {
+func (f FlowReconciler) reconcileRouteTablesFromTf(tf TerraformAdapter) flow.TaskFn {
+	return func(ctx context.Context) error {
+		rclient, err := f.Factory.RouteTables()
+		routeTableName := "worker_route_table" // #TODO set in infraconfig? (default injection)
+		if err != nil {
+			return err
+		}
+		parameters := armnetwork.RouteTable{
+			Location: to.Ptr(tf.Region()),
+			//Properties: &armnetwork.RouteTablePropertiesFormat{
+			//},
+		}
+		err = rclient.CreateOrUpdate(ctx, tf.ResourceGroup(), routeTableName, parameters)
+		//log.Info("Created Vnet", *cfg.Networks.VNet.Name)
+		return err
+	}
+}
+
+func (f FlowReconciler) reconcileRouteTables(infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig) flow.TaskFn {
+	return func(ctx context.Context) error {
 		rclient, err := f.Factory.RouteTables()
 		routeTableName := "worker_route_table" // #TODO set in infraconfig? (default injection)
 		if err != nil {
@@ -78,9 +189,10 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 		//log.Info("Created Vnet", *cfg.Networks.VNet.Name)
 		return err
 	}
-	routeTables := f.AddTask(g, "route table creation", fnCreateRoutes, shared.Dependencies(vnet))
+}
 
-	fnCreateSGroup := func(ctx context.Context) error {
+func (f FlowReconciler) reconcileSecurityGroups(infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig) flow.TaskFn {
+	return func(ctx context.Context) error {
 		rclient, err := f.Factory.SecurityGroups()
 		if infra.Namespace == "" { // TODO validate before?
 			return fmt.Errorf("namespace is empty")
@@ -98,7 +210,35 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 		//log.Info("Created Vnet", *cfg.Networks.VNet.Name)
 		return err
 	}
-	f.AddTask(g, "security group creation", fnCreateSGroup, shared.Dependencies(routeTables))
+}
+
+func (f FlowReconciler) reconcileSecurityGroupsFromTf(tf TerraformAdapter) flow.TaskFn {
+	return func(ctx context.Context) error {
+		rclient, err := f.Factory.SecurityGroups()
+
+		name := tf.ClusterName() + "-workers" // #TODO set in infraconfig? (default injection)
+		if err != nil {
+			return err
+		}
+		parameters := armnetwork.SecurityGroup{
+			Location: to.Ptr(tf.Region()),
+			//Properties: &armnetwork.SecurityGroupPropertiesFormat{
+			//},
+		}
+		err = rclient.CreateOrUpdate(ctx, tf.ResourceGroup(), name, parameters)
+		//log.Info("Created Vnet", *cfg.Networks.VNet.Name)
+		return err
+	}
+}
+
+// todo copy infra.spec part
+func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, tf TerraformAdapter) *flow.Graph {
+	g := flow.NewGraph("Azure infrastructure reconcilation")
+	// do not need to check if should be created? (otherwise just updates resource)
+	resourceGroup := f.AddTask(g, "resource group creation", f.reconcileResourceGroupFromTf(tf))
+	vnet := f.AddTask(g, "vnet creation", f.reconcileVnetFromTf(tf), shared.Dependencies(resourceGroup))
+	routeTables := f.AddTask(g, "route table creation", f.reconcileRouteTablesFromTf(tf), shared.Dependencies(vnet))
+	f.AddTask(g, "security group creation", f.reconcileSecurityGroupsFromTf(tf), shared.Dependencies(routeTables))
 	return g
 
 }
