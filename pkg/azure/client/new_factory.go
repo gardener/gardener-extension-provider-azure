@@ -10,6 +10,7 @@ import (
 type NewFactory interface {
 	ResourceGroup() (ResourceGroup, error)
 	Vnet() (Vnet, error)
+	RouteTables() (RouteTables, error)
 }
 
 type newFactory struct {
@@ -30,4 +31,9 @@ func (f newFactory) ResourceGroup() (ResourceGroup, error) {
 func (f newFactory) Vnet() (Vnet, error) {
 	c, err := armnetwork.NewVirtualNetworksClient(f.auth.SubscriptionID, f.cred, nil)
 	return VnetClient{c}, err
+}
+
+func (f newFactory) RouteTables() (RouteTables, error) {
+	c, err := armnetwork.NewRouteTablesClient(f.auth.SubscriptionID, f.cred, nil)
+	return RouteTablesClient{c}, err
 }

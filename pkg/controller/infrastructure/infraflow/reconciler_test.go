@@ -23,7 +23,7 @@ type ProviderSecret struct {
 }
 
 var _ = Describe("FlowReconciler", func() {
-	Context("with resource group and vnet in cfg", func() {
+	Context("with resource group, vnet and route table in cfg", func() {
 		resourceGroupName := "t-i545428"
 		location := "westeurope"
 		vnetName := "vnet-i545428"
@@ -44,8 +44,12 @@ var _ = Describe("FlowReconciler", func() {
 			createGroup := rgroup.EXPECT().CreateOrUpdate(gomock.Any(), resourceGroupName, location).Return(nil)
 			factory.EXPECT().ResourceGroup().Return(rgroup, nil)
 			vnet := mockclient.NewMockVnet(ctrl)
-			vnet.EXPECT().CreateOrUpdate(gomock.Any(), resourceGroupName, vnetName, gomock.Any()).Return(nil).After(createGroup) // TODO check location ?
+			createVnet := vnet.EXPECT().CreateOrUpdate(gomock.Any(), resourceGroupName, vnetName, gomock.Any()).Return(nil).After(createGroup) // TODO check location ?
 			factory.EXPECT().Vnet().Return(vnet, nil)
+
+			rt := mockclient.NewMockRouteTables(ctrl)
+			factory.EXPECT().RouteTables().Return(rt, nil)
+			rt.EXPECT().CreateOrUpdate(gomock.Any(), resourceGroupName, gomock.Any(), gomock.Any()).Return(nil).After(createVnet) // TODO check location ?
 		})
 		It("should reconcile all resources", func() {
 			sut := infraflow.FlowReconciler{Factory: factory}
