@@ -25,9 +25,9 @@ cloudProviderBackoffDuration: 5
 cloudProviderBackoffJitter: 1.0
 cloudProviderRateLimit: true
 cloudProviderRateLimitQPS: {{ ( max .Values.maxNodes 10 ) }}
-cloudProviderRateLimitBucket: 100
+cloudProviderRateLimitBucket: {{ ( max .Values.maxNodes 100 ) }}
 cloudProviderRateLimitQPSWrite: {{ ( max .Values.maxNodes 10 ) }}
-cloudProviderRateLimitBucketWrite: 100
+cloudProviderRateLimitBucketWrite: {{ ( max .Values.maxNodes 100 ) }}
 {{- if semverCompare "< 1.18" .Values.kubernetesVersion }}
 cloudProviderBackoffMode: v2
 {{- end }}
