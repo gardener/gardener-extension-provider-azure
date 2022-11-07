@@ -44,8 +44,15 @@ type Factory interface {
 	NetworkInterface(ctx context.Context, secretRef corev1.SecretReference) (NetworkInterface, error)
 	Disk(ctx context.Context, secretRef corev1.SecretReference) (Disk, error)
 	Subnet(ctx context.Context, secretRef corev1.SecretReference) (Subnet, error)
-	ResourceGroup(ctx context.Context, secretRef corev1.SecretReference) (ResourceGroup, error)
+	ResourceGroup(ctx context.Context, secretRef corev1.SecretReference) (ResourceGroup, error) // #TODO replaces Group
 	RouteTables(ctx context.Context, secretRef corev1.SecretReference) (RouteTables, error)
+}
+
+// #TODO replaces NetworkSecurityGroup
+type SecurityGroups interface {
+	Get(ctx context.Context, resourceGroupName, networkSecurityGroupName string) (armnetwork.SecurityGroupsClientGetResponse, error)
+	CreateOrUpdate(ctx context.Context, resourceGroupName string, networkSecurityGroupName string, parameters armnetwork.SecurityGroup) error
+	Delete(ctx context.Context, resourceGroupName, networkSecurityGroupName string) error
 }
 
 // RouteTables is a client for the Azure RouteTable service.
