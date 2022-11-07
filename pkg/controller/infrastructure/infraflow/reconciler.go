@@ -78,7 +78,27 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 		//log.Info("Created Vnet", *cfg.Networks.VNet.Name)
 		return err
 	}
-	f.AddTask(g, "route table creation", fnCreateRoutes, shared.Dependencies(vnet))
+	routeTables := f.AddTask(g, "route table creation", fnCreateRoutes, shared.Dependencies(vnet))
+
+	fnCreateSGroup := func(ctx context.Context) error {
+		rclient, err := f.Factory.SecurityGroups()
+		if infra.Namespace == "" { // TODO validate before?
+			return fmt.Errorf("namespace is empty")
+		}
+		name := infra.Namespace + "-workers" // #TODO set in infraconfig? (default injection)
+		if err != nil {
+			return err
+		}
+		parameters := armnetwork.SecurityGroup{
+			Location: to.Ptr(infra.Spec.Region),
+			//Properties: &armnetwork.SecurityGroupPropertiesFormat{
+			//},
+		}
+		err = rclient.CreateOrUpdate(ctx, cfg.ResourceGroup.Name, name, parameters)
+		//log.Info("Created Vnet", *cfg.Networks.VNet.Name)
+		return err
+	}
+	f.AddTask(g, "security group creation", fnCreateSGroup, shared.Dependencies(routeTables))
 	return g
 
 }

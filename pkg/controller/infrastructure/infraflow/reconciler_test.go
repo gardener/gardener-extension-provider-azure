@@ -9,6 +9,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	mockclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client/mock"
 	"github.com/golang/mock/gomock"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
@@ -23,7 +24,7 @@ type ProviderSecret struct {
 }
 
 var _ = Describe("FlowReconciler", func() {
-	Context("with resource group, vnet and route table in cfg", func() {
+	Context("with resource group, vnet, route table, security group in cfg", func() {
 		resourceGroupName := "t-i545428"
 		location := "westeurope"
 		vnetName := "vnet-i545428"
@@ -33,7 +34,7 @@ var _ = Describe("FlowReconciler", func() {
 			Networks: azure.NetworkConfig{VNet: azure.VNet{Name: to.Ptr(vnetName),
 				CIDR: to.Ptr("10.0.0.0/8")}},
 		}
-		infra := &v1alpha1.Infrastructure{Spec: v1alpha1.InfrastructureSpec{Region: location}}
+		infra := &v1alpha1.Infrastructure{Spec: v1alpha1.InfrastructureSpec{Region: location}, ObjectMeta: metav1.ObjectMeta{Namespace: "test_custer"}}
 
 		var factory *mockclient.MockNewFactory
 		BeforeEach(func() {
@@ -43,13 +44,19 @@ var _ = Describe("FlowReconciler", func() {
 			rgroup := mockclient.NewMockResourceGroup(ctrl)
 			createGroup := rgroup.EXPECT().CreateOrUpdate(gomock.Any(), resourceGroupName, location).Return(nil)
 			factory.EXPECT().ResourceGroup().Return(rgroup, nil)
+
 			vnet := mockclient.NewMockVnet(ctrl)
 			createVnet := vnet.EXPECT().CreateOrUpdate(gomock.Any(), resourceGroupName, vnetName, gomock.Any()).Return(nil).After(createGroup) // TODO check location ?
 			factory.EXPECT().Vnet().Return(vnet, nil)
 
 			rt := mockclient.NewMockRouteTables(ctrl)
 			factory.EXPECT().RouteTables().Return(rt, nil)
-			rt.EXPECT().CreateOrUpdate(gomock.Any(), resourceGroupName, gomock.Any(), gomock.Any()).Return(nil).After(createVnet) // TODO check location ?
+			rt.EXPECT().CreateOrUpdate(gomock.Any(), resourceGroupName, "worker_route_table", gomock.Any()).Return(nil).After(createVnet) // TODO check location ?
+
+			sg := mockclient.NewMockSecurityGroups(ctrl)
+			factory.EXPECT().SecurityGroups().Return(sg, nil)
+			sg.EXPECT().CreateOrUpdate(gomock.Any(), resourceGroupName, infra.Namespace+"-workers", gomock.Any()).Return(nil).After(createVnet) // TODO check location ?
+
 		})
 		It("should reconcile all resources", func() {
 			sut := infraflow.FlowReconciler{Factory: factory}

@@ -2,7 +2,6 @@ package client
 
 import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
@@ -11,8 +10,8 @@ type NewFactory interface {
 	ResourceGroup() (ResourceGroup, error)
 	Vnet() (Vnet, error)
 	RouteTables() (RouteTables, error)
+	SecurityGroups() (SecurityGroups, error)
 }
-
 type newFactory struct {
 	auth internal.ClientAuth
 	cred *azidentity.ClientSecretCredential
@@ -29,11 +28,14 @@ func (f newFactory) ResourceGroup() (ResourceGroup, error) {
 }
 
 func (f newFactory) Vnet() (Vnet, error) {
-	c, err := armnetwork.NewVirtualNetworksClient(f.auth.SubscriptionID, f.cred, nil)
-	return VnetClient{c}, err
+	return NewVnetClient(f.auth)
 }
 
 func (f newFactory) RouteTables() (RouteTables, error) {
-	c, err := armnetwork.NewRouteTablesClient(f.auth.SubscriptionID, f.cred, nil)
-	return RouteTablesClient{c}, err
+	return NewRouteTablesClient(f.auth)
+}
+
+func (f newFactory) SecurityGroups() (SecurityGroups, error) {
+	return NewSecurityGroupClient(f.auth)
+
 }

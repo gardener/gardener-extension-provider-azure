@@ -5,7 +5,17 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
+
+func NewSecurityGroupClient(auth internal.ClientAuth) (*SecurityGroupClient, error) {
+	cred, err := auth.GetAzClientCredentials()
+	if err != nil {
+		return nil, err
+	}
+	client, err := armnetwork.NewSecurityGroupsClient(auth.SubscriptionID, cred, nil)
+	return &SecurityGroupClient{client}, err
+}
 
 func (c SecurityGroupClient) CreateOrUpdate(ctx context.Context, resourceGroupName, securityGroupName string, parameters armnetwork.SecurityGroup) (err error) {
 	poller, err := c.client.BeginCreateOrUpdate(ctx, resourceGroupName, securityGroupName, parameters, nil)
