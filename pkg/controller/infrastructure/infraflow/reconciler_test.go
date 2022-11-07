@@ -13,6 +13,7 @@ import (
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 	"github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -25,17 +26,25 @@ type ProviderSecret struct {
 
 var _ = Describe("FlowReconciler", func() {
 	Context("with resource group, vnet, route table, security group in cfg", func() {
-		resourceGroupName := "t-i545428"
+		resourceGroupName := "t-i545428" // TODO what if resource group not given? by default Tf uses infra.Namespace
 		location := "westeurope"
-		vnetName := "vnet-i545428"
+		vnetName := "vnet-i545428" // TODO test if not given default infra.Namespace
 
 		cfg := &azure.InfrastructureConfig{
 			ResourceGroup: &azure.ResourceGroup{Name: resourceGroupName},
-			Networks: azure.NetworkConfig{VNet: azure.VNet{Name: to.Ptr(vnetName),
-				CIDR: to.Ptr("10.0.0.0/8")}},
+			Networks: azure.NetworkConfig{
+				VNet: azure.VNet{
+					Name:          to.Ptr(vnetName),
+					ResourceGroup: to.Ptr(resourceGroupName),
+					CIDR:          to.Ptr("10.0.0.0/16"),
+				},
+				Workers:          to.Ptr("10.0.0.0/8"),
+				ServiceEndpoints: []string{},
+			},
 		}
 		infra := &v1alpha1.Infrastructure{Spec: v1alpha1.InfrastructureSpec{Region: location}, ObjectMeta: metav1.ObjectMeta{Namespace: "test_custer"}}
 
+		cluster := infrastructure.MakeCluster("11.0.0.0/16", "12.0.0.0/16", infra.Spec.Region, 1, 1)
 		var factory *mockclient.MockNewFactory
 		BeforeEach(func() {
 			ctrl := gomock.NewController(GinkgoT())
@@ -46,6 +55,7 @@ var _ = Describe("FlowReconciler", func() {
 			factory.EXPECT().ResourceGroup().Return(rgroup, nil)
 
 			vnet := mockclient.NewMockVnet(ctrl)
+			//
 			createVnet := vnet.EXPECT().CreateOrUpdate(gomock.Any(), resourceGroupName, vnetName, gomock.Any()).Return(nil).After(createGroup) // TODO check location ?
 			factory.EXPECT().Vnet().Return(vnet, nil)
 
@@ -60,7 +70,7 @@ var _ = Describe("FlowReconciler", func() {
 		})
 		It("should reconcile all resources", func() {
 			sut := infraflow.FlowReconciler{Factory: factory}
-			err := sut.Reconcile(context.TODO(), infra, cfg)
+			err := sut.Reconcile(context.TODO(), infra, cfg, cluster)
 			Expect(err).To(BeNil())
 		})
 	})

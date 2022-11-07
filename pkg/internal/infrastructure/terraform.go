@@ -17,6 +17,7 @@ package infrastructure
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -26,12 +27,14 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 )
 
 const (
@@ -97,6 +100,44 @@ func RenderTerraformerTemplate(
 		Variables: variablesTF,
 		TFVars:    terraformTFVars,
 	}, nil
+}
+
+func MakeCluster(pods, services string, region string, countFaultDomain, countUpdateDomain int32) *controller.Cluster {
+	var (
+		shoot = gardencorev1beta1.Shoot{
+			Spec: gardencorev1beta1.ShootSpec{
+				Networking: gardencorev1beta1.Networking{
+					Pods:     &pods,
+					Services: &services,
+				},
+			},
+		}
+		cloudProfileConfig = apiv1alpha1.CloudProfileConfig{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: apiv1alpha1.SchemeGroupVersion.String(),
+				Kind:       "CloudProfileConfig",
+			},
+			CountFaultDomains: []apiv1alpha1.DomainCount{
+				{Region: region, Count: countFaultDomain},
+			},
+			CountUpdateDomains: []apiv1alpha1.DomainCount{
+				{Region: region, Count: countUpdateDomain},
+			},
+		}
+		cloudProfileConfigJSON, _ = json.Marshal(cloudProfileConfig)
+		cloudProfile              = gardencorev1beta1.CloudProfile{
+			Spec: gardencorev1beta1.CloudProfileSpec{
+				ProviderConfig: &runtime.RawExtension{
+					Raw: cloudProfileConfigJSON,
+				},
+			},
+		}
+	)
+
+	return &controller.Cluster{
+		Shoot:        &shoot,
+		CloudProfile: &cloudProfile,
+	}
 }
 
 // ComputeTerraformerTemplateValues computes the values for the Azure Terraformer chart.
