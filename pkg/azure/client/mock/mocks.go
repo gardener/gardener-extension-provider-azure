@@ -193,6 +193,20 @@ func (m *MockSubnet) EXPECT() *MockSubnetMockRecorder {
 	return m.recorder
 }
 
+// CreateOrUpdate mocks base method.
+func (m *MockSubnet) CreateOrUpdate(arg0 context.Context, arg1, arg2, arg3 string, arg4 armnetwork.Subnet) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateOrUpdate", arg0, arg1, arg2, arg3, arg4)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateOrUpdate indicates an expected call of CreateOrUpdate.
+func (mr *MockSubnetMockRecorder) CreateOrUpdate(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdate", reflect.TypeOf((*MockSubnet)(nil).CreateOrUpdate), arg0, arg1, arg2, arg3, arg4)
+}
+
 // Delete mocks base method.
 func (m *MockSubnet) Delete(arg0 context.Context, arg1, arg2, arg3 string) error {
 	m.ctrl.T.Helper()
@@ -538,6 +552,21 @@ func (mr *MockNewFactoryMockRecorder) SecurityGroups() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SecurityGroups", reflect.TypeOf((*MockNewFactory)(nil).SecurityGroups))
 }
 
+// Subnet mocks base method.
+func (m *MockNewFactory) Subnet() (client.Subnet, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Subnet")
+	ret0, _ := ret[0].(client.Subnet)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Subnet indicates an expected call of Subnet.
+func (mr *MockNewFactoryMockRecorder) Subnet() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Subnet", reflect.TypeOf((*MockNewFactory)(nil).Subnet))
+}
+
 // Vnet mocks base method.
 func (m *MockNewFactory) Vnet() (client.Vnet, error) {
 	m.ctrl.T.Helper()
@@ -709,11 +738,12 @@ func (m *MockRouteTables) EXPECT() *MockRouteTablesMockRecorder {
 }
 
 // CreateOrUpdate mocks base method.
-func (m *MockRouteTables) CreateOrUpdate(arg0 context.Context, arg1, arg2 string, arg3 armnetwork.RouteTable) error {
+func (m *MockRouteTables) CreateOrUpdate(arg0 context.Context, arg1, arg2 string, arg3 armnetwork.RouteTable) (armnetwork.RouteTablesClientCreateOrUpdateResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateOrUpdate", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(armnetwork.RouteTablesClientCreateOrUpdateResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // CreateOrUpdate indicates an expected call of CreateOrUpdate.

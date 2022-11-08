@@ -9,55 +9,11 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow/shared"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils/flow"
 	"k8s.io/utils/pointer"
 )
-
-// values for TerraformAdapter resources
-const TfResourceGroup = "resourceGroup"
-const TfVnet = "vnet"
-const TfAvailabilitySet = "availabilitySet"
-
-type TerraformAdapter struct {
-	values map[string]interface{}
-}
-
-func NewTerraformAdapter(infra *extensionsv1alpha1.Infrastructure, config *azure.InfrastructureConfig, cluster *controller.Cluster) (TerraformAdapter, error) {
-	tfValues, err := infrastructure.ComputeTerraformerTemplateValues(infra, config, cluster) // use for migration of values..
-	return TerraformAdapter{tfValues}, err
-}
-
-// TODO not needed due to Create/Update?
-func (t TerraformAdapter) isCreate(resource string) bool {
-	create := t.values["create"].(map[string]bool)
-	return create[resource]
-}
-
-func (t TerraformAdapter) Vnet() vnetTf {
-	cm := t.values["resourceGroup"].(map[string]interface{})
-	return vnetTf(cm["vnet"].(map[string]interface{}))
-}
-
-func (t TerraformAdapter) ResourceGroup() string {
-	return t.values["resourceGroup"].(map[string]interface{})["name"].(string)
-}
-
-func (t TerraformAdapter) Region() string {
-	return t.values["azure"].(map[string]interface{})["region"].(string)
-}
-
-func (t TerraformAdapter) ClusterName() string {
-	return t.values["clusterName"].(string)
-}
-
-type vnetTf (map[string]interface{})
-
-//func (v vnetTf) CIDR() *string {
-//	return v["cidr"].(*string)
-//}
 
 type FlowReconciler struct {
 	Factory client.NewFactory
@@ -167,7 +123,7 @@ func (f FlowReconciler) reconcileRouteTablesFromTf(tf TerraformAdapter) flow.Tas
 			//Properties: &armnetwork.RouteTablePropertiesFormat{
 			//},
 		}
-		err = rclient.CreateOrUpdate(ctx, tf.ResourceGroup(), routeTableName, parameters)
+		_, err = rclient.CreateOrUpdate(ctx, tf.ResourceGroup(), routeTableName, parameters)
 		//log.Info("Created Vnet", *cfg.Networks.VNet.Name)
 		return err
 	}
@@ -185,7 +141,7 @@ func (f FlowReconciler) reconcileRouteTables(infra *extensionsv1alpha1.Infrastru
 			//Properties: &armnetwork.RouteTablePropertiesFormat{
 			//},
 		}
-		err = rclient.CreateOrUpdate(ctx, cfg.ResourceGroup.Name, routeTableName, parameters)
+		_, err = rclient.CreateOrUpdate(ctx, cfg.ResourceGroup.Name, routeTableName, parameters)
 		//log.Info("Created Vnet", *cfg.Networks.VNet.Name)
 		return err
 	}
@@ -226,6 +182,42 @@ func (f FlowReconciler) reconcileSecurityGroupsFromTf(tf TerraformAdapter) flow.
 			//},
 		}
 		err = rclient.CreateOrUpdate(ctx, tf.ResourceGroup(), name, parameters)
+		//log.Info("Created Vnet", *cfg.Networks.VNet.Name)
+		return err
+	}
+}
+
+func (f FlowReconciler) reconcileSubnetFromTf(tf TerraformAdapter) flow.TaskFn {
+	return func(ctx context.Context) error {
+		subnetClient, err := f.Factory.Subnet()
+		if err != nil {
+			return err
+		}
+		name := "worker" // #TODO asset in infraconfig? (default injection)
+		subnets := tf.Subnets()
+		for _, subnet := range subnets {
+			endpoints := make([]*armnetwork.ServiceEndpointPropertiesFormat, 0)
+			for _, endpoint := range subnet.serviceEndpoints {
+				endpoints = append(endpoints, &armnetwork.ServiceEndpointPropertiesFormat{
+					Service: to.Ptr(endpoint),
+				})
+			}
+
+			parameters := armnetwork.Subnet{
+				Name: to.Ptr(subnet.name),
+				Properties: &armnetwork.SubnetPropertiesFormat{
+					AddressPrefix:    to.Ptr(subnet.cidr),
+					ServiceEndpoints: endpoints, // TODO associate security group?, route table?
+					//NetworkSecurityGroup: &armnetwork.SecurityGroup{
+					//	ID: to.Ptr(tf.SecurityGroup()["id"].(string)),
+					//},
+					//RouteTable: &armnetwork.SubResource{
+					//	ID: to.Ptr(tf.RouteTable()["id"].(string)),
+					//},
+				},
+			}
+			err = subnetClient.CreateOrUpdate(ctx, tf.ResourceGroup(), tf.Vnet()["name"].(string), name, parameters)
+		}
 		//log.Info("Created Vnet", *cfg.Networks.VNet.Name)
 		return err
 	}

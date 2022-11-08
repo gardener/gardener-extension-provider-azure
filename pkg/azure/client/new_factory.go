@@ -11,6 +11,7 @@ type NewFactory interface {
 	Vnet() (Vnet, error)
 	RouteTables() (RouteTables, error)
 	SecurityGroups() (SecurityGroups, error)
+	Subnet() (Subnet, error)
 }
 type newFactory struct {
 	auth internal.ClientAuth
