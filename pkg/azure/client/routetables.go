@@ -17,13 +17,12 @@ func NewRouteTablesClient(auth internal.ClientAuth) (*RouteTablesClient, error) 
 	return &RouteTablesClient{client}, err
 }
 
-func (c RouteTablesClient) CreateOrUpdate(ctx context.Context, resourceGroupName, routeTableName string, parameters armnetwork.RouteTable) (err error) {
+func (c RouteTablesClient) CreateOrUpdate(ctx context.Context, resourceGroupName, routeTableName string, parameters armnetwork.RouteTable) (armnetwork.RouteTablesClientCreateOrUpdateResponse, error) {
 	poller, err := c.client.BeginCreateOrUpdate(ctx, resourceGroupName, routeTableName, parameters, nil)
 	if err != nil {
-		return fmt.Errorf("cannot create route table: %v", err)
+		return armnetwork.RouteTablesClientCreateOrUpdateResponse{}, fmt.Errorf("cannot create route table: %v", err)
 	}
-	_, err = poller.PollUntilDone(ctx, nil)
-	return err
+	return poller.PollUntilDone(ctx, nil)
 }
 
 func (c RouteTablesClient) Delete(ctx context.Context, resourceGroupName, name string) (err error) {

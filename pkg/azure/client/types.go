@@ -57,7 +57,7 @@ type SecurityGroups interface {
 
 // RouteTables is a client for the Azure RouteTable service.
 type RouteTables interface {
-	CreateOrUpdate(ctx context.Context, resourceGroupName, routeTableName string, parameters armnetwork.RouteTable) (err error)
+	CreateOrUpdate(ctx context.Context, resourceGroupName, routeTableName string, parameters armnetwork.RouteTable) (armnetwork.RouteTablesClientCreateOrUpdateResponse, error)
 	Delete(ctx context.Context, resourceGroupName, name string) (err error)
 	Get(ctx context.Context, resourceGroupName, name string) (armnetwork.RouteTablesClientGetResponse, error)
 }
@@ -137,6 +137,7 @@ type Disk interface {
 
 // Subnet represents an Azure Subnet client.
 type Subnet interface {
+	CreateOrUpdate(ctx context.Context, resourceGroupName, vnetName, subnetName string, parameters armnetwork.Subnet) error
 	Get(ctx context.Context, resourceGroupName string, vnetName string, name string, expander string) (*armnetwork.SubnetsClientGetResponse, error)
 	List(context.Context, string, string) ([]*armnetwork.Subnet, error)
 	Delete(context.Context, string, string, string) error

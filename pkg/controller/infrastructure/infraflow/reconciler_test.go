@@ -25,7 +25,7 @@ type ProviderSecret struct {
 }
 
 var _ = Describe("FlowReconciler", func() {
-	Context("with resource group, vnet, route table, security group in cfg", func() {
+	Context("with resource group, vnet, route table, security group, subnet in cfg", func() {
 		resourceGroupName := "t-i545428" // TODO what if resource group not given? by default Tf uses infra.Namespace
 		location := "westeurope"
 		vnetName := "vnet-i545428" // TODO test if not given default infra.Namespace
@@ -66,6 +66,10 @@ var _ = Describe("FlowReconciler", func() {
 			sg := mockclient.NewMockSecurityGroups(ctrl)
 			factory.EXPECT().SecurityGroups().Return(sg, nil)
 			sg.EXPECT().CreateOrUpdate(gomock.Any(), resourceGroupName, infra.Namespace+"-workers", gomock.Any()).Return(nil).After(createVnet) // TODO check location ?
+
+			subnet := mockclient.NewMockSubnet(ctrl)
+			factory.EXPECT().Subnet().Return(subnet, nil)
+			subnet.EXPECT().CreateOrUpdate(gomock.Any(), resourceGroupName, vnetName, "worker", gomock.Any()).Return(nil).After(createVnet) // TODO check location ?
 
 		})
 		It("should reconcile all resources", func() {
