@@ -17,13 +17,13 @@ func NewSecurityGroupClient(auth internal.ClientAuth) (*SecurityGroupClient, err
 	return &SecurityGroupClient{client}, err
 }
 
-func (c SecurityGroupClient) CreateOrUpdate(ctx context.Context, resourceGroupName, securityGroupName string, parameters armnetwork.SecurityGroup) (err error) {
+func (c SecurityGroupClient) CreateOrUpdate(ctx context.Context, resourceGroupName, securityGroupName string, parameters armnetwork.SecurityGroup) (armnetwork.SecurityGroupsClientCreateOrUpdateResponse, error) {
 	poller, err := c.client.BeginCreateOrUpdate(ctx, resourceGroupName, securityGroupName, parameters, nil)
 	if err != nil {
-		return fmt.Errorf("cannot create security group: %v", err)
+		return armnetwork.SecurityGroupsClientCreateOrUpdateResponse{}, fmt.Errorf("cannot create security group: %v", err)
 	}
-	_, err = poller.PollUntilDone(ctx, nil)
-	return err
+	resp, err := poller.PollUntilDone(ctx, nil)
+	return resp, err
 }
 
 func (c SecurityGroupClient) Delete(ctx context.Context, resourceGroupName, name string) (err error) {

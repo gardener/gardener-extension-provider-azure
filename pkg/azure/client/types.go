@@ -48,10 +48,16 @@ type Factory interface {
 	RouteTables(ctx context.Context, secretRef corev1.SecretReference) (RouteTables, error)
 }
 
+type NatGateway interface {
+	CreateOrUpdate(ctx context.Context, resourceGroupName, natGatewayName string, parameters armnetwork.NatGateway) (armnetwork.NatGatewaysClientCreateOrUpdateResponse, error)
+	Get(ctx context.Context, resourceGroupName, natGatewayName string) (*armnetwork.NatGatewaysClientGetResponse, error)
+	Delete(ctx context.Context, resourceGroupName, natGatewayName string) error
+}
+
 // #TODO replaces NetworkSecurityGroup
 type SecurityGroups interface {
 	Get(ctx context.Context, resourceGroupName, networkSecurityGroupName string) (armnetwork.SecurityGroupsClientGetResponse, error)
-	CreateOrUpdate(ctx context.Context, resourceGroupName string, networkSecurityGroupName string, parameters armnetwork.SecurityGroup) error
+	CreateOrUpdate(ctx context.Context, resourceGroupName string, networkSecurityGroupName string, parameters armnetwork.SecurityGroup) (armnetwork.SecurityGroupsClientCreateOrUpdateResponse, error)
 	Delete(ctx context.Context, resourceGroupName, networkSecurityGroupName string) error
 }
 

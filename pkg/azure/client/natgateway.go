@@ -6,13 +6,14 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 )
 
-func (c NatGatewayClient) CreateOrUpdate(ctx context.Context, resourceGroupName, natGatewayName string, parameters armnetwork.NatGateway) error {
+func (c NatGatewayClient) CreateOrUpdate(ctx context.Context, resourceGroupName, natGatewayName string, parameters armnetwork.NatGateway) (armnetwork.NatGatewaysClientCreateOrUpdateResponse, error) {
+
 	poller, err := c.client.BeginCreateOrUpdate(ctx, resourceGroupName, natGatewayName, parameters, nil)
 	if err != nil {
-		return err
+		return armnetwork.NatGatewaysClientCreateOrUpdateResponse{}, err
 	}
-	_, err = poller.PollUntilDone(ctx, nil)
-	return err
+	resp, err := poller.PollUntilDone(ctx, nil)
+	return resp, err
 }
 
 func (c NatGatewayClient) Get(ctx context.Context, resourceGroupName, natGatewayName string) (*armnetwork.NatGatewaysClientGetResponse, error) {

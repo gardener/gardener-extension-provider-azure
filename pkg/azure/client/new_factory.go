@@ -12,6 +12,7 @@ type NewFactory interface {
 	RouteTables() (RouteTables, error)
 	SecurityGroups() (SecurityGroups, error)
 	Subnet() (Subnet, error)
+	NatGateway() (NatGateway, error)
 }
 type newFactory struct {
 	auth internal.ClientAuth
