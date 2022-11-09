@@ -48,7 +48,11 @@ func (t TerraformAdapter) ClusterName() string {
 
 func (t TerraformAdapter) Subnets() []subnetTf {
 	res := make([]subnetTf, 0)
-	for _, subnet := range t.values["subnets"].([]map[string]interface{}) {
+	rawSubnets := t.values["networks"].(map[string]interface{})["subnets"]
+	if rawSubnets == nil {
+		return res
+	}
+	for _, subnet := range rawSubnets.([]map[string]interface{}) {
 		name := t.ClusterName() + "-nodes"
 		isMigrated, isMultiSubnet := subnet["migrated"]
 		if isMultiSubnet {
