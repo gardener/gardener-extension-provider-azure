@@ -26,8 +26,8 @@ func NewTerraformAdapter(infra *extensionsv1alpha1.Infrastructure, config *azure
 
 // TODO not needed due to Create/Update?
 func (t TerraformAdapter) isCreate(resource string) bool {
-	create := t.values["create"].(map[string]bool)
-	return create[resource]
+	create := t.values["create"].(map[string]interface{})
+	return create[resource].(bool)
 }
 
 func (t TerraformAdapter) Vnet() vnetTf {
@@ -41,6 +41,14 @@ func (t TerraformAdapter) ResourceGroup() string {
 
 func (t TerraformAdapter) Region() string {
 	return t.values["azure"].(map[string]interface{})["region"].(string)
+}
+
+func (t TerraformAdapter) CountUpdateDomains() int32 {
+	return t.values["azure"].(map[string]interface{})["countUpdateDomains"].(int32)
+}
+
+func (t TerraformAdapter) CountFaultDomains() int32 {
+	return t.values["azure"].(map[string]interface{})["countFaultDomains"].(int32)
 }
 
 func (t TerraformAdapter) ClusterName() string {
@@ -73,6 +81,32 @@ func (t TerraformAdapter) subnetName(subnet map[string]interface{}) string {
 	return name
 }
 
+type ipTf struct {
+	name       string
+	subnetName string
+}
+
+func (t TerraformAdapter) IPs() []ipTf {
+	res := make([]ipTf, 0)
+	rawSubnets := t.values["networks"].(map[string]interface{})["subnets"]
+	if rawSubnets == nil {
+		return res
+	}
+	for _, subnet := range rawSubnets.([]map[string]interface{}) {
+		name := t.ipName(subnet)
+		subnetName := t.subnetName(subnet)
+		res = append(res, ipTf{name, subnetName})
+	}
+	return res
+}
+
+func (t TerraformAdapter) ipName(subnet map[string]interface{}) string {
+	return t.natName(subnet) + "-ip"
+}
+
+func (t TerraformAdapter) AvailabilitySetName() string {
+	return t.ClusterName() + "-avset-workers"
+}
 func (t TerraformAdapter) Nats() []natTf {
 	res := make([]natTf, 0)
 	rawSubnets := t.values["networks"].(map[string]interface{})["subnets"]

@@ -48,6 +48,11 @@ type Factory interface {
 	RouteTables(ctx context.Context, secretRef corev1.SecretReference) (RouteTables, error)
 }
 
+type AvailabilitySet interface {
+	Get(ctx context.Context, resourceGroupName, availabilitySetName string) (result armcompute.AvailabilitySetsClientGetResponse, err error)
+	CreateOrUpdate(ctx context.Context, resourceGroupName string, availabilitySetName string, parameters armcompute.AvailabilitySet) (result armcompute.AvailabilitySetsClientCreateOrUpdateResponse, err error)
+	Delete(ctx context.Context, resourceGroupName string, availabilitySetName string) (result armcompute.AvailabilitySetsClientDeleteResponse, err error)
+}
 type NatGateway interface {
 	CreateOrUpdate(ctx context.Context, resourceGroupName, natGatewayName string, parameters armnetwork.NatGateway) (armnetwork.NatGatewaysClientCreateOrUpdateResponse, error)
 	Get(ctx context.Context, resourceGroupName, natGatewayName string) (*armnetwork.NatGatewaysClientGetResponse, error)
@@ -124,6 +129,12 @@ type NetworkSecurityGroup interface {
 type PublicIP interface {
 	Get(ctx context.Context, resourceGroupName string, name string, expander string) (*network.PublicIPAddress, error)
 	CreateOrUpdate(ctx context.Context, resourceGroupName, name string, parameters network.PublicIPAddress) (*network.PublicIPAddress, error)
+	Delete(ctx context.Context, resourceGroupName, name string) error
+}
+
+type NewPublicIP interface {
+	Get(ctx context.Context, resourceGroupName string, name string) (armnetwork.PublicIPAddressesClientGetResponse, error)
+	CreateOrUpdate(ctx context.Context, resourceGroupName, name string, parameters armnetwork.PublicIPAddress) (armnetwork.PublicIPAddressesClientCreateOrUpdateResponse, error)
 	Delete(ctx context.Context, resourceGroupName, name string) error
 }
 
@@ -220,6 +231,11 @@ type NetworkSecurityGroupClient struct {
 // PublicIPClient is an implementation of Network Public IP Address.
 type PublicIPClient struct {
 	client network.PublicIPAddressesClient
+}
+
+// TODO replace old PublicIPClient is an implementation of Network Public IP Address.
+type NewPublicIPClient struct {
+	client *armnetwork.PublicIPAddressesClient
 }
 
 // NetworkInterfaceClient is an implementation of Network Interface.

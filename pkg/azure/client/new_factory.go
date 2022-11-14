@@ -13,6 +13,8 @@ type NewFactory interface {
 	SecurityGroups() (SecurityGroups, error)
 	Subnet() (Subnet, error)
 	NatGateway() (NatGateway, error)
+	PublicIP() (NewPublicIP, error)
+	AvailabilitySet() (AvailabilitySet, error)
 }
 type newFactory struct {
 	auth internal.ClientAuth
