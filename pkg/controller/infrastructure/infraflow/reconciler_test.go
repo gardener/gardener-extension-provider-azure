@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	mockclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client/mock"
@@ -27,12 +28,14 @@ type ProviderSecret struct {
 }
 
 var _ = Describe("FlowReconciler", func() {
-	Context("with resource group, vnet, route table, security group, subnet, nat in cfg", func() {
+	Context("with resource group, vnet, route table, security group, subnet, nat and ip in cfg", func() {
 		resourceGroupName := "t-i545428" // TODO what if resource group not given? by default Tf uses infra.Namespace
 		location := "westeurope"
 		vnetName := "vnet-i545428" // TODO test if not given default infra.Namespace
+		clusterName := "test_cluster"
 
 		cfg := &azure.InfrastructureConfig{
+			Zoned:         true, // no availability set
 			ResourceGroup: &azure.ResourceGroup{Name: resourceGroupName},
 			Networks: azure.NetworkConfig{
 				VNet: azure.VNet{
@@ -42,22 +45,66 @@ var _ = Describe("FlowReconciler", func() {
 				},
 				Workers:          to.Ptr("10.0.0.0/16"),
 				ServiceEndpoints: []string{},
-				Zones:            []azure.Zone{{Name: 1, CIDR: "10.0.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: true}}, {Name: 2, CIDR: "10.1.0.0/16"}}, // subnets
+				Zones:            []azure.Zone{{Name: 1, CIDR: "10.0.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: true, IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip", ResourceGroup: resourceGroupName}}}}, {Name: 2, CIDR: "10.1.0.0/16"}}, // subnets
 			},
 		}
-		infra := &v1alpha1.Infrastructure{Spec: v1alpha1.InfrastructureSpec{Region: location}, ObjectMeta: metav1.ObjectMeta{Namespace: "test_cluster"}}
+		infra := &v1alpha1.Infrastructure{Spec: v1alpha1.InfrastructureSpec{Region: location}, ObjectMeta: metav1.ObjectMeta{Namespace: clusterName}}
 
 		cluster := infrastructure.MakeCluster("11.0.0.0/16", "12.0.0.0/16", infra.Spec.Region, 1, 1)
 		var factory *mockclient.MockNewFactory
 		BeforeEach(func() {
 			mock := NewMockFactoryWrapper(resourceGroupName, location)
 			createGroup := mock.assertResourceGroupCalled()
-			mock.assertVnetCalledWith(vnetName).After(createGroup)
-			createRoutes := mock.assertRouteTableCalledWith("worker_route_table").After(createGroup)
-			createNats := mock.assertNatGatewayCalledWith("test_cluster-nat-gateway-z1").After(createGroup)
-			createSgroup := mock.assertSecurityGroupCalledWith(infra.Namespace + "-workers").After(createGroup)
+			mock.assertVnetCalled(vnetName).After(createGroup)
+			createRoutes := mock.assertRouteTableCalled("worker_route_table").After(createGroup)
+			createSgroup := mock.assertSecurityGroupCalled(infra.Namespace + "-workers").After(createGroup)
 			// workaround: issue with arg order https://github.com/golang/mock/issues/653
-			mock.assertSubnetCalledWith(vnetName, MatchAnyOfStrings([]string{"test_cluster-z2", "test_cluster-z1"})).After(createRoutes).After(createSgroup).After(createNats).Times(2)
+			createIps := mock.assertPublicIPCalled("my-ip").Times(2).After(createGroup)
+			createNats := mock.assertNatGatewayCalledWith("test_cluster-nat-gateway-z1").After(createGroup).After(createIps)
+			mock.assertSubnetCalled(vnetName, MatchAnyOfStrings([]string{"test_cluster-z2", "test_cluster-z1"})).After(createRoutes).After(createSgroup).After(createNats).Times(2)
+			factory = mock.GetFactory()
+		})
+		It("should reconcile all resources", func() {
+			sut := infraflow.FlowReconciler{Factory: factory}
+			err := sut.Reconcile(context.TODO(), infra, cfg, cluster)
+			Expect(err).To(BeNil())
+		})
+	})
+	Context("with resource group, vnet, route table, security group, subnet, nat, ip, availabilitySet in cfg", func() {
+		resourceGroupName := "t-i545428" // TODO what if resource group not given? by default Tf uses infra.Namespace
+		location := "westeurope"
+		vnetName := "vnet-i545428" // TODO test if not given default infra.Namespace
+		clusterName := "test_cluster"
+
+		cfg := &azure.InfrastructureConfig{
+			Zoned:         false, // for availability set
+			ResourceGroup: &azure.ResourceGroup{Name: resourceGroupName},
+			Networks: azure.NetworkConfig{
+				VNet: azure.VNet{
+					Name:          to.Ptr(vnetName),
+					ResourceGroup: to.Ptr(resourceGroupName),
+					CIDR:          to.Ptr("10.0.0.0/8"),
+				},
+				Workers:          to.Ptr("10.0.0.0/16"),
+				ServiceEndpoints: []string{},
+				Zones:            []azure.Zone{{Name: 1, CIDR: "10.0.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: true, IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip", ResourceGroup: resourceGroupName}}}}, {Name: 2, CIDR: "10.1.0.0/16"}}, // subnets
+			},
+		}
+		infra := &v1alpha1.Infrastructure{Spec: v1alpha1.InfrastructureSpec{Region: location}, ObjectMeta: metav1.ObjectMeta{Namespace: clusterName}}
+
+		cluster := infrastructure.MakeCluster("11.0.0.0/16", "12.0.0.0/16", infra.Spec.Region, 1, 1)
+		var factory *mockclient.MockNewFactory
+		BeforeEach(func() {
+			mock := NewMockFactoryWrapper(resourceGroupName, location)
+			createGroup := mock.assertResourceGroupCalled()
+			mock.assertVnetCalled(vnetName).After(createGroup)
+			createRoutes := mock.assertRouteTableCalled("worker_route_table").After(createGroup)
+			createSgroup := mock.assertSecurityGroupCalled(infra.Namespace + "-workers").After(createGroup)
+			// workaround: issue with arg order https://github.com/golang/mock/issues/653
+			createIps := mock.assertPublicIPCalled("my-ip").Times(2).After(createGroup)
+			createNats := mock.assertNatGatewayCalledWith("test_cluster-nat-gateway-z1").After(createGroup).After(createIps)
+			mock.assertSubnetCalled(vnetName, MatchAnyOfStrings([]string{"test_cluster-z2", "test_cluster-z1"})).After(createRoutes).After(createSgroup).After(createNats).Times(2)
+			mock.assertAvailabilitySetCalled(clusterName + "-avset-workers")
 			factory = mock.GetFactory()
 		})
 		It("should reconcile all resources", func() {
@@ -71,8 +118,8 @@ var _ = Describe("FlowReconciler", func() {
 
 type MatchAnyOfStrings ([]string)
 
-func (m *MatchAnyOfStrings) Matches(x interface{}) bool {
-	for _, v := range *m {
+func (m MatchAnyOfStrings) Matches(x interface{}) bool {
+	for _, v := range m {
 		if v == x.(string) {
 			return true
 		}
@@ -80,8 +127,8 @@ func (m *MatchAnyOfStrings) Matches(x interface{}) bool {
 	return false
 }
 
-func (m *MatchAnyOfStrings) String() string {
-	return fmt.Sprintf("is one of %v", *m)
+func (m MatchAnyOfStrings) String() string {
+	return fmt.Sprintf("is one of %v", []string(m))
 }
 
 type MockFactoryWrapper struct {
@@ -101,31 +148,36 @@ func NewMockFactoryWrapper(resourceGroup, location string) *MockFactoryWrapper {
 	return &MockFactoryWrapper{ctrl, factory, resourceGroup, location}
 }
 
+func (f *MockFactoryWrapper) assertAvailabilitySetCalled(name string) *gomock.Call {
+	aset := mockclient.NewMockAvailabilitySet(f.ctrl)
+	f.EXPECT().AvailabilitySet().Return(aset, nil)
+	return aset.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, gomock.Any(), gomock.Any()).Return(armcompute.AvailabilitySetsClientCreateOrUpdateResponse{}, nil)
+}
 func (f *MockFactoryWrapper) assertResourceGroupCalled() *gomock.Call {
 	rgroup := mockclient.NewMockResourceGroup(f.ctrl)
 	f.EXPECT().ResourceGroup().Return(rgroup, nil)
 	return rgroup.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, f.location).Return(nil)
 }
 
-func (f *MockFactoryWrapper) assertRouteTableCalledWith(name string) *gomock.Call {
+func (f *MockFactoryWrapper) assertRouteTableCalled(name string) *gomock.Call {
 	rt := mockclient.NewMockRouteTables(f.ctrl)
 	f.EXPECT().RouteTables().Return(rt, nil)
 	return rt.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, name, gomock.Any()).Return(armnetwork.RouteTablesClientCreateOrUpdateResponse{}, nil)
 }
 
-func (f *MockFactoryWrapper) assertSecurityGroupCalledWith(name string) *gomock.Call {
+func (f *MockFactoryWrapper) assertSecurityGroupCalled(name string) *gomock.Call {
 	sg := mockclient.NewMockSecurityGroups(f.ctrl)
 	f.EXPECT().SecurityGroups().Return(sg, nil)
 	return sg.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, name, gomock.Any()).Return(armnetwork.SecurityGroupsClientCreateOrUpdateResponse{}, nil)
 }
 
-func (f *MockFactoryWrapper) assertVnetCalledWith(name string) *gomock.Call {
+func (f *MockFactoryWrapper) assertVnetCalled(name string) *gomock.Call {
 	vnet := mockclient.NewMockVnet(f.ctrl)
 	f.EXPECT().Vnet().Return(vnet, nil)
 	return vnet.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, name, gomock.Any()).Return(nil)
 }
 
-func (f *MockFactoryWrapper) assertSubnetCalledWith(vnetName string, name interface{}) *gomock.Call {
+func (f *MockFactoryWrapper) assertSubnetCalled(vnetName string, name interface{}) *gomock.Call {
 	subnet := mockclient.NewMockSubnet(f.ctrl)
 	f.EXPECT().Subnet().Return(subnet, nil)
 	return subnet.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, vnetName, name, gomock.Any()).Return(nil)
@@ -135,6 +187,12 @@ func (f *MockFactoryWrapper) assertNatGatewayCalledWith(name string) *gomock.Cal
 	nat := mockclient.NewMockNatGateway(f.ctrl)
 	f.EXPECT().NatGateway().Return(nat, nil)
 	return nat.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, name, gomock.Any()).Return(armnetwork.NatGatewaysClientCreateOrUpdateResponse{NatGateway: armnetwork.NatGateway{ID: to.Ptr("natId")}}, nil)
+}
+
+func (f *MockFactoryWrapper) assertPublicIPCalled(name string) *gomock.Call {
+	ip := mockclient.NewMockNewPublicIP(f.ctrl)
+	f.EXPECT().PublicIP().Return(ip, nil)
+	return ip.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, gomock.Any(), gomock.Any()).Return(armnetwork.PublicIPAddressesClientCreateOrUpdateResponse{PublicIPAddress: armnetwork.PublicIPAddress{ID: to.Ptr("ipId")}}, nil)
 }
 
 //var _ = Describe("FlowReconciler", func() {
