@@ -418,11 +418,9 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 	natGatewayCh := make(chan map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse, 1)
 	natGateway := f.AddTask(g, "nat gateway creation", flowTaskWithReturnAndInput(tf, ipCh, f.reconcileNatGatewaysFromTf, natGatewayCh))
 
-	f.AddTask(g, "subnet creation", func(tf TerraformAdapter, securityGroupCh chan armnetwork.SecurityGroupsClientCreateOrUpdateResponse, routeTableCh chan armnetwork.RouteTable, natGatewayCh chan map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse) flow.TaskFn {
-		return func(ctx context.Context) error {
-			return f.reconcileSubnetsFromTf(ctx, tf, <-securityGroupCh, <-routeTableCh, <-natGatewayCh)
-		}
-	}(tf, securityGroupCh, routeTableCh, natGatewayCh), shared.Dependencies(resourceGroup), shared.Dependencies(securityGroup), shared.Dependencies(routeTable), shared.Dependencies(natGateway)) // TODO not necessary to declare dependencies? coz channels ensure to wait
+	f.AddTask(g, "subnet creation", func(ctx context.Context) error {
+		return f.reconcileSubnetsFromTf(ctx, tf, <-securityGroupCh, <-routeTableCh, <-natGatewayCh)
+	}, shared.Dependencies(resourceGroup), shared.Dependencies(securityGroup), shared.Dependencies(routeTable), shared.Dependencies(natGateway)) // TODO not necessary to declare dependencies? coz channels ensure to wait
 	return g
 
 }
