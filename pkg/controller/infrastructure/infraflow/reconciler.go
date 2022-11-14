@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"golang.org/x/sync/errgroup"
-
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
@@ -15,6 +13,7 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils/flow"
+	"golang.org/x/sync/errgroup"
 	"k8s.io/utils/pointer"
 )
 
@@ -28,13 +27,18 @@ func (f FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha1
 		return err
 	}
 
-	//graph := f.buildReconcileGraph(ctx, infra, cfg, tfAdapter)
-	//fl := graph.Compile()
-	//if err := fl.Run(ctx, flow.Opts{}); err != nil {
-	//	return flow.Causes(err)
-	//}
-
+	graph := f.buildReconcileGraph(ctx, infra, cfg, tfAdapter)
+	fl := graph.Compile()
+	if err := fl.Run(ctx, flow.Opts{}); err != nil {
+		return flow.Causes(err)
+	}
+	return nil
 	// other approach
+	//return f.buildGoRoutineFlow(err, ctx, tfAdapter)
+
+}
+
+func (f FlowReconciler) buildGoRoutineFlow(err error, ctx context.Context, tfAdapter TerraformAdapter) error {
 	err = f.reconcileResourceGroupFromTf(ctx, tfAdapter)
 	if err != nil {
 		return err
@@ -76,7 +80,8 @@ func (f FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha1
 	//if err := g.Wait(); err != nil {
 	//return err
 	//}
-	//g, ctx = errgroup.WithContext(ctx) //https://stackoverflow.com/questions/45500836/close-multiple-goroutine-if-an-error-occurs-in-one-in-go
+	//g, ctx := errgroup.WithContext(ctx) //https://stackoverflow.com/questions/45500836/close-multiple-goroutine-if-an-error-occurs-in-one-in-go
+	//err = fmt.Errorf("nat gateway error")
 	g.Go(func() error {
 		return f.reconcileSubnetsFromTf(ctx, tfAdapter, <-securityGroupCh, <-routeTableCh, <-natGatewayCh)
 	})
@@ -172,9 +177,18 @@ func flowTask(tf TerraformAdapter, fn func(context.Context, TerraformAdapter) er
 	}
 }
 
-func flowTaskWithReturn[T any](tf TerraformAdapter, fn func(context.Context, TerraformAdapter) (T, error)) flow.TaskFn {
+func flowTaskWithReturn[T any](tf TerraformAdapter, fn func(context.Context, TerraformAdapter) (T, error), ch chan<- T) flow.TaskFn {
 	return func(ctx context.Context) error {
-		_, err := fn(ctx, tf)
+		resp, err := fn(ctx, tf)
+		ch <- resp
+		return err
+	}
+}
+
+func flowTaskWithReturnAndInput[T any, K any](tf TerraformAdapter, input <-chan K, fn func(context.Context, TerraformAdapter, K) (T, error), ch chan<- T) flow.TaskFn {
+	return func(ctx context.Context) error {
+		resp, err := fn(ctx, tf, <-input)
+		ch <- resp
 		return err
 	}
 }
@@ -388,10 +402,27 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 	g := flow.NewGraph("Azure infrastructure reconcilation")
 	// do not need to check if should be created? (otherwise just updates resource)
 	resourceGroup := f.AddTask(g, "resource group creation", flowTask(tf, f.reconcileResourceGroupFromTf))
-	vnet := f.AddTask(g, "vnet creation", flowTask(tf, f.reconcileVnetFromTf), shared.Dependencies(resourceGroup))
-	routeTables := f.AddTask(g, "route table creation", flowTaskWithReturn(tf, f.reconcileRouteTablesFromTf), shared.Dependencies(vnet)) // TODO dependencies not inherent ?
-	f.AddTask(g, "security group creation", flowTaskWithReturn(tf, f.reconcileSecurityGroupsFromTf), shared.Dependencies(routeTables))
-	//f.AddTask(g,"subnet creation")
+	f.AddTask(g, "availability set creation", flowTask(tf, f.reconcileAvailabilitySetFromTf), shared.Dependencies(resourceGroup))
+
+	f.AddTask(g, "vnet creation", flowTask(tf, f.reconcileVnetFromTf), shared.Dependencies(resourceGroup))
+
+	ipCh := make(chan map[string]armnetwork.PublicIPAddressesClientCreateOrUpdateResponse, 1) // why not working without buf number?
+	f.AddTask(g, "ips creation", flowTaskWithReturn(tf, f.reconcilePublicIPsFromTf, ipCh), shared.Dependencies(resourceGroup))
+
+	routeTableCh := make(chan armnetwork.RouteTable, 1)
+	routeTable := f.AddTask(g, "route table creation", flowTaskWithReturn(tf, f.reconcileRouteTablesFromTf, routeTableCh), shared.Dependencies(resourceGroup)) // TODO dependencies not inherent ?
+
+	securityGroupCh := make(chan armnetwork.SecurityGroupsClientCreateOrUpdateResponse, 1)
+	securityGroup := f.AddTask(g, "security group creation", flowTaskWithReturn(tf, f.reconcileSecurityGroupsFromTf, securityGroupCh), shared.Dependencies(resourceGroup))
+
+	natGatewayCh := make(chan map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse, 1)
+	natGateway := f.AddTask(g, "nat gateway creation", flowTaskWithReturnAndInput(tf, ipCh, f.reconcileNatGatewaysFromTf, natGatewayCh))
+
+	f.AddTask(g, "subnet creation", func(tf TerraformAdapter, securityGroupCh chan armnetwork.SecurityGroupsClientCreateOrUpdateResponse, routeTableCh chan armnetwork.RouteTable, natGatewayCh chan map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse) flow.TaskFn {
+		return func(ctx context.Context) error {
+			return f.reconcileSubnetsFromTf(ctx, tf, <-securityGroupCh, <-routeTableCh, <-natGatewayCh)
+		}
+	}(tf, securityGroupCh, routeTableCh, natGatewayCh), shared.Dependencies(resourceGroup), shared.Dependencies(securityGroup), shared.Dependencies(routeTable), shared.Dependencies(natGateway)) // TODO not necessary to declare dependencies? coz channels ensure to wait
 	return g
 
 }

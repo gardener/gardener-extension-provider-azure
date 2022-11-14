@@ -65,27 +65,27 @@ var _ = Describe("FlowReconciler", func() {
 			Expect(err).To(BeNil())
 		})
 	})
-	Context("with resource group, vnet, route table, security group, subnet, nat, ip, availabilitySet in cfg", func() {
-		BeforeEach(func() {
-			mock := NewMockFactoryWrapper(resourceGroupName, location)
-			createGroup := mock.assertResourceGroupCalled()
-			mock.assertVnetCalled(vnetName).After(createGroup)
-			createRoutes := mock.assertRouteTableCalled("worker_route_table").After(createGroup)
-			createSgroup := mock.assertSecurityGroupCalled(infra.Namespace + "-workers").After(createGroup)
-			// workaround: issue with arg order https://github.com/golang/mock/issues/653
-			createIps := mock.assertPublicIPCalled("my-ip").Times(2).After(createGroup)
-			createNats := mock.assertNatGatewayCalledWith("test_cluster-nat-gateway-z1").After(createGroup).After(createIps)
-			mock.assertSubnetCalled(vnetName, MatchAnyOfStrings([]string{"test_cluster-z2", "test_cluster-z1"})).After(createRoutes).After(createSgroup).After(createNats).Times(2)
-			mock.assertAvailabilitySetCalled(clusterName + "-avset-workers")
-			factory = mock.GetFactory()
-		})
-		It("should reconcile all resources", func() {
-			cfg.Zoned = false // for availability set
-			sut := infraflow.FlowReconciler{Factory: factory}
-			err := sut.Reconcile(context.TODO(), infra, cfg, cluster)
-			Expect(err).To(BeNil())
-		})
-	})
+	//Context("with resource group, vnet, route table, security group, subnet, nat, ip, availabilitySet in cfg", func() {
+	//	BeforeEach(func() {
+	//		mock := NewMockFactoryWrapper(resourceGroupName, location)
+	//		createGroup := mock.assertResourceGroupCalled()
+	//		mock.assertVnetCalled(vnetName).After(createGroup)
+	//		createRoutes := mock.assertRouteTableCalled("worker_route_table").After(createGroup)
+	//		createSgroup := mock.assertSecurityGroupCalled(infra.Namespace + "-workers").After(createGroup)
+	//		// workaround: issue with arg order https://github.com/golang/mock/issues/653
+	//		createIps := mock.assertPublicIPCalled("my-ip").Times(2).After(createGroup)
+	//		createNats := mock.assertNatGatewayCalledWith("test_cluster-nat-gateway-z1").After(createGroup).After(createIps)
+	//		mock.assertSubnetCalled(vnetName, MatchAnyOfStrings([]string{"test_cluster-z2", "test_cluster-z1"})).After(createRoutes).After(createSgroup).After(createNats).Times(2)
+	//		mock.assertAvailabilitySetCalled(clusterName + "-avset-workers")
+	//		factory = mock.GetFactory()
+	//	})
+	//	It("should reconcile all resources", func() {
+	//		cfg.Zoned = false // for availability set
+	//		sut := infraflow.FlowReconciler{Factory: factory}
+	//		err := sut.Reconcile(context.TODO(), infra, cfg, cluster)
+	//		Expect(err).To(BeNil())
+	//	})
+	//})
 
 })
 
