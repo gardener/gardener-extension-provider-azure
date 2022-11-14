@@ -7,6 +7,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
@@ -32,8 +33,14 @@ func (f FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha1
 	}
 	securityGroupCh := make(chan armnetwork.SecurityGroupsClientCreateOrUpdateResponse)
 	routeTableCh := make(chan armnetwork.RouteTable)
-	natGatewayCh := make(chan map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse)
+	ipCh := make(chan map[string]armnetwork.PublicIPAddressesClientCreateOrUpdateResponse)
+	natGatewayCh := make(chan map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse, 2)
 	g, ctx := errgroup.WithContext(ctx) //https://stackoverflow.com/questions/45500836/close-multiple-goroutine-if-an-error-occurs-in-one-in-go
+	g.Go(func() error {
+		resp, err := f.reconcilePublicIPsFromTf(ctx, tfAdapter)
+		ipCh <- resp
+		return err
+	})
 	g.Go(func() error {
 		// TODO create ddosProtectionPlan before? tf only supports reference.. no creation
 		return f.reconcileVnetFromTf(ctx, tfAdapter)
@@ -41,26 +48,20 @@ func (f FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha1
 	g.Go(func() error {
 		resp, err := f.reconcileRouteTablesFromTf(ctx, tfAdapter)
 		routeTableCh <- resp
-		//if err == nil {
-		//	routeTableCh <- resp
-		//}
 		return err
 	})
 	g.Go(func() error {
 		resp, err := f.reconcileSecurityGroupsFromTf(ctx, tfAdapter)
 		securityGroupCh <- resp
-		//if err == nil {
-		//	securityGroupCh <- resp
-		//}
 		return err
 	})
 	g.Go(func() error {
-		resp, err := f.reconcileNatGateways(ctx, tfAdapter) // TODO map in subneter
-		natGatewayCh <- resp
+		return f.reconcileAvailabilitySetFromTf(ctx, tfAdapter)
+	})
+	g.Go(func() error {
+		resp, err := f.reconcileNatGatewaysFromTf(ctx, tfAdapter, <-ipCh)
+		natGatewayCh <- resp // TODO use https://betterprogramming.pub/how-to-broadcast-messages-in-go-using-channels-b68f42bdf32e https://stackoverflow.com/questions/36417199/how-to-broadcast-message-using-channel
 		//err = fmt.Errorf("nat gateway error")
-		//if err == nil {
-		//	natGatewayCh <- resp
-		//}
 		return err
 	})
 	// TODO split dependent tasks into seperate group, use ctx to cancel?
@@ -87,8 +88,53 @@ func (f FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha1
 //	}
 //}
 
+func (f FlowReconciler) reconcileAvailabilitySetFromTf(ctx context.Context, tf TerraformAdapter) error {
+	if tf.isCreate(TfAvailabilitySet) {
+		asClient, err := f.Factory.AvailabilitySet()
+		if err != nil {
+			return err
+		}
+		parameters := armcompute.AvailabilitySet{
+			Location: to.Ptr(tf.Region()),
+			Properties: &armcompute.AvailabilitySetProperties{
+				PlatformFaultDomainCount:  to.Ptr(tf.CountFaultDomains()),
+				PlatformUpdateDomainCount: to.Ptr(tf.CountUpdateDomains()),
+			},
+			SKU: &armcompute.SKU{Name: to.Ptr(string(armcompute.AvailabilitySetSKUTypesAligned))}, // equal to managed = True in tf
+		}
+		_, err = asClient.CreateOrUpdate(ctx, tf.ResourceGroup(), tf.AvailabilitySetName(), parameters)
+		return err
+	} else {
+		return nil
+	}
+}
+
+// res: subnet to ip mapping
+func (f FlowReconciler) reconcilePublicIPsFromTf(ctx context.Context, tf TerraformAdapter) (map[string]armnetwork.PublicIPAddressesClientCreateOrUpdateResponse, error) {
+	res := make(map[string]armnetwork.PublicIPAddressesClientCreateOrUpdateResponse)
+	client, err := f.Factory.PublicIP()
+	if err != nil {
+		return res, err
+	}
+	for _, ip := range tf.IPs() {
+		resp, err := client.CreateOrUpdate(ctx, tf.ResourceGroup(), ip.name, armnetwork.PublicIPAddress{
+			Location: to.Ptr(tf.Region()),
+			SKU:      &armnetwork.PublicIPAddressSKU{Name: to.Ptr(armnetwork.PublicIPAddressSKUNameStandard)},
+			Properties: &armnetwork.PublicIPAddressPropertiesFormat{
+				PublicIPAllocationMethod: to.Ptr(armnetwork.IPAllocationMethodStatic),
+			},
+			// TODO zones prop?
+		})
+		if err != nil {
+			return res, err
+		}
+		res[ip.subnetName] = resp
+	}
+	return res, nil
+}
+
 // res: subnet to nat mapping
-func (f FlowReconciler) reconcileNatGateways(ctx context.Context, tf TerraformAdapter) (res map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse, err error) {
+func (f FlowReconciler) reconcileNatGatewaysFromTf(ctx context.Context, tf TerraformAdapter, ips map[string]armnetwork.PublicIPAddressesClientCreateOrUpdateResponse) (res map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse, err error) {
 	res = make(map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse)
 	client, err := f.Factory.NatGateway()
 	if err != nil {
@@ -99,7 +145,11 @@ func (f FlowReconciler) reconcileNatGateways(ctx context.Context, tf TerraformAd
 		if !nat.enabled {
 			continue
 		}
-		resp, err := client.CreateOrUpdate(ctx, tf.ResourceGroup(), nat.name, armnetwork.NatGateway{})
+		resp, err := client.CreateOrUpdate(ctx, tf.ResourceGroup(), nat.name, armnetwork.NatGateway{
+			Properties: &armnetwork.NatGatewayPropertiesFormat{
+				PublicIPAddresses: []*armnetwork.SubResource{{ID: ips[nat.subnetName].ID}},
+			},
+		})
 		if err != nil {
 			return res, err
 		}
