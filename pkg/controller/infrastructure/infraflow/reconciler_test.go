@@ -23,35 +23,29 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type ProviderSecret struct {
-	Data internal.ClientAuth `yaml:"data"`
-}
-
 var _ = Describe("FlowReconciler", func() {
-	Context("with resource group, vnet, route table, security group, subnet, nat and ip in cfg", func() {
-		resourceGroupName := "t-i545428" // TODO what if resource group not given? by default Tf uses infra.Namespace
-		location := "westeurope"
-		vnetName := "vnet-i545428" // TODO test if not given default infra.Namespace
-		clusterName := "test_cluster"
-
-		cfg := &azure.InfrastructureConfig{
-			Zoned:         true, // no availability set
-			ResourceGroup: &azure.ResourceGroup{Name: resourceGroupName},
-			Networks: azure.NetworkConfig{
-				VNet: azure.VNet{
-					Name:          to.Ptr(vnetName),
-					ResourceGroup: to.Ptr(resourceGroupName),
-					CIDR:          to.Ptr("10.0.0.0/8"),
-				},
-				Workers:          to.Ptr("10.0.0.0/16"),
-				ServiceEndpoints: []string{},
-				Zones:            []azure.Zone{{Name: 1, CIDR: "10.0.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: true, IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip", ResourceGroup: resourceGroupName}}}}, {Name: 2, CIDR: "10.1.0.0/16"}}, // subnets
+	resourceGroupName := "t-i545428" // TODO what if resource group not given? by default Tf uses infra.Namespace
+	location := "westeurope"
+	vnetName := "vnet-i545428" // TODO test if not given default infra.Namespace
+	clusterName := "test_cluster"
+	infra := &v1alpha1.Infrastructure{Spec: v1alpha1.InfrastructureSpec{Region: location}, ObjectMeta: metav1.ObjectMeta{Namespace: clusterName}}
+	cfg := &azure.InfrastructureConfig{
+		ResourceGroup: &azure.ResourceGroup{Name: resourceGroupName},
+		Networks: azure.NetworkConfig{
+			VNet: azure.VNet{
+				Name:          to.Ptr(vnetName),
+				ResourceGroup: to.Ptr(resourceGroupName),
+				CIDR:          to.Ptr("10.0.0.0/8"),
 			},
-		}
-		infra := &v1alpha1.Infrastructure{Spec: v1alpha1.InfrastructureSpec{Region: location}, ObjectMeta: metav1.ObjectMeta{Namespace: clusterName}}
+			Workers:          to.Ptr("10.0.0.0/16"),
+			ServiceEndpoints: []string{},
+			Zones:            []azure.Zone{{Name: 1, CIDR: "10.0.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: true, IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip", ResourceGroup: resourceGroupName}}}}, {Name: 2, CIDR: "10.1.0.0/16"}}, // subnets
+		},
+	}
+	cluster := infrastructure.MakeCluster("11.0.0.0/16", "12.0.0.0/16", infra.Spec.Region, 1, 1)
 
-		cluster := infrastructure.MakeCluster("11.0.0.0/16", "12.0.0.0/16", infra.Spec.Region, 1, 1)
-		var factory *mockclient.MockNewFactory
+	var factory *mockclient.MockNewFactory
+	Context("with resource group, vnet, route table, security group, subnet, nat and ip in cfg", func() {
 		BeforeEach(func() {
 			mock := NewMockFactoryWrapper(resourceGroupName, location)
 			createGroup := mock.assertResourceGroupCalled()
@@ -65,35 +59,13 @@ var _ = Describe("FlowReconciler", func() {
 			factory = mock.GetFactory()
 		})
 		It("should reconcile all resources", func() {
+			cfg.Zoned = true // no availability set
 			sut := infraflow.FlowReconciler{Factory: factory}
 			err := sut.Reconcile(context.TODO(), infra, cfg, cluster)
 			Expect(err).To(BeNil())
 		})
 	})
 	Context("with resource group, vnet, route table, security group, subnet, nat, ip, availabilitySet in cfg", func() {
-		resourceGroupName := "t-i545428" // TODO what if resource group not given? by default Tf uses infra.Namespace
-		location := "westeurope"
-		vnetName := "vnet-i545428" // TODO test if not given default infra.Namespace
-		clusterName := "test_cluster"
-
-		cfg := &azure.InfrastructureConfig{
-			Zoned:         false, // for availability set
-			ResourceGroup: &azure.ResourceGroup{Name: resourceGroupName},
-			Networks: azure.NetworkConfig{
-				VNet: azure.VNet{
-					Name:          to.Ptr(vnetName),
-					ResourceGroup: to.Ptr(resourceGroupName),
-					CIDR:          to.Ptr("10.0.0.0/8"),
-				},
-				Workers:          to.Ptr("10.0.0.0/16"),
-				ServiceEndpoints: []string{},
-				Zones:            []azure.Zone{{Name: 1, CIDR: "10.0.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: true, IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip", ResourceGroup: resourceGroupName}}}}, {Name: 2, CIDR: "10.1.0.0/16"}}, // subnets
-			},
-		}
-		infra := &v1alpha1.Infrastructure{Spec: v1alpha1.InfrastructureSpec{Region: location}, ObjectMeta: metav1.ObjectMeta{Namespace: clusterName}}
-
-		cluster := infrastructure.MakeCluster("11.0.0.0/16", "12.0.0.0/16", infra.Spec.Region, 1, 1)
-		var factory *mockclient.MockNewFactory
 		BeforeEach(func() {
 			mock := NewMockFactoryWrapper(resourceGroupName, location)
 			createGroup := mock.assertResourceGroupCalled()
@@ -108,6 +80,7 @@ var _ = Describe("FlowReconciler", func() {
 			factory = mock.GetFactory()
 		})
 		It("should reconcile all resources", func() {
+			cfg.Zoned = false // for availability set
 			sut := infraflow.FlowReconciler{Factory: factory}
 			err := sut.Reconcile(context.TODO(), infra, cfg, cluster)
 			Expect(err).To(BeNil())
@@ -195,45 +168,9 @@ func (f *MockFactoryWrapper) assertPublicIPCalled(name string) *gomock.Call {
 	return ip.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, gomock.Any(), gomock.Any()).Return(armnetwork.PublicIPAddressesClientCreateOrUpdateResponse{PublicIPAddress: armnetwork.PublicIPAddress{ID: to.Ptr("ipId")}}, nil)
 }
 
-//var _ = Describe("FlowReconciler", func() {
-//	Context("with resource group and vnet in cfg", func() {
-//		resourceGroupName := "t-i545428"
-//		vnetName := "vnet-i545428"
-//		cfg := &azure.InfrastructureConfig{
-//			ResourceGroup: &azure.ResourceGroup{Name: resourceGroupName},
-//			Networks: azure.NetworkConfig{VNet: azure.VNet{Name: to.Ptr(vnetName),
-//				CIDR: to.Ptr("10.0.0.0/8")}},
-//		}
-//		infra := &v1alpha1.Infrastructure{Spec: v1alpha1.InfrastructureSpec{Region: "westeurope"}}
-
-//		auth := readAuthFromFile("/Users/I545428/dev/azsecret.yaml")
-//		factory, err := client.NewAzureClientFactoryV2(auth)
-//		Expect(err).To(BeNil())
-//		rclient, err := factory.ResourceGroup()
-//		Expect(err).To(BeNil())
-//		vclient, err := factory.Vnet()
-//		Expect(err).To(BeNil())
-//		It("should reconcile all resources", func() {
-//			sut := infraflow.FlowReconciler{Factory: factory}
-//			err = sut.Reconcile(context.TODO(), infra, cfg)
-//			Expect(err).To(BeNil())
-
-//			exists, err := rclient.IsExisting(context.TODO(), resourceGroupName)
-//			Expect(err).To(BeNil())
-//			Expect(exists).To(BeTrue())
-
-//			vnet, err := vclient.Get(context.TODO(), resourceGroupName, vnetName)
-//			Expect(err).To(BeNil())
-//			Expect(*vnet.Name).To(Equal(vnetName))
-//		})
-//		AfterEach(func() {
-//			err := rclient.Delete(context.TODO(), resourceGroupName)
-//			Expect(err).NotTo(HaveOccurred())
-//		})
-
-//	})
-
-//})
+type ProviderSecret struct {
+	Data internal.ClientAuth `yaml:"data"`
+}
 
 func readAuthFromFile(fileName string) internal.ClientAuth {
 	secret := ProviderSecret{}
