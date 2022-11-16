@@ -26,8 +26,11 @@ func (f FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha1
 	if err != nil {
 		return err
 	}
-
-	graph := f.buildReconcileGraph(ctx, infra, cfg, tfAdapter)
+	reconciler, err := NewTfReconciler(infra, cfg, cluster) // TODO pass type once into FlowReconciler constructor, decouples from tfAdapter
+	if err != nil {
+		return err
+	}
+	graph := f.buildReconcileGraph(ctx, infra, cfg, tfAdapter, reconciler)
 	fl := graph.Compile()
 	if err := fl.Run(ctx, flow.Opts{}); err != nil {
 		return flow.Causes(err)
@@ -202,6 +205,15 @@ func (f FlowReconciler) reconcileResourceGroupFromTf(ctx context.Context, tf Ter
 }
 
 func (f FlowReconciler) reconcileVnetFromTf(ctx context.Context, tf TerraformAdapter) error {
+	vnetClient, err := f.Factory.Vnet()
+	if err != nil {
+		return err
+	}
+	return ReconcileVnetFromTf(ctx, tf, vnetClient)
+	//log.Info("Created Vnet", *cfg.Networks.VNet.Name)
+}
+
+func ReconcileVnetFromTf(ctx context.Context, tf TerraformAdapter, vnetClient client.Vnet) error {
 	parameters := armnetwork.VirtualNetwork{
 		Location: to.Ptr(tf.Region()),
 		Properties: &armnetwork.VirtualNetworkPropertiesFormat{
@@ -223,13 +235,7 @@ func (f FlowReconciler) reconcileVnetFromTf(ctx context.Context, tf TerraformAda
 
 	rgroup := tf.ResourceGroup()
 	vnet := tf.Vnet()["name"].(string)
-
-	vnetClient, err := f.Factory.Vnet()
-	if err != nil {
-		return err
-	}
 	return vnetClient.CreateOrUpdate(ctx, rgroup, vnet, parameters)
-	//log.Info("Created Vnet", *cfg.Networks.VNet.Name)
 }
 
 //func (f FlowReconciler) reconcileVnet(infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig) flow.TaskFn {
@@ -397,13 +403,31 @@ func (f FlowReconciler) flowreconcileSubnetsFromTf(tf TerraformAdapter) flow.Tas
 	}
 }
 
+func flowTaskNew[T any](clientFn func() (T, error), reconcileFn func(ctx context.Context, client T) error) flow.TaskFn {
+	return func(ctx context.Context) error {
+		client, err := clientFn()
+		if err != nil {
+			return err
+		}
+		return reconcileFn(ctx, client)
+	}
+}
+
 // todo copy infra.spec part
-func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, tf TerraformAdapter) *flow.Graph {
+func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, tf TerraformAdapter, reconciler *TfReconciler) *flow.Graph {
 	g := flow.NewGraph("Azure infrastructure reconcilation")
 	// do not need to check if should be created? (otherwise just updates resource)
 	resourceGroup := f.AddTask(g, "resource group creation", flowTask(tf, f.reconcileResourceGroupFromTf))
 
-	f.AddTask(g, "vnet creation", flowTask(tf, f.reconcileVnetFromTf), shared.Dependencies(resourceGroup))
+	//vnetClient, err := f.Factory.Vnet() // TODO: good - fail before starting graph??
+	//if err != nil {
+	//	panic(err)
+	//}
+	//f.AddTask(g, "vnet creation", func(ctx context.Context) error {
+	//	return reconciler.Vnet(ctx, vnetClient)
+	//}, shared.Dependencies(resourceGroup))
+	// or wrapped
+	f.AddTask(g, "vnet creation", flowTaskNew(f.Factory.Vnet, reconciler.Vnet), shared.Dependencies(resourceGroup))
 
 	f.AddTask(g, "availability set creation", flowTask(tf, f.reconcileAvailabilitySetFromTf), shared.Dependencies(resourceGroup))
 
