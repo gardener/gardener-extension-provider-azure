@@ -402,12 +402,10 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 	g := flow.NewGraph("Azure infrastructure reconcilation")
 	// do not need to check if should be created? (otherwise just updates resource)
 	resourceGroup := f.AddTask(g, "resource group creation", flowTask(tf, f.reconcileResourceGroupFromTf))
-	f.AddTask(g, "availability set creation", flowTask(tf, f.reconcileAvailabilitySetFromTf), shared.Dependencies(resourceGroup))
 
 	f.AddTask(g, "vnet creation", flowTask(tf, f.reconcileVnetFromTf), shared.Dependencies(resourceGroup))
 
-	ipCh := make(chan map[string]armnetwork.PublicIPAddressesClientCreateOrUpdateResponse, 1) // why not working without buf number?
-	f.AddTask(g, "ips creation", flowTaskWithReturn(tf, f.reconcilePublicIPsFromTf, ipCh), shared.Dependencies(resourceGroup))
+	f.AddTask(g, "availability set creation", flowTask(tf, f.reconcileAvailabilitySetFromTf), shared.Dependencies(resourceGroup))
 
 	routeTableCh := make(chan armnetwork.RouteTable, 1)
 	routeTable := f.AddTask(g, "route table creation", flowTaskWithReturn(tf, f.reconcileRouteTablesFromTf, routeTableCh), shared.Dependencies(resourceGroup)) // TODO dependencies not inherent ?
@@ -415,8 +413,16 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 	securityGroupCh := make(chan armnetwork.SecurityGroupsClientCreateOrUpdateResponse, 1)
 	securityGroup := f.AddTask(g, "security group creation", flowTaskWithReturn(tf, f.reconcileSecurityGroupsFromTf, securityGroupCh), shared.Dependencies(resourceGroup))
 
+	ipCh := make(chan map[string]armnetwork.PublicIPAddressesClientCreateOrUpdateResponse, 1) // why not working without buf number?
+	f.AddTask(g, "ips creation", flowTaskWithReturn(tf, f.reconcilePublicIPsFromTf, ipCh), shared.Dependencies(resourceGroup))
+
 	natGatewayCh := make(chan map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse, 1)
-	natGateway := f.AddTask(g, "nat gateway creation", flowTaskWithReturnAndInput(tf, ipCh, f.reconcileNatGatewaysFromTf, natGatewayCh))
+	natGateway := f.AddTask(g, "nat gateway creation", func(ctx context.Context) error {
+		resp, err := f.reconcileNatGatewaysFromTf(ctx, tf, <-ipCh)
+		natGatewayCh <- resp
+		return err
+	})
+	//flowTaskWithReturnAndInput(tf, ipCh, f.reconcileNatGatewaysFromTf, natGatewayCh))
 
 	f.AddTask(g, "subnet creation", func(ctx context.Context) error {
 		return f.reconcileSubnetsFromTf(ctx, tf, <-securityGroupCh, <-routeTableCh, <-natGatewayCh)
