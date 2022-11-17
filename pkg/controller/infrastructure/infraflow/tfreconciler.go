@@ -70,3 +70,26 @@ func (f TfReconciler) AvailabilitySet(ctx context.Context) error {
 		return nil
 	}
 }
+
+func (f TfReconciler) PublicIPs(ctx context.Context) (map[string]armnetwork.PublicIPAddressesClientCreateOrUpdateResponse, error) {
+	res := make(map[string]armnetwork.PublicIPAddressesClientCreateOrUpdateResponse)
+	client, err := f.factory.PublicIP()
+	if err != nil {
+		return res, err
+	}
+	for _, ip := range f.tf.IPs() {
+		resp, err := client.CreateOrUpdate(ctx, f.tf.ResourceGroup(), ip.name, armnetwork.PublicIPAddress{
+			Location: to.Ptr(f.tf.Region()),
+			SKU:      &armnetwork.PublicIPAddressSKU{Name: to.Ptr(armnetwork.PublicIPAddressSKUNameStandard)},
+			Properties: &armnetwork.PublicIPAddressPropertiesFormat{
+				PublicIPAllocationMethod: to.Ptr(armnetwork.IPAllocationMethodStatic),
+			},
+			// TODO zones prop?
+		})
+		if err != nil {
+			return res, err
+		}
+		res[ip.subnetName] = resp
+	}
+	return res, nil
+}

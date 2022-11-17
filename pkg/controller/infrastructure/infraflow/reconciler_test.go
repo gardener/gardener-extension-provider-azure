@@ -52,7 +52,7 @@ var _ = Describe("FlowReconciler", func() {
 			//mock.assertVnetCalled(vnetName).After(createGroup) // no vnet creation since specifying existing vnet
 			createRoutes := mock.assertRouteTableCalled("worker_route_table").After(createGroup)
 			createSgroup := mock.assertSecurityGroupCalled(infra.Namespace + "-workers").After(createGroup)
-			createIps := mock.assertPublicIPCalled("my-ip").Times(2).After(createGroup)
+			createIps := mock.assertPublicIPCalled(MatchAnyOfStrings([]string{"test_cluster-nat-gateway-z1-ip", "test_cluster-nat-gateway-z2-ip"})).Times(2).After(createGroup)
 			// workaround: issue with arg order https://github.com/golang/mock/issues/653
 			createNats := mock.assertNatGatewayCalledWith("test_cluster-nat-gateway-z1").After(createGroup).After(createIps)
 			mock.assertSubnetCalled(vnetName, MatchAnyOfStrings([]string{"test_cluster-z2", "test_cluster-z1"})).After(createRoutes).After(createSgroup).After(createNats).Times(2)
@@ -172,10 +172,14 @@ func (f *MockFactoryWrapper) assertNatGatewayCalledWith(name string) *gomock.Cal
 	return nat.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, name, gomock.Any()).Return(armnetwork.NatGatewaysClientCreateOrUpdateResponse{NatGateway: armnetwork.NatGateway{ID: to.Ptr("natId")}}, nil)
 }
 
-func (f *MockFactoryWrapper) assertPublicIPCalled(name string) *gomock.Call {
+func (f *MockFactoryWrapper) assertPublicIPCalled(name interface{}) *gomock.Call {
+	return f.assertPublicIPCalledWithParameters(name, gomock.Any())
+}
+
+func (f *MockFactoryWrapper) assertPublicIPCalledWithParameters(name interface{}, params interface{}) *gomock.Call {
 	ip := mockclient.NewMockNewPublicIP(f.ctrl)
 	f.EXPECT().PublicIP().Return(ip, nil)
-	return ip.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, gomock.Any(), gomock.Any()).Return(armnetwork.PublicIPAddressesClientCreateOrUpdateResponse{PublicIPAddress: armnetwork.PublicIPAddress{ID: to.Ptr("ipId")}}, nil)
+	return ip.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, name, params).Return(armnetwork.PublicIPAddressesClientCreateOrUpdateResponse{PublicIPAddress: armnetwork.PublicIPAddress{ID: to.Ptr("ipId")}}, nil)
 }
 
 type ProviderSecret struct {

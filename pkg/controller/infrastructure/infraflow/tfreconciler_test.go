@@ -162,6 +162,42 @@ var _ = Describe("TfReconciler", func() {
 			sut.AvailabilitySet(context.TODO())
 		})
 	})
+	Describe("PublicIP reconcilation", func() {
+		// TODO assert multiple ips
+		cfg := newBasicConfig()
+		cfg.Networks.Zones = []azure.Zone{{Name: 1, CIDR: "10.0.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: true, IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip", ResourceGroup: resourceGroupName}}}}, {Name: 2, CIDR: "10.1.0.0/16"}}
+
+		//[]azure.Zone{
+		//	{
+		//		Name: 1, CIDR: "10.0.0.0/16",
+		//		NatGateway: &azure.ZonedNatGatewayConfig{
+		//			Enabled:     true,
+		//			IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip", ResourceGroup: resourceGroupName}},
+		//		},
+		//	},
+		//	{
+		//		Name: 2,
+		//		CIDR: "10.1.0.0/16",
+		//	},
+		//},
+		BeforeEach(func() {
+			mock := NewMockFactoryWrapper(resourceGroupName, location)
+			parameters := armnetwork.PublicIPAddress{
+				Location: to.Ptr(location),
+				SKU:      &armnetwork.PublicIPAddressSKU{Name: to.Ptr(armnetwork.PublicIPAddressSKUNameStandard)},
+				Properties: &armnetwork.PublicIPAddressPropertiesFormat{
+					PublicIPAllocationMethod: to.Ptr(armnetwork.IPAllocationMethodStatic),
+				},
+			}
+			mock.assertPublicIPCalledWithParameters(MatchAnyOfStrings([]string{"test_cluster-nat-gateway-z1-ip", "test_cluster-nat-gateway-z2-ip"}), parameters).Times(2)
+			factory = mock.GetFactory()
+		})
+		It("calls the client with correct public ip name and parameters", func() {
+			sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
+			Expect(err).ToNot(HaveOccurred())
+			sut.PublicIPs(context.TODO())
+		})
+	})
 
 })
 
