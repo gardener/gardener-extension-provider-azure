@@ -135,13 +135,21 @@ func (f *MockFactoryWrapper) assertResourceGroupCalled() *gomock.Call {
 func (f *MockFactoryWrapper) assertRouteTableCalled(name string) *gomock.Call {
 	rt := mockclient.NewMockRouteTables(f.ctrl)
 	f.EXPECT().RouteTables().Return(rt, nil)
-	return rt.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, name, gomock.Any()).Return(armnetwork.RouteTablesClientCreateOrUpdateResponse{}, nil)
+	return rt.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, name, gomock.Any()).Return(
+		armnetwork.RouteTablesClientCreateOrUpdateResponse{
+			RouteTable: armnetwork.RouteTable{
+				ID: to.Ptr("routeId"),
+			},
+		}, nil)
 }
 
 func (f *MockFactoryWrapper) assertSecurityGroupCalled(name string) *gomock.Call {
 	sg := mockclient.NewMockSecurityGroups(f.ctrl)
 	f.EXPECT().SecurityGroups().Return(sg, nil)
-	return sg.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, name, gomock.Any()).Return(armnetwork.SecurityGroupsClientCreateOrUpdateResponse{}, nil)
+	return sg.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, name, gomock.Any()).Return(armnetwork.SecurityGroupsClientCreateOrUpdateResponse{
+		SecurityGroup: armnetwork.SecurityGroup{
+			ID: to.Ptr("sgId"),
+		}}, nil)
 }
 
 func (f *MockFactoryWrapper) assertVnetCalled(name string) *gomock.Call {
