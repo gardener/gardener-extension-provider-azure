@@ -10,7 +10,6 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 	"github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -46,38 +45,35 @@ var _ = Describe("TfReconciler", func() {
 			},
 		},
 	}
+	var factory *mockclient.MockNewFactory
 
 	Context("reconcile new vnet with ddosId", func() {
 		ddosId := "ddos-plan-id"
 		cfg.Networks.VNet.DDosProtectionPlanID = to.Ptr(ddosId)
-		var vnet *mockclient.MockVnet
 		BeforeEach(func() {
-			ctrl := gomock.NewController(GinkgoT())
-			vnet = mockclient.NewMockVnet(ctrl)
-
-			parameters.Properties.EnableDdosProtection = to.Ptr(true)
+			mock := NewMockFactoryWrapper(resourceGroupName, location)
 			parameters.Properties.DdosProtectionPlan = &armnetwork.SubResource{ID: to.Ptr(ddosId)}
-			vnet.EXPECT().CreateOrUpdate(gomock.Any(), resourceGroupName, vnetName, parameters).Return(nil)
+			parameters.Properties.EnableDdosProtection = to.Ptr(true)
+			mock.assertVnetCalledWithParameters(vnetName, parameters)
+			factory = mock.GetFactory()
 		})
 		It("calls the client with the correct parameters: vnet name, resource group, region ,cidr, ddos id", func() {
-			sut, err := infraflow.NewTfReconciler(infra, cfg, cluster)
+			sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
 			Expect(err).ToNot(HaveOccurred())
-			sut.Vnet(context.TODO(), vnet)
+			sut.Vnet(context.TODO())
 		})
 	})
 	Context("reconcile new vnet without ddosId", func() {
-		var vnet *mockclient.MockVnet
 		BeforeEach(func() {
-			ctrl := gomock.NewController(GinkgoT())
-			vnet = mockclient.NewMockVnet(ctrl)
+			mock := NewMockFactoryWrapper(resourceGroupName, location)
 			parameters.Properties.AddressSpace.AddressPrefixes = []*string{cfg.Networks.VNet.CIDR}
-
-			vnet.EXPECT().CreateOrUpdate(gomock.Any(), resourceGroupName, vnetName, parameters).Return(nil)
+			mock.assertVnetCalledWithParameters(vnetName, parameters)
+			factory = mock.GetFactory()
 		})
 		It("calls the client with the correct parameters: vnet name, resource group, region ,cidr, ddos id", func() {
-			sut, err := infraflow.NewTfReconciler(infra, cfg, cluster)
+			sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
 			Expect(err).ToNot(HaveOccurred())
-			sut.Vnet(context.TODO(), vnet)
+			sut.Vnet(context.TODO())
 		})
 	})
 })

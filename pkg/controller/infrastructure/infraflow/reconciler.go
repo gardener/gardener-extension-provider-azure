@@ -26,7 +26,7 @@ func (f FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha1
 	if err != nil {
 		return err
 	}
-	reconciler, err := NewTfReconciler(infra, cfg, cluster) // TODO pass type once into FlowReconciler constructor, decouples from tfAdapter
+	reconciler, err := NewTfReconciler(infra, cfg, cluster, f.Factory) // TODO pass type once into FlowReconciler constructor, decouples from tfAdapter
 	if err != nil {
 		return err
 	}
@@ -420,7 +420,7 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 	resourceGroup := f.AddTask(g, "resource group creation", flowTask(tf, f.reconcileResourceGroupFromTf))
 
 	// or wrapped
-	f.AddTask(g, "vnet creation", flowTaskNew(f.Factory.Vnet, reconciler.Vnet), shared.Dependencies(resourceGroup))
+	f.AddTask(g, "vnet creation", reconciler.Vnet, shared.Dependencies(resourceGroup))
 
 	f.AddTask(g, "availability set creation", flowTask(tf, f.reconcileAvailabilitySetFromTf), shared.Dependencies(resourceGroup))
 
