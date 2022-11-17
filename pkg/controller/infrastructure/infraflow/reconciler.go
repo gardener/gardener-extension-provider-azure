@@ -465,7 +465,7 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 
 	natGatewayCh := make(chan map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse, 1)
 	natGateway := f.AddTask(g, "nat gateway creation", func(ctx context.Context) error {
-		resp, err := f.reconcileNatGatewaysFromTf(ctx, tf, <-ipCh)
+		resp, err := reconciler.NatGateways(ctx, <-ipCh)
 		natGatewayCh <- resp
 		return err
 	})
