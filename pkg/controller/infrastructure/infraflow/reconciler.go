@@ -261,17 +261,23 @@ func ReconcileVnetFromTf(ctx context.Context, tf TerraformAdapter, vnetClient cl
 
 func (f FlowReconciler) reconcileRouteTablesFromTf(ctx context.Context, tf TerraformAdapter) (armnetwork.RouteTable, error) {
 	rclient, err := f.Factory.RouteTables()
-	routeTableName := "worker_route_table" // #TODO set in infraconfig? (default injection)
 	if err != nil {
 		return armnetwork.RouteTable{}, err
 	}
+	// #TODO set in infraconfig? (default injection)
+	//Properties: &armnetwork.RouteTablePropertiesFormat{
+	//},
+	//log.Info("Created Vnet", *cfg.Networks.VNet.Name)
+	return ReconcileRouteTablesFromTf(tf, rclient, ctx)
+}
+
+func ReconcileRouteTablesFromTf(tf TerraformAdapter, rclient client.RouteTables, ctx context.Context) (armnetwork.RouteTable, error) {
+	routeTableName := "worker_route_table"
 	parameters := armnetwork.RouteTable{
 		Location: to.Ptr(tf.Region()),
-		//Properties: &armnetwork.RouteTablePropertiesFormat{
-		//},
 	}
 	resp, err := rclient.CreateOrUpdate(ctx, tf.ResourceGroup(), routeTableName, parameters)
-	//log.Info("Created Vnet", *cfg.Networks.VNet.Name)
+
 	return resp.RouteTable, err
 }
 

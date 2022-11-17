@@ -41,68 +41,87 @@ var _ = Describe("TfReconciler", func() {
 	vnetName := infra.Namespace          //if not specified this is assumed name "vnet-i545428"
 	cluster := infrastructure.MakeCluster("11.0.0.0/16", "12.0.0.0/16", infra.Spec.Region, 1, 1)
 	var factory *mockclient.MockNewFactory
+	Describe("Vnet reconcilation", func() {
+		Context("new vnet", func() {
+			cfg := newBasicConfig()
+			It("calls the client with the correct parameters: vnet name, resource group, region ,cidr", func() {
+				mock := NewMockFactoryWrapper(resourceGroupName, location)
+				parameters := armnetwork.VirtualNetwork{
+					Location: to.Ptr(location),
+					Properties: &armnetwork.VirtualNetworkPropertiesFormat{
+						AddressSpace: &armnetwork.AddressSpace{
+							AddressPrefixes: []*string{cfg.Networks.VNet.CIDR},
+						},
+					},
+				}
+				mock.assertVnetCalledWithParameters(vnetName, parameters)
+				factory = mock.GetFactory()
 
-	Context("reconcile new vnet with ddosId", func() {
-		cfg := newBasicConfig()
-		ddosId := "ddos-plan-id"
-		cfg.Networks.VNet.DDosProtectionPlanID = to.Ptr(ddosId)
-		BeforeEach(func() {
-			mock := NewMockFactoryWrapper(resourceGroupName, location)
-			parameters := armnetwork.VirtualNetwork{
-				Location: to.Ptr(location),
-				Properties: &armnetwork.VirtualNetworkPropertiesFormat{
-					AddressSpace: &armnetwork.AddressSpace{
-						AddressPrefixes: []*string{cfg.Networks.VNet.CIDR},
-					},
-				},
-			}
-			parameters.Properties.DdosProtectionPlan = &armnetwork.SubResource{ID: to.Ptr(ddosId)}
-			parameters.Properties.EnableDdosProtection = to.Ptr(true)
-			mock.assertVnetCalledWithParameters(vnetName, parameters)
-			factory = mock.GetFactory()
+				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
+				Expect(err).ToNot(HaveOccurred())
+				sut.Vnet(context.TODO())
+			})
+			Context("with ddosId", func() {
+				ddosId := "ddos-plan-id"
+				cfg := newBasicConfig()
+				cfg.Networks.VNet.DDosProtectionPlanID = to.Ptr(ddosId)
+				It("calls the client with the correct parameters: vnet name, resource group, region ,cidr, ddos id", func() {
+					mock := NewMockFactoryWrapper(resourceGroupName, location)
+					parameters := armnetwork.VirtualNetwork{
+						Location: to.Ptr(location),
+						Properties: &armnetwork.VirtualNetworkPropertiesFormat{
+							AddressSpace: &armnetwork.AddressSpace{
+								AddressPrefixes: []*string{cfg.Networks.VNet.CIDR},
+							},
+						},
+					}
+					parameters.Properties.DdosProtectionPlan = &armnetwork.SubResource{ID: to.Ptr(ddosId)}
+					parameters.Properties.EnableDdosProtection = to.Ptr(true)
+					mock.assertVnetCalledWithParameters(vnetName, parameters)
+					factory = mock.GetFactory()
+
+					sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
+					Expect(err).ToNot(HaveOccurred())
+					sut.Vnet(context.TODO())
+				})
+
+			})
 		})
-		It("calls the client with the correct parameters: vnet name, resource group, region ,cidr, ddos id", func() {
-			sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
-			Expect(err).ToNot(HaveOccurred())
-			sut.Vnet(context.TODO())
-		})
-	})
-	Context("reconcile new vnet without ddosId", func() {
-		cfg := newBasicConfig()
-		BeforeEach(func() {
-			mock := NewMockFactoryWrapper(resourceGroupName, location)
-			parameters := armnetwork.VirtualNetwork{
-				Location: to.Ptr(location),
-				Properties: &armnetwork.VirtualNetworkPropertiesFormat{
-					AddressSpace: &armnetwork.AddressSpace{
-						AddressPrefixes: []*string{cfg.Networks.VNet.CIDR},
-					},
-				},
-			}
-			parameters.Properties.AddressSpace.AddressPrefixes = []*string{cfg.Networks.VNet.CIDR}
-			mock.assertVnetCalledWithParameters(vnetName, parameters)
-			factory = mock.GetFactory()
-		})
-		It("calls the client with the correct parameters: vnet name, resource group, region ,cidr", func() {
-			sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
-			Expect(err).ToNot(HaveOccurred())
-			sut.Vnet(context.TODO())
+		Context("with existing vnet", func() {
+			cfg := newBasicConfig()
+			cfg.Networks.VNet.Name = to.Ptr("existing-vnet")
+			cfg.Networks.VNet.ResourceGroup = to.Ptr("existing-rg")
+			It("does not reconcile", func() {
+				mock := NewMockFactoryWrapper(resourceGroupName, location)
+				factory = mock.GetFactory()
+
+				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
+				Expect(err).ToNot(HaveOccurred())
+				sut.Vnet(context.TODO())
+			})
 		})
 	})
-	Context("with existing vnet", func() {
+	Describe("Route table reconcilation", func() {
 		cfg := newBasicConfig()
-		cfg.Networks.VNet.Name = to.Ptr("existing-vnet")
-		cfg.Networks.VNet.ResourceGroup = to.Ptr("existing-rg")
-		BeforeEach(func() {
+		It("calls the client with correct route table name", func() {
 			mock := NewMockFactoryWrapper(resourceGroupName, location)
+			//parameters := armnetwork.RouteTable{
+			//	Location:   to.Ptr(location),
+			//	Properties: &armnetwork.RouteTablePropertiesFormat{
+			//		//AddressSpace: &armnetwork.AddressSpace{
+			//		//	AddressPrefixes: []*string{cfg.Networks.VNet.CIDR},
+			//		//},
+			//	},
+			//}
+			mock.assertRouteTableCalled("worker_route_table")
 			factory = mock.GetFactory()
-		})
-		It("does not reconcile", func() {
+
 			sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
 			Expect(err).ToNot(HaveOccurred())
-			sut.Vnet(context.TODO())
+			sut.RouteTables(context.TODO())
 		})
 	})
+
 })
 
 type MatchParameters (armnetwork.VirtualNetwork)
