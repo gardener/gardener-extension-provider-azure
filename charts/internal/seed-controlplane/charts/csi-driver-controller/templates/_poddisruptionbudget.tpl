@@ -1,3 +1,5 @@
+{{- define "csi-driver-controller.poddisruptionbudget" -}}
+---
 {{- if semverCompare ">= 1.21-0" .Capabilities.KubeVersion.GitVersion }}
 apiVersion: policy/v1
 {{- else }}
@@ -5,12 +7,15 @@ apiVersion: policy/v1beta1
 {{- end }}
 kind: PodDisruptionBudget
 metadata:
-  name: {{ include "name" . }}
+  name: csi-driver-controller-{{ .role }}
   namespace: {{ .Release.Namespace }}
   labels:
-{{ include "labels" . | indent 4 }}
+    app: csi
+    role: controller-{{ .role }}
 spec:
   maxUnavailable: 1
   selector:
     matchLabels:
-{{ include "labels" . | indent 6 }}
+      app: csi
+      role: controller-{{ .role }}
+{{- end -}}
