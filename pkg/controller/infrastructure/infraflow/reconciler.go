@@ -473,7 +473,7 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 
 	f.AddTask(g, "subnet creation", func(ctx context.Context) error {
 		//whiteboard["security"]
-		return f.reconcileSubnetsFromTf(ctx, tf, <-securityGroupCh, <-routeTableCh, <-natGatewayCh)
+		return reconciler.Subnets(ctx, <-securityGroupCh, <-routeTableCh, <-natGatewayCh)
 	}, shared.Dependencies(resourceGroup), shared.Dependencies(securityGroup), shared.Dependencies(routeTable), shared.Dependencies(natGateway)) // TODO not necessary to declare dependencies? coz channels ensure to wait
 	return g
 
