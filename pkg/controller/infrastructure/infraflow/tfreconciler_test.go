@@ -245,7 +245,7 @@ var _ = Describe("TfReconciler", func() {
 
 				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
-				sut.Subnets(context.TODO(), armnetwork.SecurityGroupsClientCreateOrUpdateResponse{}, armnetwork.RouteTable{}, map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse{})
+				sut.Subnets(context.TODO(), armnetwork.SecurityGroup{}, armnetwork.RouteTable{}, map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse{})
 			})
 		})
 

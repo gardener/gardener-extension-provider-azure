@@ -118,7 +118,7 @@ func (f TfReconciler) NatGateways(ctx context.Context, ips map[string]armnetwork
 	return res, nil
 }
 
-func (f TfReconciler) Subnets(ctx context.Context, securityGroup armnetwork.SecurityGroupsClientCreateOrUpdateResponse, routeTable armnetwork.RouteTable, nats map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse) (err error) {
+func (f TfReconciler) Subnets(ctx context.Context, securityGroup armnetwork.SecurityGroup, routeTable armnetwork.RouteTable, nats map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse) (err error) {
 	subnetClient, err := f.factory.Subnet()
 	if err != nil {
 		return err

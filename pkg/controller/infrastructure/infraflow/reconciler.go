@@ -15,6 +15,13 @@ import (
 	"k8s.io/utils/pointer"
 )
 
+const (
+	RouteTableID  = "route_table_id"
+	SGroupID      = "security_group_id"
+	NatGatewayMap = "nategateway_map"
+	PublicIPMap   = "public_ip_map"
+)
+
 type FlowReconciler struct {
 	Factory client.NewFactory
 }
@@ -144,54 +151,50 @@ func flowTaskNew[T any](clientFn func() (T, error), reconcileFn func(ctx context
 
 // todo copy infra.spec part
 func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, tf TerraformAdapter, reconciler *TfReconciler) *flow.Graph {
+	whiteboard := shared.NewWhiteboard()
+
 	g := flow.NewGraph("Azure infrastructure reconcilation")
-	// do not need to check if should be created? (otherwise just updates resource)
 	resourceGroup := f.AddTask(g, "resource group creation", flowTask(tf, f.reconcileResourceGroupFromTf))
 
-	// or wrapped
 	f.AddTask(g, "vnet creation", reconciler.Vnet, shared.Dependencies(resourceGroup))
 
 	f.AddTask(g, "availability set creation", reconciler.AvailabilitySet, shared.Dependencies(resourceGroup))
-	//flowTask(tf, f.reconcileAvailabilitySetFromTf), shared.Dependencies(resourceGroup))
 
-	routeTableCh := make(chan armnetwork.RouteTable, 1)
 	routeTable := f.AddTask(g, "route table creation", func(ctx context.Context) error {
 		routeTable, err := reconciler.RouteTables(ctx)
-		// TODO write to whiteboard
-		routeTableCh <- routeTable
+		whiteboard.Set(RouteTableID, *routeTable.ID)
 		return err
 	}, shared.Dependencies(resourceGroup))
-	//flowTaskWithReturn(tf, f.reconcileRouteTablesFromTf, routeTableCh), shared.Dependencies(resourceGroup))
 
-	securityGroupCh := make(chan armnetwork.SecurityGroupsClientCreateOrUpdateResponse, 1)
 	securityGroup := f.AddTask(g, "security group creation", func(ctx context.Context) error {
 		securityGroup, err := reconciler.SecurityGroups(ctx)
-		securityGroupCh <- securityGroup
+		whiteboard.Set(SGroupID, *securityGroup.ID)
 		return err
 	}, shared.Dependencies(resourceGroup))
 
-	//flowTaskWithReturn(tf, f.reconcileSecurityGroupsFromTf, securityGroupCh), shared.Dependencies(resourceGroup))
-
-	ipCh := make(chan map[string]armnetwork.PublicIPAddressesClientCreateOrUpdateResponse, 1) // why not working without buf number?
-	f.AddTask(g, "ips creation", func(ctx context.Context) error {
+	ip := f.AddTask(g, "ips creation", func(ctx context.Context) error {
 		ips, err := reconciler.PublicIPs(ctx)
-		ipCh <- ips
+		whiteboard.SetObject(PublicIPMap, ips)
 		return err
 	}, shared.Dependencies(resourceGroup))
-	//flowTaskWithReturn(tf, f.reconcilePublicIPsFromTf, ipCh), shared.Dependencies(resourceGroup))
 
-	natGatewayCh := make(chan map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse, 1)
 	natGateway := f.AddTask(g, "nat gateway creation", func(ctx context.Context) error {
-		resp, err := reconciler.NatGateways(ctx, <-ipCh)
-		natGatewayCh <- resp
+		ips := whiteboard.GetObject(PublicIPMap).(map[string]armnetwork.PublicIPAddressesClientCreateOrUpdateResponse)
+		resp, err := reconciler.NatGateways(ctx, ips)
+		whiteboard.SetObject(NatGatewayMap, resp)
 		return err
-	})
-	//flowTaskWithReturnAndInput(tf, ipCh, f.reconcileNatGatewaysFromTf, natGatewayCh))
+	}, shared.Dependencies(ip))
 
 	f.AddTask(g, "subnet creation", func(ctx context.Context) error {
-		//whiteboard["security"]
-		return reconciler.Subnets(ctx, <-securityGroupCh, <-routeTableCh, <-natGatewayCh)
-	}, shared.Dependencies(resourceGroup), shared.Dependencies(securityGroup), shared.Dependencies(routeTable), shared.Dependencies(natGateway)) // TODO not necessary to declare dependencies? coz channels ensure to wait
+		routeTable := armnetwork.RouteTable{
+			ID: whiteboard.Get(RouteTableID),
+		}
+		securityGroup := armnetwork.SecurityGroup{
+			ID: whiteboard.Get(SGroupID),
+		}
+		natGateway := whiteboard.GetObject(NatGatewayMap).(map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse)
+		return reconciler.Subnets(ctx, securityGroup, routeTable, natGateway)
+	}, shared.Dependencies(resourceGroup), shared.Dependencies(securityGroup), shared.Dependencies(routeTable), shared.Dependencies(natGateway))
 	return g
 
 }
