@@ -3,6 +3,7 @@ package infraflow
 import (
 	"context"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	"github.com/gardener/gardener/extensions/pkg/controller"
@@ -29,4 +30,12 @@ func (f TfReconciler) Vnet(ctx context.Context) error {
 	} else {
 		return nil
 	}
+}
+
+func (f TfReconciler) RouteTables(ctx context.Context) (armnetwork.RouteTable, error) {
+	client, err := f.factory.RouteTables()
+	if err != nil {
+		return armnetwork.RouteTable{}, err
+	}
+	return ReconcileRouteTablesFromTf(f.tf, client, ctx)
 }
