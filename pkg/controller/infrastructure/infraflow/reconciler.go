@@ -456,7 +456,12 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 	//flowTaskWithReturn(tf, f.reconcileSecurityGroupsFromTf, securityGroupCh), shared.Dependencies(resourceGroup))
 
 	ipCh := make(chan map[string]armnetwork.PublicIPAddressesClientCreateOrUpdateResponse, 1) // why not working without buf number?
-	f.AddTask(g, "ips creation", flowTaskWithReturn(tf, f.reconcilePublicIPsFromTf, ipCh), shared.Dependencies(resourceGroup))
+	f.AddTask(g, "ips creation", func(ctx context.Context) error {
+		ips, err := reconciler.PublicIPs(ctx)
+		ipCh <- ips
+		return err
+	}, shared.Dependencies(resourceGroup))
+	//flowTaskWithReturn(tf, f.reconcilePublicIPsFromTf, ipCh), shared.Dependencies(resourceGroup))
 
 	natGatewayCh := make(chan map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse, 1)
 	natGateway := f.AddTask(g, "nat gateway creation", func(ctx context.Context) error {
