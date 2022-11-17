@@ -214,12 +214,38 @@ var _ = Describe("TfReconciler", func() {
 				//		},
 				//	},
 				//}
-				mock.assertNatGatewayCalledWith("test_cluster-nat-gateway-z1")
+				mock.assertNatGatewayCalledWith("test_cluster-nat-gateway-z1") // TODO param check
 				factory = mock.GetFactory()
 
 				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
 				sut.NatGateways(context.TODO(), map[string]armnetwork.PublicIPAddressesClientCreateOrUpdateResponse{})
+			})
+		})
+
+	})
+	Describe("Subnet reconcilation", func() {
+		cfg := newBasicConfig()
+		Context("with 2 zones", func() {
+			cfg.Networks.Zones = []azure.Zone{{Name: 1, CIDR: "10.0.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: true, IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip", ResourceGroup: resourceGroupName}}}}, {Name: 2, CIDR: "10.1.0.0/16"}}
+			It("calls the client with correct nat gateway name and parameters", func() {
+				mock := NewMockFactoryWrapper(resourceGroupName, location)
+				//parameters := armnetwork.NatGateway{
+				//	Location: to.Ptr(location),
+				//	Properties: &armnetwork.NatGatewayPropertiesFormat{
+				//		PublicIPAddresses: []*armnetwork.SubResource{
+				//			{
+				//				ID: to.Ptr("/subscriptions/123/resourceGroups/test_rg/providers/Microsoft.Network/publicIPAddresses/test_cluster-nat-gateway-z1-ip"),
+				//			},
+				//		},
+				//	},
+				//}
+				mock.assertSubnetCalled(vnetName, MatchAnyOfStrings([]string{"test_cluster-z2", "test_cluster-z1"})).Times(2)
+				factory = mock.GetFactory()
+
+				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
+				Expect(err).ToNot(HaveOccurred())
+				sut.Subnets(context.TODO(), armnetwork.SecurityGroupsClientCreateOrUpdateResponse{}, armnetwork.RouteTable{}, map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse{})
 			})
 		})
 

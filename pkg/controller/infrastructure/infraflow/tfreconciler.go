@@ -117,3 +117,39 @@ func (f TfReconciler) NatGateways(ctx context.Context, ips map[string]armnetwork
 	}
 	return res, nil
 }
+
+func (f TfReconciler) Subnets(ctx context.Context, securityGroup armnetwork.SecurityGroupsClientCreateOrUpdateResponse, routeTable armnetwork.RouteTable, nats map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse) (err error) {
+	subnetClient, err := f.factory.Subnet()
+	if err != nil {
+		return err
+	}
+	subnets := f.tf.Subnets()
+	for _, subnet := range subnets {
+		endpoints := make([]*armnetwork.ServiceEndpointPropertiesFormat, 0)
+		for _, endpoint := range subnet.serviceEndpoints {
+			endpoints = append(endpoints, &armnetwork.ServiceEndpointPropertiesFormat{
+				Service: to.Ptr(endpoint),
+			})
+		}
+
+		parameters := armnetwork.Subnet{
+			//Name: to.Ptr(subnet.name),
+			Properties: &armnetwork.SubnetPropertiesFormat{
+				AddressPrefix:    to.Ptr(subnet.cidr),
+				ServiceEndpoints: endpoints, // TODO associate security group?, route table?
+				NetworkSecurityGroup: &armnetwork.SecurityGroup{
+					ID: securityGroup.ID,
+				},
+				RouteTable: &armnetwork.RouteTable{
+					ID: routeTable.ID,
+				},
+				NatGateway: &armnetwork.SubResource{
+					ID: nats[subnet.name].ID,
+				},
+			},
+		}
+		err = subnetClient.CreateOrUpdate(ctx, f.tf.ResourceGroup(), f.tf.Vnet().Name(), subnet.name, parameters)
+	}
+	//log.Info("Created Vnet", *cfg.Networks.VNet.Name)
+	return err
+}
