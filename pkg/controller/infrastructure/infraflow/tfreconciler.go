@@ -19,5 +19,9 @@ func NewTfReconciler(infra *extensionsv1alpha1.Infrastructure, cfg *azure.Infras
 }
 
 func (f TfReconciler) Vnet(ctx context.Context, vnetClient client.Vnet) error {
-	return ReconcileVnetFromTf(ctx, f.tf, vnetClient)
+	if f.tf.isCreate(TfVnet) {
+		return ReconcileVnetFromTf(ctx, f.tf, vnetClient)
+	} else {
+		return nil
+	}
 }

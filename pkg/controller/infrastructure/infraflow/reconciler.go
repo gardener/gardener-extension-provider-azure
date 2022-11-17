@@ -419,20 +419,13 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 	// do not need to check if should be created? (otherwise just updates resource)
 	resourceGroup := f.AddTask(g, "resource group creation", flowTask(tf, f.reconcileResourceGroupFromTf))
 
-	//vnetClient, err := f.Factory.Vnet() // TODO: good - fail before starting graph??
-	//if err != nil {
-	//	panic(err)
-	//}
-	//f.AddTask(g, "vnet creation", func(ctx context.Context) error {
-	//	return reconciler.Vnet(ctx, vnetClient)
-	//}, shared.Dependencies(resourceGroup))
 	// or wrapped
 	f.AddTask(g, "vnet creation", flowTaskNew(f.Factory.Vnet, reconciler.Vnet), shared.Dependencies(resourceGroup))
 
 	f.AddTask(g, "availability set creation", flowTask(tf, f.reconcileAvailabilitySetFromTf), shared.Dependencies(resourceGroup))
 
 	routeTableCh := make(chan armnetwork.RouteTable, 1)
-	routeTable := f.AddTask(g, "route table creation", flowTaskWithReturn(tf, f.reconcileRouteTablesFromTf, routeTableCh), shared.Dependencies(resourceGroup)) // TODO dependencies not inherent ?
+	routeTable := f.AddTask(g, "route table creation", flowTaskWithReturn(tf, f.reconcileRouteTablesFromTf, routeTableCh), shared.Dependencies(resourceGroup))
 
 	securityGroupCh := make(chan armnetwork.SecurityGroupsClientCreateOrUpdateResponse, 1)
 	securityGroup := f.AddTask(g, "security group creation", flowTaskWithReturn(tf, f.reconcileSecurityGroupsFromTf, securityGroupCh), shared.Dependencies(resourceGroup))
@@ -449,6 +442,7 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 	//flowTaskWithReturnAndInput(tf, ipCh, f.reconcileNatGatewaysFromTf, natGatewayCh))
 
 	f.AddTask(g, "subnet creation", func(ctx context.Context) error {
+		//whiteboard["security"]
 		return f.reconcileSubnetsFromTf(ctx, tf, <-securityGroupCh, <-routeTableCh, <-natGatewayCh)
 	}, shared.Dependencies(resourceGroup), shared.Dependencies(securityGroup), shared.Dependencies(routeTable), shared.Dependencies(natGateway)) // TODO not necessary to declare dependencies? coz channels ensure to wait
 	return g

@@ -18,49 +18,81 @@ import (
 
 // will also work for new Reonciler
 var _ = Describe("TfReconciler", func() {
-	Context("reconcile vnet with ddosId", func() {
-		resourceGroupName := "t-i545428" // TODO what if resource group not given? by default Tf uses infra.Namespace
-		location := "westeurope"
-		vnetName := "vnet-i545428"
-		clusterName := "test_cluster"
-		ddosId := "ddos-plan-id"
-		infra := &v1alpha1.Infrastructure{Spec: v1alpha1.InfrastructureSpec{Region: location}, ObjectMeta: metav1.ObjectMeta{Namespace: clusterName}}
-		cfg := &azure.InfrastructureConfig{
-			ResourceGroup: &azure.ResourceGroup{Name: resourceGroupName},
-			Networks: azure.NetworkConfig{
-				VNet: azure.VNet{
-					Name:                 to.Ptr(vnetName),
-					ResourceGroup:        to.Ptr(resourceGroupName),
-					CIDR:                 to.Ptr("10.0.0.0/8"),
-					DDosProtectionPlanID: to.Ptr(ddosId),
-				},
-				Workers:          to.Ptr("10.0.0.0/16"),
-				ServiceEndpoints: []string{},
-				Zones:            []azure.Zone{{Name: 1, CIDR: "10.0.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: true, IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip", ResourceGroup: resourceGroupName}}}}, {Name: 2, CIDR: "10.1.0.0/16"}}, // subnets
+	location := "westeurope"
+	clusterName := "test_cluster"
+	infra := &v1alpha1.Infrastructure{Spec: v1alpha1.InfrastructureSpec{Region: location}, ObjectMeta: metav1.ObjectMeta{Namespace: clusterName}}
+	resourceGroupName := infra.Namespace //if not specified this is assumed name "t-i545428" // TODO what if resource group not given? by default Tf uses infra.Namespace
+	vnetName := infra.Namespace          //if not specified this is assumed name "vnet-i545428"
+	cluster := infrastructure.MakeCluster("11.0.0.0/16", "12.0.0.0/16", infra.Spec.Region, 1, 1)
+	cfg := &azure.InfrastructureConfig{
+		//ResourceGroup: &azure.ResourceGroup{Name: resourceGroupName},
+		Networks: azure.NetworkConfig{
+			VNet: azure.VNet{
+				//Name:          to.Ptr(vnetName), // only specify when using existing group
+				//ResourceGroup: to.Ptr(resourceGroupName),
+				CIDR: to.Ptr("10.0.0.0/8"),
 			},
-		}
-		cluster := infrastructure.MakeCluster("11.0.0.0/16", "12.0.0.0/16", infra.Spec.Region, 1, 1)
+			Workers:          to.Ptr("10.0.0.0/16"),
+			ServiceEndpoints: []string{},
+			/// TODO how to specify multi subnet.. resource group not needed?
+			//Zones:            []azure.Zone{{Name: 1, CIDR: "10.0.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: true, IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip", ResourceGroup: resourceGroupName}}}}, {Name: 2, CIDR: "10.1.0.0/16"}}, // subnets
+		},
+	}
+	parameters := armnetwork.VirtualNetwork{
+		Location: to.Ptr(location),
+		Properties: &armnetwork.VirtualNetworkPropertiesFormat{
+			AddressSpace: &armnetwork.AddressSpace{
+				AddressPrefixes: []*string{cfg.Networks.VNet.CIDR},
+			},
+		},
+	}
 
+	Context("reconcile new vnet with ddosId", func() {
+		ddosId := "ddos-plan-id"
+		cfg.Networks.VNet.DDosProtectionPlanID = to.Ptr(ddosId)
 		var vnet *mockclient.MockVnet
 		BeforeEach(func() {
 			ctrl := gomock.NewController(GinkgoT())
 			vnet = mockclient.NewMockVnet(ctrl)
-			parameters := armnetwork.VirtualNetwork{
-				Location: to.Ptr(location),
-				Properties: &armnetwork.VirtualNetworkPropertiesFormat{
-					AddressSpace: &armnetwork.AddressSpace{},
-				},
-			}
-			parameters.Properties.AddressSpace.AddressPrefixes = []*string{cfg.Networks.VNet.CIDR}
 
 			parameters.Properties.EnableDdosProtection = to.Ptr(true)
 			parameters.Properties.DdosProtectionPlan = &armnetwork.SubResource{ID: to.Ptr(ddosId)}
-			vnet.EXPECT().CreateOrUpdate(gomock.Any(), resourceGroupName, vnetName, gomock.Any()).Return(nil)
+			vnet.EXPECT().CreateOrUpdate(gomock.Any(), resourceGroupName, vnetName, parameters).Return(nil)
 		})
-		It("", func() {
+		It("calls the client with the correct parameters: vnet name, resource group, region ,cidr, ddos id", func() {
+			sut, err := infraflow.NewTfReconciler(infra, cfg, cluster)
+			Expect(err).ToNot(HaveOccurred())
+			sut.Vnet(context.TODO(), vnet)
+		})
+	})
+	Context("reconcile new vnet without ddosId", func() {
+		var vnet *mockclient.MockVnet
+		BeforeEach(func() {
+			ctrl := gomock.NewController(GinkgoT())
+			vnet = mockclient.NewMockVnet(ctrl)
+			parameters.Properties.AddressSpace.AddressPrefixes = []*string{cfg.Networks.VNet.CIDR}
+
+			vnet.EXPECT().CreateOrUpdate(gomock.Any(), resourceGroupName, vnetName, parameters).Return(nil)
+		})
+		It("calls the client with the correct parameters: vnet name, resource group, region ,cidr, ddos id", func() {
 			sut, err := infraflow.NewTfReconciler(infra, cfg, cluster)
 			Expect(err).ToNot(HaveOccurred())
 			sut.Vnet(context.TODO(), vnet)
 		})
 	})
 })
+
+type MatchParameters (armnetwork.VirtualNetwork)
+
+func (m MatchParameters) Matches(x interface{}) bool {
+	bytes, _ := armnetwork.VirtualNetwork(m).MarshalJSON()
+	Otherbytes, _ := x.(armnetwork.VirtualNetwork).MarshalJSON()
+	println(string(bytes))
+	println(string(Otherbytes))
+	return string(bytes) == string(Otherbytes)
+}
+
+func (m MatchParameters) String() string {
+	bytes, _ := armnetwork.VirtualNetwork(m).MarshalJSON()
+	return string(bytes)
+}
