@@ -49,11 +49,12 @@ var _ = Describe("FlowReconciler", func() {
 		BeforeEach(func() {
 			mock := NewMockFactoryWrapper(resourceGroupName, location)
 			createGroup := mock.assertResourceGroupCalled()
-			mock.assertVnetCalled(vnetName).After(createGroup)
+			mock.VnetFactoryCalled()
+			//mock.assertVnetCalled(vnetName).After(createGroup) // no vnet creation since specifying existing vnet
 			createRoutes := mock.assertRouteTableCalled("worker_route_table").After(createGroup)
 			createSgroup := mock.assertSecurityGroupCalled(infra.Namespace + "-workers").After(createGroup)
-			// workaround: issue with arg order https://github.com/golang/mock/issues/653
 			createIps := mock.assertPublicIPCalled("my-ip").Times(2).After(createGroup)
+			// workaround: issue with arg order https://github.com/golang/mock/issues/653
 			createNats := mock.assertNatGatewayCalledWith("test_cluster-nat-gateway-z1").After(createGroup).After(createIps)
 			mock.assertSubnetCalled(vnetName, MatchAnyOfStrings([]string{"test_cluster-z2", "test_cluster-z1"})).After(createRoutes).After(createSgroup).After(createNats).Times(2)
 			factory = mock.GetFactory()
@@ -148,6 +149,12 @@ func (f *MockFactoryWrapper) assertVnetCalled(name string) *gomock.Call {
 	vnet := mockclient.NewMockVnet(f.ctrl)
 	f.EXPECT().Vnet().Return(vnet, nil)
 	return vnet.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, name, gomock.Any()).Return(nil)
+}
+
+func (f *MockFactoryWrapper) VnetFactoryCalled() {
+	vnet := mockclient.NewMockVnet(f.ctrl)
+	f.EXPECT().Vnet().Return(vnet, nil)
+	//return vnet
 }
 
 func (f *MockFactoryWrapper) assertSubnetCalled(vnetName string, name interface{}) *gomock.Call {
