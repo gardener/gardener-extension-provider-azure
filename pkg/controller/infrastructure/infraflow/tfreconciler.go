@@ -10,17 +10,22 @@ import (
 )
 
 type TfReconciler struct {
-	tf TerraformAdapter
+	tf      TerraformAdapter
+	factory client.NewFactory
 }
 
-func NewTfReconciler(infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, cluster *controller.Cluster) (*TfReconciler, error) {
+func NewTfReconciler(infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, cluster *controller.Cluster, factory client.NewFactory) (*TfReconciler, error) {
 	tfAdapter, err := NewTerraformAdapter(infra, cfg, cluster)
-	return &TfReconciler{tfAdapter}, err
+	return &TfReconciler{tfAdapter, factory}, err
 }
 
-func (f TfReconciler) Vnet(ctx context.Context, vnetClient client.Vnet) error {
+func (f TfReconciler) Vnet(ctx context.Context) error {
 	if f.tf.isCreate(TfVnet) {
-		return ReconcileVnetFromTf(ctx, f.tf, vnetClient)
+		client, err := f.factory.Vnet()
+		if err != nil {
+			return err
+		}
+		return ReconcileVnetFromTf(ctx, f.tf, client)
 	} else {
 		return nil
 	}

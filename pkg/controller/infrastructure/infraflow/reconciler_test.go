@@ -49,7 +49,6 @@ var _ = Describe("FlowReconciler", func() {
 		BeforeEach(func() {
 			mock := NewMockFactoryWrapper(resourceGroupName, location)
 			createGroup := mock.assertResourceGroupCalled()
-			mock.VnetFactoryCalled()
 			//mock.assertVnetCalled(vnetName).After(createGroup) // no vnet creation since specifying existing vnet
 			createRoutes := mock.assertRouteTableCalled("worker_route_table").After(createGroup)
 			createSgroup := mock.assertSecurityGroupCalled(infra.Namespace + "-workers").After(createGroup)
@@ -146,9 +145,13 @@ func (f *MockFactoryWrapper) assertSecurityGroupCalled(name string) *gomock.Call
 }
 
 func (f *MockFactoryWrapper) assertVnetCalled(name string) *gomock.Call {
+	return f.assertVnetCalledWithParameters(name, gomock.Any())
+}
+
+func (f *MockFactoryWrapper) assertVnetCalledWithParameters(name string, params interface{}) *gomock.Call {
 	vnet := mockclient.NewMockVnet(f.ctrl)
 	f.EXPECT().Vnet().Return(vnet, nil)
-	return vnet.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, name, gomock.Any()).Return(nil)
+	return vnet.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, name, params).Return(nil)
 }
 
 func (f *MockFactoryWrapper) VnetFactoryCalled() {
