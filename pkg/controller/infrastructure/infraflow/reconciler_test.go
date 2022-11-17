@@ -121,10 +121,10 @@ func NewMockFactoryWrapper(resourceGroup, location string) *MockFactoryWrapper {
 	return &MockFactoryWrapper{ctrl, factory, resourceGroup, location}
 }
 
-func (f *MockFactoryWrapper) assertAvailabilitySetCalled(name string) *gomock.Call {
+func (f *MockFactoryWrapper) assertAvailabilitySetCalledWithParameters(name string, params interface{}) *gomock.Call {
 	aset := mockclient.NewMockAvailabilitySet(f.ctrl)
 	f.EXPECT().AvailabilitySet().Return(aset, nil)
-	return aset.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, gomock.Any(), gomock.Any()).Return(armcompute.AvailabilitySetsClientCreateOrUpdateResponse{}, nil)
+	return aset.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, gomock.Any(), params).Return(armcompute.AvailabilitySetsClientCreateOrUpdateResponse{}, nil)
 }
 func (f *MockFactoryWrapper) assertResourceGroupCalled() *gomock.Call {
 	rgroup := mockclient.NewMockResourceGroup(f.ctrl)
