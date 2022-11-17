@@ -93,3 +93,27 @@ func (f TfReconciler) PublicIPs(ctx context.Context) (map[string]armnetwork.Publ
 	}
 	return res, nil
 }
+
+func (f TfReconciler) NatGateways(ctx context.Context, ips map[string]armnetwork.PublicIPAddressesClientCreateOrUpdateResponse) (res map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse, err error) {
+	res = make(map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse)
+	client, err := f.factory.NatGateway()
+	if err != nil {
+		return res, err
+	}
+	nats := f.tf.Nats()
+	for _, nat := range nats {
+		if !nat.enabled {
+			continue
+		}
+		resp, err := client.CreateOrUpdate(ctx, f.tf.ResourceGroup(), nat.name, armnetwork.NatGateway{
+			Properties: &armnetwork.NatGatewayPropertiesFormat{
+				PublicIPAddresses: []*armnetwork.SubResource{{ID: ips[nat.subnetName].ID}},
+			},
+		})
+		if err != nil {
+			return res, err
+		}
+		res[nat.subnetName] = resp
+	}
+	return res, nil
+}
