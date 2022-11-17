@@ -15,15 +15,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// will also work for new Reonciler
-var _ = Describe("TfReconciler", func() {
-	location := "westeurope"
-	clusterName := "test_cluster"
-	infra := &v1alpha1.Infrastructure{Spec: v1alpha1.InfrastructureSpec{Region: location}, ObjectMeta: metav1.ObjectMeta{Namespace: clusterName}}
-	resourceGroupName := infra.Namespace //if not specified this is assumed name "t-i545428" // TODO what if resource group not given? by default Tf uses infra.Namespace
-	vnetName := infra.Namespace          //if not specified this is assumed name "vnet-i545428"
-	cluster := infrastructure.MakeCluster("11.0.0.0/16", "12.0.0.0/16", infra.Spec.Region, 1, 1)
-	cfg := &azure.InfrastructureConfig{
+func newBasicConfig() *azure.InfrastructureConfig {
+	return &azure.InfrastructureConfig{
 		//ResourceGroup: &azure.ResourceGroup{Name: resourceGroupName},
 		Networks: azure.NetworkConfig{
 			VNet: azure.VNet{
@@ -37,21 +30,32 @@ var _ = Describe("TfReconciler", func() {
 			//Zones:            []azure.Zone{{Name: 1, CIDR: "10.0.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: true, IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip", ResourceGroup: resourceGroupName}}}}, {Name: 2, CIDR: "10.1.0.0/16"}}, // subnets
 		},
 	}
-	parameters := armnetwork.VirtualNetwork{
-		Location: to.Ptr(location),
-		Properties: &armnetwork.VirtualNetworkPropertiesFormat{
-			AddressSpace: &armnetwork.AddressSpace{
-				AddressPrefixes: []*string{cfg.Networks.VNet.CIDR},
-			},
-		},
-	}
+}
+
+// will also work for new Reonciler
+var _ = Describe("TfReconciler", func() {
+	location := "westeurope"
+	clusterName := "test_cluster"
+	infra := &v1alpha1.Infrastructure{Spec: v1alpha1.InfrastructureSpec{Region: location}, ObjectMeta: metav1.ObjectMeta{Namespace: clusterName}}
+	resourceGroupName := infra.Namespace //if not specified this is assumed name "t-i545428" // TODO what if resource group not given? by default Tf uses infra.Namespace
+	vnetName := infra.Namespace          //if not specified this is assumed name "vnet-i545428"
+	cluster := infrastructure.MakeCluster("11.0.0.0/16", "12.0.0.0/16", infra.Spec.Region, 1, 1)
 	var factory *mockclient.MockNewFactory
 
 	Context("reconcile new vnet with ddosId", func() {
+		cfg := newBasicConfig()
 		ddosId := "ddos-plan-id"
 		cfg.Networks.VNet.DDosProtectionPlanID = to.Ptr(ddosId)
 		BeforeEach(func() {
 			mock := NewMockFactoryWrapper(resourceGroupName, location)
+			parameters := armnetwork.VirtualNetwork{
+				Location: to.Ptr(location),
+				Properties: &armnetwork.VirtualNetworkPropertiesFormat{
+					AddressSpace: &armnetwork.AddressSpace{
+						AddressPrefixes: []*string{cfg.Networks.VNet.CIDR},
+					},
+				},
+			}
 			parameters.Properties.DdosProtectionPlan = &armnetwork.SubResource{ID: to.Ptr(ddosId)}
 			parameters.Properties.EnableDdosProtection = to.Ptr(true)
 			mock.assertVnetCalledWithParameters(vnetName, parameters)
@@ -64,13 +68,36 @@ var _ = Describe("TfReconciler", func() {
 		})
 	})
 	Context("reconcile new vnet without ddosId", func() {
+		cfg := newBasicConfig()
 		BeforeEach(func() {
 			mock := NewMockFactoryWrapper(resourceGroupName, location)
+			parameters := armnetwork.VirtualNetwork{
+				Location: to.Ptr(location),
+				Properties: &armnetwork.VirtualNetworkPropertiesFormat{
+					AddressSpace: &armnetwork.AddressSpace{
+						AddressPrefixes: []*string{cfg.Networks.VNet.CIDR},
+					},
+				},
+			}
 			parameters.Properties.AddressSpace.AddressPrefixes = []*string{cfg.Networks.VNet.CIDR}
 			mock.assertVnetCalledWithParameters(vnetName, parameters)
 			factory = mock.GetFactory()
 		})
-		It("calls the client with the correct parameters: vnet name, resource group, region ,cidr, ddos id", func() {
+		It("calls the client with the correct parameters: vnet name, resource group, region ,cidr", func() {
+			sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
+			Expect(err).ToNot(HaveOccurred())
+			sut.Vnet(context.TODO())
+		})
+	})
+	Context("with existing vnet", func() {
+		cfg := newBasicConfig()
+		cfg.Networks.VNet.Name = to.Ptr("existing-vnet")
+		cfg.Networks.VNet.ResourceGroup = to.Ptr("existing-rg")
+		BeforeEach(func() {
+			mock := NewMockFactoryWrapper(resourceGroupName, location)
+			factory = mock.GetFactory()
+		})
+		It("does not reconcile", func() {
 			sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
 			Expect(err).ToNot(HaveOccurred())
 			sut.Vnet(context.TODO())
