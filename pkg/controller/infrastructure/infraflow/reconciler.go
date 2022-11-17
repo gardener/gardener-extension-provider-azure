@@ -322,18 +322,24 @@ func (f FlowReconciler) reconcileSecurityGroups(infra *extensionsv1alpha1.Infras
 
 func (f FlowReconciler) reconcileSecurityGroupsFromTf(ctx context.Context, tf TerraformAdapter) (armnetwork.SecurityGroupsClientCreateOrUpdateResponse, error) {
 	rclient, err := f.Factory.SecurityGroups()
-
-	name := tf.ClusterName() + "-workers" // #TODO set in infraconfig? (default injection)
 	if err != nil {
 		return armnetwork.SecurityGroupsClientCreateOrUpdateResponse{}, err
 	}
+
+	// #TODO set in infraconfig? (default injection)
+	//Properties: &armnetwork.SecurityGroupPropertiesFormat{
+	//},
+	//log.Info("Created Vnet", *cfg.Networks.VNet.Name)
+	return ReconcileSecurityGroupsFromTf(tf, rclient, ctx)
+}
+
+func ReconcileSecurityGroupsFromTf(tf TerraformAdapter, rclient client.SecurityGroups, ctx context.Context) (armnetwork.SecurityGroupsClientCreateOrUpdateResponse, error) {
+	name := tf.ClusterName() + "-workers"
 	parameters := armnetwork.SecurityGroup{
 		Location: to.Ptr(tf.Region()),
-		//Properties: &armnetwork.SecurityGroupPropertiesFormat{
-		//},
 	}
 	resp, err := rclient.CreateOrUpdate(ctx, tf.ResourceGroup(), name, parameters)
-	//log.Info("Created Vnet", *cfg.Networks.VNet.Name)
+
 	return resp, err
 }
 
@@ -428,13 +434,26 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 	// or wrapped
 	f.AddTask(g, "vnet creation", reconciler.Vnet, shared.Dependencies(resourceGroup))
 
-	f.AddTask(g, "availability set creation", flowTask(tf, f.reconcileAvailabilitySetFromTf), shared.Dependencies(resourceGroup))
+	f.AddTask(g, "availability set creation", reconciler.AvailabilitySet, shared.Dependencies(resourceGroup))
+	//flowTask(tf, f.reconcileAvailabilitySetFromTf), shared.Dependencies(resourceGroup))
 
 	routeTableCh := make(chan armnetwork.RouteTable, 1)
-	routeTable := f.AddTask(g, "route table creation", flowTaskWithReturn(tf, f.reconcileRouteTablesFromTf, routeTableCh), shared.Dependencies(resourceGroup))
+	routeTable := f.AddTask(g, "route table creation", func(ctx context.Context) error {
+		routeTable, err := reconciler.RouteTables(ctx)
+		// TODO write to whiteboard
+		routeTableCh <- routeTable
+		return err
+	}, shared.Dependencies(resourceGroup))
+	//flowTaskWithReturn(tf, f.reconcileRouteTablesFromTf, routeTableCh), shared.Dependencies(resourceGroup))
 
 	securityGroupCh := make(chan armnetwork.SecurityGroupsClientCreateOrUpdateResponse, 1)
-	securityGroup := f.AddTask(g, "security group creation", flowTaskWithReturn(tf, f.reconcileSecurityGroupsFromTf, securityGroupCh), shared.Dependencies(resourceGroup))
+	securityGroup := f.AddTask(g, "security group creation", func(ctx context.Context) error {
+		securityGroup, err := reconciler.SecurityGroups(ctx)
+		securityGroupCh <- securityGroup
+		return err
+	}, shared.Dependencies(resourceGroup))
+
+	//flowTaskWithReturn(tf, f.reconcileSecurityGroupsFromTf, securityGroupCh), shared.Dependencies(resourceGroup))
 
 	ipCh := make(chan map[string]armnetwork.PublicIPAddressesClientCreateOrUpdateResponse, 1) // why not working without buf number?
 	f.AddTask(g, "ips creation", flowTaskWithReturn(tf, f.reconcilePublicIPsFromTf, ipCh), shared.Dependencies(resourceGroup))

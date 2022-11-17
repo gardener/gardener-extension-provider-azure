@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	mockclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client/mock"
@@ -119,6 +120,46 @@ var _ = Describe("TfReconciler", func() {
 			sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
 			Expect(err).ToNot(HaveOccurred())
 			sut.RouteTables(context.TODO())
+		})
+	})
+	Describe("Security group reconcilation", func() {
+		cfg := newBasicConfig()
+		It("calls the client with correct route table name", func() {
+			mock := NewMockFactoryWrapper(resourceGroupName, location)
+			//parameters := armnetwork.RouteTable{
+			//	Location:   to.Ptr(location),
+			//	Properties: &armnetwork.RouteTablePropertiesFormat{
+			//		//AddressSpace: &armnetwork.AddressSpace{
+			//		//	AddressPrefixes: []*string{cfg.Networks.VNet.CIDR},
+			//		//},
+			//	},
+			//}
+			mock.assertSecurityGroupCalled("test_cluster-workers")
+			factory = mock.GetFactory()
+
+			sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
+			Expect(err).ToNot(HaveOccurred())
+			sut.SecurityGroups(context.TODO())
+		})
+	})
+	Describe("Availability set reconcilation", func() {
+		cfg := newBasicConfig()
+		It("calls the client with correct availability set name and parameters", func() {
+			mock := NewMockFactoryWrapper(resourceGroupName, location)
+			parameters := armcompute.AvailabilitySet{
+				Location: to.Ptr(location),
+				Properties: &armcompute.AvailabilitySetProperties{
+					PlatformFaultDomainCount:  to.Ptr(int32(1)),
+					PlatformUpdateDomainCount: to.Ptr(int32(1)),
+				},
+				SKU: &armcompute.SKU{Name: to.Ptr(string(armcompute.AvailabilitySetSKUTypesAligned))}, // equal to managed = True in tf
+			}
+			mock.assertAvailabilitySetCalledWithParameters("test_cluster-workers", parameters)
+			factory = mock.GetFactory()
+
+			sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
+			Expect(err).ToNot(HaveOccurred())
+			sut.AvailabilitySet(context.TODO())
 		})
 	})
 
