@@ -20,24 +20,23 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 )
 
-// IsAzureAPINotFoundError tries to determine if an error is a resource not found error.
-func IsAzureAPINotFoundError(err error) bool {
+func IsAzureAPStatusError(err error,status int) bool {
 	switch e := err.(type) {
 	case autorest.DetailedError:
-		if e.Response != nil && e.Response.StatusCode == http.StatusNotFound {
+		if e.Response != nil && e.Response.StatusCode == status {
 			return true
 		}
 	}
 	return false
 }
 
+
+// IsAzureAPINotFoundError tries to determine if an error is a resource not found error.
+func IsAzureAPINotFoundError(err error) bool {
+	return IsAzureAPStatusError(err,http.StatusNotFound)
+}
+
 // IsAzureAPIUnauthorized tries to determine if the API error is due to unauthorized access
 func IsAzureAPIUnauthorized(err error) bool {
-	switch e := err.(type) {
-	case autorest.DetailedError:
-		if e.Response.StatusCode == http.StatusUnauthorized {
-			return true
-		}
-	}
-	return false
+	return IsAzureAPStatusError(err,http.StatusUnauthorized)
 }
