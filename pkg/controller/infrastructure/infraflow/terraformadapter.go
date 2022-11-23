@@ -94,6 +94,39 @@ func (t TerraformAdapter) EnabledNats() []natTf {
 func (t TerraformAdapter) AvailabilitySetName() string {
 	return t.ClusterName() + "-avset-workers"
 }
+
+type userManagedIP struct {
+	Name          string
+	ResourceGroup string
+	SubnetName    string
+}
+
+// tpl l.139
+func (t TerraformAdapter) UserManagedIPs() []userManagedIP {
+	res := make([]userManagedIP, 0)
+	rawSubnets := t.values["networks"].(map[string]interface{})["subnets"]
+	if rawSubnets == nil {
+		return res
+	}
+	for _, subnet := range rawSubnets.([]map[string]interface{}) {
+		subnetName := t.subnetName(subnet)
+		natRaw := subnet["natGateway"].(map[string]interface{})
+		_, ok := natRaw["zone"]
+		if ok {
+			ipAddrRaw, ipOk := natRaw["ipAdresses"]
+			if ipOk {
+				ipAddrs := ipAddrRaw.([]map[string]interface{})
+				for _, addr := range ipAddrs {
+					ipName := addr["name"].(string)
+					ipRgroup := addr["resourceGroup"].(string)
+					res = append(res, userManagedIP{ipName, ipRgroup, subnetName})
+				}
+			}
+		}
+	}
+	return res
+}
+
 func (t TerraformAdapter) Nats() []natTf {
 	res := make([]natTf, 0)
 	rawSubnets := t.values["networks"].(map[string]interface{})["subnets"]
