@@ -261,10 +261,8 @@ var _ = Describe("TfReconciler", func() {
 
 				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
-				sut.NatGateways(context.TODO(), map[string]armnetwork.PublicIPAddressesClientCreateOrUpdateResponse{"test_cluster-nodes-z1": {
-					PublicIPAddress: armnetwork.PublicIPAddress{
-						ID: ipId,
-					},
+				sut.NatGateways(context.TODO(), map[string]armnetwork.PublicIPAddress{"test_cluster-nodes-z1": {
+					ID: ipId,
 				},
 				})
 			})
@@ -296,6 +294,27 @@ var _ = Describe("TfReconciler", func() {
 			})
 		})
 
+	})
+	Describe("Enrich IP reponse", func() {
+		Context("with 2 zones with user managed IPs for each", func() {
+			cfg := newBasicConfig()
+			cfg.Zoned = true
+			cfg.Networks.Zones = []azure.Zone{{Name: 1, CIDR: "10.0.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: true, IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip1", ResourceGroup: resourceGroupName}}}}, {Name: 2, CIDR: "10.1.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: true, IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip2", ResourceGroup: resourceGroupName}}}}}
+
+			BeforeEach(func() {
+				mock := NewMockFactoryWrapper(resourceGroupName, location)
+				mock.assertPublicIPGet(resourceGroupName, MatchAnyOfStrings([]string{"my-ip1", "my-ip2"})).Times(2)
+				factory = mock.GetFactory()
+			})
+			It("enriches with 2 user managed IPs", func() {
+				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
+				Expect(err).ToNot(HaveOccurred())
+				res := make(map[string]armnetwork.PublicIPAddress)
+				sut.EnrichResponseWithUserManagedIPs(context.TODO(), res)
+				Expect(res).To(HaveKey("test_cluster-z1"))
+				Expect(res).To(HaveKey("test_cluster-z2"))
+			})
+		})
 	})
 })
 
