@@ -174,6 +174,8 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 
 	ip := f.AddTask(g, "ips creation", func(ctx context.Context) error {
 		ips, err := reconciler.PublicIPs(ctx)
+		// add user managed Ips for NAT association
+		reconciler.EnrichResponseWithUserManagedIPs(ctx, ips)
 		whiteboard.SetObject(PublicIPMap, ips)
 		return err
 	}, shared.Dependencies(resourceGroup))
