@@ -73,7 +73,7 @@ func (f TfReconciler) AvailabilitySet(ctx context.Context) error {
 
 func (f TfReconciler) PublicIPs(ctx context.Context) (map[string]armnetwork.PublicIPAddressesClientCreateOrUpdateResponse, error) {
 	res := make(map[string]armnetwork.PublicIPAddressesClientCreateOrUpdateResponse)
-	ips := f.tf.NatManagedIPs()
+	ips := f.tf.EnabledNats()
 	if len(ips) == 0 {
 		return res, nil
 	}
@@ -104,15 +104,15 @@ func (f TfReconciler) NatGateways(ctx context.Context, ips map[string]armnetwork
 	if err != nil {
 		return res, err
 	}
-	nats := f.tf.Nats()
-	for _, nat := range nats {
-		if !nat.enabled {
-			continue
-		}
+	for _, nat := range f.tf.EnabledNats() {
 		resp, err := client.CreateOrUpdate(ctx, f.tf.ResourceGroup(), nat.NatName(), armnetwork.NatGateway{
 			Properties: &armnetwork.NatGatewayPropertiesFormat{
-				PublicIPAddresses: []*armnetwork.SubResource{{ID: ips[nat.SubnetName()].ID}},
+				PublicIPAddresses:    []*armnetwork.SubResource{{ID: ips[nat.SubnetName()].ID}},
+				IdleTimeoutInMinutes: nat.idleConnectionTimeoutMinutes,
 			},
+			Location: to.Ptr(f.tf.Region()),
+			SKU:      &armnetwork.NatGatewaySKU{Name: to.Ptr(armnetwork.NatGatewaySKUNameStandard)},
+			Zones:    []*string{nat.Zone()},
 		})
 		if err != nil {
 			return res, err
