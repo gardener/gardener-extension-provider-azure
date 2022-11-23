@@ -81,7 +81,7 @@ func (t TerraformAdapter) subnetName(subnet map[string]interface{}) string {
 	return name
 }
 
-func (t TerraformAdapter) NatManagedIPs() []natTf {
+func (t TerraformAdapter) EnabledNats() []natTf {
 	res := make([]natTf, 0)
 	for _, nat := range t.Nats() {
 		if nat.enabled {
@@ -104,6 +104,7 @@ func (t TerraformAdapter) Nats() []natTf {
 		rawNetNumber := subnet["name"].(int32)
 
 		natRaw := subnet["natGateway"].(map[string]interface{})
+
 		var idleConnectionTimeoutMinutes *int32 = nil
 		if _, ok := natRaw["idleConnectionTimeoutMinutes"]; ok {
 			idleConnectionTimeoutMinutes = to.Ptr(natRaw["idleConnectionTimeoutMinutes"].(int32))
@@ -146,7 +147,7 @@ func (nat natTf) NatName() string {
 func (nat natTf) SubnetName() string {
 	name := nat.clusterName + "-nodes"
 	if nat.migrated != nil && !*nat.migrated {
-		name = fmt.Sprintf("%s-z%d", nat.clusterName, nat.rawNetNumber)
+		name = fmt.Sprintf("%s-z%d", name, nat.rawNetNumber)
 	}
 	return name
 }

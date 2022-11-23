@@ -240,24 +240,33 @@ var _ = Describe("TfReconciler", func() {
 		cfg := newBasicConfig()
 		Context("with 2 zones and 1 with NAT", func() {
 			cfg.Networks.Zones = []azure.Zone{{Name: 1, CIDR: "10.0.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: true, IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip", ResourceGroup: resourceGroupName}}}}, {Name: 2, CIDR: "10.1.0.0/16"}}
+			ipId := to.Ptr("ip-id")
 			It("calls the client with correct nat gateway name and parameters", func() {
 				mock := NewMockFactoryWrapper(resourceGroupName, location)
-				//parameters := armnetwork.NatGateway{
-				//	Location: to.Ptr(location),
-				//	Properties: &armnetwork.NatGatewayPropertiesFormat{
-				//		PublicIPAddresses: []*armnetwork.SubResource{
-				//			{
-				//				ID: to.Ptr("/subscriptions/123/resourceGroups/test_rg/providers/Microsoft.Network/publicIPAddresses/test_cluster-nat-gateway-z1-ip"),
-				//			},
-				//		},
-				//	},
-				//}
-				mock.assertNatGatewayCalledWith("test_cluster-nat-gateway-z1") // TODO param check
+				parameters := armnetwork.NatGateway{
+					Location: to.Ptr(location),
+					Properties: &armnetwork.NatGatewayPropertiesFormat{
+						PublicIPAddresses: []*armnetwork.SubResource{
+							{
+								ID: ipId,
+							},
+						},
+						IdleTimeoutInMinutes: nil,
+					},
+					SKU:   &armnetwork.NatGatewaySKU{Name: to.Ptr(armnetwork.NatGatewaySKUNameStandard)},
+					Zones: []*string{to.Ptr("1")},
+				}
+				mock.assertNatGatewayCalledWithParameters("test_cluster-nat-gateway-z1", parameters)
 				factory = mock.GetFactory()
 
 				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
-				sut.NatGateways(context.TODO(), map[string]armnetwork.PublicIPAddressesClientCreateOrUpdateResponse{})
+				sut.NatGateways(context.TODO(), map[string]armnetwork.PublicIPAddressesClientCreateOrUpdateResponse{"test_cluster-nodes-z1": {
+					PublicIPAddress: armnetwork.PublicIPAddress{
+						ID: ipId,
+					},
+				},
+				})
 			})
 		})
 
