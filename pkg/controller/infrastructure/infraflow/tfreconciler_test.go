@@ -206,6 +206,7 @@ var _ = Describe("TfReconciler", func() {
 					Properties: &armnetwork.PublicIPAddressPropertiesFormat{
 						PublicIPAllocationMethod: to.Ptr(armnetwork.IPAllocationMethodStatic),
 					},
+					Zones: []*string{to.Ptr("1")},
 				}
 				mock.assertPublicIPCalledWithParameters(MatchAnyOfStrings([]string{"test_cluster-nat-gateway-z1-ip"}), parameters)
 				factory = mock.GetFactory()

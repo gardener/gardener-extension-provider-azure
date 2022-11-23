@@ -82,18 +82,18 @@ func (f TfReconciler) PublicIPs(ctx context.Context) (map[string]armnetwork.Publ
 		return res, err
 	}
 	for _, ip := range ips {
-		resp, err := client.CreateOrUpdate(ctx, f.tf.ResourceGroup(), ip.name, armnetwork.PublicIPAddress{
+		resp, err := client.CreateOrUpdate(ctx, f.tf.ResourceGroup(), ip.IpName(), armnetwork.PublicIPAddress{
 			Location: to.Ptr(f.tf.Region()),
 			SKU:      &armnetwork.PublicIPAddressSKU{Name: to.Ptr(armnetwork.PublicIPAddressSKUNameStandard)},
 			Properties: &armnetwork.PublicIPAddressPropertiesFormat{
 				PublicIPAllocationMethod: to.Ptr(armnetwork.IPAllocationMethodStatic),
 			},
-			// TODO zones prop?
+			Zones: []*string{ip.Zone()},
 		})
 		if err != nil {
 			return res, err
 		}
-		res[ip.subnetName] = resp
+		res[ip.SubnetName()] = resp
 	}
 	return res, nil
 }

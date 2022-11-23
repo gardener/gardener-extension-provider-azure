@@ -81,18 +81,11 @@ func (t TerraformAdapter) subnetName(subnet map[string]interface{}) string {
 	return name
 }
 
-type natManagedIpTf struct {
-	name       string
-	subnetName string
-}
-
-func (t TerraformAdapter) NatManagedIPs() []natManagedIpTf {
-	res := make([]natManagedIpTf, 0)
+func (t TerraformAdapter) NatManagedIPs() []natTf {
+	res := make([]natTf, 0)
 	for _, nat := range t.Nats() {
 		if nat.enabled {
-			name := nat.IpName()
-			subnetName := nat.SubnetName()
-			res = append(res, natManagedIpTf{name, subnetName})
+			res = append(res, nat)
 		}
 	}
 	return res
@@ -122,7 +115,13 @@ func (t TerraformAdapter) Nats() []natTf {
 		if isMultiSubnet {
 			isMigrated = to.Ptr(isMigratedRaw.(bool))
 		}
-		res = append(res, natTf{rawNetNumber, natRaw["enabled"].(bool), idleConnectionTimeoutMinutes, isMigrated, t.ClusterName()})
+
+		var zone *string = nil
+		zoneRaw, ok := natRaw["zone"]
+		if ok {
+			zone = to.Ptr(fmt.Sprintf("%d", zoneRaw.(int32)))
+		}
+		res = append(res, natTf{rawNetNumber, natRaw["enabled"].(bool), idleConnectionTimeoutMinutes, isMigrated, t.ClusterName(), zone})
 	}
 	return res
 }
@@ -133,6 +132,7 @@ type natTf struct {
 	idleConnectionTimeoutMinutes *int32
 	migrated                     *bool
 	clusterName                  string
+	zone                         *string
 }
 
 func (nat natTf) NatName() string {
@@ -153,6 +153,10 @@ func (nat natTf) SubnetName() string {
 
 func (nat natTf) IpName() string {
 	return nat.NatName() + "-ip"
+}
+
+func (nat natTf) Zone() *string {
+	return nat.zone
 }
 
 type subnetTf struct {
