@@ -31,6 +31,7 @@ func newBasicConfig() *azure.InfrastructureConfig {
 			//Zones:            []azure.Zone{{Name: 1, CIDR: "10.0.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: true, IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip", ResourceGroup: resourceGroupName}}}}, {Name: 2, CIDR: "10.1.0.0/16"}}, // subnets
 		},
 	}
+
 }
 
 // will also work for new Reonciler
@@ -134,7 +135,7 @@ var _ = Describe("TfReconciler", func() {
 			//		//},
 			//	},
 			//}
-			mock.assertSecurityGroupCalled("test_cluster-workers")
+			mock.assertSecurityGroupCalled(clusterName + "-workers")
 			factory = mock.GetFactory()
 
 			sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
@@ -143,43 +144,49 @@ var _ = Describe("TfReconciler", func() {
 		})
 	})
 	Describe("Availability set reconcilation", func() {
-		cfg := newBasicConfig()
-		It("calls the client with correct availability set name and parameters", func() {
-			mock := NewMockFactoryWrapper(resourceGroupName, location)
-			parameters := armcompute.AvailabilitySet{
-				Location: to.Ptr(location),
-				Properties: &armcompute.AvailabilitySetProperties{
-					PlatformFaultDomainCount:  to.Ptr(int32(1)),
-					PlatformUpdateDomainCount: to.Ptr(int32(1)),
-				},
-				SKU: &armcompute.SKU{Name: to.Ptr(string(armcompute.AvailabilitySetSKUTypesAligned))}, // equal to managed = True in tf
-			}
-			mock.assertAvailabilitySetCalledWithParameters("test_cluster-workers", parameters)
-			factory = mock.GetFactory()
+		Context("zoned cluster", func() {
+			cfg := newBasicConfig() // cannot share varible in describe
+			cfg.Zoned = true
+			It("does not create availability set", func() {
+				mock := NewMockFactoryWrapper(resourceGroupName, location)
+				factory = mock.GetFactory()
+				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
+				Expect(err).ToNot(HaveOccurred())
+				sut.AvailabilitySet(context.TODO())
+			})
+		})
+		Context("non-zoned cluster", func() {
+			cfg := newBasicConfig()
+			cfg.Zoned = false
+			It("create the client with correct availability set name and parameters", func() {
+				mock := NewMockFactoryWrapper(resourceGroupName, location)
+				parameters := armcompute.AvailabilitySet{
+					Location: to.Ptr(location),
+					Properties: &armcompute.AvailabilitySetProperties{
+						PlatformFaultDomainCount:  to.Ptr(int32(1)),
+						PlatformUpdateDomainCount: to.Ptr(int32(1)),
+					},
+					SKU: &armcompute.SKU{Name: to.Ptr(string(armcompute.AvailabilitySetSKUTypesAligned))}, // equal to managed = True in tf
+				}
+				mock.assertAvailabilitySetCalledWithParameters("test_cluster-workers", parameters)
 
-			sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
-			Expect(err).ToNot(HaveOccurred())
-			sut.AvailabilitySet(context.TODO())
+				factory = mock.GetFactory()
+				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
+				Expect(err).ToNot(HaveOccurred())
+				sut.AvailabilitySet(context.TODO())
+			})
 		})
 	})
 	Describe("PublicIP reconcilation", func() {
-		// TODO assert multiple ips , single..
-		cfg := newBasicConfig()
-		cfg.Networks.Zones = []azure.Zone{{Name: 1, CIDR: "10.0.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: true, IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip", ResourceGroup: resourceGroupName}}}}, {Name: 2, CIDR: "10.1.0.0/16"}}
-
-		//[]azure.Zone{
-		//	{
-		//		Name: 1, CIDR: "10.0.0.0/16",
-		//		NatGateway: &azure.ZonedNatGatewayConfig{
-		//			Enabled:     true,
-		//			IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip", ResourceGroup: resourceGroupName}},
-		//		},
-		//	},
-		//	{
-		//		Name: 2,
-		//		CIDR: "10.1.0.0/16",
-		//	},
-		//},
+		Context("with 2 zones and user managed IP", func() {
+			cfg := newBasicConfig()
+			cfg.Networks.Zones = []azure.Zone{{Name: 1, CIDR: "10.0.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: true, IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip", ResourceGroup: resourceGroupName}}}}, {Name: 2, CIDR: "10.1.0.0/16"}}
+			It("only creates NAT managed IP for each subnet but does not update user-managed public IPs", func() {
+				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
+				Expect(err).ToNot(HaveOccurred())
+				sut.PublicIPs(context.TODO())
+			})
+		})
 		BeforeEach(func() {
 			mock := NewMockFactoryWrapper(resourceGroupName, location)
 			parameters := armnetwork.PublicIPAddress{
@@ -191,11 +198,6 @@ var _ = Describe("TfReconciler", func() {
 			}
 			mock.assertPublicIPCalledWithParameters(MatchAnyOfStrings([]string{"test_cluster-nat-gateway-z1-ip", "test_cluster-nat-gateway-z2-ip"}), parameters).Times(2)
 			factory = mock.GetFactory()
-		})
-		It("calls the client with correct public ip name and parameters", func() {
-			sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
-			Expect(err).ToNot(HaveOccurred())
-			sut.PublicIPs(context.TODO())
 		})
 	})
 	Describe("Nat gateway reconcilation", func() {
