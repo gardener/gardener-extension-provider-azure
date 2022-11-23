@@ -65,7 +65,7 @@ func (t TerraformAdapter) Subnets() []subnetTf {
 		name := t.subnetName(subnet)
 		cidr := subnet["cidr"].(string)
 		serviceEndpoints := subnet["serviceEndpoints"].([]string)
-		res = append(res, subnetTf{name, cidr, serviceEndpoints, false})
+		res = append(res, subnetTf{name, cidr, serviceEndpoints})
 	}
 	return res
 }
@@ -81,27 +81,21 @@ func (t TerraformAdapter) subnetName(subnet map[string]interface{}) string {
 	return name
 }
 
-type ipTf struct {
+type natManagedIpTf struct {
 	name       string
 	subnetName string
 }
 
-func (t TerraformAdapter) IPs() []ipTf {
-	res := make([]ipTf, 0)
-	rawSubnets := t.values["networks"].(map[string]interface{})["subnets"]
-	if rawSubnets == nil {
-		return res
-	}
-	for _, subnet := range rawSubnets.([]map[string]interface{}) {
-		name := t.ipName(subnet)
-		subnetName := t.subnetName(subnet)
-		res = append(res, ipTf{name, subnetName})
+func (t TerraformAdapter) NatManagedIPs() []natManagedIpTf {
+	res := make([]natManagedIpTf, 0)
+	for _, nat := range t.Nats() {
+		if nat.enabled {
+			name := nat.IpName()
+			subnetName := nat.SubnetName()
+			res = append(res, natManagedIpTf{name, subnetName})
+		}
 	}
 	return res
-}
-
-func (t TerraformAdapter) ipName(subnet map[string]interface{}) string {
-	return t.natName(subnet) + "-ip"
 }
 
 func (t TerraformAdapter) AvailabilitySetName() string {
@@ -114,8 +108,7 @@ func (t TerraformAdapter) Nats() []natTf {
 		return res
 	}
 	for _, subnet := range rawSubnets.([]map[string]interface{}) {
-		name := t.natName(subnet)
-		subnetName := t.subnetName(subnet)
+		rawNetNumber := subnet["name"].(int32)
 
 		natRaw := subnet["natGateway"].(map[string]interface{})
 		var idleConnectionTimeoutMinutes *int32 = nil
@@ -124,33 +117,48 @@ func (t TerraformAdapter) Nats() []natTf {
 		}
 		//cidr := subnet["cidr"].(string)
 		//serviceEndpoints := subnet["serviceEndpoints"].([]string)
-		res = append(res, natTf{name, subnetName, natRaw["enabled"].(bool), idleConnectionTimeoutMinutes})
+		var isMigrated *bool = nil
+		isMigratedRaw, isMultiSubnet := subnet["migrated"]
+		if isMultiSubnet {
+			isMigrated = to.Ptr(isMigratedRaw.(bool))
+		}
+		res = append(res, natTf{rawNetNumber, natRaw["enabled"].(bool), idleConnectionTimeoutMinutes, isMigrated, t.ClusterName()})
 	}
 	return res
 }
 
-func (t TerraformAdapter) natName(subnet map[string]interface{}) string {
-	name := t.ClusterName() + "-nat-gateway"
-	isMigrated, isMultiSubnet := subnet["migrated"]
-	if isMultiSubnet {
-		if !isMigrated.(bool) {
-			name = fmt.Sprintf("%s-z%d", name, subnet["name"].(int32))
-		}
+type natTf struct {
+	rawNetNumber                 int32
+	enabled                      bool
+	idleConnectionTimeoutMinutes *int32
+	migrated                     *bool
+	clusterName                  string
+}
+
+func (nat natTf) NatName() string {
+	name := nat.clusterName + "-nat-gateway"
+	if nat.migrated != nil && !*nat.migrated {
+		name = fmt.Sprintf("%s-z%d", name, nat.rawNetNumber)
 	}
 	return name
 }
 
-type natTf struct {
-	name                         string
-	subnetName                   string
-	enabled                      bool
-	idleConnectionTimeoutMinutes *int32
+func (nat natTf) SubnetName() string {
+	name := nat.clusterName + "-nodes"
+	if nat.migrated != nil && !*nat.migrated {
+		name = fmt.Sprintf("%s-z%d", nat.clusterName, nat.rawNetNumber)
+	}
+	return name
 }
+
+func (nat natTf) IpName() string {
+	return nat.NatName() + "-ip"
+}
+
 type subnetTf struct {
-	name              string
-	cidr              string
-	serviceEndpoints  []string
-	natGatewayEnabled bool
+	name             string
+	cidr             string
+	serviceEndpoints []string
 }
 
 type vnetTf (map[string]interface{})

@@ -73,11 +73,15 @@ func (f TfReconciler) AvailabilitySet(ctx context.Context) error {
 
 func (f TfReconciler) PublicIPs(ctx context.Context) (map[string]armnetwork.PublicIPAddressesClientCreateOrUpdateResponse, error) {
 	res := make(map[string]armnetwork.PublicIPAddressesClientCreateOrUpdateResponse)
+	ips := f.tf.NatManagedIPs()
+	if len(ips) == 0 {
+		return res, nil
+	}
 	client, err := f.factory.PublicIP()
 	if err != nil {
 		return res, err
 	}
-	for _, ip := range f.tf.IPs() {
+	for _, ip := range ips {
 		resp, err := client.CreateOrUpdate(ctx, f.tf.ResourceGroup(), ip.name, armnetwork.PublicIPAddress{
 			Location: to.Ptr(f.tf.Region()),
 			SKU:      &armnetwork.PublicIPAddressSKU{Name: to.Ptr(armnetwork.PublicIPAddressSKUNameStandard)},
@@ -105,15 +109,15 @@ func (f TfReconciler) NatGateways(ctx context.Context, ips map[string]armnetwork
 		if !nat.enabled {
 			continue
 		}
-		resp, err := client.CreateOrUpdate(ctx, f.tf.ResourceGroup(), nat.name, armnetwork.NatGateway{
+		resp, err := client.CreateOrUpdate(ctx, f.tf.ResourceGroup(), nat.NatName(), armnetwork.NatGateway{
 			Properties: &armnetwork.NatGatewayPropertiesFormat{
-				PublicIPAddresses: []*armnetwork.SubResource{{ID: ips[nat.subnetName].ID}},
+				PublicIPAddresses: []*armnetwork.SubResource{{ID: ips[nat.SubnetName()].ID}},
 			},
 		})
 		if err != nil {
 			return res, err
 		}
-		res[nat.subnetName] = resp
+		res[nat.SubnetName()] = resp
 	}
 	return res, nil
 }

@@ -178,26 +178,61 @@ var _ = Describe("TfReconciler", func() {
 		})
 	})
 	Describe("PublicIP reconcilation", func() {
-		Context("with 2 zones and user managed IP", func() {
+		Context("with 2 zones, no NAT enabled and user managed IP", func() {
 			cfg := newBasicConfig()
-			cfg.Networks.Zones = []azure.Zone{{Name: 1, CIDR: "10.0.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: true, IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip", ResourceGroup: resourceGroupName}}}}, {Name: 2, CIDR: "10.1.0.0/16"}}
-			It("only creates NAT managed IP for each subnet but does not update user-managed public IPs", func() {
+			cfg.Networks.NatGateway = &azure.NatGatewayConfig{
+				Zone:    to.Ptr(int32(1)),
+				Enabled: false,
+			}
+			cfg.Networks.Zones = []azure.Zone{{Name: 1, CIDR: "10.0.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: false, IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip", ResourceGroup: resourceGroupName}}}}, {Name: 2, CIDR: "10.1.0.0/16"}}
+			BeforeEach(func() {
+				mock := NewMockFactoryWrapper(resourceGroupName, location)
+				factory = mock.GetFactory()
+			})
+			It("does not create NAT IPs and does not update user-managed public IPs", func() {
 				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
 				sut.PublicIPs(context.TODO())
 			})
 		})
-		BeforeEach(func() {
-			mock := NewMockFactoryWrapper(resourceGroupName, location)
-			parameters := armnetwork.PublicIPAddress{
-				Location: to.Ptr(location),
-				SKU:      &armnetwork.PublicIPAddressSKU{Name: to.Ptr(armnetwork.PublicIPAddressSKUNameStandard)},
-				Properties: &armnetwork.PublicIPAddressPropertiesFormat{
-					PublicIPAllocationMethod: to.Ptr(armnetwork.IPAllocationMethodStatic),
-				},
+		Context("with 2 zones, 1 NAT enabled and user managed IP", func() {
+			cfg := newBasicConfig()
+			cfg.Networks.Zones = []azure.Zone{{Name: 1, CIDR: "10.0.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: true, IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip", ResourceGroup: resourceGroupName}}}}, {Name: 2, CIDR: "10.1.0.0/16"}}
+			BeforeEach(func() {
+				mock := NewMockFactoryWrapper(resourceGroupName, location)
+				parameters := armnetwork.PublicIPAddress{
+					Location: to.Ptr(location),
+					SKU:      &armnetwork.PublicIPAddressSKU{Name: to.Ptr(armnetwork.PublicIPAddressSKUNameStandard)},
+					Properties: &armnetwork.PublicIPAddressPropertiesFormat{
+						PublicIPAllocationMethod: to.Ptr(armnetwork.IPAllocationMethodStatic),
+					},
+				}
+				mock.assertPublicIPCalledWithParameters(MatchAnyOfStrings([]string{"test_cluster-nat-gateway-z1-ip"}), parameters)
+				factory = mock.GetFactory()
+			})
+			It("only creates NAT IP for 1 zone and does not update user-managed public IPs", func() {
+				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
+				Expect(err).ToNot(HaveOccurred())
+				sut.PublicIPs(context.TODO())
+			})
+		})
+		Context("single zoned with NAT enabled", func() {
+			cfg := newBasicConfig()
+			cfg.Networks.NatGateway = &azure.NatGatewayConfig{
+				Zone: to.Ptr(int32(1)),
 			}
-			mock.assertPublicIPCalledWithParameters(MatchAnyOfStrings([]string{"test_cluster-nat-gateway-z1-ip", "test_cluster-nat-gateway-z2-ip"}), parameters).Times(2)
-			factory = mock.GetFactory()
+			BeforeEach(func() {
+				mock := NewMockFactoryWrapper(resourceGroupName, location)
+				parameters := armnetwork.PublicIPAddress{
+					Location: to.Ptr(location),
+					SKU:      &armnetwork.PublicIPAddressSKU{Name: to.Ptr(armnetwork.PublicIPAddressSKUNameStandard)},
+					Properties: &armnetwork.PublicIPAddressPropertiesFormat{
+						PublicIPAllocationMethod: to.Ptr(armnetwork.IPAllocationMethodStatic),
+					},
+				}
+				mock.assertPublicIPCalledWithParameters(MatchAnyOfStrings([]string{"test_cluster-nat-gateway-ip"}), parameters)
+				factory = mock.GetFactory()
+			})
 		})
 	})
 	Describe("Nat gateway reconcilation", func() {
