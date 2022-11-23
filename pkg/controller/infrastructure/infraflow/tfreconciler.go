@@ -98,14 +98,14 @@ func (f TfReconciler) PublicIPs(ctx context.Context) (map[string]armnetwork.Publ
 	return res, nil
 }
 
-func (f TfReconciler) EnrichResponseWithUserManagedIPs(ctx context.Context, res map[string]armnetwork.PublicIPAddress) {
+func (f TfReconciler) EnrichResponseWithUserManagedIPs(ctx context.Context, res map[string]armnetwork.PublicIPAddress) error {
 	ips := f.tf.UserManagedIPs()
 	if len(ips) == 0 {
-		return
+		return nil
 	}
 	client, err := f.factory.PublicIP()
 	if err != nil {
-		panic(err)
+		return err
 	}
 	for _, ip := range ips {
 		resp, err := client.Get(ctx, ip.ResourceGroup, ip.Name)
@@ -113,8 +113,11 @@ func (f TfReconciler) EnrichResponseWithUserManagedIPs(ctx context.Context, res 
 			res[ip.SubnetName] = armnetwork.PublicIPAddress{
 				ID: resp.ID,
 			}
+		} else {
+			return err
 		}
 	}
+	return nil
 }
 
 func (f TfReconciler) NatGateways(ctx context.Context, ips map[string]armnetwork.PublicIPAddress) (res map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse, err error) {

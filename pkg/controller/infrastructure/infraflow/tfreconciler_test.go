@@ -61,7 +61,8 @@ var _ = Describe("TfReconciler", func() {
 
 				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
-				sut.Vnet(context.TODO())
+				err = sut.Vnet(context.TODO())
+				Expect(err).ToNot(HaveOccurred())
 			})
 			Context("with ddosId", func() {
 				ddosId := "ddos-plan-id"
@@ -84,7 +85,8 @@ var _ = Describe("TfReconciler", func() {
 
 					sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
 					Expect(err).ToNot(HaveOccurred())
-					sut.Vnet(context.TODO())
+					err = sut.Vnet(context.TODO())
+					Expect(err).ToNot(HaveOccurred())
 				})
 
 			})
@@ -99,7 +101,9 @@ var _ = Describe("TfReconciler", func() {
 
 				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
-				sut.Vnet(context.TODO())
+				err = sut.Vnet(context.TODO())
+				Expect(err).ToNot(HaveOccurred())
+
 			})
 		})
 	})
@@ -127,20 +131,15 @@ var _ = Describe("TfReconciler", func() {
 		cfg := newBasicConfig()
 		It("calls the client with correct route table name", func() {
 			mock := NewMockFactoryWrapper(resourceGroupName, location)
-			//parameters := armnetwork.RouteTable{
-			//	Location:   to.Ptr(location),
-			//	Properties: &armnetwork.RouteTablePropertiesFormat{
-			//		//AddressSpace: &armnetwork.AddressSpace{
-			//		//	AddressPrefixes: []*string{cfg.Networks.VNet.CIDR},
-			//		//},
-			//	},
-			//}
+
 			mock.assertSecurityGroupCalled(clusterName + "-workers")
 			factory = mock.GetFactory()
 
 			sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
 			Expect(err).ToNot(HaveOccurred())
-			sut.SecurityGroups(context.TODO())
+			_, err = sut.SecurityGroups(context.TODO())
+			Expect(err).ToNot(HaveOccurred())
+
 		})
 	})
 	Describe("Availability set reconcilation", func() {
@@ -152,7 +151,8 @@ var _ = Describe("TfReconciler", func() {
 				factory = mock.GetFactory()
 				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
-				sut.AvailabilitySet(context.TODO())
+				err = sut.AvailabilitySet(context.TODO())
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 		Context("non-zoned cluster", func() {
@@ -173,7 +173,8 @@ var _ = Describe("TfReconciler", func() {
 				factory = mock.GetFactory()
 				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
-				sut.AvailabilitySet(context.TODO())
+				err = sut.AvailabilitySet(context.TODO())
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 	})
@@ -192,7 +193,8 @@ var _ = Describe("TfReconciler", func() {
 			It("does not create NAT IPs and does not update user-managed public IPs", func() {
 				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
-				sut.PublicIPs(context.TODO())
+				_, err = sut.PublicIPs(context.TODO())
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 		Context("with 2 zones, 1 NAT enabled and user managed IP", func() {
@@ -214,7 +216,9 @@ var _ = Describe("TfReconciler", func() {
 			It("only creates NAT IP for 1 zone and does not update user-managed public IPs", func() {
 				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
-				sut.PublicIPs(context.TODO())
+				_, err = sut.PublicIPs(context.TODO())
+				Expect(err).ToNot(HaveOccurred())
+
 			})
 		})
 		Context("single zoned with NAT enabled", func() {
@@ -261,10 +265,11 @@ var _ = Describe("TfReconciler", func() {
 
 				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
-				sut.NatGateways(context.TODO(), map[string]armnetwork.PublicIPAddress{"test_cluster-nodes-z1": {
+				_, err = sut.NatGateways(context.TODO(), map[string]armnetwork.PublicIPAddress{"test_cluster-nodes-z1": {
 					ID: ipId,
 				},
 				})
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 
@@ -290,7 +295,9 @@ var _ = Describe("TfReconciler", func() {
 
 				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
-				sut.Subnets(context.TODO(), armnetwork.SecurityGroup{}, armnetwork.RouteTable{}, map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse{})
+				err = sut.Subnets(context.TODO(), armnetwork.SecurityGroup{}, armnetwork.RouteTable{}, map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse{})
+				Expect(err).ToNot(HaveOccurred())
+
 			})
 		})
 
@@ -310,7 +317,8 @@ var _ = Describe("TfReconciler", func() {
 				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
 				res := make(map[string]armnetwork.PublicIPAddress)
-				sut.EnrichResponseWithUserManagedIPs(context.TODO(), res)
+				err = sut.EnrichResponseWithUserManagedIPs(context.TODO(), res)
+				Expect(err).ToNot(HaveOccurred())
 				Expect(res).To(HaveKey("test_cluster-z1"))
 				Expect(res).To(HaveKey("test_cluster-z2"))
 			})
