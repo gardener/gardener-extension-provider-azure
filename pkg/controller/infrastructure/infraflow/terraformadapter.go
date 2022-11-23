@@ -113,7 +113,7 @@ func (t TerraformAdapter) UserManagedIPs() []userManagedIP {
 		natRaw := subnet["natGateway"].(map[string]interface{})
 		_, ok := natRaw["zone"]
 		if ok {
-			ipAddrRaw, ipOk := natRaw["ipAdresses"]
+			ipAddrRaw, ipOk := natRaw["ipAddresses"]
 			if ipOk {
 				ipAddrs := ipAddrRaw.([]map[string]interface{})
 				for _, addr := range ipAddrs {

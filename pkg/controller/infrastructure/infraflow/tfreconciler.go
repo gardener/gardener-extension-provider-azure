@@ -71,8 +71,8 @@ func (f TfReconciler) AvailabilitySet(ctx context.Context) error {
 	}
 }
 
-func (f TfReconciler) PublicIPs(ctx context.Context) (map[string]armnetwork.PublicIPAddressesClientCreateOrUpdateResponse, error) {
-	res := make(map[string]armnetwork.PublicIPAddressesClientCreateOrUpdateResponse)
+func (f TfReconciler) PublicIPs(ctx context.Context) (map[string]armnetwork.PublicIPAddress, error) {
+	res := make(map[string]armnetwork.PublicIPAddress)
 	ips := f.tf.EnabledNats()
 	if len(ips) == 0 {
 		return res, nil
@@ -93,31 +93,31 @@ func (f TfReconciler) PublicIPs(ctx context.Context) (map[string]armnetwork.Publ
 		if err != nil {
 			return res, err
 		}
-		res[ip.SubnetName()] = resp
+		res[ip.SubnetName()] = resp.PublicIPAddress
 	}
 	return res, nil
 }
 
-func (f TfReconciler) EnrichResponseWithUserManagedIPs(ctx context.Context, res map[string]armnetwork.PublicIPAddressesClientCreateOrUpdateResponse) {
+func (f TfReconciler) EnrichResponseWithUserManagedIPs(ctx context.Context, res map[string]armnetwork.PublicIPAddress) {
+	ips := f.tf.UserManagedIPs()
+	if len(ips) == 0 {
+		return
+	}
 	client, err := f.factory.PublicIP()
 	if err != nil {
 		panic(err)
 	}
-	ips := f.tf.UserManagedIPs()
 	for _, ip := range ips {
 		resp, err := client.Get(ctx, ip.ResourceGroup, ip.Name)
 		if err == nil {
-			res[ip.SubnetName] = armnetwork.PublicIPAddressesClientCreateOrUpdateResponse{
-				PublicIPAddress: armnetwork.PublicIPAddress{
-					ID: resp.ID,
-				},
+			res[ip.SubnetName] = armnetwork.PublicIPAddress{
+				ID: resp.ID,
 			}
 		}
-
 	}
 }
 
-func (f TfReconciler) NatGateways(ctx context.Context, ips map[string]armnetwork.PublicIPAddressesClientCreateOrUpdateResponse) (res map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse, err error) {
+func (f TfReconciler) NatGateways(ctx context.Context, ips map[string]armnetwork.PublicIPAddress) (res map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse, err error) {
 	res = make(map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse)
 	client, err := f.factory.NatGateway()
 	if err != nil {

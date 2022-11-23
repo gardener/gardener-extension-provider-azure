@@ -115,3 +115,9 @@ func (f *MockFactoryWrapper) assertPublicIPCalledWithParameters(name interface{}
 	f.EXPECT().PublicIP().Return(ip, nil)
 	return ip.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, name, params).Return(armnetwork.PublicIPAddressesClientCreateOrUpdateResponse{PublicIPAddress: armnetwork.PublicIPAddress{ID: to.Ptr("ipId")}}, nil)
 }
+
+func (f *MockFactoryWrapper) assertPublicIPGet(resourceGroup, name interface{}) *gomock.Call {
+	ip := mockclient.NewMockNewPublicIP(f.ctrl)
+	f.EXPECT().PublicIP().Return(ip, nil)
+	return ip.EXPECT().Get(gomock.Any(), resourceGroup, name).Return(armnetwork.PublicIPAddressesClientGetResponse{PublicIPAddress: armnetwork.PublicIPAddress{ID: to.Ptr("my-id")}}, nil)
+}
