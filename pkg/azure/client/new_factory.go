@@ -41,5 +41,20 @@ func (f newFactory) RouteTables() (RouteTables, error) {
 
 func (f newFactory) SecurityGroups() (SecurityGroups, error) {
 	return NewSecurityGroupClient(f.auth)
+}
 
+func (f newFactory) AvailabilitySet() (AvailabilitySet, error) {
+	return NewAvailabilitySetClient(f.auth)
+}
+
+func (f newFactory) Subnet() (Subnet, error) {
+	return NewSubnetsClient(f.auth)
+}
+
+func (f newFactory) NatGateway() (NatGateway, error) {
+	return NewNatGatewaysClient(f.auth)
+}
+
+func (f newFactory) PublicIP() (NewPublicIP, error) {
+	return NewPublicIPsClient(f.auth)
 }

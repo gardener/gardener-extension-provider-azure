@@ -5,7 +5,17 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
+
+func NewAvailabilitySetClient(auth internal.ClientAuth) (*AvailabilitySetClient, error) {
+	cred, err := auth.GetAzClientCredentials()
+	if err != nil {
+		return nil, err
+	}
+	client, err := armcompute.NewAvailabilitySetsClient(auth.SubscriptionID, cred, nil)
+	return &AvailabilitySetClient{client}, err
+}
 
 func (c AvailabilitySetClient) CreateOrUpdate(ctx context.Context, resourceGroupName, availabilitySetName string, parameters armcompute.AvailabilitySet) (res armcompute.AvailabilitySetsClientCreateOrUpdateResponse, err error) {
 	res, err = c.client.CreateOrUpdate(ctx, resourceGroupName, availabilitySetName, parameters, nil)

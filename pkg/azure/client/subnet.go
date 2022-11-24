@@ -18,7 +18,17 @@ import (
 	"context"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
+
+func NewSubnetsClient(auth internal.ClientAuth) (*SubnetsClient, error) {
+	cred, err := auth.GetAzClientCredentials()
+	if err != nil {
+		return nil, err
+	}
+	client, err := armnetwork.NewSubnetsClient(auth.SubscriptionID, cred, nil)
+	return &SubnetsClient{client}, err
+}
 
 // TODO reference to route table parameters.Properties.RouteTable
 func (c SubnetsClient) CreateOrUpdate(ctx context.Context, resourceGroupName, vnetName, subnetName string, parameters armnetwork.Subnet) error {
