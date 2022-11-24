@@ -19,12 +19,9 @@ import (
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 	"github.com/go-logr/logr"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
-	"github.com/gardener/gardener/extensions/pkg/terraformer"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -41,56 +38,61 @@ func newAzureClientFactory(client client.Client) azureclient.Factory {
 
 // Delete implements infrastructure.Actuator.
 func (a *actuator) Delete(ctx context.Context, log logr.Logger, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
-	tf, err := internal.NewTerraformer(log, a.RESTConfig(), infrastructure.TerraformerPurpose, infra, a.disableProjectedTokenMount)
+	reconciler, err := NewFlowReconciler(ctx, a, infra)
 	if err != nil {
 		return err
 	}
-
-	// terraform pod from previous reconciliation might still be running, ensure they are gone before doing any operations
-	if err := tf.EnsureCleanedUp(ctx); err != nil {
-		return err
-	}
-
 	config, err := helper.InfrastructureConfigFromInfrastructure(infra)
 	if err != nil {
 		return err
 	}
+	return reconciler.Delete(ctx, infra, config, cluster)
 
-	azureClientFactory := NewAzureClientFactory(a.Client())
-	resourceGroupExists, err := infrastructure.IsShootResourceGroupAvailable(ctx, azureClientFactory, infra, config)
-	if err != nil {
-		return err
-	}
+	//tf, err := internal.NewTerraformer(log, a.RESTConfig(), infrastructure.TerraformerPurpose, infra, a.disableProjectedTokenMount)
+	//if err != nil {
+	//	return err
+	//}
 
-	if !resourceGroupExists {
-		if err := infrastructure.DeleteNodeSubnetIfExists(ctx, azureClientFactory, infra, config); err != nil {
-			return err
-		}
+	//// terraform pod from previous reconciliation might still be running, ensure they are gone before doing any operations
+	//if err := tf.EnsureCleanedUp(ctx); err != nil {
+	//	return err
+	//}
 
-		if err := tf.RemoveTerraformerFinalizerFromConfig(ctx); err != nil {
-			return err
-		}
+	//azureClientFactory := NewAzureClientFactory(a.Client())
+	//resourceGroupExists, err := infrastructure.IsShootResourceGroupAvailable(ctx, azureClientFactory, infra, config)
+	//if err != nil {
+	//	return err
+	//}
 
-		return tf.CleanupConfiguration(ctx)
-	}
+	//if !resourceGroupExists {
+	//	if err := infrastructure.DeleteNodeSubnetIfExists(ctx, azureClientFactory, infra, config); err != nil {
+	//		return err
+	//	}
 
-	// If the Terraform state is empty then we can exit early as we didn't create anything. Though, we clean up potentially
-	// created configmaps/secrets related to the Terraformer.
-	stateIsEmpty := tf.IsStateEmpty(ctx)
-	if stateIsEmpty {
-		log.Info("exiting early as infrastructure state is empty - nothing to do")
-		return tf.CleanupConfiguration(ctx)
-	}
+	//	if err := tf.RemoveTerraformerFinalizerFromConfig(ctx); err != nil {
+	//		return err
+	//	}
 
-	terraformFiles, err := infrastructure.RenderTerraformerTemplate(infra, config, cluster)
-	if err != nil {
-		return err
-	}
+	//	return tf.CleanupConfiguration(ctx)
+	//}
 
-	return tf.
-		InitializeWith(ctx, terraformer.DefaultInitializer(a.Client(), terraformFiles.Main, terraformFiles.Variables, terraformFiles.TFVars, terraformer.StateConfigMapInitializerFunc(NoOpStateInitializer))).
-		SetEnvVars(internal.TerraformerEnvVars(infra.Spec.SecretRef)...).
-		Destroy(ctx)
+	//// If the Terraform state is empty then we can exit early as we didn't create anything. Though, we clean up potentially
+	//// created configmaps/secrets related to the Terraformer.
+	//stateIsEmpty := tf.IsStateEmpty(ctx)
+	//if stateIsEmpty {
+	//	log.Info("exiting early as infrastructure state is empty - nothing to do")
+	//	return tf.CleanupConfiguration(ctx)
+	//}
+
+	//terraformFiles, err := infrastructure.RenderTerraformerTemplate(infra, config, cluster)
+	//if err != nil {
+	//	return err
+	//}
+
+	//return tf.
+	//	InitializeWith(ctx, terraformer.DefaultInitializer(a.Client(), terraformFiles.Main, terraformFiles.Variables, terraformFiles.TFVars, terraformer.StateConfigMapInitializerFunc(NoOpStateInitializer))).
+	//	SetEnvVars(internal.TerraformerEnvVars(infra.Spec.SecretRef)...).
+	//	Destroy(ctx)
 }
 
 // NoOpStateInitializer is a no-op StateConfigMapInitializerFunc.

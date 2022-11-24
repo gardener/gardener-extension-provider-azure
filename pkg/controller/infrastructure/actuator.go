@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow"
 	infrainternal "github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
@@ -52,7 +53,7 @@ func NewActuator(disableProjectedTokenMount bool) infrastructure.Actuator {
 }
 
 func (a *actuator) updateProviderStatus(ctx context.Context, tf terraformer.Terraformer, infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig, cluster *controller.Cluster) error {
-	status, err := infrainternal.ComputeStatus(ctx, tf, infra, config, cluster)
+	status, err := infrainternal.ComputeStatusTf(ctx, tf, infra, config, cluster)
 	if err != nil {
 		return err
 	}
@@ -85,4 +86,37 @@ func (a *actuator) updateProviderStatus(ctx context.Context, tf terraformer.Terr
 	infra.Status.ProviderStatus = &runtime.RawExtension{Object: status}
 	infra.Status.State = &runtime.RawExtension{Raw: infraStateBytes}
 	return a.Client().Status().Patch(ctx, infra, patch)
+}
+
+func (a *actuator) updateProviderStatusNew(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig, cluster *controller.Cluster) error {
+	tfx, err := infraflow.NewTerraformAdapter(infra, config, cluster)
+	if err != nil {
+		return err
+	}
+	status := tfx.InfrastructureStatus(config)
+
+	terraformState := terraformer.RawState{} // TODO just for legacy compatibility, check if remove
+	stateByte, err := terraformState.Marshal()
+	if err != nil {
+		return err
+	}
+
+	infraState := &InfrastructureState{
+		SavedProviderStatus: &runtime.RawExtension{
+			Object: status,
+		},
+		TerraformState: &runtime.RawExtension{
+			Raw: stateByte,
+		},
+	}
+
+	infraStateBytes, err := json.Marshal(infraState)
+	if err != nil {
+		return err
+	}
+
+	//patch := client.MergeFrom(infra.DeepCopy())
+	infra.Status.ProviderStatus = &runtime.RawExtension{Object: status}
+	infra.Status.State = &runtime.RawExtension{Raw: infraStateBytes}
+	return a.Client().Status().Update(ctx, infra) //.Patch(ctx, infra, patch)
 }
