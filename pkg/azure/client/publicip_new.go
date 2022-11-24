@@ -18,7 +18,17 @@ import (
 	"context"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
+
+func NewPublicIPsClient(auth internal.ClientAuth) (*NewPublicIPClient, error) {
+	cred, err := auth.GetAzClientCredentials()
+	if err != nil {
+		return nil, err
+	}
+	client, err := armnetwork.NewPublicIPAddressesClient(auth.SubscriptionID, cred, nil)
+	return &NewPublicIPClient{client}, err
+}
 
 // CreateOrUpdate indicates an expected call of Network Public IP CreateOrUpdate.
 func (c *NewPublicIPClient) CreateOrUpdate(ctx context.Context, resourceGroupName, name string, parameters armnetwork.PublicIPAddress) (a armnetwork.PublicIPAddressesClientCreateOrUpdateResponse, err error) {
