@@ -22,6 +22,14 @@ func NewTfReconciler(infra *extensionsv1alpha1.Infrastructure, cfg *azure.Infras
 	return &TfReconciler{tfAdapter, factory}, err
 }
 
+func (f TfReconciler) Delete(ctx context.Context) error {
+	client, err := f.factory.ResourceGroup()
+	if err != nil {
+		return err
+	}
+	return client.Delete(ctx, f.tf.ResourceGroup())
+}
+
 func (f TfReconciler) Vnet(ctx context.Context) error {
 	if f.tf.isCreate(TfVnet) {
 		client, err := f.factory.Vnet()
@@ -170,11 +178,15 @@ func (f TfReconciler) Subnets(ctx context.Context, securityGroup armnetwork.Secu
 				RouteTable: &armnetwork.RouteTable{
 					ID: routeTable.ID,
 				},
-				NatGateway: &armnetwork.SubResource{
-					ID: nats[subnet.name].ID,
-				},
 			},
 		}
+		nat, ok := nats[subnet.name]
+		if ok {
+			parameters.Properties.NatGateway = &armnetwork.SubResource{
+				ID: nat.ID,
+			}
+		}
+
 		err = subnetClient.CreateOrUpdate(ctx, f.tf.ResourceGroup(), f.tf.Vnet().Name(), subnet.name, parameters)
 	}
 	//log.Info("Created Vnet", *cfg.Networks.VNet.Name)

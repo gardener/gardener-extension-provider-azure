@@ -26,6 +26,20 @@ type FlowReconciler struct {
 	Factory client.NewFactory
 }
 
+func NewFlowReconciler(factory client.NewFactory) *FlowReconciler {
+	return &FlowReconciler{
+		Factory: factory,
+	}
+}
+
+func (f *FlowReconciler) Delete(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, cluster *controller.Cluster) error {
+	reconciler, err := NewTfReconciler(infra, cfg, cluster, f.Factory)
+	if err != nil {
+		return err
+	}
+	return reconciler.Delete(ctx)
+}
+
 func (f FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, cluster *controller.Cluster) error {
 	tfAdapter, err := NewTerraformAdapter(infra, cfg, cluster)
 	if err != nil {
@@ -120,7 +134,7 @@ func ReconcileVnetFromTf(ctx context.Context, tf TerraformAdapter, vnetClient cl
 //}
 
 func ReconcileRouteTablesFromTf(tf TerraformAdapter, rclient client.RouteTables, ctx context.Context) (armnetwork.RouteTable, error) {
-	routeTableName := "worker_route_table"
+	routeTableName := tf.RouteTableName()
 	parameters := armnetwork.RouteTable{
 		Location: to.Ptr(tf.Region()),
 	}
@@ -130,7 +144,7 @@ func ReconcileRouteTablesFromTf(tf TerraformAdapter, rclient client.RouteTables,
 }
 
 func ReconcileSecurityGroupsFromTf(tf TerraformAdapter, rclient client.SecurityGroups, ctx context.Context) (armnetwork.SecurityGroupsClientCreateOrUpdateResponse, error) {
-	name := tf.ClusterName() + "-workers"
+	name := tf.SecurityGroupName()
 	parameters := armnetwork.SecurityGroup{
 		Location: to.Ptr(tf.Region()),
 	}
@@ -156,7 +170,7 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 	g := flow.NewGraph("Azure infrastructure reconcilation")
 	resourceGroup := f.AddTask(g, "resource group creation", flowTask(tf, f.reconcileResourceGroupFromTf))
 
-	f.AddTask(g, "vnet creation", reconciler.Vnet, shared.Dependencies(resourceGroup))
+	vnet := f.AddTask(g, "vnet creation", reconciler.Vnet, shared.Dependencies(resourceGroup))
 
 	f.AddTask(g, "availability set creation", reconciler.AvailabilitySet, shared.Dependencies(resourceGroup))
 
@@ -196,7 +210,7 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 		}
 		natGateway := whiteboard.GetObject(NatGatewayMap).(map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse)
 		return reconciler.Subnets(ctx, securityGroup, routeTable, natGateway)
-	}, shared.Dependencies(resourceGroup), shared.Dependencies(securityGroup), shared.Dependencies(routeTable), shared.Dependencies(natGateway))
+	}, shared.Dependencies(resourceGroup), shared.Dependencies(securityGroup), shared.Dependencies(routeTable), shared.Dependencies(natGateway), shared.Dependencies(vnet))
 	return g
 
 }
