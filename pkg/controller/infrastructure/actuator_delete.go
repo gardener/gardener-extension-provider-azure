@@ -67,8 +67,10 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, infra *extension
 	}
 
 	if !resourceGroupExists {
-		if err := infrastructure.DeleteNodeSubnetIfExists(ctx, azureClientFactory, infra, config); err != nil {
-			return err
+		if !azureclient.IsAzureAPIUnauthorized(err) {
+			if err := infrastructure.DeleteNodeSubnetIfExists(ctx, azureClientFactory, infra, config); err != nil {
+				return err
+			}
 		}
 
 		if err := tf.RemoveTerraformerFinalizerFromConfig(ctx); err != nil {
