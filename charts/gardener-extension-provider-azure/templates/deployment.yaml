@@ -81,7 +81,7 @@ spec:
             path: /readyz
             port: {{ .Values.healthPort }}
             scheme: HTTP
-          initialDelaySeconds: 5
+          initialDelaySeconds: 120
         ports:
         - name: webhook-server
           containerPort: {{ .Values.webhookConfig.serverPort }}
