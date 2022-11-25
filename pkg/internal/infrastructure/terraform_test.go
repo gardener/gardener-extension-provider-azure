@@ -618,7 +618,7 @@ var _ = Describe("Terraform", func() {
 
 		It("should correctly compute the status for zoned cluster", func() {
 			config.Zoned = true
-			status := statusFromTerraformStateWithoutNatGateway(config, state)
+			status := StatusFromTerraformState(cluster, config, state)
 			Expect(status).To(Equal(&apiv1alpha1.InfrastructureStatus{
 				TypeMeta: StatusTypeMeta,
 				ResourceGroup: apiv1alpha1.ResourceGroup{
@@ -652,7 +652,7 @@ var _ = Describe("Terraform", func() {
 			state.AvailabilitySetName = availabilitySetName
 			state.CountFaultDomains = 2
 			state.CountUpdateDomains = 5
-			status := statusFromTerraformStateWithoutNatGateway(config, state)
+			status := StatusFromTerraformState(cluster, config, state)
 			Expect(status).To(Equal(&apiv1alpha1.InfrastructureStatus{
 				TypeMeta: StatusTypeMeta,
 				ResourceGroup: apiv1alpha1.ResourceGroup{
@@ -711,7 +711,7 @@ var _ = Describe("Terraform", func() {
 			state.IdentityID = identityID
 			state.IdentityClientID = identityClientID
 
-			status := statusFromTerraformStateWithoutNatGateway(config, state)
+			status := StatusFromTerraformState(cluster, config, state)
 			Expect(status).To(Equal(&apiv1alpha1.InfrastructureStatus{
 				TypeMeta: StatusTypeMeta,
 				ResourceGroup: apiv1alpha1.ResourceGroup{
