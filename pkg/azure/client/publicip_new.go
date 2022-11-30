@@ -48,6 +48,19 @@ func (c NewPublicIPClient) Get(ctx context.Context, resourceGroupName string, na
 	return c.client.Get(ctx, resourceGroupName, name, nil)
 }
 
+func (c NewPublicIPClient) GetAll(ctx context.Context, resourceGroupName string) ([]*armnetwork.PublicIPAddress, error) {
+	pager := c.client.NewListPager(resourceGroupName, nil)
+	var ips []*armnetwork.PublicIPAddress
+	for pager.More() {
+		res, err := pager.NextPage(ctx)
+		if err != nil {
+			return nil, err
+		}
+		ips = append(ips, res.PublicIPAddressListResult.Value...)
+	}
+	return ips, nil
+}
+
 // Delete will delete a network Public IP Address.
 func (c NewPublicIPClient) Delete(ctx context.Context, resourceGroupName, name string) error {
 	poller, err := c.client.BeginDelete(ctx, resourceGroupName, name, nil)

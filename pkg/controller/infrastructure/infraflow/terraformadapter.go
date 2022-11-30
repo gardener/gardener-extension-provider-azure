@@ -228,6 +228,8 @@ func (t TerraformAdapter) Nats() []natTf {
 		}
 		//cidr := subnet["cidr"].(string)
 		//serviceEndpoints := subnet["serviceEndpoints"].([]string)
+
+		// only for multi subnets
 		var isMigrated *bool = nil
 		isMigratedRaw, isMultiSubnet := subnet["migrated"]
 		if isMultiSubnet {
@@ -240,7 +242,6 @@ func (t TerraformAdapter) Nats() []natTf {
 			zone = to.Ptr(fmt.Sprintf("%d", zoneRaw.(int32)))
 		}
 
-		// only for multi subnets
 		var rawNetNumber *int32 = nil
 		netNumberRaw, ok := subnet["name"]
 		if ok {

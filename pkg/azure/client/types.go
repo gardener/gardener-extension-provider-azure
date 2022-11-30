@@ -57,6 +57,7 @@ type NatGateway interface {
 	CreateOrUpdate(ctx context.Context, resourceGroupName, natGatewayName string, parameters armnetwork.NatGateway) (armnetwork.NatGatewaysClientCreateOrUpdateResponse, error)
 	Get(ctx context.Context, resourceGroupName, natGatewayName string) (*armnetwork.NatGatewaysClientGetResponse, error)
 	Delete(ctx context.Context, resourceGroupName, natGatewayName string) error
+	GetAll(ctx context.Context, resourceGroupName string) ([]*armnetwork.NatGateway, error)
 }
 
 // #TODO replaces NetworkSecurityGroup
@@ -136,6 +137,7 @@ type NewPublicIP interface {
 	Get(ctx context.Context, resourceGroupName string, name string) (armnetwork.PublicIPAddressesClientGetResponse, error)
 	CreateOrUpdate(ctx context.Context, resourceGroupName, name string, parameters armnetwork.PublicIPAddress) (armnetwork.PublicIPAddressesClientCreateOrUpdateResponse, error)
 	Delete(ctx context.Context, resourceGroupName, name string) error
+	GetAll(ctx context.Context, resourceGroupName string) ([]*armnetwork.PublicIPAddress, error)
 }
 
 // NetworkInterface represents an Azure Network Interface client.

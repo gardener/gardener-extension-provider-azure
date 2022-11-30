@@ -976,6 +976,21 @@ func (mr *MockNatGatewayMockRecorder) Get(arg0, arg1, arg2 interface{}) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockNatGateway)(nil).Get), arg0, arg1, arg2)
 }
 
+// GetAll mocks base method.
+func (m *MockNatGateway) GetAll(arg0 context.Context, arg1 string) ([]*armnetwork.NatGateway, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAll", arg0, arg1)
+	ret0, _ := ret[0].([]*armnetwork.NatGateway)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAll indicates an expected call of GetAll.
+func (mr *MockNatGatewayMockRecorder) GetAll(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAll", reflect.TypeOf((*MockNatGateway)(nil).GetAll), arg0, arg1)
+}
+
 // MockNewPublicIP is a mock of NewPublicIP interface.
 type MockNewPublicIP struct {
 	ctrl     *gomock.Controller
@@ -1041,6 +1056,21 @@ func (m *MockNewPublicIP) Get(arg0 context.Context, arg1, arg2 string) (armnetwo
 func (mr *MockNewPublicIPMockRecorder) Get(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockNewPublicIP)(nil).Get), arg0, arg1, arg2)
+}
+
+// GetAll mocks base method.
+func (m *MockNewPublicIP) GetAll(arg0 context.Context, arg1 string) ([]*armnetwork.PublicIPAddress, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAll", arg0, arg1)
+	ret0, _ := ret[0].([]*armnetwork.PublicIPAddress)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAll indicates an expected call of GetAll.
+func (mr *MockNewPublicIPMockRecorder) GetAll(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAll", reflect.TypeOf((*MockNewPublicIP)(nil).GetAll), arg0, arg1)
 }
 
 // MockAvailabilitySet is a mock of AvailabilitySet interface.
