@@ -2,39 +2,49 @@ package infraflow_test
 
 import (
 	"context"
+	"encoding/base64"
+	"flag"
+	"os"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	mockclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client/mock"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 	"github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+var (
+	secretYamlPath = flag.String("secret-path", "", "Yaml file with secret including Azure credentials")
 )
 
 func newBasicConfig() *azure.InfrastructureConfig {
 	return &azure.InfrastructureConfig{
-		//ResourceGroup: &azure.ResourceGroup{Name: resourceGroupName},
 		Networks: azure.NetworkConfig{
 			VNet: azure.VNet{
-				//Name:          to.Ptr(vnetName), // only specify when using existing group
-				//ResourceGroup: to.Ptr(resourceGroupName),
 				CIDR: to.Ptr("10.0.0.0/8"),
 			},
 			Workers:          to.Ptr("10.0.0.0/16"),
 			ServiceEndpoints: []string{},
-			/// TODO how to specify multi subnet.. resource group not needed?
-			//Zones:            []azure.Zone{{Name: 1, CIDR: "10.0.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: true, IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip", ResourceGroup: resourceGroupName}}}}, {Name: 2, CIDR: "10.1.0.0/16"}}, // subnets
 		},
 	}
 
 }
 
-// will also work for new Reonciler
+var _ = BeforeSuite(func() {
+	flag.Parse()
+})
+
+// will also work for new Reconciler
 var _ = Describe("TfReconciler", func() {
 	location := "westeurope"
 	clusterName := "test_cluster"
@@ -188,6 +198,7 @@ var _ = Describe("TfReconciler", func() {
 			cfg.Networks.Zones = []azure.Zone{{Name: 1, CIDR: "10.0.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: false, IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip", ResourceGroup: resourceGroupName}}}}, {Name: 2, CIDR: "10.1.0.0/16"}}
 			BeforeEach(func() {
 				mock := NewMockFactoryWrapper(resourceGroupName, location)
+				mock.assertPublicIPCalledWithoutCreation()
 				factory = mock.GetFactory()
 			})
 			It("does not create NAT IPs and does not update user-managed public IPs", func() {
@@ -239,92 +250,229 @@ var _ = Describe("TfReconciler", func() {
 				factory = mock.GetFactory()
 			})
 		})
-	})
-	Describe("Nat gateway reconcilation", func() {
-		cfg := newBasicConfig()
-		Context("with 2 zones and 1 with NAT", func() {
-			cfg.Networks.Zones = []azure.Zone{{Name: 1, CIDR: "10.0.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: true, IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip", ResourceGroup: resourceGroupName}}}}, {Name: 2, CIDR: "10.1.0.0/16"}}
-			ipId := to.Ptr("ip-id")
-			It("calls the client with correct nat gateway name and parameters", func() {
-				mock := NewMockFactoryWrapper(resourceGroupName, location)
-				parameters := armnetwork.NatGateway{
-					Location: to.Ptr(location),
-					Properties: &armnetwork.NatGatewayPropertiesFormat{
-						PublicIPAddresses: []*armnetwork.SubResource{
-							{
-								ID: ipId,
-							},
-						},
-						IdleTimeoutInMinutes: nil,
-					},
-					SKU:   &armnetwork.NatGatewaySKU{Name: to.Ptr(armnetwork.NatGatewaySKUNameStandard)},
-					Zones: []*string{to.Ptr("1")},
-				}
-				mock.assertNatGatewayCalledWithParameters("test_cluster-nat-gateway-z1", parameters)
-				factory = mock.GetFactory()
-
-				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
-				Expect(err).ToNot(HaveOccurred())
-				_, err = sut.NatGateways(context.TODO(), map[string]armnetwork.PublicIPAddress{"test_cluster-nodes-z1": {
-					ID: ipId,
-				},
-				})
-				Expect(err).ToNot(HaveOccurred())
-			})
-		})
-
-	})
-	Describe("Subnet reconcilation", func() {
-		cfg := newBasicConfig()
-		Context("with 2 zones", func() {
-			cfg.Networks.Zones = []azure.Zone{{Name: 1, CIDR: "10.0.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: true, IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip", ResourceGroup: resourceGroupName}}}}, {Name: 2, CIDR: "10.1.0.0/16"}}
-			It("calls the client with correct nat gateway name and parameters", func() {
-				mock := NewMockFactoryWrapper(resourceGroupName, location)
-				//parameters := armnetwork.NatGateway{
-				//	Location: to.Ptr(location),
-				//	Properties: &armnetwork.NatGatewayPropertiesFormat{
-				//		PublicIPAddresses: []*armnetwork.SubResource{
-				//			{
-				//				ID: to.Ptr("/subscriptions/123/resourceGroups/test_rg/providers/Microsoft.Network/publicIPAddresses/test_cluster-nat-gateway-z1-ip"),
-				//			},
-				//		},
-				//	},
-				//}
-				mock.assertSubnetCalled(vnetName, MatchAnyOfStrings([]string{"test_cluster-z2", "test_cluster-z1"})).Times(2)
-				factory = mock.GetFactory()
-
-				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
-				Expect(err).ToNot(HaveOccurred())
-				err = sut.Subnets(context.TODO(), armnetwork.SecurityGroup{}, armnetwork.RouteTable{}, map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse{})
-				Expect(err).ToNot(HaveOccurred())
-
-			})
-		})
-
-	})
-	Describe("Enrich IP reponse", func() {
-		Context("with 2 zones with user managed IPs for each", func() {
+		Context("with single net and NAT, then disabled (NOT MOCKED)", func() { // TODO replace with mock?
 			cfg := newBasicConfig()
-			cfg.Zoned = true
-			cfg.Networks.Zones = []azure.Zone{{Name: 1, CIDR: "10.0.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: true, IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip1", ResourceGroup: resourceGroupName}}}}, {Name: 2, CIDR: "10.1.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: true, IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip2", ResourceGroup: resourceGroupName}}}}}
+			cfg.Networks.NatGateway = &azure.NatGatewayConfig{
+				Zone:    to.Ptr(int32(1)),
+				Enabled: true,
+			}
+			It("should delete the old NAT associated IP after reconcilation", func() {
+				auth := readAuthFromFile(*secretYamlPath)
+				newFactory, err := client.NewAzureClientFactoryV2(auth)
+				Expect(err).ToNot(HaveOccurred())
 
-			BeforeEach(func() {
-				mock := NewMockFactoryWrapper(resourceGroupName, location)
-				mock.assertPublicIPGet(resourceGroupName, MatchAnyOfStrings([]string{"my-ip1", "my-ip2"})).Times(2)
-				factory = mock.GetFactory()
-			})
-			It("enriches with 2 user managed IPs", func() {
-				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
+				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, newFactory)
 				Expect(err).ToNot(HaveOccurred())
-				res := make(map[string]armnetwork.PublicIPAddress)
-				err = sut.EnrichResponseWithUserManagedIPs(context.TODO(), res)
+				sut.ResourceGroup(context.TODO())
+				rgroupC, err := newFactory.ResourceGroup()
 				Expect(err).ToNot(HaveOccurred())
-				Expect(res).To(HaveKey("test_cluster-z1"))
-				Expect(res).To(HaveKey("test_cluster-z2"))
+				defer rgroupC.Delete(context.TODO(), resourceGroupName)
+
+				_, err = sut.PublicIPs(context.TODO())
+				Expect(err).ToNot(HaveOccurred())
+
+				cfg.Networks.NatGateway.Enabled = false
+				// new init due to
+				sut, err = infraflow.NewTfReconciler(infra, cfg, cluster, newFactory)
+				Expect(err).ToNot(HaveOccurred())
+
+				_, err = sut.PublicIPs(context.TODO())
+				Expect(err).ToNot(HaveOccurred())
+
+				client, err := newFactory.PublicIP()
+				Expect(err).ToNot(HaveOccurred())
+				nats, err := client.GetAll(context.TODO(), resourceGroupName)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(nats).To(BeEmpty())
 			})
 		})
+		Describe("Nat gateway reconcilation", func() {
+			cfg := newBasicConfig()
+			Context("with 2 zones and 1 with NAT", func() {
+				cfg.Networks.Zones = []azure.Zone{{Name: 1, CIDR: "10.0.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: true, IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip", ResourceGroup: resourceGroupName}}}}, {Name: 2, CIDR: "10.1.0.0/16"}}
+				ipId := to.Ptr("ip-id")
+				It("calls the client with correct nat gateway name and parameters", func() {
+					mock := NewMockFactoryWrapper(resourceGroupName, location)
+					parameters := armnetwork.NatGateway{
+						Location: to.Ptr(location),
+						Properties: &armnetwork.NatGatewayPropertiesFormat{
+							PublicIPAddresses: []*armnetwork.SubResource{
+								{
+									ID: ipId,
+								},
+							},
+							IdleTimeoutInMinutes: nil,
+						},
+						SKU:   &armnetwork.NatGatewaySKU{Name: to.Ptr(armnetwork.NatGatewaySKUNameStandard)},
+						Zones: []*string{to.Ptr("1")},
+					}
+					mock.assertNatGatewayCalledWithParameters("test_cluster-nat-gateway-z1", parameters)
+					factory = mock.GetFactory()
+
+					sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
+					Expect(err).ToNot(HaveOccurred())
+					_, err = sut.NatGateways(context.TODO(), map[string]armnetwork.PublicIPAddress{"test_cluster-nodes-z1": {
+						ID: ipId,
+					},
+					})
+					Expect(err).ToNot(HaveOccurred())
+				})
+			})
+			Context("with single net and NAT, then disabled (NOT MOCKED)", func() { // TODO replace with mock
+				cfg := newBasicConfig()
+				cfg.Networks.NatGateway = &azure.NatGatewayConfig{
+					Zone:    to.Ptr(int32(1)),
+					Enabled: true,
+				}
+				//ipId := to.Ptr("ip-id")
+				It("deletes the old NAT after reconcilation", func() {
+					auth := readAuthFromFile(*secretYamlPath)
+					newFactory, err := client.NewAzureClientFactoryV2(auth)
+					Expect(err).ToNot(HaveOccurred())
+
+					sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, newFactory)
+					Expect(err).ToNot(HaveOccurred())
+					sut.ResourceGroup(context.TODO())
+					rgroupC, err := newFactory.ResourceGroup()
+					Expect(err).ToNot(HaveOccurred())
+					defer rgroupC.Delete(context.TODO(), resourceGroupName)
+
+					_, err = sut.NatGateways(context.TODO(), map[string]armnetwork.PublicIPAddress{})
+					Expect(err).ToNot(HaveOccurred())
+
+					cfg.Networks.NatGateway.Enabled = false
+					// new init due to
+					sut, err = infraflow.NewTfReconciler(infra, cfg, cluster, newFactory)
+					Expect(err).ToNot(HaveOccurred())
+					_, err = sut.NatGateways(context.TODO(), map[string]armnetwork.PublicIPAddress{})
+					Expect(err).ToNot(HaveOccurred())
+
+					client, err := newFactory.NatGateway()
+					Expect(err).ToNot(HaveOccurred())
+					nats, err := client.GetAll(context.TODO(), resourceGroupName)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(nats).To(BeEmpty())
+				})
+			})
+		})
+		Describe("Subnet reconcilation", func() {
+			cfg := newBasicConfig()
+			Context("with 2 zones", func() {
+				cfg.Networks.Zones = []azure.Zone{{Name: 1, CIDR: "10.0.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: true, IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip", ResourceGroup: resourceGroupName}}}}, {Name: 2, CIDR: "10.1.0.0/16"}}
+				It("calls the client with correct nat gateway name and parameters", func() {
+					mock := NewMockFactoryWrapper(resourceGroupName, location)
+					//parameters := armnetwork.NatGateway{
+					//	Location: to.Ptr(location),
+					//	Properties: &armnetwork.NatGatewayPropertiesFormat{
+					//		PublicIPAddresses: []*armnetwork.SubResource{
+					//			{
+					//				ID: to.Ptr("/subscriptions/123/resourceGroups/test_rg/providers/Microsoft.Network/publicIPAddresses/test_cluster-nat-gateway-z1-ip"),
+					//			},
+					//		},
+					//	},
+					//}
+					mock.assertSubnetCalled(vnetName, MatchAnyOfStrings([]string{"test_cluster-z2", "test_cluster-z1"})).Times(2)
+					factory = mock.GetFactory()
+
+					sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
+					Expect(err).ToNot(HaveOccurred())
+					err = sut.Subnets(context.TODO(), armnetwork.SecurityGroup{}, armnetwork.RouteTable{}, map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse{})
+					Expect(err).ToNot(HaveOccurred())
+
+				})
+			})
+
+		})
+		Describe("Enrich IP reponse", func() {
+			Context("with 2 zones with user managed IPs for each", func() {
+				cfg := newBasicConfig()
+				cfg.Zoned = true
+				cfg.Networks.Zones = []azure.Zone{{Name: 1, CIDR: "10.0.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: true, IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip1", ResourceGroup: resourceGroupName}}}}, {Name: 2, CIDR: "10.1.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: true, IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip2", ResourceGroup: resourceGroupName}}}}}
+
+				BeforeEach(func() {
+					mock := NewMockFactoryWrapper(resourceGroupName, location)
+					mock.assertPublicIPGet(resourceGroupName, MatchAnyOfStrings([]string{"my-ip1", "my-ip2"})).Times(2)
+					factory = mock.GetFactory()
+				})
+				It("enriches with 2 user managed IPs", func() {
+					sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
+					Expect(err).ToNot(HaveOccurred())
+					res := make(map[string]armnetwork.PublicIPAddress)
+					err = sut.EnrichResponseWithUserManagedIPs(context.TODO(), res)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(res).To(HaveKey("test_cluster-z1"))
+					Expect(res).To(HaveKey("test_cluster-z2"))
+				})
+			})
+		})
+		//Describe("Get Infrastructure status", func() {
+		//	foreignName := "foreign-name"
+		//	//Expect(err).ToNot(HaveOccurred())
+
+		//	//var cleanupHandle framework.CleanupActionHandle
+		//	//cleanupHandle = framework.AddCleanupAction(func() {
+		//	//	Expect(ignoreAzureNotFoundError(teardownResourceGroup(ctx, clientSet, foreignName))).To(Succeed())
+		//	//	framework.RemoveCleanupAction(cleanupHandle)
+		//	//})
+		//	auth := readAuthFromFile(*secretYamlPath)
+		//	clientId = &auth.ClientID
+		//	clientSecret = &auth.ClientSecret
+		//	subscriptionId = &auth.SubscriptionID
+		//	tenantId = &auth.TenantID
+
+		//	Expect(prepareNewResourceGroup(ctx, log, clientSet, foreignName, location)).To(Succeed())
+		//	Expect(prepareNewIdentity(ctx, log, clientSet, foreignName, foreignName, *region)).To(Succeed())
+
+		//})
+
 	})
 })
+
+// ClientAuth represents a Azure Client Auth credentials.
+type ClientAuth struct {
+	// SubscriptionID is the Azure subscription ID.
+	SubscriptionID string `yaml:"subscriptionID"`
+	// TenantID is the Azure tenant ID.
+	TenantID string `yaml:"tenantID"`
+	// ClientID is the Azure client ID.
+	ClientID string `yaml:"clientID"`
+	// ClientSecret is the Azure client secret.
+	ClientSecret string `yaml:"clientSecret"`
+}
+
+func (clientAuth ClientAuth) GetAzClientCredentials() (*azidentity.ClientSecretCredential, error) {
+	return azidentity.NewClientSecretCredential(clientAuth.TenantID, clientAuth.ClientID, clientAuth.ClientSecret, nil)
+}
+
+type ProviderSecret struct {
+	Data internal.ClientAuth `yaml:"data"`
+}
+
+// TODO share with infra test
+func readAuthFromFile(fileName string) internal.ClientAuth {
+	secret := ProviderSecret{}
+	data, err := os.ReadFile(fileName)
+	if err != nil {
+		panic(err)
+	}
+	err = yaml.Unmarshal(data, &secret)
+	if err != nil {
+		panic(err)
+	}
+	secret.Data.ClientID = decodeString(secret.Data.ClientID)
+	secret.Data.ClientSecret = decodeString(secret.Data.ClientSecret)
+	secret.Data.SubscriptionID = decodeString(secret.Data.SubscriptionID)
+	secret.Data.TenantID = decodeString(secret.Data.TenantID)
+	return secret.Data
+}
+
+func decodeString(s string) string {
+	res, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		panic(err)
+	}
+	return string(res)
+}
 
 type MatchParameters (armnetwork.VirtualNetwork)
 

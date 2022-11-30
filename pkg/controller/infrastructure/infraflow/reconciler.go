@@ -69,20 +69,6 @@ func (f *FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha
 	return nil
 }
 
-func flowTask(tf TerraformAdapter, fn func(context.Context, TerraformAdapter) error) flow.TaskFn {
-	return func(ctx context.Context) error {
-		return fn(ctx, tf)
-	}
-}
-
-func (f FlowReconciler) reconcileResourceGroupFromTf(ctx context.Context, tf TerraformAdapter) error {
-	rgClient, err := f.Factory.ResourceGroup()
-	if err != nil {
-		return err
-	}
-	return rgClient.CreateOrUpdate(ctx, tf.ResourceGroup(), tf.Region())
-}
-
 func ReconcileVnetFromTf(ctx context.Context, tf TerraformAdapter, vnetClient client.Vnet) error {
 	parameters := armnetwork.VirtualNetwork{
 		Location: to.Ptr(tf.Region()),
@@ -154,7 +140,7 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 	whiteboard := shared.NewWhiteboard()
 
 	g := flow.NewGraph("Azure infrastructure reconcilation")
-	resourceGroup := f.AddTask(g, "resource group creation", flowTask(tf, f.reconcileResourceGroupFromTf))
+	resourceGroup := f.AddTask(g, "resource group creation", reconciler.ResourceGroup)
 
 	vnet := f.AddTask(g, "vnet creation", reconciler.Vnet, shared.Dependencies(resourceGroup))
 

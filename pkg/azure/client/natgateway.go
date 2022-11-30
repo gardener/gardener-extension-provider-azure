@@ -37,6 +37,19 @@ func (c NatGatewayClient) Get(ctx context.Context, resourceGroupName, natGateway
 	return &natGateway, nil
 }
 
+func (c NatGatewayClient) GetAll(ctx context.Context, resourceGroupName string) ([]*armnetwork.NatGateway, error) {
+	pager := c.client.NewListPager(resourceGroupName, nil)
+	var nats []*armnetwork.NatGateway
+	for pager.More() {
+		res, err := pager.NextPage(ctx)
+		if err != nil {
+			return nil, err
+		}
+		nats = append(nats, res.NatGatewayListResult.Value...)
+	}
+	return nats, nil
+}
+
 func (c NatGatewayClient) Delete(ctx context.Context, resourceGroupName, natGatewayName string) error {
 	poller, err := c.client.BeginDelete(ctx, resourceGroupName, natGatewayName, nil)
 	if err != nil {
