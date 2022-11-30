@@ -7,6 +7,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -20,6 +21,30 @@ type TfReconciler struct {
 func NewTfReconciler(infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, cluster *controller.Cluster, factory client.NewFactory) (*TfReconciler, error) {
 	tfAdapter, err := NewTerraformAdapter(infra, cfg, cluster)
 	return &TfReconciler{tfAdapter, factory}, err
+}
+
+func (f TfReconciler) GetInfrastructureStatus(ctx context.Context, cfg *azure.InfrastructureConfig) (*v1alpha1.InfrastructureStatus, error) {
+	status := f.tf.InfrastructureStatus(cfg)
+	// enrich with Identity
+	client, err := f.factory.ManagedUserIdentity()
+	if err != nil {
+		return nil, err
+	}
+	if identity := f.tf.Identity(); identity != nil {
+		res, err := client.Get(ctx, identity.ResourceGroup, identity.Name)
+		if err != nil {
+			return nil, err
+		}
+		if res.ID == nil || res.ClientID == nil {
+			return status, nil
+		}
+
+		status.Identity = &v1alpha1.IdentityStatus{
+			ID:       *res.ID,
+			ClientID: res.ClientID.String(),
+		}
+	}
+	return status, nil
 }
 
 func (f TfReconciler) Delete(ctx context.Context) error {
@@ -187,7 +212,11 @@ func (f TfReconciler) Subnets(ctx context.Context, securityGroup armnetwork.Secu
 			}
 		}
 
-		err = subnetClient.CreateOrUpdate(ctx, f.tf.ResourceGroup(), f.tf.Vnet().Name(), subnet.name, parameters)
+		vnetRgroup := f.tf.Vnet().ResourceGroup() // try to use existing vnet resource
+		if vnetRgroup == nil {
+			vnetRgroup = to.Ptr(f.tf.ResourceGroup()) // expect that it was created previously
+		}
+		err = subnetClient.CreateOrUpdate(ctx, *vnetRgroup, f.tf.Vnet().Name(), subnet.name, parameters)
 	}
 	//log.Info("Created Vnet", *cfg.Networks.VNet.Name)
 	return err

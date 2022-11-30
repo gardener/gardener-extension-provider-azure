@@ -7,6 +7,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow/shared"
 	"github.com/gardener/gardener/extensions/pkg/controller"
@@ -23,7 +24,8 @@ const (
 )
 
 type FlowReconciler struct {
-	Factory client.NewFactory
+	Factory    client.NewFactory
+	reconciler *TfReconciler
 }
 
 func NewFlowReconciler(factory client.NewFactory) *FlowReconciler {
@@ -40,12 +42,22 @@ func (f *FlowReconciler) Delete(ctx context.Context, infra *extensionsv1alpha1.I
 	return reconciler.Delete(ctx)
 }
 
-func (f FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, cluster *controller.Cluster) error {
+// TODO pass dummy Reconcilied struct to ensure it was called before
+func (f FlowReconciler) GetInfrastructureStatus(ctx context.Context, cfg *azure.InfrastructureConfig) (*v1alpha1.InfrastructureStatus, error) {
+	if f.reconciler == nil {
+		return nil, fmt.Errorf("reconciler not initialized, call Reconcile before")
+	}
+	return f.reconciler.GetInfrastructureStatus(ctx, cfg)
+}
+
+func (f *FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, cluster *controller.Cluster) error {
 	tfAdapter, err := NewTerraformAdapter(infra, cfg, cluster)
 	if err != nil {
 		return err
 	}
 	reconciler, err := NewTfReconciler(infra, cfg, cluster, f.Factory) // TODO pass type once into FlowReconciler constructor, decouples from tfAdapter
+	f.reconciler = reconciler
+
 	if err != nil {
 		return err
 	}
@@ -60,22 +72,6 @@ func (f FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha1
 func flowTask(tf TerraformAdapter, fn func(context.Context, TerraformAdapter) error) flow.TaskFn {
 	return func(ctx context.Context) error {
 		return fn(ctx, tf)
-	}
-}
-
-func flowTaskWithReturn[T any](tf TerraformAdapter, fn func(context.Context, TerraformAdapter) (T, error), ch chan<- T) flow.TaskFn {
-	return func(ctx context.Context) error {
-		resp, err := fn(ctx, tf)
-		ch <- resp
-		return err
-	}
-}
-
-func flowTaskWithReturnAndInput[T any, K any](tf TerraformAdapter, input <-chan K, fn func(context.Context, TerraformAdapter, K) (T, error), ch chan<- T) flow.TaskFn {
-	return func(ctx context.Context) error {
-		resp, err := fn(ctx, tf, <-input)
-		ch <- resp
-		return err
 	}
 }
 
@@ -151,16 +147,6 @@ func ReconcileSecurityGroupsFromTf(tf TerraformAdapter, rclient client.SecurityG
 	resp, err := rclient.CreateOrUpdate(ctx, tf.ResourceGroup(), name, parameters)
 
 	return resp, err
-}
-
-func flowTaskNew[T any](clientFn func() (T, error), reconcileFn func(ctx context.Context, client T) error) flow.TaskFn {
-	return func(ctx context.Context) error {
-		client, err := clientFn()
-		if err != nil {
-			return err
-		}
-		return reconcileFn(ctx, client)
-	}
 }
 
 // todo copy infra.spec part

@@ -28,6 +28,24 @@ func (t TerraformAdapter) SecurityGroupName() string {
 	return t.ClusterName() + "-workers"
 }
 
+type identityTf struct {
+	Name          string
+	ResourceGroup string
+}
+
+func (t TerraformAdapter) Identity() *identityTf {
+	identity := t.values["identity"].(map[string]interface{})
+	name, ok := identity["name"]
+	if !ok {
+		return nil
+	}
+	resourceGroup, ok := identity["resourceGroup"]
+	if !ok {
+		return nil
+	}
+	return &identityTf{name.(string), resourceGroup.(string)}
+}
+
 // TODO verify correctness
 func (t TerraformAdapter) InfrastructureStatus(config *azure.InfrastructureConfig) *v1alpha1.InfrastructureStatus {
 	infraState := v1alpha1.InfrastructureStatus{
