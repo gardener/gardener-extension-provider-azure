@@ -90,13 +90,6 @@ func (t TerraformAdapter) InfrastructureStatus(config *azure.InfrastructureConfi
 
 	infraState.Networks.VNet.ResourceGroup = t.Vnet().ResourceGroup()
 
-	//if tfState.IdentityID != "" && tfState.IdentityClientID != "" {
-	//	infraState.Identity = &v1alpha1.IdentityStatus{
-	//		ID:       tfState.IdentityID,
-	//		ClientID: tfState.IdentityClientID,
-	//	}
-	//}
-
 	// Add AvailabilitySet to the infrastructure tfState if an AvailabilitySet is part of the Terraform tfState.
 
 	//if tfState.AvailabilitySetID != "" && tfState.AvailabilitySetName != "" {
@@ -227,11 +220,6 @@ func (t TerraformAdapter) Nats() []natTf {
 		return res
 	}
 	for _, subnet := range rawSubnets.([]map[string]interface{}) {
-		rawNetNumber, ok := subnet["name"].(int32)
-		if !ok {
-			continue
-		}
-
 		natRaw := subnet["natGateway"].(map[string]interface{})
 
 		var idleConnectionTimeoutMinutes *int32 = nil
@@ -251,13 +239,20 @@ func (t TerraformAdapter) Nats() []natTf {
 		if ok {
 			zone = to.Ptr(fmt.Sprintf("%d", zoneRaw.(int32)))
 		}
+
+		// only for multi subnets
+		var rawNetNumber *int32 = nil
+		netNumberRaw, ok := subnet["name"]
+		if ok {
+			rawNetNumber = to.Ptr(netNumberRaw.(int32))
+		}
 		res = append(res, natTf{rawNetNumber, natRaw["enabled"].(bool), idleConnectionTimeoutMinutes, isMigrated, t.ClusterName(), zone})
 	}
 	return res
 }
 
 type natTf struct {
-	rawNetNumber                 int32
+	rawNetNumber                 *int32
 	enabled                      bool
 	idleConnectionTimeoutMinutes *int32
 	migrated                     *bool
@@ -267,16 +262,16 @@ type natTf struct {
 
 func (nat natTf) NatName() string {
 	name := nat.clusterName + "-nat-gateway"
-	if nat.migrated != nil && !*nat.migrated {
-		name = fmt.Sprintf("%s-z%d", name, nat.rawNetNumber)
+	if nat.migrated != nil && !*nat.migrated && nat.rawNetNumber != nil {
+		name = fmt.Sprintf("%s-z%d", name, *nat.rawNetNumber)
 	}
 	return name
 }
 
 func (nat natTf) SubnetName() string {
 	name := nat.clusterName + "-nodes"
-	if nat.migrated != nil && !*nat.migrated {
-		name = fmt.Sprintf("%s-z%d", name, nat.rawNetNumber)
+	if nat.migrated != nil && !*nat.migrated && nat.rawNetNumber != nil {
+		name = fmt.Sprintf("%s-z%d", name, *nat.rawNetNumber)
 	}
 	return name
 }
