@@ -32,7 +32,7 @@ const (
 	webhookPath = "topology"
 )
 
-var logger = log.Log.WithName("azure-topology-webhook")
+var logger = log.Log.WithName("topology-webhook")
 
 // AddToManager creates a webhook adds the webhook to the manager.
 func AddToManager(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
@@ -58,11 +58,7 @@ func AddToManager(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 		Selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
 				v1beta1constants.LabelSeedProvider: azure.Type,
-			},
-		},
-		ObjectSelector: &metav1.LabelSelector{
-			MatchLabels: map[string]string{
-				v1beta1constants.GardenRole: v1beta1constants.GardenRoleShoot,
+				v1beta1constants.GardenRole:        v1beta1constants.GardenRoleShoot,
 			},
 		},
 	}, nil

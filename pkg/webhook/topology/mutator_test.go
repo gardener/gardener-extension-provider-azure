@@ -15,7 +15,6 @@
 package topology
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -40,7 +39,6 @@ func TestController(t *testing.T) {
 var _ = Describe("Ensurer", func() {
 	var (
 		logger = log.Log.WithName("azure-topology-webhook-test")
-		ctx    = context.TODO()
 
 		ctrl *gomock.Controller
 		c    *mockclient.MockClient
@@ -108,7 +106,7 @@ var _ = Describe("Ensurer", func() {
 				},
 			}
 
-			err := mutator.mutate(ctx, pod, cluster)
+			err := mutator.mutateNodeAffinity(pod, cluster)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pod.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0].Values[0]).To(Equal(fmt.Sprintf("%s-%s", region, "1")))
 			Expect(pod.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0].Values[1]).To(Equal(fmt.Sprintf("%s-%s", region, "2")))
@@ -145,7 +143,7 @@ var _ = Describe("Ensurer", func() {
 				},
 			}
 
-			err := mutator.mutate(ctx, pod, cluster)
+			err := mutator.mutateNodeAffinity(pod, cluster)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pod.Spec.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[0].Values[0]).To(Equal(fmt.Sprintf("%s-%s", region, "1")))
 			Expect(pod.Spec.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[0].Values[1]).To(Equal(fmt.Sprintf("%s-%s", region, "2")))

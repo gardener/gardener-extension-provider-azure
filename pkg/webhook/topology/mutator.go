@@ -33,7 +33,10 @@ type mutator struct {
 	log    logr.Logger
 }
 
-// New initializes a new mutator.
+// New initializes a new topology mutator that is responsible for adjusting the node affinity of pods.
+// The LabelTopologyZone label that Azure CCM adds to nodes does not contain only the zone as it appears in Azure API
+// calls but also the region like "$region-$zone". When only "$zone" is present for the LabelTopologyZone selector key
+// this mutator will adapt it to match the format that is used by the CCM labels.
 func New(logger logr.Logger) *mutator {
 	return &mutator{
 		log: logger,
@@ -46,10 +49,6 @@ func (m *mutator) InjectClient(client client.Client) error {
 }
 
 func (m *mutator) Mutate(ctx context.Context, new, _ client.Object) error {
-	if new == nil {
-		return nil
-	}
-
 	// do not try to mutate pods that are getting deleted
 	if new.GetDeletionTimestamp() != nil {
 		return nil
@@ -57,19 +56,18 @@ func (m *mutator) Mutate(ctx context.Context, new, _ client.Object) error {
 
 	newPod, ok := new.(*v1.Pod)
 	if !ok {
-		return fmt.Errorf("could not mutate: object is not type Pod")
+		return fmt.Errorf("object is not of type Pod")
 	}
 
 	gctx := gardenContext.NewGardenContext(m.client, new)
 	cluster, err := gctx.GetCluster(ctx)
 	if err != nil {
-		m.log.Error(err, "failed to mutate resource: %s/%s", new.GetNamespace(), new.GetName())
 		return err
 	}
-	return m.mutate(ctx, newPod, cluster)
+	return m.mutateNodeAffinity(newPod, cluster)
 }
 
-func (m *mutator) mutate(_ context.Context, pod *v1.Pod, cluster *extensions.Cluster) error {
+func (m *mutator) mutateNodeAffinity(pod *v1.Pod, cluster *extensions.Cluster) error {
 	// probably can be omitted due to the namespace selector
 	if cluster.Seed.Spec.Provider.Type != azure.Type {
 		return nil
@@ -84,11 +82,11 @@ func (m *mutator) mutate(_ context.Context, pod *v1.Pod, cluster *extensions.Clu
 	}
 
 	if req := pod.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution; req != nil {
-		m.adaptNodeSelectorTermSlice(req.NodeSelectorTerms, cluster.Seed.Spec.Provider.Region)
+		adaptNodeSelectorTermSlice(req.NodeSelectorTerms, cluster.Seed.Spec.Provider.Region)
 	}
 	if pref := pod.Spec.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution; pref != nil {
 		for p := range pref {
-			m.adaptNodeSelectorTerm(&pref[p].Preference, cluster.Seed.Spec.Provider.Region)
+			adaptNodeSelectorTerm(&pref[p].Preference, cluster.Seed.Spec.Provider.Region)
 		}
 	}
 
@@ -96,13 +94,13 @@ func (m *mutator) mutate(_ context.Context, pod *v1.Pod, cluster *extensions.Clu
 
 }
 
-func (m *mutator) adaptNodeSelectorTermSlice(terms []v1.NodeSelectorTerm, region string) {
+func adaptNodeSelectorTermSlice(terms []v1.NodeSelectorTerm, region string) {
 	for termsIdx := range terms {
-		m.adaptNodeSelectorTerm(&terms[termsIdx], region)
+		adaptNodeSelectorTerm(&terms[termsIdx], region)
 	}
 }
 
-func (m *mutator) adaptNodeSelectorTerm(term *v1.NodeSelectorTerm, region string) {
+func adaptNodeSelectorTerm(term *v1.NodeSelectorTerm, region string) {
 	for _, expr := range term.MatchExpressions {
 		if expr.Key == v1.LabelTopologyZone {
 			for idx, val := range expr.Values {
