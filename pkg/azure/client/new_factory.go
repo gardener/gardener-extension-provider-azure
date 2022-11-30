@@ -1,8 +1,11 @@
 package client
 
 import (
+	"context"
+
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	"github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
@@ -15,7 +18,13 @@ type NewFactory interface {
 	NatGateway() (NatGateway, error)
 	PublicIP() (NewPublicIP, error)
 	AvailabilitySet() (AvailabilitySet, error)
+	ManagedUserIdentity() (ManagedUserIdentity, error)
 }
+
+type ManagedUserIdentity interface {
+	Get(context.Context, string, string) (msi.Identity, error)
+}
+
 type newFactory struct {
 	auth internal.ClientAuth
 	cred *azidentity.ClientSecretCredential
@@ -57,4 +66,8 @@ func (f newFactory) NatGateway() (NatGateway, error) {
 
 func (f newFactory) PublicIP() (NewPublicIP, error) {
 	return NewPublicIPsClient(f.auth)
+}
+
+func (f newFactory) ManagedUserIdentity() (ManagedUserIdentity, error) {
+	return NewManagedUserIdentityClient(f.auth)
 }

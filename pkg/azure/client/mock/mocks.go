@@ -523,6 +523,21 @@ func (mr *MockNewFactoryMockRecorder) AvailabilitySet() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AvailabilitySet", reflect.TypeOf((*MockNewFactory)(nil).AvailabilitySet))
 }
 
+// ManagedUserIdentity mocks base method.
+func (m *MockNewFactory) ManagedUserIdentity() (client.ManagedUserIdentity, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ManagedUserIdentity")
+	ret0, _ := ret[0].(client.ManagedUserIdentity)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ManagedUserIdentity indicates an expected call of ManagedUserIdentity.
+func (mr *MockNewFactoryMockRecorder) ManagedUserIdentity() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ManagedUserIdentity", reflect.TypeOf((*MockNewFactory)(nil).ManagedUserIdentity))
+}
+
 // NatGateway mocks base method.
 func (m *MockNewFactory) NatGateway() (client.NatGateway, error) {
 	m.ctrl.T.Helper()

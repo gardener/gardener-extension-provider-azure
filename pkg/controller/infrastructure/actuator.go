@@ -88,35 +88,31 @@ func (a *actuator) updateProviderStatus(ctx context.Context, tf terraformer.Terr
 	return a.Client().Status().Patch(ctx, infra, patch)
 }
 
-func (a *actuator) updateProviderStatusNew(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig, cluster *controller.Cluster) error {
-	tfx, err := infraflow.NewTerraformAdapter(infra, config, cluster)
-	if err != nil {
-		return err
-	}
-	status := tfx.InfrastructureStatus(config)
-
-	terraformState := terraformer.RawState{} // TODO just for legacy compatibility, check if remove
-	stateByte, err := terraformState.Marshal()
+func (a *actuator) updateProviderStatusNew(ctx context.Context, reconciler *infraflow.FlowReconciler, infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig, cluster *controller.Cluster) error {
+	status, err := reconciler.GetInfrastructureStatus(ctx, config)
 	if err != nil {
 		return err
 	}
 
-	infraState := &InfrastructureState{
-		SavedProviderStatus: &runtime.RawExtension{
-			Object: status,
-		},
-		TerraformState: &runtime.RawExtension{
-			Raw: stateByte,
-		},
-	}
+	//terraformState := terraformer.RawState{} // TODO just for legacy compatibility, check if remove
+	//stateByte, err := terraformState.Marshal()
+	//if err != nil {
+	////	return err
+	//}
 
-	infraStateBytes, err := json.Marshal(infraState)
-	if err != nil {
-		return err
-	}
+	//infraState := &InfrastructureState{
+	//	SavedProviderStatus: &runtime.RawExtension{
+	//		Object: status,
+	//	},
+	//}
 
-	//patch := client.MergeFrom(infra.DeepCopy())
+	//infraStateBytes, err := json.Marshal(infraState)
+	//if err != nil {
+	//	return err
+	//}
+
+	patch := client.MergeFrom(infra.DeepCopy())
 	infra.Status.ProviderStatus = &runtime.RawExtension{Object: status}
-	infra.Status.State = &runtime.RawExtension{Raw: infraStateBytes}
-	return a.Client().Status().Update(ctx, infra) //.Patch(ctx, infra, patch)
+	//infra.Status.State = &runtime.RawExtension{Raw: infraStateBytes}
+	return a.Client().Status().Patch(ctx, infra, patch)
 }
