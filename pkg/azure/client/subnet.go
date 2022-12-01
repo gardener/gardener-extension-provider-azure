@@ -21,6 +21,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
+// NewSubnetsClient creates a new subnets client.
 func NewSubnetsClient(auth internal.ClientAuth) (*SubnetsClient, error) {
 	cred, err := auth.GetAzClientCredentials()
 	if err != nil {
@@ -30,7 +31,7 @@ func NewSubnetsClient(auth internal.ClientAuth) (*SubnetsClient, error) {
 	return &SubnetsClient{client}, err
 }
 
-// TODO reference to route table parameters.Properties.RouteTable
+// CreateOrUpdate creates or updates a subnet in a given virtual network.
 func (c SubnetsClient) CreateOrUpdate(ctx context.Context, resourceGroupName, vnetName, subnetName string, parameters armnetwork.Subnet) error {
 	poller, err := c.client.BeginCreateOrUpdate(ctx, resourceGroupName, vnetName, subnetName, parameters, nil)
 	if err != nil {
@@ -76,7 +77,4 @@ func (c SubnetsClient) Delete(ctx context.Context, resourceGroupName, vnetName, 
 
 	_, err = poller.PollUntilDone(ctx, nil)
 	return err
-	//if result.StatusCode == http.StatusOK || result.StatusCode == http.StatusAccepted || result.StatusCode == http.StatusNoContent || result.StatusCode == http.StatusNotFound {
-	//	return nil
-	//
 }

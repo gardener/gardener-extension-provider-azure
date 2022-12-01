@@ -8,6 +8,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
+// NewAvailabilitySetClient creates a new AvailabilitySetClient.
 func NewAvailabilitySetClient(auth internal.ClientAuth) (*AvailabilitySetClient, error) {
 	cred, err := auth.GetAzClientCredentials()
 	if err != nil {
@@ -17,6 +18,7 @@ func NewAvailabilitySetClient(auth internal.ClientAuth) (*AvailabilitySetClient,
 	return &AvailabilitySetClient{client}, err
 }
 
+// CreateOrUpdate creates or updates a new availability set.
 func (c AvailabilitySetClient) CreateOrUpdate(ctx context.Context, resourceGroupName, availabilitySetName string, parameters armcompute.AvailabilitySet) (res armcompute.AvailabilitySetsClientCreateOrUpdateResponse, err error) {
 	res, err = c.client.CreateOrUpdate(ctx, resourceGroupName, availabilitySetName, parameters, nil)
 	if err != nil {
@@ -25,6 +27,7 @@ func (c AvailabilitySetClient) CreateOrUpdate(ctx context.Context, resourceGroup
 	return res, nil
 }
 
+// Get returns the availability set for the given resource group and availability set name.
 func (c AvailabilitySetClient) Get(ctx context.Context, resourceGroupName, availabilitySetName string) (res armcompute.AvailabilitySetsClientGetResponse, err error) {
 	res, err = c.client.Get(ctx, resourceGroupName, availabilitySetName, nil)
 	if err != nil {
@@ -35,6 +38,7 @@ func (c AvailabilitySetClient) Get(ctx context.Context, resourceGroupName, avail
 	return res, nil
 }
 
+// Delete deletes the availability set for the given resource group and availability set name.
 func (c AvailabilitySetClient) Delete(ctx context.Context, resourceGroupName, availabilitySetName string) (armcompute.AvailabilitySetsClientDeleteResponse, error) {
 	return c.client.Delete(ctx, resourceGroupName, availabilitySetName, nil)
 }

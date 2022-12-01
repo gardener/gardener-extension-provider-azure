@@ -41,6 +41,7 @@ type ClientAuth struct {
 	ClientSecret string `yaml:"clientSecret"`
 }
 
+// GetAzClientCredentials returns the credential struct consumed by the Azure client
 func (clientAuth ClientAuth) GetAzClientCredentials() (*azidentity.ClientSecretCredential, error) {
 	return azidentity.NewClientSecretCredential(clientAuth.TenantID, clientAuth.ClientID, clientAuth.ClientSecret, nil)
 }

@@ -102,6 +102,7 @@ func RenderTerraformerTemplate(
 	}, nil
 }
 
+// MakeCluster returns a cluster object used for testing.
 func MakeCluster(pods, services string, region string, countFaultDomain, countUpdateDomain int32) *controller.Cluster {
 	var (
 		shoot = gardencorev1beta1.Shoot{

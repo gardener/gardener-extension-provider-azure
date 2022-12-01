@@ -135,9 +135,15 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 	ip := f.AddTask(g, "ips creation", func(ctx context.Context) error {
 		ips, err := reconciler.PublicIPs(ctx)
 		// add user managed Ips for NAT association
-		reconciler.EnrichResponseWithUserManagedIPs(ctx, ips)
+		if err != nil {
+			return err
+		}
+		err = reconciler.EnrichResponseWithUserManagedIPs(ctx, ips)
+		if err != nil {
+			return err
+		}
 		whiteboard.SetObject(PublicIPMap, ips)
-		return err
+		return nil
 	}, shared.Dependencies(resourceGroup))
 
 	natGateway := f.AddTask(g, "nat gateway creation", func(ctx context.Context) error {

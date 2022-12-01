@@ -134,7 +134,7 @@ var _ = Describe("TfReconciler", func() {
 
 			sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
 			Expect(err).ToNot(HaveOccurred())
-			sut.RouteTables(context.TODO())
+			Expect(sut.RouteTables(context.TODO())).To(Succeed())
 		})
 	})
 	Describe("Security group reconcilation", func() {
@@ -263,10 +263,10 @@ var _ = Describe("TfReconciler", func() {
 
 				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, newFactory)
 				Expect(err).ToNot(HaveOccurred())
-				sut.ResourceGroup(context.TODO())
+				Expect(sut.ResourceGroup(context.TODO())).To(Succeed())
 				rgroupC, err := newFactory.ResourceGroup()
 				Expect(err).ToNot(HaveOccurred())
-				defer rgroupC.Delete(context.TODO(), resourceGroupName)
+				defer Expect(rgroupC.Delete(context.TODO(), resourceGroupName)).To(Succeed())
 
 				_, err = sut.PublicIPs(context.TODO())
 				Expect(err).ToNot(HaveOccurred())
@@ -332,7 +332,7 @@ var _ = Describe("TfReconciler", func() {
 
 					sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, newFactory)
 					Expect(err).ToNot(HaveOccurred())
-					sut.ResourceGroup(context.TODO())
+					Expect(sut.ResourceGroup(context.TODO())).To(Succeed())
 					rgroupC, err := newFactory.ResourceGroup()
 					Expect(err).ToNot(HaveOccurred())
 					defer rgroupC.Delete(context.TODO(), resourceGroupName)

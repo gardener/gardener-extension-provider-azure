@@ -8,6 +8,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
+// NewVnetClient creates a new VnetClient.
 func NewVnetClient(auth internal.ClientAuth) (*VnetClient, error) {
 	cred, err := auth.GetAzClientCredentials()
 	if err != nil {
@@ -17,6 +18,7 @@ func NewVnetClient(auth internal.ClientAuth) (*VnetClient, error) {
 	return &VnetClient{client}, err
 }
 
+// CreateOrUpdate creates or updates a virtual network.
 func (v VnetClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, name string, parameters armnetwork.VirtualNetwork) (err error) {
 	poller, err := v.client.BeginCreateOrUpdate(ctx, resourceGroupName, name, parameters, nil)
 	if err != nil {
@@ -26,7 +28,7 @@ func (v VnetClient) CreateOrUpdate(ctx context.Context, resourceGroupName string
 	return err
 }
 
-// Delete a given an existing virtual network
+// Delete a given an existing virtual network.
 func (v VnetClient) Delete(ctx context.Context, resourceGroup, vnetName string) (err error) {
 	poller, err := v.client.BeginDelete(ctx, resourceGroup, vnetName, nil)
 	if err != nil {
@@ -36,6 +38,7 @@ func (v VnetClient) Delete(ctx context.Context, resourceGroup, vnetName string) 
 	return err
 }
 
+// Delete a given, existing virtual network.
 func (v VnetClient) Get(ctx context.Context, resourceGroupName, name string) (armnetwork.VirtualNetworksClientGetResponse, error) {
 	res, err := v.client.Get(ctx, resourceGroupName, name, nil)
 	return res, err
