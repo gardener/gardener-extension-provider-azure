@@ -73,6 +73,10 @@ type NetworkConfig struct {
 	Typha *Typha
 	// VethMTU settings used to configure calico port mtu
 	VethMTU *string
+	// EbpfDataplane enables the eBPF dataplane mode.
+	EbpfDataplane *EbpfDataplane
+	// Overlay enables the network overlay
+	Overlay *Overlay
 
 	// DEPRECATED.
 	// IPIP is the IPIP Mode for the IPv4 Pool (e.g. Always, Never, CrossSubnet)
@@ -107,5 +111,15 @@ type Typha struct {
 	// Note, typha is used to offload kubernetes API server,
 	// thus consider not to disable it for large clusters in terms of node count.
 	// More info can be found here https://docs.projectcalico.org/v3.9/reference/typha/
+	Enabled bool
+}
+
+type EbpfDataplane struct {
+	// Enabled enables the eBPF dataplane mode.
+	Enabled bool
+}
+
+type Overlay struct {
+	// Enabled enables the network overlay.
 	Enabled bool
 }
