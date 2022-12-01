@@ -11,6 +11,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"k8s.io/utils/pointer"
 )
 
 type TfReconciler struct {
@@ -24,7 +25,7 @@ func NewTfReconciler(infra *extensionsv1alpha1.Infrastructure, cfg *azure.Infras
 }
 
 func (f TfReconciler) GetInfrastructureStatus(ctx context.Context, cfg *azure.InfrastructureConfig) (*v1alpha1.InfrastructureStatus, error) {
-	status := f.tf.InfrastructureStatus(cfg)
+	status := f.tf.StaticInfrastructureStatus(cfg)
 	// enrich with Identity
 	client, err := f.factory.ManagedUserIdentity()
 	if err != nil {
@@ -43,6 +44,25 @@ func (f TfReconciler) GetInfrastructureStatus(ctx context.Context, cfg *azure.In
 			ID:       *res.ID,
 			ClientID: res.ClientID.String(),
 		}
+	}
+	// enrich with AvailabilitySet
+	if f.tf.isCreate(TfAvailabilitySet) {
+		client, err := f.factory.AvailabilitySet()
+		if err != nil {
+			return nil, err
+		}
+		avset := f.tf.AvailabilitySet()
+		res, err := client.Get(ctx, f.tf.ResourceGroup(), avset.Name)
+		if err != nil {
+			return nil, err
+		}
+		status.AvailabilitySets = append(status.AvailabilitySets, v1alpha1.AvailabilitySet{
+			Name:               avset.Name,
+			ID:                 *res.ID,
+			CountFaultDomains:  pointer.Int32Ptr(avset.CountFaultDomains),
+			CountUpdateDomains: pointer.Int32Ptr(avset.CountUpdateDomains),
+			Purpose:            v1alpha1.PurposeNodes,
+		})
 	}
 	return status, nil
 }
@@ -89,15 +109,16 @@ func (f TfReconciler) AvailabilitySet(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+		avset := f.tf.AvailabilitySet()
 		parameters := armcompute.AvailabilitySet{
 			Location: to.Ptr(f.tf.Region()),
 			Properties: &armcompute.AvailabilitySetProperties{
-				PlatformFaultDomainCount:  to.Ptr(f.tf.CountFaultDomains()),
-				PlatformUpdateDomainCount: to.Ptr(f.tf.CountUpdateDomains()),
+				PlatformFaultDomainCount:  to.Ptr(avset.CountFaultDomains),
+				PlatformUpdateDomainCount: to.Ptr(avset.CountUpdateDomains),
 			},
 			SKU: &armcompute.SKU{Name: to.Ptr(string(armcompute.AvailabilitySetSKUTypesAligned))}, // equal to managed = True in tf
 		}
-		_, err = asClient.CreateOrUpdate(ctx, f.tf.ResourceGroup(), f.tf.AvailabilitySetName(), parameters)
+		_, err = asClient.CreateOrUpdate(ctx, f.tf.ResourceGroup(), avset.Name, parameters)
 		return err
 	} else {
 		return nil

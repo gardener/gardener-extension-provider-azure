@@ -578,7 +578,7 @@ func runTest(
 			infra,
 			extensionsv1alpha1.InfrastructureResource,
 			30*time.Second,
-			60*time.Minute,
+			70*time.Minute,
 		)
 		Expect(err).ToNot(HaveOccurred())
 
