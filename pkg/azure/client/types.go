@@ -48,11 +48,14 @@ type Factory interface {
 	RouteTables(ctx context.Context, secretRef corev1.SecretReference) (RouteTables, error)
 }
 
+// AvailabilitySet is an interface for the Azure AvailabilitySet service.
 type AvailabilitySet interface {
 	Get(ctx context.Context, resourceGroupName, availabilitySetName string) (result armcompute.AvailabilitySetsClientGetResponse, err error)
 	CreateOrUpdate(ctx context.Context, resourceGroupName string, availabilitySetName string, parameters armcompute.AvailabilitySet) (result armcompute.AvailabilitySetsClientCreateOrUpdateResponse, err error)
 	Delete(ctx context.Context, resourceGroupName string, availabilitySetName string) (result armcompute.AvailabilitySetsClientDeleteResponse, err error)
 }
+
+// NatGateway is an interface for the Azure NatGateway service.
 type NatGateway interface {
 	CreateOrUpdate(ctx context.Context, resourceGroupName, natGatewayName string, parameters armnetwork.NatGateway) (armnetwork.NatGatewaysClientCreateOrUpdateResponse, error)
 	Get(ctx context.Context, resourceGroupName, natGatewayName string) (*armnetwork.NatGatewaysClientGetResponse, error)
