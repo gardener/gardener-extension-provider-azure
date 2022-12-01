@@ -16,8 +16,11 @@ package infrastructure
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
@@ -31,37 +34,38 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, infra *extens
 }
 
 func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster, stateInitializer terraformer.StateConfigMapInitializer) error {
-
-	reconciler, err := NewFlowReconciler(ctx, a, infra)
-	if err != nil {
-		return err
-	}
 	config, err := helper.InfrastructureConfigFromInfrastructure(infra)
 	if err != nil {
 		return err
 	}
-	err = reconciler.Reconcile(ctx, infra, config, cluster)
+	if a.shouldUseFlow(infra, cluster) {
+		reconciler, err := NewFlowReconciler(ctx, a, infra)
+		if err != nil {
+			return err
+		}
+		err = reconciler.Reconcile(ctx, infra, config, cluster)
+		if err != nil {
+			return err
+		}
+		return a.updateProviderStatusNew(ctx, reconciler, infra, config, cluster)
+	}
+
+	terraformFiles, err := infrastructure.RenderTerraformerTemplate(infra, config, cluster)
 	if err != nil {
 		return err
 	}
-	//return err // TODO update provider status
 
-	//terraformFiles, err := infrastructure.RenderTerraformerTemplate(infra, config, cluster)
-	//if err != nil {
-	//	return err
-	//}
+	tf, err := internal.NewTerraformerWithAuth(logger, a.RESTConfig(), infrastructure.TerraformerPurpose, infra, a.disableProjectedTokenMount)
+	if err != nil {
+		return err
+	}
 
-	//tf, err := internal.NewTerraformerWithAuth(logger, a.RESTConfig(), infrastructure.TerraformerPurpose, infra, a.disableProjectedTokenMount)
-	//if err != nil {
-	//	return err
-	//}
+	if err := tf.
+		InitializeWith(ctx, terraformer.DefaultInitializer(a.Client(), terraformFiles.Main, terraformFiles.Variables, terraformFiles.TFVars, stateInitializer)).
+		Apply(ctx); err != nil {
 
-	//if err := tf.
-	//	InitializeWith(ctx, terraformer.DefaultInitializer(a.Client(), terraformFiles.Main, terraformFiles.Variables, terraformFiles.TFVars, stateInitializer)).
-	//	Apply(ctx); err != nil {
+		return fmt.Errorf("failed to apply the terraform config: %w", err)
+	}
 
-	//	return fmt.Errorf("failed to apply the terraform config: %w", err)
-	//}
-
-	return a.updateProviderStatusNew(ctx, reconciler, infra, config, cluster)
+	return a.updateProviderStatus(ctx, tf, infra, config, cluster)
 }

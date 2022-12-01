@@ -80,6 +80,7 @@ var (
 	tenantId       = flag.String("tenant-id", "", "Azure tenant ID")
 	region         = flag.String("region", "", "Azure region")
 	secretYamlPath = flag.String("secret-path", "", "Yaml file with secret including Azure credentials")
+	useFlow        = flag.Bool("use-flow", true, "Set annotation to use flow for reconcilation")
 )
 
 func validateFlags() {
@@ -375,10 +376,9 @@ var _ = Describe("Infrastructure tests", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should successfully create and delete a zonal cluster with NatGateway using an existing vNet and identity", func() {
+		It("should successfully create and delete a zonal cluster with NatGateway using an existing vNet and identity", Label("single"), func() {
 			foreignName, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
-
 			var cleanupHandle framework.CleanupActionHandle
 			cleanupHandle = framework.AddCleanupAction(func() {
 				Expect(ignoreAzureNotFoundError(teardownResourceGroup(ctx, clientSet, foreignName))).To(Succeed())
@@ -577,8 +577,8 @@ func runTest(
 			log,
 			infra,
 			extensionsv1alpha1.InfrastructureResource,
-			10*time.Second,
-			16*time.Minute,
+			30*time.Second,
+			60*time.Minute,
 		)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -629,6 +629,11 @@ func runTest(
 	infra, err = newInfrastructure(namespaceName, providerConfig)
 	if err != nil {
 		return err
+	}
+
+	By("set flow annotation (based on config)")
+	if *useFlow {
+		metav1.SetMetaDataAnnotation(&infra.ObjectMeta, infrastructure.AnnotationKeyUseFlow, "true")
 	}
 
 	if err := c.Create(ctx, infra); err != nil {
