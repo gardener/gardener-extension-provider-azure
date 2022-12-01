@@ -180,7 +180,6 @@ func (f TfReconciler) PublicIPs(ctx context.Context) (map[string][]armnetwork.Pu
 		res[ip.SubnetName()] = append(res[ip.SubnetName()], resp.PublicIPAddress)
 
 	}
-	fmt.Println("MAP", res)
 	return res, nil
 }
 
