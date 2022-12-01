@@ -148,8 +148,8 @@ func (f TfReconciler) AvailabilitySet(ctx context.Context) error {
 	}
 }
 
-func (f TfReconciler) PublicIPs(ctx context.Context) (map[string]armnetwork.PublicIPAddress, error) {
-	res := make(map[string]armnetwork.PublicIPAddress)
+func (f TfReconciler) PublicIPs(ctx context.Context) (map[string][]armnetwork.PublicIPAddress, error) {
+	res := make(map[string][]armnetwork.PublicIPAddress)
 	client, err := f.factory.PublicIP()
 	if err != nil {
 		return res, err
@@ -177,12 +177,14 @@ func (f TfReconciler) PublicIPs(ctx context.Context) (map[string]armnetwork.Publ
 		if err != nil {
 			return res, err
 		}
-		res[ip.SubnetName()] = resp.PublicIPAddress
+		res[ip.SubnetName()] = append(res[ip.SubnetName()], resp.PublicIPAddress)
+
 	}
+	fmt.Println("MAP", res)
 	return res, nil
 }
 
-func (f TfReconciler) EnrichResponseWithUserManagedIPs(ctx context.Context, res map[string]armnetwork.PublicIPAddress) error {
+func (f TfReconciler) EnrichResponseWithUserManagedIPs(ctx context.Context, res map[string][]armnetwork.PublicIPAddress) error {
 	ips := f.tf.UserManagedIPs()
 	if len(ips) == 0 {
 		return nil
@@ -194,9 +196,9 @@ func (f TfReconciler) EnrichResponseWithUserManagedIPs(ctx context.Context, res 
 	for _, ip := range ips {
 		resp, err := client.Get(ctx, ip.ResourceGroup, ip.Name)
 		if err == nil {
-			res[ip.SubnetName] = armnetwork.PublicIPAddress{
+			res[ip.SubnetName] = append(res[ip.SubnetName], armnetwork.PublicIPAddress{
 				ID: resp.ID,
-			}
+			})
 		} else {
 			return err
 		}
@@ -213,7 +215,7 @@ func checkAllNatsWithFn(name string, nats []natTf, check func(nat natTf, name st
 	return false
 }
 
-func (f TfReconciler) NatGateways(ctx context.Context, ips map[string]armnetwork.PublicIPAddress) (res map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse, err error) {
+func (f TfReconciler) NatGateways(ctx context.Context, ips map[string][]armnetwork.PublicIPAddress) (res map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse, err error) {
 	res = make(map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse)
 	client, err := f.factory.NatGateway()
 	if err != nil {
@@ -232,9 +234,12 @@ func (f TfReconciler) NatGateways(ctx context.Context, ips map[string]armnetwork
 			Location: to.Ptr(f.tf.Region()),
 			SKU:      &armnetwork.NatGatewaySKU{Name: to.Ptr(armnetwork.NatGatewaySKUNameStandard)},
 		}
-		ipResource, ok := ips[nat.SubnetName()] // TODO should fail if not found
+		ipResources, ok := ips[nat.SubnetName()] // TODO should fail if not found
 		if ok {
-			params.Properties.PublicIPAddresses = []*armnetwork.SubResource{{ID: ipResource.ID}}
+			params.Properties.PublicIPAddresses = []*armnetwork.SubResource{}
+			for _, ip := range ipResources {
+				params.Properties.PublicIPAddresses = append(params.Properties.PublicIPAddresses, &armnetwork.SubResource{ID: ip.ID})
+			}
 		}
 		if nat.Zone() != nil {
 			params.Zones = []*string{nat.Zone()}

@@ -408,7 +408,7 @@ var _ = Describe("Infrastructure tests", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should successfully create and delete a zonal cluster with Nat Gateway using user provided public IPs", Label("failed"), func() {
+		It("should successfully create and delete a zonal cluster with Nat Gateway using user provided public IPs", func() {
 			foreignName, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
 

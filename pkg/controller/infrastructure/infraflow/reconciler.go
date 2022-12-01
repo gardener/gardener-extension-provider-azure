@@ -147,7 +147,7 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 	}, shared.Dependencies(resourceGroup))
 
 	natGateway := f.AddTask(g, "nat gateway creation", func(ctx context.Context) error {
-		ips := whiteboard.GetObject(PublicIPMap).(map[string]armnetwork.PublicIPAddress)
+		ips := whiteboard.GetObject(PublicIPMap).(map[string][]armnetwork.PublicIPAddress)
 		resp, err := reconciler.NatGateways(ctx, ips)
 		whiteboard.SetObject(NatGatewayMap, resp)
 		return err
