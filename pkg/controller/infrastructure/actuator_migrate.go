@@ -17,7 +17,8 @@ package infrastructure
 import (
 	"context"
 
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/go-logr/logr"
 
@@ -26,24 +27,13 @@ import (
 
 // Migrate implements infrastructure.Actuator.
 func (a *actuator) Migrate(ctx context.Context, log logr.Logger, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
-	reconciler, err := NewFlowReconciler(ctx, a, infra)
+	tf, err := internal.NewTerraformer(log, a.RESTConfig(), infrastructure.TerraformerPurpose, infra, a.disableProjectedTokenMount)
 	if err != nil {
 		return err
 	}
-	config, err := helper.InfrastructureConfigFromInfrastructure(infra)
-	if err != nil {
+
+	if err := tf.CleanupConfiguration(ctx); err != nil {
 		return err
 	}
-	err = reconciler.Reconcile(ctx, infra, config, cluster)
-	return err // TODO update provider status
-
-	//tf, err := internal.NewTerraformer(log, a.RESTConfig(), infrastructure.TerraformerPurpose, infra, a.disableProjectedTokenMount)
-	//if err != nil {
-	//	return err
-	//}
-
-	//if err := tf.CleanupConfiguration(ctx); err != nil {
-	//	return err
-	//}
-	//return tf.RemoveTerraformerFinalizerFromConfig(ctx)
+	return tf.RemoveTerraformerFinalizerFromConfig(ctx)
 }
