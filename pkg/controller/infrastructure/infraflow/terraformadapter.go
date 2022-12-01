@@ -87,7 +87,7 @@ func (t TerraformAdapter) StaticInfrastructureStatus(config *azure.Infrastructur
 		infraState.Networks.Layout = v1alpha1.NetworkLayoutSingleSubnet
 	}
 
-	for _, subnet := range t.Nats() {
+	for _, subnet := range t.Zones() {
 		subnetV1 := v1alpha1.Subnet{
 			Name:    subnet.SubnetName(),
 			Purpose: v1alpha1.PurposeNodes,
@@ -140,35 +140,20 @@ func (t TerraformAdapter) ClusterName() string {
 	return t.values["clusterName"].(string)
 }
 
-func (t TerraformAdapter) Subnets() []subnetTf {
-	res := make([]subnetTf, 0)
-	rawSubnets := t.values["networks"].(map[string]interface{})["subnets"]
-	if rawSubnets == nil {
-		return res
-	}
-	for _, subnet := range rawSubnets.([]map[string]interface{}) {
-		name := t.subnetName(subnet)
-		cidr := subnet["cidr"].(string)
-		serviceEndpoints := subnet["serviceEndpoints"].([]string)
-		res = append(res, subnetTf{name, cidr, serviceEndpoints})
-	}
-	return res
-}
-
 func (t TerraformAdapter) subnetName(subnet map[string]interface{}) string {
 	name := t.ClusterName() + "-nodes"
 	isMigrated, isMultiSubnet := subnet["migrated"]
 	if isMultiSubnet {
 		if !isMigrated.(bool) {
-			name = fmt.Sprintf("%s-z%d", t.ClusterName(), subnet["name"].(int32))
+			name = fmt.Sprintf("%s-z%d", name, subnet["name"].(int32))
 		}
 	}
 	return name
 }
 
-func (t TerraformAdapter) EnabledNats() []natTf {
-	res := make([]natTf, 0)
-	for _, nat := range t.Nats() {
+func (t TerraformAdapter) EnabledNats() []zoneTf {
+	res := make([]zoneTf, 0)
+	for _, nat := range t.Zones() {
 		if nat.enabled {
 			res = append(res, nat)
 		}
@@ -212,8 +197,8 @@ func (t TerraformAdapter) UserManagedIPs() []userManagedIP {
 	return res
 }
 
-func (t TerraformAdapter) Nats() []natTf {
-	res := make([]natTf, 0)
+func (t TerraformAdapter) Zones() []zoneTf {
+	res := make([]zoneTf, 0)
 	rawSubnets := t.values["networks"].(map[string]interface{})["subnets"]
 	if rawSubnets == nil {
 		return res
@@ -225,8 +210,8 @@ func (t TerraformAdapter) Nats() []natTf {
 		if _, ok := natRaw["idleConnectionTimeoutMinutes"]; ok {
 			idleConnectionTimeoutMinutes = to.Ptr(natRaw["idleConnectionTimeoutMinutes"].(int32))
 		}
-		//cidr := subnet["cidr"].(string)
-		//serviceEndpoints := subnet["serviceEndpoints"].([]string)
+		cidr := subnet["cidr"].(string)
+		serviceEndpoints := subnet["serviceEndpoints"].([]string)
 
 		// only for multi subnets
 		var isMigrated *bool = nil
@@ -246,21 +231,23 @@ func (t TerraformAdapter) Nats() []natTf {
 		if ok {
 			rawNetNumber = to.Ptr(netNumberRaw.(int32))
 		}
-		res = append(res, natTf{rawNetNumber, natRaw["enabled"].(bool), idleConnectionTimeoutMinutes, isMigrated, t.ClusterName(), zone})
+		res = append(res, zoneTf{rawNetNumber, natRaw["enabled"].(bool), idleConnectionTimeoutMinutes, isMigrated, t.ClusterName(), zone, cidr, serviceEndpoints})
 	}
 	return res
 }
 
-type natTf struct {
+type zoneTf struct {
 	rawNetNumber                 *int32
 	enabled                      bool
 	idleConnectionTimeoutMinutes *int32
 	migrated                     *bool
 	clusterName                  string
 	zone                         *string
+	cidr                         string
+	serviceEndpoints             []string
 }
 
-func (nat natTf) NatName() string {
+func (nat zoneTf) NatName() string {
 	name := nat.clusterName + "-nat-gateway"
 	if nat.migrated != nil && !*nat.migrated && nat.rawNetNumber != nil {
 		name = fmt.Sprintf("%s-z%d", name, *nat.rawNetNumber)
@@ -268,7 +255,7 @@ func (nat natTf) NatName() string {
 	return name
 }
 
-func (nat natTf) SubnetName() string {
+func (nat zoneTf) SubnetName() string {
 	name := nat.clusterName + "-nodes"
 	if nat.migrated != nil && !*nat.migrated && nat.rawNetNumber != nil {
 		name = fmt.Sprintf("%s-z%d", name, *nat.rawNetNumber)
@@ -276,18 +263,12 @@ func (nat natTf) SubnetName() string {
 	return name
 }
 
-func (nat natTf) IpName() string {
+func (nat zoneTf) IpName() string {
 	return nat.NatName() + "-ip"
 }
 
-func (nat natTf) Zone() *string {
+func (nat zoneTf) Zone() *string {
 	return nat.zone
-}
-
-type subnetTf struct {
-	name             string
-	cidr             string
-	serviceEndpoints []string
 }
 
 type vnetTf (map[string]interface{})

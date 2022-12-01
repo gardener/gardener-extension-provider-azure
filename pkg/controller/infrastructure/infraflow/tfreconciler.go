@@ -88,9 +88,9 @@ func (f TfReconciler) deleteForeignSubnets(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	subnets := f.tf.Subnets()
+	subnets := f.tf.Zones()
 	for _, subnet := range subnets {
-		err := subnetClient.Delete(ctx, *f.tf.Vnet().ResourceGroup(), f.tf.Vnet().Name(), subnet.name)
+		err := subnetClient.Delete(ctx, *f.tf.Vnet().ResourceGroup(), f.tf.Vnet().Name(), subnet.SubnetName())
 		if err != nil {
 			return err
 		}
@@ -206,7 +206,7 @@ func (f TfReconciler) EnrichResponseWithUserManagedIPs(ctx context.Context, res 
 	return nil
 }
 
-func checkAllNatsWithFn(name string, nats []natTf, check func(nat natTf, name string) bool) bool {
+func checkAllNatsWithFn(name string, nats []zoneTf, check func(nat zoneTf, name string) bool) bool {
 	for _, n := range nats {
 		if check(n, name) {
 			return true
@@ -271,7 +271,7 @@ func (f TfReconciler) deleteOldNatIPs(client client.NewPublicIP, ctx context.Con
 		if ip.Name == nil {
 			continue
 		}
-		isIpInNats := checkAllNatsWithFn(*ip.Name, f.tf.EnabledNats(), func(nat natTf, name string) bool { return nat.IpName() == name })
+		isIpInNats := checkAllNatsWithFn(*ip.Name, f.tf.EnabledNats(), func(nat zoneTf, name string) bool { return nat.IpName() == name })
 		if !isIpInNats {
 			err := client.Delete(ctx, f.tf.ResourceGroup(), *ip.Name)
 			if err != nil {
@@ -291,7 +291,7 @@ func (f TfReconciler) deleteOldNatGateways(client client.NatGateway, ctx context
 		if nat.Name == nil {
 			continue
 		}
-		isNatInNats := checkAllNatsWithFn(*nat.Name, f.tf.EnabledNats(), func(nat natTf, name string) bool { return nat.NatName() == name })
+		isNatInNats := checkAllNatsWithFn(*nat.Name, f.tf.EnabledNats(), func(nat zoneTf, name string) bool { return nat.NatName() == name })
 		if !isNatInNats {
 			err := client.Delete(ctx, f.tf.ResourceGroup(), *nat.Name)
 			if err != nil {
@@ -307,7 +307,7 @@ func (f TfReconciler) Subnets(ctx context.Context, securityGroup armnetwork.Secu
 	if err != nil {
 		return err
 	}
-	subnets := f.tf.Subnets()
+	subnets := f.tf.Zones()
 	for _, subnet := range subnets {
 		endpoints := make([]*armnetwork.ServiceEndpointPropertiesFormat, 0)
 		for _, endpoint := range subnet.serviceEndpoints {
@@ -317,10 +317,9 @@ func (f TfReconciler) Subnets(ctx context.Context, securityGroup armnetwork.Secu
 		}
 
 		parameters := armnetwork.Subnet{
-			//Name: to.Ptr(subnet.name),
 			Properties: &armnetwork.SubnetPropertiesFormat{
 				AddressPrefix:    to.Ptr(subnet.cidr),
-				ServiceEndpoints: endpoints, // TODO associate security group?, route table?
+				ServiceEndpoints: endpoints,
 				NetworkSecurityGroup: &armnetwork.SecurityGroup{
 					ID: securityGroup.ID,
 				},
@@ -329,7 +328,7 @@ func (f TfReconciler) Subnets(ctx context.Context, securityGroup armnetwork.Secu
 				},
 			},
 		}
-		nat, ok := nats[subnet.name]
+		nat, ok := nats[subnet.SubnetName()]
 		if ok {
 			parameters.Properties.NatGateway = &armnetwork.SubResource{
 				ID: nat.ID,
@@ -340,7 +339,7 @@ func (f TfReconciler) Subnets(ctx context.Context, securityGroup armnetwork.Secu
 		if vnetRgroup == nil {
 			vnetRgroup = to.Ptr(f.tf.ResourceGroup()) // expect that it was created previously
 		}
-		err = subnetClient.CreateOrUpdate(ctx, *vnetRgroup, f.tf.Vnet().Name(), subnet.name, parameters)
+		err = subnetClient.CreateOrUpdate(ctx, *vnetRgroup, f.tf.Vnet().Name(), subnet.SubnetName(), parameters)
 	}
 	return err
 }
