@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
@@ -427,22 +426,6 @@ var _ = Describe("TfReconciler", func() {
 
 	})
 })
-
-// ClientAuth represents a Azure Client Auth credentials.
-type ClientAuth struct {
-	// SubscriptionID is the Azure subscription ID.
-	SubscriptionID string `yaml:"subscriptionID"`
-	// TenantID is the Azure tenant ID.
-	TenantID string `yaml:"tenantID"`
-	// ClientID is the Azure client ID.
-	ClientID string `yaml:"clientID"`
-	// ClientSecret is the Azure client secret.
-	ClientSecret string `yaml:"clientSecret"`
-}
-
-func (clientAuth ClientAuth) GetAzClientCredentials() (*azidentity.ClientSecretCredential, error) {
-	return azidentity.NewClientSecretCredential(clientAuth.TenantID, clientAuth.ClientID, clientAuth.ClientSecret, nil)
-}
 
 type ProviderSecret struct {
 	Data internal.ClientAuth `yaml:"data"`

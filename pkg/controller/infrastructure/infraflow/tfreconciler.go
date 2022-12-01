@@ -2,6 +2,7 @@ package infraflow
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
@@ -72,7 +73,29 @@ func (f TfReconciler) Delete(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	// delete associated resources from other RG (otherwise deletion blocks)
+	if !f.tf.isCreate(TfVnet) {
+		err := f.deleteForeignSubnets(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to delete foreign subnet: %w", err)
+		}
+	}
 	return client.Delete(ctx, f.tf.ResourceGroup())
+}
+
+func (f TfReconciler) deleteForeignSubnets(ctx context.Context) error {
+	subnetClient, err := f.factory.Subnet()
+	if err != nil {
+		return err
+	}
+	subnets := f.tf.Subnets()
+	for _, subnet := range subnets {
+		err := subnetClient.Delete(ctx, *f.tf.Vnet().ResourceGroup(), f.tf.Vnet().Name(), subnet.name)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (f TfReconciler) Vnet(ctx context.Context) error {

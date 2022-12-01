@@ -330,7 +330,7 @@ var _ = Describe("Infrastructure tests", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should successfully create and delete AvailabilitySet cluster using existing vNet and existing identity", func() {
+		It("should successfully create and delete AvailabilitySet cluster using existing vNet and existing identity", Label("passed"), func() {
 			foreignName, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
 
@@ -408,7 +408,7 @@ var _ = Describe("Infrastructure tests", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should successfully create and delete a zonal cluster with Nat Gateway using user provided public IPs", func() {
+		It("should successfully create and delete a zonal cluster with Nat Gateway using user provided public IPs", Label("failed"), func() {
 			foreignName, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
 
@@ -453,7 +453,7 @@ var _ = Describe("Infrastructure tests", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should successfully create a multi zonal NAT Gateway cluster", func() {
+		It("should successfully create a multi zonal NAT Gateway cluster", Label("failed"), func() {
 			var (
 				zone1 int32 = 1
 				zone2 int32 = 2
@@ -577,8 +577,8 @@ func runTest(
 			log,
 			infra,
 			extensionsv1alpha1.InfrastructureResource,
-			30*time.Second,
-			70*time.Minute,
+			10*time.Second,
+			16*time.Minute,
 		)
 		Expect(err).ToNot(HaveOccurred())
 
