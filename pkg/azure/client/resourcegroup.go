@@ -34,11 +34,13 @@ func (c ResourceGroupClient) Delete(ctx context.Context, resourceGroupName strin
 		resourceGroupName,
 		nil)
 	if err != nil {
-		return err
+		if IsAzureAPINotFoundError(err) {
+			return nil
+		} else {
+			return err
+		}
 	}
-
 	_, err = resourceGroupResp.PollUntilDone(ctx, nil)
-
 	if IsAzureAPINotFoundError(err) {
 		return nil
 	} // ignore if resource group is already deleted
