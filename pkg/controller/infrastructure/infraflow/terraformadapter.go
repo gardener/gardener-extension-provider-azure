@@ -33,6 +33,16 @@ type identityTf struct {
 	ResourceGroup string
 }
 
+type availablilitySetTf struct {
+	Name               string
+	CountFaultDomains  int32
+	CountUpdateDomains int32
+}
+
+func (t TerraformAdapter) AvailabilitySet() availablilitySetTf {
+	return availablilitySetTf{t.availabilitySetName(), t.countFaultDomains(), t.countUpdateDomains()}
+}
+
 func (t TerraformAdapter) Identity() *identityTf {
 	identity := t.values["identity"].(map[string]interface{})
 	name, ok := identity["name"]
@@ -46,8 +56,8 @@ func (t TerraformAdapter) Identity() *identityTf {
 	return &identityTf{name.(string), resourceGroup.(string)}
 }
 
-// TODO verify correctness
-func (t TerraformAdapter) InfrastructureStatus(config *azure.InfrastructureConfig) *v1alpha1.InfrastructureStatus {
+// StaticInfrastructureStatus returns the status part that only depends on the configuration and does not rely on metadata from resource reconcilation
+func (t TerraformAdapter) StaticInfrastructureStatus(config *azure.InfrastructureConfig) *v1alpha1.InfrastructureStatus {
 	infraState := v1alpha1.InfrastructureStatus{
 		TypeMeta: infrastructure.StatusTypeMeta,
 		ResourceGroup: v1alpha1.ResourceGroup{
@@ -55,7 +65,7 @@ func (t TerraformAdapter) InfrastructureStatus(config *azure.InfrastructureConfi
 		},
 		Networks: v1alpha1.NetworkStatus{
 			VNet: v1alpha1.VNetStatus{
-				Name: t.Vnet().Name(),
+				Name: t.Vnet().Name(), // if not set by user then assumes tf default (no state necessary)
 			},
 		},
 		AvailabilitySets: []v1alpha1.AvailabilitySet{},
@@ -67,7 +77,6 @@ func (t TerraformAdapter) InfrastructureStatus(config *azure.InfrastructureConfi
 		},
 		Zoned: false,
 	}
-
 	if config.Zoned {
 		infraState.Zoned = true
 	}
@@ -79,28 +88,19 @@ func (t TerraformAdapter) InfrastructureStatus(config *azure.InfrastructureConfi
 	}
 
 	for _, subnet := range t.Nats() {
-		//if
-		infraState.Networks.Subnets = append(infraState.Networks.Subnets, v1alpha1.Subnet{
-			Name:    subnet.SubnetName(),
-			Purpose: v1alpha1.PurposeNodes,
-			Zone:    subnet.Zone(),
-			//Migrated: *subnet.migrated,
-		})
+		subnetV1 := v1alpha1.Subnet{
+			Name:     subnet.SubnetName(),
+			Purpose:  v1alpha1.PurposeNodes,
+			Zone:     subnet.Zone(),
+			Migrated: *subnet.migrated,
+		}
+		if subnet.migrated != nil {
+			subnetV1.Migrated = *subnet.migrated
+		}
+		infraState.Networks.Subnets = append(infraState.Networks.Subnets, subnetV1)
 	}
 
 	infraState.Networks.VNet.ResourceGroup = t.Vnet().ResourceGroup()
-
-	// Add AvailabilitySet to the infrastructure tfState if an AvailabilitySet is part of the Terraform tfState.
-
-	//if tfState.AvailabilitySetID != "" && tfState.AvailabilitySetName != "" {
-	//	infraState.AvailabilitySets = append(infraState.AvailabilitySets, v1alpha1.AvailabilitySet{
-	//		Name:               tfState.AvailabilitySetName,
-	//		ID:                 tfState.AvailabilitySetID,
-	//		CountFaultDomains:  pointer.Int32Ptr(int32(tfState.CountFaultDomains)),
-	//		CountUpdateDomains: pointer.Int32Ptr(int32(tfState.CountUpdateDomains)),
-	//		Purpose:            v1alpha1.PurposeNodes,
-	//	})
-	//}
 
 	return &infraState
 }
@@ -129,11 +129,11 @@ func (t TerraformAdapter) Region() string {
 	return t.values["azure"].(map[string]interface{})["region"].(string)
 }
 
-func (t TerraformAdapter) CountUpdateDomains() int32 {
+func (t TerraformAdapter) countUpdateDomains() int32 {
 	return t.values["azure"].(map[string]interface{})["countUpdateDomains"].(int32)
 }
 
-func (t TerraformAdapter) CountFaultDomains() int32 {
+func (t TerraformAdapter) countFaultDomains() int32 {
 	return t.values["azure"].(map[string]interface{})["countFaultDomains"].(int32)
 }
 
@@ -177,7 +177,7 @@ func (t TerraformAdapter) EnabledNats() []natTf {
 	return res
 }
 
-func (t TerraformAdapter) AvailabilitySetName() string {
+func (t TerraformAdapter) availabilitySetName() string {
 	return t.ClusterName() + "-avset-workers"
 }
 
