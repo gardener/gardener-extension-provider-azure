@@ -17,7 +17,6 @@ func NewVnetClient(auth internal.ClientAuth) (*VnetClient, error) {
 	return &VnetClient{client}, err
 }
 
-// TODO ddos Protection plan id in caller .. (use json unmarshall?)
 func (v VnetClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, name string, parameters armnetwork.VirtualNetwork) (err error) {
 	poller, err := v.client.BeginCreateOrUpdate(ctx, resourceGroupName, name, parameters, nil)
 	if err != nil {

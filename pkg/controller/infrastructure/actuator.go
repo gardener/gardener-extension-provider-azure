@@ -63,7 +63,7 @@ func (a *actuator) shouldUseFlow(infrastructure *extensionsv1alpha1.Infrastructu
 		(cluster.Shoot != nil && cluster.Shoot.Annotations != nil && strings.EqualFold(cluster.Shoot.Annotations[AnnotationKeyUseFlow], "true"))
 }
 
-func (a *actuator) updateProviderStatus(ctx context.Context, tf terraformer.Terraformer, infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig, cluster *controller.Cluster) error {
+func (a *actuator) updateProviderStatusFromTf(ctx context.Context, tf terraformer.Terraformer, infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig, cluster *controller.Cluster) error {
 	status, err := infrainternal.ComputeStatusTf(ctx, tf, infra, config, cluster)
 	if err != nil {
 		return err
@@ -99,7 +99,7 @@ func (a *actuator) updateProviderStatus(ctx context.Context, tf terraformer.Terr
 	return a.Client().Status().Patch(ctx, infra, patch)
 }
 
-func (a *actuator) updateProviderStatusNew(ctx context.Context, reconciler *infraflow.FlowReconciler, infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig, cluster *controller.Cluster) error {
+func (a *actuator) updateProviderStatusFromFlowReconciler(ctx context.Context, reconciler *infraflow.FlowReconciler, infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig, cluster *controller.Cluster) error {
 	status, err := reconciler.GetInfrastructureStatus(ctx, config)
 	if err != nil {
 		return err

@@ -51,17 +51,12 @@ func (f FlowReconciler) GetInfrastructureStatus(ctx context.Context, cfg *azure.
 }
 
 func (f *FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, cluster *controller.Cluster) error {
-	tfAdapter, err := NewTerraformAdapter(infra, cfg, cluster)
-	if err != nil {
-		return err
-	}
-	reconciler, err := NewTfReconciler(infra, cfg, cluster, f.Factory) // TODO pass type once into FlowReconciler constructor, decouples from tfAdapter
+	reconciler, err := NewTfReconciler(infra, cfg, cluster, f.Factory)
 	f.reconciler = reconciler
-
 	if err != nil {
 		return err
 	}
-	graph := f.buildReconcileGraph(ctx, infra, cfg, tfAdapter, reconciler)
+	graph := f.buildReconcileGraph(ctx, infra, cfg, reconciler)
 	fl := graph.Compile()
 	if err := fl.Run(ctx, flow.Opts{}); err != nil {
 		return flow.Causes(err)
@@ -94,27 +89,6 @@ func ReconcileVnetFromTf(ctx context.Context, tf TerraformAdapter, vnetClient cl
 	return vnetClient.CreateOrUpdate(ctx, rgroup, vnet, parameters)
 }
 
-//func (f FlowReconciler) reconcileVnet(infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig) flow.TaskFn {
-//	return func(ctx context.Context) error {
-//		vnetClient, err := f.Factory.Vnet()
-//		if err != nil {
-//			return err
-//		}
-//		if cfg.Networks.VNet.Name != nil {
-//			parameters := armnetwork.VirtualNetwork{
-//				Location: to.Ptr(infra.Spec.Region),
-//				Properties: &armnetwork.VirtualNetworkPropertiesFormat{
-//					AddressSpace: &armnetwork.AddressSpace{AddressPrefixes: []*string{cfg.Networks.VNet.CIDR}},
-//				},
-//			}
-//			err := vnetClient.CreateOrUpdate(ctx, cfg.ResourceGroup.Name, *cfg.Networks.VNet.Name, parameters)
-//			//log.Info("Created Vnet", *cfg.Networks.VNet.Name)
-//			return err
-//		}
-//		return nil
-//	}
-//}
-
 func ReconcileRouteTablesFromTf(tf TerraformAdapter, rclient client.RouteTables, ctx context.Context) (armnetwork.RouteTable, error) {
 	routeTableName := tf.RouteTableName()
 	parameters := armnetwork.RouteTable{
@@ -136,7 +110,7 @@ func ReconcileSecurityGroupsFromTf(tf TerraformAdapter, rclient client.SecurityG
 }
 
 // todo copy infra.spec part
-func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, tf TerraformAdapter, reconciler *TfReconciler) *flow.Graph {
+func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, reconciler *TfReconciler) *flow.Graph {
 	whiteboard := shared.NewWhiteboard()
 
 	g := flow.NewGraph("Azure infrastructure reconcilation")
