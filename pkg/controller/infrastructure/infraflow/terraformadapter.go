@@ -89,10 +89,9 @@ func (t TerraformAdapter) StaticInfrastructureStatus(config *azure.Infrastructur
 
 	for _, subnet := range t.Nats() {
 		subnetV1 := v1alpha1.Subnet{
-			Name:     subnet.SubnetName(),
-			Purpose:  v1alpha1.PurposeNodes,
-			Zone:     subnet.Zone(),
-			Migrated: *subnet.migrated,
+			Name:    subnet.SubnetName(),
+			Purpose: v1alpha1.PurposeNodes,
+			Zone:    subnet.Zone(),
 		}
 		if subnet.migrated != nil {
 			subnetV1.Migrated = *subnet.migrated
