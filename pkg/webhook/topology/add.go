@@ -42,7 +42,7 @@ func AddToManager(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 		{Obj: &v1.Pod{}},
 	}
 
-	handler, err := extensionswebhook.NewBuilder(mgr, logger).WithMutator(New(logger), types...).Build()
+	handler, err := extensionswebhook.NewBuilder(mgr, logger).WithMutator(New(), types...).Build()
 	if err != nil {
 		return nil, err
 	}

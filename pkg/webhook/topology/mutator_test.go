@@ -26,7 +26,6 @@ import (
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
@@ -38,8 +37,6 @@ func TestController(t *testing.T) {
 
 var _ = Describe("Ensurer", func() {
 	var (
-		logger = log.Log.WithName("azure-topology-webhook-test")
-
 		ctrl *gomock.Controller
 		c    *mockclient.MockClient
 
@@ -62,7 +59,7 @@ var _ = Describe("Ensurer", func() {
 		ctrl = gomock.NewController(GinkgoT())
 		c = mockclient.NewMockClient(ctrl)
 
-		mutator = New(logger)
+		mutator = New()
 
 		pod = &corev1.Pod{
 			Spec: corev1.PodSpec{

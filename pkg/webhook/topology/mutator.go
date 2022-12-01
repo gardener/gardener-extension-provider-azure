@@ -21,26 +21,20 @@ import (
 
 	gardenContext "github.com/gardener/gardener/extensions/pkg/webhook/context"
 	"github.com/gardener/gardener/pkg/extensions"
-	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 type mutator struct {
 	client client.Client
-	log    logr.Logger
 }
 
 // New initializes a new topology mutator that is responsible for adjusting the node affinity of pods.
 // The LabelTopologyZone label that Azure CCM adds to nodes does not contain only the zone as it appears in Azure API
 // calls but also the region like "$region-$zone". When only "$zone" is present for the LabelTopologyZone selector key
 // this mutator will adapt it to match the format that is used by the CCM labels.
-func New(logger logr.Logger) *mutator {
-	return &mutator{
-		log: logger,
-	}
+func New() *mutator {
+	return &mutator{}
 }
 
 func (m *mutator) InjectClient(client client.Client) error {
@@ -68,11 +62,6 @@ func (m *mutator) Mutate(ctx context.Context, new, _ client.Object) error {
 }
 
 func (m *mutator) mutateNodeAffinity(pod *v1.Pod, cluster *extensions.Cluster) error {
-	// probably can be omitted due to the namespace selector
-	if cluster.Seed.Spec.Provider.Type != azure.Type {
-		return nil
-	}
-
 	if pod.Spec.Affinity == nil {
 		return nil
 	}
