@@ -320,7 +320,7 @@ var _ = Describe("Infrastructure tests", func() {
 			framework.RunCleanupActions()
 		})
 
-		It("should successfully create and delete AvailabilitySet cluster creating new vNet", Label("passed"), func() {
+		It("should successfully create and delete AvailabilitySet cluster creating new vNet", func() {
 			providerConfig := newInfrastructureConfig(nil, nil, nil, false)
 
 			namespace, err := generateName()
@@ -330,7 +330,7 @@ var _ = Describe("Infrastructure tests", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should successfully create and delete AvailabilitySet cluster using existing vNet and existing identity", Label("passed"), func() {
+		It("should successfully create and delete AvailabilitySet cluster using existing vNet and existing identity", func() {
 			foreignName, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
 
@@ -366,7 +366,7 @@ var _ = Describe("Infrastructure tests", func() {
 			framework.RunCleanupActions()
 		})
 
-		It("should successfully create and delete a zonal cluster without NatGateway creating new vNet", Label("passed"), func() {
+		It("should successfully create and delete a zonal cluster without NatGateway creating new vNet", func() {
 			providerConfig := newInfrastructureConfig(nil, nil, nil, true)
 
 			namespace, err := generateName()
@@ -376,7 +376,7 @@ var _ = Describe("Infrastructure tests", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should successfully create and delete a zonal cluster with NatGateway using an existing vNet and identity", Label("single"), func() {
+		It("should successfully create and delete a zonal cluster with NatGateway using an existing vNet and identity", func() {
 			foreignName, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
 			var cleanupHandle framework.CleanupActionHandle
@@ -453,7 +453,7 @@ var _ = Describe("Infrastructure tests", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should successfully create a multi zonal NAT Gateway cluster", Label("failed"), func() {
+		It("should successfully create a multi zonal NAT Gateway cluster", func() {
 			var (
 				zone1 int32 = 1
 				zone2 int32 = 2
@@ -502,7 +502,7 @@ var _ = Describe("Infrastructure tests", func() {
 			framework.RunCleanupActions()
 		})
 
-		It("should successfully create and delete VMO cluster without NatGateway creating new vNet", Label("passed"), func() {
+		It("should successfully create and delete VMO cluster without NatGateway creating new vNet", func() {
 			providerConfig := newInfrastructureConfig(nil, nil, nil, false)
 
 			namespace, err := generateName()

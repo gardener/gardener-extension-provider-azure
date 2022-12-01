@@ -31,7 +31,7 @@ var _ = Describe("TfAdapter", func() {
 		}
 		sut, err := infraflow.NewTerraformAdapter(infra, cfg, cluster)
 		Expect(err).ToNot(HaveOccurred())
-		res := sut.Nats()
+		res := sut.Zones()
 		Expect(res).NotTo(BeEmpty())
 	})
 })
