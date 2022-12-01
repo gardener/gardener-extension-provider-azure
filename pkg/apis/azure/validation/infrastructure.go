@@ -107,6 +107,7 @@ func ValidateInfrastructureConfig(infra *apisazure.InfrastructureConfig, nodesCI
 	// This resources would be orphaned when the cluster will be deleted. We block these cases thereby that the Azure shoot
 	// validation here will fail for those cases.
 	// TODO: remove the following block and uncomment below blocks once deployment into existing resource groups works properly.
+	// TODO still applies?
 	if infra.ResourceGroup != nil {
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("resourceGroup"), infra.ResourceGroup, "specifying an existing resource group is not supported yet"))
 	}

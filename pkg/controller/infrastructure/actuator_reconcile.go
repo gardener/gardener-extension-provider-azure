@@ -47,7 +47,7 @@ func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, infra *ext
 		if err != nil {
 			return err
 		}
-		return a.updateProviderStatusNew(ctx, reconciler, infra, config, cluster)
+		return a.updateProviderStatusFromFlowReconciler(ctx, reconciler, infra, config, cluster)
 	}
 
 	terraformFiles, err := infrastructure.RenderTerraformerTemplate(infra, config, cluster)
@@ -67,5 +67,5 @@ func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, infra *ext
 		return fmt.Errorf("failed to apply the terraform config: %w", err)
 	}
 
-	return a.updateProviderStatus(ctx, tf, infra, config, cluster)
+	return a.updateProviderStatusFromTf(ctx, tf, infra, config, cluster)
 }
