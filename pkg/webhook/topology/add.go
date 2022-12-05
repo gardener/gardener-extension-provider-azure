@@ -17,7 +17,7 @@ package topology
 import (
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -39,7 +39,7 @@ func AddToManager(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 	logger.Info("Adding webhook to manager")
 
 	types := []extensionswebhook.Type{
-		{Obj: &v1.Pod{}},
+		{Obj: &corev1.Pod{}},
 	}
 
 	handler, err := extensionswebhook.NewBuilder(mgr, logger).WithMutator(New(), types...).Build()

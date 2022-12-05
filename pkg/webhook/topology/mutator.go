@@ -19,9 +19,9 @@ import (
 	"fmt"
 	"strings"
 
-	gardenContext "github.com/gardener/gardener/extensions/pkg/webhook/context"
+	gcontext "github.com/gardener/gardener/extensions/pkg/webhook/context"
 	"github.com/gardener/gardener/pkg/extensions"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -42,18 +42,25 @@ func (m *mutator) InjectClient(client client.Client) error {
 	return nil
 }
 
-func (m *mutator) Mutate(ctx context.Context, new, _ client.Object) error {
+func (m *mutator) Mutate(ctx context.Context, new, old client.Object) error {
 	// do not try to mutate pods that are getting deleted
 	if new.GetDeletionTimestamp() != nil {
 		return nil
 	}
 
-	newPod, ok := new.(*v1.Pod)
+	// Check if this is a create or update operation and perform no-op for updates
+	// Because the NodeAffinity of pods is an immutable field, we don't want to try and mutate it if the pod is already existing.
+	// TODO(KA): Remove once there is support for specifying webhook verbs
+	if old != nil {
+		return nil
+	}
+
+	newPod, ok := new.(*corev1.Pod)
 	if !ok {
 		return fmt.Errorf("object is not of type Pod")
 	}
 
-	gctx := gardenContext.NewGardenContext(m.client, new)
+	gctx := gcontext.NewGardenContext(m.client, new)
 	cluster, err := gctx.GetCluster(ctx)
 	if err != nil {
 		return err
@@ -61,7 +68,7 @@ func (m *mutator) Mutate(ctx context.Context, new, _ client.Object) error {
 	return m.mutateNodeAffinity(newPod, cluster)
 }
 
-func (m *mutator) mutateNodeAffinity(pod *v1.Pod, cluster *extensions.Cluster) error {
+func (m *mutator) mutateNodeAffinity(pod *corev1.Pod, cluster *extensions.Cluster) error {
 	if pod.Spec.Affinity == nil {
 		return nil
 	}
@@ -83,15 +90,15 @@ func (m *mutator) mutateNodeAffinity(pod *v1.Pod, cluster *extensions.Cluster) e
 
 }
 
-func adaptNodeSelectorTermSlice(terms []v1.NodeSelectorTerm, region string) {
+func adaptNodeSelectorTermSlice(terms []corev1.NodeSelectorTerm, region string) {
 	for termsIdx := range terms {
 		adaptNodeSelectorTerm(&terms[termsIdx], region)
 	}
 }
 
-func adaptNodeSelectorTerm(term *v1.NodeSelectorTerm, region string) {
+func adaptNodeSelectorTerm(term *corev1.NodeSelectorTerm, region string) {
 	for _, expr := range term.MatchExpressions {
-		if expr.Key == v1.LabelTopologyZone {
+		if expr.Key == corev1.LabelTopologyZone {
 			for idx, val := range expr.Values {
 				if !strings.HasPrefix(val, region) {
 					expr.Values[idx] = fmt.Sprintf("%s-%s", region, val)

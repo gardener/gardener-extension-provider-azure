@@ -15,6 +15,7 @@
 package topology
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -35,7 +36,7 @@ func TestController(t *testing.T) {
 	RunSpecs(t, "Topology Webhook Suite")
 }
 
-var _ = Describe("Ensurer", func() {
+var _ = Describe("Topology", func() {
 	var (
 		ctrl *gomock.Controller
 		c    *mockclient.MockClient
@@ -62,10 +63,33 @@ var _ = Describe("Ensurer", func() {
 		mutator = New()
 
 		pod = &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: namespace,
+			},
 			Spec: corev1.PodSpec{
-				Affinity: &corev1.Affinity{},
+				Affinity: &corev1.Affinity{
+					NodeAffinity: &corev1.NodeAffinity{
+						RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+							NodeSelectorTerms: []corev1.NodeSelectorTerm{
+								{
+									MatchExpressions: []corev1.NodeSelectorRequirement{
+										{
+											Key:    corev1.LabelTopologyZone,
+											Values: []string{"1", "2", fmt.Sprintf("%s-%d", region, 3)},
+										},
+										{
+											Key:    "foo",
+											Values: []string{"bar"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
 			},
 		}
+
 		Expect(mutator.InjectClient(c)).NotTo(HaveOccurred())
 	})
 
@@ -73,63 +97,48 @@ var _ = Describe("Ensurer", func() {
 		ctrl.Finish()
 	})
 
-	Describe("#MutatePodTopology", func() {
-		It("it should correctly mutate required", func() {
-			pod = &corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: namespace,
-				},
-				Spec: corev1.PodSpec{
-					Affinity: &corev1.Affinity{
-						NodeAffinity: &corev1.NodeAffinity{
-							RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
-								NodeSelectorTerms: []corev1.NodeSelectorTerm{
-									{
-										MatchExpressions: []corev1.NodeSelectorRequirement{
-											{
-												Key:    corev1.LabelTopologyZone,
-												Values: []string{"1", "2", fmt.Sprintf("%s-%d", region, 3)},
-											},
-											{
-												Key:    "foo",
-												Values: []string{"bar"},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			}
+	Context("#Webhook", func() {
+		It("it should not mutate on update operations", func() {
+			podCopy := pod.DeepCopy()
 
-			err := mutator.mutateNodeAffinity(pod, cluster)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(pod.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0].Values[0]).To(Equal(fmt.Sprintf("%s-%s", region, "1")))
-			Expect(pod.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0].Values[1]).To(Equal(fmt.Sprintf("%s-%s", region, "2")))
-			Expect(pod.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0].Values[2]).To(Equal(fmt.Sprintf("%s-%s", region, "3")))
-			Expect(pod.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[1].Values[0]).To(Equal("bar"))
+			err := mutator.Mutate(context.Background(), pod, pod)
+			Expect(err).To(BeNil())
+			Expect(pod).To(Equal(podCopy))
 		})
+	})
 
-		It("should correctly mutate preferred", func() {
-			pod = &corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: namespace,
-				},
-				Spec: corev1.PodSpec{
-					Affinity: &corev1.Affinity{
-						NodeAffinity: &corev1.NodeAffinity{
-							PreferredDuringSchedulingIgnoredDuringExecution: []corev1.PreferredSchedulingTerm{
-								{
-									Preference: corev1.NodeSelectorTerm{
-										MatchExpressions: []corev1.NodeSelectorRequirement{
-											{
-												Key:    corev1.LabelTopologyZone,
-												Values: []string{"1", "2", fmt.Sprintf("%s-%d", region, 3)},
-											},
-											{
-												Key:    "foo",
-												Values: []string{"bar"},
+	Context("#Mutator", func() {
+		Describe("#MutatePodTopology", func() {
+			It("it should correctly mutate required", func() {
+
+				err := mutator.mutateNodeAffinity(pod, cluster)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(pod.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0].Values[0]).To(Equal(fmt.Sprintf("%s-%s", region, "1")))
+				Expect(pod.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0].Values[1]).To(Equal(fmt.Sprintf("%s-%s", region, "2")))
+				Expect(pod.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0].Values[2]).To(Equal(fmt.Sprintf("%s-%s", region, "3")))
+				Expect(pod.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[1].Values[0]).To(Equal("bar"))
+			})
+
+			It("should correctly mutate preferred", func() {
+				pod = &corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+					},
+					Spec: corev1.PodSpec{
+						Affinity: &corev1.Affinity{
+							NodeAffinity: &corev1.NodeAffinity{
+								PreferredDuringSchedulingIgnoredDuringExecution: []corev1.PreferredSchedulingTerm{
+									{
+										Preference: corev1.NodeSelectorTerm{
+											MatchExpressions: []corev1.NodeSelectorRequirement{
+												{
+													Key:    corev1.LabelTopologyZone,
+													Values: []string{"1", "2", fmt.Sprintf("%s-%d", region, 3)},
+												},
+												{
+													Key:    "foo",
+													Values: []string{"bar"},
+												},
 											},
 										},
 									},
@@ -137,15 +146,15 @@ var _ = Describe("Ensurer", func() {
 							},
 						},
 					},
-				},
-			}
+				}
 
-			err := mutator.mutateNodeAffinity(pod, cluster)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(pod.Spec.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[0].Values[0]).To(Equal(fmt.Sprintf("%s-%s", region, "1")))
-			Expect(pod.Spec.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[0].Values[1]).To(Equal(fmt.Sprintf("%s-%s", region, "2")))
-			Expect(pod.Spec.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[0].Values[2]).To(Equal(fmt.Sprintf("%s-%s", region, "3")))
-			Expect(pod.Spec.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[1].Values[0]).To(Equal("bar"))
+				err := mutator.mutateNodeAffinity(pod, cluster)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(pod.Spec.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[0].Values[0]).To(Equal(fmt.Sprintf("%s-%s", region, "1")))
+				Expect(pod.Spec.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[0].Values[1]).To(Equal(fmt.Sprintf("%s-%s", region, "2")))
+				Expect(pod.Spec.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[0].Values[2]).To(Equal(fmt.Sprintf("%s-%s", region, "3")))
+				Expect(pod.Spec.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[1].Values[0]).To(Equal("bar"))
+			})
 		})
 	})
 })
