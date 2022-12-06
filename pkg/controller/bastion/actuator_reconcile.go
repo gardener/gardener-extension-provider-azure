@@ -27,6 +27,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	"github.com/gardener/gardener/extensions/pkg/controller"
+	"github.com/gardener/gardener/extensions/pkg/util"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	ctrlerror "github.com/gardener/gardener/pkg/controllerutils/reconciler"
 	"github.com/gardener/gardener/pkg/extensions"
@@ -64,12 +65,12 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 
 	publicIP, err := ensurePublicIPAddress(ctx, log, factory, opt)
 	if err != nil {
-		return err
+		return util.DetermineError(err, helper.KnownCodes)
 	}
 
 	nic, err := ensureNic(ctx, log, factory, infrastructureStatus, opt, publicIP)
 	if err != nil {
-		return err
+		return util.DetermineError(err, helper.KnownCodes)
 	}
 
 	opt.NicID = *nic.ID
@@ -77,7 +78,7 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 	// assume it's not possible to not have an ipv4 address
 	opt.PrivateIPAddressV4, err = getPrivateIPv4Address(nic)
 	if err != nil {
-		return err
+		return util.DetermineError(err, helper.KnownCodes)
 	}
 
 	opt.PrivateIPAddressV6, err = getPrivateIPv6Address(nic)
@@ -87,18 +88,18 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 
 	err = ensureNetworkSecurityGroups(ctx, log, factory, opt)
 	if err != nil {
-		return err
+		return util.DetermineError(err, helper.KnownCodes)
 	}
 
 	err = ensureComputeInstance(ctx, log, bastion, factory, opt)
 	if err != nil {
-		return err
+		return util.DetermineError(err, helper.KnownCodes)
 	}
 
 	// check if the instance already exists and has an IP
 	endpoints, err := getInstanceEndpoints(nic, publicIP)
 	if err != nil {
-		return err
+		return util.DetermineError(err, helper.KnownCodes)
 	}
 
 	if !endpoints.Ready() {
