@@ -10,7 +10,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	mockclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client/mock"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
@@ -133,7 +132,8 @@ var _ = Describe("TfReconciler", func() {
 
 			sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(sut.RouteTables(context.TODO())).To(Succeed())
+			_, err = sut.RouteTables(context.TODO())
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 	Describe("Security group reconcilation", func() {
@@ -249,42 +249,42 @@ var _ = Describe("TfReconciler", func() {
 				factory = mock.GetFactory()
 			})
 		})
-		Context("with single net and NAT, then disabled (NOT MOCKED)", func() { // TODO replace with mock?
-			cfg := newBasicConfig()
-			cfg.Networks.NatGateway = &azure.NatGatewayConfig{
-				Zone:    to.Ptr(int32(1)),
-				Enabled: true,
-			}
-			It("should delete the old NAT associated IP after reconcilation", func() {
-				auth := readAuthFromFile(*secretYamlPath)
-				newFactory, err := client.NewAzureClientFactoryV2(auth)
-				Expect(err).ToNot(HaveOccurred())
+		//Context("with single net and NAT, then disabled (NOT MOCKED)", func() { // TODO replace with mock?
+		//	cfg := newBasicConfig()
+		//	cfg.Networks.NatGateway = &azure.NatGatewayConfig{
+		//		Zone:    to.Ptr(int32(1)),
+		//		Enabled: true,
+		//	}
+		//	It("should delete the old NAT associated IP after reconcilation", func() {
+		//		auth := readAuthFromFile(*secretYamlPath)
+		//		newFactory, err := client.NewAzureClientFactoryV2(auth)
+		//		Expect(err).ToNot(HaveOccurred())
 
-				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, newFactory)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(sut.ResourceGroup(context.TODO())).To(Succeed())
-				rgroupC, err := newFactory.ResourceGroup()
-				Expect(err).ToNot(HaveOccurred())
-				defer Expect(rgroupC.Delete(context.TODO(), resourceGroupName)).To(Succeed())
+		//		sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, newFactory)
+		//		Expect(err).ToNot(HaveOccurred())
+		//		Expect(sut.ResourceGroup(context.TODO())).To(Succeed())
+		//		rgroupC, err := newFactory.ResourceGroup()
+		//		Expect(err).ToNot(HaveOccurred())
+		//		defer Expect(rgroupC.Delete(context.TODO(), resourceGroupName)).To(Succeed())
 
-				_, err = sut.PublicIPs(context.TODO())
-				Expect(err).ToNot(HaveOccurred())
+		//		_, err = sut.PublicIPs(context.TODO())
+		//		Expect(err).ToNot(HaveOccurred())
 
-				cfg.Networks.NatGateway.Enabled = false
-				// new init due to
-				sut, err = infraflow.NewTfReconciler(infra, cfg, cluster, newFactory)
-				Expect(err).ToNot(HaveOccurred())
+		//		cfg.Networks.NatGateway.Enabled = false
+		//		// new init due to
+		//		sut, err = infraflow.NewTfReconciler(infra, cfg, cluster, newFactory)
+		//		Expect(err).ToNot(HaveOccurred())
 
-				_, err = sut.PublicIPs(context.TODO())
-				Expect(err).ToNot(HaveOccurred())
+		//		_, err = sut.PublicIPs(context.TODO())
+		//		Expect(err).ToNot(HaveOccurred())
 
-				client, err := newFactory.PublicIP()
-				Expect(err).ToNot(HaveOccurred())
-				nats, err := client.GetAll(context.TODO(), resourceGroupName)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(nats).To(BeEmpty())
-			})
-		})
+		//		client, err := newFactory.PublicIP()
+		//		Expect(err).ToNot(HaveOccurred())
+		//		nats, err := client.GetAll(context.TODO(), resourceGroupName)
+		//		Expect(err).ToNot(HaveOccurred())
+		//		Expect(nats).To(BeEmpty())
+		//	})
+		//})
 		Describe("Nat gateway reconcilation", func() {
 			cfg := newBasicConfig()
 			Context("with 2 zones and 1 with NAT", func() {
@@ -317,44 +317,44 @@ var _ = Describe("TfReconciler", func() {
 					Expect(err).ToNot(HaveOccurred())
 				})
 			})
-			Context("with single net and NAT, then disabled (NOT MOCKED)", func() { // TODO replace with mock
-				cfg := newBasicConfig()
-				cfg.Networks.NatGateway = &azure.NatGatewayConfig{
-					Zone:    to.Ptr(int32(1)),
-					Enabled: true,
-				}
-				//ipId := to.Ptr("ip-id")
-				It("deletes the old NAT after reconcilation", func() {
-					auth := readAuthFromFile(*secretYamlPath)
-					newFactory, err := client.NewAzureClientFactoryV2(auth)
-					Expect(err).ToNot(HaveOccurred())
+			//Context("with single net and NAT, then disabled (NOT MOCKED)", func() { // TODO replace with mock
+			//	cfg := newBasicConfig()
+			//	cfg.Networks.NatGateway = &azure.NatGatewayConfig{
+			//		Zone:    to.Ptr(int32(1)),
+			//		Enabled: true,
+			//	}
+			//	//ipId := to.Ptr("ip-id")
+			//	It("deletes the old NAT after reconcilation", func() {
+			//		auth := readAuthFromFile(*secretYamlPath)
+			//		newFactory, err := client.NewAzureClientFactoryV2(auth)
+			//		Expect(err).ToNot(HaveOccurred())
 
-					sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, newFactory)
-					Expect(err).ToNot(HaveOccurred())
-					Expect(sut.ResourceGroup(context.TODO())).To(Succeed())
-					rgroupC, err := newFactory.ResourceGroup()
-					Expect(err).ToNot(HaveOccurred())
-					defer func() {
-						Expect(rgroupC.Delete(context.TODO(), resourceGroupName)).To(Succeed())
-					}()
+			//		sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, newFactory)
+			//		Expect(err).ToNot(HaveOccurred())
+			//		Expect(sut.ResourceGroup(context.TODO())).To(Succeed())
+			//		rgroupC, err := newFactory.ResourceGroup()
+			//		Expect(err).ToNot(HaveOccurred())
+			//		defer func() {
+			//			Expect(rgroupC.Delete(context.TODO(), resourceGroupName)).To(Succeed())
+			//		}()
 
-					_, err = sut.NatGateways(context.TODO(), map[string][]armnetwork.PublicIPAddress{})
-					Expect(err).ToNot(HaveOccurred())
+			//		_, err = sut.NatGateways(context.TODO(), map[string][]armnetwork.PublicIPAddress{})
+			//		Expect(err).ToNot(HaveOccurred())
 
-					cfg.Networks.NatGateway.Enabled = false
-					// new init due to
-					sut, err = infraflow.NewTfReconciler(infra, cfg, cluster, newFactory)
-					Expect(err).ToNot(HaveOccurred())
-					_, err = sut.NatGateways(context.TODO(), map[string][]armnetwork.PublicIPAddress{})
-					Expect(err).ToNot(HaveOccurred())
+			//		cfg.Networks.NatGateway.Enabled = false
+			//		// new init due to
+			//		sut, err = infraflow.NewTfReconciler(infra, cfg, cluster, newFactory)
+			//		Expect(err).ToNot(HaveOccurred())
+			//		_, err = sut.NatGateways(context.TODO(), map[string][]armnetwork.PublicIPAddress{})
+			//		Expect(err).ToNot(HaveOccurred())
 
-					client, err := newFactory.NatGateway()
-					Expect(err).ToNot(HaveOccurred())
-					nats, err := client.GetAll(context.TODO(), resourceGroupName)
-					Expect(err).ToNot(HaveOccurred())
-					Expect(nats).To(BeEmpty())
-				})
-			})
+			//		client, err := newFactory.NatGateway()
+			//		Expect(err).ToNot(HaveOccurred())
+			//		nats, err := client.GetAll(context.TODO(), resourceGroupName)
+			//		Expect(err).ToNot(HaveOccurred())
+			//		Expect(nats).To(BeEmpty())
+			//	})
+			//})
 		})
 		Describe("Subnet reconcilation", func() {
 			cfg := newBasicConfig()
@@ -372,7 +372,7 @@ var _ = Describe("TfReconciler", func() {
 					//		},
 					//	},
 					//}
-					mock.assertSubnetCalled(vnetName, MatchAnyOfStrings([]string{"test_cluster-z2", "test_cluster-z1"})).Times(2)
+					mock.assertSubnetCalled(vnetName, MatchAnyOfStrings([]string{"test_cluster-nodes-z2", "test_cluster-nodes-z1"})).Times(2)
 					factory = mock.GetFactory()
 
 					sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
@@ -401,8 +401,8 @@ var _ = Describe("TfReconciler", func() {
 					res := make(map[string][]armnetwork.PublicIPAddress)
 					err = sut.EnrichResponseWithUserManagedIPs(context.TODO(), res)
 					Expect(err).ToNot(HaveOccurred())
-					Expect(res).To(HaveKey("test_cluster-z1"))
-					Expect(res).To(HaveKey("test_cluster-z2"))
+					Expect(res).To(HaveKey("test_cluster-nodes-z1"))
+					Expect(res).To(HaveKey("test_cluster-nodes-z2"))
 				})
 			})
 		})
