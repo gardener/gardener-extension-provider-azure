@@ -310,10 +310,10 @@ var _ = Describe("TfReconciler", func() {
 
 					sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
 					Expect(err).ToNot(HaveOccurred())
-					_, err = sut.NatGateways(context.TODO(), map[string]armnetwork.PublicIPAddress{"test_cluster-nodes-z1": {
+					_, err = sut.NatGateways(context.TODO(), map[string][]armnetwork.PublicIPAddress{"test_cluster-nodes-z1": {{
 						ID: ipId,
 					},
-					})
+					}})
 					Expect(err).ToNot(HaveOccurred())
 				})
 			})
@@ -336,14 +336,14 @@ var _ = Describe("TfReconciler", func() {
 					Expect(err).ToNot(HaveOccurred())
 					defer rgroupC.Delete(context.TODO(), resourceGroupName)
 
-					_, err = sut.NatGateways(context.TODO(), map[string]armnetwork.PublicIPAddress{})
+					_, err = sut.NatGateways(context.TODO(), map[string][]armnetwork.PublicIPAddress{})
 					Expect(err).ToNot(HaveOccurred())
 
 					cfg.Networks.NatGateway.Enabled = false
 					// new init due to
 					sut, err = infraflow.NewTfReconciler(infra, cfg, cluster, newFactory)
 					Expect(err).ToNot(HaveOccurred())
-					_, err = sut.NatGateways(context.TODO(), map[string]armnetwork.PublicIPAddress{})
+					_, err = sut.NatGateways(context.TODO(), map[string][]armnetwork.PublicIPAddress{})
 					Expect(err).ToNot(HaveOccurred())
 
 					client, err := newFactory.NatGateway()
@@ -396,7 +396,7 @@ var _ = Describe("TfReconciler", func() {
 				It("enriches with 2 user managed IPs", func() {
 					sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
 					Expect(err).ToNot(HaveOccurred())
-					res := make(map[string]armnetwork.PublicIPAddress)
+					res := make(map[string][]armnetwork.PublicIPAddress)
 					err = sut.EnrichResponseWithUserManagedIPs(context.TODO(), res)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(res).To(HaveKey("test_cluster-z1"))
