@@ -39,7 +39,7 @@ func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, infra *ext
 		return err
 	}
 	if a.shouldUseFlow(infra, cluster) {
-		reconciler, err := NewFlowReconciler(ctx, a, infra)
+		reconciler, err := NewFlowReconciler(ctx, a, infra, logger)
 		if err != nil {
 			return err
 		}
