@@ -24,11 +24,11 @@ import (
 	azureapi "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	factorymock "github.com/gardener/gardener-extension-provider-azure/pkg/mock/factory"
 	vmssmock "github.com/gardener/gardener-extension-provider-azure/pkg/mock/vmss"
 
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	"github.com/Azure/go-autorest/autorest"
+	factorymock "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client/mock"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
