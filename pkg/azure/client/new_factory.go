@@ -6,19 +6,6 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
-// NewFacory is a slimmer interface than Factory which includes the newer client versions needed for the FlowReconciler
-type NewFactory interface {
-	ResourceGroup() (ResourceGroup, error)
-	Vnet() (Vnet, error)
-	RouteTables() (RouteTables, error)
-	SecurityGroups() (SecurityGroups, error)
-	Subnet() (Subnet, error)
-	NatGateway() (NatGateway, error)
-	PublicIP() (NewPublicIP, error)
-	AvailabilitySet() (AvailabilitySet, error)
-	ManagedUserIdentity() (ManagedUserIdentity, error)
-}
-
 type newFactory struct {
 	auth internal.ClientAuth
 	cred *azidentity.ClientSecretCredential

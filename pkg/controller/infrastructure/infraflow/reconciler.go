@@ -78,25 +78,25 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 	whiteboard := shared.NewWhiteboard()
 
 	g := flow.NewGraph("Azure infrastructure reconcilation")
-	resourceGroup := f.AddTask(g, "resource group creation", reconciler.ResourceGroup)
+	resourceGroup := f.addTask(g, "resource group creation", reconciler.ResourceGroup)
 
-	vnet := f.AddTask(g, "vnet creation", reconciler.Vnet, shared.Dependencies(resourceGroup))
+	vnet := f.addTask(g, "vnet creation", reconciler.Vnet, shared.Dependencies(resourceGroup))
 
-	f.AddTask(g, "availability set creation", reconciler.AvailabilitySet, shared.Dependencies(resourceGroup))
+	f.addTask(g, "availability set creation", reconciler.AvailabilitySet, shared.Dependencies(resourceGroup))
 
-	routeTable := f.AddTask(g, "route table creation", func(ctx context.Context) error {
+	routeTable := f.addTask(g, "route table creation", func(ctx context.Context) error {
 		routeTable, err := reconciler.RouteTables(ctx)
 		whiteboard.Set(routeTableID, *routeTable.ID)
 		return err
 	}, shared.Dependencies(resourceGroup))
 
-	securityGroup := f.AddTask(g, "security group creation", func(ctx context.Context) error {
+	securityGroup := f.addTask(g, "security group creation", func(ctx context.Context) error {
 		securityGroup, err := reconciler.SecurityGroups(ctx)
 		whiteboard.Set(sGroupID, *securityGroup.ID)
 		return err
 	}, shared.Dependencies(resourceGroup))
 
-	ip := f.AddTask(g, "ips creation", func(ctx context.Context) error {
+	ip := f.addTask(g, "ips creation", func(ctx context.Context) error {
 		ips, err := reconciler.PublicIPs(ctx)
 		if err != nil {
 			return err
@@ -109,14 +109,14 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 		return nil
 	}, shared.Dependencies(resourceGroup))
 
-	natGateway := f.AddTask(g, "nat gateway creation", func(ctx context.Context) error {
+	natGateway := f.addTask(g, "nat gateway creation", func(ctx context.Context) error {
 		ips := whiteboard.GetObject(publicIPMap).(map[string][]armnetwork.PublicIPAddress)
 		resp, err := reconciler.NatGateways(ctx, ips)
 		whiteboard.SetObject(natGatewayMap, resp)
 		return err
 	}, shared.Dependencies(ip))
 
-	f.AddTask(g, "subnet creation", func(ctx context.Context) error {
+	f.addTask(g, "subnet creation", func(ctx context.Context) error {
 		routeTable := armnetwork.RouteTable{
 			ID: whiteboard.Get(routeTableID),
 		}
@@ -131,8 +131,8 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 }
 
 // TODO copy from AWS PR (use taskBuilder component to share?)
-// AddTask adds a wrapped task for the given task function and options.
-func (f FlowReconciler) AddTask(g *flow.Graph, name string, fn flow.TaskFn, options ...shared.TaskOption) flow.TaskIDer {
+// addTask adds a wrapped task for the given task function and options.
+func (f FlowReconciler) addTask(g *flow.Graph, name string, fn flow.TaskFn, options ...shared.TaskOption) flow.TaskIDer {
 	allOptions := shared.TaskOption{}
 	for _, opt := range options {
 		if len(opt.Dependencies) > 0 {

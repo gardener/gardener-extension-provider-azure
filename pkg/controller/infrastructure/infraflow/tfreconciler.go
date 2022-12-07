@@ -30,35 +30,27 @@ func NewTfReconciler(infra *extensionsv1alpha1.Infrastructure, cfg *azure.Infras
 // GetInfrastructureStatus returns the infrastructure status
 func (f TfReconciler) GetInfrastructureStatus(ctx context.Context, cfg *azure.InfrastructureConfig) (*v1alpha1.InfrastructureStatus, error) {
 	status := f.tf.StaticInfrastructureStatus(cfg)
-	// enrich with Identity
-	client, err := f.factory.ManagedUserIdentity()
+	err := f.enrichStatusWithIdentity(ctx, status)
 	if err != nil {
-		return nil, err
+		return status, err
 	}
-	if identity := f.tf.Identity(); identity != nil {
-		res, err := client.Get(ctx, identity.ResourceGroup, identity.Name)
-		if err != nil {
-			return nil, err
-		}
-		if res.ID == nil || res.ClientID == nil {
-			return status, nil
-		}
+	err = f.enrichStatusWithAvailabilitySet(ctx, status)
+	if err != nil {
+		return status, err
+	}
+	return status, nil
+}
 
-		status.Identity = &v1alpha1.IdentityStatus{
-			ID:       *res.ID,
-			ClientID: res.ClientID.String(),
-		}
-	}
-	// enrich with AvailabilitySet
+func (f TfReconciler) enrichStatusWithAvailabilitySet(ctx context.Context, status *v1alpha1.InfrastructureStatus) error {
 	if f.tf.isCreate(TfAvailabilitySet) {
 		client, err := f.factory.AvailabilitySet()
 		if err != nil {
-			return nil, err
+			return err
 		}
 		avset := f.tf.AvailabilitySet()
 		res, err := client.Get(ctx, f.tf.ResourceGroup(), avset.Name)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		status.AvailabilitySets = append(status.AvailabilitySets, v1alpha1.AvailabilitySet{
 			Name:               avset.Name,
@@ -68,7 +60,29 @@ func (f TfReconciler) GetInfrastructureStatus(ctx context.Context, cfg *azure.In
 			Purpose:            v1alpha1.PurposeNodes,
 		})
 	}
-	return status, nil
+	return nil
+}
+
+func (f TfReconciler) enrichStatusWithIdentity(ctx context.Context, status *v1alpha1.InfrastructureStatus) error {
+	client, err := f.factory.ManagedUserIdentity()
+	if err != nil {
+		return err
+	}
+	if identity := f.tf.Identity(); identity != nil {
+		res, err := client.Get(ctx, identity.ResourceGroup, identity.Name)
+		if err != nil {
+			return err
+		}
+		if res.ID == nil || res.ClientID == nil {
+			return nil
+		}
+
+		status.Identity = &v1alpha1.IdentityStatus{
+			ID:       *res.ID,
+			ClientID: res.ClientID.String(),
+		}
+	}
+	return nil
 }
 
 // Delete deletes all resources managed by the reconciler
@@ -247,8 +261,8 @@ func (f TfReconciler) EnrichResponseWithUserManagedIPs(ctx context.Context, res 
 	return nil
 }
 
-func checkAllNatsWithFn(name string, nats []zoneTf, check func(nat zoneTf, name string) bool) bool {
-	for _, n := range nats {
+func checkAllZonesWithFn(name string, zones []zoneTf, check func(zone zoneTf, name string) bool) bool {
+	for _, n := range zones {
 		if check(n, name) {
 			return true
 		}
@@ -314,7 +328,7 @@ func (f TfReconciler) deleteOldNatIPs(ctx context.Context, client client.NewPubl
 		if ip.Name == nil {
 			continue
 		}
-		isIpInNats := checkAllNatsWithFn(*ip.Name, f.tf.EnabledNats(), func(nat zoneTf, name string) bool { return nat.IpName() == name })
+		isIpInNats := checkAllZonesWithFn(*ip.Name, f.tf.EnabledNats(), func(nat zoneTf, name string) bool { return nat.IpName() == name })
 		if !isIpInNats {
 			err := client.Delete(ctx, f.tf.ResourceGroup(), *ip.Name)
 			if err != nil {
@@ -334,7 +348,7 @@ func (f TfReconciler) deleteOldNatGateways(ctx context.Context, client client.Na
 		if nat.Name == nil {
 			continue
 		}
-		isNatInNats := checkAllNatsWithFn(*nat.Name, f.tf.EnabledNats(), func(nat zoneTf, name string) bool { return nat.NatName() == name })
+		isNatInNats := checkAllZonesWithFn(*nat.Name, f.tf.EnabledNats(), func(nat zoneTf, name string) bool { return nat.NatName() == name })
 		if !isNatInNats {
 			err := client.Delete(ctx, f.tf.ResourceGroup(), *nat.Name)
 			if err != nil {

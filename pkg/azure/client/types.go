@@ -31,6 +31,20 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// TODO merge interfaces
+// NewFacory is a slimmer interface (but different set) than Factory which includes the newer client versions needed for the FlowReconciler
+type NewFactory interface {
+	ResourceGroup() (ResourceGroup, error) // overlap
+	Vnet() (Vnet, error)
+	RouteTables() (RouteTables, error)
+	SecurityGroups() (SecurityGroups, error) // overlap
+	Subnet() (Subnet, error)                 // overlap
+	NatGateway() (NatGateway, error)
+	PublicIP() (NewPublicIP, error) // overlap
+	AvailabilitySet() (AvailabilitySet, error)
+	ManagedUserIdentity() (ManagedUserIdentity, error)
+}
+
 // Factory represents a factory to produce clients for various Azure services.
 type Factory interface {
 	Group(context.Context, corev1.SecretReference) (Group, error)
@@ -45,8 +59,6 @@ type Factory interface {
 	NetworkInterface(ctx context.Context, secretRef corev1.SecretReference) (NetworkInterface, error)
 	Disk(ctx context.Context, secretRef corev1.SecretReference) (Disk, error)
 	Subnet(ctx context.Context, secretRef corev1.SecretReference) (Subnet, error)
-	ResourceGroup(ctx context.Context, secretRef corev1.SecretReference) (ResourceGroup, error) // #TODO replaces Group
-	RouteTables(ctx context.Context, secretRef corev1.SecretReference) (RouteTables, error)
 }
 
 // AvailabilitySet is an interface for the Azure AvailabilitySet service.
