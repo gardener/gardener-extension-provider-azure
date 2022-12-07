@@ -1,14 +1,12 @@
 package client
 
 import (
-	"context"
-
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
-	"github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
+// NewFacory is a slimmer interface than Factory which includes the newer client versions needed for the FlowReconciler
 type NewFactory interface {
 	ResourceGroup() (ResourceGroup, error)
 	Vnet() (Vnet, error)
@@ -21,15 +19,12 @@ type NewFactory interface {
 	ManagedUserIdentity() (ManagedUserIdentity, error)
 }
 
-type ManagedUserIdentity interface {
-	Get(context.Context, string, string) (msi.Identity, error)
-}
-
 type newFactory struct {
 	auth internal.ClientAuth
 	cred *azidentity.ClientSecretCredential
 }
 
+// NewAzureClientFactoryV2 creates a new AzureClientFactoryV2
 func NewAzureClientFactoryV2(auth internal.ClientAuth) (newFactory, error) {
 	cred, err := auth.GetAzClientCredentials()
 	return newFactory{auth, cred}, err

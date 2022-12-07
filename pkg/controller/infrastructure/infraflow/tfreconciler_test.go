@@ -334,7 +334,9 @@ var _ = Describe("TfReconciler", func() {
 					Expect(sut.ResourceGroup(context.TODO())).To(Succeed())
 					rgroupC, err := newFactory.ResourceGroup()
 					Expect(err).ToNot(HaveOccurred())
-					defer rgroupC.Delete(context.TODO(), resourceGroupName)
+					defer func() {
+						Expect(rgroupC.Delete(context.TODO(), resourceGroupName)).To(Succeed())
+					}()
 
 					_, err = sut.NatGateways(context.TODO(), map[string][]armnetwork.PublicIPAddress{})
 					Expect(err).ToNot(HaveOccurred())

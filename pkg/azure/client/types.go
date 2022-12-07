@@ -22,6 +22,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-05-01/dns"
+	"github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
 	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-04-01/storage"
@@ -75,6 +76,11 @@ type RouteTables interface {
 	CreateOrUpdate(ctx context.Context, resourceGroupName, routeTableName string, parameters armnetwork.RouteTable) (armnetwork.RouteTablesClientCreateOrUpdateResponse, error)
 	Delete(ctx context.Context, resourceGroupName, name string) (err error)
 	Get(ctx context.Context, resourceGroupName, name string) (armnetwork.RouteTablesClientGetResponse, error)
+}
+
+// ManagedUserIdentity is a client for the Azure Managed User Identity service.
+type ManagedUserIdentity interface {
+	Get(context.Context, string, string) (msi.Identity, error)
 }
 
 // Group represents an Azure group client.
@@ -204,6 +210,8 @@ type VmssClient struct {
 	client compute.VirtualMachineScaleSetsClient
 }
 
+// TODO replace old GroupClient?
+// ResourceGroupClient is a newer client implementation of ResourceGroup.
 type ResourceGroupClient struct {
 	client *armresources.ResourceGroupsClient
 }
@@ -263,18 +271,27 @@ type SubnetsClient struct {
 	client *armnetwork.SubnetsClient
 }
 
+// RouteTablesClient is an implementation of RouteTables for a RouteTables client.
 type RouteTablesClient struct {
 	client *armnetwork.RouteTablesClient
 }
 
+// SecurityGroupClient is an implementation of SecurityGroup for a security group client.
 type SecurityGroupClient struct {
 	client *armnetwork.SecurityGroupsClient
 }
 
+// NatGatewayClient is an implementation of NatGateway for a Nat Gateway client.
 type NatGatewayClient struct {
 	client *armnetwork.NatGatewaysClient
 }
 
+// AvailabilitySetClient is an implementation of AvailabilitySet for an availability set client.
 type AvailabilitySetClient struct {
 	client *armcompute.AvailabilitySetsClient
+}
+
+// ManagedUserIdentityClient is an implementation of ManagedUserIdentity for a managed user identity client.
+type ManagedUserIdentityClient struct {
+	client msi.UserAssignedIdentitiesClient
 }

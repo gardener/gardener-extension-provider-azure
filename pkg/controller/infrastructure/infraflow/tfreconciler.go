@@ -15,16 +15,19 @@ import (
 	"k8s.io/utils/pointer"
 )
 
+// TfReconciler allows to reconcile the individual cloud resources based on the Terraform configuration logic
 type TfReconciler struct {
 	tf      TerraformAdapter
 	factory client.NewFactory
 }
 
+// NewTfReconciler creates a new TfReconciler
 func NewTfReconciler(infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, cluster *controller.Cluster, factory client.NewFactory) (*TfReconciler, error) {
 	tfAdapter, err := NewTerraformAdapter(infra, cfg, cluster)
 	return &TfReconciler{tfAdapter, factory}, err
 }
 
+// GetInfrastructureStatus returns the infrastructure status
 func (f TfReconciler) GetInfrastructureStatus(ctx context.Context, cfg *azure.InfrastructureConfig) (*v1alpha1.InfrastructureStatus, error) {
 	status := f.tf.StaticInfrastructureStatus(cfg)
 	// enrich with Identity
@@ -68,6 +71,7 @@ func (f TfReconciler) GetInfrastructureStatus(ctx context.Context, cfg *azure.In
 	return status, nil
 }
 
+// Delete deletes all resources managed by the reconciler
 func (f TfReconciler) Delete(ctx context.Context) error {
 	client, err := f.factory.ResourceGroup()
 	if err != nil {
@@ -98,34 +102,70 @@ func (f TfReconciler) deleteForeignSubnets(ctx context.Context) error {
 	return nil
 }
 
+// Vnet creates or updates a Vnet
 func (f TfReconciler) Vnet(ctx context.Context) error {
 	if f.tf.isCreate(TfVnet) {
 		client, err := f.factory.Vnet()
 		if err != nil {
 			return err
 		}
-		return ReconcileVnetFromTf(ctx, f.tf, client)
+		parameters := armnetwork.VirtualNetwork{
+			Location: to.Ptr(f.tf.Region()),
+			Properties: &armnetwork.VirtualNetworkPropertiesFormat{
+				AddressSpace: &armnetwork.AddressSpace{},
+			},
+		}
+
+		cidr, ok := f.tf.Vnet()["cidr"]
+		if ok {
+			parameters.Properties.AddressSpace.AddressPrefixes = []*string{to.Ptr(cidr.(string))}
+		}
+
+		ddosId, ok := f.tf.Vnet()["ddosProtectionPlanID"]
+		if ok {
+			ddosIdString := ddosId.(string)
+			parameters.Properties.EnableDdosProtection = to.Ptr(true)
+			parameters.Properties.DdosProtectionPlan = &armnetwork.SubResource{ID: to.Ptr(ddosIdString)}
+		}
+
+		rgroup := f.tf.ResourceGroup()
+		vnet := f.tf.Vnet()["name"].(string)
+		return client.CreateOrUpdate(ctx, rgroup, vnet, parameters)
 	} else {
 		return nil
 	}
 }
 
+// RouteTables creates or updates a RouteTable
 func (f TfReconciler) RouteTables(ctx context.Context) (armnetwork.RouteTable, error) {
 	client, err := f.factory.RouteTables()
 	if err != nil {
 		return armnetwork.RouteTable{}, err
 	}
-	return ReconcileRouteTablesFromTf(f.tf, client, ctx)
+	routeTableName := f.tf.RouteTableName()
+	parameters := armnetwork.RouteTable{
+		Location: to.Ptr(f.tf.Region()),
+	}
+	resp, err := client.CreateOrUpdate(ctx, f.tf.ResourceGroup(), routeTableName, parameters)
+
+	return resp.RouteTable, err
 }
 
+// SecurityGroups creates or updates a SecurityGroup
 func (f TfReconciler) SecurityGroups(ctx context.Context) (armnetwork.SecurityGroupsClientCreateOrUpdateResponse, error) {
 	client, err := f.factory.SecurityGroups()
 	if err != nil {
 		return armnetwork.SecurityGroupsClientCreateOrUpdateResponse{}, err
 	}
-	return ReconcileSecurityGroupsFromTf(f.tf, client, ctx)
+	name := f.tf.SecurityGroupName()
+	parameters := armnetwork.SecurityGroup{
+		Location: to.Ptr(f.tf.Region()),
+	}
+	resp, err := client.CreateOrUpdate(ctx, f.tf.ResourceGroup(), name, parameters)
+	return resp, err
 }
 
+// AvailabilitySet creates or updates an AvailabilitySet
 func (f TfReconciler) AvailabilitySet(ctx context.Context) error {
 	if f.tf.isCreate(TfAvailabilitySet) {
 		asClient, err := f.factory.AvailabilitySet()
@@ -148,13 +188,14 @@ func (f TfReconciler) AvailabilitySet(ctx context.Context) error {
 	}
 }
 
+// PublicIPs creates or updates PublicIPs for the NATs
 func (f TfReconciler) PublicIPs(ctx context.Context) (map[string][]armnetwork.PublicIPAddress, error) {
 	res := make(map[string][]armnetwork.PublicIPAddress)
 	client, err := f.factory.PublicIP()
 	if err != nil {
 		return res, err
 	}
-	err = f.deleteOldNatIPs(client, ctx)
+	err = f.deleteOldNatIPs(ctx, client)
 	if err != nil {
 		return res, err
 	}
@@ -183,6 +224,7 @@ func (f TfReconciler) PublicIPs(ctx context.Context) (map[string][]armnetwork.Pu
 	return res, nil
 }
 
+// EnrichResponseWithUserManagedIPs adds the IDs of user managed IPs to the input map of associated IPs of the NATs
 func (f TfReconciler) EnrichResponseWithUserManagedIPs(ctx context.Context, res map[string][]armnetwork.PublicIPAddress) error {
 	ips := f.tf.UserManagedIPs()
 	if len(ips) == 0 {
@@ -214,13 +256,14 @@ func checkAllNatsWithFn(name string, nats []zoneTf, check func(nat zoneTf, name 
 	return false
 }
 
+// NatGateways creates or updates NAT Gateways. It also deletes old NATGateways.
 func (f TfReconciler) NatGateways(ctx context.Context, ips map[string][]armnetwork.PublicIPAddress) (res map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse, err error) {
 	res = make(map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse)
 	client, err := f.factory.NatGateway()
 	if err != nil {
 		return res, err
 	}
-	err = f.deleteOldNatGateways(client, ctx)
+	err = f.deleteOldNatGateways(ctx, client)
 	if err != nil {
 		return res, err
 	}
@@ -253,6 +296,7 @@ func (f TfReconciler) NatGateways(ctx context.Context, ips map[string][]armnetwo
 	return res, nil
 }
 
+// ResourceGroup creates or updates the resource group
 func (f TfReconciler) ResourceGroup(ctx context.Context) error {
 	rgClient, err := f.factory.ResourceGroup()
 	if err != nil {
@@ -261,7 +305,7 @@ func (f TfReconciler) ResourceGroup(ctx context.Context) error {
 	return rgClient.CreateOrUpdate(ctx, f.tf.ResourceGroup(), f.tf.Region())
 }
 
-func (f TfReconciler) deleteOldNatIPs(client client.NewPublicIP, ctx context.Context) error {
+func (f TfReconciler) deleteOldNatIPs(ctx context.Context, client client.NewPublicIP) error {
 	existingIPs, err := client.GetAll(ctx, f.tf.ResourceGroup())
 	if err != nil {
 		return err
@@ -281,7 +325,7 @@ func (f TfReconciler) deleteOldNatIPs(client client.NewPublicIP, ctx context.Con
 	return nil
 }
 
-func (f TfReconciler) deleteOldNatGateways(client client.NatGateway, ctx context.Context) error {
+func (f TfReconciler) deleteOldNatGateways(ctx context.Context, client client.NatGateway) error {
 	existingNats, err := client.GetAll(ctx, f.tf.ResourceGroup())
 	if err != nil {
 		return err
@@ -301,6 +345,7 @@ func (f TfReconciler) deleteOldNatGateways(client client.NatGateway, ctx context
 	return nil
 }
 
+// Subnets creates or updates subnets
 func (f TfReconciler) Subnets(ctx context.Context, securityGroup armnetwork.SecurityGroup, routeTable armnetwork.RouteTable, nats map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse) (err error) {
 	subnetClient, err := f.factory.Subnet()
 	if err != nil {

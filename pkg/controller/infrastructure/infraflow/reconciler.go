@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
@@ -16,24 +15,28 @@ import (
 	"k8s.io/utils/pointer"
 )
 
+// Key names for the whiteboard object to pass results between the reconcilation tasks
 const (
-	RouteTableID  = "route_table_id"
-	SGroupID      = "security_group_id"
-	NatGatewayMap = "nategateway_map"
-	PublicIPMap   = "public_ip_map"
+	routeTableID  = "route_table_id"
+	sGroupID      = "security_group_id"
+	natGatewayMap = "nategateway_map"
+	publicIPMap   = "public_ip_map"
 )
 
+// FlowReconciler is the reconciler for all managed resources
 type FlowReconciler struct {
 	Factory    client.NewFactory
-	reconciler *TfReconciler
+	reconciler *TfReconciler // only used to retrieve GetInfrastructureStatus after reconcilation call
 }
 
+// NewFlowReconciler creates a new FlowReconciler
 func NewFlowReconciler(factory client.NewFactory) *FlowReconciler {
 	return &FlowReconciler{
 		Factory: factory,
 	}
 }
 
+// Delete deletes all resources managed by the reconciler
 func (f *FlowReconciler) Delete(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, cluster *controller.Cluster) error {
 	reconciler, err := NewTfReconciler(infra, cfg, cluster, f.Factory)
 	if err != nil {
@@ -43,6 +46,7 @@ func (f *FlowReconciler) Delete(ctx context.Context, infra *extensionsv1alpha1.I
 }
 
 // TODO pass dummy Reconcilied struct to ensure it was called before
+// GetInfrastructureStatus returns the infrastructure status
 func (f FlowReconciler) GetInfrastructureStatus(ctx context.Context, cfg *azure.InfrastructureConfig) (*v1alpha1.InfrastructureStatus, error) {
 	if f.reconciler == nil {
 		return nil, fmt.Errorf("reconciler not initialized, call Reconcile before")
@@ -50,6 +54,7 @@ func (f FlowReconciler) GetInfrastructureStatus(ctx context.Context, cfg *azure.
 	return f.reconciler.GetInfrastructureStatus(ctx, cfg)
 }
 
+// Reconcile reconciles all resources
 func (f *FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, cluster *controller.Cluster) error {
 	reconciler, err := NewTfReconciler(infra, cfg, cluster, f.Factory)
 	f.reconciler = reconciler
@@ -64,52 +69,7 @@ func (f *FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha
 	return nil
 }
 
-func ReconcileVnetFromTf(ctx context.Context, tf TerraformAdapter, vnetClient client.Vnet) error {
-	parameters := armnetwork.VirtualNetwork{
-		Location: to.Ptr(tf.Region()),
-		Properties: &armnetwork.VirtualNetworkPropertiesFormat{
-			AddressSpace: &armnetwork.AddressSpace{},
-		},
-	}
-
-	cidr, ok := tf.Vnet()["cidr"]
-	if ok {
-		parameters.Properties.AddressSpace.AddressPrefixes = []*string{to.Ptr(cidr.(string))}
-	}
-
-	ddosId, ok := tf.Vnet()["ddosProtectionPlanID"]
-	if ok {
-		ddosIdString := ddosId.(string)
-		parameters.Properties.EnableDdosProtection = to.Ptr(true)
-		parameters.Properties.DdosProtectionPlan = &armnetwork.SubResource{ID: to.Ptr(ddosIdString)}
-	}
-
-	rgroup := tf.ResourceGroup()
-	vnet := tf.Vnet()["name"].(string)
-	return vnetClient.CreateOrUpdate(ctx, rgroup, vnet, parameters)
-}
-
-func ReconcileRouteTablesFromTf(tf TerraformAdapter, rclient client.RouteTables, ctx context.Context) (armnetwork.RouteTable, error) {
-	routeTableName := tf.RouteTableName()
-	parameters := armnetwork.RouteTable{
-		Location: to.Ptr(tf.Region()),
-	}
-	resp, err := rclient.CreateOrUpdate(ctx, tf.ResourceGroup(), routeTableName, parameters)
-
-	return resp.RouteTable, err
-}
-
-func ReconcileSecurityGroupsFromTf(tf TerraformAdapter, rclient client.SecurityGroups, ctx context.Context) (armnetwork.SecurityGroupsClientCreateOrUpdateResponse, error) {
-	name := tf.SecurityGroupName()
-	parameters := armnetwork.SecurityGroup{
-		Location: to.Ptr(tf.Region()),
-	}
-	resp, err := rclient.CreateOrUpdate(ctx, tf.ResourceGroup(), name, parameters)
-
-	return resp, err
-}
-
-// todo copy infra.spec part
+// TODO copy infra.spec part
 func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, reconciler *TfReconciler) *flow.Graph {
 	whiteboard := shared.NewWhiteboard()
 
@@ -122,19 +82,18 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 
 	routeTable := f.AddTask(g, "route table creation", func(ctx context.Context) error {
 		routeTable, err := reconciler.RouteTables(ctx)
-		whiteboard.Set(RouteTableID, *routeTable.ID)
+		whiteboard.Set(routeTableID, *routeTable.ID)
 		return err
 	}, shared.Dependencies(resourceGroup))
 
 	securityGroup := f.AddTask(g, "security group creation", func(ctx context.Context) error {
 		securityGroup, err := reconciler.SecurityGroups(ctx)
-		whiteboard.Set(SGroupID, *securityGroup.ID)
+		whiteboard.Set(sGroupID, *securityGroup.ID)
 		return err
 	}, shared.Dependencies(resourceGroup))
 
 	ip := f.AddTask(g, "ips creation", func(ctx context.Context) error {
 		ips, err := reconciler.PublicIPs(ctx)
-		// add user managed Ips for NAT association
 		if err != nil {
 			return err
 		}
@@ -142,25 +101,25 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 		if err != nil {
 			return err
 		}
-		whiteboard.SetObject(PublicIPMap, ips)
+		whiteboard.SetObject(publicIPMap, ips)
 		return nil
 	}, shared.Dependencies(resourceGroup))
 
 	natGateway := f.AddTask(g, "nat gateway creation", func(ctx context.Context) error {
-		ips := whiteboard.GetObject(PublicIPMap).(map[string][]armnetwork.PublicIPAddress)
+		ips := whiteboard.GetObject(publicIPMap).(map[string][]armnetwork.PublicIPAddress)
 		resp, err := reconciler.NatGateways(ctx, ips)
-		whiteboard.SetObject(NatGatewayMap, resp)
+		whiteboard.SetObject(natGatewayMap, resp)
 		return err
 	}, shared.Dependencies(ip))
 
 	f.AddTask(g, "subnet creation", func(ctx context.Context) error {
 		routeTable := armnetwork.RouteTable{
-			ID: whiteboard.Get(RouteTableID),
+			ID: whiteboard.Get(routeTableID),
 		}
 		securityGroup := armnetwork.SecurityGroup{
-			ID: whiteboard.Get(SGroupID),
+			ID: whiteboard.Get(sGroupID),
 		}
-		natGateway := whiteboard.GetObject(NatGatewayMap).(map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse)
+		natGateway := whiteboard.GetObject(natGatewayMap).(map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse)
 		return reconciler.Subnets(ctx, securityGroup, routeTable, natGateway)
 	}, shared.Dependencies(resourceGroup), shared.Dependencies(securityGroup), shared.Dependencies(routeTable), shared.Dependencies(natGateway), shared.Dependencies(vnet))
 	return g
@@ -168,7 +127,7 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 }
 
 // AddTask adds a wrapped task for the given task function and options.
-func (c FlowReconciler) AddTask(g *flow.Graph, name string, fn flow.TaskFn, options ...shared.TaskOption) flow.TaskIDer {
+func (f FlowReconciler) AddTask(g *flow.Graph, name string, fn flow.TaskFn, options ...shared.TaskOption) flow.TaskIDer {
 	allOptions := shared.TaskOption{}
 	for _, opt := range options {
 		if len(opt.Dependencies) > 0 {
@@ -199,7 +158,7 @@ func (c FlowReconciler) AddTask(g *flow.Graph, name string, fn flow.TaskFn, opti
 	}
 	task := flow.Task{
 		Name: name,
-		Fn:   c.wrapTaskFn(g.Name(), name, tunedFn),
+		Fn:   f.wrapTaskFn(g.Name(), name, tunedFn),
 	}
 
 	if len(allOptions.Dependencies) > 0 {
@@ -209,7 +168,8 @@ func (c FlowReconciler) AddTask(g *flow.Graph, name string, fn flow.TaskFn, opti
 	return g.Add(task)
 }
 
-func (c FlowReconciler) wrapTaskFn(flowName, taskName string, fn flow.TaskFn) flow.TaskFn {
+// / TODO check task context
+func (f FlowReconciler) wrapTaskFn(flowName, taskName string, fn flow.TaskFn) flow.TaskFn {
 	return func(ctx context.Context) error {
 		//taskCtx := logf.IntoContext(ctx, c.Log.WithValues("flow", flowName, "task", taskName))
 		err := fn(ctx) //fn(taskCtx)

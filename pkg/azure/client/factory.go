@@ -36,6 +36,7 @@ func NewAzureClientFactory(client client.Client) Factory {
 	}
 }
 
+// ResourceGroup gets a newer client for an Azure resource group.
 func (f AzureFactory) ResourceGroup(ctx context.Context, secretRef corev1.SecretReference) (ResourceGroup, error) {
 	auth, err := internal.GetClientAuthData(ctx, f.client, secretRef, false)
 	if err != nil {
@@ -201,6 +202,7 @@ func (f AzureFactory) Disk(ctx context.Context, secretRef corev1.SecretReference
 	}, nil
 }
 
+// Vnet reads the secret from the passed reference and return an Azure Vnet client.
 func (f AzureFactory) Vnet(ctx context.Context, secretRef corev1.SecretReference) (*VnetClient, error) {
 	auth, err := internal.GetClientAuthData(ctx, f.client, secretRef, false)
 	if err != nil {
@@ -228,6 +230,7 @@ func (f AzureFactory) Subnet(ctx context.Context, secretRef corev1.SecretReferen
 	}, nil
 }
 
+// RouteTables reads the secret from the passed reference and return an Azure RouteTables client.
 func (f AzureFactory) RouteTables(ctx context.Context, secretRef corev1.SecretReference) (RouteTables, error) {
 	auth, err := internal.GetClientAuthData(ctx, f.client, secretRef, false)
 	if err != nil {

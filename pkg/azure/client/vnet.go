@@ -38,8 +38,7 @@ func (v VnetClient) Delete(ctx context.Context, resourceGroup, vnetName string) 
 	return err
 }
 
-// Delete a given, existing virtual network.
+// Get gets a given virtual network by name
 func (v VnetClient) Get(ctx context.Context, resourceGroupName, name string) (armnetwork.VirtualNetworksClientGetResponse, error) {
-	res, err := v.client.Get(ctx, resourceGroupName, name, nil)
-	return res, err
+	return v.client.Get(ctx, resourceGroupName, name, nil)
 }
