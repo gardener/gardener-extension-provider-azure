@@ -80,7 +80,7 @@ var (
 	tenantId       = flag.String("tenant-id", "", "Azure tenant ID")
 	region         = flag.String("region", "", "Azure region")
 	secretYamlPath = flag.String("secret-path", "", "Yaml file with secret including Azure credentials")
-	useFlow        = flag.Bool("use-flow", true, "Set annotation to use flow for reconcilation")
+	useFlow        = flag.Bool("use-flow", false, "Set annotation to use flow for reconcilation")
 )
 
 func validateFlags() {

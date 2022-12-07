@@ -17,5 +17,15 @@ spec:
       --client-id=${CLIENT_ID}
       --client-secret=${CLIENT_SECRET}
       --region=${REGION}
+      &&
+      go test -timeout=0 -mod=vendor ./test/integration/infrastructure
+      --v -ginkgo.v -ginkgo.progress -ginkgo.no-color
+      --kubeconfig=$TM_KUBECONFIG_PATH/testmachinery.config
+      --subscription-id=${SUBSCRIPTION_ID}
+      --tenant-id=${TENANT_ID}
+      --client-id=${CLIENT_ID}
+      --client-secret=${CLIENT_SECRET}
+      --region=${REGION}
+      --useFlow
 
   image: eu.gcr.io/gardener-project/3rd/golang:1.19.2
