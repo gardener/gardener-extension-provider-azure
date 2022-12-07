@@ -8,6 +8,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
+// NewResourceGroupsClient creates a new ResourceGroupClient
 func NewResourceGroupsClient(auth internal.ClientAuth) (*ResourceGroupClient, error) {
 	cred, err := auth.GetAzClientCredentials()
 	if err != nil {
@@ -17,6 +18,7 @@ func NewResourceGroupsClient(auth internal.ClientAuth) (*ResourceGroupClient, er
 	return &ResourceGroupClient{client}, err
 }
 
+// CreateOrUpdate creates or updates a resource group
 func (c ResourceGroupClient) CreateOrUpdate(ctx context.Context, resourceGroupName, location string) error {
 	_, err := c.client.CreateOrUpdate(
 		ctx,
@@ -28,6 +30,7 @@ func (c ResourceGroupClient) CreateOrUpdate(ctx context.Context, resourceGroupNa
 	return err
 }
 
+// Delete deletes a resource group and does not error when it does not exist
 func (c ResourceGroupClient) Delete(ctx context.Context, resourceGroupName string) error {
 	resourceGroupResp, err := c.client.BeginDelete(
 		ctx,
@@ -47,6 +50,7 @@ func (c ResourceGroupClient) Delete(ctx context.Context, resourceGroupName strin
 	return err
 }
 
+// IsExisting checks if a resource group exists
 func (c ResourceGroupClient) IsExisting(ctx context.Context, resourceGroupName string) (bool, error) {
 	res, err := c.client.CheckExistence(ctx, resourceGroupName, nil)
 	if err != nil {

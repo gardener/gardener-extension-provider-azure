@@ -7,6 +7,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
+// NewNatGatewaysClient creates a new NatGateway client.
 func NewNatGatewaysClient(auth internal.ClientAuth) (*NatGatewayClient, error) {
 	cred, err := auth.GetAzClientCredentials()
 	if err != nil {
@@ -16,6 +17,7 @@ func NewNatGatewaysClient(auth internal.ClientAuth) (*NatGatewayClient, error) {
 	return &NatGatewayClient{client}, err
 }
 
+// CreateOrUpdate creates or updates a NatGateway.
 func (c NatGatewayClient) CreateOrUpdate(ctx context.Context, resourceGroupName, natGatewayName string, parameters armnetwork.NatGateway) (armnetwork.NatGatewaysClientCreateOrUpdateResponse, error) {
 
 	poller, err := c.client.BeginCreateOrUpdate(ctx, resourceGroupName, natGatewayName, parameters, nil)
@@ -26,6 +28,7 @@ func (c NatGatewayClient) CreateOrUpdate(ctx context.Context, resourceGroupName,
 	return resp, err
 }
 
+// Get returns a NatGateway by name or nil if it doesn't exis.
 func (c NatGatewayClient) Get(ctx context.Context, resourceGroupName, natGatewayName string) (*armnetwork.NatGatewaysClientGetResponse, error) {
 	natGateway, err := c.client.Get(ctx, resourceGroupName, natGatewayName, nil)
 	if err != nil {
@@ -37,6 +40,7 @@ func (c NatGatewayClient) Get(ctx context.Context, resourceGroupName, natGateway
 	return &natGateway, nil
 }
 
+// GetAll returns all NATGateways in the given resource group.
 func (c NatGatewayClient) GetAll(ctx context.Context, resourceGroupName string) ([]*armnetwork.NatGateway, error) {
 	pager := c.client.NewListPager(resourceGroupName, nil)
 	var nats []*armnetwork.NatGateway
@@ -50,6 +54,7 @@ func (c NatGatewayClient) GetAll(ctx context.Context, resourceGroupName string) 
 	return nats, nil
 }
 
+// Delete deletes the NatGateway with the given name.
 func (c NatGatewayClient) Delete(ctx context.Context, resourceGroupName, natGatewayName string) error {
 	poller, err := c.client.BeginDelete(ctx, resourceGroupName, natGatewayName, nil)
 	if err != nil {

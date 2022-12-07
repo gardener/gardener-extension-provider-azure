@@ -11,19 +11,26 @@ import (
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 )
 
-// values for TerraformAdapter resources
+// TfResourceGroup is the attribute name for the isCreate function of the tf adapter
 const TfResourceGroup = "resourceGroup"
+
+// TfVnet is the attribute name for the isCreate function of the tf adapter
 const TfVnet = "vnet"
+
+// TfAvailabilitySet is the attribute name for the isCreate function of the tf adapter
 const TfAvailabilitySet = "availabilitySet"
 
+// TerraformAdapter retrieves all configuration logic needed for reconcilation from the (soon) legacy Terraform configuration code
 type TerraformAdapter struct {
 	values map[string]interface{}
 }
 
+// RouteTableName returns the name of the route table
 func (t TerraformAdapter) RouteTableName() string {
 	return "worker_route_table"
 }
 
+// SecurityGroupName returns the name of the security group
 func (t TerraformAdapter) SecurityGroupName() string {
 	return t.ClusterName() + "-workers"
 }
@@ -39,10 +46,12 @@ type availablilitySetTf struct {
 	CountUpdateDomains int32
 }
 
+// AvailabilitySet returns the availability set configuration
 func (t TerraformAdapter) AvailabilitySet() availablilitySetTf {
 	return availablilitySetTf{t.availabilitySetName(), t.countFaultDomains(), t.countUpdateDomains()}
 }
 
+// Identity returns the identity configuration
 func (t TerraformAdapter) Identity() *identityTf {
 	identity := t.values["identity"].(map[string]interface{})
 	name, ok := identity["name"]
@@ -104,26 +113,29 @@ func (t TerraformAdapter) StaticInfrastructureStatus(config *azure.Infrastructur
 	return &infraState
 }
 
+// NewTerraformAdapter creates a new TerraformAdapter
 func NewTerraformAdapter(infra *extensionsv1alpha1.Infrastructure, config *azure.InfrastructureConfig, cluster *controller.Cluster) (TerraformAdapter, error) {
 	tfValues, err := infrastructure.ComputeTerraformerTemplateValues(infra, config, cluster) // use for migration of values..
 	return TerraformAdapter{tfValues}, err
 }
 
-// TODO not needed due to Create/Update?
 func (t TerraformAdapter) isCreate(resource string) bool {
 	create := t.values["create"].(map[string]interface{})
 	return create[resource].(bool)
 }
 
+// Vnet returns the vnet configuration
 func (t TerraformAdapter) Vnet() vnetTf {
 	cm := t.values["resourceGroup"].(map[string]interface{})
 	return vnetTf(cm["vnet"].(map[string]interface{}))
 }
 
+// ResourceGroup returns the resource group name
 func (t TerraformAdapter) ResourceGroup() string {
 	return t.values["resourceGroup"].(map[string]interface{})["name"].(string)
 }
 
+// Region returns the region
 func (t TerraformAdapter) Region() string {
 	return t.values["azure"].(map[string]interface{})["region"].(string)
 }
@@ -136,6 +148,7 @@ func (t TerraformAdapter) countFaultDomains() int32 {
 	return t.values["azure"].(map[string]interface{})["countFaultDomains"].(int32)
 }
 
+// ClusterName returns the cluster name
 func (t TerraformAdapter) ClusterName() string {
 	return t.values["clusterName"].(string)
 }
@@ -151,6 +164,7 @@ func (t TerraformAdapter) subnetName(subnet map[string]interface{}) string {
 	return name
 }
 
+// EnabledNats returns all zones with NAT enabled
 func (t TerraformAdapter) EnabledNats() []zoneTf {
 	res := make([]zoneTf, 0)
 	for _, nat := range t.Zones() {
@@ -171,6 +185,7 @@ type userManagedIP struct {
 	SubnetName    string
 }
 
+// UserManagedIPs returns all user managed IPs
 // tpl l.139
 func (t TerraformAdapter) UserManagedIPs() []userManagedIP {
 	res := make([]userManagedIP, 0)
@@ -197,6 +212,7 @@ func (t TerraformAdapter) UserManagedIPs() []userManagedIP {
 	return res
 }
 
+// Zones returns all zone configurations
 func (t TerraformAdapter) Zones() []zoneTf {
 	res := make([]zoneTf, 0)
 	rawSubnets := t.values["networks"].(map[string]interface{})["subnets"]
@@ -206,7 +222,7 @@ func (t TerraformAdapter) Zones() []zoneTf {
 	for _, subnet := range rawSubnets.([]map[string]interface{}) {
 		natRaw := subnet["natGateway"].(map[string]interface{})
 
-		var idleConnectionTimeoutMinutes *int32 = nil
+		var idleConnectionTimeoutMinutes *int32
 		if _, ok := natRaw["idleConnectionTimeoutMinutes"]; ok {
 			idleConnectionTimeoutMinutes = to.Ptr(natRaw["idleConnectionTimeoutMinutes"].(int32))
 		}
@@ -220,13 +236,13 @@ func (t TerraformAdapter) Zones() []zoneTf {
 			isMigrated = to.Ptr(isMigratedRaw.(bool))
 		}
 
-		var zone *string = nil
+		var zone *string
 		zoneRaw, ok := natRaw["zone"]
 		if ok {
 			zone = to.Ptr(fmt.Sprintf("%d", zoneRaw.(int32)))
 		}
 
-		var rawNetNumber *int32 = nil
+		var rawNetNumber *int32
 		netNumberRaw, ok := subnet["name"]
 		if ok {
 			rawNetNumber = to.Ptr(netNumberRaw.(int32))

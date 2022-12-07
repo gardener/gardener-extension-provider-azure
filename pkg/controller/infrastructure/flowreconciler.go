@@ -11,6 +11,7 @@ import (
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 )
 
+// NewFlowReconciler creates a new flow reconciler.
 func NewFlowReconciler(ctx context.Context, a *actuator, infra *extensionsv1alpha1.Infrastructure) (*infraflow.FlowReconciler, error) {
 	client := a.Client()
 	if client == nil {

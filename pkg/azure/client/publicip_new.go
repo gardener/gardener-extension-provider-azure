@@ -21,6 +21,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
+// NewPublicIPClient returns a new client for Azure Public IP Addresses.
 func NewPublicIPsClient(auth internal.ClientAuth) (*NewPublicIPClient, error) {
 	cred, err := auth.GetAzClientCredentials()
 	if err != nil {

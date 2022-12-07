@@ -10,10 +10,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
-type ManagedUserIdentityClient struct {
-	client msi.UserAssignedIdentitiesClient
-}
-
+// NewManagedUserIdentityClient creates a new ManagedUserIdentityClient
 func NewManagedUserIdentityClient(auth internal.ClientAuth) (*ManagedUserIdentityClient, error) {
 	msiClient := msi.NewUserAssignedIdentitiesClient(auth.SubscriptionID)
 	authorizer, err := getAuthorizer(auth.TenantID, auth.ClientID, auth.ClientSecret)
@@ -21,6 +18,7 @@ func NewManagedUserIdentityClient(auth internal.ClientAuth) (*ManagedUserIdentit
 	return &ManagedUserIdentityClient{msiClient}, err
 }
 
+// Get returns a Managed User Identity by name.
 func (m ManagedUserIdentityClient) Get(ctx context.Context, resourceGroup, id string) (msi.Identity, error) {
 	return m.client.Get(ctx, resourceGroup, id)
 }
