@@ -46,7 +46,7 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, infra *extension
 		return err
 	}
 	if a.shouldUseFlow(infra, cluster) {
-		reconciler, err := NewFlowReconciler(ctx, a, infra)
+		reconciler, err := NewFlowReconciler(ctx, a, infra, log)
 		if err != nil {
 			return err
 		}

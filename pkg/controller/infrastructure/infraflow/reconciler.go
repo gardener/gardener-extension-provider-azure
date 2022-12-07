@@ -12,7 +12,9 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils/flow"
+	"github.com/go-logr/logr"
 	"k8s.io/utils/pointer"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // Key names for the whiteboard object to pass results between the reconcilation tasks
@@ -25,20 +27,22 @@ const (
 
 // FlowReconciler is the reconciler for all managed resources
 type FlowReconciler struct {
-	Factory    client.NewFactory
+	factory    client.NewFactory
 	reconciler *TfReconciler // only used to retrieve GetInfrastructureStatus after reconcilation call
+	logger     logr.Logger
 }
 
 // NewFlowReconciler creates a new FlowReconciler
-func NewFlowReconciler(factory client.NewFactory) *FlowReconciler {
+func NewFlowReconciler(factory client.NewFactory, logger logr.Logger) *FlowReconciler {
 	return &FlowReconciler{
-		Factory: factory,
+		factory: factory,
+		logger:  logger,
 	}
 }
 
 // Delete deletes all resources managed by the reconciler
 func (f *FlowReconciler) Delete(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, cluster *controller.Cluster) error {
-	reconciler, err := NewTfReconciler(infra, cfg, cluster, f.Factory)
+	reconciler, err := NewTfReconciler(infra, cfg, cluster, f.factory)
 	if err != nil {
 		return err
 	}
@@ -56,7 +60,7 @@ func (f FlowReconciler) GetInfrastructureStatus(ctx context.Context, cfg *azure.
 
 // Reconcile reconciles all resources
 func (f *FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, cluster *controller.Cluster) error {
-	reconciler, err := NewTfReconciler(infra, cfg, cluster, f.Factory)
+	reconciler, err := NewTfReconciler(infra, cfg, cluster, f.factory)
 	f.reconciler = reconciler
 	if err != nil {
 		return err
@@ -99,7 +103,7 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 		}
 		err = reconciler.EnrichResponseWithUserManagedIPs(ctx, ips)
 		if err != nil {
-			return err
+			return fmt.Errorf("enrichment with user managed IPs failed: %v", err)
 		}
 		whiteboard.SetObject(publicIPMap, ips)
 		return nil
@@ -126,6 +130,7 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 
 }
 
+// TODO copy from AWS PR (use taskBuilder component to share?)
 // AddTask adds a wrapped task for the given task function and options.
 func (f FlowReconciler) AddTask(g *flow.Graph, name string, fn flow.TaskFn, options ...shared.TaskOption) flow.TaskIDer {
 	allOptions := shared.TaskOption{}
@@ -168,22 +173,14 @@ func (f FlowReconciler) AddTask(g *flow.Graph, name string, fn flow.TaskFn, opti
 	return g.Add(task)
 }
 
-// / TODO check task context
 func (f FlowReconciler) wrapTaskFn(flowName, taskName string, fn flow.TaskFn) flow.TaskFn {
 	return func(ctx context.Context) error {
-		//taskCtx := logf.IntoContext(ctx, c.Log.WithValues("flow", flowName, "task", taskName))
-		err := fn(ctx) //fn(taskCtx)
+		taskCtx := logf.IntoContext(ctx, f.logger.WithValues("flow", flowName, "task", taskName))
+		err := fn(taskCtx)
 		if err != nil {
 			// don't wrap error with '%w', as otherwise the error context get lost
 			err = fmt.Errorf("failed to %s: %s", taskName, err)
 		}
-		//if perr := c.PersistState(taskCtx, false); perr != nil {
-		//	if err != nil {
-		//		c.Log.Error(perr, "persisting state failed")
-		//	} else {
-		//		err = perr
-		//	}
-		//}
 		return err
 	}
 }
