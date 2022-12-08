@@ -109,7 +109,7 @@ var _ = Describe("ValuesProvider", func() {
 		cidr                    = "10.250.0.0/19"
 		cloudProviderConfigData = "foo"
 
-		k8sVersionLessThan121    = "1.17.1"
+		k8sVersionLessThan121    = "1.20.1"
 		k8sVersionHigherEqual121 = "1.21.4"
 
 		enabledTrue    = map[string]interface{}{"enabled": true}
@@ -237,7 +237,6 @@ var _ = Describe("ValuesProvider", func() {
 					"availabilitySetName": primaryAvailabilitySetName,
 					"routeTableName":      "route-table-name",
 					"securityGroupName":   "security-group-name-workers",
-					"kubernetesVersion":   k8sVersionLessThan121,
 					"maxNodes":            maxNodes,
 				}))
 			})
@@ -261,7 +260,6 @@ var _ = Describe("ValuesProvider", func() {
 					"region":            "eu-west-1a",
 					"routeTableName":    "route-table-name",
 					"securityGroupName": "security-group-name-workers",
-					"kubernetesVersion": k8sVersionLessThan121,
 					"maxNodes":          maxNodes,
 					"vmType":            "vmss",
 				}))
@@ -284,7 +282,6 @@ var _ = Describe("ValuesProvider", func() {
 					"region":            "eu-west-1a",
 					"routeTableName":    "route-table-name",
 					"securityGroupName": "security-group-name-workers",
-					"kubernetesVersion": k8sVersionLessThan121,
 					"maxNodes":          maxNodes,
 				}))
 			})
@@ -311,7 +308,6 @@ var _ = Describe("ValuesProvider", func() {
 					"region":              "eu-west-1a",
 					"routeTableName":      "route-table-name",
 					"securityGroupName":   "security-group-name-workers",
-					"kubernetesVersion":   k8sVersionLessThan121,
 					"acrIdentityClientId": identityName,
 					"maxNodes":            maxNodes,
 				}))
@@ -492,7 +488,7 @@ var _ = Describe("ValuesProvider", func() {
 					"checksum/configmap-" + azure.CloudProviderDiskConfigName: "",
 				},
 				"cloudProviderConfig": "",
-				"kubernetesVersion":   "1.17.1",
+				"kubernetesVersion":   "1.20.1",
 			})
 			globalVpaDisabled = map[string]interface{}{
 				"vpaEnabled": false,

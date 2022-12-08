@@ -439,7 +439,6 @@ func getConfigChartValues(infraStatus *apisazure.InfrastructureStatus, cp *exten
 
 	// Collect config chart values.
 	values := map[string]interface{}{
-		"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
 		"tenantId":          ca.TenantID,
 		"subscriptionId":    ca.SubscriptionID,
 		"aadClientId":       ca.ClientID,

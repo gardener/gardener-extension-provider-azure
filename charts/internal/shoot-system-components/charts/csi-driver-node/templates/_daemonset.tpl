@@ -47,11 +47,9 @@ spec:
         operator: Exists
       - effect: NoExecute
         operator: Exists
-      {{- if semverCompare ">= 1.19" .Capabilities.KubeVersion.GitVersion }}
       securityContext:
         seccompProfile:
           type: RuntimeDefault
-      {{- end }}
       containers:
       - name: csi-driver
         image: {{ index .Values.images (print "csi-driver-" .role) }}
