@@ -46,7 +46,7 @@ var _ = Describe("Helper", func() {
 		},
 		Entry("should return false as error is not a detailed azure error", false, false, 999, false),
 		Entry("should return false as error is not a NotFound", true, false, http.StatusInternalServerError, false),
-		Entry("should return true as error is a NotFound", true, true, http.StatusNotFound, true))
+		Entry("should return true as error if it is an NotFound error", true, true, http.StatusNotFound, true))
 	DescribeTable("#IsAzureAPIUnauthorized",
 		func(isDetailedError, hasResponse bool, statusCode int, expectIsUnauthorizedError bool) {
 			var err = errors.New("error")
