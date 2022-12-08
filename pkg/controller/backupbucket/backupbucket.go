@@ -41,7 +41,7 @@ func ensureBackupBucket(ctx context.Context, client client.Client, factory azure
 	}
 
 	// Get storage account client to create the backup storage account.
-	storageAccountClient, err := factory.StorageAccount(ctx, backupBucket.Spec.SecretRef)
+	storageAccountClient, err := factory.StorageAccount()
 	if err != nil {
 		return "", "", err
 	}

@@ -53,7 +53,7 @@ func (a *actuator) InjectClient(client client.Client) error {
 }
 
 func createBastionInstance(ctx context.Context, factory azureclient.Factory, opt *Options, parameters *compute.VirtualMachine) (*compute.VirtualMachine, error) {
-	vmClient, err := factory.VirtualMachine(ctx, opt.SecretReference)
+	vmClient, err := factory.VirtualMachine()
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func createOrUpdateNetworkSecGroup(ctx context.Context, factory azureclient.Fact
 }
 
 func getBastionInstance(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*compute.VirtualMachine, error) {
-	vmClient, err := factory.VirtualMachine(ctx, opt.SecretReference)
+	vmClient, err := factory.VirtualMachine()
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +113,7 @@ func getBastionInstance(ctx context.Context, log logr.Logger, factory azureclien
 }
 
 func getNic(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*network.Interface, error) {
-	nicClient, err := factory.NetworkInterface(ctx, opt.SecretReference)
+	nicClient, err := factory.NetworkInterface()
 	if err != nil {
 		return nil, err
 	}

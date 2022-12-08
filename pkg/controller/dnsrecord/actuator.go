@@ -72,11 +72,11 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, dns *extensio
 	if err != nil {
 		return err
 	}
-	dnsZoneClient, err := factory.DNSZone(ctx, dns.Spec.SecretRef)
+	dnsZoneClient, err := factory.DNSZone()
 	if err != nil {
 		return fmt.Errorf("could not create Azure DNS zone client: %+v", err)
 	}
-	dnsRecordSetClient, err := factory.DNSRecordSet(ctx, dns.Spec.SecretRef)
+	dnsRecordSetClient, err := factory.DNSRecordSet()
 	if err != nil {
 		return fmt.Errorf("could not create Azure DNS recordset client: %+v", err)
 	}
@@ -122,11 +122,11 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, dns *extensionsv
 		return err
 	}
 	// Create Azure DNS zone and recordset clients
-	dnsZoneClient, err := factory.DNSZone(ctx, dns.Spec.SecretRef)
+	dnsZoneClient, err := factory.DNSZone()
 	if err != nil {
 		return fmt.Errorf("could not create Azure DNS zone client: %+v", err)
 	}
-	dnsRecordSetClient, err := factory.DNSRecordSet(ctx, dns.Spec.SecretRef)
+	dnsRecordSetClient, err := factory.DNSRecordSet()
 	if err != nil {
 		return fmt.Errorf("could not create Azure DNS recordset client: %+v", err)
 	}

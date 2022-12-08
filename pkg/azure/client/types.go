@@ -35,21 +35,20 @@ import (
 
 // Factory represents a factory to produce clients for various Azure services.
 type Factory interface {
-	// TODO remove params with secretRef
 	Storage(context.Context, corev1.SecretReference) (Storage, error)
-	StorageAccount(context.Context, corev1.SecretReference) (StorageAccount, error)
-	Vmss(context.Context, corev1.SecretReference) (Vmss, error)
-	DNSZone(context.Context, corev1.SecretReference) (DNSZone, error)
-	DNSRecordSet(context.Context, corev1.SecretReference) (DNSRecordSet, error)
-	VirtualMachine(ctx context.Context, secretRef corev1.SecretReference) (VirtualMachine, error)
-	NetworkInterface(ctx context.Context, secretRef corev1.SecretReference) (NetworkInterface, error)
-	Disk(ctx context.Context, secretRef corev1.SecretReference) (Disk, error)
-	//FactoryShared
+	StorageAccount() (StorageAccount, error)
+	Vmss() (Vmss, error)
+	DNSZone() (DNSZone, error)
+	DNSRecordSet() (DNSRecordSet, error)
+	VirtualMachine() (VirtualMachine, error)
+	NetworkInterface() (NetworkInterface, error)
+	Disk() (Disk, error)
+	// shared clients
 	Group() (ResourceGroup, error)
 	NetworkSecurityGroup() (NetworkSecurityGroup, error)
 	Subnet() (Subnet, error)
 	PublicIP() (PublicIP, error)
-	//
+	// reconciler specific
 	Vnet() (Vnet, error)
 	RouteTables() (RouteTables, error)
 	NatGateway() (NatGateway, error)

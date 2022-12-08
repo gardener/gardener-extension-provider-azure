@@ -36,7 +36,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
@@ -49,8 +48,7 @@ var _ = Describe("MachinesDependencies", func() {
 		statusWriter *mockclient.MockStatusWriter
 		factory      *factorymock.MockFactory
 
-		ctx       context.Context
-		secretRef corev1.SecretReference
+		ctx context.Context
 
 		namespace, resourceGroupName, region string
 	)
@@ -68,10 +66,6 @@ var _ = Describe("MachinesDependencies", func() {
 		namespace = "shoot--foobar--azure"
 		resourceGroupName = namespace
 		region = "westeurope"
-		secretRef = corev1.SecretReference{
-			Name:      "secret",
-			Namespace: namespace,
-		}
 	})
 
 	Describe("VMO Dependencies", func() {
@@ -90,7 +84,7 @@ var _ = Describe("MachinesDependencies", func() {
 		BeforeEach(func() {
 			// Create a vmo client mock and let the factory always return the mocked vmo client.
 			vmoClient = vmssmock.NewMockVmss(ctrl)
-			factory.EXPECT().Vmss(ctx, secretRef).AnyTimes().Return(vmoClient, nil)
+			factory.EXPECT().Vmss().AnyTimes().Return(vmoClient, nil)
 
 			faultDomainCount = 3
 			cluster = makeCluster("", "westeurope", nil, nil, faultDomainCount)

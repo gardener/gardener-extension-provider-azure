@@ -321,7 +321,7 @@ func ensureNic(ctx context.Context, log logr.Logger, factory azureclient.Factory
 
 	parameters := nicDefine(opt, publicIP, subnet)
 
-	nicClient, err := factory.NetworkInterface(ctx, opt.SecretReference)
+	nicClient, err := factory.NetworkInterface()
 	if err != nil {
 		return nil, err
 	}

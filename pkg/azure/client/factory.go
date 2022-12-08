@@ -83,7 +83,7 @@ func (f AzureFactory) Storage(ctx context.Context, secretRef corev1.SecretRefere
 }
 
 // StorageAccount reads the secret from the passed reference and return an Azure storage account client.
-func (f AzureFactory) StorageAccount(ctx context.Context, secretRef corev1.SecretReference) (StorageAccount, error) {
+func (f AzureFactory) StorageAccount() (StorageAccount, error) {
 	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(f.auth)
 	if err != nil {
 		return nil, err
@@ -97,7 +97,7 @@ func (f AzureFactory) StorageAccount(ctx context.Context, secretRef corev1.Secre
 }
 
 // Vmss reads the secret from the passed reference and return an Azure virtual machine scale set client.
-func (f AzureFactory) Vmss(ctx context.Context, secretRef corev1.SecretReference) (Vmss, error) {
+func (f AzureFactory) Vmss() (Vmss, error) {
 	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(f.auth)
 	if err != nil {
 		return nil, err
@@ -111,7 +111,7 @@ func (f AzureFactory) Vmss(ctx context.Context, secretRef corev1.SecretReference
 }
 
 // VirtualMachine reads the secret from the passed reference and return an Azure virtual machine client.
-func (f AzureFactory) VirtualMachine(ctx context.Context, secretRef corev1.SecretReference) (VirtualMachine, error) {
+func (f AzureFactory) VirtualMachine() (VirtualMachine, error) {
 	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(f.auth)
 	if err != nil {
 		return nil, err
@@ -125,7 +125,7 @@ func (f AzureFactory) VirtualMachine(ctx context.Context, secretRef corev1.Secre
 }
 
 // DNSZone reads the secret from the passed reference and return an Azure DNS zone client.
-func (f AzureFactory) DNSZone(ctx context.Context, secretRef corev1.SecretReference) (DNSZone, error) {
+func (f AzureFactory) DNSZone() (DNSZone, error) {
 	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(f.auth)
 	if err != nil {
 		return nil, err
@@ -139,7 +139,7 @@ func (f AzureFactory) DNSZone(ctx context.Context, secretRef corev1.SecretRefere
 }
 
 // DNSRecordSet reads the secret from the passed reference and return an Azure DNS record set client.
-func (f AzureFactory) DNSRecordSet(ctx context.Context, secretRef corev1.SecretReference) (DNSRecordSet, error) {
+func (f AzureFactory) DNSRecordSet() (DNSRecordSet, error) {
 	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(f.auth)
 	if err != nil {
 		return nil, err
@@ -182,7 +182,7 @@ func (f AzureFactory) PublicIP() (PublicIP, error) {
 }
 
 // NetworkInterface reads the secret from the passed reference and return an Azure network interface client.
-func (f AzureFactory) NetworkInterface(ctx context.Context, secretRef corev1.SecretReference) (NetworkInterface, error) {
+func (f AzureFactory) NetworkInterface() (NetworkInterface, error) {
 	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(f.auth)
 	if err != nil {
 		return nil, err
@@ -196,7 +196,7 @@ func (f AzureFactory) NetworkInterface(ctx context.Context, secretRef corev1.Sec
 }
 
 // Disk reads the secret from the passed reference and return an Azure disk client.
-func (f AzureFactory) Disk(ctx context.Context, secretRef corev1.SecretReference) (Disk, error) {
+func (f AzureFactory) Disk() (Disk, error) {
 	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(f.auth)
 	if err != nil {
 		return nil, err

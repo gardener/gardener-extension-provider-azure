@@ -33,7 +33,7 @@ import (
 func (w *workerDelegate) reconcileVmoDependencies(ctx context.Context, infrastructureStatus *azureapi.InfrastructureStatus, workerProviderStatus *azureapi.WorkerStatus) ([]azureapi.VmoDependency, error) {
 	var vmoDependencies = copyVmoDependencies(workerProviderStatus)
 
-	vmoClient, err := w.clientFactory.Vmss(ctx, w.worker.Spec.SecretRef)
+	vmoClient, err := w.clientFactory.Vmss()
 	if err != nil {
 		return vmoDependencies, err
 	}
@@ -103,7 +103,7 @@ func (w *workerDelegate) reconcileVMO(ctx context.Context, client azureclient.Vm
 func (w *workerDelegate) cleanupVmoDependencies(ctx context.Context, infrastructureStatus *azureapi.InfrastructureStatus, workerProviderStatus *azureapi.WorkerStatus) ([]azureapi.VmoDependency, error) {
 	var vmoDependencies = copyVmoDependencies(workerProviderStatus)
 
-	vmoClient, err := w.clientFactory.Vmss(ctx, w.worker.Spec.SecretRef)
+	vmoClient, err := w.clientFactory.Vmss()
 	if err != nil {
 		return vmoDependencies, err
 	}
@@ -191,7 +191,7 @@ func (w *workerDelegate) determineWorkerPoolVmoDependency(ctx context.Context, i
 	}
 
 	// Second: The vmo dependency was not found in the worker status. Check if a corresponding vmo exists on Azure.
-	vmoClient, err := w.clientFactory.Vmss(ctx, w.worker.Spec.SecretRef)
+	vmoClient, err := w.clientFactory.Vmss()
 	if err != nil {
 		return nil, err
 	}
