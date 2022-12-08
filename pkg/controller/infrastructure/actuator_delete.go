@@ -60,7 +60,7 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, infra *extension
 	resourceGroupExists, err := infrastructure.IsShootResourceGroupAvailable(ctx, azureClientFactory, infra, config)
 	if err != nil {
 		if azureclient.IsAzureAPIUnauthorized(err) {
-			log.Info("failed to check resource group availability due to invalid credentials", err)
+			log.Error(err, "Failed to check resource group availability due to invalid credentials")
 		} else {
 			return err
 		}
