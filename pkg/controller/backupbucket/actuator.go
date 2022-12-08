@@ -40,7 +40,10 @@ func (a *actuator) InjectClient(client client.Client) error {
 }
 
 func (a *actuator) Reconcile(ctx context.Context, _ logr.Logger, backupBucket *extensionsv1alpha1.BackupBucket) error {
-	var factory = azureclient.NewAzureClientFactory(a.client)
+	factory, err := azureclient.NewAzureClientFactoryWithSecretReference(ctx, a.client, backupBucket.Spec.SecretRef)
+	if err != nil {
+		return err
+	}
 
 	// If the generated secret in the backupbucket status not exists that means
 	// no backupbucket exists and it need to be created.
@@ -69,7 +72,10 @@ func (a *actuator) Delete(ctx context.Context, _ logr.Logger, backupBucket *exte
 		return nil
 	}
 
-	var factory = azureclient.NewAzureClientFactory(a.client)
+	factory, err := azureclient.NewAzureClientFactoryWithSecretReference(ctx, a.client, backupBucket.Spec.SecretRef)
+	if err != nil {
+		return err
+	}
 
 	// Get a storage account client to delete the backup container in the storage account.
 	storageClient, err := factory.Storage(ctx, *backupBucket.Status.GeneratedSecretRef)
@@ -81,7 +87,7 @@ func (a *actuator) Delete(ctx context.Context, _ logr.Logger, backupBucket *exte
 	}
 
 	// Get resource group client and delete the resource group which contains the backup storage account.
-	groupClient, err := factory.Group(ctx, backupBucket.Spec.SecretRef)
+	groupClient, err := factory.Group()
 	if err != nil {
 		return err
 	}

@@ -31,7 +31,7 @@ func IsShootResourceGroupAvailable(ctx context.Context, factory azureclient.Fact
 		return true, nil
 	}
 
-	groupClient, err := factory.Group(ctx, infra.Spec.SecretRef)
+	groupClient, err := factory.Group()
 	if err != nil {
 		return false, err
 	}
@@ -54,7 +54,7 @@ func DeleteNodeSubnetIfExists(ctx context.Context, factory azureclient.Factory, 
 		return nil
 	}
 
-	subnetClient, err := factory.Subnet(ctx, infra.Spec.SecretRef)
+	subnetClient, err := factory.Subnet()
 	if err != nil {
 		return err
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
+	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
@@ -27,13 +28,13 @@ const (
 
 // FlowReconciler is the reconciler for all managed resources
 type FlowReconciler struct {
-	factory    client.NewFactory
+	factory    client.Factory
 	reconciler *TfReconciler // only used to retrieve GetInfrastructureStatus after reconcilation call
 	logger     logr.Logger
 }
 
 // NewFlowReconciler creates a new FlowReconciler
-func NewFlowReconciler(factory client.NewFactory, logger logr.Logger) *FlowReconciler {
+func NewFlowReconciler(factory client.Factory, logger logr.Logger) *FlowReconciler {
 	return &FlowReconciler{
 		factory: factory,
 		logger:  logger,
@@ -110,7 +111,7 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 	}, shared.Dependencies(resourceGroup))
 
 	natGateway := f.addTask(g, "nat gateway creation", func(ctx context.Context) error {
-		ips := whiteboard.GetObject(publicIPMap).(map[string][]armnetwork.PublicIPAddress)
+		ips := whiteboard.GetObject(publicIPMap).(map[string][]network.PublicIPAddress)
 		resp, err := reconciler.NatGateways(ctx, ips)
 		whiteboard.SetObject(natGatewayMap, resp)
 		return err

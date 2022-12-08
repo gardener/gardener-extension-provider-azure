@@ -18,6 +18,7 @@ import (
 	"context"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	mockazureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client/mock"
 	. "github.com/gardener/gardener-extension-provider-azure/pkg/controller/dnsrecord"
 
@@ -29,6 +30,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -98,6 +100,10 @@ var _ = Describe("Actuator", func() {
 			shootDomain:   zone,
 			"example.com": "zone2",
 			"other.com":   "zone3",
+		}
+
+		NewAzureClientFactory = func(context.Context, client.Client, v1.SecretReference) (azureclient.Factory, error) {
+			return azureClientFactory, nil
 		}
 	})
 

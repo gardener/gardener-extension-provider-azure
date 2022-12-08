@@ -228,13 +228,15 @@ var (
 
 var _ = BeforeSuite(func() {
 	flag.Parse()
-	// validateFlags() ALTERNATIVE TO SECRET YAML
-	//region = to.Ptr("westeurope")
-	auth := readAuthFromFile(*secretYamlPath)
-	clientId = &auth.ClientID
-	clientSecret = &auth.ClientSecret
-	subscriptionId = &auth.SubscriptionID
-	tenantId = &auth.TenantID
+	if *secretYamlPath != "" {
+		auth := readAuthFromFile(*secretYamlPath)
+		clientId = &auth.ClientID
+		clientSecret = &auth.ClientSecret
+		subscriptionId = &auth.SubscriptionID
+		tenantId = &auth.TenantID
+	} else {
+		validateFlags()
+	}
 
 	internalChartsPath := azure.InternalChartsPath
 	repoRoot := filepath.Join("..", "..", "..")

@@ -94,13 +94,17 @@ func NewClientAuthDataFromSecret(secret *corev1.Secret, allowDNSKeys bool) (*Cli
 	}, nil
 }
 
-// GetAuthorizerAndSubscriptionID retrieves the client auth data specified by the secret reference
+// GetAuthorizerAndSubscriptionIDFromSecretRef retrieves the client auth data specified by the secret reference
 // to create and return an Azure Authorizer and a subscription id.
-func GetAuthorizerAndSubscriptionID(ctx context.Context, c client.Client, secretRef corev1.SecretReference, allowDNSKeys bool) (azureautorest.Authorizer, string, error) {
+func GetAuthorizerAndSubscriptionIDFromSecretRef(ctx context.Context, c client.Client, secretRef corev1.SecretReference, allowDNSKeys bool) (azureautorest.Authorizer, string, error) {
 	clientAuth, err := GetClientAuthData(ctx, c, secretRef, allowDNSKeys)
 	if err != nil {
 		return nil, "", err
 	}
+	return GetAuthorizerAndSubscriptionID(clientAuth)
+}
+
+func GetAuthorizerAndSubscriptionID(clientAuth *ClientAuth) (azureautorest.Authorizer, string, error) {
 	clientCredentialsConfig := azureauth.NewClientCredentialsConfig(clientAuth.ClientID, clientAuth.ClientSecret, clientAuth.TenantID)
 	authorizer, err := clientCredentialsConfig.Authorizer()
 	if err != nil {

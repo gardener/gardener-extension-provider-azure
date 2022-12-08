@@ -47,6 +47,22 @@ func (c PublicIPClient) Get(ctx context.Context, resourceGroupName string, name 
 	return &npi, nil
 }
 
+func (c PublicIPClient) GetAll(ctx context.Context, resourceGroupName string) ([]network.PublicIPAddress, error) {
+	results, err := c.client.ListComplete(ctx, resourceGroupName)
+	if err != nil {
+		return nil, err
+	}
+	var ips []network.PublicIPAddress
+	for results.NotDone() {
+		res := results.Value()
+		ips = append(ips, res)
+		if err := results.NextWithContext(ctx); err != nil {
+			return nil, err
+		}
+	}
+	return ips, nil
+}
+
 // Delete will delete a network Public IP Address.
 func (c PublicIPClient) Delete(ctx context.Context, resourceGroupName, name string) error {
 	future, err := c.client.Delete(ctx, resourceGroupName, name)

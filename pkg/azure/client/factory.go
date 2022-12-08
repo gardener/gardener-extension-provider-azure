@@ -22,23 +22,14 @@ import (
 	azurecompute "github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	azuredns "github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-05-01/dns"
 	azurenetwork "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
-	azureresources "github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
 	azurestorage "github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-04-01/storage"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// NewAzureClientFactory returns a new factory to produce clients for various Azure services.
-func NewAzureClientFactory(client client.Client) Factory {
-	return AzureFactory{
-		client: client,
-	}
-}
-
-// ResourceGroup gets a newer client for an Azure resource group.
-func (f AzureFactory) ResourceGroup(ctx context.Context, secretRef corev1.SecretReference) (ResourceGroup, error) {
-	auth, err := internal.GetClientAuthData(ctx, f.client, secretRef, false)
+func NewAzureClientFactoryWithSecretReference(ctx context.Context, client client.Client, secretRef corev1.SecretReference) (Factory, error) {
+	auth, err := internal.GetClientAuthData(ctx, client, secretRef, false)
 	if err != nil {
 		return nil, err
 	}
@@ -46,22 +37,37 @@ func (f AzureFactory) ResourceGroup(ctx context.Context, secretRef corev1.Secret
 	if err != nil {
 		return nil, err
 	}
-	client, err := armresources.NewResourceGroupsClient(auth.SubscriptionID, cred, nil)
-	return ResourceGroupClient{client}, err
+
+	return AzureFactory{
+		cred: cred,
+		auth: auth,
+	}, nil
 }
 
-// Group reads the secret from the passed reference and return an Azure resource group client.
-func (f AzureFactory) Group(ctx context.Context, secretRef corev1.SecretReference) (Group, error) {
-	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(ctx, f.client, secretRef, false)
+func NewAzureClientFactoryWithAuthAndClient(auth *internal.ClientAuth, client client.Client) (Factory, error) {
+	cred, err := auth.GetAzClientCredentials()
 	if err != nil {
 		return nil, err
 	}
-	groupClient := azureresources.NewGroupsClient(subscriptionID)
-	groupClient.Authorizer = authorizer
 
-	return GroupClient{
-		client: groupClient,
+	return AzureFactory{
+		client: client, // TODO remove? only used for storage
+		cred:   cred,
+		auth:   auth,
 	}, nil
+}
+
+// ResourceGroup gets a newer client for an Azure resource group.
+func (f AzureFactory) Group() (ResourceGroup, error) {
+	if f.auth == nil || f.cred == nil {
+		panic("no secret ref for factory")
+	}
+	cred, err := f.auth.GetAzClientCredentials()
+	if err != nil {
+		return nil, err
+	}
+	client, err := armresources.NewResourceGroupsClient(f.auth.SubscriptionID, cred, nil)
+	return ResourceGroupClient{client}, err
 }
 
 // Storage reads the secret from the passed reference and return an Azure (blob) storage client.
@@ -78,7 +84,7 @@ func (f AzureFactory) Storage(ctx context.Context, secretRef corev1.SecretRefere
 
 // StorageAccount reads the secret from the passed reference and return an Azure storage account client.
 func (f AzureFactory) StorageAccount(ctx context.Context, secretRef corev1.SecretReference) (StorageAccount, error) {
-	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(ctx, f.client, secretRef, false)
+	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(f.auth)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +98,7 @@ func (f AzureFactory) StorageAccount(ctx context.Context, secretRef corev1.Secre
 
 // Vmss reads the secret from the passed reference and return an Azure virtual machine scale set client.
 func (f AzureFactory) Vmss(ctx context.Context, secretRef corev1.SecretReference) (Vmss, error) {
-	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(ctx, f.client, secretRef, false)
+	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(f.auth)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +112,7 @@ func (f AzureFactory) Vmss(ctx context.Context, secretRef corev1.SecretReference
 
 // VirtualMachine reads the secret from the passed reference and return an Azure virtual machine client.
 func (f AzureFactory) VirtualMachine(ctx context.Context, secretRef corev1.SecretReference) (VirtualMachine, error) {
-	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(ctx, f.client, secretRef, false)
+	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(f.auth)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +126,7 @@ func (f AzureFactory) VirtualMachine(ctx context.Context, secretRef corev1.Secre
 
 // DNSZone reads the secret from the passed reference and return an Azure DNS zone client.
 func (f AzureFactory) DNSZone(ctx context.Context, secretRef corev1.SecretReference) (DNSZone, error) {
-	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(ctx, f.client, secretRef, true)
+	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(f.auth)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +140,7 @@ func (f AzureFactory) DNSZone(ctx context.Context, secretRef corev1.SecretRefere
 
 // DNSRecordSet reads the secret from the passed reference and return an Azure DNS record set client.
 func (f AzureFactory) DNSRecordSet(ctx context.Context, secretRef corev1.SecretReference) (DNSRecordSet, error) {
-	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(ctx, f.client, secretRef, true)
+	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(f.auth)
 	if err != nil {
 		return nil, err
 	}
@@ -147,12 +153,12 @@ func (f AzureFactory) DNSRecordSet(ctx context.Context, secretRef corev1.SecretR
 }
 
 // NetworkSecurityGroup reads the secret from the passed reference and return an Azure network security group client.
-func (f AzureFactory) NetworkSecurityGroup(ctx context.Context, secretRef corev1.SecretReference) (NetworkSecurityGroup, error) {
-	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(ctx, f.client, secretRef, false)
+func (f AzureFactory) NetworkSecurityGroup() (NetworkSecurityGroup, error) {
+	authorizer, id, err := internal.GetAuthorizerAndSubscriptionID(f.auth)
 	if err != nil {
 		return nil, err
 	}
-	networkSecurityGroupClient := azurenetwork.NewSecurityGroupsClient(subscriptionID)
+	networkSecurityGroupClient := azurenetwork.NewSecurityGroupsClient(id)
 	networkSecurityGroupClient.Authorizer = authorizer
 
 	return NetworkSecurityGroupClient{
@@ -161,12 +167,13 @@ func (f AzureFactory) NetworkSecurityGroup(ctx context.Context, secretRef corev1
 }
 
 // PublicIP reads the secret from the passed reference and return an Azure network PublicIPClient.
-func (f AzureFactory) PublicIP(ctx context.Context, secretRef corev1.SecretReference) (PublicIP, error) {
-	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(ctx, f.client, secretRef, false)
+func (f AzureFactory) PublicIP() (PublicIP, error) {
+	//return NewPublicIPsClient(*f.auth)
+	authorizer, id, err := internal.GetAuthorizerAndSubscriptionID(f.auth)
 	if err != nil {
 		return nil, err
 	}
-	publicIPClient := azurenetwork.NewPublicIPAddressesClient(subscriptionID)
+	publicIPClient := azurenetwork.NewPublicIPAddressesClient(id)
 	publicIPClient.Authorizer = authorizer
 
 	return PublicIPClient{
@@ -176,7 +183,7 @@ func (f AzureFactory) PublicIP(ctx context.Context, secretRef corev1.SecretRefer
 
 // NetworkInterface reads the secret from the passed reference and return an Azure network interface client.
 func (f AzureFactory) NetworkInterface(ctx context.Context, secretRef corev1.SecretReference) (NetworkInterface, error) {
-	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(ctx, f.client, secretRef, false)
+	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(f.auth)
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +197,7 @@ func (f AzureFactory) NetworkInterface(ctx context.Context, secretRef corev1.Sec
 
 // Disk reads the secret from the passed reference and return an Azure disk client.
 func (f AzureFactory) Disk(ctx context.Context, secretRef corev1.SecretReference) (Disk, error) {
-	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(ctx, f.client, secretRef, false)
+	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(f.auth)
 	if err != nil {
 		return nil, err
 	}
@@ -203,25 +210,16 @@ func (f AzureFactory) Disk(ctx context.Context, secretRef corev1.SecretReference
 }
 
 // Vnet reads the secret from the passed reference and return an Azure Vnet client.
-func (f AzureFactory) Vnet(ctx context.Context, secretRef corev1.SecretReference) (*VnetClient, error) {
-	auth, err := internal.GetClientAuthData(ctx, f.client, secretRef, false)
-	if err != nil {
-		return nil, err
-	}
-	return NewVnetClient(*auth)
+func (f AzureFactory) Vnet() (Vnet, error) {
+	return NewVnetClient(*f.auth)
 }
 
 // Subnet reads the secret from the passed reference and return an Azure Subnet client.
-func (f AzureFactory) Subnet(ctx context.Context, secretRef corev1.SecretReference) (Subnet, error) {
-	auth, err := internal.GetClientAuthData(ctx, f.client, secretRef, false)
-	if err != nil {
-		return nil, err
+func (f AzureFactory) Subnet() (Subnet, error) {
+	if f.auth == nil || f.cred == nil {
+		panic("factory not called with secretRef")
 	}
-	cred, err := auth.GetAzClientCredentials()
-	if err != nil {
-		return nil, err
-	}
-	subnetsClient, err := armnetwork.NewSubnetsClient(auth.SubscriptionID, cred, nil)
+	subnetsClient, err := armnetwork.NewSubnetsClient(f.auth.SubscriptionID, f.cred, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -231,10 +229,16 @@ func (f AzureFactory) Subnet(ctx context.Context, secretRef corev1.SecretReferen
 }
 
 // RouteTables reads the secret from the passed reference and return an Azure RouteTables client.
-func (f AzureFactory) RouteTables(ctx context.Context, secretRef corev1.SecretReference) (RouteTables, error) {
-	auth, err := internal.GetClientAuthData(ctx, f.client, secretRef, false)
-	if err != nil {
-		return nil, err
-	}
-	return NewRouteTablesClient(*auth)
+func (f AzureFactory) RouteTables() (RouteTables, error) {
+	return NewRouteTablesClient(*f.auth)
+}
+
+func (f AzureFactory) NatGateway() (NatGateway, error) {
+	return NewNatGatewaysClient(*f.auth)
+}
+func (f AzureFactory) AvailabilitySet() (AvailabilitySet, error) {
+	return NewAvailabilitySetClient(*f.auth)
+}
+func (f AzureFactory) ManagedUserIdentity() (ManagedUserIdentity, error) {
+	return NewManagedUserIdentityClient(*f.auth)
 }

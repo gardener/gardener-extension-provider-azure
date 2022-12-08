@@ -50,14 +50,16 @@ func (be *bastionEndpoints) Ready() bool {
 }
 
 func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster) error {
-	var factory = azureclient.NewAzureClientFactory(a.client)
-
 	infrastructureStatus, err := getInfrastructureStatus(ctx, a, cluster)
 	if err != nil {
 		return err
 	}
 
 	opt, err := DetermineOptions(bastion, cluster, infrastructureStatus.ResourceGroup.Name)
+	if err != nil {
+		return err
+	}
+	factory, err := azureclient.NewAzureClientFactoryWithSecretReference(ctx, a.client, opt.SecretReference)
 	if err != nil {
 		return err
 	}

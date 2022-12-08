@@ -26,17 +26,18 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
 	// NewAzureClientFactory initializes a new AzureClientFactory. Exposed for testing.
-	NewAzureClientFactory = newAzureClientFactory
+	NewAzureClientFactory = newAzureClientFactoryNew
 )
 
-func newAzureClientFactory(client client.Client) azureclient.Factory {
-	return azureclient.NewAzureClientFactory(client)
+func newAzureClientFactoryNew(ctx context.Context, client client.Client, secretRef v1.SecretReference) (azureclient.Factory, error) {
+	return azureclient.NewAzureClientFactoryWithSecretReference(ctx, client, secretRef)
 }
 
 // Delete implements infrastructure.Actuator.
@@ -62,7 +63,10 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, infra *extension
 		return err
 	}
 
-	azureClientFactory := NewAzureClientFactory(a.Client())
+	azureClientFactory, err := NewAzureClientFactory(ctx, a.Client(), infra.Spec.SecretRef)
+	if err != nil {
+		return err
+	}
 	resourceGroupExists, err := infrastructure.IsShootResourceGroupAvailable(ctx, azureClientFactory, infra, config)
 	if err != nil {
 		return err

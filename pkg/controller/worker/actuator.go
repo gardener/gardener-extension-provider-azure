@@ -69,7 +69,10 @@ func (d *delegateFactory) WorkerDelegate(ctx context.Context, worker *extensions
 		return nil, err
 	}
 
-	factory := azureclient.NewAzureClientFactory(d.ClientContext.Client())
+	factory, err := azureclient.NewAzureClientFactoryWithSecretReference(ctx, d.ClientContext.Client(), worker.Spec.SecretRef)
+	if err != nil {
+		return nil, err
+	}
 	return NewWorkerDelegate(d.ClientContext, seedChartApplier, serverVersion.GitVersion, worker, cluster, factory)
 }
 

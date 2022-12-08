@@ -36,7 +36,7 @@ func (c NetworkSecurityGroupClient) CreateOrUpdate(ctx context.Context, resource
 	return &nsg, nil
 }
 
-// Get will fetch a network security group
+// Get will fetch a network security group.
 func (c NetworkSecurityGroupClient) Get(ctx context.Context, resourceGroupName string, networkSecurityGroupName, name string) (*network.SecurityGroup, error) {
 	nsg, err := c.client.Get(ctx, resourceGroupName, networkSecurityGroupName, name)
 	if err != nil {
@@ -45,7 +45,19 @@ func (c NetworkSecurityGroupClient) Get(ctx context.Context, resourceGroupName s
 	return &nsg, nil
 }
 
-// Get will get a Security rules.
+func (c NetworkSecurityGroupClient) Delete(ctx context.Context, resourceGroupName, name string) error {
+	future, err := c.client.Delete(ctx, resourceGroupName, name)
+	if err != nil {
+		return err
+	}
+	if err := future.WaitForCompletionRef(ctx, c.client.Client); err != nil {
+		return err
+	}
+	_, err = future.Result(c.client)
+	return err
+}
+
+// Get will get a Security rule.
 func (c SecurityRulesClient) Get(ctx context.Context, resourceGroupName string, networkSecurityGroupName string, name string) (*network.SecurityRule, error) {
 	rules, err := c.client.Get(ctx, resourceGroupName, networkSecurityGroupName, name)
 	if err != nil {

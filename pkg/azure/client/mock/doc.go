@@ -12,6 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:generate mockgen -package client -destination=mocks.go github.com/gardener/gardener-extension-provider-azure/pkg/azure/client DNSZone,DNSRecordSet,Group,Subnet,Factory,NewFactory,ResourceGroup,Vnet,RouteTables,SecurityGroups,NatGateway,NewPublicIP,AvailabilitySet
+//go:generate mockgen -package client -destination=mocks.go github.com/gardener/gardener-extension-provider-azure/pkg/azure/client DNSZone,DNSRecordSet,Subnet,Factory,ResourceGroup,Vnet,RouteTables,NatGateway,PublicIP,AvailabilitySet,NetworkSecurityGroup
 
 package client

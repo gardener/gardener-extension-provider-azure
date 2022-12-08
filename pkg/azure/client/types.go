@@ -17,6 +17,7 @@ package client
 import (
 	"context"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
@@ -27,38 +28,33 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
 	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-04-01/storage"
 	"github.com/Azure/azure-storage-blob-go/azblob"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// TODO merge interfaces
-// NewFacory is a slimmer interface (but different set) than Factory which includes the newer client versions needed for the FlowReconciler
-type NewFactory interface {
-	ResourceGroup() (ResourceGroup, error) // overlap
-	Vnet() (Vnet, error)
-	RouteTables() (RouteTables, error)
-	SecurityGroups() (SecurityGroups, error) // overlap
-	Subnet() (Subnet, error)                 // overlap
-	NatGateway() (NatGateway, error)
-	PublicIP() (NewPublicIP, error) // overlap
-	AvailabilitySet() (AvailabilitySet, error)
-	ManagedUserIdentity() (ManagedUserIdentity, error)
-}
-
 // Factory represents a factory to produce clients for various Azure services.
 type Factory interface {
-	Group(context.Context, corev1.SecretReference) (Group, error)
+	// TODO remove params with secretRef
 	Storage(context.Context, corev1.SecretReference) (Storage, error)
 	StorageAccount(context.Context, corev1.SecretReference) (StorageAccount, error)
 	Vmss(context.Context, corev1.SecretReference) (Vmss, error)
 	DNSZone(context.Context, corev1.SecretReference) (DNSZone, error)
 	DNSRecordSet(context.Context, corev1.SecretReference) (DNSRecordSet, error)
 	VirtualMachine(ctx context.Context, secretRef corev1.SecretReference) (VirtualMachine, error)
-	NetworkSecurityGroup(ctx context.Context, secretRef corev1.SecretReference) (NetworkSecurityGroup, error)
-	PublicIP(ctx context.Context, secretRef corev1.SecretReference) (PublicIP, error)
 	NetworkInterface(ctx context.Context, secretRef corev1.SecretReference) (NetworkInterface, error)
 	Disk(ctx context.Context, secretRef corev1.SecretReference) (Disk, error)
-	Subnet(ctx context.Context, secretRef corev1.SecretReference) (Subnet, error)
+	//FactoryShared
+	Group() (ResourceGroup, error)
+	NetworkSecurityGroup() (NetworkSecurityGroup, error)
+	Subnet() (Subnet, error)
+	PublicIP() (PublicIP, error)
+	//
+	Vnet() (Vnet, error)
+	RouteTables() (RouteTables, error)
+	NatGateway() (NatGateway, error)
+	AvailabilitySet() (AvailabilitySet, error)
+	ManagedUserIdentity() (ManagedUserIdentity, error)
 }
 
 // AvailabilitySet is an interface for the Azure AvailabilitySet service.
@@ -77,11 +73,11 @@ type NatGateway interface {
 }
 
 // #TODO replaces NetworkSecurityGroup
-type SecurityGroups interface {
-	Get(ctx context.Context, resourceGroupName, networkSecurityGroupName string) (armnetwork.SecurityGroupsClientGetResponse, error)
-	CreateOrUpdate(ctx context.Context, resourceGroupName string, networkSecurityGroupName string, parameters armnetwork.SecurityGroup) (armnetwork.SecurityGroupsClientCreateOrUpdateResponse, error)
-	Delete(ctx context.Context, resourceGroupName, networkSecurityGroupName string) error
-}
+//type SecurityGroups interface {
+//	Get(ctx context.Context, resourceGroupName, networkSecurityGroupName string) (armnetwork.SecurityGroupsClientGetResponse, error)
+//	CreateOrUpdate(ctx context.Context, resourceGroupName string, networkSecurityGroupName string, parameters armnetwork.SecurityGroup) (armnetwork.SecurityGroupsClientCreateOrUpdateResponse, error)
+//	Delete(ctx context.Context, resourceGroupName, networkSecurityGroupName string) error
+//}
 
 // RouteTables is a client for the Azure RouteTable service.
 type RouteTables interface {
@@ -93,13 +89,6 @@ type RouteTables interface {
 // ManagedUserIdentity is a client for the Azure Managed User Identity service.
 type ManagedUserIdentity interface {
 	Get(context.Context, string, string) (msi.Identity, error)
-}
-
-// Group represents an Azure group client.
-type Group interface {
-	Get(context.Context, string) (*resources.Group, error)
-	CreateOrUpdate(context.Context, string, string) error
-	DeleteIfExits(context.Context, string) error
 }
 
 // Storage represents an Azure (blob) storage client.
@@ -152,6 +141,7 @@ type PublicIP interface {
 	Get(ctx context.Context, resourceGroupName string, name string, expander string) (*network.PublicIPAddress, error)
 	CreateOrUpdate(ctx context.Context, resourceGroupName, name string, parameters network.PublicIPAddress) (*network.PublicIPAddress, error)
 	Delete(ctx context.Context, resourceGroupName, name string) error
+	GetAll(ctx context.Context, resourceGroupName string) ([]network.PublicIPAddress, error)
 }
 
 type NewPublicIP interface {
@@ -186,8 +176,9 @@ type Subnet interface {
 // ResourceGroup represents an Azure ResourceGroup client.
 type ResourceGroup interface {
 	CreateOrUpdate(ctx context.Context, resourceGroupName, location string) error
-	Delete(ctx context.Context, resourceGroupName string) error
+	DeleteIfExits(ctx context.Context, resourceGroupName string) error
 	IsExisting(ctx context.Context, resourceGroupName string) (bool, error)
+	Get(ctx context.Context, resourceGroupName string) (*armresources.ResourceGroup, error)
 }
 
 // Vnet represents an Azure Virtual Network client.
@@ -199,6 +190,8 @@ type Vnet interface {
 
 // AzureFactory is an implementation of Factory to produce clients for various Azure services.
 type AzureFactory struct {
+	auth   *internal.ClientAuth
+	cred   *azidentity.ClientSecretCredential
 	client client.Client
 }
 

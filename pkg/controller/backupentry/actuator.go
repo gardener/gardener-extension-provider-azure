@@ -44,7 +44,10 @@ func (a *actuator) GetETCDSecretData(ctx context.Context, _ logr.Logger, be *ext
 }
 
 func (a *actuator) Delete(ctx context.Context, _ logr.Logger, backupEntry *extensionsv1alpha1.BackupEntry) error {
-	factory := azureclient.NewAzureClientFactory(a.client)
+	factory, err := azureclient.NewAzureClientFactoryWithSecretReference(ctx, a.client, backupEntry.Spec.SecretRef)
+	if err != nil {
+		return err
+	}
 	storageClient, err := factory.Storage(ctx, backupEntry.Spec.SecretRef)
 	if err != nil {
 		return err

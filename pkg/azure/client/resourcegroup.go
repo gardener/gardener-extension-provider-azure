@@ -18,6 +18,14 @@ func NewResourceGroupsClient(auth internal.ClientAuth) (*ResourceGroupClient, er
 	return &ResourceGroupClient{client}, err
 }
 
+func (c ResourceGroupClient) Get(ctx context.Context, resourceGroupName string) (*armresources.ResourceGroup, error) {
+	res, err := c.client.Get(ctx, resourceGroupName, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &res.ResourceGroup, err
+}
+
 // CreateOrUpdate creates or updates a resource group
 func (c ResourceGroupClient) CreateOrUpdate(ctx context.Context, resourceGroupName, location string) error {
 	_, err := c.client.CreateOrUpdate(
@@ -30,8 +38,8 @@ func (c ResourceGroupClient) CreateOrUpdate(ctx context.Context, resourceGroupNa
 	return err
 }
 
-// Delete deletes a resource group and does not error when it does not exist
-func (c ResourceGroupClient) Delete(ctx context.Context, resourceGroupName string) error {
+// DeleteIfExists deletes a resource group if it exists.
+func (c ResourceGroupClient) DeleteIfExits(ctx context.Context, resourceGroupName string) error {
 	resourceGroupResp, err := c.client.BeginDelete(
 		ctx,
 		resourceGroupName,

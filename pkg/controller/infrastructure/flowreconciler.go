@@ -22,7 +22,7 @@ func NewFlowReconciler(ctx context.Context, a *actuator, infra *extensionsv1alph
 	if err != nil {
 		return nil, err
 	}
-	factory, err := azureclient.NewAzureClientFactoryV2(*auth)
+	factory, err := azureclient.NewAzureClientFactoryWithAuthAndClient(auth, client)
 	if err != nil {
 		return nil, err
 	}

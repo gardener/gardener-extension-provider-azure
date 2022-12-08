@@ -7,6 +7,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
+	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
@@ -18,11 +19,11 @@ import (
 // TfReconciler allows to reconcile the individual cloud resources based on the Terraform configuration logic
 type TfReconciler struct {
 	tf      TerraformAdapter
-	factory client.NewFactory
+	factory client.Factory
 }
 
 // NewTfReconciler creates a new TfReconciler
-func NewTfReconciler(infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, cluster *controller.Cluster, factory client.NewFactory) (*TfReconciler, error) {
+func NewTfReconciler(infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, cluster *controller.Cluster, factory client.Factory) (*TfReconciler, error) {
 	tfAdapter, err := NewTerraformAdapter(infra, cfg, cluster)
 	return &TfReconciler{tfAdapter, factory}, err
 }
@@ -87,7 +88,7 @@ func (f TfReconciler) enrichStatusWithIdentity(ctx context.Context, status *v1al
 
 // Delete deletes all resources managed by the reconciler
 func (f TfReconciler) Delete(ctx context.Context) error {
-	client, err := f.factory.ResourceGroup()
+	client, err := f.factory.Group()
 	if err != nil {
 		return err
 	}
@@ -98,7 +99,7 @@ func (f TfReconciler) Delete(ctx context.Context) error {
 			return fmt.Errorf("failed to delete foreign subnet: %w", err)
 		}
 	}
-	return client.Delete(ctx, f.tf.ResourceGroup())
+	return client.DeleteIfExits(ctx, f.tf.ResourceGroup())
 }
 
 func (f TfReconciler) deleteForeignSubnets(ctx context.Context) error {
@@ -166,13 +167,13 @@ func (f TfReconciler) RouteTables(ctx context.Context) (armnetwork.RouteTable, e
 }
 
 // SecurityGroups creates or updates a SecurityGroup
-func (f TfReconciler) SecurityGroups(ctx context.Context) (armnetwork.SecurityGroupsClientCreateOrUpdateResponse, error) {
-	client, err := f.factory.SecurityGroups()
+func (f TfReconciler) SecurityGroups(ctx context.Context) (*network.SecurityGroup, error) {
+	client, err := f.factory.NetworkSecurityGroup()
 	if err != nil {
-		return armnetwork.SecurityGroupsClientCreateOrUpdateResponse{}, err
+		return nil, err
 	}
 	name := f.tf.SecurityGroupName()
-	parameters := armnetwork.SecurityGroup{
+	parameters := network.SecurityGroup{
 		Location: to.Ptr(f.tf.Region()),
 	}
 	resp, err := client.CreateOrUpdate(ctx, f.tf.ResourceGroup(), name, parameters)
@@ -203,8 +204,8 @@ func (f TfReconciler) AvailabilitySet(ctx context.Context) error {
 }
 
 // PublicIPs creates or updates PublicIPs for the NATs
-func (f TfReconciler) PublicIPs(ctx context.Context) (map[string][]armnetwork.PublicIPAddress, error) {
-	res := make(map[string][]armnetwork.PublicIPAddress)
+func (f TfReconciler) PublicIPs(ctx context.Context) (map[string][]network.PublicIPAddress, error) {
+	res := make(map[string][]network.PublicIPAddress)
 	client, err := f.factory.PublicIP()
 	if err != nil {
 		return res, err
@@ -218,28 +219,28 @@ func (f TfReconciler) PublicIPs(ctx context.Context) (map[string][]armnetwork.Pu
 		return res, nil
 	}
 	for _, ip := range ips {
-		params := armnetwork.PublicIPAddress{
+		params := network.PublicIPAddress{
 			Location: to.Ptr(f.tf.Region()),
-			SKU:      &armnetwork.PublicIPAddressSKU{Name: to.Ptr(armnetwork.PublicIPAddressSKUNameStandard)},
-			Properties: &armnetwork.PublicIPAddressPropertiesFormat{
-				PublicIPAllocationMethod: to.Ptr(armnetwork.IPAllocationMethodStatic),
+			Sku:      &network.PublicIPAddressSku{Name: network.PublicIPAddressSkuNameStandard},
+			PublicIPAddressPropertiesFormat: &network.PublicIPAddressPropertiesFormat{
+				PublicIPAllocationMethod: network.Static,
 			},
 		}
 		if ip.Zone() != nil {
-			params.Zones = []*string{ip.Zone()}
+			params.Zones = &[]string{*ip.Zone()}
 		}
 		resp, err := client.CreateOrUpdate(ctx, f.tf.ResourceGroup(), ip.IpName(), params)
 		if err != nil {
 			return res, err
 		}
-		res[ip.SubnetName()] = append(res[ip.SubnetName()], resp.PublicIPAddress)
+		res[ip.SubnetName()] = append(res[ip.SubnetName()], *resp)
 
 	}
 	return res, nil
 }
 
 // EnrichResponseWithUserManagedIPs adds the IDs of user managed IPs to the input map of associated IPs of the NATs
-func (f TfReconciler) EnrichResponseWithUserManagedIPs(ctx context.Context, res map[string][]armnetwork.PublicIPAddress) error {
+func (f TfReconciler) EnrichResponseWithUserManagedIPs(ctx context.Context, res map[string][]network.PublicIPAddress) error {
 	ips := f.tf.UserManagedIPs()
 	if len(ips) == 0 {
 		return nil
@@ -249,9 +250,9 @@ func (f TfReconciler) EnrichResponseWithUserManagedIPs(ctx context.Context, res 
 		return err
 	}
 	for _, ip := range ips {
-		resp, err := client.Get(ctx, ip.ResourceGroup, ip.Name)
+		resp, err := client.Get(ctx, ip.ResourceGroup, ip.Name, "")
 		if err == nil {
-			res[ip.SubnetName] = append(res[ip.SubnetName], armnetwork.PublicIPAddress{
+			res[ip.SubnetName] = append(res[ip.SubnetName], network.PublicIPAddress{
 				ID: resp.ID,
 			})
 		} else {
@@ -271,7 +272,7 @@ func checkAllZonesWithFn(name string, zones []zoneTf, check func(zone zoneTf, na
 }
 
 // NatGateways creates or updates NAT Gateways. It also deletes old NATGateways.
-func (f TfReconciler) NatGateways(ctx context.Context, ips map[string][]armnetwork.PublicIPAddress) (res map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse, err error) {
+func (f TfReconciler) NatGateways(ctx context.Context, ips map[string][]network.PublicIPAddress) (res map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse, err error) {
 	res = make(map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse)
 	client, err := f.factory.NatGateway()
 	if err != nil {
@@ -312,14 +313,14 @@ func (f TfReconciler) NatGateways(ctx context.Context, ips map[string][]armnetwo
 
 // ResourceGroup creates or updates the resource group
 func (f TfReconciler) ResourceGroup(ctx context.Context) error {
-	rgClient, err := f.factory.ResourceGroup()
+	rgClient, err := f.factory.Group()
 	if err != nil {
 		return err
 	}
 	return rgClient.CreateOrUpdate(ctx, f.tf.ResourceGroup(), f.tf.Region())
 }
 
-func (f TfReconciler) deleteOldNatIPs(ctx context.Context, client client.NewPublicIP) error {
+func (f TfReconciler) deleteOldNatIPs(ctx context.Context, client client.PublicIP) error {
 	existingIPs, err := client.GetAll(ctx, f.tf.ResourceGroup())
 	if err != nil {
 		return err

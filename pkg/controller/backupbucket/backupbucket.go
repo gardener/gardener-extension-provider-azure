@@ -32,7 +32,7 @@ func ensureBackupBucket(ctx context.Context, client client.Client, factory azure
 	)
 
 	// Get resource group client to ensure resource group to host backup storage account exists.
-	groupClient, err := factory.Group(ctx, backupBucket.Spec.SecretRef)
+	groupClient, err := factory.Group()
 	if err != nil {
 		return "", "", err
 	}

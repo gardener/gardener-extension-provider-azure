@@ -163,7 +163,7 @@ var _ = Describe("Azure Auth", func() {
 					return nil
 				})
 
-			authorizer, subscription, err := GetAuthorizerAndSubscriptionID(ctx, c, secretRef, false)
+			authorizer, subscription, err := GetAuthorizerAndSubscriptionIDFromSecretRef(ctx, c, secretRef, false)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(subscription).To(ContainSubstring(subscriptionID))

@@ -9,6 +9,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
+	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	mockclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client/mock"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow"
@@ -50,7 +51,7 @@ var _ = Describe("TfReconciler", func() {
 	resourceGroupName := infra.Namespace //if not specified this is assumed name "t-i545428" // TODO what if resource group not given? by default Tf uses infra.Namespace
 	vnetName := infra.Namespace          //if not specified this is assumed name "vnet-i545428"
 	cluster := infrastructure.MakeCluster("11.0.0.0/16", "12.0.0.0/16", infra.Spec.Region, 1, 1)
-	var factory *mockclient.MockNewFactory
+	var factory *mockclient.MockFactory
 	Describe("Vnet reconcilation", func() {
 		Context("new vnet", func() {
 			cfg := newBasicConfig()
@@ -212,13 +213,13 @@ var _ = Describe("TfReconciler", func() {
 			cfg.Networks.Zones = []azure.Zone{{Name: 1, CIDR: "10.0.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: true, IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip", ResourceGroup: resourceGroupName}}}}, {Name: 2, CIDR: "10.1.0.0/16"}}
 			BeforeEach(func() {
 				mock := NewMockFactoryWrapper(resourceGroupName, location)
-				parameters := armnetwork.PublicIPAddress{
+				parameters := network.PublicIPAddress{
 					Location: to.Ptr(location),
-					SKU:      &armnetwork.PublicIPAddressSKU{Name: to.Ptr(armnetwork.PublicIPAddressSKUNameStandard)},
-					Properties: &armnetwork.PublicIPAddressPropertiesFormat{
-						PublicIPAllocationMethod: to.Ptr(armnetwork.IPAllocationMethodStatic),
+					Sku:      &network.PublicIPAddressSku{Name: network.PublicIPAddressSkuNameStandard},
+					PublicIPAddressPropertiesFormat: &network.PublicIPAddressPropertiesFormat{
+						PublicIPAllocationMethod: network.Static,
 					},
-					Zones: []*string{to.Ptr("1")},
+					Zones: &[]string{"1"},
 				}
 				mock.assertPublicIPCalledWithParameters(MatchAnyOfStrings([]string{"test_cluster-nat-gateway-z1-ip"}), parameters)
 				factory = mock.GetFactory()
@@ -310,7 +311,7 @@ var _ = Describe("TfReconciler", func() {
 
 					sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
 					Expect(err).ToNot(HaveOccurred())
-					_, err = sut.NatGateways(context.TODO(), map[string][]armnetwork.PublicIPAddress{"test_cluster-nodes-z1": {{
+					_, err = sut.NatGateways(context.TODO(), map[string][]network.PublicIPAddress{"test_cluster-nodes-z1": {{
 						ID: ipId,
 					},
 					}})
@@ -398,7 +399,7 @@ var _ = Describe("TfReconciler", func() {
 				It("enriches with 2 user managed IPs", func() {
 					sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
 					Expect(err).ToNot(HaveOccurred())
-					res := make(map[string][]armnetwork.PublicIPAddress)
+					res := make(map[string][]network.PublicIPAddress)
 					err = sut.EnrichResponseWithUserManagedIPs(context.TODO(), res)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(res).To(HaveKey("test_cluster-nodes-z1"))

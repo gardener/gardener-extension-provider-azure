@@ -66,7 +66,7 @@ func createBastionInstance(ctx context.Context, factory azureclient.Factory, opt
 }
 
 func createOrUpdatePublicIP(ctx context.Context, factory azureclient.Factory, opt *Options, parameters *network.PublicIPAddress) (*network.PublicIPAddress, error) {
-	publicClient, err := factory.PublicIP(ctx, opt.SecretReference)
+	publicClient, err := factory.PublicIP()
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func createOrUpdateNetworkSecGroup(ctx context.Context, factory azureclient.Fact
 		return fmt.Errorf("network security group nor SecurityRules can't be nil, securityGroupName: %s", opt.SecurityGroupName)
 	}
 
-	nsgClient, err := factory.NetworkSecurityGroup(ctx, opt.SecretReference)
+	nsgClient, err := factory.NetworkSecurityGroup()
 	if err != nil {
 		return err
 	}
@@ -131,7 +131,7 @@ func getNic(ctx context.Context, log logr.Logger, factory azureclient.Factory, o
 }
 
 func getNetworkSecurityGroup(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*network.SecurityGroup, error) {
-	nsgClient, err := factory.NetworkSecurityGroup(ctx, opt.SecretReference)
+	nsgClient, err := factory.NetworkSecurityGroup()
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +169,7 @@ func getWorkersCIDR(cluster *controller.Cluster) ([]string, error) {
 }
 
 func getPublicIP(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*network.PublicIPAddress, error) {
-	ipClient, err := factory.PublicIP(ctx, opt.SecretReference)
+	ipClient, err := factory.PublicIP()
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +187,7 @@ func getPublicIP(ctx context.Context, log logr.Logger, factory azureclient.Facto
 
 func getSubnet(ctx context.Context, log logr.Logger, factory azureclient.Factory, infrastructureStatus *azure.InfrastructureStatus, opt *Options) (*armnetwork.SubnetsClientGetResponse, error) {
 	var sg string
-	subnetClient, err := factory.Subnet(ctx, opt.SecretReference)
+	subnetClient, err := factory.Subnet()
 	if err != nil {
 		return nil, err
 	}

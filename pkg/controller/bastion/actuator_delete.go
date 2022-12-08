@@ -30,7 +30,6 @@ import (
 )
 
 func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster) error {
-	var factory = azureclient.NewAzureClientFactory(a.client)
 
 	infrastructureStatus, err := getInfrastructureStatus(ctx, a, cluster)
 	if err != nil {
@@ -41,6 +40,7 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensi
 	if err != nil {
 		return err
 	}
+	factory, err := azureclient.NewAzureClientFactoryWithSecretReference(ctx, a.client, opt.SecretReference)
 
 	err = removeBastionInstance(ctx, log, factory, opt)
 	if err != nil {
@@ -110,7 +110,7 @@ func removeNSGRule(ctx context.Context, log logr.Logger, factory azureclient.Fac
 }
 
 func removePublicIP(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) error {
-	publicClient, err := factory.PublicIP(ctx, opt.SecretReference)
+	publicClient, err := factory.PublicIP()
 	if err != nil {
 		return err
 	}
