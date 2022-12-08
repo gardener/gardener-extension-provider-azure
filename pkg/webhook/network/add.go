@@ -27,7 +27,7 @@ import (
 
 var logger = log.Log.WithName("networking-calico-webhook")
 
-// AddToManager creates a webhook and adds it to the manager.
+// AddToManager creates a new topology webhook.
 func AddToManager(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 	logger.Info("Adding webhook to manager")
 	return network.New(mgr, network.Args{

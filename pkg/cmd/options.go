@@ -29,6 +29,7 @@ import (
 	controlplaneexposurewebhook "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/controlplaneexposure"
 	infrastructurewebhook "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/infrastructure"
 	networkwebhook "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/network"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/webhook/topology"
 
 	extensionsbackupbucketcontroller "github.com/gardener/gardener/extensions/pkg/controller/backupbucket"
 	extensionsbackupentrycontroller "github.com/gardener/gardener/extensions/pkg/controller/backupentry"
@@ -71,5 +72,6 @@ func WebhookSwitchOptions(gardenerVersion *string) *webhookcmd.SwitchOptions {
 		webhookcmd.Switch(extensionscontrolplanewebhook.WebhookName, controlplanewebhook.AddToManager),
 		webhookcmd.Switch(extensionscontrolplanewebhook.ExposureWebhookName, controlplaneexposurewebhook.AddToManager),
 		webhookcmd.Switch(extensionscloudproviderwebhook.WebhookName, cloudproviderwebhook.AddToManager(gardenerVersion)),
+		webhookcmd.Switch(topology.WebhookName, topology.AddToManager),
 	)
 }
