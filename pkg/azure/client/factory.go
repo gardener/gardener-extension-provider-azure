@@ -168,7 +168,6 @@ func (f AzureFactory) NetworkSecurityGroup() (NetworkSecurityGroup, error) {
 
 // PublicIP reads the secret from the passed reference and return an Azure network PublicIPClient.
 func (f AzureFactory) PublicIP() (PublicIP, error) {
-	//return NewPublicIPsClient(*f.auth)
 	authorizer, id, err := internal.GetAuthorizerAndSubscriptionID(f.auth)
 	if err != nil {
 		return nil, err
