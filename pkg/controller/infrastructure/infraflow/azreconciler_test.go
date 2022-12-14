@@ -7,12 +7,14 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
+	"github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	mockclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client/mock"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 	"github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"github.com/gofrs/uuid"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -359,7 +361,56 @@ var _ = Describe("AzureReconciler", func() {
 				})
 			})
 		})
-		//Describe("Get Infrastructure status", func() {
+		Describe("Infrastructure Status", func() {
+			Context("Basic zonal cluster with 2 zones", func() {
+				cfg := newBasicConfig()
+				cfg.Networks.Zones = []azure.Zone{{Name: 1, CIDR: "10.0.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: true, IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip", ResourceGroup: resourceGroupName}}}}, {Name: 2, CIDR: "10.1.0.0/16"}}
+				cfg.Zoned = true
+				It("returns the correct (static) infrastructure status without AvailabilitySet and identity enrichment", func() {
+					sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
+					Expect(err).ToNot(HaveOccurred())
+					infra, err := sut.GetInfrastructureStatus(context.TODO())
+					Expect(err).ToNot(HaveOccurred())
+
+					Expect(infra.TypeMeta).To(Equal(infrastructure.StatusTypeMeta))
+					Expect(infra.ResourceGroup.Name).To(Equal(resourceGroupName))
+					Expect(infra.Networks.VNet.Name).To(Not(BeEmpty()))
+					Expect(infra.RouteTables).To(Not(BeEmpty()))
+					Expect(infra.SecurityGroups).To(Not(BeEmpty()))
+					Expect(infra.SecurityGroups).To(Not(BeEmpty()))
+					Expect(infra.Networks.Subnets).To(HaveLen(2))
+				})
+			})
+			Context("Basic non-zoned cluster with identity", func() {
+				cfg := newBasicConfig()
+				cfg.Zoned = false
+				cfg.Identity = &azure.IdentityConfig{Name: "my-identity", ResourceGroup: resourceGroupName}
+
+				It("enriches the status with the AvailabilitySet and identity", func() {
+					ctrl := gomock.NewController(GinkgoT())
+					aclient := mockclient.NewMockAvailabilitySet(ctrl)
+					aclient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(armcompute.AvailabilitySetsClientGetResponse{AvailabilitySet: armcompute.AvailabilitySet{ID: to.Ptr("av-id")}}, nil)
+
+					iclient := mockclient.NewMockManagedUserIdentity(ctrl)
+					identity := msi.Identity{ID: to.Ptr("identity-id"), UserAssignedIdentityProperties: &msi.UserAssignedIdentityProperties{ClientID: to.Ptr(uuid.FromStringOrNil("69359037-9599-48e7-b8f2-48393c019135"))}}
+
+					iclient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(identity, nil)
+
+					factory := mockclient.NewMockFactory(ctrl)
+					factory.EXPECT().AvailabilitySet().Return(aclient, nil)
+					factory.EXPECT().ManagedUserIdentity().Return(iclient, nil)
+
+					sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
+					Expect(err).ToNot(HaveOccurred())
+					infra, err := sut.GetInfrastructureStatus(context.TODO())
+					Expect(err).ToNot(HaveOccurred())
+					Expect(infra.AvailabilitySets).To(HaveLen(1))
+					Expect(infra.AvailabilitySets[0].ID).To(Equal("av-id"))
+
+					Expect(infra.Identity.ID).To(Equal("identity-id"))
+				})
+			})
+		})
 		//	foreignName := "foreign-name"
 		//	//Expect(err).ToNot(HaveOccurred())
 

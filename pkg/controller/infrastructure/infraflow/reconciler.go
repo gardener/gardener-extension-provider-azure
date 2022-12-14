@@ -28,9 +28,8 @@ const (
 
 // FlowReconciler is the reconciler for all managed resources
 type FlowReconciler struct {
-	factory    client.Factory
-	reconciler *AzureReconciler // only used to retrieve GetInfrastructureStatus after reconcilation call
-	logger     logr.Logger
+	factory client.Factory
+	logger  logr.Logger
 }
 
 // NewFlowReconciler creates a new FlowReconciler
@@ -53,20 +52,18 @@ func (f *FlowReconciler) Delete(ctx context.Context, infra *extensionsv1alpha1.I
 // Reconcile reconciles all resources
 func (f *FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, cluster *controller.Cluster) (*v1alpha1.InfrastructureStatus, error) {
 	reconciler, err := NewAzureReconciler(infra, cfg, cluster, f.factory)
-	f.reconciler = reconciler
 	if err != nil {
 		return nil, err
 	}
-	graph := f.buildReconcileGraph(ctx, infra, cfg, reconciler)
+	graph := f.buildReconcileGraph(reconciler)
 	fl := graph.Compile()
 	if err := fl.Run(ctx, flow.Opts{}); err != nil {
 		return nil, flow.Causes(err)
 	}
-	return f.reconciler.GetInfrastructureStatus(ctx, cfg)
+	return reconciler.GetInfrastructureStatus(ctx)
 }
 
-// TODO copy infra.spec part
-func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, reconciler *AzureReconciler) *flow.Graph {
+func (f FlowReconciler) buildReconcileGraph(reconciler *AzureReconciler) *flow.Graph {
 	whiteboard := shared.NewWhiteboard()
 
 	g := flow.NewGraph("Azure infrastructure reconcilation")

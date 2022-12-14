@@ -23,6 +23,7 @@ const TfAvailabilitySet = "availabilitySet"
 // TerraformAdapter retrieves all configuration logic needed for reconcilation from the (soon) legacy Terraform configuration code
 type TerraformAdapter struct {
 	values map[string]interface{}
+	config *azure.InfrastructureConfig
 }
 
 // RouteTableName returns the name of the route table
@@ -66,7 +67,7 @@ func (t TerraformAdapter) Identity() *identityTf {
 }
 
 // StaticInfrastructureStatus returns the status part that only depends on the configuration and does not rely on metadata from resource reconcilation
-func (t TerraformAdapter) StaticInfrastructureStatus(config *azure.InfrastructureConfig) *v1alpha1.InfrastructureStatus {
+func (t TerraformAdapter) StaticInfrastructureStatus() *v1alpha1.InfrastructureStatus {
 	infraState := v1alpha1.InfrastructureStatus{
 		TypeMeta: infrastructure.StatusTypeMeta,
 		ResourceGroup: v1alpha1.ResourceGroup{
@@ -86,11 +87,11 @@ func (t TerraformAdapter) StaticInfrastructureStatus(config *azure.Infrastructur
 		},
 		Zoned: false,
 	}
-	if config.Zoned {
+	if t.config.Zoned {
 		infraState.Zoned = true
 	}
 
-	if config.Networks.Workers == nil {
+	if t.config.Networks.Workers == nil {
 		infraState.Networks.Layout = v1alpha1.NetworkLayoutMultipleSubnet
 	} else {
 		infraState.Networks.Layout = v1alpha1.NetworkLayoutSingleSubnet
@@ -116,7 +117,7 @@ func (t TerraformAdapter) StaticInfrastructureStatus(config *azure.Infrastructur
 // NewTerraformAdapter creates a new TerraformAdapter
 func NewTerraformAdapter(infra *extensionsv1alpha1.Infrastructure, config *azure.InfrastructureConfig, cluster *controller.Cluster) (TerraformAdapter, error) {
 	tfValues, err := infrastructure.ComputeTerraformerTemplateValues(infra, config, cluster) // use for migration of values..
-	return TerraformAdapter{tfValues}, err
+	return TerraformAdapter{tfValues, config}, err
 }
 
 func (t TerraformAdapter) isCreate(resource string) bool {

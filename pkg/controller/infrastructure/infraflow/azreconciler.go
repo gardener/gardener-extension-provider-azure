@@ -29,8 +29,8 @@ func NewAzureReconciler(infra *extensionsv1alpha1.Infrastructure, cfg *azure.Inf
 }
 
 // GetInfrastructureStatus returns the infrastructure status
-func (f AzureReconciler) GetInfrastructureStatus(ctx context.Context, cfg *azure.InfrastructureConfig) (*v1alpha1.InfrastructureStatus, error) {
-	status := f.tf.StaticInfrastructureStatus(cfg)
+func (f AzureReconciler) GetInfrastructureStatus(ctx context.Context) (*v1alpha1.InfrastructureStatus, error) {
+	status := f.tf.StaticInfrastructureStatus()
 	err := f.enrichStatusWithIdentity(ctx, status)
 	if err != nil {
 		return status, err
