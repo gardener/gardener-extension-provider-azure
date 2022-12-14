@@ -22,9 +22,6 @@ import (
 	"sort"
 	"strings"
 
-	azureapi "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	azureapihelper "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	"k8s.io/utils/pointer"
 
 	"github.com/gardener/gardener/extensions/pkg/controller/csimigration"
@@ -32,6 +29,10 @@ import (
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
+
+	"github.com/gardener/gardener-extension-provider-azure/charts"
+	azureapi "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	azureapihelper "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
 	"github.com/gardener/gardener/pkg/client/kubernetes"
@@ -66,7 +67,7 @@ func (w *workerDelegate) DeployMachineClasses(ctx context.Context) error {
 		}
 	}
 
-	return w.seedChartApplier.Apply(ctx, filepath.Join(azure.InternalChartsPath, "machineclass"), w.worker.Namespace, "machineclass", kubernetes.Values(map[string]interface{}{"machineClasses": w.machineClasses}))
+	return w.seedChartApplier.ApplyFromEmbeddedFS(ctx, charts.InternalChart, filepath.Join("internal", "machineclass"), w.worker.Namespace, "machineclass", kubernetes.Values(map[string]interface{}{"machineClasses": w.machineClasses}))
 }
 
 // GenerateMachineDeployments generates the configuration for the desired machine deployments.

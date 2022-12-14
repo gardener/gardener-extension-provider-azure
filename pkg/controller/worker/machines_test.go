@@ -21,9 +21,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gardener/gardener-extension-provider-azure/charts"
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	. "github.com/gardener/gardener-extension-provider-azure/pkg/controller/worker"
 
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
@@ -602,9 +602,10 @@ var _ = Describe("Machines", func() {
 
 					chartApplier.
 						EXPECT().
-						Apply(
+						ApplyFromEmbeddedFS(
 							ctx,
-							filepath.Join(azure.InternalChartsPath, "machineclass"),
+							charts.InternalChart,
+							filepath.Join("internal", "machineclass"),
 							namespace,
 							"machineclass",
 							kubernetes.Values(machineClasses),
