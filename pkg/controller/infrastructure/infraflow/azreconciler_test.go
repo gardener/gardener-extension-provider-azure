@@ -56,7 +56,7 @@ var _ = Describe("TfReconciler", func() {
 				mock.assertVnetCalledWithParameters(vnetName, parameters)
 				factory = mock.GetFactory()
 
-				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
+				sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
 				err = sut.Vnet(context.TODO())
 				Expect(err).ToNot(HaveOccurred())
@@ -80,7 +80,7 @@ var _ = Describe("TfReconciler", func() {
 					mock.assertVnetCalledWithParameters(vnetName, parameters)
 					factory = mock.GetFactory()
 
-					sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
+					sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 					Expect(err).ToNot(HaveOccurred())
 					err = sut.Vnet(context.TODO())
 					Expect(err).ToNot(HaveOccurred())
@@ -96,7 +96,7 @@ var _ = Describe("TfReconciler", func() {
 				mock := NewMockFactoryWrapper(resourceGroupName, location)
 				factory = mock.GetFactory()
 
-				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
+				sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
 				err = sut.Vnet(context.TODO())
 				Expect(err).ToNot(HaveOccurred())
@@ -119,7 +119,7 @@ var _ = Describe("TfReconciler", func() {
 			mock.assertRouteTableCalled("worker_route_table")
 			factory = mock.GetFactory()
 
-			sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
+			sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 			Expect(err).ToNot(HaveOccurred())
 			_, err = sut.RouteTables(context.TODO())
 			Expect(err).ToNot(HaveOccurred())
@@ -133,7 +133,7 @@ var _ = Describe("TfReconciler", func() {
 			mock.assertSecurityGroupCalled(clusterName + "-workers")
 			factory = mock.GetFactory()
 
-			sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
+			sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 			Expect(err).ToNot(HaveOccurred())
 			_, err = sut.SecurityGroups(context.TODO())
 			Expect(err).ToNot(HaveOccurred())
@@ -147,7 +147,7 @@ var _ = Describe("TfReconciler", func() {
 			It("does not create availability set", func() {
 				mock := NewMockFactoryWrapper(resourceGroupName, location)
 				factory = mock.GetFactory()
-				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
+				sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
 				err = sut.AvailabilitySet(context.TODO())
 				Expect(err).ToNot(HaveOccurred())
@@ -169,7 +169,7 @@ var _ = Describe("TfReconciler", func() {
 				mock.assertAvailabilitySetCalledWithParameters("test_cluster-workers", parameters)
 
 				factory = mock.GetFactory()
-				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
+				sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
 				err = sut.AvailabilitySet(context.TODO())
 				Expect(err).ToNot(HaveOccurred())
@@ -190,7 +190,7 @@ var _ = Describe("TfReconciler", func() {
 				factory = mock.GetFactory()
 			})
 			It("does not create NAT IPs and does not update user-managed public IPs", func() {
-				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
+				sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
 				_, err = sut.PublicIPs(context.TODO())
 				Expect(err).ToNot(HaveOccurred())
@@ -213,7 +213,7 @@ var _ = Describe("TfReconciler", func() {
 				factory = mock.GetFactory()
 			})
 			It("only creates NAT IP for 1 zone and does not update user-managed public IPs", func() {
-				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
+				sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
 				_, err = sut.PublicIPs(context.TODO())
 				Expect(err).ToNot(HaveOccurred())
@@ -248,7 +248,7 @@ var _ = Describe("TfReconciler", func() {
 				ip.EXPECT().Delete(gomock.Any(), resourceGroupName, "old-ip").Return(fmt.Errorf("delete error to not call create IP in test"))
 				factory.EXPECT().PublicIP().Return(ip, nil)
 
-				sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
+				sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
 
 				_, err = sut.PublicIPs(context.TODO())
@@ -278,7 +278,7 @@ var _ = Describe("TfReconciler", func() {
 					mock.assertNatGatewayCalledWithParameters("test_cluster-nat-gateway-z1", parameters)
 					factory = mock.GetFactory()
 
-					sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
+					sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 					Expect(err).ToNot(HaveOccurred())
 					_, err = sut.NatGateways(context.TODO(), map[string][]network.PublicIPAddress{"test_cluster-nodes-z1": {{
 						ID: ipId,
@@ -301,7 +301,7 @@ var _ = Describe("TfReconciler", func() {
 					nat.EXPECT().Delete(gomock.Any(), resourceGroupName, "old-nat").Return(fmt.Errorf("delete error to not call create NAT in test"))
 					factory.EXPECT().NatGateway().Return(nat, nil)
 
-					sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
+					sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 					Expect(err).ToNot(HaveOccurred())
 
 					_, err = sut.NatGateways(context.TODO(), map[string][]network.PublicIPAddress{})
@@ -328,7 +328,7 @@ var _ = Describe("TfReconciler", func() {
 					mock.assertSubnetCalled(vnetName, MatchAnyOfStrings([]string{"test_cluster-nodes-z2", "test_cluster-nodes-z1"})).Times(2)
 					factory = mock.GetFactory()
 
-					sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
+					sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 					Expect(err).ToNot(HaveOccurred())
 					err = sut.Subnets(context.TODO(), armnetwork.SecurityGroup{}, armnetwork.RouteTable{}, map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse{})
 					Expect(err).ToNot(HaveOccurred())
@@ -349,7 +349,7 @@ var _ = Describe("TfReconciler", func() {
 					factory = mock.GetFactory()
 				})
 				It("enriches with 2 user managed IPs", func() {
-					sut, err := infraflow.NewTfReconciler(infra, cfg, cluster, factory)
+					sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 					Expect(err).ToNot(HaveOccurred())
 					res := make(map[string][]network.PublicIPAddress)
 					err = sut.EnrichResponseWithUserManagedIPs(context.TODO(), res)

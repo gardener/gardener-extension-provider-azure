@@ -29,7 +29,7 @@ const (
 // FlowReconciler is the reconciler for all managed resources
 type FlowReconciler struct {
 	factory    client.Factory
-	reconciler *TfReconciler // only used to retrieve GetInfrastructureStatus after reconcilation call
+	reconciler *AzureReconciler // only used to retrieve GetInfrastructureStatus after reconcilation call
 	logger     logr.Logger
 }
 
@@ -43,7 +43,7 @@ func NewFlowReconciler(factory client.Factory, logger logr.Logger) *FlowReconcil
 
 // Delete deletes all resources managed by the reconciler
 func (f *FlowReconciler) Delete(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, cluster *controller.Cluster) error {
-	reconciler, err := NewTfReconciler(infra, cfg, cluster, f.factory)
+	reconciler, err := NewAzureReconciler(infra, cfg, cluster, f.factory)
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func (f FlowReconciler) GetInfrastructureStatus(ctx context.Context, cfg *azure.
 
 // Reconcile reconciles all resources
 func (f *FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, cluster *controller.Cluster) error {
-	reconciler, err := NewTfReconciler(infra, cfg, cluster, f.factory)
+	reconciler, err := NewAzureReconciler(infra, cfg, cluster, f.factory)
 	f.reconciler = reconciler
 	if err != nil {
 		return err
@@ -75,7 +75,7 @@ func (f *FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha
 }
 
 // TODO copy infra.spec part
-func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, reconciler *TfReconciler) *flow.Graph {
+func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, reconciler *AzureReconciler) *flow.Graph {
 	whiteboard := shared.NewWhiteboard()
 
 	g := flow.NewGraph("Azure infrastructure reconcilation")
@@ -126,7 +126,7 @@ func (f FlowReconciler) buildReconcileGraph(ctx context.Context, infra *extensio
 		}
 		natGateway := whiteboard.GetObject(natGatewayMap).(map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse)
 		return reconciler.Subnets(ctx, securityGroup, routeTable, natGateway)
-	}, shared.Dependencies(resourceGroup), shared.Dependencies(securityGroup), shared.Dependencies(routeTable), shared.Dependencies(natGateway), shared.Dependencies(vnet))
+	}, shared.Dependencies(securityGroup), shared.Dependencies(routeTable), shared.Dependencies(natGateway), shared.Dependencies(vnet))
 	return g
 
 }
