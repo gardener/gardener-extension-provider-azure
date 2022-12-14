@@ -48,7 +48,7 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, infra *extension
 		return err
 	}
 	if ShouldUseFlow(infra, cluster) {
-		if err := cleanupTerraform(log, a, infra, ctx); err != nil {
+		if err := cleanupTerraform(ctx, log, a, infra); err != nil {
 			return fmt.Errorf("failed to cleanup terraform resources: %w", err)
 		}
 		reconciler, err := NewFlowReconciler(ctx, a, infra, log)

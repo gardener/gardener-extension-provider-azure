@@ -99,7 +99,7 @@ func (f TfReconciler) Delete(ctx context.Context) error {
 			return fmt.Errorf("failed to delete foreign subnet: %w", err)
 		}
 	}
-	return client.DeleteIfExits(ctx, f.tf.ResourceGroup())
+	return client.DeleteIfExists(ctx, f.tf.ResourceGroup())
 }
 
 func (f TfReconciler) deleteForeignSubnets(ctx context.Context) error {

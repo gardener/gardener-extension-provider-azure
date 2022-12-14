@@ -25,7 +25,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-05-01/dns"
 	"github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
-	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
 	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-04-01/storage"
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
@@ -143,13 +142,6 @@ type PublicIP interface {
 	GetAll(ctx context.Context, resourceGroupName string) ([]network.PublicIPAddress, error)
 }
 
-type NewPublicIP interface {
-	Get(ctx context.Context, resourceGroupName string, name string) (armnetwork.PublicIPAddressesClientGetResponse, error)
-	CreateOrUpdate(ctx context.Context, resourceGroupName, name string, parameters armnetwork.PublicIPAddress) (armnetwork.PublicIPAddressesClientCreateOrUpdateResponse, error)
-	Delete(ctx context.Context, resourceGroupName, name string) error
-	GetAll(ctx context.Context, resourceGroupName string) ([]*armnetwork.PublicIPAddress, error)
-}
-
 // NetworkInterface represents an Azure Network Interface client.
 type NetworkInterface interface {
 	Get(ctx context.Context, resourceGroupName string, name string, expander string) (*network.Interface, error)
@@ -175,7 +167,7 @@ type Subnet interface {
 // ResourceGroup represents an Azure ResourceGroup client.
 type ResourceGroup interface {
 	CreateOrUpdate(ctx context.Context, resourceGroupName, location string) error
-	DeleteIfExits(ctx context.Context, resourceGroupName string) error
+	DeleteIfExists(ctx context.Context, resourceGroupName string) error
 	IsExisting(ctx context.Context, resourceGroupName string) (bool, error)
 	Get(ctx context.Context, resourceGroupName string) (*armresources.ResourceGroup, error)
 }
@@ -204,17 +196,11 @@ type StorageAccountClient struct {
 	client storage.AccountsClient
 }
 
-// GroupClient is an implementation of Group for a resource group client.
-type GroupClient struct {
-	client resources.GroupsClient
-}
-
 // VmssClient is an implementation of Vmss for a virtual machine scale set client.
 type VmssClient struct {
 	client compute.VirtualMachineScaleSetsClient
 }
 
-// TODO replace old GroupClient?
 // ResourceGroupClient is a newer client implementation of ResourceGroup.
 type ResourceGroupClient struct {
 	client *armresources.ResourceGroupsClient
@@ -250,11 +236,6 @@ type PublicIPClient struct {
 	client network.PublicIPAddressesClient
 }
 
-// TODO replace old PublicIPClient is an implementation of Network Public IP Address.
-type NewPublicIPClient struct {
-	client *armnetwork.PublicIPAddressesClient
-}
-
 // NetworkInterfaceClient is an implementation of Network Interface.
 type NetworkInterfaceClient struct {
 	client network.InterfacesClient
@@ -278,11 +259,6 @@ type SubnetsClient struct {
 // RouteTablesClient is an implementation of RouteTables for a RouteTables client.
 type RouteTablesClient struct {
 	client *armnetwork.RouteTablesClient
-}
-
-// SecurityGroupClient is an implementation of SecurityGroup for a security group client.
-type SecurityGroupClient struct {
-	client *armnetwork.SecurityGroupsClient
 }
 
 // NatGatewayClient is an implementation of NatGateway for a Nat Gateway client.

@@ -91,7 +91,7 @@ func (a *actuator) Delete(ctx context.Context, _ logr.Logger, backupBucket *exte
 	if err != nil {
 		return err
 	}
-	if err := groupClient.DeleteIfExits(ctx, backupBucket.Name); err != nil {
+	if err := groupClient.DeleteIfExists(ctx, backupBucket.Name); err != nil {
 		return err
 	}
 

@@ -47,6 +47,7 @@ func (c PublicIPClient) Get(ctx context.Context, resourceGroupName string, name 
 	return &npi, nil
 }
 
+// GetAll will get all network public IP Addresses
 func (c PublicIPClient) GetAll(ctx context.Context, resourceGroupName string) ([]network.PublicIPAddress, error) {
 	results, err := c.client.ListComplete(ctx, resourceGroupName)
 	if err != nil {

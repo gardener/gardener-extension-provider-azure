@@ -39,7 +39,7 @@ func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, infra *ext
 		return err
 	}
 	if ShouldUseFlow(infra, cluster) {
-		if err := cleanupTerraform(logger, a, infra, ctx); err != nil {
+		if err := cleanupTerraform(ctx, logger, a, infra); err != nil {
 			return fmt.Errorf("failed to cleanup terraform resources: %w", err)
 		}
 		reconciler, err := NewFlowReconciler(ctx, a, infra, logger)
@@ -73,7 +73,7 @@ func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, infra *ext
 	return a.updateProviderStatusFromTf(ctx, tf, infra, config, cluster)
 }
 
-func cleanupTerraform(logger logr.Logger, a *actuator, infra *extensionsv1alpha1.Infrastructure, ctx context.Context) error {
+func cleanupTerraform(ctx context.Context, logger logr.Logger, a *actuator, infra *extensionsv1alpha1.Infrastructure) error {
 	tf, err := internal.NewTerraformer(logger, a.RESTConfig(), infrastructure.TerraformerPurpose, infra, a.disableProjectedTokenMount)
 	if err != nil {
 		return err

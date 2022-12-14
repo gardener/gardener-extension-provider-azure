@@ -26,7 +26,7 @@ import (
 
 // Migrate implements infrastructure.Actuator.
 func (a *actuator) Migrate(ctx context.Context, log logr.Logger, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
-	if err := cleanupTerraform(log, a, infra, ctx); err != nil {
+	if err := cleanupTerraform(ctx, log, a, infra); err != nil {
 		return fmt.Errorf("failed to cleanup terraform resources: %w", err)
 	}
 	return nil

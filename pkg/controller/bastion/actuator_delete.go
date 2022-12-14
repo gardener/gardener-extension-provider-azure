@@ -41,6 +41,9 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensi
 		return err
 	}
 	factory, err := azureclient.NewAzureClientFactoryWithSecretReference(ctx, a.client, opt.SecretReference)
+	if err != nil {
+		return err
+	}
 
 	err = removeBastionInstance(ctx, log, factory, opt)
 	if err != nil {

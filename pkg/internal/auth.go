@@ -104,6 +104,7 @@ func GetAuthorizerAndSubscriptionIDFromSecretRef(ctx context.Context, c client.C
 	return GetAuthorizerAndSubscriptionID(clientAuth)
 }
 
+// GetAuthorizerAndSubscriptionID creates and returns an Azure Authorizer and a subscription id
 func GetAuthorizerAndSubscriptionID(clientAuth *ClientAuth) (azureautorest.Authorizer, string, error) {
 	clientCredentialsConfig := azureauth.NewClientCredentialsConfig(clientAuth.ClientID, clientAuth.ClientSecret, clientAuth.TenantID)
 	authorizer, err := clientCredentialsConfig.Authorizer()

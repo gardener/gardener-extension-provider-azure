@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// NewAzureClientFactoryWithSecretReference creates a new Azure client factory with the passed secret reference.
 func NewAzureClientFactoryWithSecretReference(ctx context.Context, client client.Client, secretRef corev1.SecretReference) (Factory, error) {
 	auth, err := internal.GetClientAuthData(ctx, client, secretRef, false)
 	if err != nil {
@@ -44,6 +45,7 @@ func NewAzureClientFactoryWithSecretReference(ctx context.Context, client client
 	}, nil
 }
 
+// NewAzureClientFactoryWithAuthAndClient creates a new Azure client factory with the passed credentials.
 func NewAzureClientFactoryWithAuthAndClient(auth *internal.ClientAuth, client client.Client) (Factory, error) {
 	cred, err := auth.GetAzClientCredentials()
 	if err != nil {
@@ -57,7 +59,7 @@ func NewAzureClientFactoryWithAuthAndClient(auth *internal.ClientAuth, client cl
 	}, nil
 }
 
-// ResourceGroup gets a newer client for an Azure resource group.
+// Group gets an Azure resource group client.
 func (f AzureFactory) Group() (ResourceGroup, error) {
 	if f.auth == nil || f.cred == nil {
 		panic("no secret ref for factory")
@@ -232,12 +234,17 @@ func (f AzureFactory) RouteTables() (RouteTables, error) {
 	return NewRouteTablesClient(*f.auth)
 }
 
+// NatGateway returns a NatGateway client.
 func (f AzureFactory) NatGateway() (NatGateway, error) {
 	return NewNatGatewaysClient(*f.auth)
 }
+
+// AvailabilitySet returns an AvailabilitySet client.
 func (f AzureFactory) AvailabilitySet() (AvailabilitySet, error) {
 	return NewAvailabilitySetClient(*f.auth)
 }
+
+// ManagedUserIdentity returns a ManagedUserIdentity client.
 func (f AzureFactory) ManagedUserIdentity() (ManagedUserIdentity, error) {
 	return NewManagedUserIdentityClient(*f.auth)
 }

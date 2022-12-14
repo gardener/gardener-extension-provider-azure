@@ -45,6 +45,7 @@ func (c NetworkSecurityGroupClient) Get(ctx context.Context, resourceGroupName s
 	return &nsg, nil
 }
 
+// Delete deletes a network security group.
 func (c NetworkSecurityGroupClient) Delete(ctx context.Context, resourceGroupName, name string) error {
 	future, err := c.client.Delete(ctx, resourceGroupName, name)
 	if err != nil {
