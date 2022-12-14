@@ -41,7 +41,6 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -481,7 +480,7 @@ func createInfra(providerConfig *api.InfrastructureConfig) (*extensionsv1alpha1.
 				Type:           azure.Type,
 				ProviderConfig: &runtime.RawExtension{Raw: providerConfigBytes},
 			},
-			SecretRef: corev1.SecretReference{
+			SecretRef: v1.SecretReference{
 				Name: "foo",
 			},
 			Region: region,
