@@ -16,6 +16,7 @@ package azure
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/pointer"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -170,12 +171,27 @@ type Subnet struct {
 	Migrated bool
 	//NatGatewayName specifies the name of the NAT gateway associated with this subnet. If nil, no NAT gateway is used.
 	// +optional
-	NatGatewayName *string
+	NatGatewayName   *string
+	NatGatewayStatus *NatGatewayStatus
+}
+
+type NatGatewayStatus struct {
+	// Name is the name of the NAT gateway.
+	Name string
+	// IPs are the public ip addresses of the NAT gateway.
+	IPs []string
 }
 
 // HasNatGateway returns if NAT is enabled
 func (s Subnet) HasNatGateway() bool {
-	return s.NatGatewayName != nil
+	return s.NatGatewayStatus != nil
+}
+
+func (s Subnet) NatGatwayName() *string {
+	if s.NatGatewayStatus == nil {
+		return nil
+	}
+	return pointer.String(s.NatGatewayStatus.Name)
 }
 
 // AvailabilitySet contains information about the azure availability set

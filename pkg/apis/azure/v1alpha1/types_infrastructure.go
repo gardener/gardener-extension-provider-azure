@@ -189,7 +189,15 @@ type Subnet struct {
 	Migrated bool `json:"migrated,omitempty"`
 	//NatGatewayName specifies the name of the NAT gateway associated with this subnet. If nil, no NAT gateway is used.
 	// +optional
-	NatGatewayName *string
+	NatGatewayName   *string
+	NatGatewayStatus *NatGatewayStatus
+}
+
+type NatGatewayStatus struct {
+	// Name is the name of the NAT gateway.
+	Name string
+	// IPs are the public ip addresses of the NAT gateway.
+	IPs []string
 }
 
 // AvailabilitySet contains information about the azure availability set
