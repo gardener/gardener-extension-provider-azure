@@ -19,7 +19,7 @@ import (
 	"encoding/json"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	infrainternal "github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
@@ -93,12 +93,8 @@ func (a *actuator) updateProviderStatusFromTf(ctx context.Context, tf terraforme
 	return a.Client().Status().Patch(ctx, infra, patch)
 }
 
-func (a *actuator) updateProviderStatusFromFlowReconciler(ctx context.Context, reconciler *infraflow.FlowReconciler, infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig, cluster *controller.Cluster) error {
-	status, err := reconciler.GetInfrastructureStatus(ctx, config)
-	if err != nil {
-		return err
-	}
+func patchProviderStatus(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, status *v1alpha1.InfrastructureStatus, actuatorClient client.Client) error {
 	patch := client.MergeFrom(infra.DeepCopy())
 	infra.Status.ProviderStatus = &runtime.RawExtension{Object: status}
-	return a.Client().Status().Patch(ctx, infra, patch)
+	return actuatorClient.Status().Patch(ctx, infra, patch)
 }

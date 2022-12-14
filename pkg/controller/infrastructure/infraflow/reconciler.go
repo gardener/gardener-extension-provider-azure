@@ -50,28 +50,19 @@ func (f *FlowReconciler) Delete(ctx context.Context, infra *extensionsv1alpha1.I
 	return reconciler.Delete(ctx)
 }
 
-// TODO pass dummy Reconcilied struct to ensure it was called before
-// GetInfrastructureStatus returns the infrastructure status
-func (f FlowReconciler) GetInfrastructureStatus(ctx context.Context, cfg *azure.InfrastructureConfig) (*v1alpha1.InfrastructureStatus, error) {
-	if f.reconciler == nil {
-		return nil, fmt.Errorf("reconciler not initialized, call Reconcile before")
-	}
-	return f.reconciler.GetInfrastructureStatus(ctx, cfg)
-}
-
 // Reconcile reconciles all resources
-func (f *FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, cluster *controller.Cluster) error {
+func (f *FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, cluster *controller.Cluster) (*v1alpha1.InfrastructureStatus, error) {
 	reconciler, err := NewAzureReconciler(infra, cfg, cluster, f.factory)
 	f.reconciler = reconciler
 	if err != nil {
-		return err
+		return nil, err
 	}
 	graph := f.buildReconcileGraph(ctx, infra, cfg, reconciler)
 	fl := graph.Compile()
 	if err := fl.Run(ctx, flow.Opts{}); err != nil {
-		return flow.Causes(err)
+		return nil, flow.Causes(err)
 	}
-	return nil
+	return f.reconciler.GetInfrastructureStatus(ctx, cfg)
 }
 
 // TODO copy infra.spec part

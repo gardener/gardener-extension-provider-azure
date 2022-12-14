@@ -65,11 +65,11 @@ func (f AzureReconciler) enrichStatusWithAvailabilitySet(ctx context.Context, st
 }
 
 func (f AzureReconciler) enrichStatusWithIdentity(ctx context.Context, status *v1alpha1.InfrastructureStatus) error {
-	client, err := f.factory.ManagedUserIdentity()
-	if err != nil {
-		return err
-	}
 	if identity := f.tf.Identity(); identity != nil {
+		client, err := f.factory.ManagedUserIdentity()
+		if err != nil {
+			return err
+		}
 		res, err := client.Get(ctx, identity.ResourceGroup, identity.Name)
 		if err != nil {
 			return err

@@ -46,11 +46,11 @@ func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, infra *ext
 		if err != nil {
 			return err
 		}
-		err = reconciler.Reconcile(ctx, infra, config, cluster)
+		status, err := reconciler.Reconcile(ctx, infra, config, cluster)
 		if err != nil {
 			return err
 		}
-		return a.updateProviderStatusFromFlowReconciler(ctx, reconciler, infra, config, cluster)
+		return patchProviderStatus(ctx, infra, status, a.Client())
 	}
 
 	terraformFiles, err := infrastructure.RenderTerraformerTemplate(infra, config, cluster)
