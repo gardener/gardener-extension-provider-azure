@@ -16,9 +16,8 @@ package infrastructure
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/go-logr/logr"
 
@@ -27,13 +26,8 @@ import (
 
 // Migrate implements infrastructure.Actuator.
 func (a *actuator) Migrate(ctx context.Context, log logr.Logger, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
-	tf, err := internal.NewTerraformer(log, a.RESTConfig(), infrastructure.TerraformerPurpose, infra, a.disableProjectedTokenMount)
-	if err != nil {
-		return err
+	if err := cleanupTerraform(log, a, infra, ctx); err != nil {
+		return fmt.Errorf("failed to cleanup terraform resources: %w", err)
 	}
-
-	if err := tf.CleanupConfiguration(ctx); err != nil {
-		return err
-	}
-	return tf.RemoveTerraformerFinalizerFromConfig(ctx)
+	return nil
 }

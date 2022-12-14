@@ -16,6 +16,7 @@ package infrastructure
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
@@ -47,6 +48,9 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, infra *extension
 		return err
 	}
 	if ShouldUseFlow(infra, cluster) {
+		if err := cleanupTerraform(log, a, infra, ctx); err != nil {
+			return fmt.Errorf("failed to cleanup terraform resources: %w", err)
+		}
 		reconciler, err := NewFlowReconciler(ctx, a, infra, log)
 		if err != nil {
 			return err
