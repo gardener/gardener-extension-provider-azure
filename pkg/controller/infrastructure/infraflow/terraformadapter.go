@@ -289,6 +289,24 @@ func (nat zoneTf) Zone() *string {
 
 type vnetTf (map[string]interface{})
 
+func (v vnetTf) Cidr() *string {
+	val, ok := v["cidr"]
+	if ok {
+		return to.Ptr(val.(string))
+	} else {
+		return nil
+	}
+}
+
+func (v vnetTf) DDosProtectionPlanID() *string {
+	val, ok := v["ddosProtectionPlanID"]
+	if ok {
+		return to.Ptr(val.(string))
+	} else {
+		return nil
+	}
+}
+
 func (v vnetTf) Name() string {
 	return v["name"].(string)
 }

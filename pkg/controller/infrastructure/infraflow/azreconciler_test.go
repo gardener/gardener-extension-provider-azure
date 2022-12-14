@@ -32,7 +32,7 @@ func newBasicConfig() *azure.InfrastructureConfig {
 
 }
 
-var _ = Describe("TfReconciler", func() {
+var _ = Describe("AzureReconciler", func() {
 	location := "westeurope"
 	clusterName := "test_cluster"
 	infra := &v1alpha1.Infrastructure{Spec: v1alpha1.InfrastructureSpec{Region: location}, ObjectMeta: metav1.ObjectMeta{Namespace: clusterName}}

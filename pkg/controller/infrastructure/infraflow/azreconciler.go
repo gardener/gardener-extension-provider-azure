@@ -109,7 +109,8 @@ func (f AzureReconciler) deleteForeignSubnets(ctx context.Context) error {
 	}
 	subnets := f.tf.Zones()
 	for _, subnet := range subnets {
-		err := subnetClient.Delete(ctx, *f.tf.Vnet().ResourceGroup(), f.tf.Vnet().Name(), subnet.SubnetName())
+		resourceGroup := *f.tf.Vnet().ResourceGroup() // safe because the function assumes that it deletes subnets in a foreign resource group
+		err := subnetClient.Delete(ctx, resourceGroup, f.tf.Vnet().Name(), subnet.SubnetName())
 		if err != nil {
 			return err
 		}
@@ -131,21 +132,17 @@ func (f AzureReconciler) Vnet(ctx context.Context) error {
 			},
 		}
 
-		cidr, ok := f.tf.Vnet()["cidr"]
-		if ok {
-			parameters.Properties.AddressSpace.AddressPrefixes = []*string{to.Ptr(cidr.(string))}
+		cidr := f.tf.Vnet().Cidr() // only supports single cidr range
+		if cidr != nil {
+			parameters.Properties.AddressSpace.AddressPrefixes = []*string{cidr}
 		}
 
-		ddosId, ok := f.tf.Vnet()["ddosProtectionPlanID"]
-		if ok {
-			ddosIdString := ddosId.(string)
+		ddosId := f.tf.Vnet().DDosProtectionPlanID()
+		if ddosId != nil {
 			parameters.Properties.EnableDdosProtection = to.Ptr(true)
-			parameters.Properties.DdosProtectionPlan = &armnetwork.SubResource{ID: to.Ptr(ddosIdString)}
+			parameters.Properties.DdosProtectionPlan = &armnetwork.SubResource{ID: ddosId}
 		}
-
-		rgroup := f.tf.ResourceGroup()
-		vnet := f.tf.Vnet()["name"].(string)
-		return client.CreateOrUpdate(ctx, rgroup, vnet, parameters)
+		return client.CreateOrUpdate(ctx, f.tf.ResourceGroup(), f.tf.Vnet().Name(), parameters)
 	} else {
 		return nil
 	}
