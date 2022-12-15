@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
@@ -30,6 +31,7 @@ import (
 	"github.com/go-logr/logr"
 
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
+	"github.com/Azure/go-autorest/autorest"
 	"github.com/gardener/gardener/extensions/pkg/controller/infrastructure"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
 	mockterraform "github.com/gardener/gardener/extensions/pkg/terraformer/mock"
@@ -238,6 +240,18 @@ var _ = Describe("Actuator", func() {
 			envVars := internal.TerraformerEnvVars(infra.Spec.SecretRef)
 			tf.EXPECT().SetEnvVars(envVars).Return(tf)
 			tf.EXPECT().Destroy(ctx)
+			err := a.Delete(ctx, log, infra, cluster)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should delete the Infrastructure with invalid credentials", func() {
+			azureClientFactory.EXPECT().Group(ctx, infra.Spec.SecretRef).Return(azureGroupClient, nil)
+			azureGroupClient.EXPECT().Get(ctx, infra.Namespace).Return(nil, autorest.DetailedError{Response: &http.Response{StatusCode: http.StatusUnauthorized}})
+
+			tf.EXPECT().EnsureCleanedUp(ctx)
+			tf.EXPECT().RemoveTerraformerFinalizerFromConfig(gomock.Any()).Return(nil)
+			tf.EXPECT().CleanupConfiguration(ctx).Return(nil)
+
 			err := a.Delete(ctx, log, infra, cluster)
 			Expect(err).NotTo(HaveOccurred())
 		})
