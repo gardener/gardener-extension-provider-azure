@@ -19,22 +19,28 @@ import (
 	"fmt"
 	"strings"
 
-	gcontext "github.com/gardener/gardener/extensions/pkg/webhook/context"
-	"github.com/gardener/gardener/pkg/extensions"
+	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
+	"github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type mutator struct {
 	client client.Client
+	log    logr.Logger
 }
 
 // New initializes a new topology mutator that is responsible for adjusting the node affinity of pods.
 // The LabelTopologyZone label that Azure CCM adds to nodes does not contain only the zone as it appears in Azure API
 // calls but also the region like "$region-$zone". When only "$zone" is present for the LabelTopologyZone selector key
 // this mutator will adapt it to match the format that is used by the CCM labels.
-func New() *mutator {
-	return &mutator{}
+func New(log logr.Logger) *mutator {
+	return &mutator{
+		log: log,
+	}
 }
 
 func (m *mutator) InjectClient(client client.Client) error {
@@ -60,15 +66,24 @@ func (m *mutator) Mutate(ctx context.Context, new, old client.Object) error {
 		return fmt.Errorf("object is not of type Pod")
 	}
 
-	gctx := gcontext.NewGardenContext(m.client, new)
-	cluster, err := gctx.GetCluster(ctx)
-	if err != nil {
-		return err
+	for _, f := range []func(context.Context, *corev1.Pod) (*string, error){
+		m.getRegionFromShootInfo,
+		m.getRegionFromCluster,
+	} {
+		region, err := f(ctx, newPod)
+		if err != nil {
+			return err
+		}
+		if region != nil && len(*region) > 0 {
+			return m.mutateNodeAffinity(newPod, *region)
+		}
 	}
-	return m.mutateNodeAffinity(newPod, cluster)
+
+	m.log.Error(nil, "failed to mutate pod: seed region not found")
+	return fmt.Errorf("failed to mutate pod: seed region not found")
 }
 
-func (m *mutator) mutateNodeAffinity(pod *corev1.Pod, cluster *extensions.Cluster) error {
+func (m *mutator) mutateNodeAffinity(pod *corev1.Pod, region string) error {
 	if pod.Spec.Affinity == nil {
 		return nil
 	}
@@ -78,11 +93,11 @@ func (m *mutator) mutateNodeAffinity(pod *corev1.Pod, cluster *extensions.Cluste
 	}
 
 	if req := pod.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution; req != nil {
-		adaptNodeSelectorTermSlice(req.NodeSelectorTerms, cluster.Seed.Spec.Provider.Region)
+		adaptNodeSelectorTermSlice(req.NodeSelectorTerms, region)
 	}
 	if pref := pod.Spec.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution; pref != nil {
 		for p := range pref {
-			adaptNodeSelectorTerm(&pref[p].Preference, cluster.Seed.Spec.Provider.Region)
+			adaptNodeSelectorTerm(&pref[p].Preference, region)
 		}
 	}
 
@@ -106,4 +121,40 @@ func adaptNodeSelectorTerm(term *corev1.NodeSelectorTerm, region string) {
 			}
 		}
 	}
+}
+
+// getRegionFromCluster retrieves the seed's region from the cluster object
+func (m *mutator) getRegionFromCluster(ctx context.Context, pod *corev1.Pod) (*string, error) {
+	m.log.Info("fetching region from Cluster object")
+	cluster, err := extensionscontroller.GetCluster(ctx, m.client, pod.GetNamespace())
+	if err != nil {
+		return nil, fmt.Errorf("could not get cluster for namespace '%s': %w", pod.GetNamespace(), err)
+	}
+	if client.IgnoreNotFound(err) != nil {
+		return nil, err
+	} else if apierrors.IsNotFound(err) {
+		m.log.Info("fetching Cluster object failed with not found error")
+		return nil, nil
+	}
+
+	return &cluster.Seed.Spec.Provider.Region, nil
+}
+
+// getRegionFromShootInfo retrieves the seed's region if we reside in a ManagedSeed
+func (m *mutator) getRegionFromShootInfo(ctx context.Context, _ *corev1.Pod) (*string, error) {
+	m.log.Info("fetching region from shoot-info")
+	cm := &corev1.ConfigMap{}
+	if err := m.client.Get(ctx, client.ObjectKey{Namespace: metav1.NamespaceSystem, Name: constants.ConfigMapNameShootInfo}, cm); client.IgnoreNotFound(err) != nil {
+		return nil, err
+	} else if apierrors.IsNotFound(err) {
+		m.log.Error(nil, "fetching shoot-info object failed with not found error")
+		return nil, nil
+	}
+
+	if region, ok := cm.Data["region"]; ok {
+		return &region, nil
+	}
+
+	m.log.Error(nil, "shoot-info configMap does not contain field \"region\"")
+	return nil, nil
 }
