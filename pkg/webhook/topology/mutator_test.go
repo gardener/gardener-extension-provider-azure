@@ -49,7 +49,7 @@ var _ = Describe("Topology", func() {
 		c    *mockclient.MockClient
 
 		pod       *corev1.Pod
-		mutator   *mutator
+		mutator   *handler
 		region    = "westeurope"
 		namespace = "namespace"
 		seed      = &v1beta1.Seed{
@@ -126,16 +126,17 @@ var _ = Describe("Topology", func() {
 		})
 
 		It("should try to fetch region from cluster", func() {
-
 			cluster := &v1alpha1.Cluster{Spec: v1alpha1.ClusterSpec{Seed: runtime.RawExtension{Raw: seedJson}}}
+			_ = cluster
+			ctx := context.WithValue(context.Background(), admissionNamespaceKey, namespace)
 			gomock.InOrder(
 				c.EXPECT().Get(gomock.Any(), ctrclient.ObjectKey{Namespace: metav1.NamespaceSystem, Name: constants.ConfigMapNameShootInfo}, &corev1.ConfigMap{}).Return(&apierrors.StatusError{
 					ErrStatus: metav1.Status{
 						Reason: metav1.StatusReasonNotFound,
 					}}),
-				c.EXPECT().Get(gomock.Any(), kutil.Key(pod.Namespace), &v1alpha1.Cluster{}).DoAndReturn(clientGet(cluster)),
+				c.EXPECT().Get(gomock.Any(), kutil.Key(namespace), &v1alpha1.Cluster{}).DoAndReturn(clientGet(cluster)),
 			)
-			err := mutator.Mutate(context.Background(), pod, nil)
+			err := mutator.Mutate(ctx, pod, nil)
 			Expect(err).To(BeNil())
 
 			Expect(pod.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0].Values[0]).To(Equal(fmt.Sprintf("%s-%s", region, "1")))

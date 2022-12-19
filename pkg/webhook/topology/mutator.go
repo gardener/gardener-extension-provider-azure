@@ -16,48 +16,99 @@ package topology
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
 
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
-	"github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
-type mutator struct {
-	client client.Client
-	log    logr.Logger
+var admissionNamespaceKey = struct{}{}
+
+type handler struct {
+	client  client.Client
+	log     logr.Logger
+	decoder *admission.Decoder
 }
 
-// New initializes a new topology mutator that is responsible for adjusting the node affinity of pods.
+// New initializes a new topology handler that is responsible for adjusting the node affinity of pods.
 // The LabelTopologyZone label that Azure CCM adds to nodes does not contain only the zone as it appears in Azure API
 // calls but also the region like "$region-$zone". When only "$zone" is present for the LabelTopologyZone selector key
-// this mutator will adapt it to match the format that is used by the CCM labels.
-func New(log logr.Logger) *mutator {
-	return &mutator{
+// this handler will adapt it to match the format that is used by the CCM labels.
+func New(log logr.Logger) *handler {
+	return &handler{
 		log: log,
 	}
 }
 
-func (m *mutator) InjectClient(client client.Client) error {
-	m.client = client
+func (h *handler) Handle(ctx context.Context, req admission.Request) admission.Response {
+	ar := req.AdmissionRequest
+	logger = h.log
+
+	// Decode object
+	var (
+		newPod corev1.Pod
+		obj    client.Object = &newPod
+	)
+
+	err := h.decoder.DecodeRaw(req.Object, &newPod)
+	if err != nil {
+		logger.Error(err, "Could not decode request", "request", ar)
+		return admission.Errored(http.StatusBadRequest, fmt.Errorf("could not decode request %v: %w", ar, err))
+	}
+
+	if len(req.OldObject.Raw) != 0 {
+		return admission.ValidationResponse(true, "")
+	}
+
+	// Process the resource
+	newObj := newPod.DeepCopyObject().(client.Object)
+	ctx = context.WithValue(ctx, admissionNamespaceKey, ar.Namespace)
+	if err = h.Mutate(ctx, newObj, nil); err != nil {
+		logger.Error(fmt.Errorf("could not process: %w", err), "Admission denied", "kind", ar.Kind.Kind, "namespace", obj.GetNamespace(), "name", obj.GetName())
+		return admission.Errored(http.StatusUnprocessableEntity, err)
+	}
+
+	// Return a patch response if the resource should be changed
+	if !equality.Semantic.DeepEqual(obj, newObj) {
+		oldObjMarshaled, err := json.Marshal(obj)
+		if err != nil {
+			return admission.Errored(http.StatusInternalServerError, err)
+		}
+		newObjMarshaled, err := json.Marshal(newObj)
+		if err != nil {
+			return admission.Errored(http.StatusInternalServerError, err)
+		}
+
+		return admission.PatchResponseFromRaw(oldObjMarshaled, newObjMarshaled)
+	}
+
+	// Return a validation response if the resource should not be changed
+	return admission.ValidationResponse(true, "")
+}
+
+func (h *handler) InjectClient(client client.Client) error {
+	h.client = client
 	return nil
 }
 
-func (m *mutator) Mutate(ctx context.Context, new, old client.Object) error {
+func (h *handler) InjectDecoder(d *admission.Decoder) error {
+	h.decoder = d
+	return nil
+}
+
+func (h *handler) Mutate(ctx context.Context, new, old client.Object) error {
 	// do not try to mutate pods that are getting deleted
 	if new.GetDeletionTimestamp() != nil {
-		return nil
-	}
-
-	// Check if this is a create or update operation and perform no-op for updates
-	// Because the NodeAffinity of pods is an immutable field, we don't want to try and mutate it if the pod is already existing.
-	// TODO(KA): Remove once there is support for specifying webhook verbs
-	if old != nil {
 		return nil
 	}
 
@@ -66,24 +117,29 @@ func (m *mutator) Mutate(ctx context.Context, new, old client.Object) error {
 		return fmt.Errorf("object is not of type Pod")
 	}
 
-	for _, f := range []func(context.Context, *corev1.Pod) (*string, error){
-		m.getRegionFromShootInfo,
-		m.getRegionFromCluster,
+	// do not mutate on update/delete operations
+	if old != nil {
+		return nil
+	}
+
+	for _, f := range []func(context.Context) (*string, error){
+		h.getRegionFromShootInfo,
+		h.getRegionFromCluster,
 	} {
-		region, err := f(ctx, newPod)
+		region, err := f(ctx)
 		if err != nil {
 			return err
 		}
 		if region != nil && len(*region) > 0 {
-			return m.mutateNodeAffinity(newPod, *region)
+			return h.mutateNodeAffinity(newPod, *region)
 		}
 	}
 
-	m.log.Error(nil, "failed to mutate pod: seed region not found")
+	h.log.Error(nil, "failed to mutate pod: seed region not found")
 	return fmt.Errorf("failed to mutate pod: seed region not found")
 }
 
-func (m *mutator) mutateNodeAffinity(pod *corev1.Pod, region string) error {
+func (h *handler) mutateNodeAffinity(pod *corev1.Pod, region string) error {
 	if pod.Spec.Affinity == nil {
 		return nil
 	}
@@ -124,16 +180,20 @@ func adaptNodeSelectorTerm(term *corev1.NodeSelectorTerm, region string) {
 }
 
 // getRegionFromCluster retrieves the seed's region from the cluster object
-func (m *mutator) getRegionFromCluster(ctx context.Context, pod *corev1.Pod) (*string, error) {
-	m.log.Info("fetching region from Cluster object")
-	cluster, err := extensionscontroller.GetCluster(ctx, m.client, pod.GetNamespace())
+func (h *handler) getRegionFromCluster(ctx context.Context) (*string, error) {
+	h.log.Info("fetching region from Cluster object")
+	ns, ok := ctx.Value(admissionNamespaceKey).(string)
+	if !ok {
+		return nil, nil
+	}
+	cluster, err := extensionscontroller.GetCluster(ctx, h.client, ns)
 	if err != nil {
-		return nil, fmt.Errorf("could not get cluster for namespace '%s': %w", pod.GetNamespace(), err)
+		return nil, fmt.Errorf("could not get cluster for namespace '%s': %w", ns, err)
 	}
 	if client.IgnoreNotFound(err) != nil {
 		return nil, err
 	} else if apierrors.IsNotFound(err) {
-		m.log.Info("fetching Cluster object failed with not found error")
+		h.log.Info("fetching Cluster object failed with not found error")
 		return nil, nil
 	}
 
@@ -141,13 +201,12 @@ func (m *mutator) getRegionFromCluster(ctx context.Context, pod *corev1.Pod) (*s
 }
 
 // getRegionFromShootInfo retrieves the seed's region if we reside in a ManagedSeed
-func (m *mutator) getRegionFromShootInfo(ctx context.Context, _ *corev1.Pod) (*string, error) {
-	m.log.Info("fetching region from shoot-info")
+func (h *handler) getRegionFromShootInfo(ctx context.Context) (*string, error) {
+	h.log.Info("fetching region from shoot-info")
 	cm := &corev1.ConfigMap{}
-	if err := m.client.Get(ctx, client.ObjectKey{Namespace: metav1.NamespaceSystem, Name: constants.ConfigMapNameShootInfo}, cm); client.IgnoreNotFound(err) != nil {
+	if err := h.client.Get(ctx, client.ObjectKey{Namespace: metav1.NamespaceSystem, Name: v1beta1constants.ConfigMapNameShootInfo}, cm); client.IgnoreNotFound(err) != nil {
 		return nil, err
 	} else if apierrors.IsNotFound(err) {
-		m.log.Error(nil, "fetching shoot-info object failed with not found error")
 		return nil, nil
 	}
 
@@ -155,6 +214,5 @@ func (m *mutator) getRegionFromShootInfo(ctx context.Context, _ *corev1.Pod) (*s
 		return &region, nil
 	}
 
-	m.log.Error(nil, "shoot-info configMap does not contain field \"region\"")
 	return nil, nil
 }
