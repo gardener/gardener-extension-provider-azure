@@ -42,8 +42,7 @@ func (c SubnetsClient) CreateOrUpdate(ctx context.Context, resourceGroupName, vn
 }
 
 // Get will get a subnet in a given virtual network. If the requested subnet not exists nil will be returned.
-// TODO remove expander
-func (c SubnetsClient) Get(ctx context.Context, resourceGroupName string, vnetName string, name string, expander string) (*armnetwork.SubnetsClientGetResponse, error) {
+func (c SubnetsClient) Get(ctx context.Context, resourceGroupName string, vnetName string, name string) (*armnetwork.SubnetsClientGetResponse, error) {
 	subnet, err := c.client.Get(ctx, resourceGroupName, vnetName, name, nil)
 	if err != nil {
 		if IsAzureAPINotFoundError(err) {

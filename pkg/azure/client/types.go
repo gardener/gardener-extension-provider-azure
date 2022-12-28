@@ -70,13 +70,6 @@ type NatGateway interface {
 	GetAll(ctx context.Context, resourceGroupName string) ([]*armnetwork.NatGateway, error)
 }
 
-// #TODO replaces NetworkSecurityGroup
-//type SecurityGroups interface {
-//	Get(ctx context.Context, resourceGroupName, networkSecurityGroupName string) (armnetwork.SecurityGroupsClientGetResponse, error)
-//	CreateOrUpdate(ctx context.Context, resourceGroupName string, networkSecurityGroupName string, parameters armnetwork.SecurityGroup) (armnetwork.SecurityGroupsClientCreateOrUpdateResponse, error)
-//	Delete(ctx context.Context, resourceGroupName, networkSecurityGroupName string) error
-//}
-
 // RouteTables is a client for the Azure RouteTable service.
 type RouteTables interface {
 	CreateOrUpdate(ctx context.Context, resourceGroupName, routeTableName string, parameters armnetwork.RouteTable) (armnetwork.RouteTablesClientCreateOrUpdateResponse, error)
@@ -159,7 +152,7 @@ type Disk interface {
 // Subnet represents an Azure Subnet client.
 type Subnet interface {
 	CreateOrUpdate(ctx context.Context, resourceGroupName, vnetName, subnetName string, parameters armnetwork.Subnet) error
-	Get(ctx context.Context, resourceGroupName string, vnetName string, name string, expander string) (*armnetwork.SubnetsClientGetResponse, error)
+	Get(ctx context.Context, resourceGroupName string, vnetName string, name string) (*armnetwork.SubnetsClientGetResponse, error)
 	List(context.Context, string, string) ([]*armnetwork.Subnet, error)
 	Delete(context.Context, string, string, string) error
 }

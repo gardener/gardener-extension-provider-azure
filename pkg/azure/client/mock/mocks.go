@@ -159,18 +159,18 @@ func (mr *MockSubnetMockRecorder) Delete(arg0, arg1, arg2, arg3 interface{}) *go
 }
 
 // Get mocks base method.
-func (m *MockSubnet) Get(arg0 context.Context, arg1, arg2, arg3, arg4 string) (*armnetwork.SubnetsClientGetResponse, error) {
+func (m *MockSubnet) Get(arg0 context.Context, arg1, arg2, arg3 string) (*armnetwork.SubnetsClientGetResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2, arg3, arg4)
+	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(*armnetwork.SubnetsClientGetResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Get indicates an expected call of Get.
-func (mr *MockSubnetMockRecorder) Get(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+func (mr *MockSubnetMockRecorder) Get(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockSubnet)(nil).Get), arg0, arg1, arg2, arg3, arg4)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockSubnet)(nil).Get), arg0, arg1, arg2, arg3)
 }
 
 // List mocks base method.

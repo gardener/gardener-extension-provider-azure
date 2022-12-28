@@ -198,7 +198,7 @@ func getSubnet(ctx context.Context, log logr.Logger, factory azureclient.Factory
 		sg = opt.ResourceGroupName
 	}
 
-	subnet, err := subnetClient.Get(ctx, sg, infrastructureStatus.Networks.VNet.Name, infrastructureStatus.Networks.Subnets[0].Name, "")
+	subnet, err := subnetClient.Get(ctx, sg, infrastructureStatus.Networks.VNet.Name, infrastructureStatus.Networks.Subnets[0].Name)
 	if err != nil {
 		return nil, err
 	}
