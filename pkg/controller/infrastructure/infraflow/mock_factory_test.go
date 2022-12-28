@@ -63,11 +63,6 @@ func (f *MockFactoryWrapper) assertAvailabilitySetCalledWithParameters(name stri
 	f.EXPECT().AvailabilitySet().Return(aset, nil)
 	return aset.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, gomock.Any(), params).Return(armcompute.AvailabilitySetsClientCreateOrUpdateResponse{}, nil)
 }
-func (f *MockFactoryWrapper) assertResourceGroupCalled() *gomock.Call {
-	rgroup := mockclient.NewMockResourceGroup(f.ctrl)
-	f.EXPECT().Group().Return(rgroup, nil)
-	return rgroup.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, f.location).Return(nil)
-}
 
 func (f *MockFactoryWrapper) assertRouteTableCalled(name string) *gomock.Call {
 	rt := mockclient.NewMockRouteTables(f.ctrl)
@@ -86,10 +81,6 @@ func (f *MockFactoryWrapper) assertSecurityGroupCalled(name string) *gomock.Call
 	return sg.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, name, gomock.Any()).Return(&network.SecurityGroup{
 		ID: to.Ptr("sgId"),
 	}, nil)
-}
-
-func (f *MockFactoryWrapper) assertVnetCalled(name string) *gomock.Call {
-	return f.assertVnetCalledWithParameters(name, gomock.Any())
 }
 
 func (f *MockFactoryWrapper) assertVnetCalledWithParameters(name string, params interface{}) *gomock.Call {

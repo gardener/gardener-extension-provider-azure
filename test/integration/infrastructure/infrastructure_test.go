@@ -16,16 +16,13 @@ package infrastructure_test
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
@@ -44,7 +41,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
-	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	schedulingv1 "k8s.io/api/scheduling/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -99,51 +95,6 @@ func validateFlags() {
 	if len(*region) == 0 {
 		panic("region flag is not specified")
 	}
-}
-
-// ClientAuth represents a Azure Client Auth credentials.
-type ClientAuth struct {
-	// SubscriptionID is the Azure subscription ID.
-	SubscriptionID string `yaml:"subscriptionID"`
-	// TenantID is the Azure tenant ID.
-	TenantID string `yaml:"tenantID"`
-	// ClientID is the Azure client ID.
-	ClientID string `yaml:"clientID"`
-	// ClientSecret is the Azure client secret.
-	ClientSecret string `yaml:"clientSecret"`
-}
-
-func (clientAuth ClientAuth) GetAzClientCredentials() (*azidentity.ClientSecretCredential, error) {
-	return azidentity.NewClientSecretCredential(clientAuth.TenantID, clientAuth.ClientID, clientAuth.ClientSecret, nil)
-}
-
-type ProviderSecret struct {
-	Data ClientAuth `yaml:"data"`
-}
-
-func readAuthFromFile(fileName string) ClientAuth {
-	secret := ProviderSecret{}
-	data, err := os.ReadFile(fileName)
-	if err != nil {
-		panic(err)
-	}
-	err = yaml.Unmarshal(data, &secret)
-	if err != nil {
-		panic(err)
-	}
-	secret.Data.ClientID = decodeString(secret.Data.ClientID)
-	secret.Data.ClientSecret = decodeString(secret.Data.ClientSecret)
-	secret.Data.SubscriptionID = decodeString(secret.Data.SubscriptionID)
-	secret.Data.TenantID = decodeString(secret.Data.TenantID)
-	return secret.Data
-}
-
-func decodeString(s string) string {
-	res, err := base64.StdEncoding.DecodeString(s)
-	if err != nil {
-		panic(err)
-	}
-	return string(res)
 }
 
 type azureClientSet struct {
