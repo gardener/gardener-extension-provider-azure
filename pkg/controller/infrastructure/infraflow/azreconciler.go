@@ -36,7 +36,7 @@ type AzureReconciler struct {
 	factory client.Factory
 }
 
-// NewAzureReconciler creates a new TfReconciler
+// NewAzureReconciler creates a new AzureReconciler
 func NewAzureReconciler(infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, cluster *controller.Cluster, factory client.Factory) (*AzureReconciler, error) {
 	tfAdapter, err := NewTerraformAdapter(infra, cfg, cluster)
 	return &AzureReconciler{tfAdapter, factory}, err
@@ -302,8 +302,10 @@ func (f AzureReconciler) NatGateways(ctx context.Context, ips map[string][]netwo
 			Location: to.Ptr(f.tf.Region()),
 			SKU:      &armnetwork.NatGatewaySKU{Name: to.Ptr(armnetwork.NatGatewaySKUNameStandard)},
 		}
-		ipResources, ok := ips[nat.SubnetName()] // TODO should fail if not found
-		if ok {
+		ipResources, ok := ips[nat.SubnetName()]
+		if !ok {
+			return res, fmt.Errorf("no public IP found for NAT Gateway %s", nat.NatName())
+		} else {
 			params.Properties.PublicIPAddresses = []*armnetwork.SubResource{}
 			for _, ip := range ipResources {
 				params.Properties.PublicIPAddresses = append(params.Properties.PublicIPAddresses, &armnetwork.SubResource{ID: ip.ID})
@@ -314,7 +316,6 @@ func (f AzureReconciler) NatGateways(ctx context.Context, ips map[string][]netwo
 		}
 		resp, err := client.CreateOrUpdate(ctx, f.tf.ResourceGroup(), nat.NatName(), params)
 		if err != nil {
-			//continue // TODO skip or return?
 			return res, err
 		}
 		res[nat.SubnetName()] = resp
