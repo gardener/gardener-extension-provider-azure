@@ -83,9 +83,9 @@ func cleanupTerraform(ctx context.Context, logger logr.Logger, a *actuator, infr
 		return err
 	}
 
-	if err := tf.RemoveTerraformerFinalizerFromConfig(ctx); err != nil {
+	if err := tf.CleanupConfiguration(ctx); err != nil {
 		return err
 	}
 
-	return tf.CleanupConfiguration(ctx)
+	return tf.RemoveTerraformerFinalizerFromConfig(ctx)
 }

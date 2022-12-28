@@ -409,6 +409,7 @@ var _ = Describe("Actuator", func() {
 
 	Describe("#Migrate", func() {
 		It("should migrate the Infrastructure", func() {
+			tf.EXPECT().EnsureCleanedUp(ctx)
 			tf.EXPECT().CleanupConfiguration(ctx)
 			tf.EXPECT().RemoveTerraformerFinalizerFromConfig(ctx)
 			err := a.Migrate(ctx, log, infra, cluster)
@@ -426,12 +427,14 @@ var _ = Describe("Actuator", func() {
 		})
 
 		It("should return error if cleaning up terraform configuration fails", func() {
+			tf.EXPECT().EnsureCleanedUp(ctx)
 			tf.EXPECT().CleanupConfiguration(ctx).Return(errors.New("could not clean up terraform config"))
 			err := a.Migrate(ctx, log, infra, cluster)
 			Expect(err).To(HaveOccurred())
 		})
 
 		It("should return error if removal of finalizers on terraform resources fails", func() {
+			tf.EXPECT().EnsureCleanedUp(ctx)
 			tf.EXPECT().CleanupConfiguration(ctx)
 			tf.EXPECT().RemoveTerraformerFinalizerFromConfig(ctx).Return(errors.New("could not clean up finalizers"))
 			err := a.Migrate(ctx, log, infra, cluster)
