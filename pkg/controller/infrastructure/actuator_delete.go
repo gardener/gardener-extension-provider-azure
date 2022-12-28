@@ -73,12 +73,18 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, infra *extension
 	}
 	resourceGroupExists, err := infrastructure.IsShootResourceGroupAvailable(ctx, azureClientFactory, infra, config)
 	if err != nil {
-		return err
+		if azureclient.IsAzureAPIUnauthorized(err) {
+			log.Error(err, "Failed to check resource group availability due to invalid credentials")
+		} else {
+			return err
+		}
 	}
 
 	if !resourceGroupExists {
-		if err := infrastructure.DeleteNodeSubnetIfExists(ctx, azureClientFactory, infra, config); err != nil {
-			return err
+		if !azureclient.IsAzureAPIUnauthorized(err) {
+			if err := infrastructure.DeleteNodeSubnetIfExists(ctx, azureClientFactory, infra, config); err != nil {
+				return err
+			}
 		}
 
 		if err := tf.RemoveTerraformerFinalizerFromConfig(ctx); err != nil {

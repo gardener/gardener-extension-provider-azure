@@ -1,0 +1,1 @@
+{{- include "csi-driver-controller.poddisruptionbudget" (set $ "role" "disk") }}

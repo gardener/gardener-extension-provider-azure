@@ -103,6 +103,8 @@ The `networks.vnet` section describes whether you want to create the shoot clust
 You can freely choose a private CIDR range.
 * Either `networks.vnet.name` and `neworks.vnet.resourceGroup` or `networks.vnet.cidr` must be present, but not both at the same time.
 * The `networks.vnet.ddosProtectionPlanID` field can be used to specify the id of a ddos protection plan which should be assigned to the VNet. This will only work for a VNet managed by Gardener. For externally managed VNets the ddos protection plan must be assigned by other means.
+* If a vnet name is given and cilium shoot clusters are created without a network overlay within one vnet make sure that the pod CIDR specified in `shoot.spec.networking.pods` is not overlapping with any other pod CIDR used in that vnet.
+Overlapping pod CIDRs will lead to disfunctional shoot clusters.
 
 The `networks.workers` section describes the CIDR for a subnet that is used for all shoot worker nodes, i.e., VMs which later run your applications.
 The specified CIDR range must be contained in the VNet CIDR specified above, or the VNet CIDR of your already existing VNet.

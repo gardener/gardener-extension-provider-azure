@@ -139,6 +139,7 @@ spec:
         - --leader-election
         - --leader-election-namespace=kube-system
         - --v=5
+        - --timeout=1200s
         env:
         - name: ADDRESS
           value: {{ .Values.socketPath }}/csi.sock
