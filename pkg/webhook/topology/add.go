@@ -42,11 +42,6 @@ func AddToManager(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 		{Obj: &corev1.Pod{}},
 	}
 
-	handler, err := extensionswebhook.NewBuilder(mgr, logger).WithMutator(New(), types...).Build()
-	if err != nil {
-		return nil, err
-	}
-
 	logger.Info("Creating webhook")
 	return &extensionswebhook.Webhook{
 		Name:     WebhookName,
@@ -54,7 +49,7 @@ func AddToManager(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 		Path:     webhookPath,
 		Target:   extensionswebhook.TargetSeed,
 		Types:    types,
-		Webhook:  &admission.Webhook{Handler: handler, RecoverPanic: true},
+		Webhook:  &admission.Webhook{Handler: New(logger), RecoverPanic: true},
 		Selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
 				v1beta1constants.LabelSeedProvider: azure.Type,
