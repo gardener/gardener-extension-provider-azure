@@ -31,6 +31,7 @@ spec:
         app: csi
         role: controller-{{ .role }}
         gardener.cloud/role: controlplane
+        high-availability-config.resources.gardener.cloud/type: controller
         networking.gardener.cloud/to-dns: allowed
         networking.gardener.cloud/to-public-networks: allowed
         networking.gardener.cloud/to-shoot-apiserver: allowed
