@@ -17,7 +17,6 @@ package client
 import (
 	"context"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
@@ -172,11 +171,10 @@ type Vnet interface {
 	Get(ctx context.Context, resourceGroupName, name string) (armnetwork.VirtualNetworksClientGetResponse, error)
 }
 
-// AzureFactory is an implementation of Factory to produce clients for various Azure services.
-type AzureFactory struct {
+// azureFactory is an implementation of Factory to produce clients for various Azure services.
+type azureFactory struct {
 	auth   *internal.ClientAuth
-	cred   *azidentity.ClientSecretCredential
-	client client.Client
+	client client.Client // TODO remove? only used for storage client
 }
 
 // StorageClient is an implementation of Storage for a (blob) storage client.
