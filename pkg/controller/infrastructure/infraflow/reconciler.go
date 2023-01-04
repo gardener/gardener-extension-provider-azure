@@ -77,7 +77,7 @@ func (f *FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha
 	return reconciler.GetInfrastructureStatus(ctx)
 }
 
-func (f FlowReconciler) buildReconcileGraph(reconciler *AzureReconciler) *flow.Graph {
+func (f FlowReconciler) buildReconcileGraph(reconciler *azureReconciler) *flow.Graph {
 	whiteboard := shared.NewWhiteboard()
 
 	g := flow.NewGraph("Azure infrastructure reconcilation")

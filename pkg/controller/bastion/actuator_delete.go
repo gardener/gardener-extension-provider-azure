@@ -40,7 +40,7 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensi
 	if err != nil {
 		return err
 	}
-	factory, err := azureclient.NewAzureClientFactoryWithSecretReference(ctx, a.client, opt.SecretReference)
+	factory, err := azureclient.NewAzureClientFactory(ctx, a.client, opt.SecretReference)
 	if err != nil {
 		return err
 	}

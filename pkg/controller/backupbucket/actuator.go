@@ -40,7 +40,7 @@ func (a *actuator) InjectClient(client client.Client) error {
 }
 
 func (a *actuator) Reconcile(ctx context.Context, _ logr.Logger, backupBucket *extensionsv1alpha1.BackupBucket) error {
-	factory, err := azureclient.NewAzureClientFactoryWithSecretReference(ctx, a.client, backupBucket.Spec.SecretRef)
+	factory, err := azureclient.NewAzureClientFactory(ctx, a.client, backupBucket.Spec.SecretRef)
 	if err != nil {
 		return err
 	}
@@ -72,7 +72,7 @@ func (a *actuator) Delete(ctx context.Context, _ logr.Logger, backupBucket *exte
 		return nil
 	}
 
-	factory, err := azureclient.NewAzureClientFactoryWithSecretReference(ctx, a.client, backupBucket.Spec.SecretRef)
+	factory, err := azureclient.NewAzureClientFactory(ctx, a.client, backupBucket.Spec.SecretRef)
 	if err != nil {
 		return err
 	}

@@ -27,8 +27,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// NewAzureClientFactoryWithSecretReference creates a new Azure client factory with the passed secret reference.
-func NewAzureClientFactoryWithSecretReference(ctx context.Context, client client.Client, secretRef corev1.SecretReference) (Factory, error) {
+// NewAzureClientFactory creates a new Azure client factory with the passed secret reference.
+func NewAzureClientFactory(ctx context.Context, client client.Client, secretRef corev1.SecretReference) (Factory, error) {
 	auth, err := internal.GetClientAuthData(ctx, client, secretRef, false)
 	if err != nil {
 		return nil, err
@@ -38,8 +38,8 @@ func NewAzureClientFactoryWithSecretReference(ctx context.Context, client client
 	}, nil
 }
 
-// NewAzureClientFactoryWithAuthAndClient creates a new Azure client factory with the passed credentials.
-func NewAzureClientFactoryWithAuthAndClient(auth *internal.ClientAuth, client client.Client) (Factory, error) {
+// NewAzureClientFactoryWithAuth creates a new Azure client factory with the passed credentials.
+func NewAzureClientFactoryWithAuth(auth *internal.ClientAuth, client client.Client) (Factory, error) {
 	return azureFactory{
 		client: client,
 		auth:   auth,

@@ -20,7 +20,6 @@ import (
 	"time"
 
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
-	v1 "k8s.io/api/core/v1"
 
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/dnsrecord"
@@ -33,15 +32,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var (
-	// NewAzureClientFactory initializes a new AzureClientFactory. Exposed for testing.
-	NewAzureClientFactory = newAzureClientFactoryNew
-)
-
-func newAzureClientFactoryNew(ctx context.Context, client client.Client, secretRef v1.SecretReference) (azureclient.Factory, error) {
-	return azureclient.NewAzureClientFactoryWithSecretReference(ctx, client, secretRef)
-}
-
 const (
 	// requeueAfterOnProviderError is a value for RequeueAfter to be returned on provider errors
 	// in order to prevent quick retries that could quickly exhaust the account rate limits in case of e.g.
@@ -50,13 +40,15 @@ const (
 )
 
 type actuator struct {
-	client client.Client
+	client             client.Client
+	azureClientFactory azureclient.Factory
 }
 
 // NewActuator creates a new dnsrecord.Actuator.
 func NewActuator(client client.Client, azureClientFactory azureclient.Factory) dnsrecord.Actuator {
 	return &actuator{
-		client: client,
+		client:             client,
+		azureClientFactory: azureClientFactory,
 	}
 }
 
@@ -68,15 +60,11 @@ func (a *actuator) InjectClient(client client.Client) error {
 // Reconcile reconciles the DNSRecord.
 func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, cluster *extensionscontroller.Cluster) error {
 	// Create Azure DNS zone and recordset clients
-	factory, err := NewAzureClientFactory(ctx, a.client, dns.Spec.SecretRef)
-	if err != nil {
-		return err
-	}
-	dnsZoneClient, err := factory.DNSZone()
+	dnsZoneClient, err := a.azureClientFactory.DNSZone()
 	if err != nil {
 		return fmt.Errorf("could not create Azure DNS zone client: %+v", err)
 	}
-	dnsRecordSetClient, err := factory.DNSRecordSet()
+	dnsRecordSetClient, err := a.azureClientFactory.DNSRecordSet()
 	if err != nil {
 		return fmt.Errorf("could not create Azure DNS recordset client: %+v", err)
 	}
@@ -117,16 +105,12 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, dns *extensio
 
 // Delete deletes the DNSRecord.
 func (a *actuator) Delete(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, cluster *extensionscontroller.Cluster) error {
-	factory, err := NewAzureClientFactory(ctx, a.client, dns.Spec.SecretRef)
-	if err != nil {
-		return err
-	}
 	// Create Azure DNS zone and recordset clients
-	dnsZoneClient, err := factory.DNSZone()
+	dnsZoneClient, err := a.azureClientFactory.DNSZone()
 	if err != nil {
 		return fmt.Errorf("could not create Azure DNS zone client: %+v", err)
 	}
-	dnsRecordSetClient, err := factory.DNSRecordSet()
+	dnsRecordSetClient, err := a.azureClientFactory.DNSRecordSet()
 	if err != nil {
 		return fmt.Errorf("could not create Azure DNS recordset client: %+v", err)
 	}

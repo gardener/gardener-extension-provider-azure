@@ -25,14 +25,16 @@ import (
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 )
 
-// TfResourceGroup is the attribute name for the isCreate function of the tf adapter
-const TfResourceGroup = "resourceGroup"
+type tfResource string
 
-// TfVnet is the attribute name for the isCreate function of the tf adapter
-const TfVnet = "vnet"
-
-// TfAvailabilitySet is the attribute name for the isCreate function of the tf adapter
-const TfAvailabilitySet = "availabilitySet"
+const (
+	// ResourceGroup is the attribute name for the isCreate function of the tf adapter
+	ResourceGroup tfResource = "resourceGroup"
+	// Vnet is the attribute name for the isCreate function of the tf adapter
+	Vnet tfResource = "vnet"
+	// AvailabilitySet is the attribute name for the isCreate function of the tf adapter
+	AvailabilitySet tfResource = "availabilitySet"
+)
 
 // TerraformAdapter retrieves all configuration logic needed for reconcilation from the (soon) legacy Terraform configuration code
 type TerraformAdapter struct {
@@ -134,9 +136,9 @@ func NewTerraformAdapter(infra *extensionsv1alpha1.Infrastructure, config *azure
 	return TerraformAdapter{tfValues, config}, err
 }
 
-func (t TerraformAdapter) isCreate(resource string) bool {
+func (t TerraformAdapter) isCreate(resource tfResource) bool {
 	create := t.values["create"].(map[string]interface{})
-	return create[resource].(bool)
+	return create[string(resource)].(bool)
 }
 
 // Vnet returns the vnet configuration

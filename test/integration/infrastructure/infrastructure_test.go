@@ -79,24 +79,6 @@ var (
 	useFlow        = flag.Bool("use-flow", false, "Set annotation to use flow for reconcilation")
 )
 
-func validateFlags() {
-	if len(*clientId) == 0 {
-		panic("client-id flag is not specified")
-	}
-	if len(*clientSecret) == 0 {
-		panic("client-secret flag is not specified")
-	}
-	if len(*subscriptionId) == 0 {
-		panic("subscription-id flag is not specified")
-	}
-	if len(*tenantId) == 0 {
-		panic("tenant-id flag is not specified")
-	}
-	if len(*region) == 0 {
-		panic("region flag is not specified")
-	}
-}
-
 type azureClientSet struct {
 	groups           resources.GroupsClient
 	vnet             network.VirtualNetworksClient
@@ -178,17 +160,7 @@ var (
 )
 
 var _ = BeforeSuite(func() {
-	flag.Parse()
-	if *secretYamlPath != "" {
-		auth := readAuthFromFile(*secretYamlPath)
-		clientId = &auth.ClientID
-		clientSecret = &auth.ClientSecret
-		subscriptionId = &auth.SubscriptionID
-		tenantId = &auth.TenantID
-	} else {
-		validateFlags()
-	}
-
+	setConfigVariablesFromFlags()
 	internalChartsPath := azure.InternalChartsPath
 	repoRoot := filepath.Join("..", "..", "..")
 	azure.InternalChartsPath = filepath.Join(repoRoot, azure.InternalChartsPath)

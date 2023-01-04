@@ -23,11 +23,11 @@ import (
 
 func isAzureAPStatusError(err error, status int) bool {
 	switch e := err.(type) {
-	case autorest.DetailedError:
+	case autorest.DetailedError: // error from old azure client
 		if e.Response != nil && e.Response.StatusCode == status {
 			return true
 		}
-	case *azcore.ResponseError:
+	case *azcore.ResponseError: // error from new azure SDK client
 		if e.StatusCode == http.StatusNotFound {
 			return true
 		}

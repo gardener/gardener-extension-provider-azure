@@ -16,11 +16,43 @@ package infrastructure_test
 
 import (
 	"encoding/base64"
+	"flag"
 	"os"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"gopkg.in/yaml.v2"
 )
+
+func setConfigVariablesFromFlags() {
+	flag.Parse()
+	if *secretYamlPath != "" {
+		auth := readAuthFromFile(*secretYamlPath)
+		clientId = &auth.ClientID
+		clientSecret = &auth.ClientSecret
+		subscriptionId = &auth.SubscriptionID
+		tenantId = &auth.TenantID
+	} else {
+		validateFlags()
+	}
+}
+
+func validateFlags() {
+	if len(*clientId) == 0 {
+		panic("client-id flag is not specified")
+	}
+	if len(*clientSecret) == 0 {
+		panic("client-secret flag is not specified")
+	}
+	if len(*subscriptionId) == 0 {
+		panic("subscription-id flag is not specified")
+	}
+	if len(*tenantId) == 0 {
+		panic("tenant-id flag is not specified")
+	}
+	if len(*region) == 0 {
+		panic("region flag is not specified")
+	}
+}
 
 // ClientAuth represents a Azure Client Auth credentials.
 type ClientAuth struct {

@@ -38,7 +38,7 @@ var (
 )
 
 func newAzureClientFactoryNew(ctx context.Context, client client.Client, secretRef v1.SecretReference) (azureclient.Factory, error) {
-	return azureclient.NewAzureClientFactoryWithSecretReference(ctx, client, secretRef)
+	return azureclient.NewAzureClientFactory(ctx, client, secretRef)
 }
 
 // Delete implements infrastructure.Actuator.

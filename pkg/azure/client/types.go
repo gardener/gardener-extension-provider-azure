@@ -41,12 +41,10 @@ type Factory interface {
 	VirtualMachine() (VirtualMachine, error)
 	NetworkInterface() (NetworkInterface, error)
 	Disk() (Disk, error)
-	// shared clients
 	Group() (ResourceGroup, error)
 	NetworkSecurityGroup() (NetworkSecurityGroup, error)
 	Subnet() (Subnet, error)
 	PublicIP() (PublicIP, error)
-	// reconciler specific
 	Vnet() (Vnet, error)
 	RouteTables() (RouteTables, error)
 	NatGateway() (NatGateway, error)
