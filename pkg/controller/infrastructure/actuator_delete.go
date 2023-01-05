@@ -34,10 +34,10 @@ import (
 
 var (
 	// NewAzureClientFactory initializes a new AzureClientFactory. Exposed for testing.
-	NewAzureClientFactory = newAzureClientFactoryNew
+	NewAzureClientFactory = newAzureClientFactory
 )
 
-func newAzureClientFactoryNew(ctx context.Context, client client.Client, secretRef v1.SecretReference) (azureclient.Factory, error) {
+func newAzureClientFactory(ctx context.Context, client client.Client, secretRef v1.SecretReference) (azureclient.Factory, error) {
 	return azureclient.NewAzureClientFactory(ctx, client, secretRef)
 }
 
