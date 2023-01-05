@@ -32,6 +32,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow/shared"
 )
 
 const (
@@ -388,6 +389,7 @@ type terraformSubnet struct {
 	name     string
 	zone     *string
 	migrated bool
+	nat      *apiv1alpha1.NatGatewayStatus
 }
 
 // ExtractTerraformState extracts the TerraformState from the given Terraformer.
@@ -454,19 +456,37 @@ func ExtractTerraformState(ctx context.Context, tf terraformer.Terraformer, infr
 	}
 
 	tfState.Subnets = computeInfrastructureSubnets(infra, vars)
-	return &tfState, nil
+	err = enrichSubnetsWithNatGatewayStatus(ctx, tf, &tfState)
+	return &tfState, err
 }
 
-func setNatGatewayConfigForSubnets(clusterName string, config *api.InfrastructureConfig, infraState *apiv1alpha1.InfrastructureStatus) {
-	subnetsNatGatewayValues := getSubnetsNatGatewayValues(config)
-	for _, subnet := range subnetsNatGatewayValues {
+func enrichSubnetsWithNatGatewayStatus(ctx context.Context, tf terraformer.Terraformer, tfState *TerraformState) error {
+	rawState, err := tf.GetRawState(ctx)
+	if err != nil {
+		return err
+	}
+	subnetInfos, err := extractNatGatewayInfoForSubnets(ctx, rawState)
+	if err != nil {
+		return err
+	}
+	for subnet, info := range subnetInfos {
+		for i := range tfState.Subnets {
+			if tfState.Subnets[i].name == subnet {
+				fmt.Println("enriching subnet with nat gateway info: ", subnet, info)
+				tfState.Subnets[i].nat = &info
+			}
+		}
+	}
+	return nil
+}
+
+func setNatGatewayConfigForSubnets(tfstate *TerraformState, infraState *apiv1alpha1.InfrastructureStatus) {
+	for i := range tfstate.Subnets {
+		subnet := &tfstate.Subnets[i]
 		for j := range infraState.Networks.Subnets {
-			if fmt.Sprint(subnet["zone"]) == *infraState.Networks.Subnets[j].Zone {
-				enabled := subnet["enabled"].(bool)
-				if enabled {
-					name := getNatGatewayName(clusterName, infraState.Networks.Subnets[j])
-					infraState.Networks.Subnets[j].NatGatewayName = &name
-				}
+			if subnet.name == infraState.Networks.Subnets[j].Name {
+				fmt.Println(subnet.name)
+				infraState.Networks.Subnets[j].NatGatewayStatus = subnet.nat
 			}
 		}
 	}
@@ -494,6 +514,49 @@ func ComputeStatus(ctx context.Context, tf terraformer.Terraformer, infra *exten
 	}
 
 	return status, nil
+}
+
+func extractNatGatewayInfoForSubnets(ctx context.Context, rawState *terraformer.RawState) (map[string]apiv1alpha1.NatGatewayStatus, error) {
+	subnetInfos := make(map[string]apiv1alpha1.NatGatewayStatus)
+	if rawState != nil {
+		state, err := shared.UnmarshalTerraformStateFromTerraformer(rawState)
+		if err != nil {
+			return subnetInfos, err
+		}
+		for _, subnet := range state.FindManagedResourcesByType("azurerm_subnet") {
+			subnetName := subnet.Instances[0].Attributes["name"].(string)
+			id := subnet.Instances[0].Attributes["id"]
+			for _, assoc := range state.FindManagedResourcesByType("azurerm_subnet_nat_gateway_association") {
+				if assoc.Instances[0].Attributes["subnet_id"] == id {
+					natid := assoc.Instances[0].Attributes["nat_gateway_id"].(string)
+					var natname string
+					for _, nat := range state.FindManagedResourcesByType("azurerm_nat_gateway") {
+						if nat.Instances[0].Attributes["id"] == natid {
+							natname = nat.Instances[0].Attributes["name"].(string)
+						}
+					}
+
+					ips := make([]string, 0)
+					for _, assoc := range state.FindManagedResourcesByType("azurerm_nat_gateway_public_ip_association") {
+						ipids := make([]string, 0)
+						if assoc.Instances[0].Attributes["nat_gateway_id"] == natid {
+							ipids = append(ipids, assoc.Instances[0].Attributes["public_ip_address_id"].(string))
+						}
+						for _, ipid := range ipids {
+							for _, ip := range state.FindManagedResourcesByType("azurerm_public_ip") {
+								if ip.Instances[0].Attributes["id"] == ipid {
+									ips = append(ips, ip.Instances[0].Attributes["ip_address"].(string))
+								}
+							}
+						}
+					}
+					subnetInfos[subnetName] = apiv1alpha1.NatGatewayStatus{Name: natname, IPs: ips}
+				}
+			}
+		}
+
+	}
+	return subnetInfos, nil
 }
 
 // StatusFromTerraformState computes an InfrastructureStatus from the given
@@ -559,7 +622,7 @@ func StatusFromTerraformState(cluster *controller.Cluster, config *api.Infrastru
 			Purpose:            apiv1alpha1.PurposeNodes,
 		})
 	}
-	setNatGatewayConfigForSubnets(cluster.ObjectMeta.Name, config, infraState)
+	setNatGatewayConfigForSubnets(tfState, infraState)
 	return infraState
 }
 

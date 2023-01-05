@@ -15,14 +15,19 @@
 package infrastructure
 
 import (
+	"context"
 	"encoding/json"
+	"os"
 	"testing"
+	"time"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	"gopkg.in/yaml.v2"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
+	"github.com/gardener/gardener/extensions/pkg/terraformer"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
@@ -84,6 +89,50 @@ func makeCluster(pods, services string, region string, countFaultDomain, countUp
 func getNamedCluster(name string) *controller.Cluster {
 	return &controller.Cluster{ObjectMeta: metav1.ObjectMeta{Name: name}}
 }
+
+type cmYaml struct {
+	APIVersion string `yaml:"apiVersion"`
+	Data       struct {
+		TerraformTfstate string `yaml:"terraform.tfstate"`
+	} `yaml:"data"`
+	Kind     string `yaml:"kind"`
+	Metadata struct {
+		CreationTimestamp time.Time `yaml:"creationTimestamp"`
+		Finalizers        []string  `yaml:"finalizers"`
+		Name              string    `yaml:"name"`
+		Namespace         string    `yaml:"namespace"`
+		OwnerReferences   []struct {
+			APIVersion         string `yaml:"apiVersion"`
+			BlockOwnerDeletion bool   `yaml:"blockOwnerDeletion"`
+			Controller         bool   `yaml:"controller"`
+			Kind               string `yaml:"kind"`
+			Name               string `yaml:"name"`
+			UID                string `yaml:"uid"`
+		} `yaml:"ownerReferences"`
+		ResourceVersion string `yaml:"resourceVersion"`
+		UID             string `yaml:"uid"`
+	} `yaml:"metadata"`
+}
+
+var _ = Describe("Terraform state extraction", func() {
+	It("should get the NATGateway information for all subnets", func() {
+		bytes, err := os.ReadFile("templates/tfstate_test.yaml")
+		Expect(err).NotTo(HaveOccurred())
+
+		cfg := cmYaml{}
+		err = yaml.Unmarshal(bytes, &cfg)
+		Expect(err).ToNot(HaveOccurred())
+		rawState := terraformer.RawState{
+			Data:     cfg.Data.TerraformTfstate,
+			Encoding: terraformer.NoneEncoding,
+		}
+		res, err := extractNatGatewayInfoForSubnets(context.Background(), &rawState)
+		Expect(err).NotTo(HaveOccurred())
+		subnet := res["shoot--core--user-soot-nodes"]
+		Expect(subnet.Name).To(Equal("shoot--core--user-soot-nat-gateway"))
+		Expect(subnet.IPs[0]).To(Equal("20.103.139.67"))
+	})
+})
 
 var _ = Describe("Terraform", func() {
 	var (
@@ -691,16 +740,24 @@ var _ = Describe("Terraform", func() {
 				{
 					name: "subnet1",
 					zone: pointer.String("1"),
+					nat: &apiv1alpha1.NatGatewayStatus{
+						Name: "cluster-nat-gateway-zsubnet1",
+						IPs:  []string{"1.1.1.1"},
+					},
 				},
 				{
 					name: "subnet2",
 					zone: pointer.String("2"),
+					nat: &apiv1alpha1.NatGatewayStatus{
+						Name: "cluster-nat-gateway-zsubnet2",
+						IPs:  []string{"2.2.2.2"},
+					},
 				},
 			}
 			status := StatusFromTerraformState(getNamedCluster("cluster"), config, state)
 
-			Expect(*status.Networks.Subnets[0].NatGatewayName).To(Equal("cluster-nat-gateway-zsubnet1"))
-			Expect(*status.Networks.Subnets[1].NatGatewayName).To(Equal("cluster-nat-gateway-zsubnet2"))
+			Expect(status.Networks.Subnets[0].NatGatewayStatus.Name).To(Equal("cluster-nat-gateway-zsubnet1"))
+			Expect(status.Networks.Subnets[1].NatGatewayStatus.Name).To(Equal("cluster-nat-gateway-zsubnet2"))
 		})
 
 		It("should correctly compute the status for cluster with identity", func() {
@@ -773,10 +830,18 @@ var _ = Describe("Terraform", func() {
 				{
 					name: subnetName1,
 					zone: pointer.String(zone1),
+					nat: &apiv1alpha1.NatGatewayStatus{
+						Name: "cluster-nat-gateway-zsubnet1",
+						IPs:  []string{"1.1.1.1"},
+					},
 				},
 				{
 					name: subnetName2,
 					zone: pointer.String(zone2),
+					nat: &apiv1alpha1.NatGatewayStatus{
+						Name: "cluster-nat-gateway-zsubnet2",
+						IPs:  []string{"2.2.2.2"},
+					},
 				},
 			}
 
@@ -799,16 +864,22 @@ var _ = Describe("Terraform", func() {
 					},
 					Subnets: []apiv1alpha1.Subnet{
 						{
-							Purpose:        apiv1alpha1.PurposeNodes,
-							Name:           subnetName1,
-							Zone:           &zone1,
-							NatGatewayName: pointer.String("cluster-nat-gateway-z" + subnetName1),
+							Purpose: apiv1alpha1.PurposeNodes,
+							Name:    subnetName1,
+							Zone:    &zone1,
+							NatGatewayStatus: &apiv1alpha1.NatGatewayStatus{
+								Name: "cluster-nat-gateway-zsubnet1",
+								IPs:  []string{"1.1.1.1"},
+							},
 						},
 						{
-							Purpose:        apiv1alpha1.PurposeNodes,
-							Name:           subnetName2,
-							Zone:           &zone2,
-							NatGatewayName: pointer.String("cluster-nat-gateway-z" + subnetName2),
+							Purpose: apiv1alpha1.PurposeNodes,
+							Name:    subnetName2,
+							Zone:    &zone2,
+							NatGatewayStatus: &apiv1alpha1.NatGatewayStatus{
+								Name: "cluster-nat-gateway-zsubnet2",
+								IPs:  []string{"2.2.2.2"},
+							},
 						},
 					},
 					Layout: apiv1alpha1.NetworkLayoutMultipleSubnet,
