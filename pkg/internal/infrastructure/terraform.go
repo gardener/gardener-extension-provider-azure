@@ -543,7 +543,7 @@ func extractNatGatewayInfoForSubnets(ctx context.Context, rawState *terraformer.
 							ipids = append(ipids, assoc.Instances[0].Attributes["public_ip_address_id"].(string))
 						}
 						for _, ipid := range ipids {
-							for _, ip := range state.FindManagedResourcesByType("azurerm_public_ip") {
+							for _, ip := range state.FindResourcesByType("azurerm_public_ip") {
 								if ip.Instances[0].Attributes["id"] == ipid {
 									ips = append(ips, ip.Instances[0].Attributes["ip_address"].(string))
 								}

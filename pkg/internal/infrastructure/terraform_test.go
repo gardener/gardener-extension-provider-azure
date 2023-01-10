@@ -114,23 +114,44 @@ type cmYaml struct {
 	} `yaml:"metadata"`
 }
 
-var _ = Describe("Terraform state extraction", func() {
-	It("should get the NATGateway information for all subnets", func() {
-		bytes, err := os.ReadFile("templates/tfstate_test.yaml")
-		Expect(err).NotTo(HaveOccurred())
+func readTfRawStateFromFile(yamlFile string) (terraformer.RawState, error) {
+	bytes, err := os.ReadFile(yamlFile)
+	if err != nil {
+		return terraformer.RawState{}, err
+	}
 
-		cfg := cmYaml{}
-		err = yaml.Unmarshal(bytes, &cfg)
-		Expect(err).ToNot(HaveOccurred())
-		rawState := terraformer.RawState{
-			Data:     cfg.Data.TerraformTfstate,
-			Encoding: terraformer.NoneEncoding,
-		}
+	cfg := cmYaml{}
+	err = yaml.Unmarshal(bytes, &cfg)
+	if err != nil {
+		return terraformer.RawState{}, err
+	}
+	rawState := terraformer.RawState{
+		Data:     cfg.Data.TerraformTfstate,
+		Encoding: terraformer.NoneEncoding,
+	}
+	return rawState, err
+}
+
+var _ = Describe("Terraform state extraction", func() {
+	It("should get the NATGateway information for a single subnet", func() {
+		rawState, err := readTfRawStateFromFile("templates/tfstate_test.yaml")
+		Expect(err).NotTo(HaveOccurred())
 		res, err := extractNatGatewayInfoForSubnets(context.Background(), &rawState)
 		Expect(err).NotTo(HaveOccurred())
-		subnet := res["shoot--core--user-soot-nodes"]
+		subnetName := "shoot--core--user-soot-nodes"
+		subnet := res[subnetName]
 		Expect(subnet.Name).To(Equal("shoot--core--user-soot-nat-gateway"))
 		Expect(subnet.IPs[0]).To(Equal("20.103.139.67"))
+	})
+	It("should get the NATGateway information for all subnets including those with managed IP", func() {
+		rawState, err := readTfRawStateFromFile("templates/tfstate_managedip_test.yaml")
+		Expect(err).NotTo(HaveOccurred())
+		res, err := extractNatGatewayInfoForSubnets(context.Background(), &rawState)
+		Expect(err).NotTo(HaveOccurred())
+		subnetName := "shoot--core--userid-multinat-nodes-z2"
+		natGateway := res[subnetName]
+		Expect(natGateway.Name).To(Equal("shoot--core--userid-multinat-nat-gateway-z2"))
+		Expect(natGateway.IPs[0]).To(Equal("4.231.44.154"))
 	})
 })
 

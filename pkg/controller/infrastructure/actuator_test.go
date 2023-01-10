@@ -166,7 +166,7 @@ var _ = Describe("Actuator", func() {
 			tf.EXPECT().InitializeWith(ctx, gomock.Any()).Return(tf)
 			tf.EXPECT().Apply(ctx)
 			tf.EXPECT().GetStateOutputVariables(ctx, gomock.Any())
-			tf.EXPECT().GetRawState(ctx).Return(tfState, nil)
+			tf.EXPECT().GetRawState(ctx).Return(tfState, nil).AnyTimes()
 
 			state, err := createInfraState(providerStatus, tfState)
 			Expect(err).NotTo(HaveOccurred())
@@ -310,7 +310,7 @@ var _ = Describe("Actuator", func() {
 			tf.EXPECT().InitializeWith(ctx, gomock.Any()).Return(tf)
 			tf.EXPECT().Apply(ctx)
 			tf.EXPECT().GetStateOutputVariables(ctx, gomock.Any())
-			tf.EXPECT().GetRawState(ctx).Return(tfState, nil)
+			tf.EXPECT().GetRawState(ctx).Return(tfState, nil).AnyTimes()
 
 			expectedInfraAfterRestore := expectedInfra.DeepCopy()
 			expectedInfraAfterRestore.Status.ProviderStatus = &runtime.RawExtension{Object: providerStatus}
@@ -359,7 +359,7 @@ var _ = Describe("Actuator", func() {
 
 				return output, nil
 			})
-			tf.EXPECT().GetRawState(ctx).Return(tfState, nil)
+			tf.EXPECT().GetRawState(ctx).Return(tfState, nil).AnyTimes()
 
 			expectedInfraAfterRestore := expectedInfra.DeepCopy()
 			expectedInfraAfterRestore.Status.ProviderStatus = &runtime.RawExtension{Object: providerStatus}
