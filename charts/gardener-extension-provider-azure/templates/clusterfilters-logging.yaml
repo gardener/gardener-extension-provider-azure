@@ -1,0 +1,79 @@
+apiVersion: fluentbit.fluent.io/v1alpha2
+kind: ClusterFilter
+metadata:
+  labels:
+    fluentbit.gardener/type: "seed"
+  name: cloud-controller-manager-azure-cloud-controller-manager
+spec:
+  filters:
+  - parser:
+      keyName: log
+      parser: kube-apiserver-parser
+      reserveData: true
+  match: kubernetes.*cloud-controller-manager*azure-cloud-controller-manager*
+---
+apiVersion: fluentbit.fluent.io/v1alpha2
+kind: ClusterFilter
+metadata:
+  labels:
+    fluentbit.gardener/type: "seed"
+  name: machine-controller-manager-azure
+spec:
+  filters:
+  - parser:
+      keyName: log
+      parser: kube-apiserver-parser
+      reserveData: true
+  match: kubernetes.*machine-controller-manager*azure*
+---
+apiVersion: fluentbit.fluent.io/v1alpha2
+kind: ClusterFilter
+metadata:
+  labels:
+    fluentbit.gardener/type: "seed"
+  name: csi-driver-controller-azure-csi
+spec:
+  filters:
+  - parser:
+      keyName: log
+      parser: kube-apiserver-parser
+      reserveData: true
+  match: kubernetes.*csi-driver-controller*azure-csi*
+---
+apiVersion: fluentbit.fluent.io/v1alpha2
+kind: ClusterFilter
+metadata:
+  labels:
+    fluentbit.gardener/type: "seed"
+  name: csi-snapshot-azure-csi
+spec:
+  filters:
+  - parser:
+      keyName: log
+      parser: kube-apiserver-parser
+      reserveData: true
+  match: kubernetes.*csi-snapshot*azure-csi*
+---
+apiVersion: fluentbit.fluent.io/v1alpha2
+kind: ClusterFilter
+metadata:
+  labels:
+    fluentbit.gardener/type: "seed"
+  name: modify-provider-azure
+spec:
+  filters:
+  - modify:
+      conditions:
+        - keyValueMatches:
+            tag: ^kubernetes\.var\.log\.containers\.(cloud-controller-manager-.+?_.+?_azure-cloud-controller-manager|csi-driver-controller-.+?_.+?_azure-csi)
+      rules:
+        - add:
+            __gardener_multitenant_id__: operator;user
+  - modify:
+      conditions:
+        - keyValueMatches:
+            tag: ^kubernetes\.var\.log\.containers\.machine-controller-manager-.+?_.+?_(machine-controller-manager-provider-azure|azure-machine-controller-manager)
+      rules:
+        - add:
+            __gardener_multitenant_id__: operator;user
+  match:  kubernetes.*
