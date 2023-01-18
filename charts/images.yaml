@@ -195,7 +195,7 @@ images:
 - name: csi-driver-disk
   sourceRepository: github.com/kubernetes-sigs/azuredisk-csi-driver
   repository: mcr.microsoft.com/k8s/csi/azuredisk-csi
-  tag: "v1.22.0"
+  tag: "v1.25.0"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
     value:
