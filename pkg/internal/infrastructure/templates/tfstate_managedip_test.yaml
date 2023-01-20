@@ -1,0 +1,293 @@
+apiVersion: v1
+data:
+  terraform.tfstate: |
+    {
+      "resources": [
+        {
+          "mode": "data",
+          "type": "azurerm_public_ip",
+          "name": "nat-z2-ip-user-provided-0",
+          "provider": "provider[\"registry.terraform.io/hashicorp/azurerm\"]",
+          "instances": [
+            {
+              "schema_version": 0,
+              "attributes": {
+                "id": "/subscriptions/id/resourceGroups/shoot--userid--test-5/providers/Microsoft.Network/publicIPAddresses/shoot--userid--test-5-nat-gateway-z2-ip",
+                "ip_address": "4.231.44.154",
+                "ip_version": "IPv4",
+                "location": "westeurope",
+                "name": "shoot--userid--test-5-nat-gateway-z2-ip",
+                "resource_group_name": "shoot--userid--test-5",
+                "zones": [
+                  "2"
+                ]
+              },
+              "sensitive_attributes": []
+            }
+          ]
+        },
+        {
+          "mode": "data",
+          "type": "azurerm_public_ip",
+          "name": "nat-z2-ip-user-provided-1",
+          "provider": "provider[\"registry.terraform.io/hashicorp/azurerm\"]",
+          "instances": [
+            {
+              "schema_version": 0,
+              "attributes": {
+                "id": "/subscriptions/id/resourceGroups/shoot--userid--test-5/providers/Microsoft.Network/publicIPAddresses/shoot--userid--test-5-nat-gateway-z22-ip",
+                "ip_address": "4.231.44.155",
+                "ip_version": "IPv4",
+                "location": "westeurope",
+                "name": "shoot--userid--test-5-nat-gateway-z22-ip",
+                "resource_group_name": "shoot--userid--test-5",
+                "zones": [
+                  "2"
+                ]
+              },
+              "sensitive_attributes": []
+            }
+          ]
+        },
+        {
+          "mode": "managed",
+          "type": "azurerm_nat_gateway",
+          "name": "nat-z1",
+          "provider": "provider[\"registry.terraform.io/hashicorp/azurerm\"]",
+          "instances": [
+            {
+              "schema_version": 0,
+              "attributes": {
+                "id": "/subscriptions/id/resourceGroups/shoot--core--userid-multinat/providers/Microsoft.Network/natGateways/shoot--core--userid-multinat-nat-gateway-z1",
+                "location": "westeurope",
+                "name": "shoot--core--userid-multinat-nat-gateway-z1",
+                "public_ip_address_ids": [],
+                "resource_group_name": "shoot--core--userid-multinat",
+                "zones": [
+                  "1"
+                ]
+              },
+              "dependencies": [
+                "azurerm_resource_group.rg"
+              ]
+            }
+          ]
+        },
+        {
+          "mode": "managed",
+          "type": "azurerm_nat_gateway",
+          "name": "nat-z2",
+          "provider": "provider[\"registry.terraform.io/hashicorp/azurerm\"]",
+          "instances": [
+            {
+              "schema_version": 0,
+              "attributes": {
+                "id": "/subscriptions/id/resourceGroups/shoot--core--userid-multinat/providers/Microsoft.Network/natGateways/shoot--core--userid-multinat-nat-gateway-z2",
+                "location": "westeurope",
+                "name": "shoot--core--userid-multinat-nat-gateway-z2",
+                "resource_group_name": "shoot--core--userid-multinat",
+                "zones": [
+                  "2"
+                ]
+              },
+              "dependencies": [
+                "azurerm_resource_group.rg"
+              ]
+            }
+          ]
+        },
+        {
+          "mode": "managed",
+          "type": "azurerm_nat_gateway_public_ip_association",
+          "name": "nat-z1-ip-association",
+          "provider": "provider[\"registry.terraform.io/hashicorp/azurerm\"]",
+          "instances": [
+            {
+              "schema_version": 0,
+              "attributes": {
+                "id": "/subscriptions/id/resourceGroups/shoot--core--userid-multinat/providers/Microsoft.Network/natGateways/shoot--core--userid-multinat-nat-gateway-z1|/subscriptions/id/resourceGroups/shoot--core--userid-multinat/providers/Microsoft.Network/publicIPAddresses/shoot--core--userid-multinat-nat-gateway-z1-ip",
+                "nat_gateway_id": "/subscriptions/id/resourceGroups/shoot--core--userid-multinat/providers/Microsoft.Network/natGateways/shoot--core--userid-multinat-nat-gateway-z1",
+                "public_ip_address_id": "/subscriptions/id/resourceGroups/shoot--core--userid-multinat/providers/Microsoft.Network/publicIPAddresses/shoot--core--userid-multinat-nat-gateway-z1-ip",
+                "timeouts": null
+              },
+              "dependencies": [
+                "azurerm_nat_gateway.nat-z1",
+                "azurerm_public_ip.nat-z1-ip",
+                "azurerm_resource_group.rg"
+              ]
+            }
+          ]
+        },
+        {
+          "mode": "managed",
+          "type": "azurerm_nat_gateway_public_ip_association",
+          "name": "nat-z2-ip-user-provided-association-0",
+          "provider": "provider[\"registry.terraform.io/hashicorp/azurerm\"]",
+          "instances": [
+            {
+              "schema_version": 0,
+              "attributes": {
+                "id": "/subscriptions/id/resourceGroups/shoot--core--userid-multinat/providers/Microsoft.Network/natGateways/shoot--core--userid-multinat-nat-gateway-z2|/subscriptions/id/resourceGroups/shoot--userid--test-5/providers/Microsoft.Network/publicIPAddresses/shoot--userid--test-5-nat-gateway-z2-ip",
+                "nat_gateway_id": "/subscriptions/id/resourceGroups/shoot--core--userid-multinat/providers/Microsoft.Network/natGateways/shoot--core--userid-multinat-nat-gateway-z2",
+                "public_ip_address_id": "/subscriptions/id/resourceGroups/shoot--userid--test-5/providers/Microsoft.Network/publicIPAddresses/shoot--userid--test-5-nat-gateway-z2-ip",
+                "timeouts": null
+              },
+              "dependencies": [
+                "azurerm_nat_gateway.nat-z2",
+                "azurerm_resource_group.rg",
+                "data.azurerm_public_ip.nat-z2-ip-user-provided-0"
+              ]
+            }
+          ]
+        },
+        {
+          "mode": "managed",
+          "type": "azurerm_nat_gateway_public_ip_association",
+          "name": "nat-z2-ip-user-provided-association-1",
+          "provider": "provider[\"registry.terraform.io/hashicorp/azurerm\"]",
+          "instances": [
+            {
+              "schema_version": 0,
+              "attributes": {
+                "id": "/subscriptions/id/resourceGroups/shoot--core--userid-multinat/providers/Microsoft.Network/natGateways/shoot--core--userid-multinat-nat-gateway-z2|/subscriptions/id/resourceGroups/shoot--userid--test-5/providers/Microsoft.Network/publicIPAddresses/shoot--userid--test-5-nat-gateway-z22-ip",
+                "nat_gateway_id": "/subscriptions/id/resourceGroups/shoot--core--userid-multinat/providers/Microsoft.Network/natGateways/shoot--core--userid-multinat-nat-gateway-z2",
+                "public_ip_address_id": "/subscriptions/id/resourceGroups/shoot--userid--test-5/providers/Microsoft.Network/publicIPAddresses/shoot--userid--test-5-nat-gateway-z22-ip",
+                "timeouts": null
+              },
+              "dependencies": [
+                "azurerm_nat_gateway.nat-z2",
+                "azurerm_resource_group.rg",
+                "data.azurerm_public_ip.nat-z2-ip-user-provided-0",
+                "data.azurerm_public_ip.nat-z2-ip-user-provided-1"
+              ]
+            }
+          ]
+        },
+        {
+          "mode": "managed",
+          "type": "azurerm_public_ip",
+          "name": "nat-z1-ip",
+          "provider": "provider[\"registry.terraform.io/hashicorp/azurerm\"]",
+          "instances": [
+            {
+              "schema_version": 0,
+              "attributes": {
+                "allocation_method": "Static",
+                "availability_zone": "1",
+                "id": "/subscriptions/id/resourceGroups/shoot--core--userid-multinat/providers/Microsoft.Network/publicIPAddresses/shoot--core--userid-multinat-nat-gateway-z1-ip",
+                "ip_address": "20.56.212.44",
+                "location": "westeurope",
+                "name": "shoot--core--userid-multinat-nat-gateway-z1-ip",
+                "resource_group_name": "shoot--core--userid-multinat",
+                "zones": [
+                  "1"
+                ]
+              },
+              "dependencies": [
+                "azurerm_resource_group.rg"
+              ]
+            }
+          ]
+        },
+        {
+          "mode": "managed",
+          "type": "azurerm_subnet",
+          "name": "workers-z1",
+          "provider": "provider[\"registry.terraform.io/hashicorp/azurerm\"]",
+          "instances": [
+            {
+              "schema_version": 0,
+              "attributes": {
+                "address_prefix": "10.51.2.0/24",
+                "address_prefixes": [
+                  "10.51.2.0/24"
+                ],
+                "id": "/subscriptions/id/resourceGroups/shoot--core--userid-multinat/providers/Microsoft.Network/virtualNetworks/shoot--core--userid-multinat/subnets/shoot--core--userid-multinat-nodes-z1",
+                "name": "shoot--core--userid-multinat-nodes-z1",
+                "resource_group_name": "shoot--core--userid-multinat",
+                "virtual_network_name": "shoot--core--userid-multinat"
+              },
+              "dependencies": [
+                "azurerm_resource_group.rg",
+                "azurerm_virtual_network.vnet"
+              ]
+            }
+          ]
+        },
+        {
+          "mode": "managed",
+          "type": "azurerm_subnet",
+          "name": "workers-z2",
+          "provider": "provider[\"registry.terraform.io/hashicorp/azurerm\"]",
+          "instances": [
+            {
+              "schema_version": 0,
+              "attributes": {
+                "address_prefix": "10.51.1.0/24",
+                "address_prefixes": [
+                  "10.51.1.0/24"
+                ],
+                "delegation": [],
+                "id": "/subscriptions/id/resourceGroups/shoot--core--userid-multinat/providers/Microsoft.Network/virtualNetworks/shoot--core--userid-multinat/subnets/shoot--core--userid-multinat-nodes-z2",
+                "name": "shoot--core--userid-multinat-nodes-z2",
+                "resource_group_name": "shoot--core--userid-multinat",
+                "virtual_network_name": "shoot--core--userid-multinat"
+              },
+              "sensitive_attributes": [],
+              "private": "privateKey=",
+              "dependencies": [
+                "azurerm_resource_group.rg",
+                "azurerm_virtual_network.vnet"
+              ]
+            }
+          ]
+        },
+        {
+          "mode": "managed",
+          "type": "azurerm_subnet_nat_gateway_association",
+          "name": "nat-z1-worker-subnet-association",
+          "provider": "provider[\"registry.terraform.io/hashicorp/azurerm\"]",
+          "instances": [
+            {
+              "schema_version": 0,
+              "attributes": {
+                "id": "/subscriptions/id/resourceGroups/shoot--core--userid-multinat/providers/Microsoft.Network/virtualNetworks/shoot--core--userid-multinat/subnets/shoot--core--userid-multinat-nodes-z1",
+                "nat_gateway_id": "/subscriptions/id/resourceGroups/shoot--core--userid-multinat/providers/Microsoft.Network/natGateways/shoot--core--userid-multinat-nat-gateway-z1",
+                "subnet_id": "/subscriptions/id/resourceGroups/shoot--core--userid-multinat/providers/Microsoft.Network/virtualNetworks/shoot--core--userid-multinat/subnets/shoot--core--userid-multinat-nodes-z1",
+                "timeouts": null
+              },
+              "dependencies": [
+                "azurerm_nat_gateway.nat-z1",
+                "azurerm_resource_group.rg",
+                "azurerm_subnet.workers-z1",
+                "azurerm_virtual_network.vnet"
+              ]
+            }
+          ]
+        },
+        {
+          "mode": "managed",
+          "type": "azurerm_subnet_nat_gateway_association",
+          "name": "nat-z2-worker-subnet-association",
+          "provider": "provider[\"registry.terraform.io/hashicorp/azurerm\"]",
+          "instances": [
+            {
+              "schema_version": 0,
+              "attributes": {
+                "id": "/subscriptions/id/resourceGroups/shoot--core--userid-multinat/providers/Microsoft.Network/virtualNetworks/shoot--core--userid-multinat/subnets/shoot--core--userid-multinat-nodes-z2",
+                "nat_gateway_id": "/subscriptions/id/resourceGroups/shoot--core--userid-multinat/providers/Microsoft.Network/natGateways/shoot--core--userid-multinat-nat-gateway-z2",
+                "subnet_id": "/subscriptions/id/resourceGroups/shoot--core--userid-multinat/providers/Microsoft.Network/virtualNetworks/shoot--core--userid-multinat/subnets/shoot--core--userid-multinat-nodes-z2",
+                "timeouts": null
+              },
+              "dependencies": [
+                "azurerm_nat_gateway.nat-z2",
+                "azurerm_resource_group.rg",
+                "azurerm_subnet.workers-z2",
+                "azurerm_virtual_network.vnet"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+kind: ConfigMap
