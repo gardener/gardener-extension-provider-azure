@@ -1075,6 +1075,46 @@ int32
 </tr>
 </tbody>
 </table>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.NatGatewayStatus">NatGatewayStatus
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.Subnet">Subnet</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>Name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name is the name of the NAT gateway.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>IPs</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>IPs are the public ip addresses of the NAT gateway.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.NetworkConfig">NetworkConfig
 </h3>
 <p>
@@ -1473,13 +1513,16 @@ Only the subnet that was used prior to the migration should have this attribute 
 </tr>
 <tr>
 <td>
-<code>NatGatewayName</code></br>
+<code>NatGatewayStatus</code></br>
 <em>
-string
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.NatGatewayStatus">
+NatGatewayStatus
+</a>
 </em>
 </td>
 <td>
-<p>NatGatewayName is enabled</p>
+<em>(Optional)</em>
+<p>NatGatewayStatus specifies the status of the NAT gateway associated with this subnet. If nil, no NAT gateway is used.</p>
 </td>
 </tr>
 </tbody>
