@@ -15,7 +15,6 @@
 package infrastructure
 
 import (
-	"context"
 	"encoding/json"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
@@ -34,28 +33,42 @@ import (
 
 var _ = Describe("Terraform state extraction", func() {
 	Context("2 NAT enabled zones where one provides external IP addresses", func() {
-		var res map[string]apiv1alpha1.NatGatewayStatus
+		tfsubs := []terraformSubnet{
+			{
+				name: "shoot--core--userid-multinat-nodes-z1",
+			},
+			{
+				name: "shoot--core--userid-multinat-nodes-z2",
+			},
+		}
 		BeforeEach(func() {
 			rawState, err := readTfRawStateFromFile("templates/tfstate_managedip_test.yaml")
 			Expect(err).NotTo(HaveOccurred())
-			res, err = extractNatGatewayStatusForSubnets(context.Background(), &rawState)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(enrichSubnetsWithNatGatewayStatus(&rawState, tfsubs)).To(Succeed())
 		})
 		It("should get the name and IP for a zoned NAT without provided IP addresses", func() {
-			subnetName := "shoot--core--userid-multinat-nodes-z1"
-			natGateway := res[subnetName]
-			Expect(natGateway.Name).To(Equal("shoot--core--userid-multinat-nat-gateway-z1"))
-			Expect(natGateway.IPs[0]).To(Equal("20.56.212.44"))
+			subnet1 := getSubnetByName(tfsubs, "shoot--core--userid-multinat-nodes-z1")
+			Expect(subnet1.nat.Name).To(Equal("shoot--core--userid-multinat-nat-gateway-z1"))
+			Expect(subnet1.nat.IPs).To(ContainElement("20.56.212.44"))
 		})
 		It("should get the name and IP for a zoned NAT with multiple provided IP addresses", func() {
-			subnetName := "shoot--core--userid-multinat-nodes-z2"
-			natGateway := res[subnetName]
-			Expect(natGateway.Name).To(Equal("shoot--core--userid-multinat-nat-gateway-z2"))
-			Expect(natGateway.IPs[0]).To(Equal("4.231.44.154"))
-			Expect(natGateway.IPs[1]).To(Equal("4.231.44.155"))
+			subnet2 := getSubnetByName(tfsubs, "shoot--core--userid-multinat-nodes-z2")
+			Expect(subnet2.nat.Name).To(Equal("shoot--core--userid-multinat-nat-gateway-z2"))
+			Expect(subnet2.nat.IPs).To(ContainElement("4.231.44.154"))
+			Expect(subnet2.nat.IPs).To(ContainElement("4.231.44.155"))
 		})
+
 	})
 })
+
+func getSubnetByName(subnets []terraformSubnet, name string) *terraformSubnet {
+	for _, subnet := range subnets {
+		if subnet.name == name {
+			return &subnet
+		}
+	}
+	return nil
+}
 
 var _ = Describe("Terraform", func() {
 	var (

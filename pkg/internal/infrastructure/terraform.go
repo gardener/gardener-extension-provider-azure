@@ -22,17 +22,16 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gardener/gardener/extensions/pkg/controller"
-	"github.com/gardener/gardener/extensions/pkg/terraformer"
-	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
-
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow/shared"
+	"github.com/gardener/gardener/extensions/pkg/controller"
+	"github.com/gardener/gardener/extensions/pkg/terraformer"
+	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/pointer"
 )
 
 const (
@@ -456,28 +455,35 @@ func ExtractTerraformState(ctx context.Context, tf terraformer.Terraformer, infr
 	}
 
 	tfState.Subnets = computeInfrastructureSubnets(infra, vars)
-	err = enrichSubnetsWithNatGatewayStatus(ctx, tf, &tfState)
+	rawState, err := tf.GetRawState(ctx)
+	if err != nil {
+		return &tfState, err
+	}
+	err = enrichSubnetsWithNatGatewayStatus(rawState, tfState.Subnets)
 	return &tfState, err
 }
 
-func enrichSubnetsWithNatGatewayStatus(ctx context.Context, tf terraformer.Terraformer, tfState *TerraformState) error {
-	rawState, err := tf.GetRawState(ctx)
+func enrichSubnetsWithNatGatewayStatus(rawState *terraformer.RawState, tfSubnets []terraformSubnet) error {
+	subnetInfos, err := extractNatGatewayStatusForSubnets(rawState)
 	if err != nil {
 		return err
 	}
-	subnetInfos, err := extractNatGatewayStatusForSubnets(ctx, rawState)
-	if err != nil {
-		return err
-	}
-	for subnet, info := range subnetInfos {
-		for i := range tfState.Subnets {
-			if tfState.Subnets[i].name == subnet {
-				fmt.Println("enriching subnet with nat gateway info: ", subnet, info)
-				tfState.Subnets[i].nat = &info
+	assignNatGatewayStatusToSubnet(tfSubnets, subnetInfos)
+	return nil
+}
+
+func assignNatGatewayStatusToSubnet(tfSubnets []terraformSubnet, subnetInfos map[string]apiv1alpha1.NatGatewayStatus) {
+	for i := range tfSubnets {
+		for subnet, natStatus := range subnetInfos {
+			if tfSubnets[i].name == subnet {
+				tfSubnets[i].nat = Ptr(natStatus)
 			}
 		}
 	}
-	return nil
+}
+
+func Ptr[T any](v T) *T {
+	return &v
 }
 
 func setNatGatewayConfigForSubnets(tfstate *TerraformState, infraState *apiv1alpha1.InfrastructureStatus) {
@@ -485,7 +491,6 @@ func setNatGatewayConfigForSubnets(tfstate *TerraformState, infraState *apiv1alp
 		subnet := &tfstate.Subnets[i]
 		for j := range infraState.Networks.Subnets {
 			if subnet.name == infraState.Networks.Subnets[j].Name {
-				fmt.Println(subnet.name)
 				infraState.Networks.Subnets[j].NatGatewayStatus = subnet.nat
 			}
 		}
@@ -508,7 +513,7 @@ func ComputeStatus(ctx context.Context, tf terraformer.Terraformer, infra *exten
 	return status, nil
 }
 
-func extractNatGatewayStatusForSubnets(ctx context.Context, rawState *terraformer.RawState) (map[string]apiv1alpha1.NatGatewayStatus, error) {
+func extractNatGatewayStatusForSubnets(rawState *terraformer.RawState) (map[string]apiv1alpha1.NatGatewayStatus, error) {
 	subnetInfos := make(map[string]apiv1alpha1.NatGatewayStatus)
 	if rawState != nil {
 		state, err := shared.UnmarshalTerraformStateFromTerraformer(rawState)
