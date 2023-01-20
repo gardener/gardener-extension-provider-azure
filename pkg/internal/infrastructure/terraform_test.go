@@ -600,7 +600,15 @@ var _ = Describe("Terraform", func() {
 				ResourceGroupName:   resourceGroupName,
 			}
 		})
-
+		It("should correctly assign the NAT Gateway status from the tfState", func() {
+			natStatus := &apiv1alpha1.NatGatewayStatus{
+				Name: "nat-gateway-name",
+				IPs:  []string{"1.1.1.1"},
+			}
+			state.Subnets[0].nat = natStatus
+			status := StatusFromTerraformState(cluster, config, state)
+			Expect(status.Networks.Subnets[0].NatGatewayStatus).To(Equal(natStatus))
+		})
 		It("should correctly compute the status for zoned cluster", func() {
 			config.Zoned = true
 			status := StatusFromTerraformState(cluster, config, state)
