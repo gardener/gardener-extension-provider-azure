@@ -274,21 +274,6 @@ func computeNetworkConfigMultipleSubnetLayout(infra *extensionsv1alpha1.Infrastr
 	return networkCfg, nil
 }
 
-func getSubnetsNatGatewayValues(config *api.InfrastructureConfig) []map[string]interface{} {
-	var (
-		subnets []map[string]interface{}
-	)
-
-	for _, zone := range config.Networks.Zones {
-		if zone.NatGateway == nil {
-			continue
-		} else {
-			subnets = append(subnets, generateZonedNatGatewayValues(zone.NatGateway, zone.Name))
-		}
-	}
-	return subnets
-}
-
 func generateNatGatewayValues(nat *api.NatGatewayConfig) (map[string]interface{}, error) {
 	natGatewayConfig := map[string]interface{}{
 		"enabled": false,
@@ -486,7 +471,7 @@ func Ptr[T any](v T) *T {
 	return &v
 }
 
-func setNatGatewayConfigForSubnets(tfstate *TerraformState, infraState *apiv1alpha1.InfrastructureStatus) {
+func setNatGatewayStatusInInfraStatus(tfstate *TerraformState, infraState *apiv1alpha1.InfrastructureStatus) {
 	for i := range tfstate.Subnets {
 		subnet := &tfstate.Subnets[i]
 		for j := range infraState.Networks.Subnets {
@@ -619,7 +604,7 @@ func StatusFromTerraformState(cluster *controller.Cluster, config *api.Infrastru
 			Purpose:            apiv1alpha1.PurposeNodes,
 		})
 	}
-	setNatGatewayConfigForSubnets(tfState, infraState)
+	setNatGatewayStatusInInfraStatus(tfState, infraState)
 	return infraState
 }
 
