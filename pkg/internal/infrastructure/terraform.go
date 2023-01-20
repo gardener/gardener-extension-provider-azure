@@ -492,14 +492,6 @@ func setNatGatewayConfigForSubnets(tfstate *TerraformState, infraState *apiv1alp
 	}
 }
 
-func getNatGatewayName(clusterName string, subnet apiv1alpha1.Subnet) string {
-	name := fmt.Sprintf("%s-nat-gateway", clusterName)
-	if !subnet.Migrated {
-		name = fmt.Sprintf("%s-z%s", name, subnet.Name)
-	}
-	return name
-}
-
 // ComputeStatus computes the status based on the Terraformer and the given InfrastructureConfig.
 func ComputeStatus(ctx context.Context, tf terraformer.Terraformer, infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig, cluster *controller.Cluster) (*apiv1alpha1.InfrastructureStatus, error) {
 	state, err := ExtractTerraformState(ctx, tf, infra, config, cluster)

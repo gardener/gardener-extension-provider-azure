@@ -17,18 +17,12 @@ package infrastructure
 import (
 	"context"
 	"encoding/json"
-	"os"
-	"testing"
-	"time"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	"gopkg.in/yaml.v2"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
-	"github.com/gardener/gardener/extensions/pkg/terraformer"
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -38,120 +32,25 @@ import (
 	"k8s.io/utils/pointer"
 )
 
-func TestNatGatewayName(t *testing.T) {
-	if getNatGatewayName("cluster", apiv1alpha1.Subnet{Name: "1", Migrated: false}) != "cluster-nat-gateway-z1" {
-		t.Fatal("unexpected nat gateway name")
-	}
-	res := getNatGatewayName("cluster", apiv1alpha1.Subnet{Name: "1", Migrated: true})
-	if res != "cluster-nat-gateway" {
-		t.Fatal("unexpected nat gateway name " + res)
-	}
-}
-
-func makeCluster(pods, services string, region string, countFaultDomain, countUpdateDomain int32) *controller.Cluster {
-	var (
-		shoot = gardencorev1beta1.Shoot{
-			Spec: gardencorev1beta1.ShootSpec{
-				Networking: gardencorev1beta1.Networking{
-					Pods:     &pods,
-					Services: &services,
-				},
-			},
-		}
-		cloudProfileConfig = apiv1alpha1.CloudProfileConfig{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: apiv1alpha1.SchemeGroupVersion.String(),
-				Kind:       "CloudProfileConfig",
-			},
-			CountFaultDomains: []apiv1alpha1.DomainCount{
-				{Region: region, Count: countFaultDomain},
-			},
-			CountUpdateDomains: []apiv1alpha1.DomainCount{
-				{Region: region, Count: countUpdateDomain},
-			},
-		}
-		cloudProfileConfigJSON, _ = json.Marshal(cloudProfileConfig)
-		cloudProfile              = gardencorev1beta1.CloudProfile{
-			Spec: gardencorev1beta1.CloudProfileSpec{
-				ProviderConfig: &runtime.RawExtension{
-					Raw: cloudProfileConfigJSON,
-				},
-			},
-		}
-	)
-
-	return &controller.Cluster{
-		Shoot:        &shoot,
-		CloudProfile: &cloudProfile,
-	}
-}
-
-func getNamedCluster(name string) *controller.Cluster {
-	return &controller.Cluster{ObjectMeta: metav1.ObjectMeta{Name: name}}
-}
-
-type cmYaml struct {
-	APIVersion string `yaml:"apiVersion"`
-	Data       struct {
-		TerraformTfstate string `yaml:"terraform.tfstate"`
-	} `yaml:"data"`
-	Kind     string `yaml:"kind"`
-	Metadata struct {
-		CreationTimestamp time.Time `yaml:"creationTimestamp"`
-		Finalizers        []string  `yaml:"finalizers"`
-		Name              string    `yaml:"name"`
-		Namespace         string    `yaml:"namespace"`
-		OwnerReferences   []struct {
-			APIVersion         string `yaml:"apiVersion"`
-			BlockOwnerDeletion bool   `yaml:"blockOwnerDeletion"`
-			Controller         bool   `yaml:"controller"`
-			Kind               string `yaml:"kind"`
-			Name               string `yaml:"name"`
-			UID                string `yaml:"uid"`
-		} `yaml:"ownerReferences"`
-		ResourceVersion string `yaml:"resourceVersion"`
-		UID             string `yaml:"uid"`
-	} `yaml:"metadata"`
-}
-
-func readTfRawStateFromFile(yamlFile string) (terraformer.RawState, error) {
-	bytes, err := os.ReadFile(yamlFile)
-	if err != nil {
-		return terraformer.RawState{}, err
-	}
-
-	cfg := cmYaml{}
-	err = yaml.Unmarshal(bytes, &cfg)
-	if err != nil {
-		return terraformer.RawState{}, err
-	}
-	rawState := terraformer.RawState{
-		Data:     cfg.Data.TerraformTfstate,
-		Encoding: terraformer.NoneEncoding,
-	}
-	return rawState, err
-}
-
 var _ = Describe("Terraform state extraction", func() {
-	It("should get the NATGateway information for a single subnet", func() {
-		rawState, err := readTfRawStateFromFile("templates/tfstate_test.yaml")
-		Expect(err).NotTo(HaveOccurred())
-		res, err := extractNatGatewayInfoForSubnets(context.Background(), &rawState)
-		Expect(err).NotTo(HaveOccurred())
-		subnetName := "shoot--core--user-soot-nodes"
-		subnet := res[subnetName]
-		Expect(subnet.Name).To(Equal("shoot--core--user-soot-nat-gateway"))
-		Expect(subnet.IPs[0]).To(Equal("20.103.139.67"))
-	})
-	It("should get the NATGateway information for all subnets including those with managed IP", func() {
+	Context("get the NAT Gateway status for all subnets", func() {
 		rawState, err := readTfRawStateFromFile("templates/tfstate_managedip_test.yaml")
 		Expect(err).NotTo(HaveOccurred())
 		res, err := extractNatGatewayInfoForSubnets(context.Background(), &rawState)
 		Expect(err).NotTo(HaveOccurred())
-		subnetName := "shoot--core--userid-multinat-nodes-z2"
-		natGateway := res[subnetName]
-		Expect(natGateway.Name).To(Equal("shoot--core--userid-multinat-nat-gateway-z2"))
-		Expect(natGateway.IPs[0]).To(Equal("4.231.44.154"))
+		It("should get the name and IP for a zoned NAT without provided IP addresses", func() {
+			subnetName := "shoot--core--userid-multinat-nodes-z1"
+			natGateway := res[subnetName]
+			Expect(natGateway.Name).To(Equal("shoot--core--userid-multinat-nat-gateway-z1"))
+			Expect(natGateway.IPs[0]).To(Equal("20.56.212.44"))
+		})
+		It("should get the name and IP for a zoned NAT with provided IP addresses", func() {
+			subnetName := "shoot--core--userid-multinat-nodes-z2"
+			natGateway := res[subnetName]
+			Expect(natGateway.Name).To(Equal("shoot--core--userid-multinat-nat-gateway-z2"))
+			Expect(natGateway.IPs[0]).To(Equal("4.231.44.154"))
+		})
+
 	})
 })
 
