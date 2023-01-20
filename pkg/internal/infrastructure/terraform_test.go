@@ -33,24 +33,27 @@ import (
 )
 
 var _ = Describe("Terraform state extraction", func() {
-	Context("get the NAT Gateway status for all subnets", func() {
-		rawState, err := readTfRawStateFromFile("templates/tfstate_managedip_test.yaml")
-		Expect(err).NotTo(HaveOccurred())
-		res, err := extractNatGatewayInfoForSubnets(context.Background(), &rawState)
-		Expect(err).NotTo(HaveOccurred())
+	Context("2 NAT enabled zones where one provides external IP addresses", func() {
+		var res map[string]apiv1alpha1.NatGatewayStatus
+		BeforeEach(func() {
+			rawState, err := readTfRawStateFromFile("templates/tfstate_managedip_test.yaml")
+			Expect(err).NotTo(HaveOccurred())
+			res, err = extractNatGatewayStatusForSubnets(context.Background(), &rawState)
+			Expect(err).NotTo(HaveOccurred())
+		})
 		It("should get the name and IP for a zoned NAT without provided IP addresses", func() {
 			subnetName := "shoot--core--userid-multinat-nodes-z1"
 			natGateway := res[subnetName]
 			Expect(natGateway.Name).To(Equal("shoot--core--userid-multinat-nat-gateway-z1"))
 			Expect(natGateway.IPs[0]).To(Equal("20.56.212.44"))
 		})
-		It("should get the name and IP for a zoned NAT with provided IP addresses", func() {
+		It("should get the name and IP for a zoned NAT with multiple provided IP addresses", func() {
 			subnetName := "shoot--core--userid-multinat-nodes-z2"
 			natGateway := res[subnetName]
 			Expect(natGateway.Name).To(Equal("shoot--core--userid-multinat-nat-gateway-z2"))
 			Expect(natGateway.IPs[0]).To(Equal("4.231.44.154"))
+			Expect(natGateway.IPs[1]).To(Equal("4.231.44.155"))
 		})
-
 	})
 })
 

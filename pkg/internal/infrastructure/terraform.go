@@ -465,7 +465,7 @@ func enrichSubnetsWithNatGatewayStatus(ctx context.Context, tf terraformer.Terra
 	if err != nil {
 		return err
 	}
-	subnetInfos, err := extractNatGatewayInfoForSubnets(ctx, rawState)
+	subnetInfos, err := extractNatGatewayStatusForSubnets(ctx, rawState)
 	if err != nil {
 		return err
 	}
@@ -508,7 +508,7 @@ func ComputeStatus(ctx context.Context, tf terraformer.Terraformer, infra *exten
 	return status, nil
 }
 
-func extractNatGatewayInfoForSubnets(ctx context.Context, rawState *terraformer.RawState) (map[string]apiv1alpha1.NatGatewayStatus, error) {
+func extractNatGatewayStatusForSubnets(ctx context.Context, rawState *terraformer.RawState) (map[string]apiv1alpha1.NatGatewayStatus, error) {
 	subnetInfos := make(map[string]apiv1alpha1.NatGatewayStatus)
 	if rawState != nil {
 		state, err := shared.UnmarshalTerraformStateFromTerraformer(rawState)
