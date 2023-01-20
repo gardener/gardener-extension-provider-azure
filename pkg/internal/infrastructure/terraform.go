@@ -461,13 +461,13 @@ func assignNatGatewayStatusToSubnet(tfSubnets []terraformSubnet, subnetInfos map
 	for i := range tfSubnets {
 		for subnet, natStatus := range subnetInfos {
 			if tfSubnets[i].name == subnet {
-				tfSubnets[i].nat = Ptr(natStatus)
+				tfSubnets[i].nat = ptr(natStatus)
 			}
 		}
 	}
 }
 
-func Ptr[T any](v T) *T {
+func ptr[T any](v T) *T {
 	return &v
 }
 
