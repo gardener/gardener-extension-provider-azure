@@ -325,7 +325,7 @@ func ensureKubeAPIServerVolumeMounts(c *corev1.Container, csiEnabled, csiMigrati
 	c.VolumeMounts = extensionswebhook.EnsureVolumeMountWithName(c.VolumeMounts, cloudProviderConfigVolumeMount)
 }
 
-func ensureKubeControllerManagerVolumeMounts(c *corev1.Container, version string, csiEnabled, csiMigrationComplete bool) {
+func ensureKubeControllerManagerVolumeMounts(c *corev1.Container, _ string, csiEnabled, csiMigrationComplete bool) {
 	if csiEnabled && csiMigrationComplete {
 		c.VolumeMounts = extensionswebhook.EnsureNoVolumeMountWithName(c.VolumeMounts, cloudProviderConfigVolumeMount.Name)
 		c.VolumeMounts = extensionswebhook.EnsureNoVolumeMountWithName(c.VolumeMounts, etcSSLVolumeMount.Name)
@@ -349,7 +349,7 @@ func ensureKubeAPIServerVolumes(ps *corev1.PodSpec, csiEnabled, csiMigrationComp
 	ps.Volumes = extensionswebhook.EnsureVolumeWithName(ps.Volumes, cloudProviderConfigVolume)
 }
 
-func ensureKubeControllerManagerVolumes(ps *corev1.PodSpec, version string, csiEnabled, csiMigrationComplete bool) {
+func ensureKubeControllerManagerVolumes(ps *corev1.PodSpec, _ string, csiEnabled, csiMigrationComplete bool) {
 	if csiEnabled && csiMigrationComplete {
 		ps.Volumes = extensionswebhook.EnsureNoVolumeWithName(ps.Volumes, cloudProviderConfigVolume.Name)
 		ps.Volumes = extensionswebhook.EnsureNoVolumeWithName(ps.Volumes, etcSSLVolume.Name)
@@ -527,7 +527,7 @@ func (e *ensurer) ensureAcrConfigFile(ctx context.Context, gctx gcontext.GardenC
 	// Add new ACR systemd file.
 	*files = append(*files, extensionsv1alpha1.File{
 		Path:        acrConfigPath,
-		Permissions: pointer.Int32Ptr(0644),
+		Permissions: pointer.Int32(0644),
 		Content: extensionsv1alpha1.FileContent{
 			Inline: fci,
 		},
