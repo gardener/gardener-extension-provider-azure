@@ -680,10 +680,22 @@ var _ = Describe("InfrastructureConfig validation", func() {
 		Context("vnet config update", func() {
 			It("should allow to resize the vnet cidr", func() {
 				newInfrastructureConfig := infrastructureConfig.DeepCopy()
-				newInfrastructureConfig.Networks.VNet.CIDR = pointer.StringPtr("10.250.3.0/22")
+				newInfrastructureConfig.Networks.VNet.CIDR = pointer.String("10.0.0.0/7")
 
 				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, providerPath)
-				Expect(errorList).Should(HaveLen(0))
+				Expect(errorList).Should(BeEmpty())
+			})
+
+			It("should forbid shrinking vnet cidr", func() {
+				newInfrastructureConfig := infrastructureConfig.DeepCopy()
+				newInfrastructureConfig.Networks.VNet.CIDR = pointer.String("10.0.0.0/9")
+
+				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, providerPath)
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.vnet.cidr"),
+					"Detail": Equal("VNet CIDR blocks can only be expanded"),
+				}))
 			})
 
 			It("should forbid to modify the external vnet config", func() {
