@@ -203,6 +203,12 @@ func validateVnetConfig(networkConfig *apisazure.NetworkConfig, resourceGroupCon
 	}
 
 	if isExternalVnetUsed(&networkConfig.VNet) {
+		if *networkConfig.VNet.Name == "" {
+			allErrs = append(allErrs, field.Required(vNetPath.Child("name"), "the vnet name must not be empty"))
+		}
+		if *networkConfig.VNet.ResourceGroup == "" {
+			allErrs = append(allErrs, field.Required(vNetPath.Child("resourceGroup"), "the vnet resource group must not be empty"))
+		}
 		if networkConfig.VNet.CIDR != nil {
 			allErrs = append(allErrs, field.Invalid(vNetPath.Child("cidr"), vnetConfig, "specifying a cidr for an existing vnet is not possible"))
 		}
