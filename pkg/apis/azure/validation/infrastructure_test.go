@@ -105,6 +105,26 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					}))
 			})
 
+			It("should forbid specifying a vnet resource group with empty name or resource group", func() {
+				infrastructureConfig.Networks.VNet = apisazure.VNet{
+					Name:          pointer.String(""),
+					ResourceGroup: pointer.String(""),
+				}
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
+
+				Expect(errorList).To(ConsistOfFields(
+					Fields{
+						"Type":   Equal(field.ErrorTypeRequired),
+						"Field":  Equal("networks.vnet.name"),
+						"Detail": Equal("the vnet name must not be empty"),
+					},
+					Fields{
+						"Type":   Equal(field.ErrorTypeRequired),
+						"Field":  Equal("networks.vnet.resourceGroup"),
+						"Detail": Equal("the vnet resource group must not be empty"),
+					}))
+			})
+
 			It("should forbid specifying existing vnet plus a vnet cidr", func() {
 				name := "existing-vnet"
 				vnetGroup := "existing-vnet-rg"
