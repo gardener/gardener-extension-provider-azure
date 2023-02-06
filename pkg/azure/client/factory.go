@@ -17,8 +17,6 @@ package client
 import (
 	"context"
 
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
-
 	azurecompute "github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	azuredns "github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-05-01/dns"
 	azurenetwork "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
@@ -26,6 +24,8 @@ import (
 	azurestorage "github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-04-01/storage"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
 // NewAzureClientFactory returns a new factory to produce clients for various Azure services.
