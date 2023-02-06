@@ -95,7 +95,7 @@ func ValidateWorkers(workers []core.Worker, infra *api.InfrastructureConfig, fld
 			continue
 		}
 
-		zones := sets.NewString()
+		zones := sets.New[string]()
 		for j, zone := range worker.Zones {
 			if zones.Has(zone) {
 				allErrs = append(allErrs, field.Invalid(path.Child("zones").Index(j), zone, "must only be specified once per worker group"))
@@ -105,7 +105,7 @@ func ValidateWorkers(workers []core.Worker, infra *api.InfrastructureConfig, fld
 		}
 
 		if !helper.IsUsingSingleSubnetLayout(infra) {
-			infraZones := sets.String{}
+			infraZones := sets.Set[string]{}
 			for _, zone := range infra.Networks.Zones {
 				infraZones.Insert(helper.InfrastructureZoneToString(zone.Name))
 			}
