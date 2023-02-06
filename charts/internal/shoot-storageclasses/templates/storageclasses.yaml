@@ -1,6 +1,6 @@
 {{- if not .Values.useLegacyProvisioner }}
 ---
-apiVersion: {{ include "storageclassversion" . }}
+apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: default
@@ -14,7 +14,7 @@ parameters:
 volumeBindingMode: WaitForFirstConsumer
 allowVolumeExpansion: true
 ---
-apiVersion: {{ include "storageclassversion" . }}
+apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: managed-standard-hdd
@@ -28,7 +28,7 @@ volumeBindingMode: WaitForFirstConsumer
 allowVolumeExpansion: true
 
 ---
-apiVersion: {{ include "storageclassversion" . }}
+apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: managed-standard-ssd
@@ -42,7 +42,7 @@ volumeBindingMode: WaitForFirstConsumer
 allowVolumeExpansion: true
 
 ---
-apiVersion: {{ include "storageclassversion" . }}
+apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: managed-premium-ssd
@@ -56,7 +56,7 @@ volumeBindingMode: WaitForFirstConsumer
 allowVolumeExpansion: true
 
 ---
-apiVersion: {{ include "storageclassversion" . }}
+apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: files

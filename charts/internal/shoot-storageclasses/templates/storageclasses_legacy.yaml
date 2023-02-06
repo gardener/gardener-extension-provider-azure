@@ -1,6 +1,6 @@
 {{- if .Values.useLegacyProvisioner }}
 ---
-apiVersion: {{ include "storageclassversion" . }}
+apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: default
@@ -15,7 +15,7 @@ parameters:
   kind: managed
 
 ---
-apiVersion: {{ include "storageclassversion" . }}
+apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: managed-standard-hdd
@@ -29,7 +29,7 @@ parameters:
   kind: managed
 
 ---
-apiVersion: {{ include "storageclassversion" . }}
+apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: managed-standard-ssd
@@ -43,7 +43,7 @@ parameters:
   kind: managed
 
 ---
-apiVersion: {{ include "storageclassversion" . }}
+apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: managed-premium-ssd
@@ -57,7 +57,7 @@ parameters:
   kind: managed
 
 ---
-apiVersion: {{ include "storageclassversion" . }}
+apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: files

@@ -521,7 +521,7 @@ var _ = Describe("ValuesProvider", func() {
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 				csiNode := utils.MergeMaps(csiNodeNotEnabled, map[string]interface{}{
 					"webhookConfig": map[string]interface{}{
-						"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+						"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 						"caBundle": "",
 					},
 					"pspDisabled": false,
@@ -544,7 +544,7 @@ var _ = Describe("ValuesProvider", func() {
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 				csiNode := utils.MergeMaps(csiNodeNotEnabled, map[string]interface{}{
 					"webhookConfig": map[string]interface{}{
-						"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+						"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 						"caBundle": "",
 					},
 					"pspDisabled": false,
@@ -585,7 +585,7 @@ var _ = Describe("ValuesProvider", func() {
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 				csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
 					"webhookConfig": map[string]interface{}{
-						"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+						"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 						"caBundle": "",
 					},
 					"pspDisabled": false,
@@ -608,7 +608,7 @@ var _ = Describe("ValuesProvider", func() {
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 				csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
 					"webhookConfig": map[string]interface{}{
-						"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+						"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 						"caBundle": "",
 					},
 					"pspDisabled": false,
@@ -631,7 +631,7 @@ var _ = Describe("ValuesProvider", func() {
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 				csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
 					"webhookConfig": map[string]interface{}{
-						"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+						"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 						"caBundle": "",
 					},
 					"pspDisabled": false,
@@ -660,7 +660,7 @@ var _ = Describe("ValuesProvider", func() {
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 				csiNode := utils.MergeMaps(csiNodeNotEnabled, map[string]interface{}{
 					"webhookConfig": map[string]interface{}{
-						"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+						"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 						"caBundle": "",
 					},
 					"pspDisabled": false,
@@ -683,7 +683,7 @@ var _ = Describe("ValuesProvider", func() {
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 				csiNode := utils.MergeMaps(csiNodeNotEnabled, map[string]interface{}{
 					"webhookConfig": map[string]interface{}{
-						"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+						"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 						"caBundle": "",
 					},
 					"pspDisabled": false,
@@ -713,7 +713,7 @@ var _ = Describe("ValuesProvider", func() {
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 				csiNode := utils.MergeMaps(csiNodeNotEnabled, map[string]interface{}{
 					"webhookConfig": map[string]interface{}{
-						"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+						"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 						"caBundle": "",
 					},
 					"pspDisabled": false,
@@ -742,7 +742,7 @@ var _ = Describe("ValuesProvider", func() {
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 				csiNode := utils.MergeMaps(csiNodeNotEnabled, map[string]interface{}{
 					"webhookConfig": map[string]interface{}{
-						"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+						"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 						"caBundle": "",
 					},
 					"pspDisabled": true,
