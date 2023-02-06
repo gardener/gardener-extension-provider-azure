@@ -71,13 +71,19 @@ func (a *actuator) Delete(ctx context.Context, _ logr.Logger, backupBucket *exte
 
 	var factory = azureclient.NewAzureClientFactory(a.client)
 
-	// Get a storage account client to delete the backup container in the storage account.
-	storageClient, err := factory.Storage(ctx, *backupBucket.Status.GeneratedSecretRef)
+	secret, err := a.getBackupBucketGeneratedSecret(ctx, backupBucket)
 	if err != nil {
 		return err
 	}
-	if err := storageClient.DeleteContainerIfExists(ctx, backupBucket.Name); err != nil {
-		return err
+	if secret != nil {
+		// Get a storage account client to delete the backup container in the storage account.
+		storageClient, err := factory.Storage(ctx, *backupBucket.Status.GeneratedSecretRef)
+		if err != nil {
+			return err
+		}
+		if err := storageClient.DeleteContainerIfExists(ctx, backupBucket.Name); err != nil {
+			return err
+		}
 	}
 
 	// Get resource group client and delete the resource group which contains the backup storage account.
