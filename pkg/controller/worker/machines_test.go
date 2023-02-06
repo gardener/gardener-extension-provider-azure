@@ -284,7 +284,7 @@ var _ = Describe("Machines", func() {
 							{
 								Version:               machineImageVersion,
 								URN:                   &machineImageURN,
-								AcceleratedNetworking: pointer.BoolPtr(true),
+								AcceleratedNetworking: pointer.Bool(true),
 							},
 							{
 								Version: machineImageVersionID,
@@ -304,7 +304,7 @@ var _ = Describe("Machines", func() {
 				machineTypes = []apiv1alpha1.MachineType{
 					{
 						Name:                  machineType,
-						AcceleratedNetworking: pointer.BoolPtr(true),
+						AcceleratedNetworking: pointer.Bool(true),
 					},
 				}
 

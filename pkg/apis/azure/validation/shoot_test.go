@@ -170,8 +170,8 @@ var _ = Describe("Shoot validation", func() {
 				It("should forbid because volume type and size are not configured", func() {
 					workers[0].Volume.Type = nil
 					workers[0].Volume.VolumeSize = ""
-					workers[0].Volume.Encrypted = pointer.BoolPtr(false)
-					workers[0].DataVolumes = []core.DataVolume{{Encrypted: pointer.BoolPtr(true)}}
+					workers[0].Volume.Encrypted = pointer.Bool(false)
+					workers[0].DataVolumes = []core.DataVolume{{Encrypted: pointer.Bool(true)}}
 
 					errorList := ValidateWorkers(workers,
 						infraConfig, field.NewPath("workers"))

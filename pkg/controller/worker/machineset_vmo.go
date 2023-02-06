@@ -244,11 +244,11 @@ func generateAndCreateVmo(ctx context.Context, client azureclient.Vmss, workerPo
 	var properties = &compute.VirtualMachineScaleSet{
 		Location: &region,
 		VirtualMachineScaleSetProperties: &compute.VirtualMachineScaleSetProperties{
-			SinglePlacementGroup:     pointer.BoolPtr(false),
+			SinglePlacementGroup:     pointer.Bool(false),
 			PlatformFaultDomainCount: &faultDomainCount,
 		},
 		Tags: map[string]*string{
-			azure.MachineSetTagKey: pointer.StringPtr("1"),
+			azure.MachineSetTagKey: pointer.String("1"),
 		},
 	}
 

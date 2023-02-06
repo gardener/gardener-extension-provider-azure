@@ -286,8 +286,8 @@ var _ = Describe("MachinesDependencies", func() {
 func expectVmoGetToSucceed(ctx context.Context, c *vmssmock.MockVmss, resourceGroupName, name, id string, faultDomainCount int32) {
 	// As the vmo name (parameter 3) contains a random suffix, we use simply anything of type string for the mock.
 	c.EXPECT().Get(ctx, resourceGroupName, gomock.AssignableToTypeOf(""), compute.ExpandTypesForGetVMScaleSetsUserData).Return(&compute.VirtualMachineScaleSet{
-		ID:   pointer.StringPtr(id),
-		Name: pointer.StringPtr(name),
+		ID:   pointer.String(id),
+		Name: pointer.String(name),
 		VirtualMachineScaleSetProperties: &compute.VirtualMachineScaleSetProperties{
 			PlatformFaultDomainCount: &faultDomainCount,
 		},
@@ -301,8 +301,8 @@ func expectVmoListToSucceed(ctx context.Context, c *vmssmock.MockVmss, resourceG
 func expectVmoCreateToSucceed(ctx context.Context, c *vmssmock.MockVmss, resourceGroupName, name, id string) {
 	// As the vmo name (parameter 3) contains a random suffix, we use simply anything of type string for the mock.
 	c.EXPECT().Create(ctx, resourceGroupName, gomock.AssignableToTypeOf(""), gomock.AssignableToTypeOf(&compute.VirtualMachineScaleSet{})).Return(&compute.VirtualMachineScaleSet{
-		ID:   pointer.StringPtr(id),
-		Name: pointer.StringPtr(name),
+		ID:   pointer.String(id),
+		Name: pointer.String(name),
 	}, nil)
 }
 
@@ -328,10 +328,10 @@ func generateWorkerStatusWithVmo(vmos ...v1alpha1.VmoDependency) *runtime.RawExt
 
 func generateExpectedVmo(name, id string) compute.VirtualMachineScaleSet {
 	return compute.VirtualMachineScaleSet{
-		ID:   pointer.StringPtr(id),
-		Name: pointer.StringPtr(name),
+		ID:   pointer.String(id),
+		Name: pointer.String(name),
 		Tags: map[string]*string{
-			azure.MachineSetTagKey: pointer.StringPtr("1"),
+			azure.MachineSetTagKey: pointer.String("1"),
 		},
 	}
 }

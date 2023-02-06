@@ -681,9 +681,9 @@ func verifyCreation(ctx context.Context, az *azureClientSet, options *bastionctr
 	Expect(err).NotTo(HaveOccurred())
 
 	// bastion NSG - Check Ingress / Egress firewalls created
-	bastionctrl.RuleExist(pointer.StringPtr(bastionctrl.NSGIngressAllowSSHResourceNameIPv4(options.BastionInstanceName)), sg.SecurityRules)
-	bastionctrl.RuleExist(pointer.StringPtr(bastionctrl.NSGEgressDenyAllResourceName(options.BastionInstanceName)), sg.SecurityRules)
-	bastionctrl.RuleExist(pointer.StringPtr(bastionctrl.NSGEgressAllowOnlyResourceName(options.BastionInstanceName)), sg.SecurityRules)
+	bastionctrl.RuleExist(pointer.String(bastionctrl.NSGIngressAllowSSHResourceNameIPv4(options.BastionInstanceName)), sg.SecurityRules)
+	bastionctrl.RuleExist(pointer.String(bastionctrl.NSGEgressDenyAllResourceName(options.BastionInstanceName)), sg.SecurityRules)
+	bastionctrl.RuleExist(pointer.String(bastionctrl.NSGEgressAllowOnlyResourceName(options.BastionInstanceName)), sg.SecurityRules)
 
 	By("checking bastion instance")
 	// bastion instance

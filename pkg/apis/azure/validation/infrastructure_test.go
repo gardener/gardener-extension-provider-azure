@@ -370,7 +370,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 
 			It("should fail as NatGatway is disabled but additional config for the NatGateway is supplied", func() {
 				infrastructureConfig.Networks.NatGateway.Enabled = false
-				infrastructureConfig.Networks.NatGateway.Zone = pointer.Int32Ptr(2)
+				infrastructureConfig.Networks.NatGateway.Zone = pointer.Int32(2)
 
 				errorList := ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)
 				Expect(errorList).To(ConsistOfFields(Fields{
@@ -393,13 +393,13 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			})
 
 			It("should pass as the NatGateway has a zone", func() {
-				infrastructureConfig.Networks.NatGateway.Zone = pointer.Int32Ptr(2)
+				infrastructureConfig.Networks.NatGateway.Zone = pointer.Int32(2)
 				Expect(ValidateInfrastructureConfig(infrastructureConfig, &nodes, &pods, &services, hasVmoAlphaAnnotation, providerPath)).To(BeEmpty())
 			})
 
 			Context("User provided public IP", func() {
 				BeforeEach(func() {
-					infrastructureConfig.Networks.NatGateway.Zone = pointer.Int32Ptr(1)
+					infrastructureConfig.Networks.NatGateway.Zone = pointer.Int32(1)
 					infrastructureConfig.Networks.NatGateway.IPAddresses = []apisazure.PublicIPReference{{
 						Name:          "public-ip-name",
 						ResourceGroup: "public-ip-resource-group",
@@ -719,12 +719,12 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			})
 
 			It("should forbid to modify the external vnet config", func() {
-				infrastructureConfig.Networks.VNet.Name = pointer.StringPtr("external-vnet-name")
-				infrastructureConfig.Networks.VNet.ResourceGroup = pointer.StringPtr("external-vnet-rg")
+				infrastructureConfig.Networks.VNet.Name = pointer.String("external-vnet-name")
+				infrastructureConfig.Networks.VNet.ResourceGroup = pointer.String("external-vnet-rg")
 
 				newInfrastructureConfig := infrastructureConfig.DeepCopy()
-				newInfrastructureConfig.Networks.VNet.Name = pointer.StringPtr("modified")
-				newInfrastructureConfig.Networks.VNet.ResourceGroup = pointer.StringPtr("modified")
+				newInfrastructureConfig.Networks.VNet.Name = pointer.String("modified")
+				newInfrastructureConfig.Networks.VNet.ResourceGroup = pointer.String("modified")
 
 				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, providerPath)
 				Expect(errorList).To(ConsistOfFields(Fields{
@@ -742,8 +742,8 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				infrastructureConfig.Networks.VNet = apisazure.VNet{}
 
 				newInfrastructureConfig := infrastructureConfig.DeepCopy()
-				newInfrastructureConfig.Networks.VNet.Name = pointer.StringPtr("modified")
-				newInfrastructureConfig.Networks.VNet.ResourceGroup = pointer.StringPtr("modified")
+				newInfrastructureConfig.Networks.VNet.Name = pointer.String("modified")
+				newInfrastructureConfig.Networks.VNet.ResourceGroup = pointer.String("modified")
 
 				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, providerPath)
 				Expect(errorList).To(ConsistOfFields(Fields{
