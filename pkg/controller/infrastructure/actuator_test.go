@@ -65,6 +65,7 @@ var _ = Describe("Actuator", func() {
 	var (
 		ctrl               *gomock.Controller
 		c                  *mockclient.MockClient
+		sw                 *mockclient.MockStatusWriter
 		log                logr.Logger
 		tf                 *mockterraform.MockTerraformer
 		ctx                context.Context
@@ -82,8 +83,9 @@ var _ = Describe("Actuator", func() {
 		ctrl = gomock.NewController(GinkgoT())
 
 		c = mockclient.NewMockClient(ctrl)
+		sw = mockclient.NewMockStatusWriter(ctrl)
 		tf = mockterraform.NewMockTerraformer(ctrl)
-		c.EXPECT().Status().Return(c).AnyTimes()
+		c.EXPECT().Status().Return(sw).AnyTimes()
 
 		ctx = context.TODO()
 		log = logf.Log.WithName("test")
@@ -176,7 +178,7 @@ var _ = Describe("Actuator", func() {
 			expectedInfra.Status.ProviderStatus = &runtime.RawExtension{Object: providerStatus}
 			expectedInfra.Status.State = state
 
-			test.EXPECTPatch(ctx, c, expectedInfra, infra.DeepCopy(), types.MergePatchType)
+			test.EXPECTStatusPatch(ctx, sw, expectedInfra, infra.DeepCopy(), types.MergePatchType)
 
 			err = a.Reconcile(ctx, log, infra, cluster)
 			Expect(err).NotTo(HaveOccurred())
@@ -319,7 +321,7 @@ var _ = Describe("Actuator", func() {
 			raw, err := json.Marshal(providerStatus)
 			Expect(err).NotTo(HaveOccurred())
 			expectedInfra.Status.ProviderStatus = &runtime.RawExtension{Raw: raw}
-			test.EXPECTPatch(ctx, c, expectedInfra, infra, types.MergePatchType)
+			test.EXPECTStatusPatch(ctx, sw, expectedInfra, infra, types.MergePatchType)
 
 			tf.EXPECT().InitializeWith(ctx, gomock.Any()).Return(tf)
 			tf.EXPECT().Apply(ctx)
@@ -328,7 +330,7 @@ var _ = Describe("Actuator", func() {
 
 			expectedInfraAfterRestore := expectedInfra.DeepCopy()
 			expectedInfraAfterRestore.Status.ProviderStatus = &runtime.RawExtension{Object: providerStatus}
-			test.EXPECTPatch(ctx, c, expectedInfraAfterRestore, expectedInfra.DeepCopy(), types.MergePatchType)
+			test.EXPECTStatusPatch(ctx, sw, expectedInfraAfterRestore, expectedInfra.DeepCopy(), types.MergePatchType)
 			err = a.Restore(ctx, log, infra, cluster)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -355,7 +357,7 @@ var _ = Describe("Actuator", func() {
 			raw, err := json.Marshal(providerStatus)
 			Expect(err).NotTo(HaveOccurred())
 			expectedInfra.Status.ProviderStatus = &runtime.RawExtension{Raw: raw}
-			test.EXPECTPatch(ctx, c, expectedInfra, infra, types.MergePatchType)
+			test.EXPECTStatusPatch(ctx, sw, expectedInfra, infra, types.MergePatchType)
 
 			tf.EXPECT().InitializeWith(ctx, gomock.Any()).Return(tf)
 			tf.EXPECT().Apply(ctx)
@@ -377,7 +379,7 @@ var _ = Describe("Actuator", func() {
 
 			expectedInfraAfterRestore := expectedInfra.DeepCopy()
 			expectedInfraAfterRestore.Status.ProviderStatus = &runtime.RawExtension{Object: providerStatus}
-			test.EXPECTPatch(ctx, c, expectedInfraAfterRestore, expectedInfra.DeepCopy(), types.MergePatchType)
+			test.EXPECTStatusPatch(ctx, sw, expectedInfraAfterRestore, expectedInfra.DeepCopy(), types.MergePatchType)
 			err = a.Restore(ctx, log, infra, cluster)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -396,7 +398,7 @@ var _ = Describe("Actuator", func() {
 			raw, err := json.Marshal(providerStatus)
 			Expect(err).NotTo(HaveOccurred())
 			expectedInfra.Status.ProviderStatus = &runtime.RawExtension{Raw: raw}
-			test.EXPECTPatch(ctx, c, expectedInfra, infra, types.MergePatchType)
+			test.EXPECTStatusPatch(ctx, sw, expectedInfra, infra, types.MergePatchType)
 
 			err = a.Restore(ctx, log, infra, cluster)
 			Expect(err).To(HaveOccurred())
@@ -411,7 +413,7 @@ var _ = Describe("Actuator", func() {
 			raw, err := json.Marshal(providerStatus)
 			Expect(err).NotTo(HaveOccurred())
 			expectedInfra.Status.ProviderStatus = &runtime.RawExtension{Raw: raw}
-			test.EXPECTPatch(ctx, c, expectedInfra, infra, types.MergePatchType)
+			test.EXPECTStatusPatch(ctx, sw, expectedInfra, infra, types.MergePatchType)
 
 			tf.EXPECT().InitializeWith(ctx, gomock.Any()).Return(tf)
 			tf.EXPECT().Apply(ctx).Return(errors.New("could not apply terraform config"))
