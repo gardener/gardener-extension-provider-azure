@@ -20,6 +20,7 @@ metadata:
   name: csi-driver-node-{{ .role }}
   namespace: {{ .Release.Namespace }}
   labels:
+    node.gardener.cloud/critical-component: "true"
     app: csi
     role: driver-{{ .role }}
 spec:
@@ -34,6 +35,7 @@ spec:
 {{ toYaml .Values.podAnnotations | indent 8 }}
 {{- end }}
       labels:
+        node.gardener.cloud/critical-component: "true"
         app: csi
         role: driver-{{ .role }}
     spec:
