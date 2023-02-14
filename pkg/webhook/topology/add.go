@@ -58,7 +58,7 @@ func AddToManager(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 					Values:   []string{v1beta1constants.GardenRoleExtension},
 				},
 				{
-					Key:      "kubernetes.io/metadata.name",
+					Key:      corev1.LabelMetadataName
 					Operator: metav1.LabelSelectorOpNotIn,
 					Values:   []string{metav1.NamespaceSystem, v1beta1constants.GardenNamespace},
 				},
