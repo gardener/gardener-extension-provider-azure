@@ -51,9 +51,17 @@ func AddToManager(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 		Types:    types,
 		Webhook:  &admission.Webhook{Handler: New(logger), RecoverPanic: true},
 		Selector: &metav1.LabelSelector{
-			MatchLabels: map[string]string{
-				v1beta1constants.LabelSeedProvider: azure.Type,
-				v1beta1constants.GardenRole:        v1beta1constants.GardenRoleShoot,
+			MatchExpressions: []metav1.LabelSelectorRequirement{
+				{
+					Key:      v1beta1constants.GardenRole,
+					Operator: metav1.LabelSelectorOpNotIn,
+					Values:   []string{v1beta1constants.GardenRoleExtension},
+				},
+				{
+					Key:      corev1.LabelMetadataName,
+					Operator: metav1.LabelSelectorOpNotIn,
+					Values:   []string{metav1.NamespaceSystem, v1beta1constants.GardenNamespace},
+				},
 			},
 		},
 	}, nil
