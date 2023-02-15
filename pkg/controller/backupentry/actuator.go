@@ -18,9 +18,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 
 	"github.com/gardener/gardener/extensions/pkg/controller/backupentry/genericactuator"
+	"github.com/gardener/gardener/extensions/pkg/util"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/go-logr/logr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -47,8 +49,8 @@ func (a *actuator) Delete(ctx context.Context, _ logr.Logger, backupEntry *exten
 	factory := azureclient.NewAzureClientFactory(a.client)
 	storageClient, err := factory.Storage(ctx, backupEntry.Spec.SecretRef)
 	if err != nil {
-		return err
+		return util.DetermineError(err, helper.KnownCodes)
 	}
 
-	return storageClient.DeleteObjectsWithPrefix(ctx, backupEntry.Spec.BucketName, fmt.Sprintf("%s/", backupEntry.Name))
+	return util.DetermineError(storageClient.DeleteObjectsWithPrefix(ctx, backupEntry.Spec.BucketName, fmt.Sprintf("%s/", backupEntry.Name)), helper.KnownCodes)
 }

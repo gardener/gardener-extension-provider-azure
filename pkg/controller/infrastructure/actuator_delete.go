@@ -25,6 +25,7 @@ import (
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
+	"github.com/gardener/gardener/extensions/pkg/util"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -43,7 +44,7 @@ func newAzureClientFactory(client client.Client) azureclient.Factory {
 func (a *actuator) Delete(ctx context.Context, log logr.Logger, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
 	tf, err := internal.NewTerraformer(log, a.RESTConfig(), infrastructure.TerraformerPurpose, infra, a.disableProjectedTokenMount)
 	if err != nil {
-		return err
+		return util.DetermineError(err, helper.KnownCodes)
 	}
 
 	// terraform pod from previous reconciliation might still be running, ensure they are gone before doing any operations
@@ -90,13 +91,13 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, infra *extension
 
 	terraformFiles, err := infrastructure.RenderTerraformerTemplate(infra, config, cluster)
 	if err != nil {
-		return err
+		return util.DetermineError(err, helper.KnownCodes)
 	}
 
-	return tf.
+	return util.DetermineError(tf.
 		InitializeWith(ctx, terraformer.DefaultInitializer(a.Client(), terraformFiles.Main, terraformFiles.Variables, terraformFiles.TFVars, terraformer.StateConfigMapInitializerFunc(NoOpStateInitializer))).
 		SetEnvVars(internal.TerraformerEnvVars(infra.Spec.SecretRef)...).
-		Destroy(ctx)
+		Destroy(ctx), helper.KnownCodes)
 }
 
 // NoOpStateInitializer is a no-op StateConfigMapInitializerFunc.
