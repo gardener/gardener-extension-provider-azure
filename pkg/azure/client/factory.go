@@ -18,7 +18,6 @@ import (
 	"context"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
-	azurecompute "github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	azuredns "github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-05-01/dns"
 	azurestorage "github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-04-01/storage"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
@@ -137,16 +136,7 @@ func (f azureFactory) NetworkInterface() (NetworkInterface, error) {
 
 // Disk reads the secret from the passed reference and return an Azure disk client.
 func (f azureFactory) Disk() (Disk, error) {
-	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(f.auth)
-	if err != nil {
-		return nil, err
-	}
-	disksClient := azurecompute.NewDisksClient(subscriptionID)
-	disksClient.Authorizer = authorizer
-
-	return DisksClient{
-		client: disksClient,
-	}, nil
+	return NewDisksClient(*f.auth)
 }
 
 // Vnet reads the secret from the passed reference and return an Azure Vnet client.

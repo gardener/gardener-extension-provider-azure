@@ -20,7 +20,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-05-01/dns"
 	"github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
 	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-04-01/storage"
@@ -141,8 +140,8 @@ type NetworkInterface interface {
 
 // Disk represents an Azure Disk client.
 type Disk interface {
-	Get(ctx context.Context, resourceGroupName string, name string) (*compute.Disk, error)
-	CreateOrUpdate(ctx context.Context, resourceGroupName string, diskName string, disk compute.Disk) (*compute.Disk, error)
+	Get(ctx context.Context, resourceGroupName string, name string) (*armcompute.Disk, error)
+	CreateOrUpdate(ctx context.Context, resourceGroupName string, diskName string, disk armcompute.Disk) (*armcompute.Disk, error)
 	Delete(ctx context.Context, resourceGroupName, name string) error
 }
 
@@ -232,7 +231,7 @@ type NetworkInterfaceClient struct {
 
 // DisksClient is an implementation of Disk for a disk client.
 type DisksClient struct {
-	client compute.DisksClient
+	client *armcompute.DisksClient
 }
 
 // SubnetsClient is an implementation of Subnet for a Subnet client.

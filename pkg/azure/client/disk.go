@@ -16,52 +16,54 @@ package client
 
 import (
 	"context"
-	"fmt"
-	"net/http"
 
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
-// Get will fetch a disk by given name in a given resource group.
-func (c DisksClient) Get(ctx context.Context, resourceGroupName string, name string) (*compute.Disk, error) {
-	disk, err := c.client.Get(ctx, resourceGroupName, name)
+// NewDisksClient creates a new disk client
+func NewDisksClient(auth internal.ClientAuth) (Disk, error) {
+	cred, err := auth.GetAzClientCredentials()
 	if err != nil {
 		return nil, err
 	}
-	return &disk, nil
+	client, err := armcompute.NewDisksClient(auth.SubscriptionID, cred, nil)
+	return &DisksClient{client}, err
+}
+
+// Get will fetch a disk by given name in a given resource group.
+func (c DisksClient) Get(ctx context.Context, resourceGroupName string, name string) (*armcompute.Disk, error) {
+	disk, err := c.client.Get(ctx, resourceGroupName, name, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &disk.Disk, nil
 }
 
 // CreateOrUpdate will create or update a disk.
-func (c DisksClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, diskName string, disk compute.Disk) (*compute.Disk, error) {
-	future, err := c.client.CreateOrUpdate(ctx, resourceGroupName, diskName, disk)
+func (c DisksClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, diskName string, disk armcompute.Disk) (*armcompute.Disk, error) {
+	future, err := c.client.BeginCreateOrUpdate(ctx, resourceGroupName, diskName, disk, nil)
 	if err != nil {
 		return nil, err
 	}
-	if err := future.WaitForCompletionRef(ctx, c.client.Client); err != nil {
-		return nil, err
-	}
-	disk, err = future.Result(c.client)
+	res, err := future.PollUntilDone(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
-	return &disk, nil
+	return &res.Disk, nil
 }
 
 // Delete will delete a disk.
 func (c DisksClient) Delete(ctx context.Context, resourceGroupName, name string) error {
-	future, err := c.client.Delete(ctx, resourceGroupName, name)
+	future, err := c.client.BeginDelete(ctx, resourceGroupName, name, nil)
 	if err != nil {
 		return err
 	}
-	if err := future.WaitForCompletionRef(ctx, c.client.Client); err != nil {
-		return err
-	}
-	result, err := future.Result(c.client)
+	_, err = future.PollUntilDone(ctx, nil)
 	if err != nil {
-		return err
+		if IsAzureAPINotFoundError(err) {
+			return nil
+		}
 	}
-	if result.StatusCode == http.StatusOK || result.StatusCode == http.StatusAccepted || result.StatusCode == http.StatusNoContent || result.StatusCode == http.StatusNotFound {
-		return nil
-	}
-	return fmt.Errorf("deletion of disk %s failed. statuscode=%d", name, result.StatusCode)
+	return err
 }
