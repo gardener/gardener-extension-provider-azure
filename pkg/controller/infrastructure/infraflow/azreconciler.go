@@ -179,12 +179,12 @@ func (f azureReconciler) RouteTables(ctx context.Context) (armnetwork.RouteTable
 }
 
 // SecurityGroups creates or updates a SecurityGroup
-func (f azureReconciler) SecurityGroups(ctx context.Context) (*network.SecurityGroup, error) {
+func (f azureReconciler) SecurityGroups(ctx context.Context) (*armnetwork.SecurityGroup, error) {
 	client, err := f.factory.NetworkSecurityGroup()
 	if err != nil {
 		return nil, err
 	}
-	parameters := network.SecurityGroup{
+	parameters := armnetwork.SecurityGroup{
 		Location: to.Ptr(f.tf.Region()),
 	}
 	resp, err := client.CreateOrUpdate(ctx, f.tf.ResourceGroup(), f.tf.SecurityGroupName(), parameters)

@@ -98,7 +98,8 @@ func removeNSGRule(ctx context.Context, log logr.Logger, factory azureclient.Fac
 		NSGEgressAllowOnlyResourceName(opt.BastionInstanceName),
 	}
 
-	rulesWereDeleted := deleteSecurityRuleDefinitionsByName(securityGroupResp.SecurityRules, rules...)
+	modifiedRules, rulesWereDeleted := deleteSecurityRuleDefinitionsByName(securityGroupResp.Properties.SecurityRules, rules...)
+	securityGroupResp.Properties.SecurityRules = modifiedRules
 	if !rulesWereDeleted {
 		return nil
 	}

@@ -78,8 +78,8 @@ func createOrUpdatePublicIP(ctx context.Context, factory azureclient.Factory, op
 	return ip, nil
 }
 
-func createOrUpdateNetworkSecGroup(ctx context.Context, factory azureclient.Factory, opt *Options, parameters *network.SecurityGroup) error {
-	if parameters == nil || parameters.SecurityRules == nil {
+func createOrUpdateNetworkSecGroup(ctx context.Context, factory azureclient.Factory, opt *Options, parameters *armnetwork.SecurityGroup) error {
+	if parameters == nil || parameters.Properties.SecurityRules == nil {
 		return fmt.Errorf("network security group nor SecurityRules can't be nil, securityGroupName: %s", opt.SecurityGroupName)
 	}
 
@@ -130,13 +130,13 @@ func getNic(ctx context.Context, log logr.Logger, factory azureclient.Factory, o
 	return nic, nil
 }
 
-func getNetworkSecurityGroup(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*network.SecurityGroup, error) {
+func getNetworkSecurityGroup(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*armnetwork.SecurityGroup, error) {
 	nsgClient, err := factory.NetworkSecurityGroup()
 	if err != nil {
 		return nil, err
 	}
 
-	nsgResp, err := nsgClient.Get(ctx, opt.ResourceGroupName, opt.SecurityGroupName, "")
+	nsgResp, err := nsgClient.Get(ctx, opt.ResourceGroupName, opt.SecurityGroupName)
 	if err != nil {
 		if azureclient.IsAzureAPINotFoundError(err) {
 			log.Error(err, "Network Security Group not found, test environment?", "nsg_name", opt.SecurityGroupName)
@@ -211,16 +211,15 @@ func getSubnet(ctx context.Context, log logr.Logger, factory azureclient.Factory
 	return subnet, nil
 }
 
-func deleteSecurityRuleDefinitionsByName(rulesArr *[]network.SecurityRule, namesToRemove ...string) bool {
+func deleteSecurityRuleDefinitionsByName(rulesArr []*armnetwork.SecurityRule, namesToRemove ...string) ([]*armnetwork.SecurityRule, bool) {
+	rulesWereDeleted := false
 	if rulesArr == nil {
-		return false
+		return rulesArr, rulesWereDeleted
 	}
 
-	rulesWereDeleted := false
-	result := make([]network.SecurityRule, 0, len(*rulesArr))
-
+	result := make([]*armnetwork.SecurityRule, 0, len(rulesArr))
 rules:
-	for _, rule := range *rulesArr {
+	for _, rule := range rulesArr {
 		for _, nameToDelete := range namesToRemove {
 			if rule.Name != nil && *rule.Name == nameToDelete {
 				rulesWereDeleted = true
@@ -229,9 +228,7 @@ rules:
 		}
 		result = append(result, rule)
 	}
-
-	*rulesArr = result
-	return rulesWereDeleted
+	return result, rulesWereDeleted
 }
 
 func equalNotNil(str1 *string, str2 *string) bool {

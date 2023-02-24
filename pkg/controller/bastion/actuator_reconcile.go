@@ -25,6 +25,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -196,11 +197,11 @@ func ensureNetworkSecurityGroups(ctx context.Context, log logr.Logger, factory a
 		return err
 	}
 
-	if expectedNSGRulesPresentAndValid(networkSecGroupResp.SecurityRules, expectedNSGRuleList) {
+	if expectedNSGRulesPresentAndValid(networkSecGroupResp.Properties.SecurityRules, expectedNSGRuleList) {
 		return nil
 	}
 
-	addOrReplaceNsgRulesDefinition(networkSecGroupResp.SecurityRules, expectedNSGRuleList)
+	networkSecGroupResp.Properties.SecurityRules = addOrReplaceNsgRulesDefinition(networkSecGroupResp.Properties.SecurityRules, expectedNSGRuleList)
 
 	if err := createOrUpdateNetworkSecGroup(ctx, factory, opt, networkSecGroupResp); err != nil {
 		return err
@@ -208,14 +209,14 @@ func ensureNetworkSecurityGroups(ctx context.Context, log logr.Logger, factory a
 
 	log.Info("created or updated bastion security rules of network security group",
 		"nsg", opt.SecurityGroupName,
-		"rules", networkSecGroupResp.SecurityRules,
+		"rules", networkSecGroupResp.Properties.SecurityRules,
 	)
 
 	return nil
 }
 
-func prepareNSGRules(opt *Options) *[]network.SecurityRule {
-	res := make([]network.SecurityRule, 0)
+func prepareNSGRules(opt *Options) []*armnetwork.SecurityRule {
+	res := make([]*armnetwork.SecurityRule, 0)
 	res = append(res, nsgEgressDenyAllIPv4(opt))
 	res = append(res, nsgEgressAllowSSHToWorkerIPv4(opt))
 
@@ -238,7 +239,7 @@ func prepareNSGRules(opt *Options) *[]network.SecurityRule {
 		res = append(res, nsgIngressAllowSSH(ipv6Name, opt.PrivateIPAddressV6, ipv6cidr))
 	}
 
-	return &res
+	return res
 }
 
 func ensurePublicIPAddress(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*network.PublicIPAddress, error) {
@@ -382,20 +383,20 @@ func addressToIngress(dnsName *string, ipAddress *string) *corev1.LoadBalancerIn
 	return ingress
 }
 
-func expectedNSGRulesPresentAndValid(existingRules *[]network.SecurityRule, expectedRules *[]network.SecurityRule) bool {
+func expectedNSGRulesPresentAndValid(existingRules []*armnetwork.SecurityRule, expectedRules []*armnetwork.SecurityRule) bool {
 	if existingRules == nil || expectedRules == nil {
 		return false
 	}
 
-	for _, desRule := range *expectedRules {
+	for _, desRule := range expectedRules {
 		ruleExistAndValid := false
-		for _, existingRule := range *existingRules {
+		for _, existingRule := range existingRules {
 			// compare firewall rules by its names because names here kind of "IDs"
 			if equalNotNil(desRule.Name, existingRule.Name) {
-				if notEqualNotNil(desRule.SourceAddressPrefix, existingRule.SourceAddressPrefix) {
+				if notEqualNotNil(desRule.Properties.SourceAddressPrefix, existingRule.Properties.SourceAddressPrefix) {
 					return false
 				}
-				if notEqualNotNil(desRule.DestinationAddressPrefix, existingRule.DestinationAddressPrefix) {
+				if notEqualNotNil(desRule.Properties.DestinationAddressPrefix, existingRule.Properties.DestinationAddressPrefix) {
 					return false
 				}
 				ruleExistAndValid = true
@@ -408,23 +409,23 @@ func expectedNSGRulesPresentAndValid(existingRules *[]network.SecurityRule, expe
 	return true
 }
 
-func addOrReplaceNsgRulesDefinition(existingRules *[]network.SecurityRule, desiredRules *[]network.SecurityRule) {
+func addOrReplaceNsgRulesDefinition(existingRules []*armnetwork.SecurityRule, desiredRules []*armnetwork.SecurityRule) (newRules []*armnetwork.SecurityRule) {
 	if existingRules == nil || desiredRules == nil {
 		return
 	}
 
-	result := make([]network.SecurityRule, 0, len(*existingRules)+len(*desiredRules))
+	result := make([]*armnetwork.SecurityRule, 0, len(existingRules)+len(desiredRules))
 
 	bookedPriorityIDs := make(map[int32]bool)
-	for _, rule := range *existingRules {
-		if rule.Priority == nil {
+	for _, rule := range existingRules {
+		if rule.Properties.Priority == nil {
 			continue
 		}
-		bookedPriorityIDs[*rule.Priority] = true
+		bookedPriorityIDs[*rule.Properties.Priority] = true
 	}
 
 	// filter rules intended to be replaced
-	for _, existentRule := range *existingRules {
+	for _, existentRule := range existingRules {
 		if RuleExist(existentRule.Name, desiredRules) {
 			continue
 		}
@@ -432,21 +433,22 @@ func addOrReplaceNsgRulesDefinition(existingRules *[]network.SecurityRule, desir
 	}
 
 	// ensure uniq priority numbers
-	for _, desiredRule := range *desiredRules {
-		desiredRule.Priority = findNextFreeNumber(bookedPriorityIDs, *desiredRule.Priority)
+	for _, desiredRule := range desiredRules {
+		desiredRule.Properties.Priority = findNextFreeNumber(bookedPriorityIDs, *desiredRule.Properties.Priority)
 	}
 
-	result = append(result, *desiredRules...)
-	*existingRules = result
+	result = append(result, desiredRules...)
+	newRules = result
+	return
 }
 
 // RuleExist checks if the rule with the given name is present in the list of rules.
-func RuleExist(ruleName *string, rules *[]network.SecurityRule) bool {
+func RuleExist(ruleName *string, rules []*armnetwork.SecurityRule) bool {
 	if ruleName == nil {
 		return false
 	}
 
-	for _, rule := range *rules {
+	for _, rule := range rules {
 		if rule.Name != nil && *rule.Name == *ruleName {
 			return true
 		}

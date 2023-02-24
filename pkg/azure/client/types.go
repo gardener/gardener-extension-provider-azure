@@ -120,8 +120,9 @@ type DNSRecordSet interface {
 
 // NetworkSecurityGroup represents an Azure Network security group client.
 type NetworkSecurityGroup interface {
-	Get(ctx context.Context, resourceGroupName string, networkSecurityGroupName, name string) (*network.SecurityGroup, error)
-	CreateOrUpdate(ctx context.Context, resourceGroupName, name string, parameters network.SecurityGroup) (*network.SecurityGroup, error)
+	Get(ctx context.Context, resourceGroupName, networkSecurityGroupName string) (*armnetwork.SecurityGroup, error)
+	CreateOrUpdate(ctx context.Context, resourceGroupName, name string, parameters armnetwork.SecurityGroup) (*armnetwork.SecurityGroup, error)
+	Delete(ctx context.Context, resourceGroupName, name string) error
 }
 
 // PublicIP represents an Azure Network PUblic IP client.
@@ -217,7 +218,7 @@ type DNSRecordSetClient struct {
 
 // NetworkSecurityGroupClient is an implementation of Network Security Group for a network security group client.
 type NetworkSecurityGroupClient struct {
-	client network.SecurityGroupsClient
+	client *armnetwork.SecurityGroupsClient
 }
 
 // PublicIPClient is an implementation of Network Public IP Address.
@@ -228,11 +229,6 @@ type PublicIPClient struct {
 // NetworkInterfaceClient is an implementation of Network Interface.
 type NetworkInterfaceClient struct {
 	client network.InterfacesClient
-}
-
-// SecurityRulesClient is an implementation of Network Security Groups rules.
-type SecurityRulesClient struct {
-	client network.SecurityRulesClient
 }
 
 // DisksClient is an implementation of Disk for a disk client.

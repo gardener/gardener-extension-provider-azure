@@ -936,10 +936,10 @@ func (m *MockNetworkSecurityGroup) EXPECT() *MockNetworkSecurityGroupMockRecorde
 }
 
 // CreateOrUpdate mocks base method.
-func (m *MockNetworkSecurityGroup) CreateOrUpdate(arg0 context.Context, arg1, arg2 string, arg3 network.SecurityGroup) (*network.SecurityGroup, error) {
+func (m *MockNetworkSecurityGroup) CreateOrUpdate(arg0 context.Context, arg1, arg2 string, arg3 armnetwork.SecurityGroup) (*armnetwork.SecurityGroup, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateOrUpdate", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(*network.SecurityGroup)
+	ret0, _ := ret[0].(*armnetwork.SecurityGroup)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -950,19 +950,33 @@ func (mr *MockNetworkSecurityGroupMockRecorder) CreateOrUpdate(arg0, arg1, arg2,
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdate", reflect.TypeOf((*MockNetworkSecurityGroup)(nil).CreateOrUpdate), arg0, arg1, arg2, arg3)
 }
 
-// Get mocks base method.
-func (m *MockNetworkSecurityGroup) Get(arg0 context.Context, arg1, arg2, arg3 string) (*network.SecurityGroup, error) {
+// Delete mocks base method.
+func (m *MockNetworkSecurityGroup) Delete(arg0 context.Context, arg1, arg2 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(*network.SecurityGroup)
+	ret := m.ctrl.Call(m, "Delete", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Delete indicates an expected call of Delete.
+func (mr *MockNetworkSecurityGroupMockRecorder) Delete(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockNetworkSecurityGroup)(nil).Delete), arg0, arg1, arg2)
+}
+
+// Get mocks base method.
+func (m *MockNetworkSecurityGroup) Get(arg0 context.Context, arg1, arg2 string) (*armnetwork.SecurityGroup, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*armnetwork.SecurityGroup)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Get indicates an expected call of Get.
-func (mr *MockNetworkSecurityGroupMockRecorder) Get(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+func (mr *MockNetworkSecurityGroupMockRecorder) Get(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockNetworkSecurityGroup)(nil).Get), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockNetworkSecurityGroup)(nil).Get), arg0, arg1, arg2)
 }
 
 // MockManagedUserIdentity is a mock of ManagedUserIdentity interface.

@@ -17,10 +17,10 @@ package bastion
 import (
 	"encoding/base64"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
-	"github.com/Azure/go-autorest/autorest/to"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 )
 
@@ -31,7 +31,7 @@ func nicDefine(opt *Options, publicIP *network.PublicIPAddress, subnet *armnetwo
 		InterfacePropertiesFormat: &network.InterfacePropertiesFormat{
 			IPConfigurations: &[]network.InterfaceIPConfiguration{
 				{
-					Name: to.StringPtr("ipConfig1"),
+					Name: to.Ptr("ipConfig1"),
 					InterfaceIPConfigurationPropertiesFormat: &network.InterfaceIPConfigurationPropertiesFormat{
 						Subnet: &network.Subnet{
 							ID: subnet.ID,
@@ -70,41 +70,41 @@ func computeInstanceDefine(opt *Options, bastion *extensionsv1alpha1.Bastion, pu
 			},
 			StorageProfile: &compute.StorageProfile{
 				ImageReference: &compute.ImageReference{
-					Publisher: to.StringPtr("Canonical"),
-					Offer:     to.StringPtr("UbuntuServer"),
-					Sku:       to.StringPtr("18.04-LTS"),
-					Version:   to.StringPtr("latest"),
+					Publisher: to.Ptr("Canonical"),
+					Offer:     to.Ptr("UbuntuServer"),
+					Sku:       to.Ptr("18.04-LTS"),
+					Version:   to.Ptr("latest"),
 				},
 				OsDisk: &compute.OSDisk{
 					CreateOption: compute.DiskCreateOptionTypesFromImage,
-					DiskSizeGB:   to.Int32Ptr(32),
+					DiskSizeGB:   to.Ptr(int32(32)),
 					Name:         &opt.DiskName,
 				},
 			},
 			OsProfile: &compute.OSProfile{
 				ComputerName:  &opt.BastionInstanceName,
-				AdminUsername: to.StringPtr("gardener"),
+				AdminUsername: to.Ptr("gardener"),
 				LinuxConfiguration: &compute.LinuxConfiguration{
-					DisablePasswordAuthentication: to.BoolPtr(true),
+					DisablePasswordAuthentication: to.Ptr(true),
 					SSH: &compute.SSHConfiguration{
 						PublicKeys: &[]compute.SSHPublicKey{
 							{
-								Path: to.StringPtr("/home/gardener/.ssh/authorized_keys"),
+								Path: to.Ptr("/home/gardener/.ssh/authorized_keys"),
 								// Random, temporary SSH public key to suffice the azure API, as creating an instance without a public key is not possible. The UserData will overwrite it later.
 								// We could have also used the user's public SSH key but currently it's not available on the `Bastion` extension resource.
-								KeyData: to.StringPtr(publickey),
+								KeyData: to.Ptr(publickey),
 							},
 						},
 					},
 				},
 			},
-			UserData: to.StringPtr(base64.StdEncoding.EncodeToString(bastion.Spec.UserData)),
+			UserData: to.Ptr(base64.StdEncoding.EncodeToString(bastion.Spec.UserData)),
 			NetworkProfile: &compute.NetworkProfile{
 				NetworkInterfaces: &[]compute.NetworkInterfaceReference{
 					{
 						ID: &opt.NicID,
 						NetworkInterfaceReferenceProperties: &compute.NetworkInterfaceReferenceProperties{
-							Primary: to.BoolPtr(true),
+							Primary: to.Ptr(true),
 						},
 					},
 				},
@@ -114,53 +114,53 @@ func computeInstanceDefine(opt *Options, bastion *extensionsv1alpha1.Bastion, pu
 	}
 }
 
-func nsgIngressAllowSSH(ruleName string, destinationAddress string, sourceAddresses []string) network.SecurityRule {
-	return network.SecurityRule{
-		Name: to.StringPtr(ruleName),
-		SecurityRulePropertiesFormat: &network.SecurityRulePropertiesFormat{
-			Protocol:                 network.SecurityRuleProtocolTCP,
-			SourceAddressPrefixes:    &sourceAddresses,
-			SourcePortRange:          to.StringPtr("*"),
+func nsgIngressAllowSSH(ruleName string, destinationAddress string, sourceAddresses []string) *armnetwork.SecurityRule {
+	return &armnetwork.SecurityRule{
+		Name: to.Ptr(ruleName),
+		Properties: &armnetwork.SecurityRulePropertiesFormat{
+			Protocol:                 to.Ptr(armnetwork.SecurityRuleProtocolTCP),
+			SourceAddressPrefixes:    to.SliceOfPtrs(sourceAddresses...),
+			SourcePortRange:          to.Ptr("*"),
 			DestinationAddressPrefix: &destinationAddress,
-			DestinationPortRange:     to.StringPtr(SSHPort),
-			Access:                   network.SecurityRuleAccessAllow,
-			Direction:                network.SecurityRuleDirectionInbound,
-			Priority:                 to.Int32Ptr(400),
-			Description:              to.StringPtr("SSH access for Bastion"),
+			DestinationPortRange:     to.Ptr(SSHPort),
+			Access:                   to.Ptr(armnetwork.SecurityRuleAccessAllow),
+			Direction:                to.Ptr(armnetwork.SecurityRuleDirectionInbound),
+			Priority:                 to.Ptr(int32(400)),
+			Description:              to.Ptr("SSH access for Bastion"),
 		},
 	}
 }
 
-func nsgEgressDenyAllIPv4(opt *Options) network.SecurityRule {
-	return network.SecurityRule{
-		Name: to.StringPtr(NSGEgressDenyAllResourceName(opt.BastionInstanceName)),
-		SecurityRulePropertiesFormat: &network.SecurityRulePropertiesFormat{
-			Protocol:                 network.SecurityRuleProtocolAsterisk,
+func nsgEgressDenyAllIPv4(opt *Options) *armnetwork.SecurityRule {
+	return &armnetwork.SecurityRule{
+		Name: to.Ptr(NSGEgressDenyAllResourceName(opt.BastionInstanceName)),
+		Properties: &armnetwork.SecurityRulePropertiesFormat{
+			Protocol:                 to.Ptr(armnetwork.SecurityRuleProtocolAsterisk),
 			SourceAddressPrefix:      &opt.PrivateIPAddressV4,
-			SourcePortRange:          to.StringPtr("*"),
-			DestinationAddressPrefix: to.StringPtr("*"),
-			DestinationPortRange:     to.StringPtr("*"),
-			Access:                   network.SecurityRuleAccessDeny,
-			Direction:                network.SecurityRuleDirectionOutbound,
-			Priority:                 to.Int32Ptr(1000),
-			Description:              to.StringPtr("Bastion egress deny ipv4"),
+			SourcePortRange:          to.Ptr("*"),
+			DestinationAddressPrefix: to.Ptr("*"),
+			DestinationPortRange:     to.Ptr("*"),
+			Access:                   to.Ptr(armnetwork.SecurityRuleAccessDeny),
+			Direction:                to.Ptr(armnetwork.SecurityRuleDirectionOutbound),
+			Priority:                 to.Ptr(int32(1000)),
+			Description:              to.Ptr("Bastion egress deny ipv4"),
 		},
 	}
 }
 
-func nsgEgressAllowSSHToWorkerIPv4(opt *Options) network.SecurityRule {
-	return network.SecurityRule{
-		Name: to.StringPtr(NSGEgressAllowOnlyResourceName(opt.BastionInstanceName)),
-		SecurityRulePropertiesFormat: &network.SecurityRulePropertiesFormat{
-			Protocol:                   network.SecurityRuleProtocolTCP,
+func nsgEgressAllowSSHToWorkerIPv4(opt *Options) *armnetwork.SecurityRule {
+	return &armnetwork.SecurityRule{
+		Name: to.Ptr(NSGEgressAllowOnlyResourceName(opt.BastionInstanceName)),
+		Properties: &armnetwork.SecurityRulePropertiesFormat{
+			Protocol:                   to.Ptr(armnetwork.SecurityRuleProtocolTCP),
 			SourceAddressPrefix:        &opt.PrivateIPAddressV4,
-			SourcePortRange:            to.StringPtr("*"),
-			DestinationAddressPrefixes: to.StringSlicePtr(opt.WorkersCIDR),
-			DestinationPortRange:       to.StringPtr(SSHPort),
-			Access:                     network.SecurityRuleAccessAllow,
-			Direction:                  network.SecurityRuleDirectionOutbound,
-			Priority:                   to.Int32Ptr(401),
-			Description:                to.StringPtr("Allow Bastion egress to Shoot workers ipv4"),
+			SourcePortRange:            to.Ptr("*"),
+			DestinationAddressPrefixes: to.SliceOfPtrs(opt.WorkersCIDR...),
+			DestinationPortRange:       to.Ptr(SSHPort),
+			Access:                     to.Ptr(armnetwork.SecurityRuleAccessAllow),
+			Direction:                  to.Ptr(armnetwork.SecurityRuleDirectionOutbound),
+			Priority:                   to.Ptr(int32(401)),
+			Description:                to.Ptr("Allow Bastion egress to Shoot workers ipv4"),
 		},
 	}
 }

@@ -17,52 +17,50 @@ package client
 import (
 	"context"
 
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
+// NewSecurityGroupClient creates a new SecurityGroupClient
+func NewSecurityGroupClient(auth internal.ClientAuth) (*NetworkSecurityGroupClient, error) {
+	cred, err := auth.GetAzClientCredentials()
+	if err != nil {
+		return nil, err
+	}
+	client, err := armnetwork.NewSecurityGroupsClient(auth.SubscriptionID, cred, nil)
+	return &NetworkSecurityGroupClient{client}, err
+}
+
 // CreateOrUpdate indicates an expected call of Network Security Group CreateOrUpdate.
-func (c NetworkSecurityGroupClient) CreateOrUpdate(ctx context.Context, resourceGroupName, name string, parameters network.SecurityGroup) (*network.SecurityGroup, error) {
-	future, err := c.client.CreateOrUpdate(ctx, resourceGroupName, name, parameters)
+func (c NetworkSecurityGroupClient) CreateOrUpdate(ctx context.Context, resourceGroupName, name string, parameters armnetwork.SecurityGroup) (*armnetwork.SecurityGroup, error) {
+	future, err := c.client.BeginCreateOrUpdate(ctx, resourceGroupName, name, parameters, nil)
 	if err != nil {
 		return nil, err
 	}
-	if err := future.WaitForCompletionRef(ctx, c.client.Client); err != nil {
-		return nil, err
-	}
-	nsg, err := future.Result(c.client)
+	nsg, err := future.PollUntilDone(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
-	return &nsg, nil
+	return &nsg.SecurityGroup, nil
 }
 
 // Get will fetch a network security group.
-func (c NetworkSecurityGroupClient) Get(ctx context.Context, resourceGroupName string, networkSecurityGroupName, name string) (*network.SecurityGroup, error) {
-	nsg, err := c.client.Get(ctx, resourceGroupName, networkSecurityGroupName, name)
+func (c NetworkSecurityGroupClient) Get(ctx context.Context, resourceGroupName string, networkSecurityGroupName string) (*armnetwork.SecurityGroup, error) {
+	nsg, err := c.client.Get(ctx, resourceGroupName, networkSecurityGroupName, nil)
 	if err != nil {
 		return nil, err
 	}
-	return &nsg, nil
+	return &nsg.SecurityGroup, nil
 }
 
 // Delete deletes a network security group.
 func (c NetworkSecurityGroupClient) Delete(ctx context.Context, resourceGroupName, name string) error {
-	future, err := c.client.Delete(ctx, resourceGroupName, name)
+	future, err := c.client.BeginDelete(ctx, resourceGroupName, name, nil)
 	if err != nil {
 		return err
 	}
-	if err := future.WaitForCompletionRef(ctx, c.client.Client); err != nil {
+	if _, err := future.PollUntilDone(ctx, nil); err != nil {
 		return err
 	}
-	_, err = future.Result(c.client)
 	return err
-}
-
-// Get will get a Security rule.
-func (c SecurityRulesClient) Get(ctx context.Context, resourceGroupName string, networkSecurityGroupName string, name string) (*network.SecurityRule, error) {
-	rules, err := c.client.Get(ctx, resourceGroupName, networkSecurityGroupName, name)
-	if err != nil {
-		return nil, err
-	}
-	return &rules, nil
 }

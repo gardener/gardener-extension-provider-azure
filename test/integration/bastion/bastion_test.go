@@ -674,6 +674,20 @@ func checkSecurityRuleDoesNotExist(ctx context.Context, az *azureClientSet, opti
 	Expect(ignoreAzureNotFoundError(err)).To(Succeed())
 }
 
+// ruleExist is similar to bastionctrl.RuleExist but for the old network client
+func ruleExist(ruleName *string, rules *[]network.SecurityRule) bool {
+	if ruleName == nil {
+		return false
+	}
+
+	for _, rule := range *rules {
+		if rule.Name != nil && *rule.Name == *ruleName {
+			return true
+		}
+	}
+	return false
+}
+
 func verifyCreation(ctx context.Context, az *azureClientSet, options *bastionctrl.Options) {
 	By("RuleExist")
 	// does not have authorization to performsecurityRules get due to global rule. use security group to check it.
@@ -681,9 +695,9 @@ func verifyCreation(ctx context.Context, az *azureClientSet, options *bastionctr
 	Expect(err).NotTo(HaveOccurred())
 
 	// bastion NSG - Check Ingress / Egress firewalls created
-	bastionctrl.RuleExist(pointer.StringPtr(bastionctrl.NSGIngressAllowSSHResourceNameIPv4(options.BastionInstanceName)), sg.SecurityRules)
-	bastionctrl.RuleExist(pointer.StringPtr(bastionctrl.NSGEgressDenyAllResourceName(options.BastionInstanceName)), sg.SecurityRules)
-	bastionctrl.RuleExist(pointer.StringPtr(bastionctrl.NSGEgressAllowOnlyResourceName(options.BastionInstanceName)), sg.SecurityRules)
+	ruleExist(pointer.StringPtr(bastionctrl.NSGIngressAllowSSHResourceNameIPv4(options.BastionInstanceName)), sg.SecurityRules)
+	ruleExist(pointer.StringPtr(bastionctrl.NSGEgressDenyAllResourceName(options.BastionInstanceName)), sg.SecurityRules)
+	ruleExist(pointer.StringPtr(bastionctrl.NSGEgressAllowOnlyResourceName(options.BastionInstanceName)), sg.SecurityRules)
 
 	By("checking bastion instance")
 	// bastion instance

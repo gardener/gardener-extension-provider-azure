@@ -78,7 +78,7 @@ func (f *MockFactoryWrapper) assertRouteTableCalled(name string) *gomock.Call {
 func (f *MockFactoryWrapper) assertSecurityGroupCalled(name string) *gomock.Call {
 	sg := mockclient.NewMockNetworkSecurityGroup(f.ctrl)
 	f.EXPECT().NetworkSecurityGroup().Return(sg, nil)
-	return sg.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, name, gomock.Any()).Return(&network.SecurityGroup{
+	return sg.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, name, gomock.Any()).Return(&armnetwork.SecurityGroup{
 		ID: to.Ptr("sgId"),
 	}, nil)
 }

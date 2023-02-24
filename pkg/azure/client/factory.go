@@ -140,16 +140,7 @@ func (f azureFactory) DNSRecordSet() (DNSRecordSet, error) {
 
 // NetworkSecurityGroup reads the secret from the passed reference and return an Azure network security group client.
 func (f azureFactory) NetworkSecurityGroup() (NetworkSecurityGroup, error) {
-	authorizer, id, err := internal.GetAuthorizerAndSubscriptionID(f.auth)
-	if err != nil {
-		return nil, err
-	}
-	networkSecurityGroupClient := azurenetwork.NewSecurityGroupsClient(id)
-	networkSecurityGroupClient.Authorizer = authorizer
-
-	return NetworkSecurityGroupClient{
-		client: networkSecurityGroupClient,
-	}, nil
+	return NewSecurityGroupClient(*f.auth)
 }
 
 // PublicIP reads the secret from the passed reference and return an Azure network PublicIPClient.
