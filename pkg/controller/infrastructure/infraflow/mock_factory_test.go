@@ -20,7 +20,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	mockclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client/mock"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
@@ -111,18 +110,18 @@ func (f *MockFactoryWrapper) assertNatGatewayCalledWithParameters(name string, p
 func (f *MockFactoryWrapper) assertPublicIPCalledWithoutCreation() *gomock.Call {
 	ip := mockclient.NewMockPublicIP(f.ctrl)
 	f.EXPECT().PublicIP().Return(ip, nil)
-	return ip.EXPECT().GetAll(gomock.Any(), f.resourceGroup).Return([]network.PublicIPAddress{}, nil).AnyTimes() // simple fake (deletion not tested in mocks)
+	return ip.EXPECT().GetAll(gomock.Any(), f.resourceGroup).Return([]*armnetwork.PublicIPAddress{}, nil).AnyTimes() // simple fake (deletion not tested in mocks)
 }
 
 func (f *MockFactoryWrapper) assertPublicIPCalledWithParameters(name interface{}, params interface{}) *gomock.Call {
 	ip := mockclient.NewMockPublicIP(f.ctrl)
 	f.EXPECT().PublicIP().Return(ip, nil)
-	ip.EXPECT().GetAll(gomock.Any(), f.resourceGroup).Return([]network.PublicIPAddress{}, nil).AnyTimes() // simple fake (deletion not tested in mocks)
-	return ip.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, name, params).Return(&network.PublicIPAddress{ID: to.Ptr("ipId")}, nil)
+	ip.EXPECT().GetAll(gomock.Any(), f.resourceGroup).Return([]*armnetwork.PublicIPAddress{}, nil).AnyTimes() // simple fake (deletion not tested in mocks)
+	return ip.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, name, params).Return(&armnetwork.PublicIPAddress{ID: to.Ptr("ipId")}, nil)
 }
 
 func (f *MockFactoryWrapper) assertPublicIPGet(resourceGroup, name interface{}) *gomock.Call {
 	ip := mockclient.NewMockPublicIP(f.ctrl)
 	f.EXPECT().PublicIP().Return(ip, nil)
-	return ip.EXPECT().Get(gomock.Any(), resourceGroup, name, "").Return(&network.PublicIPAddress{ID: to.Ptr("my-id")}, nil)
+	return ip.EXPECT().Get(gomock.Any(), resourceGroup, name).Return(&armnetwork.PublicIPAddress{ID: to.Ptr("my-id")}, nil)
 }

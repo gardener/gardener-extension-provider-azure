@@ -26,7 +26,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/bastion"
 	"github.com/go-logr/logr"
@@ -65,7 +64,7 @@ func createBastionInstance(ctx context.Context, factory azureclient.Factory, opt
 	return instance, nil
 }
 
-func createOrUpdatePublicIP(ctx context.Context, factory azureclient.Factory, opt *Options, parameters *network.PublicIPAddress) (*network.PublicIPAddress, error) {
+func createOrUpdatePublicIP(ctx context.Context, factory azureclient.Factory, opt *Options, parameters *armnetwork.PublicIPAddress) (*armnetwork.PublicIPAddress, error) {
 	publicClient, err := factory.PublicIP()
 	if err != nil {
 		return nil, err
@@ -112,13 +111,13 @@ func getBastionInstance(ctx context.Context, log logr.Logger, factory azureclien
 	return instance, nil
 }
 
-func getNic(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*network.Interface, error) {
+func getNic(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*armnetwork.Interface, error) {
 	nicClient, err := factory.NetworkInterface()
 	if err != nil {
 		return nil, err
 	}
 
-	nic, err := nicClient.Get(ctx, opt.ResourceGroupName, opt.NicName, "")
+	nic, err := nicClient.Get(ctx, opt.ResourceGroupName, opt.NicName)
 	if err != nil {
 		if azureclient.IsAzureAPINotFoundError(err) {
 			log.Info("Nic not found,", "nic_name", opt.NicName)
@@ -168,13 +167,13 @@ func getWorkersCIDR(cluster *controller.Cluster) ([]string, error) {
 	return nil, fmt.Errorf("InfrastructureConfig.Networks.Workers is nil")
 }
 
-func getPublicIP(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*network.PublicIPAddress, error) {
+func getPublicIP(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*armnetwork.PublicIPAddress, error) {
 	ipClient, err := factory.PublicIP()
 	if err != nil {
 		return nil, err
 	}
 
-	ip, err := ipClient.Get(ctx, opt.ResourceGroupName, opt.BastionPublicIPName, "")
+	ip, err := ipClient.Get(ctx, opt.ResourceGroupName, opt.BastionPublicIPName)
 	if err != nil {
 		if azureclient.IsAzureAPINotFoundError(err) {
 			log.Info("public IP not found,", "publicIP_name", opt.BastionPublicIPName)

@@ -217,13 +217,13 @@ var _ = Describe("AzureReconciler", func() {
 			cfg.Networks.Zones = []azure.Zone{{Name: 1, CIDR: "10.0.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: true, IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip", ResourceGroup: resourceGroupName}}}}, {Name: 2, CIDR: "10.1.0.0/16"}}
 			BeforeEach(func() {
 				mock := NewMockFactoryWrapper(resourceGroupName, location)
-				parameters := network.PublicIPAddress{
+				parameters := armnetwork.PublicIPAddress{
 					Location: to.Ptr(location),
-					Sku:      &network.PublicIPAddressSku{Name: network.PublicIPAddressSkuNameStandard},
-					PublicIPAddressPropertiesFormat: &network.PublicIPAddressPropertiesFormat{
-						PublicIPAllocationMethod: network.Static,
+					SKU:      &armnetwork.PublicIPAddressSKU{Name: to.Ptr(armnetwork.PublicIPAddressSKUNameStandard)},
+					Properties: &armnetwork.PublicIPAddressPropertiesFormat{
+						PublicIPAllocationMethod: to.Ptr(armnetwork.IPAllocationMethodStatic),
 					},
-					Zones: &[]string{"1"},
+					Zones: []*string{to.Ptr("1")},
 				}
 				mock.assertPublicIPCalledWithParameters(MatchAnyOfStrings([]string{"test_cluster-nat-gateway-z1-ip"}), parameters)
 				factory = mock.GetFactory()
@@ -260,7 +260,7 @@ var _ = Describe("AzureReconciler", func() {
 				ctrl := gomock.NewController(GinkgoT())
 				factory := mockclient.NewMockFactory(ctrl)
 				ip := mockclient.NewMockPublicIP(ctrl)
-				ip.EXPECT().GetAll(gomock.Any(), resourceGroupName).Return([]network.PublicIPAddress{{Name: to.Ptr("old-ip")}}, nil)
+				ip.EXPECT().GetAll(gomock.Any(), resourceGroupName).Return([]*armnetwork.PublicIPAddress{{Name: to.Ptr("old-ip")}}, nil)
 				ip.EXPECT().Delete(gomock.Any(), resourceGroupName, "old-ip").Return(fmt.Errorf("delete error to not call create IP in test"))
 				factory.EXPECT().PublicIP().Return(ip, nil)
 
@@ -367,7 +367,7 @@ var _ = Describe("AzureReconciler", func() {
 				It("enriches with 2 user managed IPs", func() {
 					sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 					Expect(err).ToNot(HaveOccurred())
-					res := make(map[string][]network.PublicIPAddress)
+					res := make(map[string][]*armnetwork.PublicIPAddress)
 					err = sut.EnrichResponseWithUserManagedIPs(context.TODO(), res)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(res).To(HaveKey("test_cluster-nodes-z1"))

@@ -28,7 +28,7 @@ func isAzureAPStatusError(err error, status int) bool {
 			return true
 		}
 	case *azcore.ResponseError: // error from new azure SDK client
-		if e.StatusCode == http.StatusNotFound {
+		if e.StatusCode == status {
 			return true
 		}
 	}

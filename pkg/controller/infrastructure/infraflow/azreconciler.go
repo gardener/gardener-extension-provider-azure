@@ -215,8 +215,8 @@ func (f azureReconciler) AvailabilitySet(ctx context.Context) error {
 }
 
 // PublicIPs creates or updates PublicIPs for the NATs
-func (f azureReconciler) PublicIPs(ctx context.Context) (map[string][]network.PublicIPAddress, error) {
-	res := make(map[string][]network.PublicIPAddress)
+func (f azureReconciler) PublicIPs(ctx context.Context) (map[string][]*armnetwork.PublicIPAddress, error) {
+	res := make(map[string][]*armnetwork.PublicIPAddress)
 	client, err := f.factory.PublicIP()
 	if err != nil {
 		return res, err
@@ -230,28 +230,28 @@ func (f azureReconciler) PublicIPs(ctx context.Context) (map[string][]network.Pu
 		return res, nil
 	}
 	for _, ip := range ips {
-		params := network.PublicIPAddress{
+		params := armnetwork.PublicIPAddress{
 			Location: to.Ptr(f.tf.Region()),
-			Sku:      &network.PublicIPAddressSku{Name: network.PublicIPAddressSkuNameStandard},
-			PublicIPAddressPropertiesFormat: &network.PublicIPAddressPropertiesFormat{
-				PublicIPAllocationMethod: network.Static,
+			SKU:      &armnetwork.PublicIPAddressSKU{Name: to.Ptr(armnetwork.PublicIPAddressSKUNameStandard)},
+			Properties: &armnetwork.PublicIPAddressPropertiesFormat{
+				PublicIPAllocationMethod: to.Ptr(armnetwork.IPAllocationMethodStatic),
 			},
 		}
 		if ip.Zone() != nil {
-			params.Zones = &[]string{*ip.Zone()}
+			params.Zones = []*string{ip.Zone()}
 		}
 		resp, err := client.CreateOrUpdate(ctx, f.tf.ResourceGroup(), ip.IpName(), params)
 		if err != nil {
 			return res, err
 		}
-		res[ip.SubnetName()] = append(res[ip.SubnetName()], *resp)
+		res[ip.SubnetName()] = append(res[ip.SubnetName()], resp)
 
 	}
 	return res, nil
 }
 
 // EnrichResponseWithUserManagedIPs adds the IDs of user managed IPs to the input map of associated IPs of the NATs
-func (f azureReconciler) EnrichResponseWithUserManagedIPs(ctx context.Context, res map[string][]network.PublicIPAddress) error {
+func (f azureReconciler) EnrichResponseWithUserManagedIPs(ctx context.Context, res map[string][]*armnetwork.PublicIPAddress) error {
 	ips := f.tf.UserManagedIPs()
 	if len(ips) == 0 {
 		return nil
@@ -261,9 +261,9 @@ func (f azureReconciler) EnrichResponseWithUserManagedIPs(ctx context.Context, r
 		return err
 	}
 	for _, ip := range ips {
-		resp, err := client.Get(ctx, ip.ResourceGroup, ip.Name, "")
+		resp, err := client.Get(ctx, ip.ResourceGroup, ip.Name)
 		if err == nil {
-			res[ip.SubnetName] = append(res[ip.SubnetName], network.PublicIPAddress{
+			res[ip.SubnetName] = append(res[ip.SubnetName], &armnetwork.PublicIPAddress{
 				ID: resp.ID,
 			})
 		} else {

@@ -12,7 +12,6 @@ import (
 	armnetwork "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	armresources "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	msi "github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
-	network "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	client "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	gomock "github.com/golang/mock/gomock"
 	v1 "k8s.io/api/core/v1"
@@ -786,10 +785,10 @@ func (m *MockPublicIP) EXPECT() *MockPublicIPMockRecorder {
 }
 
 // CreateOrUpdate mocks base method.
-func (m *MockPublicIP) CreateOrUpdate(arg0 context.Context, arg1, arg2 string, arg3 network.PublicIPAddress) (*network.PublicIPAddress, error) {
+func (m *MockPublicIP) CreateOrUpdate(arg0 context.Context, arg1, arg2 string, arg3 armnetwork.PublicIPAddress) (*armnetwork.PublicIPAddress, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateOrUpdate", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(*network.PublicIPAddress)
+	ret0, _ := ret[0].(*armnetwork.PublicIPAddress)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -815,25 +814,25 @@ func (mr *MockPublicIPMockRecorder) Delete(arg0, arg1, arg2 interface{}) *gomock
 }
 
 // Get mocks base method.
-func (m *MockPublicIP) Get(arg0 context.Context, arg1, arg2, arg3 string) (*network.PublicIPAddress, error) {
+func (m *MockPublicIP) Get(arg0 context.Context, arg1, arg2 string) (*armnetwork.PublicIPAddress, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(*network.PublicIPAddress)
+	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*armnetwork.PublicIPAddress)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Get indicates an expected call of Get.
-func (mr *MockPublicIPMockRecorder) Get(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+func (mr *MockPublicIPMockRecorder) Get(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockPublicIP)(nil).Get), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockPublicIP)(nil).Get), arg0, arg1, arg2)
 }
 
 // GetAll mocks base method.
-func (m *MockPublicIP) GetAll(arg0 context.Context, arg1 string) ([]network.PublicIPAddress, error) {
+func (m *MockPublicIP) GetAll(arg0 context.Context, arg1 string) ([]*armnetwork.PublicIPAddress, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetAll", arg0, arg1)
-	ret0, _ := ret[0].([]network.PublicIPAddress)
+	ret0, _ := ret[0].([]*armnetwork.PublicIPAddress)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

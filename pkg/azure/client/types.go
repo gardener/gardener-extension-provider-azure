@@ -23,7 +23,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-05-01/dns"
 	"github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-04-01/storage"
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
@@ -125,18 +124,18 @@ type NetworkSecurityGroup interface {
 	Delete(ctx context.Context, resourceGroupName, name string) error
 }
 
-// PublicIP represents an Azure Network PUblic IP client.
+// PublicIP represents an Azure Network Public IP client.
 type PublicIP interface {
-	Get(ctx context.Context, resourceGroupName string, name string, expander string) (*network.PublicIPAddress, error)
-	CreateOrUpdate(ctx context.Context, resourceGroupName, name string, parameters network.PublicIPAddress) (*network.PublicIPAddress, error)
+	Get(ctx context.Context, resourceGroupName string, name string) (*armnetwork.PublicIPAddress, error)
+	CreateOrUpdate(ctx context.Context, resourceGroupName, name string, parameters armnetwork.PublicIPAddress) (*armnetwork.PublicIPAddress, error)
 	Delete(ctx context.Context, resourceGroupName, name string) error
-	GetAll(ctx context.Context, resourceGroupName string) ([]network.PublicIPAddress, error)
+	GetAll(ctx context.Context, resourceGroupName string) ([]*armnetwork.PublicIPAddress, error)
 }
 
 // NetworkInterface represents an Azure Network Interface client.
 type NetworkInterface interface {
-	Get(ctx context.Context, resourceGroupName string, name string, expander string) (*network.Interface, error)
-	CreateOrUpdate(ctx context.Context, resourceGroupName, name string, parameters network.Interface) (*network.Interface, error)
+	Get(ctx context.Context, resourceGroupName string, name string) (*armnetwork.Interface, error)
+	CreateOrUpdate(ctx context.Context, resourceGroupName, name string, parameters armnetwork.Interface) (*armnetwork.Interface, error)
 	Delete(ctx context.Context, resourceGroupName, name string) error
 }
 
@@ -223,12 +222,12 @@ type NetworkSecurityGroupClient struct {
 
 // PublicIPClient is an implementation of Network Public IP Address.
 type PublicIPClient struct {
-	client network.PublicIPAddressesClient
+	client *armnetwork.PublicIPAddressesClient
 }
 
 // NetworkInterfaceClient is an implementation of Network Interface.
 type NetworkInterfaceClient struct {
-	client network.InterfacesClient
+	client *armnetwork.InterfacesClient
 }
 
 // DisksClient is an implementation of Disk for a disk client.

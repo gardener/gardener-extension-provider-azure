@@ -20,7 +20,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	azurecompute "github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	azuredns "github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-05-01/dns"
-	azurenetwork "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	azurestorage "github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-04-01/storage"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 	corev1 "k8s.io/api/core/v1"
@@ -145,30 +144,13 @@ func (f azureFactory) NetworkSecurityGroup() (NetworkSecurityGroup, error) {
 
 // PublicIP reads the secret from the passed reference and return an Azure network PublicIPClient.
 func (f azureFactory) PublicIP() (PublicIP, error) {
-	authorizer, id, err := internal.GetAuthorizerAndSubscriptionID(f.auth)
-	if err != nil {
-		return nil, err
-	}
-	publicIPClient := azurenetwork.NewPublicIPAddressesClient(id)
-	publicIPClient.Authorizer = authorizer
+	return NewPublicIPClient(*f.auth)
 
-	return PublicIPClient{
-		client: publicIPClient,
-	}, nil
 }
 
 // NetworkInterface reads the secret from the passed reference and return an Azure network interface client.
 func (f azureFactory) NetworkInterface() (NetworkInterface, error) {
-	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(f.auth)
-	if err != nil {
-		return nil, err
-	}
-	networkInterfaceClient := azurenetwork.NewInterfacesClient(subscriptionID)
-	networkInterfaceClient.Authorizer = authorizer
-
-	return NetworkInterfaceClient{
-		client: networkInterfaceClient,
-	}, nil
+	return NewNetworkInterfaceClient(*f.auth)
 }
 
 // Disk reads the secret from the passed reference and return an Azure disk client.

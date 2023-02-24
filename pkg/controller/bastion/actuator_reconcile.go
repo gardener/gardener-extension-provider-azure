@@ -26,7 +26,6 @@ import (
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	ctrlerror "github.com/gardener/gardener/pkg/controllerutils/reconciler"
@@ -151,15 +150,15 @@ func getInfrastructureStatus(ctx context.Context, a *actuator, cluster *extensio
 	return infrastructureStatus, nil
 }
 
-func getPrivateIPv4Address(nic *network.Interface) (string, error) {
-	if nic.IPConfigurations == nil {
-		return "", fmt.Errorf("nic.IPConfigurations %s is nil", *nic.ID)
+func getPrivateIPv4Address(nic *armnetwork.Interface) (string, error) {
+	if len(nic.Properties.IPConfigurations) == 0 {
+		return "", fmt.Errorf("nic.IPConfigurations %s is empty", *nic.ID)
 	}
 
-	ipConfigurations := *nic.IPConfigurations
+	ipConfigurations := nic.Properties.IPConfigurations
 	for _, ipConfiguration := range ipConfigurations {
-		if ipConfiguration.PrivateIPAddress != nil {
-			ipv4 := net.ParseIP(*ipConfiguration.PrivateIPAddress).To4()
+		if ipConfiguration.Properties.PrivateIPAddress != nil {
+			ipv4 := net.ParseIP(*ipConfiguration.Properties.PrivateIPAddress).To4()
 			if ipv4 != nil {
 				return ipv4.String(), nil
 			}
@@ -169,15 +168,15 @@ func getPrivateIPv4Address(nic *network.Interface) (string, error) {
 	return "", fmt.Errorf("failed to get IPv4 PrivateIPAddress on nic %s", *nic.ID)
 }
 
-func getPrivateIPv6Address(nic *network.Interface) (string, error) {
-	if nic.IPConfigurations == nil {
-		return "", fmt.Errorf("nic.IPConfigurations %s is nil", *nic.ID)
+func getPrivateIPv6Address(nic *armnetwork.Interface) (string, error) {
+	if len(nic.Properties.IPConfigurations) == 0 {
+		return "", fmt.Errorf("nic.IPConfigurations %s is empty", *nic.ID)
 	}
 
-	ipConfigurations := *nic.IPConfigurations
+	ipConfigurations := nic.Properties.IPConfigurations
 	for _, ipConfiguration := range ipConfigurations {
-		if ipConfiguration.PrivateIPAddress != nil {
-			ip := net.ParseIP(*ipConfiguration.PrivateIPAddress)
+		if ipConfiguration.Properties.PrivateIPAddress != nil {
+			ip := net.ParseIP(*ipConfiguration.Properties.PrivateIPAddress)
 			if len(ip.To4()) == net.IPv4len {
 				continue
 			}
@@ -242,14 +241,14 @@ func prepareNSGRules(opt *Options) []*armnetwork.SecurityRule {
 	return res
 }
 
-func ensurePublicIPAddress(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*network.PublicIPAddress, error) {
+func ensurePublicIPAddress(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*armnetwork.PublicIPAddress, error) {
 	publicIP, err := getPublicIP(ctx, log, factory, opt)
 	if err != nil {
 		return nil, err
 	}
 	if publicIP != nil {
-		if publicIP.ProvisioningState != "Succeeded" {
-			return nil, fmt.Errorf("public IP with name %v is not in \"Succeeded\" status: %s", publicIP.Name, publicIP.ProvisioningState)
+		if *publicIP.Properties.ProvisioningState != "Succeeded" {
+			return nil, fmt.Errorf("public IP with name %v is not in \"Succeeded\" status: %s", publicIP.Name, *publicIP.Properties.ProvisioningState)
 		}
 		return publicIP, nil
 	}
@@ -261,7 +260,7 @@ func ensurePublicIPAddress(ctx context.Context, log logr.Logger, factory azurecl
 		return nil, err
 	}
 
-	log.Info("bastion compute instance public ip address created", "publicIP", *publicIP.IPAddress)
+	log.Info("bastion compute instance public ip address created", "publicIP", *publicIP.Properties.IPAddress)
 	return publicIP, nil
 }
 
@@ -297,14 +296,14 @@ func ensureComputeInstance(ctx context.Context, log logr.Logger, bastion *extens
 	return nil
 }
 
-func ensureNic(ctx context.Context, log logr.Logger, factory azureclient.Factory, infrastructureStatus *azure.InfrastructureStatus, opt *Options, publicIP *network.PublicIPAddress) (*network.Interface, error) {
+func ensureNic(ctx context.Context, log logr.Logger, factory azureclient.Factory, infrastructureStatus *azure.InfrastructureStatus, opt *Options, publicIP *armnetwork.PublicIPAddress) (*armnetwork.Interface, error) {
 	nic, err := getNic(ctx, log, factory, opt)
 	if err != nil {
 		return nil, err
 	}
 	if nic != nil {
-		if nic.ProvisioningState != "Succeeded" {
-			return nil, fmt.Errorf("network interface with name %v is not in \"Succeeded\" status: %s", nic.Name, nic.ProvisioningState)
+		if *nic.Properties.ProvisioningState != "Succeeded" {
+			return nil, fmt.Errorf("network interface with name %v is not in \"Succeeded\" status: %s", nic.Name, *nic.Properties.ProvisioningState)
 		}
 		return nic, nil
 	}
@@ -335,7 +334,7 @@ func ensureNic(ctx context.Context, log logr.Logger, factory azureclient.Factory
 	return nic, nil
 }
 
-func getInstanceEndpoints(nic *network.Interface, publicIP *network.PublicIPAddress) (*bastionEndpoints, error) {
+func getInstanceEndpoints(nic *armnetwork.Interface, publicIP *armnetwork.PublicIPAddress) (*bastionEndpoints, error) {
 	endpoints := &bastionEndpoints{}
 
 	internalIP, err := getPrivateIPv4Address(nic)
@@ -350,7 +349,7 @@ func getInstanceEndpoints(nic *network.Interface, publicIP *network.PublicIPAddr
 	// Azure does not automatically assign a public dns name to the instance (in contrast to e.g. AWS).
 	// As we provide an externalIP to connect to the bastion, having a public dns name would just be an alternative way to connect to the bastion.
 	// Out of this reason, we spare the effort to create a PTR record (see https://docs.microsoft.com/en-us/azure/dns/dns-reverse-dns-hosting) just for the sake of having it.
-	externalIP := publicIP.IPAddress
+	externalIP := publicIP.Properties.IPAddress
 	if ingress := addressToIngress(nil, externalIP); ingress != nil {
 		endpoints.public = ingress
 	}

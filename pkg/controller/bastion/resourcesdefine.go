@@ -20,23 +20,22 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 )
 
-func nicDefine(opt *Options, publicIP *network.PublicIPAddress, subnet *armnetwork.SubnetsClientGetResponse) *network.Interface {
-	return &network.Interface{
+func nicDefine(opt *Options, publicIP *armnetwork.PublicIPAddress, subnet *armnetwork.SubnetsClientGetResponse) *armnetwork.Interface {
+	return &armnetwork.Interface{
 		Name:     &opt.NicName,
 		Location: &opt.Location,
-		InterfacePropertiesFormat: &network.InterfacePropertiesFormat{
-			IPConfigurations: &[]network.InterfaceIPConfiguration{
+		Properties: &armnetwork.InterfacePropertiesFormat{
+			IPConfigurations: []*armnetwork.InterfaceIPConfiguration{
 				{
 					Name: to.Ptr("ipConfig1"),
-					InterfaceIPConfigurationPropertiesFormat: &network.InterfaceIPConfigurationPropertiesFormat{
-						Subnet: &network.Subnet{
+					Properties: &armnetwork.InterfaceIPConfigurationPropertiesFormat{
+						Subnet: &armnetwork.Subnet{
 							ID: subnet.ID,
 						},
-						PrivateIPAllocationMethod: network.Dynamic,
+						PrivateIPAllocationMethod: to.Ptr(armnetwork.IPAllocationMethodDynamic),
 						PublicIPAddress:           publicIP,
 					},
 				},
@@ -46,16 +45,16 @@ func nicDefine(opt *Options, publicIP *network.PublicIPAddress, subnet *armnetwo
 	}
 }
 
-func publicIPAddressDefine(opt *Options) *network.PublicIPAddress {
-	return &network.PublicIPAddress{
+func publicIPAddressDefine(opt *Options) *armnetwork.PublicIPAddress {
+	return &armnetwork.PublicIPAddress{
 		Name:     &opt.BastionPublicIPName,
 		Location: &opt.Location,
-		Sku: &network.PublicIPAddressSku{
-			Name: network.PublicIPAddressSkuNameStandard,
+		SKU: &armnetwork.PublicIPAddressSKU{
+			Name: to.Ptr(armnetwork.PublicIPAddressSKUNameStandard),
 		},
-		PublicIPAddressPropertiesFormat: &network.PublicIPAddressPropertiesFormat{
-			PublicIPAddressVersion:   network.IPv4,
-			PublicIPAllocationMethod: network.Static,
+		Properties: &armnetwork.PublicIPAddressPropertiesFormat{
+			PublicIPAddressVersion:   to.Ptr(armnetwork.IPVersionIPv4),
+			PublicIPAllocationMethod: to.Ptr(armnetwork.IPAllocationMethodStatic),
 		},
 		Tags: opt.Tags,
 	}
