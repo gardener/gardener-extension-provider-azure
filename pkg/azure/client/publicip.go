@@ -53,8 +53,8 @@ func (c PublicIPClient) Get(ctx context.Context, resourceGroupName string, name 
 	return &npi.PublicIPAddress, nil
 }
 
-// GetAll will get all network public IP Addresses
-func (c PublicIPClient) GetAll(ctx context.Context, resourceGroupName string) ([]*armnetwork.PublicIPAddress, error) {
+// List will get all network public IP Addresses
+func (c PublicIPClient) List(ctx context.Context, resourceGroupName string) ([]*armnetwork.PublicIPAddress, error) {
 	pager := c.client.NewListPager(resourceGroupName, nil)
 	var ips []*armnetwork.PublicIPAddress
 	for pager.More() {

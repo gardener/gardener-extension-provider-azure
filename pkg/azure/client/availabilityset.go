@@ -33,26 +33,32 @@ func NewAvailabilitySetClient(auth internal.ClientAuth) (*AvailabilitySetClient,
 }
 
 // CreateOrUpdate creates or updates a new availability set.
-func (c AvailabilitySetClient) CreateOrUpdate(ctx context.Context, resourceGroupName, availabilitySetName string, parameters armcompute.AvailabilitySet) (res armcompute.AvailabilitySetsClientCreateOrUpdateResponse, err error) {
-	res, err = c.client.CreateOrUpdate(ctx, resourceGroupName, availabilitySetName, parameters, nil)
+func (c AvailabilitySetClient) CreateOrUpdate(ctx context.Context, resourceGroupName, availabilitySetName string, parameters armcompute.AvailabilitySet) (*armcompute.AvailabilitySet, error) {
+	res, err := c.client.CreateOrUpdate(ctx, resourceGroupName, availabilitySetName, parameters, nil)
 	if err != nil {
-		return res, fmt.Errorf("cannot create availability set: %v", err)
+		return nil, fmt.Errorf("cannot create availability set: %v", err)
 	}
-	return res, nil
+	return &res.AvailabilitySet, nil
 }
 
 // Get returns the availability set for the given resource group and availability set name.
-func (c AvailabilitySetClient) Get(ctx context.Context, resourceGroupName, availabilitySetName string) (res armcompute.AvailabilitySetsClientGetResponse, err error) {
-	res, err = c.client.Get(ctx, resourceGroupName, availabilitySetName, nil)
+func (c AvailabilitySetClient) Get(ctx context.Context, resourceGroupName, availabilitySetName string) (*armcompute.AvailabilitySet, error) {
+	res, err := c.client.Get(ctx, resourceGroupName, availabilitySetName, nil)
 	if err != nil {
 		if IsAzureAPINotFoundError(err) {
-			return res, nil
+			return nil, nil
 		}
 	}
-	return res, nil
+	return &res.AvailabilitySet, nil
 }
 
 // Delete deletes the availability set for the given resource group and availability set name.
-func (c AvailabilitySetClient) Delete(ctx context.Context, resourceGroupName, availabilitySetName string) (armcompute.AvailabilitySetsClientDeleteResponse, error) {
-	return c.client.Delete(ctx, resourceGroupName, availabilitySetName, nil)
+func (c AvailabilitySetClient) Delete(ctx context.Context, resourceGroupName, availabilitySetName string) error {
+	_, err := c.client.Delete(ctx, resourceGroupName, availabilitySetName, nil)
+	if err != nil {
+		if IsAzureAPINotFoundError(err) {
+			return nil
+		}
+	}
+	return err
 }

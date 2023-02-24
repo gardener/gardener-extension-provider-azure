@@ -60,7 +60,7 @@ func NewMockFactoryWrapper(resourceGroup, location string) *MockFactoryWrapper {
 func (f *MockFactoryWrapper) assertAvailabilitySetCalledWithParameters(name string, params interface{}) *gomock.Call {
 	aset := mockclient.NewMockAvailabilitySet(f.ctrl)
 	f.EXPECT().AvailabilitySet().Return(aset, nil)
-	return aset.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, gomock.Any(), params).Return(armcompute.AvailabilitySetsClientCreateOrUpdateResponse{}, nil)
+	return aset.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, gomock.Any(), params).Return(&armcompute.AvailabilitySet{}, nil)
 }
 
 func (f *MockFactoryWrapper) assertRouteTableCalled(name string) *gomock.Call {
@@ -103,20 +103,20 @@ func (f *MockFactoryWrapper) assertSubnetCalled(vnetName string, name interface{
 func (f *MockFactoryWrapper) assertNatGatewayCalledWithParameters(name string, params interface{}) *gomock.Call {
 	nat := mockclient.NewMockNatGateway(f.ctrl)
 	f.EXPECT().NatGateway().Return(nat, nil)
-	nat.EXPECT().GetAll(gomock.Any(), f.resourceGroup).Return([]*armnetwork.NatGateway{}, nil).AnyTimes() // simple fake (deletion not tested in mocks)
+	nat.EXPECT().List(gomock.Any(), f.resourceGroup).Return([]*armnetwork.NatGateway{}, nil).AnyTimes() // simple fake (deletion not tested in mocks)
 	return nat.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, name, params).Return(armnetwork.NatGatewaysClientCreateOrUpdateResponse{NatGateway: armnetwork.NatGateway{ID: to.Ptr("natId")}}, nil)
 }
 
 func (f *MockFactoryWrapper) assertPublicIPCalledWithoutCreation() *gomock.Call {
 	ip := mockclient.NewMockPublicIP(f.ctrl)
 	f.EXPECT().PublicIP().Return(ip, nil)
-	return ip.EXPECT().GetAll(gomock.Any(), f.resourceGroup).Return([]*armnetwork.PublicIPAddress{}, nil).AnyTimes() // simple fake (deletion not tested in mocks)
+	return ip.EXPECT().List(gomock.Any(), f.resourceGroup).Return([]*armnetwork.PublicIPAddress{}, nil).AnyTimes() // simple fake (deletion not tested in mocks)
 }
 
 func (f *MockFactoryWrapper) assertPublicIPCalledWithParameters(name interface{}, params interface{}) *gomock.Call {
 	ip := mockclient.NewMockPublicIP(f.ctrl)
 	f.EXPECT().PublicIP().Return(ip, nil)
-	ip.EXPECT().GetAll(gomock.Any(), f.resourceGroup).Return([]*armnetwork.PublicIPAddress{}, nil).AnyTimes() // simple fake (deletion not tested in mocks)
+	ip.EXPECT().List(gomock.Any(), f.resourceGroup).Return([]*armnetwork.PublicIPAddress{}, nil).AnyTimes() // simple fake (deletion not tested in mocks)
 	return ip.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, name, params).Return(&armnetwork.PublicIPAddress{ID: to.Ptr("ipId")}, nil)
 }
 

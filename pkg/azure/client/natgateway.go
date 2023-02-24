@@ -54,8 +54,8 @@ func (c NatGatewayClient) Get(ctx context.Context, resourceGroupName, natGateway
 	return &natGateway, nil
 }
 
-// GetAll returns all NATGateways in the given resource group.
-func (c NatGatewayClient) GetAll(ctx context.Context, resourceGroupName string) ([]*armnetwork.NatGateway, error) {
+// List returns all NATGateways in the given resource group.
+func (c NatGatewayClient) List(ctx context.Context, resourceGroupName string) ([]*armnetwork.NatGateway, error) {
 	pager := c.client.NewListPager(resourceGroupName, nil)
 	var nats []*armnetwork.NatGateway
 	for pager.More() {

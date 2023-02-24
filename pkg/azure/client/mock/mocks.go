@@ -40,19 +40,19 @@ func (m *MockDNSZone) EXPECT() *MockDNSZoneMockRecorder {
 	return m.recorder
 }
 
-// GetAll mocks base method.
-func (m *MockDNSZone) GetAll(arg0 context.Context) (map[string]string, error) {
+// List mocks base method.
+func (m *MockDNSZone) List(arg0 context.Context) (map[string]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAll", arg0)
+	ret := m.ctrl.Call(m, "List", arg0)
 	ret0, _ := ret[0].(map[string]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetAll indicates an expected call of GetAll.
-func (mr *MockDNSZoneMockRecorder) GetAll(arg0 interface{}) *gomock.Call {
+// List indicates an expected call of List.
+func (mr *MockDNSZoneMockRecorder) List(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAll", reflect.TypeOf((*MockDNSZone)(nil).GetAll), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockDNSZone)(nil).List), arg0)
 }
 
 // MockDNSRecordSet is a mock of DNSRecordSet interface.
@@ -746,19 +746,19 @@ func (mr *MockNatGatewayMockRecorder) Get(arg0, arg1, arg2 interface{}) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockNatGateway)(nil).Get), arg0, arg1, arg2)
 }
 
-// GetAll mocks base method.
-func (m *MockNatGateway) GetAll(arg0 context.Context, arg1 string) ([]*armnetwork.NatGateway, error) {
+// List mocks base method.
+func (m *MockNatGateway) List(arg0 context.Context, arg1 string) ([]*armnetwork.NatGateway, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAll", arg0, arg1)
+	ret := m.ctrl.Call(m, "List", arg0, arg1)
 	ret0, _ := ret[0].([]*armnetwork.NatGateway)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetAll indicates an expected call of GetAll.
-func (mr *MockNatGatewayMockRecorder) GetAll(arg0, arg1 interface{}) *gomock.Call {
+// List indicates an expected call of List.
+func (mr *MockNatGatewayMockRecorder) List(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAll", reflect.TypeOf((*MockNatGateway)(nil).GetAll), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockNatGateway)(nil).List), arg0, arg1)
 }
 
 // MockPublicIP is a mock of PublicIP interface.
@@ -828,19 +828,19 @@ func (mr *MockPublicIPMockRecorder) Get(arg0, arg1, arg2 interface{}) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockPublicIP)(nil).Get), arg0, arg1, arg2)
 }
 
-// GetAll mocks base method.
-func (m *MockPublicIP) GetAll(arg0 context.Context, arg1 string) ([]*armnetwork.PublicIPAddress, error) {
+// List mocks base method.
+func (m *MockPublicIP) List(arg0 context.Context, arg1 string) ([]*armnetwork.PublicIPAddress, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAll", arg0, arg1)
+	ret := m.ctrl.Call(m, "List", arg0, arg1)
 	ret0, _ := ret[0].([]*armnetwork.PublicIPAddress)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetAll indicates an expected call of GetAll.
-func (mr *MockPublicIPMockRecorder) GetAll(arg0, arg1 interface{}) *gomock.Call {
+// List indicates an expected call of List.
+func (mr *MockPublicIPMockRecorder) List(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAll", reflect.TypeOf((*MockPublicIP)(nil).GetAll), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockPublicIP)(nil).List), arg0, arg1)
 }
 
 // MockAvailabilitySet is a mock of AvailabilitySet interface.
@@ -867,10 +867,10 @@ func (m *MockAvailabilitySet) EXPECT() *MockAvailabilitySetMockRecorder {
 }
 
 // CreateOrUpdate mocks base method.
-func (m *MockAvailabilitySet) CreateOrUpdate(arg0 context.Context, arg1, arg2 string, arg3 armcompute.AvailabilitySet) (armcompute.AvailabilitySetsClientCreateOrUpdateResponse, error) {
+func (m *MockAvailabilitySet) CreateOrUpdate(arg0 context.Context, arg1, arg2 string, arg3 armcompute.AvailabilitySet) (*armcompute.AvailabilitySet, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateOrUpdate", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(armcompute.AvailabilitySetsClientCreateOrUpdateResponse)
+	ret0, _ := ret[0].(*armcompute.AvailabilitySet)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -882,12 +882,11 @@ func (mr *MockAvailabilitySetMockRecorder) CreateOrUpdate(arg0, arg1, arg2, arg3
 }
 
 // Delete mocks base method.
-func (m *MockAvailabilitySet) Delete(arg0 context.Context, arg1, arg2 string) (armcompute.AvailabilitySetsClientDeleteResponse, error) {
+func (m *MockAvailabilitySet) Delete(arg0 context.Context, arg1, arg2 string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Delete", arg0, arg1, arg2)
-	ret0, _ := ret[0].(armcompute.AvailabilitySetsClientDeleteResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // Delete indicates an expected call of Delete.
@@ -897,10 +896,10 @@ func (mr *MockAvailabilitySetMockRecorder) Delete(arg0, arg1, arg2 interface{}) 
 }
 
 // Get mocks base method.
-func (m *MockAvailabilitySet) Get(arg0 context.Context, arg1, arg2 string) (armcompute.AvailabilitySetsClientGetResponse, error) {
+func (m *MockAvailabilitySet) Get(arg0 context.Context, arg1, arg2 string) (*armcompute.AvailabilitySet, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2)
-	ret0, _ := ret[0].(armcompute.AvailabilitySetsClientGetResponse)
+	ret0, _ := ret[0].(*armcompute.AvailabilitySet)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

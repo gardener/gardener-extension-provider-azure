@@ -52,9 +52,9 @@ type Factory interface {
 
 // AvailabilitySet is an interface for the Azure AvailabilitySet service.
 type AvailabilitySet interface {
-	Get(ctx context.Context, resourceGroupName, availabilitySetName string) (result armcompute.AvailabilitySetsClientGetResponse, err error)
-	CreateOrUpdate(ctx context.Context, resourceGroupName string, availabilitySetName string, parameters armcompute.AvailabilitySet) (result armcompute.AvailabilitySetsClientCreateOrUpdateResponse, err error)
-	Delete(ctx context.Context, resourceGroupName string, availabilitySetName string) (result armcompute.AvailabilitySetsClientDeleteResponse, err error)
+	Get(ctx context.Context, resourceGroupName, availabilitySetName string) (result *armcompute.AvailabilitySet, err error)
+	CreateOrUpdate(ctx context.Context, resourceGroupName string, availabilitySetName string, parameters armcompute.AvailabilitySet) (result *armcompute.AvailabilitySet, err error)
+	Delete(ctx context.Context, resourceGroupName string, availabilitySetName string) (err error)
 }
 
 // NatGateway is an interface for the Azure NatGateway service.
@@ -62,7 +62,7 @@ type NatGateway interface {
 	CreateOrUpdate(ctx context.Context, resourceGroupName, natGatewayName string, parameters armnetwork.NatGateway) (armnetwork.NatGatewaysClientCreateOrUpdateResponse, error)
 	Get(ctx context.Context, resourceGroupName, natGatewayName string) (*armnetwork.NatGatewaysClientGetResponse, error)
 	Delete(ctx context.Context, resourceGroupName, natGatewayName string) error
-	GetAll(ctx context.Context, resourceGroupName string) ([]*armnetwork.NatGateway, error)
+	List(ctx context.Context, resourceGroupName string) ([]*armnetwork.NatGateway, error)
 }
 
 // RouteTables is a client for the Azure RouteTable service.
@@ -107,7 +107,7 @@ type VirtualMachine interface {
 
 // DNSZone represents an Azure DNS zone client.
 type DNSZone interface {
-	GetAll(context.Context) (map[string]string, error)
+	List(context.Context) (map[string]string, error)
 }
 
 // DNSRecordSet represents an Azure DNS recordset client.
@@ -128,7 +128,7 @@ type PublicIP interface {
 	Get(ctx context.Context, resourceGroupName string, name string) (*armnetwork.PublicIPAddress, error)
 	CreateOrUpdate(ctx context.Context, resourceGroupName, name string, parameters armnetwork.PublicIPAddress) (*armnetwork.PublicIPAddress, error)
 	Delete(ctx context.Context, resourceGroupName, name string) error
-	GetAll(ctx context.Context, resourceGroupName string) ([]*armnetwork.PublicIPAddress, error)
+	List(ctx context.Context, resourceGroupName string) ([]*armnetwork.PublicIPAddress, error)
 }
 
 // NetworkInterface represents an Azure Network Interface client.

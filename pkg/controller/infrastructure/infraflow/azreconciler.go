@@ -341,7 +341,7 @@ func (f azureReconciler) ResourceGroup(ctx context.Context) error {
 
 // delete IPs of NAT Gateways that got disabled
 func (f azureReconciler) deleteOldNatIPs(ctx context.Context, client client.PublicIP) error {
-	existingIPs, err := client.GetAll(ctx, f.tf.ResourceGroup())
+	existingIPs, err := client.List(ctx, f.tf.ResourceGroup())
 	if err != nil {
 		return err
 	}
@@ -362,7 +362,7 @@ func (f azureReconciler) deleteOldNatIPs(ctx context.Context, client client.Publ
 
 // delete NAT Gateways that got disabled
 func (f azureReconciler) deleteOldNatGateways(ctx context.Context, client client.NatGateway) error {
-	existingNats, err := client.GetAll(ctx, f.tf.ResourceGroup())
+	existingNats, err := client.List(ctx, f.tf.ResourceGroup())
 	if err != nil {
 		return err
 	}

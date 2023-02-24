@@ -260,7 +260,7 @@ var _ = Describe("AzureReconciler", func() {
 				ctrl := gomock.NewController(GinkgoT())
 				factory := mockclient.NewMockFactory(ctrl)
 				ip := mockclient.NewMockPublicIP(ctrl)
-				ip.EXPECT().GetAll(gomock.Any(), resourceGroupName).Return([]*armnetwork.PublicIPAddress{{Name: to.Ptr("old-ip")}}, nil)
+				ip.EXPECT().List(gomock.Any(), resourceGroupName).Return([]*armnetwork.PublicIPAddress{{Name: to.Ptr("old-ip")}}, nil)
 				ip.EXPECT().Delete(gomock.Any(), resourceGroupName, "old-ip").Return(fmt.Errorf("delete error to not call create IP in test"))
 				factory.EXPECT().PublicIP().Return(ip, nil)
 
@@ -313,7 +313,7 @@ var _ = Describe("AzureReconciler", func() {
 					ctrl := gomock.NewController(GinkgoT())
 					factory := mockclient.NewMockFactory(ctrl)
 					nat := mockclient.NewMockNatGateway(ctrl)
-					nat.EXPECT().GetAll(gomock.Any(), resourceGroupName).Return([]*armnetwork.NatGateway{{Name: to.Ptr("old-nat")}}, nil)
+					nat.EXPECT().List(gomock.Any(), resourceGroupName).Return([]*armnetwork.NatGateway{{Name: to.Ptr("old-nat")}}, nil)
 					nat.EXPECT().Delete(gomock.Any(), resourceGroupName, "old-nat").Return(fmt.Errorf("delete error to not call create NAT in test"))
 					factory.EXPECT().NatGateway().Return(nat, nil)
 
@@ -403,7 +403,7 @@ var _ = Describe("AzureReconciler", func() {
 				It("enriches the status with the AvailabilitySet and identity", func() {
 					ctrl := gomock.NewController(GinkgoT())
 					aclient := mockclient.NewMockAvailabilitySet(ctrl)
-					aclient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(armcompute.AvailabilitySetsClientGetResponse{AvailabilitySet: armcompute.AvailabilitySet{ID: to.Ptr("av-id")}}, nil)
+					aclient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(&armcompute.AvailabilitySet{ID: to.Ptr("av-id")}, nil)
 
 					iclient := mockclient.NewMockManagedUserIdentity(ctrl)
 					identity := msi.Identity{ID: to.Ptr("identity-id"), UserAssignedIdentityProperties: &msi.UserAssignedIdentityProperties{ClientID: to.Ptr(uuid.FromStringOrNil("69359037-9599-48e7-b8f2-48393c019135"))}}
