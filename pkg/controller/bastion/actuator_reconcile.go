@@ -271,13 +271,13 @@ func ensureComputeInstance(ctx context.Context, log logr.Logger, bastion *extens
 	}
 
 	if instance != nil {
-		if instance.ProvisioningState == nil {
+		if instance.Properties.ProvisioningState == nil {
 			return fmt.Errorf("instance not running, status: nil")
 		}
-		if *instance.ProvisioningState == "Succeeded" {
+		if *instance.Properties.ProvisioningState == "Succeeded" {
 			return nil
 		} else {
-			return fmt.Errorf("instance not running, status: %v", *instance.ProvisioningState)
+			return fmt.Errorf("instance not running, status: %v", *instance.Properties.ProvisioningState)
 		}
 	}
 

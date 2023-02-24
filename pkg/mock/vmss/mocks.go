@@ -8,7 +8,7 @@ import (
 	context "context"
 	reflect "reflect"
 
-	compute "github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
+	armcompute "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -35,19 +35,19 @@ func (m *MockVmss) EXPECT() *MockVmssMockRecorder {
 	return m.recorder
 }
 
-// Create mocks base method.
-func (m *MockVmss) Create(arg0 context.Context, arg1, arg2 string, arg3 *compute.VirtualMachineScaleSet) (*compute.VirtualMachineScaleSet, error) {
+// CreateOrUpdate mocks base method.
+func (m *MockVmss) CreateOrUpdate(arg0 context.Context, arg1, arg2 string, arg3 armcompute.VirtualMachineScaleSet) (*armcompute.VirtualMachineScaleSet, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Create", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(*compute.VirtualMachineScaleSet)
+	ret := m.ctrl.Call(m, "CreateOrUpdate", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(*armcompute.VirtualMachineScaleSet)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// Create indicates an expected call of Create.
-func (mr *MockVmssMockRecorder) Create(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+// CreateOrUpdate indicates an expected call of CreateOrUpdate.
+func (mr *MockVmssMockRecorder) CreateOrUpdate(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockVmss)(nil).Create), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdate", reflect.TypeOf((*MockVmss)(nil).CreateOrUpdate), arg0, arg1, arg2, arg3)
 }
 
 // Delete mocks base method.
@@ -65,10 +65,10 @@ func (mr *MockVmssMockRecorder) Delete(arg0, arg1, arg2, arg3 interface{}) *gomo
 }
 
 // Get mocks base method.
-func (m *MockVmss) Get(arg0 context.Context, arg1, arg2 string, arg3 compute.ExpandTypesForGetVMScaleSets) (*compute.VirtualMachineScaleSet, error) {
+func (m *MockVmss) Get(arg0 context.Context, arg1, arg2 string, arg3 *armcompute.ExpandTypesForGetVMScaleSets) (*armcompute.VirtualMachineScaleSet, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(*compute.VirtualMachineScaleSet)
+	ret0, _ := ret[0].(*armcompute.VirtualMachineScaleSet)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -80,10 +80,10 @@ func (mr *MockVmssMockRecorder) Get(arg0, arg1, arg2, arg3 interface{}) *gomock.
 }
 
 // List mocks base method.
-func (m *MockVmss) List(arg0 context.Context, arg1 string) ([]compute.VirtualMachineScaleSet, error) {
+func (m *MockVmss) List(arg0 context.Context, arg1 string) ([]*armcompute.VirtualMachineScaleSet, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "List", arg0, arg1)
-	ret0, _ := ret[0].([]compute.VirtualMachineScaleSet)
+	ret0, _ := ret[0].([]*armcompute.VirtualMachineScaleSet)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

@@ -18,8 +18,8 @@ import (
 	"encoding/base64"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 )
 
@@ -60,33 +60,33 @@ func publicIPAddressDefine(opt *Options) *armnetwork.PublicIPAddress {
 	}
 }
 
-func computeInstanceDefine(opt *Options, bastion *extensionsv1alpha1.Bastion, publickey string) *compute.VirtualMachine {
-	return &compute.VirtualMachine{
+func computeInstanceDefine(opt *Options, bastion *extensionsv1alpha1.Bastion, publickey string) armcompute.VirtualMachine {
+	return armcompute.VirtualMachine{
 		Location: &opt.Location,
-		VirtualMachineProperties: &compute.VirtualMachineProperties{
-			HardwareProfile: &compute.HardwareProfile{
-				VMSize: compute.VirtualMachineSizeTypesStandardB1s,
+		Properties: &armcompute.VirtualMachineProperties{
+			HardwareProfile: &armcompute.HardwareProfile{
+				VMSize: to.Ptr(armcompute.VirtualMachineSizeTypesStandardB1S),
 			},
-			StorageProfile: &compute.StorageProfile{
-				ImageReference: &compute.ImageReference{
+			StorageProfile: &armcompute.StorageProfile{
+				ImageReference: &armcompute.ImageReference{
 					Publisher: to.Ptr("Canonical"),
 					Offer:     to.Ptr("UbuntuServer"),
-					Sku:       to.Ptr("18.04-LTS"),
+					SKU:       to.Ptr("18.04-LTS"),
 					Version:   to.Ptr("latest"),
 				},
-				OsDisk: &compute.OSDisk{
-					CreateOption: compute.DiskCreateOptionTypesFromImage,
+				OSDisk: &armcompute.OSDisk{
+					CreateOption: to.Ptr(armcompute.DiskCreateOptionTypesFromImage),
 					DiskSizeGB:   to.Ptr(int32(32)),
 					Name:         &opt.DiskName,
 				},
 			},
-			OsProfile: &compute.OSProfile{
+			OSProfile: &armcompute.OSProfile{
 				ComputerName:  &opt.BastionInstanceName,
 				AdminUsername: to.Ptr("gardener"),
-				LinuxConfiguration: &compute.LinuxConfiguration{
+				LinuxConfiguration: &armcompute.LinuxConfiguration{
 					DisablePasswordAuthentication: to.Ptr(true),
-					SSH: &compute.SSHConfiguration{
-						PublicKeys: &[]compute.SSHPublicKey{
+					SSH: &armcompute.SSHConfiguration{
+						PublicKeys: []*armcompute.SSHPublicKey{
 							{
 								Path: to.Ptr("/home/gardener/.ssh/authorized_keys"),
 								// Random, temporary SSH public key to suffice the azure API, as creating an instance without a public key is not possible. The UserData will overwrite it later.
@@ -98,11 +98,11 @@ func computeInstanceDefine(opt *Options, bastion *extensionsv1alpha1.Bastion, pu
 				},
 			},
 			UserData: to.Ptr(base64.StdEncoding.EncodeToString(bastion.Spec.UserData)),
-			NetworkProfile: &compute.NetworkProfile{
-				NetworkInterfaces: &[]compute.NetworkInterfaceReference{
+			NetworkProfile: &armcompute.NetworkProfile{
+				NetworkInterfaces: []*armcompute.NetworkInterfaceReference{
 					{
 						ID: &opt.NicID,
-						NetworkInterfaceReferenceProperties: &compute.NetworkInterfaceReferenceProperties{
+						Properties: &armcompute.NetworkInterfaceReferenceProperties{
 							Primary: to.Ptr(true),
 						},
 					},

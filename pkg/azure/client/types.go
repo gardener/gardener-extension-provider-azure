@@ -93,16 +93,16 @@ type StorageAccount interface {
 
 // Vmss represents an Azure virtual machine scale set client.
 type Vmss interface {
-	List(context.Context, string) ([]compute.VirtualMachineScaleSet, error)
-	Get(context.Context, string, string, compute.ExpandTypesForGetVMScaleSets) (*compute.VirtualMachineScaleSet, error)
-	Create(context.Context, string, string, *compute.VirtualMachineScaleSet) (*compute.VirtualMachineScaleSet, error)
+	List(context.Context, string) ([]*armcompute.VirtualMachineScaleSet, error)
+	Get(context.Context, string, string, *armcompute.ExpandTypesForGetVMScaleSets) (*armcompute.VirtualMachineScaleSet, error)
+	CreateOrUpdate(context.Context, string, string, armcompute.VirtualMachineScaleSet) (*armcompute.VirtualMachineScaleSet, error)
 	Delete(context.Context, string, string, *bool) error
 }
 
 // VirtualMachine represents an Azure virtual machine client.
 type VirtualMachine interface {
-	Get(ctx context.Context, resourceGroupName string, name string, instanceViewTypes compute.InstanceViewTypes) (*compute.VirtualMachine, error)
-	Create(ctx context.Context, resourceGroupName string, name string, parameters *compute.VirtualMachine) (*compute.VirtualMachine, error)
+	Get(ctx context.Context, resourceGroupName string, name string, expander *armcompute.InstanceViewTypes) (*armcompute.VirtualMachine, error)
+	CreateOrUpdate(ctx context.Context, resourceGroupName string, name string, parameters armcompute.VirtualMachine) (*armcompute.VirtualMachine, error)
 	Delete(ctx context.Context, resourceGroupName string, name string, forceDeletion *bool) error
 }
 
@@ -172,7 +172,7 @@ type Vnet interface {
 // azureFactory is an implementation of Factory to produce clients for various Azure services.
 type azureFactory struct {
 	auth   *internal.ClientAuth
-	client client.Client // TODO remove? only used for storage client
+	client client.Client // TODO remove? only used for storage client secrets
 }
 
 // StorageClient is an implementation of Storage for a (blob) storage client.
@@ -187,7 +187,7 @@ type StorageAccountClient struct {
 
 // VmssClient is an implementation of Vmss for a virtual machine scale set client.
 type VmssClient struct {
-	client compute.VirtualMachineScaleSetsClient
+	client *armcompute.VirtualMachineScaleSetsClient
 }
 
 // ResourceGroupClient is a newer client implementation of ResourceGroup.
@@ -202,7 +202,7 @@ type VnetClient struct {
 
 // VirtualMachinesClient is an implementation of Vm for a virtual machine client.
 type VirtualMachinesClient struct {
-	client compute.VirtualMachinesClient
+	client *armcompute.VirtualMachinesClient
 }
 
 // DNSZoneClient is an implementation of DNSZone for a DNS zone client.

@@ -83,30 +83,12 @@ func (f azureFactory) StorageAccount() (StorageAccount, error) {
 
 // Vmss reads the secret from the passed reference and return an Azure virtual machine scale set client.
 func (f azureFactory) Vmss() (Vmss, error) {
-	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(f.auth)
-	if err != nil {
-		return nil, err
-	}
-	vmssClient := azurecompute.NewVirtualMachineScaleSetsClient(subscriptionID)
-	vmssClient.Authorizer = authorizer
-
-	return VmssClient{
-		client: vmssClient,
-	}, nil
+	return NewVmssClient(*f.auth)
 }
 
 // VirtualMachine reads the secret from the passed reference and return an Azure virtual machine client.
 func (f azureFactory) VirtualMachine() (VirtualMachine, error) {
-	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(f.auth)
-	if err != nil {
-		return nil, err
-	}
-	virtualMachinesClient := azurecompute.NewVirtualMachinesClient(subscriptionID)
-	virtualMachinesClient.Authorizer = authorizer
-
-	return VirtualMachinesClient{
-		client: virtualMachinesClient,
-	}, nil
+	return NewVMClient(*f.auth)
 }
 
 // DNSZone reads the secret from the passed reference and return an Azure DNS zone client.

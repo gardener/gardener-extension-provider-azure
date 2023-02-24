@@ -24,8 +24,9 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/bastion"
 	"github.com/go-logr/logr"
@@ -51,13 +52,13 @@ func (a *actuator) InjectClient(client client.Client) error {
 	return nil
 }
 
-func createBastionInstance(ctx context.Context, factory azureclient.Factory, opt *Options, parameters *compute.VirtualMachine) (*compute.VirtualMachine, error) {
+func createBastionInstance(ctx context.Context, factory azureclient.Factory, opt *Options, parameters armcompute.VirtualMachine) (*armcompute.VirtualMachine, error) {
 	vmClient, err := factory.VirtualMachine()
 	if err != nil {
 		return nil, err
 	}
 
-	instance, err := vmClient.Create(ctx, opt.ResourceGroupName, opt.BastionInstanceName, parameters)
+	instance, err := vmClient.CreateOrUpdate(ctx, opt.ResourceGroupName, opt.BastionInstanceName, parameters)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create VM instance %s: %w", opt.BastionInstanceName, err)
 	}
@@ -94,13 +95,13 @@ func createOrUpdateNetworkSecGroup(ctx context.Context, factory azureclient.Fact
 	return nil
 }
 
-func getBastionInstance(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*compute.VirtualMachine, error) {
+func getBastionInstance(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*armcompute.VirtualMachine, error) {
 	vmClient, err := factory.VirtualMachine()
 	if err != nil {
 		return nil, err
 	}
 
-	instance, err := vmClient.Get(ctx, opt.ResourceGroupName, opt.BastionInstanceName, compute.InstanceViewTypesInstanceView)
+	instance, err := vmClient.Get(ctx, opt.ResourceGroupName, opt.BastionInstanceName, to.Ptr(armcompute.InstanceViewTypesInstanceView))
 	if err != nil {
 		if azureclient.IsAzureAPINotFoundError(err) {
 			log.Info("Instance not found,", "instance_name", opt.BastionInstanceName)
