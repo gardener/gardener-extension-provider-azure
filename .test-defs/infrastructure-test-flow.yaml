@@ -1,6 +1,6 @@
 kind: TestDefinition
 metadata:
-  name: infrastructure-test
+  name: infrastructure-test-flow
 spec:
   owner: gardener-oq@listserv.sap.com
   description: Integration test for infrastructure creation and deletion
@@ -17,5 +17,6 @@ spec:
       --client-id=${CLIENT_ID}
       --client-secret=${CLIENT_SECRET}
       --region=${REGION}
+      --useFlow
 
   image: eu.gcr.io/gardener-project/3rd/golang:1.19.2
