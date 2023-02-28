@@ -18,19 +18,7 @@ import (
 	"context"
 	"fmt"
 	"os"
-	azureinstall "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/install"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	azurecmd "github.com/gardener/gardener-extension-provider-azure/pkg/cmd"
-	azurebackupbucket "github.com/gardener/gardener-extension-provider-azure/pkg/controller/backupbucket"
-	azurebackupentry "github.com/gardener/gardener-extension-provider-azure/pkg/controller/backupentry"
-	azurecontrolplane "github.com/gardener/gardener-extension-provider-azure/pkg/controller/controlplane"
-	azurecsimigration "github.com/gardener/gardener-extension-provider-azure/pkg/controller/csimigration"
-	azurednsrecord "github.com/gardener/gardener-extension-provider-azure/pkg/controller/dnsrecord"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/healthcheck"
-	azureinfrastructure "github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure"
-	azureworker "github.com/gardener/gardener-extension-provider-azure/pkg/controller/worker"
-	azurecontrolplaneexposure "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/controlplaneexposure"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/webhook/topology"
+
 	druidv1alpha1 "github.com/gardener/etcd-druid/api/v1alpha1"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	controllercmd "github.com/gardener/gardener/extensions/pkg/controller/cmd"
@@ -50,6 +38,7 @@ import (
 	"k8s.io/component-base/version/verflag"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+
 	azureinstall "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/install"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	azurecmd "github.com/gardener/gardener-extension-provider-azure/pkg/cmd"
@@ -63,7 +52,7 @@ import (
 	azureinfrastructure "github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure"
 	azureworker "github.com/gardener/gardener-extension-provider-azure/pkg/controller/worker"
 	azurecontrolplaneexposure "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/controlplaneexposure"
-	azurebastion "github.com/gardener/gardener-extension-provider-azure/pkg/controller/bastion"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/webhook/topology"
 )
 
 // NewControllerManagerCommand creates a new command for running a Azure provider controller.
