@@ -84,6 +84,7 @@ gardener:
   version: ""
   seed:
     provider: azure
+    region: ""
 
 # servicePrincipals:
 # - tenantID: tenant-1

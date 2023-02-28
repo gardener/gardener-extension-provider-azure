@@ -52,6 +52,7 @@ import (
 	azureinfrastructure "github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure"
 	azureworker "github.com/gardener/gardener-extension-provider-azure/pkg/controller/worker"
 	azurecontrolplaneexposure "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/controlplaneexposure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/webhook/topology"
 )
 
 // NewControllerManagerCommand creates a new command for running a Azure provider controller.
@@ -143,6 +144,8 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			webhookSwitches,
 		)
 
+		seedOptions = &azurecmd.SeedConfigOptions{}
+
 		aggOption = controllercmd.NewOptionAggregator(
 			generalOpts,
 			restOpts,
@@ -161,6 +164,7 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			controllerSwitches,
 			reconcileOpts,
 			webhookOptions,
+			seedOptions,
 		)
 	)
 
@@ -230,6 +234,9 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			reconcileOpts.Completed().Apply(&azureworker.DefaultAddOptions.IgnoreOperationAnnotation)
 			reconcileOpts.Completed().Apply(&azurebastion.DefaultAddOptions.IgnoreOperationAnnotation)
 			workerCtrlOpts.Completed().Apply(&azureworker.DefaultAddOptions.Controller)
+
+			topology.SeedRegion = seedOptions.Completed().Region
+			topology.SeedProvider = seedOptions.Completed().Provider
 
 			if _, err := webhookOptions.Completed().AddToManager(ctx, mgr); err != nil {
 				return fmt.Errorf("could not add webhooks to manager: %w", err)
