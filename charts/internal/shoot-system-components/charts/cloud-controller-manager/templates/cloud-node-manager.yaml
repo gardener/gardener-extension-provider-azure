@@ -111,7 +111,6 @@ spec:
     - containerName: cloud-node-manager
       controlledValues: RequestsOnly
       minAllowed:
-        cpu: 20m
         memory: 25Mi
   targetRef:
     apiVersion: apps/v1
