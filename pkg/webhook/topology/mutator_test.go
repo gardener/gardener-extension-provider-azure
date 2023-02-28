@@ -16,24 +16,15 @@ package topology
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"testing"
 
-	"github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	"github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
-	"github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
-	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	ctrclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
@@ -46,28 +37,22 @@ func TestController(t *testing.T) {
 var _ = Describe("Topology", func() {
 	var (
 		ctrl *gomock.Controller
-		c    *mockclient.MockClient
 
+		ctx       context.Context
 		pod       *corev1.Pod
 		mutator   *handler
 		region    = "westeurope"
 		namespace = "namespace"
-		seed      = &v1beta1.Seed{
-			Spec: v1beta1.SeedSpec{
-				Provider: v1beta1.SeedProvider{
-					Region: region,
-					Type:   azure.Type,
-				},
-			},
-		}
-		seedJson []byte
 	)
 
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
-		c = mockclient.NewMockClient(ctrl)
+		ctx = context.Background()
 
-		mutator = New(logr.Discard())
+		mutator = New(logr.Discard(), AddOptions{
+			SeedRegion:   region,
+			SeedProvider: azure.Type,
+		})
 
 		pod = &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
@@ -94,9 +79,7 @@ var _ = Describe("Topology", func() {
 		}
 
 		var err error
-		seedJson, err = json.Marshal(seed)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(mutator.InjectClient(c)).NotTo(HaveOccurred())
 	})
 
 	AfterEach(func() {
@@ -112,40 +95,8 @@ var _ = Describe("Topology", func() {
 			Expect(pod).To(Equal(podCopy))
 		})
 
-		It("should try to fetch region from shoot-info", func() {
-			cm := &corev1.ConfigMap{
-				Data: map[string]string{
-					"region": region,
-				},
-			}
-			c.EXPECT().Get(gomock.Any(), ctrclient.ObjectKey{Namespace: metav1.NamespaceSystem, Name: constants.ConfigMapNameShootInfo}, &corev1.ConfigMap{}).DoAndReturn(clientGet(cm))
-
-			err := mutator.Mutate(context.Background(), pod, nil)
-			Expect(err).To(BeNil())
-			Expect(pod.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0].Values[0]).To(Equal(fmt.Sprintf("%s-%s", region, "1")))
-		})
-
-		It("should try to fetch region from cluster", func() {
-			cluster := &v1alpha1.Cluster{Spec: v1alpha1.ClusterSpec{Seed: runtime.RawExtension{Raw: seedJson}}}
-			_ = cluster
-			ctx := context.WithValue(context.Background(), admissionNamespaceKey, namespace)
-			gomock.InOrder(
-				c.EXPECT().Get(gomock.Any(), ctrclient.ObjectKey{Namespace: metav1.NamespaceSystem, Name: constants.ConfigMapNameShootInfo}, &corev1.ConfigMap{}).Return(&apierrors.StatusError{
-					ErrStatus: metav1.Status{
-						Reason: metav1.StatusReasonNotFound,
-					}}),
-				c.EXPECT().Get(gomock.Any(), kutil.Key(namespace), &v1alpha1.Cluster{}).DoAndReturn(clientGet(cluster)),
-			)
-			err := mutator.Mutate(ctx, pod, nil)
-			Expect(err).To(BeNil())
-
-			Expect(pod.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0].Values[0]).To(Equal(fmt.Sprintf("%s-%s", region, "1")))
-		})
-	})
-
-	Context("#Mutator", func() {
-		Describe("#MutatePodTopology", func() {
-			It("it should correctly mutate required", func() {
+		Describe("#Mutate", func() {
+			BeforeEach(func() {
 				pod = &corev1.Pod{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: namespace,
@@ -173,8 +124,9 @@ var _ = Describe("Topology", func() {
 						},
 					},
 				}
-
-				err := mutator.mutateNodeAffinity(pod, region)
+			})
+			It("it should correctly mutate required", func() {
+				err := mutator.Mutate(ctx, pod, nil)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(pod.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0].Values[0]).To(Equal(fmt.Sprintf("%s-%s", region, "1")))
 				Expect(pod.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0].Values[1]).To(Equal(fmt.Sprintf("%s-%s", region, "2")))
@@ -211,7 +163,7 @@ var _ = Describe("Topology", func() {
 					},
 				}
 
-				err := mutator.mutateNodeAffinity(pod, region)
+				err := mutator.Mutate(ctx, pod, nil)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(pod.Spec.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[0].Values[0]).To(Equal(fmt.Sprintf("%s-%s", region, "1")))
 				Expect(pod.Spec.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[0].Values[1]).To(Equal(fmt.Sprintf("%s-%s", region, "2")))
@@ -221,15 +173,3 @@ var _ = Describe("Topology", func() {
 		})
 	})
 })
-
-func clientGet(result runtime.Object) interface{} {
-	return func(ctx context.Context, key ctrclient.ObjectKey, obj runtime.Object, _ ...ctrclient.GetOption) error {
-		switch obj.(type) {
-		case *corev1.ConfigMap:
-			*obj.(*corev1.ConfigMap) = *result.(*corev1.ConfigMap)
-		case *v1alpha1.Cluster:
-			*obj.(*v1alpha1.Cluster) = *result.(*v1alpha1.Cluster)
-		}
-		return nil
-	}
-}
