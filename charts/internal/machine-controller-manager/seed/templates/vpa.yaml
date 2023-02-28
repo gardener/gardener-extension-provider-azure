@@ -15,7 +15,6 @@ spec:
     containerPolicies:
     - containerName: machine-controller-manager-provider-azure
       minAllowed:
-        cpu: {{ .Values.resources.mcmProviderAzure.requests.cpu }}
         memory: {{ .Values.resources.mcmProviderAzure.requests.memory }}
       maxAllowed:
         cpu: {{ .Values.vpa.resourcePolicy.mcmProviderAzure.maxAllowed.cpu }}
@@ -23,7 +22,6 @@ spec:
       controlledValues: RequestsOnly
     - containerName: azure-machine-controller-manager
       minAllowed:
-        cpu: {{ .Values.resources.mcm.requests.cpu }}
         memory: {{ .Values.resources.mcm.requests.memory }}
       maxAllowed:
         cpu: {{ .Values.vpa.resourcePolicy.mcm.maxAllowed.cpu }}
