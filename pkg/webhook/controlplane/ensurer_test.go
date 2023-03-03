@@ -18,8 +18,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-
 	"github.com/Masterminds/semver"
 	"github.com/coreos/go-systemd/v22/unit"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
@@ -45,6 +43,8 @@ import (
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 const (

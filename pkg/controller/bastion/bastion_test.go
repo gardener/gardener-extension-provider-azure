@@ -17,8 +17,6 @@ package bastion
 import (
 	"encoding/json"
 
-	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/gardener/gardener/extensions/pkg/controller"
@@ -34,6 +32,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
+
+	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 )
 
 var _ = Describe("Bastion test", func() {
@@ -114,25 +114,25 @@ var _ = Describe("Bastion test", func() {
 			oldSet := &[]network.SecurityRule{
 				{
 					Name:                         pointer.String("defaultRule"),
-					SecurityRulePropertiesFormat: &network.SecurityRulePropertiesFormat{Priority: pointer.Int32Ptr(50)},
+					SecurityRulePropertiesFormat: &network.SecurityRulePropertiesFormat{Priority: pointer.Int32(50)},
 				},
 				{
 					Name:                         pointer.String("ruleName1"),
-					SecurityRulePropertiesFormat: &network.SecurityRulePropertiesFormat{Priority: pointer.Int32Ptr(100)},
+					SecurityRulePropertiesFormat: &network.SecurityRulePropertiesFormat{Priority: pointer.Int32(100)},
 				},
 				{
 					Name:                         pointer.String("ruleName2"),
-					SecurityRulePropertiesFormat: &network.SecurityRulePropertiesFormat{Priority: pointer.Int32Ptr(200)},
+					SecurityRulePropertiesFormat: &network.SecurityRulePropertiesFormat{Priority: pointer.Int32(200)},
 				},
 			}
 			newSet := []network.SecurityRule{
 				{
 					Name:                         pointer.String("ruleName1"),
-					SecurityRulePropertiesFormat: &network.SecurityRulePropertiesFormat{Priority: pointer.Int32Ptr(100)},
+					SecurityRulePropertiesFormat: &network.SecurityRulePropertiesFormat{Priority: pointer.Int32(100)},
 				},
 				{
 					Name:                         pointer.String("ruleName2"),
-					SecurityRulePropertiesFormat: &network.SecurityRulePropertiesFormat{Priority: pointer.Int32Ptr(200)},
+					SecurityRulePropertiesFormat: &network.SecurityRulePropertiesFormat{Priority: pointer.Int32(200)},
 				},
 			}
 

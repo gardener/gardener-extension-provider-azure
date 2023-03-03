@@ -18,12 +18,6 @@ import (
 	"context"
 	"encoding/json"
 
-	apiazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
-	. "github.com/gardener/gardener-extension-provider-azure/pkg/controller/worker"
-
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/common"
 	"github.com/gardener/gardener/extensions/pkg/controller/worker/genericactuator"
@@ -39,6 +33,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	apiazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
+	. "github.com/gardener/gardener-extension-provider-azure/pkg/controller/worker"
 )
 
 func wrapNewWorkerDelegate(client *mockclient.MockClient, seedChartApplier *mockkubernetes.MockChartApplier, worker *extensionsv1alpha1.Worker, cluster *extensionscontroller.Cluster, factory azureclient.Factory) genericactuator.WorkerDelegate {

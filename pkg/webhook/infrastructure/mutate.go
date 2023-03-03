@@ -18,14 +18,14 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
-	azuretypes "github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/go-logr/logr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
+	azuretypes "github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 // MutateFunc is a function that can perform a mutation on Infrastructure objects.

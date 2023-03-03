@@ -18,12 +18,12 @@ import (
 	"context"
 	"fmt"
 
-	azurevalidation "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/validation"
-
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	azurevalidation "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/validation"
 )
 
 type secret struct{}

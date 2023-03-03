@@ -20,14 +20,14 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
+	"github.com/gardener/gardener/pkg/utils"
+	"k8s.io/utils/pointer"
+
 	azureapi "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	azureapihelper "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
-
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
-	"github.com/gardener/gardener/pkg/utils"
-	"k8s.io/utils/pointer"
 )
 
 func (w *workerDelegate) reconcileVmoDependencies(ctx context.Context, infrastructureStatus *azureapi.InfrastructureStatus, workerProviderStatus *azureapi.WorkerStatus) ([]azureapi.VmoDependency, error) {
@@ -244,11 +244,11 @@ func generateAndCreateVmo(ctx context.Context, client azureclient.Vmss, workerPo
 	var properties = &compute.VirtualMachineScaleSet{
 		Location: &region,
 		VirtualMachineScaleSetProperties: &compute.VirtualMachineScaleSetProperties{
-			SinglePlacementGroup:     pointer.BoolPtr(false),
+			SinglePlacementGroup:     pointer.Bool(false),
 			PlatformFaultDomainCount: &faultDomainCount,
 		},
 		Tags: map[string]*string{
-			azure.MachineSetTagKey: pointer.StringPtr("1"),
+			azure.MachineSetTagKey: pointer.String("1"),
 		},
 	}
 
