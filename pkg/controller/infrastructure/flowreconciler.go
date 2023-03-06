@@ -30,8 +30,11 @@ import (
 
 // ShouldUseFlow returns true if the new flow reconciler should be used for the reconciliation.
 func ShouldUseFlow(infrastructure *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) bool {
-	return (infrastructure.Annotations != nil && strings.EqualFold(infrastructure.Annotations[AnnotationKeyUseFlow], "true")) ||
+	shootAnnotation := (infrastructure.Annotations != nil && strings.EqualFold(infrastructure.Annotations[AnnotationKeyUseFlow], "true")) ||
 		(cluster.Shoot != nil && cluster.Shoot.Annotations != nil && strings.EqualFold(cluster.Shoot.Annotations[AnnotationKeyUseFlow], "true"))
+
+	seedAnnotation := (cluster.Seed != nil && cluster.Seed.Annotations != nil && strings.EqualFold(cluster.Seed.Annotations[AnnotationKeyUseFlow], "true"))
+	return shootAnnotation || seedAnnotation
 }
 
 // NewFlowReconciler creates a new flow reconciler.
