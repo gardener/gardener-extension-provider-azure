@@ -35,7 +35,7 @@ func NewDisksClient(auth internal.ClientAuth) (Disk, error) {
 func (c DisksClient) Get(ctx context.Context, resourceGroupName string, name string) (*armcompute.Disk, error) {
 	disk, err := c.client.Get(ctx, resourceGroupName, name, nil)
 	if err != nil {
-		return nil, err
+		return nil, FilterNotFoundError(err)
 	}
 	return &disk.Disk, nil
 }

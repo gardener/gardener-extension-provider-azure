@@ -74,7 +74,7 @@ type RouteTables interface {
 
 // ManagedUserIdentity is a client for the Azure Managed User Identity service.
 type ManagedUserIdentity interface {
-	Get(context.Context, string, string) (msi.Identity, error)
+	Get(context.Context, string, string) (*msi.Identity, error)
 }
 
 // Storage represents an Azure (blob) storage client.

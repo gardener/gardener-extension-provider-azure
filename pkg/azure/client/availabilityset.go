@@ -44,7 +44,9 @@ func (c AvailabilitySetClient) CreateOrUpdate(ctx context.Context, resourceGroup
 // Get returns the availability set for the given resource group and availability set name.
 func (c AvailabilitySetClient) Get(ctx context.Context, resourceGroupName, availabilitySetName string) (*armcompute.AvailabilitySet, error) {
 	res, err := c.client.Get(ctx, resourceGroupName, availabilitySetName, nil)
-
+	if err != nil {
+		return nil, FilterNotFoundError(err)
+	}
 	return &res.AvailabilitySet, err
 }
 

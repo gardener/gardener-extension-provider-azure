@@ -45,10 +45,7 @@ func (c SubnetsClient) CreateOrUpdate(ctx context.Context, resourceGroupName, vn
 func (c SubnetsClient) Get(ctx context.Context, resourceGroupName string, vnetName string, name string) (*armnetwork.Subnet, error) {
 	subnet, err := c.client.Get(ctx, resourceGroupName, vnetName, name, nil)
 	if err != nil {
-		if IsAzureAPINotFoundError(err) {
-			return nil, nil
-		}
-		return nil, err
+		return nil, FilterNotFoundError(err)
 	}
 	return &subnet.Subnet, nil
 }

@@ -48,7 +48,7 @@ func (c NetworkInterfaceClient) CreateOrUpdate(ctx context.Context, resourceGrou
 func (c NetworkInterfaceClient) Get(ctx context.Context, resourceGroupName string, name string) (*armnetwork.Interface, error) {
 	nic, err := c.client.Get(ctx, resourceGroupName, name, nil)
 	if err != nil {
-		return nil, err
+		return nil, FilterNotFoundError(err)
 	}
 	return &nic.Interface, nil
 }

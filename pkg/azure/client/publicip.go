@@ -48,7 +48,7 @@ func (c PublicIPClient) CreateOrUpdate(ctx context.Context, resourceGroupName, n
 func (c PublicIPClient) Get(ctx context.Context, resourceGroupName string, name string) (*armnetwork.PublicIPAddress, error) {
 	npi, err := c.client.Get(ctx, resourceGroupName, name, nil)
 	if err != nil {
-		return nil, err
+		return nil, FilterNotFoundError(err)
 	}
 	return &npi.PublicIPAddress, nil
 }

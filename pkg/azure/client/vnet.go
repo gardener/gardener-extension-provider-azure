@@ -55,5 +55,8 @@ func (v VnetClient) Delete(ctx context.Context, resourceGroup, vnetName string) 
 // Get gets a given virtual network by name
 func (v VnetClient) Get(ctx context.Context, resourceGroupName, name string) (*armnetwork.VirtualNetwork, error) {
 	res, err := v.client.Get(ctx, resourceGroupName, name, nil)
+	if err != nil {
+		return nil, FilterNotFoundError(err)
+	}
 	return &res.VirtualNetwork, err
 }

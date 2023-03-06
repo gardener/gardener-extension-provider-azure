@@ -37,7 +37,7 @@ func (c VirtualMachinesClient) Get(ctx context.Context, resourceGroupName string
 		Expand: expander,
 	})
 	if err != nil {
-		return nil, err
+		return nil, FilterNotFoundError(err)
 	}
 	return &vm.VirtualMachine, nil
 }

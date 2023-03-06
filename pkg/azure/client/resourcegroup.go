@@ -36,7 +36,7 @@ func NewResourceGroupsClient(auth internal.ClientAuth) (*ResourceGroupClient, er
 func (c ResourceGroupClient) Get(ctx context.Context, resourceGroupName string) (*armresources.ResourceGroup, error) {
 	res, err := c.client.Get(ctx, resourceGroupName, nil)
 	if err != nil {
-		return nil, err
+		return nil, FilterNotFoundError(err)
 	}
 	return &res.ResourceGroup, err
 }

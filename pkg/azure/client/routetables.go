@@ -55,5 +55,8 @@ func (c RouteTablesClient) Delete(ctx context.Context, resourceGroupName, name s
 // Get returns a RouteTable by name.
 func (c RouteTablesClient) Get(ctx context.Context, resourceGroupName, name string) (*armnetwork.RouteTable, error) {
 	res, err := c.client.Get(ctx, resourceGroupName, name, nil)
+	if err != nil {
+		return nil, FilterNotFoundError(err)
+	}
 	return &res.RouteTable, err
 }

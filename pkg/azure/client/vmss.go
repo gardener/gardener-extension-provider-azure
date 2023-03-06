@@ -51,10 +51,7 @@ func (c VmssClient) Get(ctx context.Context, resourceGroupName, name string, exp
 		Expand: expander,
 	})
 	if err != nil {
-		if IsAzureAPINotFoundError(err) {
-			return nil, nil
-		}
-		return nil, err
+		return nil, FilterNotFoundError(err)
 	}
 	return &vmo.VirtualMachineScaleSet, nil
 }

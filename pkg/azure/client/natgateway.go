@@ -46,7 +46,7 @@ func (c NatGatewayClient) CreateOrUpdate(ctx context.Context, resourceGroupName,
 func (c NatGatewayClient) Get(ctx context.Context, resourceGroupName, natGatewayName string) (*armnetwork.NatGateway, error) {
 	res, err := c.client.Get(ctx, resourceGroupName, natGatewayName, nil)
 	if err != nil {
-		return nil, err
+		return nil, FilterNotFoundError(err)
 	}
 	return &res.NatGateway, nil
 }

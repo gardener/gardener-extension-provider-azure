@@ -48,7 +48,7 @@ func (c NetworkSecurityGroupClient) CreateOrUpdate(ctx context.Context, resource
 func (c NetworkSecurityGroupClient) Get(ctx context.Context, resourceGroupName string, networkSecurityGroupName string) (*armnetwork.SecurityGroup, error) {
 	nsg, err := c.client.Get(ctx, resourceGroupName, networkSecurityGroupName, nil)
 	if err != nil {
-		return nil, err
+		return nil, FilterNotFoundError(err)
 	}
 	return &nsg.SecurityGroup, nil
 }
