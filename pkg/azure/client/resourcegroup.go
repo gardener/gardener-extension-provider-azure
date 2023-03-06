@@ -42,15 +42,15 @@ func (c ResourceGroupClient) Get(ctx context.Context, resourceGroupName string) 
 }
 
 // CreateOrUpdate creates or updates a resource group
-func (c ResourceGroupClient) CreateOrUpdate(ctx context.Context, resourceGroupName, location string) error {
-	_, err := c.client.CreateOrUpdate(
+func (c ResourceGroupClient) CreateOrUpdate(ctx context.Context, resourceGroupName, location string) (*armresources.ResourceGroup, error) {
+	res, err := c.client.CreateOrUpdate(
 		ctx,
 		resourceGroupName,
 		armresources.ResourceGroup{
 			Location: to.Ptr(location),
 		},
 		nil)
-	return err
+	return &res.ResourceGroup, err
 }
 
 // DeleteIfExists deletes a resource group if it exists.

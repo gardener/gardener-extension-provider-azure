@@ -83,7 +83,7 @@ func (f *MockFactoryWrapper) assertSecurityGroupCalled(name string) *gomock.Call
 func (f *MockFactoryWrapper) assertVnetCalledWithParameters(name string, params interface{}) *gomock.Call {
 	vnet := mockclient.NewMockVnet(f.ctrl)
 	f.EXPECT().Vnet().Return(vnet, nil)
-	return vnet.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, name, params).Return(nil)
+	return vnet.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, name, params).Return(nil, nil)
 }
 
 func (f *MockFactoryWrapper) VnetFactoryCalled() *gomock.Call {

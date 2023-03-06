@@ -155,7 +155,7 @@ type Subnet interface {
 
 // ResourceGroup represents an Azure ResourceGroup client.
 type ResourceGroup interface {
-	CreateOrUpdate(ctx context.Context, resourceGroupName, location string) error
+	CreateOrUpdate(ctx context.Context, resourceGroupName, location string) (*armresources.ResourceGroup, error)
 	DeleteIfExists(ctx context.Context, resourceGroupName string) error
 	IsExisting(ctx context.Context, resourceGroupName string) (bool, error)
 	Get(ctx context.Context, resourceGroupName string) (*armresources.ResourceGroup, error)
@@ -163,9 +163,9 @@ type ResourceGroup interface {
 
 // Vnet represents an Azure Virtual Network client.
 type Vnet interface {
-	CreateOrUpdate(ctx context.Context, resourceGroupName string, name string, parameters armnetwork.VirtualNetwork) (err error)
+	CreateOrUpdate(ctx context.Context, resourceGroupName string, name string, parameters armnetwork.VirtualNetwork) (*armnetwork.VirtualNetwork, error)
 	Delete(ctx context.Context, resourceGroupName, name string) error
-	Get(ctx context.Context, resourceGroupName, name string) (armnetwork.VirtualNetworksClientGetResponse, error)
+	Get(ctx context.Context, resourceGroupName, name string) (*armnetwork.VirtualNetwork, error)
 }
 
 // azureFactory is an implementation of Factory to produce clients for various Azure services.

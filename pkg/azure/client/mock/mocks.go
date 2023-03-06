@@ -490,11 +490,12 @@ func (m *MockResourceGroup) EXPECT() *MockResourceGroupMockRecorder {
 }
 
 // CreateOrUpdate mocks base method.
-func (m *MockResourceGroup) CreateOrUpdate(arg0 context.Context, arg1, arg2 string) error {
+func (m *MockResourceGroup) CreateOrUpdate(arg0 context.Context, arg1, arg2 string) (*armresources.ResourceGroup, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateOrUpdate", arg0, arg1, arg2)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(*armresources.ResourceGroup)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // CreateOrUpdate indicates an expected call of CreateOrUpdate.
@@ -571,11 +572,12 @@ func (m *MockVnet) EXPECT() *MockVnetMockRecorder {
 }
 
 // CreateOrUpdate mocks base method.
-func (m *MockVnet) CreateOrUpdate(arg0 context.Context, arg1, arg2 string, arg3 armnetwork.VirtualNetwork) error {
+func (m *MockVnet) CreateOrUpdate(arg0 context.Context, arg1, arg2 string, arg3 armnetwork.VirtualNetwork) (*armnetwork.VirtualNetwork, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateOrUpdate", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(*armnetwork.VirtualNetwork)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // CreateOrUpdate indicates an expected call of CreateOrUpdate.
@@ -599,10 +601,10 @@ func (mr *MockVnetMockRecorder) Delete(arg0, arg1, arg2 interface{}) *gomock.Cal
 }
 
 // Get mocks base method.
-func (m *MockVnet) Get(arg0 context.Context, arg1, arg2 string) (armnetwork.VirtualNetworksClientGetResponse, error) {
+func (m *MockVnet) Get(arg0 context.Context, arg1, arg2 string) (*armnetwork.VirtualNetwork, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2)
-	ret0, _ := ret[0].(armnetwork.VirtualNetworksClientGetResponse)
+	ret0, _ := ret[0].(*armnetwork.VirtualNetwork)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

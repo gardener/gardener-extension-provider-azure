@@ -158,7 +158,8 @@ func (f azureReconciler) Vnet(ctx context.Context) error {
 			parameters.Properties.EnableDdosProtection = to.Ptr(true)
 			parameters.Properties.DdosProtectionPlan = &armnetwork.SubResource{ID: ddosId}
 		}
-		return client.CreateOrUpdate(ctx, f.tf.ResourceGroup(), f.tf.Vnet().Name(), parameters)
+		_, err = client.CreateOrUpdate(ctx, f.tf.ResourceGroup(), f.tf.Vnet().Name(), parameters)
+		return err
 	} else {
 		return nil // TODO update foreign vnet?
 	}
@@ -336,7 +337,8 @@ func (f azureReconciler) ResourceGroup(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	return rgClient.CreateOrUpdate(ctx, f.tf.ResourceGroup(), f.tf.Region())
+	_, err = rgClient.CreateOrUpdate(ctx, f.tf.ResourceGroup(), f.tf.Region())
+	return err
 }
 
 // delete IPs of NAT Gateways that got disabled
