@@ -419,7 +419,7 @@ func (f azureReconciler) Subnets(ctx context.Context, securityGroup armnetwork.S
 		if vnetRgroup == nil {
 			vnetRgroup = to.Ptr(f.tf.ResourceGroup()) // expect that it was created previously
 		}
-		err = subnetClient.CreateOrUpdate(ctx, *vnetRgroup, f.tf.Vnet().Name(), subnet.SubnetName(), parameters)
+		_, err = subnetClient.CreateOrUpdate(ctx, *vnetRgroup, f.tf.Vnet().Name(), subnet.SubnetName(), parameters)
 	}
 	return err
 }

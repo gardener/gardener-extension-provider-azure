@@ -147,8 +147,8 @@ type Disk interface {
 
 // Subnet represents an Azure Subnet client.
 type Subnet interface {
-	CreateOrUpdate(ctx context.Context, resourceGroupName, vnetName, subnetName string, parameters armnetwork.Subnet) error
-	Get(ctx context.Context, resourceGroupName string, vnetName string, name string) (*armnetwork.SubnetsClientGetResponse, error)
+	CreateOrUpdate(ctx context.Context, resourceGroupName, vnetName, subnetName string, parameters armnetwork.Subnet) (*armnetwork.Subnet, error)
+	Get(ctx context.Context, resourceGroupName string, vnetName string, name string) (*armnetwork.Subnet, error)
 	List(context.Context, string, string) ([]*armnetwork.Subnet, error)
 	Delete(context.Context, string, string, string) error
 }

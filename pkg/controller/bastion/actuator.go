@@ -185,7 +185,7 @@ func getPublicIP(ctx context.Context, log logr.Logger, factory azureclient.Facto
 	return ip, nil
 }
 
-func getSubnet(ctx context.Context, log logr.Logger, factory azureclient.Factory, infrastructureStatus *azure.InfrastructureStatus, opt *Options) (*armnetwork.SubnetsClientGetResponse, error) {
+func getSubnet(ctx context.Context, log logr.Logger, factory azureclient.Factory, infrastructureStatus *azure.InfrastructureStatus, opt *Options) (*armnetwork.Subnet, error) {
 	var sg string
 	subnetClient, err := factory.Subnet()
 	if err != nil {

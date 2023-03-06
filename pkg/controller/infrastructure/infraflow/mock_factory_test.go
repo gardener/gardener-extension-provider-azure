@@ -86,16 +86,15 @@ func (f *MockFactoryWrapper) assertVnetCalledWithParameters(name string, params 
 	return vnet.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, name, params).Return(nil)
 }
 
-func (f *MockFactoryWrapper) VnetFactoryCalled() {
+func (f *MockFactoryWrapper) VnetFactoryCalled() *gomock.Call {
 	vnet := mockclient.NewMockVnet(f.ctrl)
-	f.EXPECT().Vnet().Return(vnet, nil)
-	//return vnet
+	return f.EXPECT().Vnet().Return(vnet, nil)
 }
 
 func (f *MockFactoryWrapper) assertSubnetCalled(vnetName string, name interface{}) *gomock.Call {
 	subnet := mockclient.NewMockSubnet(f.ctrl)
 	f.EXPECT().Subnet().Return(subnet, nil)
-	return subnet.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, vnetName, name, gomock.Any()).Return(nil)
+	return subnet.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, vnetName, name, gomock.Any()).Return(nil, nil)
 }
 
 func (f *MockFactoryWrapper) assertNatGatewayCalledWithParameters(name string, params interface{}) *gomock.Call {

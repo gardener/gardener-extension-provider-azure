@@ -23,7 +23,7 @@ import (
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 )
 
-func nicDefine(opt *Options, publicIP *armnetwork.PublicIPAddress, subnet *armnetwork.SubnetsClientGetResponse) *armnetwork.Interface {
+func nicDefine(opt *Options, publicIP *armnetwork.PublicIPAddress, subnet *armnetwork.Subnet) *armnetwork.Interface {
 	return &armnetwork.Interface{
 		Name:     &opt.NicName,
 		Location: &opt.Location,

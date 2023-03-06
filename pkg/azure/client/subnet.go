@@ -32,17 +32,17 @@ func NewSubnetsClient(auth internal.ClientAuth) (*SubnetsClient, error) {
 }
 
 // CreateOrUpdate creates or updates a subnet in a given virtual network.
-func (c SubnetsClient) CreateOrUpdate(ctx context.Context, resourceGroupName, vnetName, subnetName string, parameters armnetwork.Subnet) error {
+func (c SubnetsClient) CreateOrUpdate(ctx context.Context, resourceGroupName, vnetName, subnetName string, parameters armnetwork.Subnet) (*armnetwork.Subnet, error) {
 	poller, err := c.client.BeginCreateOrUpdate(ctx, resourceGroupName, vnetName, subnetName, parameters, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	_, err = poller.PollUntilDone(ctx, nil)
-	return err
+	res, err := poller.PollUntilDone(ctx, nil)
+	return &res.Subnet, err
 }
 
 // Get will get a subnet in a given virtual network. If the requested subnet not exists nil will be returned.
-func (c SubnetsClient) Get(ctx context.Context, resourceGroupName string, vnetName string, name string) (*armnetwork.SubnetsClientGetResponse, error) {
+func (c SubnetsClient) Get(ctx context.Context, resourceGroupName string, vnetName string, name string) (*armnetwork.Subnet, error) {
 	subnet, err := c.client.Get(ctx, resourceGroupName, vnetName, name, nil)
 	if err != nil {
 		if IsAzureAPINotFoundError(err) {
@@ -50,7 +50,7 @@ func (c SubnetsClient) Get(ctx context.Context, resourceGroupName string, vnetNa
 		}
 		return nil, err
 	}
-	return &subnet, nil
+	return &subnet.Subnet, nil
 }
 
 // List lists all subnets of a given virtual network.
