@@ -346,7 +346,7 @@ var _ = Describe("AzureReconciler", func() {
 
 					sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 					Expect(err).ToNot(HaveOccurred())
-					err = sut.Subnets(context.TODO(), armnetwork.SecurityGroup{}, armnetwork.RouteTable{}, map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse{})
+					err = sut.Subnets(context.TODO(), armnetwork.SecurityGroup{}, armnetwork.RouteTable{}, map[string]*armnetwork.NatGateway{})
 					Expect(err).ToNot(HaveOccurred())
 
 				})

@@ -104,7 +104,7 @@ func (f *MockFactoryWrapper) assertNatGatewayCalledWithParameters(name string, p
 	nat := mockclient.NewMockNatGateway(f.ctrl)
 	f.EXPECT().NatGateway().Return(nat, nil)
 	nat.EXPECT().List(gomock.Any(), f.resourceGroup).Return([]*armnetwork.NatGateway{}, nil).AnyTimes() // simple fake (deletion not tested in mocks)
-	return nat.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, name, params).Return(armnetwork.NatGatewaysClientCreateOrUpdateResponse{NatGateway: armnetwork.NatGateway{ID: to.Ptr("natId")}}, nil)
+	return nat.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, name, params).Return(&armnetwork.NatGateway{ID: to.Ptr("natId")}, nil)
 }
 
 func (f *MockFactoryWrapper) assertPublicIPCalledWithoutCreation() *gomock.Call {

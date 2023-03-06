@@ -126,7 +126,7 @@ func (f FlowReconciler) buildReconcileGraph(reconciler *azureReconciler) *flow.G
 		securityGroup := armnetwork.SecurityGroup{
 			ID: whiteboard.Get(sGroupID),
 		}
-		natGateway := whiteboard.GetObject(natGatewayMap).(map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse)
+		natGateway := whiteboard.GetObject(natGatewayMap).(map[string]*armnetwork.NatGateway)
 		return reconciler.Subnets(ctx, securityGroup, routeTable, natGateway)
 	}, shared.Dependencies(securityGroup), shared.Dependencies(routeTable), shared.Dependencies(natGateway), shared.Dependencies(vnet))
 	return g

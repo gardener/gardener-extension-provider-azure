@@ -283,8 +283,8 @@ func checkAllZonesWithFn(name string, zones []zoneTf, check func(zone zoneTf, na
 }
 
 // NatGateways creates or updates NAT Gateways. It also deletes old NATGateways.
-func (f azureReconciler) NatGateways(ctx context.Context, ips map[string][]network.PublicIPAddress) (res map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse, err error) {
-	res = make(map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse)
+func (f azureReconciler) NatGateways(ctx context.Context, ips map[string][]network.PublicIPAddress) (map[string]*armnetwork.NatGateway, error) {
+	res := make(map[string]*armnetwork.NatGateway)
 	client, err := f.factory.NatGateway()
 	if err != nil {
 		return res, err
@@ -303,7 +303,7 @@ func (f azureReconciler) NatGateways(ctx context.Context, ips map[string][]netwo
 	return res, nil
 }
 
-func (f azureReconciler) createOrUpdateNatGateway(ctx context.Context, nat zoneTf, ips map[string][]network.PublicIPAddress, client client.NatGateway) (armnetwork.NatGatewaysClientCreateOrUpdateResponse, error) {
+func (f azureReconciler) createOrUpdateNatGateway(ctx context.Context, nat zoneTf, ips map[string][]network.PublicIPAddress, client client.NatGateway) (*armnetwork.NatGateway, error) {
 	params := armnetwork.NatGateway{
 		Properties: &armnetwork.NatGatewayPropertiesFormat{
 			IdleTimeoutInMinutes: nat.idleConnectionTimeoutMinutes,
@@ -313,7 +313,7 @@ func (f azureReconciler) createOrUpdateNatGateway(ctx context.Context, nat zoneT
 	}
 	ipResources, ok := ips[nat.SubnetName()]
 	if !ok {
-		return armnetwork.NatGatewaysClientCreateOrUpdateResponse{}, fmt.Errorf("no public IP found for NAT Gateway %s", nat.NatName())
+		return nil, fmt.Errorf("no public IP found for NAT Gateway %s", nat.NatName())
 	} else {
 		params.Properties.PublicIPAddresses = []*armnetwork.SubResource{}
 		for _, ip := range ipResources {
@@ -325,7 +325,7 @@ func (f azureReconciler) createOrUpdateNatGateway(ctx context.Context, nat zoneT
 	}
 	resp, err := client.CreateOrUpdate(ctx, f.tf.ResourceGroup(), nat.NatName(), params)
 	if err != nil {
-		return armnetwork.NatGatewaysClientCreateOrUpdateResponse{}, err
+		return nil, err
 	}
 	return resp, nil
 }
@@ -382,7 +382,7 @@ func (f azureReconciler) deleteOldNatGateways(ctx context.Context, client client
 }
 
 // Subnets creates or updates subnets
-func (f azureReconciler) Subnets(ctx context.Context, securityGroup armnetwork.SecurityGroup, routeTable armnetwork.RouteTable, nats map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse) (err error) {
+func (f azureReconciler) Subnets(ctx context.Context, securityGroup armnetwork.SecurityGroup, routeTable armnetwork.RouteTable, nats map[string]*armnetwork.NatGateway) (err error) {
 	subnetClient, err := f.factory.Subnet()
 	if err != nil {
 		return err

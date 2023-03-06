@@ -59,8 +59,8 @@ type AvailabilitySet interface {
 
 // NatGateway is an interface for the Azure NatGateway service.
 type NatGateway interface {
-	CreateOrUpdate(ctx context.Context, resourceGroupName, natGatewayName string, parameters armnetwork.NatGateway) (armnetwork.NatGatewaysClientCreateOrUpdateResponse, error)
-	Get(ctx context.Context, resourceGroupName, natGatewayName string) (*armnetwork.NatGatewaysClientGetResponse, error)
+	CreateOrUpdate(ctx context.Context, resourceGroupName, natGatewayName string, parameters armnetwork.NatGateway) (*armnetwork.NatGateway, error)
+	Get(ctx context.Context, resourceGroupName, natGatewayName string) (*armnetwork.NatGateway, error)
 	Delete(ctx context.Context, resourceGroupName, natGatewayName string) error
 	List(ctx context.Context, resourceGroupName string) ([]*armnetwork.NatGateway, error)
 }

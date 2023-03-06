@@ -703,10 +703,10 @@ func (m *MockNatGateway) EXPECT() *MockNatGatewayMockRecorder {
 }
 
 // CreateOrUpdate mocks base method.
-func (m *MockNatGateway) CreateOrUpdate(arg0 context.Context, arg1, arg2 string, arg3 armnetwork.NatGateway) (armnetwork.NatGatewaysClientCreateOrUpdateResponse, error) {
+func (m *MockNatGateway) CreateOrUpdate(arg0 context.Context, arg1, arg2 string, arg3 armnetwork.NatGateway) (*armnetwork.NatGateway, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateOrUpdate", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(armnetwork.NatGatewaysClientCreateOrUpdateResponse)
+	ret0, _ := ret[0].(*armnetwork.NatGateway)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -732,10 +732,10 @@ func (mr *MockNatGatewayMockRecorder) Delete(arg0, arg1, arg2 interface{}) *gomo
 }
 
 // Get mocks base method.
-func (m *MockNatGateway) Get(arg0 context.Context, arg1, arg2 string) (*armnetwork.NatGatewaysClientGetResponse, error) {
+func (m *MockNatGateway) Get(arg0 context.Context, arg1, arg2 string) (*armnetwork.NatGateway, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*armnetwork.NatGatewaysClientGetResponse)
+	ret0, _ := ret[0].(*armnetwork.NatGateway)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

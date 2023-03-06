@@ -32,26 +32,26 @@ func NewNatGatewaysClient(auth internal.ClientAuth) (*NatGatewayClient, error) {
 }
 
 // CreateOrUpdate creates or updates a NatGateway.
-func (c NatGatewayClient) CreateOrUpdate(ctx context.Context, resourceGroupName, natGatewayName string, parameters armnetwork.NatGateway) (armnetwork.NatGatewaysClientCreateOrUpdateResponse, error) {
+func (c NatGatewayClient) CreateOrUpdate(ctx context.Context, resourceGroupName, natGatewayName string, parameters armnetwork.NatGateway) (*armnetwork.NatGateway, error) {
 
 	poller, err := c.client.BeginCreateOrUpdate(ctx, resourceGroupName, natGatewayName, parameters, nil)
 	if err != nil {
-		return armnetwork.NatGatewaysClientCreateOrUpdateResponse{}, err
+		return nil, err
 	}
 	resp, err := poller.PollUntilDone(ctx, nil)
-	return resp, err
+	return &resp.NatGateway, err
 }
 
 // Get returns a NatGateway by name or nil if it doesn't exis.
-func (c NatGatewayClient) Get(ctx context.Context, resourceGroupName, natGatewayName string) (*armnetwork.NatGatewaysClientGetResponse, error) {
-	natGateway, err := c.client.Get(ctx, resourceGroupName, natGatewayName, nil)
+func (c NatGatewayClient) Get(ctx context.Context, resourceGroupName, natGatewayName string) (*armnetwork.NatGateway, error) {
+	res, err := c.client.Get(ctx, resourceGroupName, natGatewayName, nil)
 	if err != nil {
 		if IsAzureAPINotFoundError(err) {
 			return nil, nil
 		}
 		return nil, err
 	}
-	return &natGateway, nil
+	return &res.NatGateway, nil
 }
 
 // List returns all NATGateways in the given resource group.
