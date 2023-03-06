@@ -67,9 +67,9 @@ type NatGateway interface {
 
 // RouteTables is a client for the Azure RouteTable service.
 type RouteTables interface {
-	CreateOrUpdate(ctx context.Context, resourceGroupName, routeTableName string, parameters armnetwork.RouteTable) (armnetwork.RouteTablesClientCreateOrUpdateResponse, error)
+	CreateOrUpdate(ctx context.Context, resourceGroupName, routeTableName string, parameters armnetwork.RouteTable) (*armnetwork.RouteTable, error)
 	Delete(ctx context.Context, resourceGroupName, name string) (err error)
-	Get(ctx context.Context, resourceGroupName, name string) (armnetwork.RouteTablesClientGetResponse, error)
+	Get(ctx context.Context, resourceGroupName, name string) (*armnetwork.RouteTable, error)
 }
 
 // ManagedUserIdentity is a client for the Azure Managed User Identity service.

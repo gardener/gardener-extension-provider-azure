@@ -175,7 +175,7 @@ func (f azureReconciler) RouteTables(ctx context.Context) (armnetwork.RouteTable
 	}
 	resp, err := client.CreateOrUpdate(ctx, f.tf.ResourceGroup(), f.tf.RouteTableName(), parameters)
 
-	return resp.RouteTable, err
+	return *resp, err
 }
 
 // SecurityGroups creates or updates a SecurityGroup

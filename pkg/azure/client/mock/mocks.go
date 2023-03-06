@@ -636,10 +636,10 @@ func (m *MockRouteTables) EXPECT() *MockRouteTablesMockRecorder {
 }
 
 // CreateOrUpdate mocks base method.
-func (m *MockRouteTables) CreateOrUpdate(arg0 context.Context, arg1, arg2 string, arg3 armnetwork.RouteTable) (armnetwork.RouteTablesClientCreateOrUpdateResponse, error) {
+func (m *MockRouteTables) CreateOrUpdate(arg0 context.Context, arg1, arg2 string, arg3 armnetwork.RouteTable) (*armnetwork.RouteTable, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateOrUpdate", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(armnetwork.RouteTablesClientCreateOrUpdateResponse)
+	ret0, _ := ret[0].(*armnetwork.RouteTable)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -665,10 +665,10 @@ func (mr *MockRouteTablesMockRecorder) Delete(arg0, arg1, arg2 interface{}) *gom
 }
 
 // Get mocks base method.
-func (m *MockRouteTables) Get(arg0 context.Context, arg1, arg2 string) (armnetwork.RouteTablesClientGetResponse, error) {
+func (m *MockRouteTables) Get(arg0 context.Context, arg1, arg2 string) (*armnetwork.RouteTable, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2)
-	ret0, _ := ret[0].(armnetwork.RouteTablesClientGetResponse)
+	ret0, _ := ret[0].(*armnetwork.RouteTable)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

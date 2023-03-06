@@ -67,10 +67,8 @@ func (f *MockFactoryWrapper) assertRouteTableCalled(name string) *gomock.Call {
 	rt := mockclient.NewMockRouteTables(f.ctrl)
 	f.EXPECT().RouteTables().Return(rt, nil)
 	return rt.EXPECT().CreateOrUpdate(gomock.Any(), f.resourceGroup, name, gomock.Any()).Return(
-		armnetwork.RouteTablesClientCreateOrUpdateResponse{
-			RouteTable: armnetwork.RouteTable{
-				ID: to.Ptr("routeId"),
-			},
+		&armnetwork.RouteTable{
+			ID: to.Ptr("routeId"),
 		}, nil)
 }
 

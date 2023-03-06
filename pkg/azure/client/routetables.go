@@ -33,12 +33,13 @@ func NewRouteTablesClient(auth internal.ClientAuth) (*RouteTablesClient, error) 
 }
 
 // CreateOrUpdate creates or updates a RouteTable.
-func (c RouteTablesClient) CreateOrUpdate(ctx context.Context, resourceGroupName, routeTableName string, parameters armnetwork.RouteTable) (armnetwork.RouteTablesClientCreateOrUpdateResponse, error) {
+func (c RouteTablesClient) CreateOrUpdate(ctx context.Context, resourceGroupName, routeTableName string, parameters armnetwork.RouteTable) (*armnetwork.RouteTable, error) {
 	poller, err := c.client.BeginCreateOrUpdate(ctx, resourceGroupName, routeTableName, parameters, nil)
 	if err != nil {
-		return armnetwork.RouteTablesClientCreateOrUpdateResponse{}, fmt.Errorf("cannot create route table: %v", err)
+		return nil, fmt.Errorf("cannot create route table: %v", err)
 	}
-	return poller.PollUntilDone(ctx, nil)
+	res, err := poller.PollUntilDone(ctx, nil)
+	return &res.RouteTable, err
 }
 
 // Delete deletes the RouteTable with the given name.
@@ -52,6 +53,7 @@ func (c RouteTablesClient) Delete(ctx context.Context, resourceGroupName, name s
 }
 
 // Get returns a RouteTable by name.
-func (c RouteTablesClient) Get(ctx context.Context, resourceGroupName, name string) (armnetwork.RouteTablesClientGetResponse, error) {
-	return c.client.Get(ctx, resourceGroupName, name, nil)
+func (c RouteTablesClient) Get(ctx context.Context, resourceGroupName, name string) (*armnetwork.RouteTable, error) {
+	res, err := c.client.Get(ctx, resourceGroupName, name, nil)
+	return &res.RouteTable, err
 }
