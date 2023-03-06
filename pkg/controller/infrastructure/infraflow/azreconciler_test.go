@@ -406,7 +406,7 @@ var _ = Describe("AzureReconciler", func() {
 					aclient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(&armcompute.AvailabilitySet{ID: to.Ptr("av-id")}, nil)
 
 					iclient := mockclient.NewMockManagedUserIdentity(ctrl)
-					identity := msi.Identity{ID: to.Ptr("identity-id"), UserAssignedIdentityProperties: &msi.UserAssignedIdentityProperties{ClientID: to.Ptr(uuid.FromStringOrNil("69359037-9599-48e7-b8f2-48393c019135"))}}
+					identity := &msi.Identity{ID: to.Ptr("identity-id"), UserAssignedIdentityProperties: &msi.UserAssignedIdentityProperties{ClientID: to.Ptr(uuid.FromStringOrNil("69359037-9599-48e7-b8f2-48393c019135"))}}
 
 					iclient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(identity, nil)
 
