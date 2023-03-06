@@ -57,13 +57,8 @@ func (c NetworkInterfaceClient) Get(ctx context.Context, resourceGroupName strin
 func (c NetworkInterfaceClient) Delete(ctx context.Context, resourceGroupName, name string) error {
 	future, err := c.client.BeginDelete(ctx, resourceGroupName, name, nil)
 	if err != nil {
-		return err
+		return FilterNotFoundError(err)
 	}
 	_, err = future.PollUntilDone(ctx, nil)
-	if err != nil {
-		if IsAzureAPINotFoundError(err) {
-			return nil
-		}
-	}
 	return err
 }

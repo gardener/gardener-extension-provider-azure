@@ -46,7 +46,7 @@ func (v VnetClient) CreateOrUpdate(ctx context.Context, resourceGroupName string
 func (v VnetClient) Delete(ctx context.Context, resourceGroup, vnetName string) (err error) {
 	poller, err := v.client.BeginDelete(ctx, resourceGroup, vnetName, nil)
 	if err != nil {
-		return err
+		return FilterNotFoundError(err)
 	}
 	_, err = poller.PollUntilDone(ctx, nil)
 	return err

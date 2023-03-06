@@ -71,7 +71,7 @@ func (c SubnetsClient) List(ctx context.Context, resourceGroupName, vnetName str
 func (c SubnetsClient) Delete(ctx context.Context, resourceGroupName, vnetName, subnetName string) error {
 	poller, err := c.client.BeginDelete(ctx, resourceGroupName, vnetName, subnetName, nil)
 	if err != nil {
-		return err
+		return FilterNotFoundError(err)
 	}
 
 	_, err = poller.PollUntilDone(ctx, nil)

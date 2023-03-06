@@ -57,7 +57,7 @@ func (c NetworkSecurityGroupClient) Get(ctx context.Context, resourceGroupName s
 func (c NetworkSecurityGroupClient) Delete(ctx context.Context, resourceGroupName, name string) error {
 	future, err := c.client.BeginDelete(ctx, resourceGroupName, name, nil)
 	if err != nil {
-		return err
+		return FilterNotFoundError(err)
 	}
 	if _, err := future.PollUntilDone(ctx, nil); err != nil {
 		return err

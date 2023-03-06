@@ -78,13 +78,8 @@ func (c VmssClient) Delete(ctx context.Context, resourceGroupName, name string, 
 		ForceDeletion: forceDeletion,
 	})
 	if err != nil {
-		return err
+		return FilterNotFoundError(err)
 	}
 	_, err = future.PollUntilDone(ctx, nil)
-	if err != nil {
-		if IsAzureAPINotFoundError(err) {
-			return nil
-		}
-	}
 	return err
 }

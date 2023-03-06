@@ -60,17 +60,10 @@ func (c ResourceGroupClient) DeleteIfExists(ctx context.Context, resourceGroupNa
 		resourceGroupName,
 		nil)
 	if err != nil {
-		if IsAzureAPINotFoundError(err) {
-			return nil
-		} else {
-			return err
-		}
+		return FilterNotFoundError(err)
 	}
 	_, err = resourceGroupResp.PollUntilDone(ctx, nil)
-	if IsAzureAPINotFoundError(err) {
-		return nil
-	} // ignore if resource group is already deleted
-	return err
+	return FilterNotFoundError(err)
 }
 
 // IsExisting checks if a resource group exists

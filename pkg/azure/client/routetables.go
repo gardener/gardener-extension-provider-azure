@@ -45,7 +45,7 @@ func (c RouteTablesClient) CreateOrUpdate(ctx context.Context, resourceGroupName
 func (c RouteTablesClient) Delete(ctx context.Context, resourceGroupName, name string) (err error) {
 	poller, err := c.client.BeginDelete(ctx, resourceGroupName, name, nil)
 	if err != nil {
-		return err
+		return FilterNotFoundError(err)
 	}
 	_, err = poller.PollUntilDone(ctx, nil)
 	return err

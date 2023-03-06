@@ -44,21 +44,12 @@ func (c AvailabilitySetClient) CreateOrUpdate(ctx context.Context, resourceGroup
 // Get returns the availability set for the given resource group and availability set name.
 func (c AvailabilitySetClient) Get(ctx context.Context, resourceGroupName, availabilitySetName string) (*armcompute.AvailabilitySet, error) {
 	res, err := c.client.Get(ctx, resourceGroupName, availabilitySetName, nil)
-	if err != nil {
-		if IsAzureAPINotFoundError(err) {
-			return nil, nil
-		}
-	}
-	return &res.AvailabilitySet, nil
+
+	return &res.AvailabilitySet, err
 }
 
 // Delete deletes the availability set for the given resource group and availability set name.
 func (c AvailabilitySetClient) Delete(ctx context.Context, resourceGroupName, availabilitySetName string) error {
 	_, err := c.client.Delete(ctx, resourceGroupName, availabilitySetName, nil)
-	if err != nil {
-		if IsAzureAPINotFoundError(err) {
-			return nil
-		}
-	}
-	return err
+	return FilterNotFoundError(err)
 }

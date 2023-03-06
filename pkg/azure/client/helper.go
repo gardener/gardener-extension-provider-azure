@@ -21,6 +21,16 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 )
 
+func FilterNotFoundError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if IsAzureAPINotFoundError(err) {
+		return nil
+	}
+	return err
+}
+
 func isAzureAPStatusError(err error, status int) bool {
 	switch e := err.(type) {
 	case autorest.DetailedError: // error from old azure client

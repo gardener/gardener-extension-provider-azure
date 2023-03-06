@@ -71,13 +71,8 @@ func (c PublicIPClient) List(ctx context.Context, resourceGroupName string) ([]*
 func (c PublicIPClient) Delete(ctx context.Context, resourceGroupName, name string) error {
 	future, err := c.client.BeginDelete(ctx, resourceGroupName, name, nil)
 	if err != nil {
-		return err
+		return FilterNotFoundError(err)
 	}
 	_, err = future.PollUntilDone(ctx, nil)
-	if err != nil {
-		if IsAzureAPINotFoundError(err) {
-			return nil
-		}
-	}
 	return err
 }
