@@ -134,8 +134,8 @@ func (f azureReconciler) deleteSubnetsInForeignGroup(ctx context.Context) error 
 	return nil
 }
 
-// Vnet creates or updates a Vnet
-func (f azureReconciler) Vnet(ctx context.Context) error {
+// EnsureVnet creates or updates a Vnet
+func (f azureReconciler) EnsureVnet(ctx context.Context) error {
 	if f.tf.isCreate(Vnet) {
 		client, err := f.factory.Vnet()
 		if err != nil {
@@ -165,8 +165,8 @@ func (f azureReconciler) Vnet(ctx context.Context) error {
 	}
 }
 
-// RouteTables creates or updates a RouteTable
-func (f azureReconciler) RouteTables(ctx context.Context) (armnetwork.RouteTable, error) {
+// EnsureRouteTables creates or updates a RouteTable
+func (f azureReconciler) EnsureRouteTables(ctx context.Context) (armnetwork.RouteTable, error) {
 	client, err := f.factory.RouteTables()
 	if err != nil {
 		return armnetwork.RouteTable{}, err
@@ -179,8 +179,8 @@ func (f azureReconciler) RouteTables(ctx context.Context) (armnetwork.RouteTable
 	return *resp, err
 }
 
-// SecurityGroups creates or updates a SecurityGroup
-func (f azureReconciler) SecurityGroups(ctx context.Context) (*armnetwork.SecurityGroup, error) {
+// EnsureSecurityGroups creates or updates a SecurityGroup
+func (f azureReconciler) EnsureSecurityGroups(ctx context.Context) (*armnetwork.SecurityGroup, error) {
 	client, err := f.factory.NetworkSecurityGroup()
 	if err != nil {
 		return nil, err
@@ -192,8 +192,8 @@ func (f azureReconciler) SecurityGroups(ctx context.Context) (*armnetwork.Securi
 	return resp, err
 }
 
-// AvailabilitySet creates or updates an AvailabilitySet
-func (f azureReconciler) AvailabilitySet(ctx context.Context) error {
+// EnsureAvailabilitySet creates or updates an AvailabilitySet
+func (f azureReconciler) EnsureAvailabilitySet(ctx context.Context) error {
 	if f.tf.isCreate(AvailabilitySet) {
 		asClient, err := f.factory.AvailabilitySet()
 		if err != nil {
@@ -215,8 +215,8 @@ func (f azureReconciler) AvailabilitySet(ctx context.Context) error {
 	}
 }
 
-// PublicIPs creates or updates PublicIPs for the NATs
-func (f azureReconciler) PublicIPs(ctx context.Context) (map[string][]*armnetwork.PublicIPAddress, error) {
+// EnsurePublicIPs creates or updates PublicIPs for the NATs
+func (f azureReconciler) EnsurePublicIPs(ctx context.Context) (map[string][]*armnetwork.PublicIPAddress, error) {
 	res := make(map[string][]*armnetwork.PublicIPAddress)
 	client, err := f.factory.PublicIP()
 	if err != nil {
@@ -283,8 +283,8 @@ func checkAllZonesWithFn(name string, zones []zoneTf, check func(zone zoneTf, na
 	return false
 }
 
-// NatGateways creates or updates NAT Gateways. It also deletes old NATGateways.
-func (f azureReconciler) NatGateways(ctx context.Context, ips map[string][]network.PublicIPAddress) (map[string]*armnetwork.NatGateway, error) {
+// EnsureNatGateways creates or updates NAT Gateways. It also deletes old NATGateways.
+func (f azureReconciler) EnsureNatGateways(ctx context.Context, ips map[string][]network.PublicIPAddress) (map[string]*armnetwork.NatGateway, error) {
 	res := make(map[string]*armnetwork.NatGateway)
 	client, err := f.factory.NatGateway()
 	if err != nil {
@@ -331,8 +331,8 @@ func (f azureReconciler) createOrUpdateNatGateway(ctx context.Context, nat zoneT
 	return resp, nil
 }
 
-// ResourceGroup creates or updates the resource group
-func (f azureReconciler) ResourceGroup(ctx context.Context) error {
+// EnsureResourceGroup creates or updates the resource group
+func (f azureReconciler) EnsureResourceGroup(ctx context.Context) error {
 	rgClient, err := f.factory.Group()
 	if err != nil {
 		return err
@@ -383,8 +383,8 @@ func (f azureReconciler) deleteOldNatGateways(ctx context.Context, client client
 	return nil
 }
 
-// Subnets creates or updates subnets
-func (f azureReconciler) Subnets(ctx context.Context, securityGroup armnetwork.SecurityGroup, routeTable armnetwork.RouteTable, nats map[string]*armnetwork.NatGateway) (err error) {
+// EnsureSubnets creates or updates subnets
+func (f azureReconciler) EnsureSubnets(ctx context.Context, securityGroup armnetwork.SecurityGroup, routeTable armnetwork.RouteTable, nats map[string]*armnetwork.NatGateway) (err error) {
 	subnetClient, err := f.factory.Subnet()
 	if err != nil {
 		return err

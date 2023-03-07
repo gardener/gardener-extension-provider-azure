@@ -74,7 +74,7 @@ var _ = Describe("AzureReconciler", func() {
 
 				sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
-				err = sut.Vnet(context.TODO())
+				err = sut.EnsureVnet(context.TODO())
 				Expect(err).ToNot(HaveOccurred())
 			})
 			Context("with ddosId", func() {
@@ -98,7 +98,7 @@ var _ = Describe("AzureReconciler", func() {
 
 					sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 					Expect(err).ToNot(HaveOccurred())
-					err = sut.Vnet(context.TODO())
+					err = sut.EnsureVnet(context.TODO())
 					Expect(err).ToNot(HaveOccurred())
 				})
 
@@ -114,7 +114,7 @@ var _ = Describe("AzureReconciler", func() {
 
 				sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
-				err = sut.Vnet(context.TODO())
+				err = sut.EnsureVnet(context.TODO())
 				Expect(err).ToNot(HaveOccurred())
 
 			})
@@ -137,7 +137,7 @@ var _ = Describe("AzureReconciler", func() {
 
 			sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 			Expect(err).ToNot(HaveOccurred())
-			_, err = sut.RouteTables(context.TODO())
+			_, err = sut.EnsureRouteTables(context.TODO())
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
@@ -151,7 +151,7 @@ var _ = Describe("AzureReconciler", func() {
 
 			sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 			Expect(err).ToNot(HaveOccurred())
-			_, err = sut.SecurityGroups(context.TODO())
+			_, err = sut.EnsureSecurityGroups(context.TODO())
 			Expect(err).ToNot(HaveOccurred())
 
 		})
@@ -165,7 +165,7 @@ var _ = Describe("AzureReconciler", func() {
 				factory = mock.GetFactory()
 				sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
-				err = sut.AvailabilitySet(context.TODO())
+				err = sut.EnsureAvailabilitySet(context.TODO())
 				Expect(err).ToNot(HaveOccurred())
 			})
 		})
@@ -187,7 +187,7 @@ var _ = Describe("AzureReconciler", func() {
 				factory = mock.GetFactory()
 				sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
-				err = sut.AvailabilitySet(context.TODO())
+				err = sut.EnsureAvailabilitySet(context.TODO())
 				Expect(err).ToNot(HaveOccurred())
 			})
 		})
@@ -208,7 +208,7 @@ var _ = Describe("AzureReconciler", func() {
 			It("does not create NAT IPs and does not update user-managed public IPs", func() {
 				sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
-				_, err = sut.PublicIPs(context.TODO())
+				_, err = sut.EnsurePublicIPs(context.TODO())
 				Expect(err).ToNot(HaveOccurred())
 			})
 		})
@@ -231,7 +231,7 @@ var _ = Describe("AzureReconciler", func() {
 			It("only creates NAT IP for 1 zone and does not update user-managed public IPs", func() {
 				sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
-				_, err = sut.PublicIPs(context.TODO())
+				_, err = sut.EnsurePublicIPs(context.TODO())
 				Expect(err).ToNot(HaveOccurred())
 
 			})
@@ -267,7 +267,7 @@ var _ = Describe("AzureReconciler", func() {
 				sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
 
-				_, err = sut.PublicIPs(context.TODO())
+				_, err = sut.EnsurePublicIPs(context.TODO())
 				Expect(err).To(HaveOccurred())
 			})
 		})
@@ -296,7 +296,7 @@ var _ = Describe("AzureReconciler", func() {
 
 					sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 					Expect(err).ToNot(HaveOccurred())
-					_, err = sut.NatGateways(context.TODO(), map[string][]network.PublicIPAddress{"test_cluster-nodes-z1": {{
+					_, err = sut.EnsureNatGateways(context.TODO(), map[string][]network.PublicIPAddress{"test_cluster-nodes-z1": {{
 						ID: ipId,
 					},
 					}})
@@ -320,7 +320,7 @@ var _ = Describe("AzureReconciler", func() {
 					sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 					Expect(err).ToNot(HaveOccurred())
 
-					_, err = sut.NatGateways(context.TODO(), map[string][]network.PublicIPAddress{})
+					_, err = sut.EnsureNatGateways(context.TODO(), map[string][]network.PublicIPAddress{})
 					Expect(err).To(HaveOccurred())
 				})
 			})
@@ -346,7 +346,7 @@ var _ = Describe("AzureReconciler", func() {
 
 					sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 					Expect(err).ToNot(HaveOccurred())
-					err = sut.Subnets(context.TODO(), armnetwork.SecurityGroup{}, armnetwork.RouteTable{}, map[string]*armnetwork.NatGateway{})
+					err = sut.EnsureSubnets(context.TODO(), armnetwork.SecurityGroup{}, armnetwork.RouteTable{}, map[string]*armnetwork.NatGateway{})
 					Expect(err).ToNot(HaveOccurred())
 
 				})
