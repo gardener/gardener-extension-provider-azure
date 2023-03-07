@@ -102,12 +102,16 @@ func (f azureReconciler) enrichStatusWithIdentity(ctx context.Context, status *v
 
 // Delete deletes all resources managed by the reconciler
 func (f azureReconciler) Delete(ctx context.Context) error {
+	if err := f.deleteSubnetsInForeignGroup(ctx); err != nil {
+		return fmt.Errorf("failed to delete foreign subnet: %w", err)
+	}
+	return f.deleteResourceGroup(ctx)
+}
+
+func (f azureReconciler) deleteResourceGroup(ctx context.Context) error {
 	client, err := f.factory.Group()
 	if err != nil {
 		return err
-	}
-	if err := f.deleteSubnetsInForeignGroup(ctx); err != nil {
-		return fmt.Errorf("failed to delete foreign subnet: %w", err)
 	}
 	return client.Delete(ctx, f.tf.ResourceGroup())
 }
