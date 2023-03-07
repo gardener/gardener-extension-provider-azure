@@ -156,7 +156,7 @@ type Subnet interface {
 // ResourceGroup represents an Azure ResourceGroup client.
 type ResourceGroup interface {
 	CreateOrUpdate(ctx context.Context, resourceGroupName, location string) (*armresources.ResourceGroup, error)
-	DeleteIfExists(ctx context.Context, resourceGroupName string) error
+	Delete(ctx context.Context, resourceGroupName string) error
 	IsExisting(ctx context.Context, resourceGroupName string) (bool, error)
 	Get(ctx context.Context, resourceGroupName string) (*armresources.ResourceGroup, error)
 }

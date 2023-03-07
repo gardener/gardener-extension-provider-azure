@@ -109,7 +109,7 @@ func (f azureReconciler) Delete(ctx context.Context) error {
 	if err := f.deleteSubnetsInForeignGroup(ctx); err != nil {
 		return fmt.Errorf("failed to delete foreign subnet: %w", err)
 	}
-	return client.DeleteIfExists(ctx, f.tf.ResourceGroup())
+	return client.Delete(ctx, f.tf.ResourceGroup())
 }
 
 // deleteSubnetsInForeignGroup deletes all managed subnets in a foreign resource group

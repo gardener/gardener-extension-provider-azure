@@ -53,8 +53,8 @@ func (c ResourceGroupClient) CreateOrUpdate(ctx context.Context, resourceGroupNa
 	return &res.ResourceGroup, err
 }
 
-// DeleteIfExists deletes a resource group if it exists.
-func (c ResourceGroupClient) DeleteIfExists(ctx context.Context, resourceGroupName string) error {
+// Delete deletes a resource group if it exists.
+func (c ResourceGroupClient) Delete(ctx context.Context, resourceGroupName string) error {
 	resourceGroupResp, err := c.client.BeginDelete(
 		ctx,
 		resourceGroupName,
@@ -63,7 +63,7 @@ func (c ResourceGroupClient) DeleteIfExists(ctx context.Context, resourceGroupNa
 		return FilterNotFoundError(err)
 	}
 	_, err = resourceGroupResp.PollUntilDone(ctx, nil)
-	return FilterNotFoundError(err)
+	return err
 }
 
 // IsExisting checks if a resource group exists

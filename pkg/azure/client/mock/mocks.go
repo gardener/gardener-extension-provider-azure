@@ -504,18 +504,18 @@ func (mr *MockResourceGroupMockRecorder) CreateOrUpdate(arg0, arg1, arg2 interfa
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdate", reflect.TypeOf((*MockResourceGroup)(nil).CreateOrUpdate), arg0, arg1, arg2)
 }
 
-// DeleteIfExists mocks base method.
-func (m *MockResourceGroup) DeleteIfExists(arg0 context.Context, arg1 string) error {
+// Delete mocks base method.
+func (m *MockResourceGroup) Delete(arg0 context.Context, arg1 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteIfExists", arg0, arg1)
+	ret := m.ctrl.Call(m, "Delete", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// DeleteIfExists indicates an expected call of DeleteIfExists.
-func (mr *MockResourceGroupMockRecorder) DeleteIfExists(arg0, arg1 interface{}) *gomock.Call {
+// Delete indicates an expected call of Delete.
+func (mr *MockResourceGroupMockRecorder) Delete(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteIfExists", reflect.TypeOf((*MockResourceGroup)(nil).DeleteIfExists), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockResourceGroup)(nil).Delete), arg0, arg1)
 }
 
 // Get mocks base method.
