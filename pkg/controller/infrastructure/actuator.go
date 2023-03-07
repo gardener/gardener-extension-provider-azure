@@ -57,7 +57,7 @@ func NewActuator(disableProjectedTokenMount bool) infrastructure.Actuator {
 	}
 }
 
-func (a *actuator) updateProviderStatusFromTf(ctx context.Context, tf terraformer.Terraformer, infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig, cluster *controller.Cluster) error {
+func (a *actuator) updateProviderStatusFromTerraform(ctx context.Context, tf terraformer.Terraformer, infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig, cluster *controller.Cluster) error {
 	status, err := infrainternal.ComputeTerraformStatus(ctx, tf, infra, config, cluster)
 	if err != nil {
 		return err

@@ -70,7 +70,7 @@ func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, infra *ext
 		return fmt.Errorf("failed to apply the terraform config: %w", err)
 	}
 
-	return a.updateProviderStatusFromTf(ctx, tf, infra, config, cluster)
+	return a.updateProviderStatusFromTerraform(ctx, tf, infra, config, cluster)
 }
 
 func cleanupTerraform(ctx context.Context, logger logr.Logger, a *actuator, infra *extensionsv1alpha1.Infrastructure) error {
