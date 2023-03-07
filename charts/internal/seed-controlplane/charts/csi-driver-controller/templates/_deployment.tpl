@@ -34,7 +34,7 @@ spec:
         high-availability-config.resources.gardener.cloud/type: controller
         networking.gardener.cloud/to-dns: allowed
         networking.gardener.cloud/to-public-networks: allowed
-        networking.gardener.cloud/to-shoot-apiserver: allowed
+        networking.resources.gardener.cloud/to-kube-apiserver-tcp-443: allowed
     spec:
       automountServiceAccountToken: false
       priorityClassName: gardener-system-300
