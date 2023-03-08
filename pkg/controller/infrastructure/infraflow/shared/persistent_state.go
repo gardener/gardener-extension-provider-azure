@@ -81,7 +81,7 @@ func NewPersistentStateFromJSON(raw []byte) (*PersistentState, error) {
 }
 
 // NewPersistentStateFromFlatMap create new PersistentState and initialises data from input.
-func NewPersistentStateFromFlatMap(flatState shared.FlatMap) *PersistentState {
+func NewPersistentStateFromFlatMap(flatState FlatMap) *PersistentState {
 	state := NewPersistentState()
 	state.Data = copyMap(flatState)
 	return state
@@ -97,7 +97,7 @@ func (s *PersistentState) HasValidVersion() (valid bool, err error) {
 }
 
 // ToFlatMap returns a copy of state as FlatMap
-func (s *PersistentState) ToFlatMap() shared.FlatMap {
+func (s *PersistentState) ToFlatMap() FlatMap {
 	return copyMap(s.Data)
 }
 
@@ -106,22 +106,33 @@ func (s *PersistentState) ToJSON() ([]byte, error) {
 	return json.Marshal(s)
 }
 
-// MigratedFromTerraform returns trus if marker MarkerMigratedFromTerraform is set.
-func (s *PersistentState) MigratedFromTerraform() bool {
-	return s.Data[MarkerMigratedFromTerraform] == "true"
-}
+//// MigratedFromTerraform returns trus if marker MarkerMigratedFromTerraform is set.
+//func (s *PersistentState) MigratedFromTerraform() bool {
+//	return s.Data[MarkerMigratedFromTerraform] == "true"
+//}
 
-// SetMigratedFromTerraform sets the marker MarkerMigratedFromTerraform
-func (s *PersistentState) SetMigratedFromTerraform() {
-	s.Data[MarkerMigratedFromTerraform] = "true"
-}
+//// SetMigratedFromTerraform sets the marker MarkerMigratedFromTerraform
+//func (s *PersistentState) SetMigratedFromTerraform() {
+//	s.Data[MarkerMigratedFromTerraform] = "true"
+//}
 
-// TerraformCleanedUp returns trus if marker MarkerTerraformCleanedUp is set.
-func (s *PersistentState) TerraformCleanedUp() bool {
-	return s.Data[MarkerTerraformCleanedUp] == "true"
-}
+//// TerraformCleanedUp returns trus if marker MarkerTerraformCleanedUp is set.
+//func (s *PersistentState) TerraformCleanedUp() bool {
+//	return s.Data[MarkerTerraformCleanedUp] == "true"
+//}
 
-// SetTerraformCleanedUp sets the marker MarkerTerraformCleanedUp
-func (s *PersistentState) SetTerraformCleanedUp() {
-	s.Data[MarkerTerraformCleanedUp] = "true"
+//// SetTerraformCleanedUp sets the marker MarkerTerraformCleanedUp
+//func (s *PersistentState) SetTerraformCleanedUp() {
+//	s.Data[MarkerTerraformCleanedUp] = "true"
+//}
+
+func copyMap(src map[string]string) map[string]string {
+	if src == nil {
+		return nil
+	}
+	dst := map[string]string{}
+	for k, v := range src {
+		dst[k] = v
+	}
+	return dst
 }

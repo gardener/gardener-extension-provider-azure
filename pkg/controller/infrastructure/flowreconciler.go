@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
@@ -27,6 +29,16 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 )
+
+type Reconciler interface {
+	Reconcile(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, cluster *controller.Cluster) (*v1alpha1.InfrastructureStatus, error)
+	GetState(ctx context.Context, status *v1alpha1.InfrastructureStatus) (InfrastructureState, error)
+	Delete(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, cluster *controller.Cluster) error
+}
+
+type ReconcilerFactory interface {
+	Build(useFlow bool) Reconciler
+}
 
 // ShouldUseFlow returns true if the new flow reconciler should be used for the reconciliation.
 func ShouldUseFlow(infrastructure *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) bool {
@@ -38,7 +50,7 @@ func ShouldUseFlow(infrastructure *extensionsv1alpha1.Infrastructure, cluster *c
 }
 
 // NewFlowReconciler creates a new flow reconciler.
-func NewFlowReconciler(ctx context.Context, a *actuator, infra *extensionsv1alpha1.Infrastructure, logger logr.Logger) (*infraflow.FlowReconciler, error) {
+func NewFlowReconciler(ctx context.Context, a *actuator, infra *extensionsv1alpha1.Infrastructure, logger logr.Logger) (Reconciler, error) {
 	client := a.Client()
 	if client == nil {
 		return nil, fmt.Errorf("infrastructure actuator has no client set")
@@ -52,5 +64,13 @@ func NewFlowReconciler(ctx context.Context, a *actuator, infra *extensionsv1alph
 		return nil, err
 	}
 	reconciler := infraflow.NewFlowReconciler(factory, logger)
-	return reconciler, nil
+	return &FlowReconcilerAdapter{reconciler}, nil
+}
+
+type FlowReconcilerAdapter struct {
+	*infraflow.FlowReconciler
+}
+
+func (f *FlowReconcilerAdapter) GetState(ctx context.Context, status *v1alpha1.InfrastructureStatus) (InfrastructureState, error) {
+	return InfrastructureState{}, nil
 }

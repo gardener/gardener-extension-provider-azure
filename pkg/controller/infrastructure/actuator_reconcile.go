@@ -38,39 +38,39 @@ func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, infra *ext
 	if err != nil {
 		return err
 	}
+
+	// TOOD
+	//useFlow := ShouldUseFlow(infra, cluster)
+	//selector := StrategySelector{
+	//	//Factory: MockFactory{ctrl, tfStateRaw},
+	//	Client: a.Client(),
+	//}
+	//selector.Reconcile(useFlow, ctx, infra, config, cluster) // TODO add cleanupTF
+
+	var reconciler Reconciler
 	if ShouldUseFlow(infra, cluster) {
 		if err := cleanupTerraform(ctx, logger, a, infra); err != nil {
 			return fmt.Errorf("failed to cleanup terraform resources: %w", err)
 		}
-		reconciler, err := NewFlowReconciler(ctx, a, infra, logger)
+		reconciler, err = NewFlowReconciler(ctx, a, infra, logger)
 		if err != nil {
 			return err
 		}
-		status, err := reconciler.Reconcile(ctx, infra, config, cluster)
+	} else {
+		reconciler, err = NewTerraformReconciler(a, logger, stateInitializer)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to init terraform reconciler: %w", err)
 		}
-		return patchProviderStatus(ctx, infra, status, a.Client())
 	}
-
-	terraformFiles, err := infrastructure.RenderTerraformerTemplate(infra, config, cluster)
+	status, err := reconciler.Reconcile(ctx, infra, config, cluster)
 	if err != nil {
 		return err
 	}
-
-	tf, err := internal.NewTerraformerWithAuth(logger, a.RESTConfig(), infrastructure.TerraformerPurpose, infra, a.disableProjectedTokenMount)
+	state, err := reconciler.GetState(ctx, status)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get infrastructure state: %w", err)
 	}
-
-	if err := tf.
-		InitializeWith(ctx, terraformer.DefaultInitializer(a.Client(), terraformFiles.Main, terraformFiles.Variables, terraformFiles.TFVars, stateInitializer)).
-		Apply(ctx); err != nil {
-
-		return fmt.Errorf("failed to apply the terraform config: %w", err)
-	}
-
-	return a.updateProviderStatusFromTerraform(ctx, tf, infra, config, cluster)
+	return patchProviderStatusAndState(ctx, infra, status, state, a.Client())
 }
 
 func cleanupTerraform(ctx context.Context, logger logr.Logger, a *actuator, infra *extensionsv1alpha1.Infrastructure) error {

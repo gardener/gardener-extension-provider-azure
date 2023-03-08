@@ -20,8 +20,6 @@ import (
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 	"github.com/go-logr/logr"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
@@ -47,6 +45,13 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, infra *extension
 	if err != nil {
 		return err
 	}
+
+	//selector := StrategySelector{
+	//	//Factory: MockFactory{ctrl, tfStateRaw},
+	//	Client: a.Client(),
+	//}
+	//selector.DeleteUseFlow(infra.Status) // TODo add clenaupTF
+
 	if ShouldUseFlow(infra, cluster) {
 		if err := cleanupTerraform(ctx, log, a, infra); err != nil {
 			return fmt.Errorf("failed to cleanup terraform resources: %w", err)
@@ -56,61 +61,13 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, infra *extension
 			return err
 		}
 		return reconciler.Delete(ctx, infra, config, cluster)
-	}
-	tf, err := internal.NewTerraformer(log, a.RESTConfig(), infrastructure.TerraformerPurpose, infra, a.disableProjectedTokenMount)
-	if err != nil {
-		return err
-	}
-
-	// terraform pod from previous reconciliation might still be running, ensure they are gone before doing any operations
-	if err := tf.EnsureCleanedUp(ctx); err != nil {
-		return err
-	}
-
-	azureClientFactory, err := NewAzureClientFactory(ctx, a.Client(), infra.Spec.SecretRef)
-	if err != nil {
-		return err
-	}
-	resourceGroupExists, err := infrastructure.IsShootResourceGroupAvailable(ctx, azureClientFactory, infra, config)
-	if err != nil {
-		if azureclient.IsAzureAPIUnauthorized(err) {
-			log.Error(err, "Failed to check resource group availability due to invalid credentials")
-		} else {
-			return err
+	} else {
+		reconciler, err := NewTerraformReconciler(a, log, terraformer.StateConfigMapInitializerFunc(NoOpStateInitializer))
+		if err != nil {
+			return fmt.Errorf("failed to initialize terraform reconciler: %w", err)
 		}
+		return reconciler.Delete(ctx, infra, config, cluster)
 	}
-
-	if !resourceGroupExists {
-		if !azureclient.IsAzureAPIUnauthorized(err) {
-			if err := infrastructure.DeleteNodeSubnetIfExists(ctx, azureClientFactory, infra, config); err != nil {
-				return err
-			}
-		}
-
-		if err := tf.RemoveTerraformerFinalizerFromConfig(ctx); err != nil {
-			return err
-		}
-
-		return tf.CleanupConfiguration(ctx)
-	}
-
-	// If the Terraform state is empty then we can exit early as we didn't create anything. Though, we clean up potentially
-	// created configmaps/secrets related to the Terraformer.
-	stateIsEmpty := tf.IsStateEmpty(ctx)
-	if stateIsEmpty {
-		log.Info("exiting early as infrastructure state is empty - nothing to do")
-		return tf.CleanupConfiguration(ctx)
-	}
-
-	terraformFiles, err := infrastructure.RenderTerraformerTemplate(infra, config, cluster)
-	if err != nil {
-		return err
-	}
-
-	return tf.
-		InitializeWith(ctx, terraformer.DefaultInitializer(a.Client(), terraformFiles.Main, terraformFiles.Variables, terraformFiles.TFVars, terraformer.StateConfigMapInitializerFunc(NoOpStateInitializer))).
-		SetEnvVars(internal.TerraformerEnvVars(infra.Spec.SecretRef)...).
-		Destroy(ctx)
 }
 
 // NoOpStateInitializer is a no-op StateConfigMapInitializerFunc.
