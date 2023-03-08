@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
@@ -121,7 +120,7 @@ func (f FlowReconciler) buildReconcileGraph(reconciler *azureReconciler) *flow.G
 	}, shared.Dependencies(resourceGroup))
 
 	natGateway := f.addTask(g, "nat gateway creation", func(ctx context.Context) error {
-		ips := whiteboard.GetObject(publicIPMap).(map[string][]network.PublicIPAddress)
+		ips := whiteboard.GetObject(publicIPMap).(map[string][]*armnetwork.PublicIPAddress)
 		resp, err := reconciler.EnsureNatGateways(ctx, ips)
 		whiteboard.SetObject(natGatewayMap, resp)
 		return err

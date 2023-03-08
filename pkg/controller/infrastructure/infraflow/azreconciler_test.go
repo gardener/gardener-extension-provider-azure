@@ -22,7 +22,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	"github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	mockclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client/mock"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow"
@@ -296,7 +295,7 @@ var _ = Describe("AzureReconciler", func() {
 
 					sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 					Expect(err).ToNot(HaveOccurred())
-					_, err = sut.EnsureNatGateways(context.TODO(), map[string][]network.PublicIPAddress{"test_cluster-nodes-z1": {{
+					_, err = sut.EnsureNatGateways(context.TODO(), map[string][]*armnetwork.PublicIPAddress{"test_cluster-nodes-z1": {{
 						ID: ipId,
 					},
 					}})
@@ -320,7 +319,7 @@ var _ = Describe("AzureReconciler", func() {
 					sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 					Expect(err).ToNot(HaveOccurred())
 
-					_, err = sut.EnsureNatGateways(context.TODO(), map[string][]network.PublicIPAddress{})
+					_, err = sut.EnsureNatGateways(context.TODO(), map[string][]*armnetwork.PublicIPAddress{})
 					Expect(err).To(HaveOccurred())
 				})
 			})

@@ -21,7 +21,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
@@ -288,7 +287,7 @@ func checkAllZonesWithFn(name string, zones []zoneTf, check func(zone zoneTf, na
 }
 
 // EnsureNatGateways creates or updates NAT Gateways. It also deletes old NATGateways.
-func (f azureReconciler) EnsureNatGateways(ctx context.Context, ips map[string][]network.PublicIPAddress) (map[string]*armnetwork.NatGateway, error) {
+func (f azureReconciler) EnsureNatGateways(ctx context.Context, ips map[string][]*armnetwork.PublicIPAddress) (map[string]*armnetwork.NatGateway, error) {
 	res := make(map[string]*armnetwork.NatGateway)
 	client, err := f.factory.NatGateway()
 	if err != nil {
@@ -308,7 +307,7 @@ func (f azureReconciler) EnsureNatGateways(ctx context.Context, ips map[string][
 	return res, nil
 }
 
-func (f azureReconciler) createOrUpdateNatGateway(ctx context.Context, nat zoneTf, ips map[string][]network.PublicIPAddress, client client.NatGateway) (*armnetwork.NatGateway, error) {
+func (f azureReconciler) createOrUpdateNatGateway(ctx context.Context, nat zoneTf, ips map[string][]*armnetwork.PublicIPAddress, client client.NatGateway) (*armnetwork.NatGateway, error) {
 	params := armnetwork.NatGateway{
 		Properties: &armnetwork.NatGatewayPropertiesFormat{
 			IdleTimeoutInMinutes: nat.idleConnectionTimeoutMinutes,
