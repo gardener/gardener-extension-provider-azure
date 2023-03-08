@@ -2,6 +2,7 @@ package infrastructure
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
@@ -69,16 +70,16 @@ func (r *TerraformReconciler) Reconcile(ctx context.Context, infra *extensionsv1
 
 }
 
-func (r *TerraformReconciler) GetState(ctx context.Context, status *v1alpha1.InfrastructureStatus) (InfrastructureState, error) {
+func (r *TerraformReconciler) GetState(ctx context.Context, status *v1alpha1.InfrastructureStatus) ([]byte, error) {
 
 	terraformState, err := r.tf.GetRawState(ctx)
 	if err != nil {
-		return InfrastructureState{}, err
+		return nil, err
 	}
 
 	stateByte, err := terraformState.Marshal()
 	if err != nil {
-		return InfrastructureState{}, err
+		return nil, err
 	}
 
 	infraState := InfrastructureState{
@@ -89,7 +90,7 @@ func (r *TerraformReconciler) GetState(ctx context.Context, status *v1alpha1.Inf
 			Raw: stateByte,
 		},
 	}
-	return infraState, nil
+	return json.Marshal(infraState)
 }
 
 func (r *TerraformReconciler) Delete(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, cluster *controller.Cluster) error {

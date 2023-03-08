@@ -22,6 +22,7 @@ import (
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow/shared"
 	imock "github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/mock"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
 	"github.com/golang/mock/gomock"
@@ -70,37 +71,31 @@ var _ = Describe("ShouldUseFlow", func() {
 })
 
 var _ = Describe("ReconcilationStrategy", func() {
+	cluster := internalinfra.MakeCluster("11.0.0.0/16", "12.0.0.0/16", "europe", 1, 1)
 	It("should delete with Terraform if resources were reconciled with Terraform", func() {
 		useFlow := false
-		tfStateRaw := []byte(`{"provider": "terraform"}`)
+		stateRaw := getRawTerraformState(`{"provider": "terraform"}`)
 
 		infra := &extensionsv1alpha1.Infrastructure{}
 		ctrl := gomock.NewController(GinkgoT())
-		expectedPatchedState := infrastructure.InfrastructureState{
-			TerraformState: &runtime.RawExtension{
-				Raw: tfStateRaw,
-			},
-		}
-		stateR, _ := json.Marshal(expectedPatchedState)
-		mockClient, patchedInfra := expectStatusAndStatePatch(ctrl, infra, stateR)
+		mockClient, patchedInfra := expectStatusAndStatePatch(ctrl, infra, stateRaw)
 
 		sut := infrastructure.StrategySelector{
-			Factory: MockFactory{ctrl, tfStateRaw},
+			Factory: MockFactory{ctrl, stateRaw},
 			Client:  mockClient,
 		}
-		cluster := internalinfra.MakeCluster("11.0.0.0/16", "12.0.0.0/16", "europe", 1, 1)
 		err := sut.Reconcile(useFlow, context.TODO(), infra, &azure.InfrastructureConfig{}, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
-		deleteWithFlow, err := sut.DeleteUseFlow(patchedInfra.Status)
+		deleteWithFlow, err := sut.ShouldDeleteWithFlow(patchedInfra.Status)
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(deleteWithFlow).To(BeFalse())
 	})
 	It("should delete with Flow if resources were reconciled with Flow", func() {
 		useFlow := true
-		state := infrastructure.InfrastructureState{}
-		stateRaw, err := json.Marshal(state)
+		emptyState := shared.NewPersistentState()
+		stateRaw, err := emptyState.ToJSON()
 		Expect(err).NotTo(HaveOccurred())
 
 		infra := &extensionsv1alpha1.Infrastructure{}
@@ -111,17 +106,26 @@ var _ = Describe("ReconcilationStrategy", func() {
 			Client:  mockClient,
 		}
 
-		cluster := internalinfra.MakeCluster("11.0.0.0/16", "12.0.0.0/16", "europe", 1, 1)
 		err = sut.Reconcile(useFlow, context.TODO(), infra, &azure.InfrastructureConfig{}, cluster)
 		Expect(err).NotTo(HaveOccurred())
 
-		resFlow, err := sut.DeleteUseFlow(patchedInfra.Status)
+		resFlow, err := sut.ShouldDeleteWithFlow(patchedInfra.Status)
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(resFlow).To(BeTrue())
 	})
 
 })
+
+func getRawTerraformState(jsonContent string) []byte {
+	state := infrastructure.InfrastructureState{
+		TerraformState: &runtime.RawExtension{
+			Raw: []byte(jsonContent),
+		},
+	}
+	stateRaw, _ := json.Marshal(state)
+	return stateRaw
+}
 
 func expectStatusAndStatePatch(ctrl *gomock.Controller, infra *extensionsv1alpha1.Infrastructure, expectedTfStateRaw []byte) (*mockclient.MockClient, *extensionsv1alpha1.Infrastructure) {
 	mClient := mockclient.NewMockClient(ctrl)
@@ -145,9 +149,14 @@ func (f MockFactory) Build(useFlow bool) infrastructure.Reconciler {
 	reconciler := imock.NewMockReconciler(f.Controller)
 	reconciler.EXPECT().Reconcile(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().Return(&v1alpha1.InfrastructureStatus{}, nil)
 	if useFlow {
-		reconciler.EXPECT().GetState(gomock.Any(), gomock.Any()).Return(infrastructure.InfrastructureState{}, nil).AnyTimes()
+		emptyState := shared.NewPersistentState()
+		byteState, err := emptyState.ToJSON()
+		if err != nil {
+			panic(err)
+		}
+		reconciler.EXPECT().GetState(gomock.Any(), gomock.Any()).Return(byteState, nil).AnyTimes()
 	} else {
-		reconciler.EXPECT().GetState(gomock.Any(), gomock.Any()).Return(infrastructure.InfrastructureState{TerraformState: &runtime.RawExtension{Raw: f.tfState}}, nil).AnyTimes()
+		reconciler.EXPECT().GetState(gomock.Any(), gomock.Any()).Return(f.tfState, nil).AnyTimes()
 	}
 	return reconciler
 }

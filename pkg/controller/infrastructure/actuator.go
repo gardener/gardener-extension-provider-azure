@@ -16,7 +16,6 @@ package infrastructure
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 
@@ -53,13 +52,9 @@ func NewActuator(disableProjectedTokenMount bool) infrastructure.Actuator {
 	}
 }
 
-func patchProviderStatusAndState(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, status *v1alpha1.InfrastructureStatus, state InfrastructureState, actuatorClient client.Client) error {
+func patchProviderStatusAndState(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, status *v1alpha1.InfrastructureStatus, infraStateBytes []byte, actuatorClient client.Client) error {
 	patch := client.MergeFrom(infra.DeepCopy())
 	infra.Status.ProviderStatus = &runtime.RawExtension{Object: status}
-	infraStateBytes, err := json.Marshal(state)
-	if err != nil {
-		return err
-	}
 	infra.Status.State = &runtime.RawExtension{Raw: infraStateBytes}
 	return actuatorClient.Status().Patch(ctx, infra, patch)
 }

@@ -23,6 +23,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow/shared"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 	"github.com/go-logr/logr"
 
@@ -32,7 +33,7 @@ import (
 
 type Reconciler interface {
 	Reconcile(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, cluster *controller.Cluster) (*v1alpha1.InfrastructureStatus, error)
-	GetState(ctx context.Context, status *v1alpha1.InfrastructureStatus) (InfrastructureState, error)
+	GetState(ctx context.Context, status *v1alpha1.InfrastructureStatus) ([]byte, error)
 	Delete(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cfg *azure.InfrastructureConfig, cluster *controller.Cluster) error
 }
 
@@ -71,6 +72,7 @@ type FlowReconcilerAdapter struct {
 	*infraflow.FlowReconciler
 }
 
-func (f *FlowReconcilerAdapter) GetState(ctx context.Context, status *v1alpha1.InfrastructureStatus) (InfrastructureState, error) {
-	return InfrastructureState{}, nil
+func (f *FlowReconcilerAdapter) GetState(ctx context.Context, status *v1alpha1.InfrastructureStatus) ([]byte, error) {
+	emptyState := shared.NewPersistentState()
+	return emptyState.ToJSON()
 }

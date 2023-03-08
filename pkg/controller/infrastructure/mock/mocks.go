@@ -10,7 +10,6 @@ import (
 
 	azure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	v1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
-	infrastructure "github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure"
 	v1alpha10 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	extensions "github.com/gardener/gardener/pkg/extensions"
 	gomock "github.com/golang/mock/gomock"
@@ -54,10 +53,10 @@ func (mr *MockReconcilerMockRecorder) Delete(arg0, arg1, arg2, arg3 interface{})
 }
 
 // GetState mocks base method.
-func (m *MockReconciler) GetState(arg0 context.Context, arg1 *v1alpha1.InfrastructureStatus) (infrastructure.InfrastructureState, error) {
+func (m *MockReconciler) GetState(arg0 context.Context, arg1 *v1alpha1.InfrastructureStatus) ([]byte, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetState", arg0, arg1)
-	ret0, _ := ret[0].(infrastructure.InfrastructureState)
+	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
