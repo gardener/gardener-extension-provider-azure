@@ -21,9 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
-
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
@@ -32,6 +29,9 @@ import (
 	"github.com/go-logr/logr"
 	"golang.org/x/crypto/ssh"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
 
 const (

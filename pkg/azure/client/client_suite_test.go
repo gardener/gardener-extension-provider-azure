@@ -21,11 +21,12 @@ import (
 	"os"
 	"testing"
 
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"gopkg.in/yaml.v2"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
 func TestWorker(t *testing.T) {

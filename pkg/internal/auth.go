@@ -18,8 +18,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	azureautorest "github.com/Azure/go-autorest/autorest"
 	azureauth "github.com/Azure/go-autorest/autorest/azure/auth"
@@ -27,6 +25,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 // ClientAuth represents a Azure Client Auth credentials.

@@ -17,13 +17,13 @@ package infrastructure
 import (
 	"context"
 
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
-
 	"github.com/gardener/gardener/extensions/pkg/controller/common"
 	"github.com/gardener/gardener/extensions/pkg/controller/infrastructure"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 )
 
 const (

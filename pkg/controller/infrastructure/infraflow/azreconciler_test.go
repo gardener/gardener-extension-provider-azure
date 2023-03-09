@@ -22,16 +22,17 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	"github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	mockclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client/mock"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 	"github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gofrs/uuid"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	mockclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client/mock"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 )
 
 func newBasicConfig() *azure.InfrastructureConfig {

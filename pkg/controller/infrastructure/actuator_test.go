@@ -22,14 +22,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/Azure/go-autorest/autorest"
-	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
-	azureclientmocks "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client/mock"
-	. "github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
-	infrainternal "github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 	"github.com/gardener/gardener/extensions/pkg/controller/infrastructure"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
 	mockterraform "github.com/gardener/gardener/extensions/pkg/terraformer/mock"
@@ -51,6 +43,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
+
+	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
+	azureclientmocks "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client/mock"
+	. "github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
+	infrainternal "github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 )
 
 const (

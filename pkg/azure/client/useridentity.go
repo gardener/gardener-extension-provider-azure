@@ -21,6 +21,7 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/adal"
 	azureRest "github.com/Azure/go-autorest/autorest/azure"
+
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 

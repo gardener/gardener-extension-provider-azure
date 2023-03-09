@@ -18,9 +18,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/json"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 )
 
 const (

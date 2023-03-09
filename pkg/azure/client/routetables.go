@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
+
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
