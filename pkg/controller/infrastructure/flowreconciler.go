@@ -38,11 +38,11 @@ type Reconciler interface {
 }
 
 type ReconcilerFactory interface {
-	Build(useFlow bool) Reconciler
+	Build(useFlow bool) (Reconciler, error)
 }
 
-// ShouldUseFlow returns true if the new flow reconciler should be used for the reconciliation.
-func ShouldUseFlow(infrastructure *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) bool {
+// HasFlowAnnotation returns true if the new flow reconciler should be used for the reconciliation.
+func HasFlowAnnotation(infrastructure *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) bool {
 	shootAnnotation := (infrastructure.Annotations != nil && strings.EqualFold(infrastructure.Annotations[AnnotationKeyUseFlow], "true")) ||
 		(cluster.Shoot != nil && cluster.Shoot.Annotations != nil && strings.EqualFold(cluster.Shoot.Annotations[AnnotationKeyUseFlow], "true"))
 

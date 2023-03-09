@@ -39,8 +39,7 @@ func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, infra *ext
 		return err
 	}
 
-	// TOOD
-	//useFlow := ShouldUseFlow(infra, cluster)
+	// TOOD reconcile template still not used
 	//selector := StrategySelector{
 	//	//Factory: MockFactory{ctrl, tfStateRaw},
 	//	Client: a.Client(),
@@ -48,7 +47,23 @@ func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, infra *ext
 	//selector.Reconcile(useFlow, ctx, infra, config, cluster) // TODO add cleanupTF
 
 	var reconciler Reconciler
-	if ShouldUseFlow(infra, cluster) {
+	factory := ReconcilerFactoryImpl{
+		ctx:              ctx,
+		log:              logger,
+		a:                a,
+		infra:            infra,
+		stateInitializer: stateInitializer,
+	}
+	strategy := StrategySelector{
+		Factory: factory,
+		Client:  a.Client(),
+	}
+	useFlow, err := strategy.ShouldReconcileWithFlow(infra, cluster)
+	if err != nil {
+		return err
+	}
+	//strategy.Reconcile(useFlow,ctx,infra,config,cluster) // TODO use instead of below
+	if useFlow {
 		if err := cleanupTerraform(ctx, logger, a, infra); err != nil {
 			return fmt.Errorf("failed to cleanup terraform resources: %w", err)
 		}

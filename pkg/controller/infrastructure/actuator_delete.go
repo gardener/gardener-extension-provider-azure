@@ -46,28 +46,27 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, infra *extension
 		return err
 	}
 
-	//selector := StrategySelector{
-	//	//Factory: MockFactory{ctrl, tfStateRaw},
-	//	Client: a.Client(),
-	//}
-	//selector.DeleteUseFlow(infra.Status) // TODo add clenaupTF
-
-	if ShouldUseFlow(infra, cluster) {
+	selector := StrategySelector{}
+	useFlow, err := selector.ShouldDeleteWithFlow(infra.Status)
+	if err != nil {
+		return err
+	}
+	var reconciler Reconciler
+	if useFlow {
 		if err := cleanupTerraform(ctx, log, a, infra); err != nil {
 			return fmt.Errorf("failed to cleanup terraform resources: %w", err)
 		}
-		reconciler, err := NewFlowReconciler(ctx, a, infra, log)
+		reconciler, err = NewFlowReconciler(ctx, a, infra, log)
 		if err != nil {
 			return err
 		}
-		return reconciler.Delete(ctx, infra, config, cluster)
 	} else {
-		reconciler, err := NewTerraformReconciler(a, log, terraformer.StateConfigMapInitializerFunc(NoOpStateInitializer))
+		reconciler, err = NewTerraformReconciler(a, log, terraformer.StateConfigMapInitializerFunc(NoOpStateInitializer))
 		if err != nil {
 			return fmt.Errorf("failed to initialize terraform reconciler: %w", err)
 		}
-		return reconciler.Delete(ctx, infra, config, cluster)
 	}
+	return reconciler.Delete(ctx, infra, config, cluster)
 }
 
 // NoOpStateInitializer is a no-op StateConfigMapInitializerFunc.

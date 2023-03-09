@@ -42,7 +42,7 @@ var _ = Describe("ShouldUseFlow", func() {
 	Context("without any flow annotation", func() {
 		It("should not use FlowReconciler", func() {
 			cluster := internalinfra.MakeCluster("11.0.0.0/16", "12.0.0.0/16", "europe", 1, 1)
-			Expect(infrastructure.ShouldUseFlow(&extensionsv1alpha1.Infrastructure{}, cluster)).To(BeFalse())
+			Expect(infrastructure.HasFlowAnnotation(&extensionsv1alpha1.Infrastructure{}, cluster)).To(BeFalse())
 		})
 	})
 	Context("with flow annotation in infrastruture", func() {
@@ -50,14 +50,14 @@ var _ = Describe("ShouldUseFlow", func() {
 		cluster := internalinfra.MakeCluster("11.0.0.0/16", "12.0.0.0/16", "europe", 1, 1)
 		metav1.SetMetaDataAnnotation(&infra.ObjectMeta, infrastructure.AnnotationKeyUseFlow, "true")
 		It("should use the FlowReconciler", func() {
-			Expect(infrastructure.ShouldUseFlow(infra, cluster)).To(BeTrue())
+			Expect(infrastructure.HasFlowAnnotation(infra, cluster)).To(BeTrue())
 		})
 	})
 	Context("with flow annotation in shoot", func() {
 		cluster := internalinfra.MakeCluster("11.0.0.0/16", "12.0.0.0/16", "europe", 1, 1)
 		metav1.SetMetaDataAnnotation(&cluster.Shoot.ObjectMeta, infrastructure.AnnotationKeyUseFlow, "true")
 		It("should use the FlowReconciler", func() {
-			Expect(infrastructure.ShouldUseFlow(&extensionsv1alpha1.Infrastructure{}, cluster)).To(BeTrue())
+			Expect(infrastructure.HasFlowAnnotation(&extensionsv1alpha1.Infrastructure{}, cluster)).To(BeTrue())
 		})
 	})
 	Context("with flow annotation in seed", func() {
@@ -65,13 +65,44 @@ var _ = Describe("ShouldUseFlow", func() {
 		cluster.Seed = &v1beta1.Seed{}
 		metav1.SetMetaDataAnnotation(&cluster.Seed.ObjectMeta, infrastructure.AnnotationKeyUseFlow, "true")
 		It("should use the FlowReconciler", func() {
-			Expect(infrastructure.ShouldUseFlow(&extensionsv1alpha1.Infrastructure{}, cluster)).To(BeTrue())
+			Expect(infrastructure.HasFlowAnnotation(&extensionsv1alpha1.Infrastructure{}, cluster)).To(BeTrue())
 		})
 	})
 })
 
 var _ = Describe("ReconcilationStrategy", func() {
 	cluster := internalinfra.MakeCluster("11.0.0.0/16", "12.0.0.0/16", "europe", 1, 1)
+	It("should use Flow if an annotation is found", func() {
+		infra := &extensionsv1alpha1.Infrastructure{}
+		metav1.SetMetaDataAnnotation(&infra.ObjectMeta, infrastructure.AnnotationKeyUseFlow, "true")
+
+		sut := infrastructure.StrategySelector{}
+		useFlow, err := sut.ShouldReconcileWithFlow(infra, cluster)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(useFlow).To(BeTrue())
+	})
+	It("should use Flow if resources were reconciled with Flow before, regardless of annotation", func() {
+		emptyState := shared.NewPersistentState()
+		stateRaw, err := emptyState.ToJSON()
+		Expect(err).NotTo(HaveOccurred())
+		infra := &extensionsv1alpha1.Infrastructure{}
+		infra.Status.State = &runtime.RawExtension{Raw: stateRaw}
+
+		sut := infrastructure.StrategySelector{}
+		useFlow, err := sut.ShouldReconcileWithFlow(infra, cluster)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(useFlow).To(BeTrue())
+	})
+	It("should use Terraform if no flow state is found and there is no flow annotation", func() {
+		infra := &extensionsv1alpha1.Infrastructure{}
+		infra.Status.State = &runtime.RawExtension{Raw: getRawTerraformState(`{"provider": "terraform"}`)}
+
+		sut := infrastructure.StrategySelector{}
+		useFlow, err := sut.ShouldReconcileWithFlow(infra, cluster)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(useFlow).To(BeFalse())
+	})
+
 	It("should delete with Terraform if resources were reconciled with Terraform", func() {
 		useFlow := false
 		stateRaw := getRawTerraformState(`{"provider": "terraform"}`)
@@ -145,7 +176,7 @@ type MockFactory struct {
 	tfState []byte
 }
 
-func (f MockFactory) Build(useFlow bool) infrastructure.Reconciler {
+func (f MockFactory) Build(useFlow bool) (infrastructure.Reconciler, error) {
 	reconciler := imock.NewMockReconciler(f.Controller)
 	reconciler.EXPECT().Reconcile(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().Return(&v1alpha1.InfrastructureStatus{}, nil)
 	if useFlow {
@@ -158,7 +189,7 @@ func (f MockFactory) Build(useFlow bool) infrastructure.Reconciler {
 	} else {
 		reconciler.EXPECT().GetState(gomock.Any(), gomock.Any()).Return(f.tfState, nil).AnyTimes()
 	}
-	return reconciler
+	return reconciler, nil
 }
 
 type eqMatcher struct {
