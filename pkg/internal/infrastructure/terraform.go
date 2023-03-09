@@ -500,8 +500,8 @@ func StatusFromTerraformState(config *api.InfrastructureConfig, tfState *Terrafo
 		infraState.AvailabilitySets = append(infraState.AvailabilitySets, apiv1alpha1.AvailabilitySet{
 			Name:               tfState.AvailabilitySetName,
 			ID:                 tfState.AvailabilitySetID,
-			CountFaultDomains:  pointer.Int32Ptr(int32(tfState.CountFaultDomains)),
-			CountUpdateDomains: pointer.Int32Ptr(int32(tfState.CountUpdateDomains)),
+			CountFaultDomains:  pointer.Int32(int32(tfState.CountFaultDomains)),
+			CountUpdateDomains: pointer.Int32(int32(tfState.CountUpdateDomains)),
 			Purpose:            apiv1alpha1.PurposeNodes,
 		})
 	}

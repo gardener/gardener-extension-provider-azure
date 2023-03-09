@@ -22,13 +22,13 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
-
 	"github.com/gardener/gardener/test/testmachinery/extensions/generator"
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 )
 
 const (

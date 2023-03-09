@@ -21,15 +21,9 @@ import (
 	"net/http"
 	"time"
 
-	azureapi "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	vmssmock "github.com/gardener/gardener-extension-provider-azure/pkg/mock/vmss"
-
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
 	"github.com/Azure/go-autorest/autorest"
-	factorymock "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client/mock"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
@@ -40,6 +34,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
+
+	azureapi "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	factorymock "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client/mock"
+	vmssmock "github.com/gardener/gardener-extension-provider-azure/pkg/mock/vmss"
 )
 
 var _ = Describe("MachinesDependencies", func() {
@@ -326,7 +326,7 @@ func generateExpectedVmo(name, id string) *armcompute.VirtualMachineScaleSet {
 		ID:   pointer.StringPtr(id),
 		Name: pointer.StringPtr(name),
 		Tags: map[string]*string{
-			azure.MachineSetTagKey: pointer.StringPtr("1"),
+			azure.MachineSetTagKey: pointer.String("1"),
 		},
 	}
 }

@@ -15,15 +15,15 @@
 package validation_test
 
 import (
-	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	. "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/validation"
-
 	"github.com/gardener/gardener/pkg/apis/core"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/pointer"
+
+	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	. "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/validation"
 )
 
 var _ = Describe("Shoot validation", func() {
@@ -170,8 +170,8 @@ var _ = Describe("Shoot validation", func() {
 				It("should forbid because volume type and size are not configured", func() {
 					workers[0].Volume.Type = nil
 					workers[0].Volume.VolumeSize = ""
-					workers[0].Volume.Encrypted = pointer.BoolPtr(false)
-					workers[0].DataVolumes = []core.DataVolume{{Encrypted: pointer.BoolPtr(true)}}
+					workers[0].Volume.Encrypted = pointer.Bool(false)
+					workers[0].DataVolumes = []core.DataVolume{{Encrypted: pointer.Bool(true)}}
 
 					errorList := ValidateWorkers(workers,
 						infraConfig, field.NewPath("workers"))

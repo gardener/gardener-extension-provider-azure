@@ -17,11 +17,11 @@ package cmd
 import (
 	"fmt"
 
+	healthcheckconfig "github.com/gardener/gardener/extensions/pkg/apis/config"
+	"github.com/spf13/pflag"
+
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/config"
 	configloader "github.com/gardener/gardener-extension-provider-azure/pkg/apis/config/loader"
-	healthcheckconfig "github.com/gardener/gardener/extensions/pkg/apis/config"
-
-	"github.com/spf13/pflag"
 )
 
 // ConfigOptions are command line options that can be set for config.ControllerConfiguration.
@@ -93,4 +93,38 @@ func (c *Config) ApplyHealthCheckConfig(config *healthcheckconfig.HealthCheckCon
 	if c.Config.HealthCheckConfig != nil {
 		*config = *c.Config.HealthCheckConfig
 	}
+}
+
+// SeedConfig is a completed configuration for the topology webhook.
+type SeedConfig struct {
+	Region   string
+	Provider string
+}
+
+// SeedConfigOptions are command line options for the topology webhook.
+type SeedConfigOptions struct {
+	Region   string
+	Provider string
+
+	config *SeedConfig
+}
+
+// AddFlags implements Flagger.AddFlags.
+func (s *SeedConfigOptions) AddFlags(fs *pflag.FlagSet) {
+	fs.StringVar(&s.Region, "seed-region", "", "the region of the seed")
+	fs.StringVar(&s.Provider, "seed-provider", "", "the provider of the seed")
+}
+
+// Complete implements RESTCompleter.Complete.
+func (s *SeedConfigOptions) Complete() error {
+	s.config = &SeedConfig{
+		Region:   s.Region,
+		Provider: s.Provider,
+	}
+	return nil
+}
+
+// Completed returns the completed SeedConfig. Only call this if `Complete` was successful.
+func (s *SeedConfigOptions) Completed() *SeedConfig {
+	return s.config
 }

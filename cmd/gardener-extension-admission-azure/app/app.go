@@ -18,10 +18,6 @@ import (
 	"context"
 	"fmt"
 
-	admissioncmd "github.com/gardener/gardener-extension-provider-azure/pkg/admission/cmd"
-	azureinstall "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/install"
-	providerazure "github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-
 	controllercmd "github.com/gardener/gardener/extensions/pkg/controller/cmd"
 	webhookcmd "github.com/gardener/gardener/extensions/pkg/webhook/cmd"
 	"github.com/gardener/gardener/pkg/apis/core/install"
@@ -31,6 +27,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+
+	admissioncmd "github.com/gardener/gardener-extension-provider-azure/pkg/admission/cmd"
+	azureinstall "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/install"
+	providerazure "github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 var log = logf.Log.WithName("gardener-extension-admission-azure")

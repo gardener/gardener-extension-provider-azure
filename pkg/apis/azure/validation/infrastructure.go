@@ -203,6 +203,12 @@ func validateVnetConfig(networkConfig *apisazure.NetworkConfig, resourceGroupCon
 	}
 
 	if isExternalVnetUsed(&networkConfig.VNet) {
+		if *networkConfig.VNet.Name == "" {
+			allErrs = append(allErrs, field.Required(vNetPath.Child("name"), "the vnet name must not be empty"))
+		}
+		if *networkConfig.VNet.ResourceGroup == "" {
+			allErrs = append(allErrs, field.Required(vNetPath.Child("resourceGroup"), "the vnet resource group must not be empty"))
+		}
 		if networkConfig.VNet.CIDR != nil {
 			allErrs = append(allErrs, field.Invalid(vNetPath.Child("cidr"), vnetConfig, "specifying a cidr for an existing vnet is not possible"))
 		}
@@ -414,15 +420,24 @@ func ValidateVmoConfigUpdate(oldShootHasAlphaVmoAnnotation, newShootHasAlphaVmoA
 
 func validateVnetConfigUpdate(oldNeworkConfig, newNetworkConfig *apisazure.NetworkConfig, networkConfigPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
+	vnetPath := networkConfigPath.Child("vnet")
 
 	if isExternalVnetUsed(&oldNeworkConfig.VNet) || isDefaultVnetConfig(&oldNeworkConfig.VNet) {
-		allErrs = append(allErrs, apivalidation.ValidateImmutableField(newNetworkConfig.VNet.Name, oldNeworkConfig.VNet.Name, networkConfigPath.Child("vnet", "name"))...)
-		allErrs = append(allErrs, apivalidation.ValidateImmutableField(newNetworkConfig.VNet.ResourceGroup, oldNeworkConfig.VNet.ResourceGroup, networkConfigPath.Child("vnet", "resourceGroup"))...)
+		allErrs = append(allErrs, apivalidation.ValidateImmutableField(newNetworkConfig.VNet.Name, oldNeworkConfig.VNet.Name, vnetPath.Child("name"))...)
+		allErrs = append(allErrs, apivalidation.ValidateImmutableField(newNetworkConfig.VNet.ResourceGroup, oldNeworkConfig.VNet.ResourceGroup, vnetPath.Child("resourceGroup"))...)
 		return allErrs
 	}
 
 	if oldNeworkConfig.VNet.CIDR != nil && newNetworkConfig.VNet.CIDR == nil {
 		return append(allErrs, field.Invalid(networkConfigPath.Child("vnet", "cidr"), newNetworkConfig.VNet.CIDR, "vnet cidr need to be specified"))
+	}
+
+	if oldNeworkConfig.VNet.CIDR != nil && newNetworkConfig.VNet.CIDR != nil {
+		oldCIDR := cidrvalidation.NewCIDR(*oldNeworkConfig.VNet.CIDR, vnetPath.Child("cidr"))
+		newCIDR := cidrvalidation.NewCIDR(*newNetworkConfig.VNet.CIDR, vnetPath.Child("cidr"))
+		if len(newCIDR.ValidateSubset(oldCIDR)) > 0 {
+			allErrs = append(allErrs, field.Invalid(newCIDR.GetFieldPath(), newCIDR.GetCIDR(), "VNet CIDR blocks can only be expanded"))
+		}
 	}
 
 	return allErrs

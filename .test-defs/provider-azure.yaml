@@ -15,4 +15,4 @@ spec:
     --network-vnet-cidr=$NETWORK_VNET_CIDR
     --network-worker-cidr=$NETWORK_WORKER_CIDR
     --zoned=$ZONED
-  image: eu.gcr.io/gardener-project/3rd/golang:1.19.2
+  image: golang:1.19.5

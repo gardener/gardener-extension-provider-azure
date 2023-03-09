@@ -17,10 +17,6 @@ package infrastructure
 import (
 	"encoding/json"
 
-	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
@@ -29,6 +25,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
+
+	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 var _ = Describe("Terraform", func() {
@@ -386,7 +386,7 @@ var _ = Describe("Terraform", func() {
 			It("should correctly compute terraform chart values with zonal NatGateway", func() {
 				config.Networks.NatGateway = &api.NatGatewayConfig{
 					Enabled: true,
-					Zone:    pointer.Int32Ptr(1),
+					Zone:    pointer.Int32(1),
 				}
 				expectedNatGatewayValues["enabled"] = true
 				expectedNatGatewayValues["zone"] = int32(1)
@@ -403,7 +403,7 @@ var _ = Describe("Terraform", func() {
 
 				config.Networks.NatGateway = &api.NatGatewayConfig{
 					Enabled: true,
-					Zone:    pointer.Int32Ptr(1),
+					Zone:    pointer.Int32(1),
 					IPAddresses: []api.PublicIPReference{{
 						Name:          ipName,
 						ResourceGroup: ipResourceGroup,
@@ -610,7 +610,7 @@ var _ = Describe("Terraform", func() {
 				AvailabilitySets: []apiv1alpha1.AvailabilitySet{
 					{
 						Name: availabilitySetName, ID: availabilitySetID, Purpose: apiv1alpha1.PurposeNodes,
-						CountFaultDomains: pointer.Int32Ptr(2), CountUpdateDomains: pointer.Int32Ptr(5),
+						CountFaultDomains: pointer.Int32(2), CountUpdateDomains: pointer.Int32(5),
 					},
 				},
 				SecurityGroups: []apiv1alpha1.SecurityGroup{

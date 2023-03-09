@@ -23,15 +23,13 @@ This extension controller supports the following Kubernetes versions:
 
 | Version         | Support     | Conformance test results |
 | --------------- | ----------- | ------------------------ |
+| Kubernetes 1.26 | 1.26.0+     | N/A |
 | Kubernetes 1.25 | 1.25.0+     | [![Gardener v1.25 Conformance Tests](https://testgrid.k8s.io/q/summary/conformance-gardener/Gardener,%20v1.25%20Azure/tests_status?style=svg)](https://testgrid.k8s.io/conformance-gardener#Gardener,%20v1.25%20Azure) |
 | Kubernetes 1.24 | 1.24.0+     | [![Gardener v1.24 Conformance Tests](https://testgrid.k8s.io/q/summary/conformance-gardener/Gardener,%20v1.24%20Azure/tests_status?style=svg)](https://testgrid.k8s.io/conformance-gardener#Gardener,%20v1.24%20Azure) |
 | Kubernetes 1.23 | 1.23.0+     | [![Gardener v1.23 Conformance Tests](https://testgrid.k8s.io/q/summary/conformance-gardener/Gardener,%20v1.23%20Azure/tests_status?style=svg)](https://testgrid.k8s.io/conformance-gardener#Gardener,%20v1.23%20Azure) |
 | Kubernetes 1.22 | 1.22.0+     | [![Gardener v1.22 Conformance Tests](https://testgrid.k8s.io/q/summary/conformance-gardener/Gardener,%20v1.22%20Azure/tests_status?style=svg)](https://testgrid.k8s.io/conformance-gardener#Gardener,%20v1.22%20Azure) |
 | Kubernetes 1.21 | 1.21.0+     | [![Gardener v1.21 Conformance Tests](https://testgrid.k8s.io/q/summary/conformance-gardener/Gardener,%20v1.21%20Azure/tests_status?style=svg)](https://testgrid.k8s.io/conformance-gardener#Gardener,%20v1.21%20Azure) |
 | Kubernetes 1.20 | 1.20.0+     | [![Gardener v1.20 Conformance Tests](https://testgrid.k8s.io/q/summary/conformance-gardener/Gardener,%20v1.20%20Azure/tests_status?style=svg)](https://testgrid.k8s.io/conformance-gardener#Gardener,%20v1.20%20Azure) |
-| Kubernetes 1.19 | 1.19.0+     | [![Gardener v1.19 Conformance Tests](https://testgrid.k8s.io/q/summary/conformance-gardener/Gardener,%20v1.19%20Azure/tests_status?style=svg)](https://testgrid.k8s.io/conformance-gardener#Gardener,%20v1.19%20Azure) |
-| Kubernetes 1.18 | 1.18.0+     | [![Gardener v1.18 Conformance Tests](https://testgrid.k8s.io/q/summary/conformance-gardener/Gardener,%20v1.18%20Azure/tests_status?style=svg)](https://testgrid.k8s.io/conformance-gardener#Gardener,%20v1.18%20Azure) |
-| Kubernetes 1.17 | 1.17.0+     | [![Gardener v1.17 Conformance Tests](https://testgrid.k8s.io/q/summary/conformance-gardener/Gardener,%20v1.17%20Azure/tests_status?style=svg)](https://testgrid.k8s.io/conformance-gardener#Gardener,%20v1.17%20Azure) |
 
 Please take a look [here](https://github.com/gardener/gardener/blob/master/docs/usage/supported_k8s_versions.md) to see which versions are supported by Gardener in general.
 

@@ -17,10 +17,6 @@ package dnsrecord_test
 import (
 	"context"
 
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	mockazureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client/mock"
-	. "github.com/gardener/gardener-extension-provider-azure/pkg/controller/dnsrecord"
-
 	"github.com/gardener/gardener/extensions/pkg/controller/dnsrecord"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
@@ -33,6 +29,10 @@ import (
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	mockazureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client/mock"
+	. "github.com/gardener/gardener-extension-provider-azure/pkg/controller/dnsrecord"
 )
 
 const (

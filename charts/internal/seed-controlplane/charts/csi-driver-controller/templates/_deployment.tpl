@@ -31,6 +31,7 @@ spec:
         app: csi
         role: controller-{{ .role }}
         gardener.cloud/role: controlplane
+        high-availability-config.resources.gardener.cloud/type: controller
         networking.gardener.cloud/to-dns: allowed
         networking.gardener.cloud/to-public-networks: allowed
         networking.gardener.cloud/to-shoot-apiserver: allowed
@@ -140,6 +141,9 @@ spec:
         - --leader-election-namespace=kube-system
         - --v=5
         - --timeout=1200s
+        - --worker-threads=500
+        - --kube-api-qps=50
+        - --kube-api-burst=100
         env:
         - name: ADDRESS
           value: {{ .Values.socketPath }}/csi.sock

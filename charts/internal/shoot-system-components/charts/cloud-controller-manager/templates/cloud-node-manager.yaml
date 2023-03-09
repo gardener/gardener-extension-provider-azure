@@ -44,6 +44,7 @@ metadata:
   name: cloud-node-manager
   namespace: {{ .Release.Namespace }}
   labels:
+    node.gardener.cloud/critical-component: "true"
     component: cloud-node-manager
 spec:
   selector:
@@ -52,6 +53,7 @@ spec:
   template:
     metadata:
       labels:
+        node.gardener.cloud/critical-component: "true"
         k8s-app: cloud-node-manager
       annotations:
         cluster-autoscaler.kubernetes.io/daemonset-pod: "true"
@@ -72,11 +74,9 @@ spec:
         effect: NoExecute
       - operator: "Exists"
         effect: NoSchedule
-      {{- if semverCompare ">= 1.19" .Capabilities.KubeVersion.GitVersion }}
       securityContext:
         seccompProfile:
           type: RuntimeDefault
-      {{- end }}
       containers:
       - name: cloud-node-manager
         image: {{ index .Values.images "cloud-node-manager" }}
@@ -111,7 +111,6 @@ spec:
     - containerName: cloud-node-manager
       controlledValues: RequestsOnly
       minAllowed:
-        cpu: 20m
         memory: 25Mi
   targetRef:
     apiVersion: apps/v1

@@ -15,8 +15,6 @@
 package infrastructure
 
 import (
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -24,6 +22,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 const (

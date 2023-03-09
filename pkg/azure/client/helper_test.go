@@ -18,11 +18,11 @@ import (
 	"errors"
 	"net/http"
 
-	. "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
-
 	"github.com/Azure/go-autorest/autorest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	. "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
 
 var _ = Describe("Helper", func() {

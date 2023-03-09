@@ -20,6 +20,9 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/gardener/gardener/pkg/utils"
+	"k8s.io/utils/pointer"
+
 	azureapi "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	azureapihelper "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
@@ -27,8 +30,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
-	"github.com/gardener/gardener/pkg/utils"
-	"k8s.io/utils/pointer"
 )
 
 func (w *workerDelegate) reconcileVmoDependencies(ctx context.Context, infrastructureStatus *azureapi.InfrastructureStatus, workerProviderStatus *azureapi.WorkerStatus) ([]azureapi.VmoDependency, error) {
@@ -249,7 +250,7 @@ func generateAndCreateVmo(ctx context.Context, client azureclient.Vmss, workerPo
 			PlatformFaultDomainCount: &faultDomainCount,
 		},
 		Tags: map[string]*string{
-			azure.MachineSetTagKey: pointer.StringPtr("1"),
+			azure.MachineSetTagKey: pointer.String("1"),
 		},
 	}
 

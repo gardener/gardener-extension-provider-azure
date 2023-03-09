@@ -18,21 +18,20 @@ import (
 	"context"
 	"testing"
 
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/install"
-	. "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/cloudprovider"
-
 	"github.com/gardener/gardener/extensions/pkg/webhook/cloudprovider"
 	gcontext "github.com/gardener/gardener/extensions/pkg/webhook/context"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/install"
+	. "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/cloudprovider"
 )
 
 func TestController(t *testing.T) {

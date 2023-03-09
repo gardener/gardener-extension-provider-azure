@@ -26,13 +26,6 @@ import (
 	"path/filepath"
 	"time"
 
-	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	azureinstall "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/install"
-	azurev1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	bastionctrl "github.com/gardener/gardener-extension-provider-azure/pkg/controller/bastion"
-	. "github.com/gardener/gardener-extension-provider-azure/test/integration/bastion"
-
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
@@ -61,6 +54,13 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+
+	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	azureinstall "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/install"
+	azurev1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	bastionctrl "github.com/gardener/gardener-extension-provider-azure/pkg/controller/bastion"
+	. "github.com/gardener/gardener-extension-provider-azure/test/integration/bastion"
 )
 
 var VNetCIDR = "10.250.0.0/16"

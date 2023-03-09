@@ -15,47 +15,31 @@
 package cloudprovider
 
 import (
-	"fmt"
-
-	"github.com/Masterminds/semver"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	"github.com/gardener/gardener/extensions/pkg/webhook/cloudprovider"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 var (
-	logger                           = log.Log.WithName("azure-cloudprovider-webhook")
-	versionConstraintGreaterEqual142 *semver.Constraints
+	logger = log.Log.WithName("azure-cloudprovider-webhook")
 )
 
 func init() {
 	var err error
-	versionConstraintGreaterEqual142, err = semver.NewConstraint(">= 1.42")
 	utilruntime.Must(err)
 }
 
 // AddToManager creates the cloudprovider webhook and adds it to the manager.
-func AddToManager(gardenerVersion *string) func(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
-	return func(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
-		enable := false
-		if gardenerVersion != nil && len(*gardenerVersion) > 0 {
-			version, err := semver.NewVersion(*gardenerVersion)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse gardener version: %v", err)
-			}
-			if versionConstraintGreaterEqual142.Check(version) {
-				enable = true
-			}
-		}
-		logger.Info("adding webhook to manager")
+func AddToManager(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
+	logger.Info("adding webhook to manager")
 
-		return cloudprovider.New(mgr, cloudprovider.Args{
-			Provider:             azure.Type,
-			Mutator:              cloudprovider.NewMutator(logger, NewEnsurer(logger)),
-			EnableObjectSelector: enable,
-		})
-	}
+	return cloudprovider.New(mgr, cloudprovider.Args{
+		Provider:             azure.Type,
+		Mutator:              cloudprovider.NewMutator(logger, NewEnsurer(logger)),
+		EnableObjectSelector: true,
+	})
 }

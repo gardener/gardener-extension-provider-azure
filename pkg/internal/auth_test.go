@@ -17,16 +17,16 @@ package internal_test
 import (
 	"context"
 
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	. "github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
-
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	. "github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
 var _ = Describe("Azure Auth", func() {

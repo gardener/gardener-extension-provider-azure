@@ -18,16 +18,18 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
-	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
-	"github.com/go-logr/logr"
-
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
+	"github.com/gardener/gardener/extensions/pkg/util"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	v1 "k8s.io/api/core/v1"
+	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
+	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
+
+	v1 "k8s.io/api/core/v1"
 )
 
 var (
@@ -49,7 +51,7 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, infra *extension
 	selector := StrategySelector{}
 	useFlow, err := selector.ShouldDeleteWithFlow(infra.Status)
 	if err != nil {
-		return err
+		return util.DetermineError(err, helper.KnownCodes)
 	}
 	var reconciler Reconciler
 	if useFlow {
@@ -66,7 +68,7 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, infra *extension
 			return fmt.Errorf("failed to initialize terraform reconciler: %w", err)
 		}
 	}
-	return reconciler.Delete(ctx, infra, config, cluster)
+	return util.DetermineError(reconciler.Delete(ctx, infra, config, cluster), helper.KnownCodes)
 }
 
 // NoOpStateInitializer is a no-op StateConfigMapInitializerFunc.

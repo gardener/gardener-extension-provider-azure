@@ -19,9 +19,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	"github.com/gardener/gardener/pkg/extensions"
-	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
+	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -39,28 +37,22 @@ func TestController(t *testing.T) {
 var _ = Describe("Topology", func() {
 	var (
 		ctrl *gomock.Controller
-		c    *mockclient.MockClient
 
+		ctx       context.Context
 		pod       *corev1.Pod
-		mutator   *mutator
+		mutator   *handler
 		region    = "westeurope"
 		namespace = "namespace"
-		seed      = &v1beta1.Seed{
-			Spec: v1beta1.SeedSpec{
-				Provider: v1beta1.SeedProvider{
-					Region: region,
-					Type:   azure.Type,
-				},
-			},
-		}
-		cluster = &extensions.Cluster{Seed: seed}
 	)
 
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
-		c = mockclient.NewMockClient(ctrl)
+		ctx = context.Background()
 
-		mutator = New()
+		mutator = New(logr.Discard(), AddOptions{
+			SeedRegion:   region,
+			SeedProvider: azure.Type,
+		})
 
 		pod = &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
@@ -75,11 +67,7 @@ var _ = Describe("Topology", func() {
 									MatchExpressions: []corev1.NodeSelectorRequirement{
 										{
 											Key:    corev1.LabelTopologyZone,
-											Values: []string{"1", "2", fmt.Sprintf("%s-%d", region, 3)},
-										},
-										{
-											Key:    "foo",
-											Values: []string{"bar"},
+											Values: []string{"1"},
 										},
 									},
 								},
@@ -90,7 +78,8 @@ var _ = Describe("Topology", func() {
 			},
 		}
 
-		Expect(mutator.InjectClient(c)).NotTo(HaveOccurred())
+		var err error
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	AfterEach(func() {
@@ -98,20 +87,46 @@ var _ = Describe("Topology", func() {
 	})
 
 	Context("#Webhook", func() {
-		It("it should not mutate on update operations", func() {
+		It("should not mutate on update operations", func() {
 			podCopy := pod.DeepCopy()
 
 			err := mutator.Mutate(context.Background(), pod, pod)
 			Expect(err).To(BeNil())
 			Expect(pod).To(Equal(podCopy))
 		})
-	})
 
-	Context("#Mutator", func() {
-		Describe("#MutatePodTopology", func() {
+		Describe("#Mutate", func() {
+			BeforeEach(func() {
+				pod = &corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+					},
+					Spec: corev1.PodSpec{
+						Affinity: &corev1.Affinity{
+							NodeAffinity: &corev1.NodeAffinity{
+								RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+									NodeSelectorTerms: []corev1.NodeSelectorTerm{
+										{
+											MatchExpressions: []corev1.NodeSelectorRequirement{
+												{
+													Key:    corev1.LabelTopologyZone,
+													Values: []string{"1", "2", fmt.Sprintf("%s-%d", region, 3)},
+												},
+												{
+													Key:    "foo",
+													Values: []string{"bar"},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+			})
 			It("it should correctly mutate required", func() {
-
-				err := mutator.mutateNodeAffinity(pod, cluster)
+				err := mutator.Mutate(ctx, pod, nil)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(pod.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0].Values[0]).To(Equal(fmt.Sprintf("%s-%s", region, "1")))
 				Expect(pod.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[0].MatchExpressions[0].Values[1]).To(Equal(fmt.Sprintf("%s-%s", region, "2")))
@@ -148,7 +163,7 @@ var _ = Describe("Topology", func() {
 					},
 				}
 
-				err := mutator.mutateNodeAffinity(pod, cluster)
+				err := mutator.Mutate(ctx, pod, nil)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(pod.Spec.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[0].Values[0]).To(Equal(fmt.Sprintf("%s-%s", region, "1")))
 				Expect(pod.Spec.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[0].Values[1]).To(Equal(fmt.Sprintf("%s-%s", region, "2")))

@@ -17,8 +17,6 @@ package bastion
 import (
 	"encoding/json"
 
-	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/gardener/gardener/extensions/pkg/controller"
@@ -34,6 +32,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
+
+	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 )
 
 func createRule(name, sourceAddrPrefix, destinationAddressPrefix string) *armnetwork.SecurityRule {

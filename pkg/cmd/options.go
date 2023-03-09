@@ -15,22 +15,6 @@
 package cmd
 
 import (
-	backupbucketcontroller "github.com/gardener/gardener-extension-provider-azure/pkg/controller/backupbucket"
-	backupentrycontroller "github.com/gardener/gardener-extension-provider-azure/pkg/controller/backupentry"
-	bastioncontroller "github.com/gardener/gardener-extension-provider-azure/pkg/controller/bastion"
-	controlplanecontroller "github.com/gardener/gardener-extension-provider-azure/pkg/controller/controlplane"
-	csimigrationcontroller "github.com/gardener/gardener-extension-provider-azure/pkg/controller/csimigration"
-	dnsrecordcontroller "github.com/gardener/gardener-extension-provider-azure/pkg/controller/dnsrecord"
-	healthcheckcontroller "github.com/gardener/gardener-extension-provider-azure/pkg/controller/healthcheck"
-	infrastructurecontroller "github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure"
-	workercontroller "github.com/gardener/gardener-extension-provider-azure/pkg/controller/worker"
-	cloudproviderwebhook "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/cloudprovider"
-	controlplanewebhook "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/controlplane"
-	controlplaneexposurewebhook "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/controlplaneexposure"
-	infrastructurewebhook "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/infrastructure"
-	networkwebhook "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/network"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/webhook/topology"
-
 	extensionsbackupbucketcontroller "github.com/gardener/gardener/extensions/pkg/controller/backupbucket"
 	extensionsbackupentrycontroller "github.com/gardener/gardener/extensions/pkg/controller/backupentry"
 	extensionsbastioncontroller "github.com/gardener/gardener/extensions/pkg/controller/bastion"
@@ -46,6 +30,22 @@ import (
 	webhookcmd "github.com/gardener/gardener/extensions/pkg/webhook/cmd"
 	extensionscontrolplanewebhook "github.com/gardener/gardener/extensions/pkg/webhook/controlplane"
 	extensionsnetworkwebhook "github.com/gardener/gardener/extensions/pkg/webhook/network"
+
+	backupbucketcontroller "github.com/gardener/gardener-extension-provider-azure/pkg/controller/backupbucket"
+	backupentrycontroller "github.com/gardener/gardener-extension-provider-azure/pkg/controller/backupentry"
+	bastioncontroller "github.com/gardener/gardener-extension-provider-azure/pkg/controller/bastion"
+	controlplanecontroller "github.com/gardener/gardener-extension-provider-azure/pkg/controller/controlplane"
+	csimigrationcontroller "github.com/gardener/gardener-extension-provider-azure/pkg/controller/csimigration"
+	dnsrecordcontroller "github.com/gardener/gardener-extension-provider-azure/pkg/controller/dnsrecord"
+	healthcheckcontroller "github.com/gardener/gardener-extension-provider-azure/pkg/controller/healthcheck"
+	infrastructurecontroller "github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure"
+	workercontroller "github.com/gardener/gardener-extension-provider-azure/pkg/controller/worker"
+	cloudproviderwebhook "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/cloudprovider"
+	controlplanewebhook "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/controlplane"
+	controlplaneexposurewebhook "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/controlplaneexposure"
+	infrastructurewebhook "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/infrastructure"
+	networkwebhook "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/network"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/webhook/topology"
 )
 
 // ControllerSwitchOptions are the controllercmd.SwitchOptions for the provider controllers.
@@ -65,13 +65,13 @@ func ControllerSwitchOptions() *controllercmd.SwitchOptions {
 }
 
 // WebhookSwitchOptions are the webhookcmd.SwitchOptions for the provider webhooks.
-func WebhookSwitchOptions(gardenerVersion *string) *webhookcmd.SwitchOptions {
+func WebhookSwitchOptions() *webhookcmd.SwitchOptions {
 	return webhookcmd.NewSwitchOptions(
 		webhookcmd.Switch(extensionsnetworkwebhook.WebhookName, networkwebhook.AddToManager),
 		webhookcmd.Switch(infrastructurewebhook.WebhookName, infrastructurewebhook.AddToManager),
 		webhookcmd.Switch(extensionscontrolplanewebhook.WebhookName, controlplanewebhook.AddToManager),
 		webhookcmd.Switch(extensionscontrolplanewebhook.ExposureWebhookName, controlplaneexposurewebhook.AddToManager),
-		webhookcmd.Switch(extensionscloudproviderwebhook.WebhookName, cloudproviderwebhook.AddToManager(gardenerVersion)),
+		webhookcmd.Switch(extensionscloudproviderwebhook.WebhookName, cloudproviderwebhook.AddToManager),
 		webhookcmd.Switch(topology.WebhookName, topology.AddToManager),
 	)
 }

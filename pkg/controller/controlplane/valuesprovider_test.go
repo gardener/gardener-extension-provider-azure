@@ -18,9 +18,6 @@ import (
 	"context"
 	"encoding/json"
 
-	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -42,6 +39,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
+
+	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 const (
@@ -109,7 +109,7 @@ var _ = Describe("ValuesProvider", func() {
 		cidr                    = "10.250.0.0/19"
 		cloudProviderConfigData = "foo"
 
-		k8sVersionLessThan121    = "1.17.1"
+		k8sVersionLessThan121    = "1.20.1"
 		k8sVersionHigherEqual121 = "1.21.4"
 
 		enabledTrue    = map[string]interface{}{"enabled": true}
@@ -237,7 +237,6 @@ var _ = Describe("ValuesProvider", func() {
 					"availabilitySetName": primaryAvailabilitySetName,
 					"routeTableName":      "route-table-name",
 					"securityGroupName":   "security-group-name-workers",
-					"kubernetesVersion":   k8sVersionLessThan121,
 					"maxNodes":            maxNodes,
 				}))
 			})
@@ -261,7 +260,6 @@ var _ = Describe("ValuesProvider", func() {
 					"region":            "eu-west-1a",
 					"routeTableName":    "route-table-name",
 					"securityGroupName": "security-group-name-workers",
-					"kubernetesVersion": k8sVersionLessThan121,
 					"maxNodes":          maxNodes,
 					"vmType":            "vmss",
 				}))
@@ -284,7 +282,6 @@ var _ = Describe("ValuesProvider", func() {
 					"region":            "eu-west-1a",
 					"routeTableName":    "route-table-name",
 					"securityGroupName": "security-group-name-workers",
-					"kubernetesVersion": k8sVersionLessThan121,
 					"maxNodes":          maxNodes,
 				}))
 			})
@@ -311,7 +308,6 @@ var _ = Describe("ValuesProvider", func() {
 					"region":              "eu-west-1a",
 					"routeTableName":      "route-table-name",
 					"securityGroupName":   "security-group-name-workers",
-					"kubernetesVersion":   k8sVersionLessThan121,
 					"acrIdentityClientId": identityName,
 					"maxNodes":            maxNodes,
 				}))
@@ -492,7 +488,7 @@ var _ = Describe("ValuesProvider", func() {
 					"checksum/configmap-" + azure.CloudProviderDiskConfigName: "",
 				},
 				"cloudProviderConfig": "",
-				"kubernetesVersion":   "1.17.1",
+				"kubernetesVersion":   "1.20.1",
 			})
 			globalVpaDisabled = map[string]interface{}{
 				"vpaEnabled": false,
@@ -525,7 +521,7 @@ var _ = Describe("ValuesProvider", func() {
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 				csiNode := utils.MergeMaps(csiNodeNotEnabled, map[string]interface{}{
 					"webhookConfig": map[string]interface{}{
-						"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+						"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 						"caBundle": "",
 					},
 					"pspDisabled": false,
@@ -548,7 +544,7 @@ var _ = Describe("ValuesProvider", func() {
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 				csiNode := utils.MergeMaps(csiNodeNotEnabled, map[string]interface{}{
 					"webhookConfig": map[string]interface{}{
-						"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+						"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 						"caBundle": "",
 					},
 					"pspDisabled": false,
@@ -589,7 +585,7 @@ var _ = Describe("ValuesProvider", func() {
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 				csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
 					"webhookConfig": map[string]interface{}{
-						"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+						"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 						"caBundle": "",
 					},
 					"pspDisabled": false,
@@ -612,7 +608,7 @@ var _ = Describe("ValuesProvider", func() {
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 				csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
 					"webhookConfig": map[string]interface{}{
-						"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+						"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 						"caBundle": "",
 					},
 					"pspDisabled": false,
@@ -635,7 +631,7 @@ var _ = Describe("ValuesProvider", func() {
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 				csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
 					"webhookConfig": map[string]interface{}{
-						"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+						"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 						"caBundle": "",
 					},
 					"pspDisabled": false,
@@ -664,7 +660,7 @@ var _ = Describe("ValuesProvider", func() {
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 				csiNode := utils.MergeMaps(csiNodeNotEnabled, map[string]interface{}{
 					"webhookConfig": map[string]interface{}{
-						"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+						"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 						"caBundle": "",
 					},
 					"pspDisabled": false,
@@ -687,7 +683,7 @@ var _ = Describe("ValuesProvider", func() {
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 				csiNode := utils.MergeMaps(csiNodeNotEnabled, map[string]interface{}{
 					"webhookConfig": map[string]interface{}{
-						"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+						"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 						"caBundle": "",
 					},
 					"pspDisabled": false,
@@ -717,7 +713,7 @@ var _ = Describe("ValuesProvider", func() {
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 				csiNode := utils.MergeMaps(csiNodeNotEnabled, map[string]interface{}{
 					"webhookConfig": map[string]interface{}{
-						"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+						"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 						"caBundle": "",
 					},
 					"pspDisabled": false,
@@ -746,7 +742,7 @@ var _ = Describe("ValuesProvider", func() {
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 				csiNode := utils.MergeMaps(csiNodeNotEnabled, map[string]interface{}{
 					"webhookConfig": map[string]interface{}{
-						"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
+						"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 						"caBundle": "",
 					},
 					"pspDisabled": true,

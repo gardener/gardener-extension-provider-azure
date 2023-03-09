@@ -17,16 +17,16 @@ package validation
 import (
 	"fmt"
 
-	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-
 	"github.com/Masterminds/semver"
 	"github.com/gardener/gardener/pkg/apis/core"
 	validationutils "github.com/gardener/gardener/pkg/utils/validation"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+
+	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 const maxDataVolumeCount = 64
@@ -95,7 +95,7 @@ func ValidateWorkers(workers []core.Worker, infra *api.InfrastructureConfig, fld
 			continue
 		}
 
-		zones := sets.NewString()
+		zones := sets.New[string]()
 		for j, zone := range worker.Zones {
 			if zones.Has(zone) {
 				allErrs = append(allErrs, field.Invalid(path.Child("zones").Index(j), zone, "must only be specified once per worker group"))
@@ -105,7 +105,7 @@ func ValidateWorkers(workers []core.Worker, infra *api.InfrastructureConfig, fld
 		}
 
 		if !helper.IsUsingSingleSubnetLayout(infra) {
-			infraZones := sets.String{}
+			infraZones := sets.Set[string]{}
 			for _, zone := range infra.Networks.Zones {
 				infraZones.Insert(helper.InfrastructureZoneToString(zone.Name))
 			}

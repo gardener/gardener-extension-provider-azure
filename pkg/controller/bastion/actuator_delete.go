@@ -20,13 +20,15 @@ import (
 	"fmt"
 	"time"
 
-	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
-
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/gardener/gardener/extensions/pkg/controller"
+	"github.com/gardener/gardener/extensions/pkg/util"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	ctrlerror "github.com/gardener/gardener/pkg/controllerutils/reconciler"
 	"github.com/go-logr/logr"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
+	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
 
 func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster) error {
@@ -47,12 +49,12 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensi
 
 	err = removeBastionInstance(ctx, log, factory, opt)
 	if err != nil {
-		return fmt.Errorf("failed to remove bastion instance: %w", err)
+		return util.DetermineError(fmt.Errorf("failed to remove bastion instance: %w", err), helper.KnownCodes)
 	}
 
 	deleted, err := isInstanceDeleted(ctx, log, factory, opt)
 	if err != nil {
-		return fmt.Errorf("failed to check for bastion instance: %w", err)
+		return util.DetermineError(fmt.Errorf("failed to check for bastion instance: %w", err), helper.KnownCodes)
 	}
 
 	if !deleted {
@@ -64,22 +66,22 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensi
 
 	err = removeNic(ctx, log, factory, opt)
 	if err != nil {
-		return fmt.Errorf("failed to remove nic: %w", err)
+		return util.DetermineError(fmt.Errorf("failed to remove nic: %w", err), helper.KnownCodes)
 	}
 
 	err = removePublicIP(ctx, log, factory, opt)
 	if err != nil {
-		return fmt.Errorf("failed to remove public ip: %w", err)
+		return util.DetermineError(fmt.Errorf("failed to remove public ip: %w", err), helper.KnownCodes)
 	}
 
 	err = removeDisk(ctx, log, factory, opt)
 	if err != nil {
-		return fmt.Errorf("failed to remove disk: %w", err)
+		return util.DetermineError(fmt.Errorf("failed to remove disk: %w", err), helper.KnownCodes)
 	}
 
 	err = removeNSGRule(ctx, log, factory, opt)
 	if err != nil {
-		return fmt.Errorf("failed to remove nsg rules: %w", err)
+		return util.DetermineError(fmt.Errorf("failed to remove nsg rules: %w", err), helper.KnownCodes)
 	}
 
 	return nil

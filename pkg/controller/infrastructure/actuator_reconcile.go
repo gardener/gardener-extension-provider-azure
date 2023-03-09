@@ -18,14 +18,15 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/gardener/gardener/extensions/pkg/controller"
+	"github.com/gardener/gardener/extensions/pkg/terraformer"
+	"github.com/gardener/gardener/extensions/pkg/util"
+	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"github.com/go-logr/logr"
+
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
-
-	"github.com/gardener/gardener/extensions/pkg/controller"
-	"github.com/gardener/gardener/extensions/pkg/terraformer"
-	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	"github.com/go-logr/logr"
 )
 
 // Reconcile implements infrastructure.Actuator.
@@ -79,11 +80,11 @@ func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, infra *ext
 	}
 	status, err := reconciler.Reconcile(ctx, infra, config, cluster)
 	if err != nil {
-		return err
+		return util.DetermineError(err, helper.KnownCodes)
 	}
 	state, err := reconciler.GetState(ctx, status)
 	if err != nil {
-		return fmt.Errorf("failed to get infrastructure state: %w", err)
+		return util.DetermineError(err, helper.KnownCodes)
 	}
 	return patchProviderStatusAndState(ctx, infra, status, state, a.Client())
 }

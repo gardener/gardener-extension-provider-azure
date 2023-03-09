@@ -18,14 +18,14 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 func (a *actuator) createBackupBucketGeneratedSecret(ctx context.Context, backupBucket *extensionsv1alpha1.BackupBucket, storageAccountName, storageKey string) error {
@@ -59,11 +59,17 @@ func (a *actuator) deleteBackupBucketGeneratedSecret(ctx context.Context, backup
 	if backupBucket.Status.GeneratedSecretRef == nil {
 		return nil
 	}
-	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      backupBucket.Status.GeneratedSecretRef.Name,
-			Namespace: backupBucket.Status.GeneratedSecretRef.Namespace,
-		},
+	return kutil.DeleteSecretByReference(ctx, a.client, backupBucket.Status.GeneratedSecretRef)
+}
+
+// getBackupBucketGeneratedSecret get generated secret referred by core BackupBucket resource in garden.
+func (a *actuator) getBackupBucketGeneratedSecret(ctx context.Context, backupBucket *extensionsv1alpha1.BackupBucket) (*corev1.Secret, error) {
+	if backupBucket.Status.GeneratedSecretRef == nil {
+		return nil, nil
 	}
-	return k8sclient.IgnoreNotFound(a.client.Delete(ctx, secret))
+	secret, err := kutil.GetSecretByReference(ctx, a.client, backupBucket.Status.GeneratedSecretRef)
+	if err != nil {
+		return nil, client.IgnoreNotFound(err)
+	}
+	return secret, nil
 }
