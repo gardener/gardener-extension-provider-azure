@@ -17,13 +17,28 @@ package client
 import (
 	"net/http"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/go-autorest/autorest"
 )
 
+func FilterNotFoundError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if IsAzureAPINotFoundError(err) {
+		return nil
+	}
+	return err
+}
+
 func isAzureAPStatusError(err error, status int) bool {
 	switch e := err.(type) {
-	case autorest.DetailedError:
+	case autorest.DetailedError: // error from old azure client
 		if e.Response != nil && e.Response.StatusCode == status {
+			return true
+		}
+	case *azcore.ResponseError: // error from new azure SDK client
+		if e.StatusCode == status {
 			return true
 		}
 	}

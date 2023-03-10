@@ -49,6 +49,13 @@ spec:
           - name: REGION
             type: env
             value: westeurope
+    - name: infrastructure-test-flow
+      definition:
+        name: infrastructure-test-flow
+        config:
+          - name: REGION
+            type: env
+            value: westeurope
     - name: bastion-test
       definition:
         name: bastion-test

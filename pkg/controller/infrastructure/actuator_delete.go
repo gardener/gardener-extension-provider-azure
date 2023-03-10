@@ -16,19 +16,19 @@ package infrastructure
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
 	"github.com/gardener/gardener/extensions/pkg/util"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/go-logr/logr"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 )
 
 var (
@@ -36,68 +36,38 @@ var (
 	NewAzureClientFactory = newAzureClientFactory
 )
 
-func newAzureClientFactory(client client.Client) azureclient.Factory {
-	return azureclient.NewAzureClientFactory(client)
+func newAzureClientFactory(ctx context.Context, client client.Client, secretRef v1.SecretReference) (azureclient.Factory, error) {
+	return azureclient.NewAzureClientFactory(ctx, client, secretRef)
 }
 
 // Delete implements infrastructure.Actuator.
 func (a *actuator) Delete(ctx context.Context, log logr.Logger, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
-	tf, err := internal.NewTerraformer(log, a.RESTConfig(), infrastructure.TerraformerPurpose, infra, a.disableProjectedTokenMount)
-	if err != nil {
-		return util.DetermineError(err, helper.KnownCodes)
-	}
-
-	// terraform pod from previous reconciliation might still be running, ensure they are gone before doing any operations
-	if err := tf.EnsureCleanedUp(ctx); err != nil {
-		return err
-	}
-
 	config, err := helper.InfrastructureConfigFromInfrastructure(infra)
 	if err != nil {
 		return err
 	}
 
-	azureClientFactory := NewAzureClientFactory(a.Client())
-	resourceGroupExists, err := infrastructure.IsShootResourceGroupAvailable(ctx, azureClientFactory, infra, config)
-	if err != nil {
-		if azureclient.IsAzureAPIUnauthorized(err) {
-			log.Error(err, "Failed to check resource group availability due to invalid credentials")
-		} else {
-			return err
-		}
-	}
-
-	if !resourceGroupExists {
-		if !azureclient.IsAzureAPIUnauthorized(err) {
-			if err := infrastructure.DeleteNodeSubnetIfExists(ctx, azureClientFactory, infra, config); err != nil {
-				return err
-			}
-		}
-
-		if err := tf.RemoveTerraformerFinalizerFromConfig(ctx); err != nil {
-			return err
-		}
-
-		return tf.CleanupConfiguration(ctx)
-	}
-
-	// If the Terraform state is empty then we can exit early as we didn't create anything. Though, we clean up potentially
-	// created configmaps/secrets related to the Terraformer.
-	stateIsEmpty := tf.IsStateEmpty(ctx)
-	if stateIsEmpty {
-		log.Info("exiting early as infrastructure state is empty - nothing to do")
-		return tf.CleanupConfiguration(ctx)
-	}
-
-	terraformFiles, err := infrastructure.RenderTerraformerTemplate(infra, config, cluster)
+	selector := StrategySelector{}
+	useFlow, err := selector.ShouldDeleteWithFlow(infra.Status)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}
-
-	return util.DetermineError(tf.
-		InitializeWith(ctx, terraformer.DefaultInitializer(a.Client(), terraformFiles.Main, terraformFiles.Variables, terraformFiles.TFVars, terraformer.StateConfigMapInitializerFunc(NoOpStateInitializer))).
-		SetEnvVars(internal.TerraformerEnvVars(infra.Spec.SecretRef)...).
-		Destroy(ctx), helper.KnownCodes)
+	var reconciler Reconciler
+	if useFlow {
+		if err := cleanupTerraform(ctx, log, a, infra); err != nil {
+			return fmt.Errorf("failed to cleanup terraform resources: %w", err)
+		}
+		reconciler, err = NewFlowReconciler(ctx, a, infra, log)
+		if err != nil {
+			return err
+		}
+	} else {
+		reconciler, err = NewTerraformReconciler(a, log, terraformer.StateConfigMapInitializerFunc(NoOpStateInitializer))
+		if err != nil {
+			return fmt.Errorf("failed to initialize terraform reconciler: %w", err)
+		}
+	}
+	return util.DetermineError(reconciler.Delete(ctx, infra, config, cluster), helper.KnownCodes)
 }
 
 // NoOpStateInitializer is a no-op StateConfigMapInitializerFunc.

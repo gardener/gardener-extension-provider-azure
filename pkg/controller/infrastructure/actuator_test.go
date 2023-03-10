@@ -20,7 +20,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/gardener/gardener/extensions/pkg/controller/infrastructure"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
@@ -34,7 +34,7 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -217,23 +217,23 @@ var _ = Describe("Actuator", func() {
 	Describe("#Delete", func() {
 		var (
 			azureClientFactory *azureclientmocks.MockFactory
-			azureGroupClient   *azureclientmocks.MockGroup
+			azureGroupClient   *azureclientmocks.MockResourceGroup
 			resourceGroupName  string
 		)
 
 		BeforeEach(func() {
 			azureClientFactory = azureclientmocks.NewMockFactory(ctrl)
-			azureGroupClient = azureclientmocks.NewMockGroup(ctrl)
+			azureGroupClient = azureclientmocks.NewMockResourceGroup(ctrl)
 			resourceGroupName = infra.Namespace
 
-			NewAzureClientFactory = func(c client.Client) azureclient.Factory {
-				return azureClientFactory
+			NewAzureClientFactory = func(context.Context, client.Client, v1.SecretReference) (azureclient.Factory, error) {
+				return azureClientFactory, nil
 			}
 		})
 
 		It("should delete the Infrastructure", func() {
-			azureClientFactory.EXPECT().Group(ctx, infra.Spec.SecretRef).Return(azureGroupClient, nil)
-			azureGroupClient.EXPECT().Get(ctx, infra.Namespace).Return(&resources.Group{Name: &resourceGroupName}, nil)
+			azureClientFactory.EXPECT().Group().Return(azureGroupClient, nil)
+			azureGroupClient.EXPECT().Get(ctx, infra.Namespace).Return(&armresources.ResourceGroup{Name: &resourceGroupName}, nil)
 
 			tf.EXPECT().EnsureCleanedUp(ctx)
 			tf.EXPECT().IsStateEmpty(ctx).Return(false)
@@ -247,7 +247,7 @@ var _ = Describe("Actuator", func() {
 		})
 
 		It("should delete the Infrastructure with invalid credentials", func() {
-			azureClientFactory.EXPECT().Group(ctx, infra.Spec.SecretRef).Return(azureGroupClient, nil)
+			azureClientFactory.EXPECT().Group().Return(azureGroupClient, nil)
 			azureGroupClient.EXPECT().Get(ctx, infra.Namespace).Return(nil, autorest.DetailedError{Response: &http.Response{StatusCode: http.StatusUnauthorized}})
 
 			tf.EXPECT().EnsureCleanedUp(ctx)
@@ -259,8 +259,8 @@ var _ = Describe("Actuator", func() {
 		})
 
 		It("should exit early if the Infrastructure's terraform state is empty", func() {
-			azureClientFactory.EXPECT().Group(ctx, infra.Spec.SecretRef).Return(azureGroupClient, nil)
-			azureGroupClient.EXPECT().Get(ctx, infra.Namespace).Return(&resources.Group{Name: &resourceGroupName}, nil)
+			azureClientFactory.EXPECT().Group().Return(azureGroupClient, nil)
+			azureGroupClient.EXPECT().Get(ctx, infra.Namespace).Return(&armresources.ResourceGroup{Name: &resourceGroupName}, nil)
 
 			tf.EXPECT().EnsureCleanedUp(ctx)
 			tf.EXPECT().IsStateEmpty(ctx).Return(true)
@@ -286,8 +286,8 @@ var _ = Describe("Actuator", func() {
 		})
 
 		It("should return error if terraform state is empty and cleaning up the terraform config fails", func() {
-			azureClientFactory.EXPECT().Group(ctx, infra.Spec.SecretRef).Return(azureGroupClient, nil)
-			azureGroupClient.EXPECT().Get(ctx, infra.Namespace).Return(&resources.Group{Name: &resourceGroupName}, nil)
+			azureClientFactory.EXPECT().Group().Return(azureGroupClient, nil)
+			azureGroupClient.EXPECT().Get(ctx, infra.Namespace).Return(&armresources.ResourceGroup{Name: &resourceGroupName}, nil)
 
 			tf.EXPECT().EnsureCleanedUp(ctx)
 			tf.EXPECT().IsStateEmpty(ctx).Return(true)
@@ -297,8 +297,8 @@ var _ = Describe("Actuator", func() {
 		})
 
 		It("should return an error if terraform can not be destroyed", func() {
-			azureClientFactory.EXPECT().Group(ctx, infra.Spec.SecretRef).Return(azureGroupClient, nil)
-			azureGroupClient.EXPECT().Get(ctx, infra.Namespace).Return(&resources.Group{Name: &resourceGroupName}, nil)
+			azureClientFactory.EXPECT().Group().Return(azureGroupClient, nil)
+			azureGroupClient.EXPECT().Get(ctx, infra.Namespace).Return(&armresources.ResourceGroup{Name: &resourceGroupName}, nil)
 
 			tf.EXPECT().EnsureCleanedUp(ctx)
 			tf.EXPECT().IsStateEmpty(ctx).Return(false)
@@ -425,6 +425,7 @@ var _ = Describe("Actuator", func() {
 
 	Describe("#Migrate", func() {
 		It("should migrate the Infrastructure", func() {
+			tf.EXPECT().EnsureCleanedUp(ctx)
 			tf.EXPECT().CleanupConfiguration(ctx)
 			tf.EXPECT().RemoveTerraformerFinalizerFromConfig(ctx)
 			err := a.Migrate(ctx, log, infra, cluster)
@@ -442,12 +443,14 @@ var _ = Describe("Actuator", func() {
 		})
 
 		It("should return error if cleaning up terraform configuration fails", func() {
+			tf.EXPECT().EnsureCleanedUp(ctx)
 			tf.EXPECT().CleanupConfiguration(ctx).Return(errors.New("could not clean up terraform config"))
 			err := a.Migrate(ctx, log, infra, cluster)
 			Expect(err).To(HaveOccurred())
 		})
 
 		It("should return error if removal of finalizers on terraform resources fails", func() {
+			tf.EXPECT().EnsureCleanedUp(ctx)
 			tf.EXPECT().CleanupConfiguration(ctx)
 			tf.EXPECT().RemoveTerraformerFinalizerFromConfig(ctx).Return(errors.New("could not clean up finalizers"))
 			err := a.Migrate(ctx, log, infra, cluster)
@@ -496,7 +499,7 @@ func createInfra(providerConfig *api.InfrastructureConfig) (*extensionsv1alpha1.
 				Type:           azure.Type,
 				ProviderConfig: &runtime.RawExtension{Raw: providerConfigBytes},
 			},
-			SecretRef: corev1.SecretReference{
+			SecretRef: v1.SecretReference{
 				Name: "foo",
 			},
 			Region: region,

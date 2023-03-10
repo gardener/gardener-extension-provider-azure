@@ -15,13 +15,80 @@
 package client_test
 
 import (
+	"context"
+	"encoding/base64"
+	"flag"
+	"os"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"gopkg.in/yaml.v2"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
 func TestWorker(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Client Suite")
+}
+
+// HOW TO RUN: ginkgo --  --secret-path=""
+var (
+	secretYamlPath = flag.String("secret-path", "", "Yaml file with secret including Azure credentials")
+)
+
+var _ = Describe("client", func() {
+	It("does not error when resource group not found", func() {
+		auth := setConfigVariablesFromFlags()
+		rclient, err := client.NewResourceGroupsClient(auth)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(rclient.Delete(context.TODO(), "random-2342341")).To(Succeed())
+	})
+	It("does not error when resource group not found", func() {
+		auth := setConfigVariablesFromFlags()
+		natClient, err := client.NewNatGatewaysClient(auth)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(natClient.Delete(context.TODO(), "random-2342341", "nat2134")).To(Succeed())
+	})
+})
+
+func setConfigVariablesFromFlags() internal.ClientAuth {
+	flag.Parse()
+	if *secretYamlPath != "" {
+		return readAuthFromFile(*secretYamlPath)
+	} else {
+		Skip("No secret yaml path specified to test the Azure client")
+		return internal.ClientAuth{}
+	}
+}
+
+type ProviderSecret struct {
+	Data internal.ClientAuth `yaml:"data"`
+}
+
+func readAuthFromFile(fileName string) internal.ClientAuth {
+	secret := ProviderSecret{}
+	data, err := os.ReadFile(fileName)
+	if err != nil {
+		panic(err)
+	}
+	err = yaml.Unmarshal(data, &secret)
+	if err != nil {
+		panic(err)
+	}
+	secret.Data.ClientID = decodeString(secret.Data.ClientID)
+	secret.Data.ClientSecret = decodeString(secret.Data.ClientSecret)
+	secret.Data.SubscriptionID = decodeString(secret.Data.SubscriptionID)
+	secret.Data.TenantID = decodeString(secret.Data.TenantID)
+	return secret.Data
+}
+
+func decodeString(s string) string {
+	res, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		panic(err)
+	}
+	return string(res)
 }

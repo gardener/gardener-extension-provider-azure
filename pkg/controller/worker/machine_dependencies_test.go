@@ -21,7 +21,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
 	"github.com/Azure/go-autorest/autorest"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -30,7 +31,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
@@ -49,8 +49,7 @@ var _ = Describe("MachinesDependencies", func() {
 		statusWriter *mockclient.MockStatusWriter
 		factory      *factorymock.MockFactory
 
-		ctx       context.Context
-		secretRef corev1.SecretReference
+		ctx context.Context
 
 		namespace, resourceGroupName, region string
 	)
@@ -68,10 +67,6 @@ var _ = Describe("MachinesDependencies", func() {
 		namespace = "shoot--foobar--azure"
 		resourceGroupName = namespace
 		region = "westeurope"
-		secretRef = corev1.SecretReference{
-			Name:      "secret",
-			Namespace: namespace,
-		}
 	})
 
 	Describe("VMO Dependencies", func() {
@@ -90,7 +85,7 @@ var _ = Describe("MachinesDependencies", func() {
 		BeforeEach(func() {
 			// Create a vmo client mock and let the factory always return the mocked vmo client.
 			vmoClient = vmssmock.NewMockVmss(ctrl)
-			factory.EXPECT().Vmss(ctx, secretRef).AnyTimes().Return(vmoClient, nil)
+			factory.EXPECT().Vmss().AnyTimes().Return(vmoClient, nil)
 
 			faultDomainCount = 3
 			cluster = makeCluster("", "westeurope", nil, nil, faultDomainCount)
@@ -285,24 +280,24 @@ var _ = Describe("MachinesDependencies", func() {
 
 func expectVmoGetToSucceed(ctx context.Context, c *vmssmock.MockVmss, resourceGroupName, name, id string, faultDomainCount int32) {
 	// As the vmo name (parameter 3) contains a random suffix, we use simply anything of type string for the mock.
-	c.EXPECT().Get(ctx, resourceGroupName, gomock.AssignableToTypeOf(""), compute.ExpandTypesForGetVMScaleSetsUserData).Return(&compute.VirtualMachineScaleSet{
-		ID:   pointer.String(id),
-		Name: pointer.String(name),
-		VirtualMachineScaleSetProperties: &compute.VirtualMachineScaleSetProperties{
+	c.EXPECT().Get(ctx, resourceGroupName, gomock.AssignableToTypeOf(""), to.Ptr(armcompute.ExpandTypesForGetVMScaleSetsUserData)).Return(&armcompute.VirtualMachineScaleSet{
+		ID:   pointer.StringPtr(id),
+		Name: pointer.StringPtr(name),
+		Properties: &armcompute.VirtualMachineScaleSetProperties{
 			PlatformFaultDomainCount: &faultDomainCount,
 		},
 	}, nil)
 }
 
-func expectVmoListToSucceed(ctx context.Context, c *vmssmock.MockVmss, resourceGroupName string, vmos ...compute.VirtualMachineScaleSet) {
+func expectVmoListToSucceed(ctx context.Context, c *vmssmock.MockVmss, resourceGroupName string, vmos ...*armcompute.VirtualMachineScaleSet) {
 	c.EXPECT().List(ctx, resourceGroupName).Return(vmos, nil)
 }
 
 func expectVmoCreateToSucceed(ctx context.Context, c *vmssmock.MockVmss, resourceGroupName, name, id string) {
 	// As the vmo name (parameter 3) contains a random suffix, we use simply anything of type string for the mock.
-	c.EXPECT().Create(ctx, resourceGroupName, gomock.AssignableToTypeOf(""), gomock.AssignableToTypeOf(&compute.VirtualMachineScaleSet{})).Return(&compute.VirtualMachineScaleSet{
-		ID:   pointer.String(id),
-		Name: pointer.String(name),
+	c.EXPECT().CreateOrUpdate(ctx, resourceGroupName, gomock.AssignableToTypeOf(""), gomock.AssignableToTypeOf(armcompute.VirtualMachineScaleSet{})).Return(&armcompute.VirtualMachineScaleSet{
+		ID:   pointer.StringPtr(id),
+		Name: pointer.StringPtr(name),
 	}, nil)
 }
 
@@ -326,10 +321,10 @@ func generateWorkerStatusWithVmo(vmos ...v1alpha1.VmoDependency) *runtime.RawExt
 	}
 }
 
-func generateExpectedVmo(name, id string) compute.VirtualMachineScaleSet {
-	return compute.VirtualMachineScaleSet{
-		ID:   pointer.String(id),
-		Name: pointer.String(name),
+func generateExpectedVmo(name, id string) *armcompute.VirtualMachineScaleSet {
+	return &armcompute.VirtualMachineScaleSet{
+		ID:   pointer.StringPtr(id),
+		Name: pointer.StringPtr(name),
 		Tags: map[string]*string{
 			azure.MachineSetTagKey: pointer.String("1"),
 		},

@@ -75,25 +75,9 @@ var (
 	subscriptionId = flag.String("subscription-id", "", "Azure subscription ID")
 	tenantId       = flag.String("tenant-id", "", "Azure tenant ID")
 	region         = flag.String("region", "", "Azure region")
+	secretYamlPath = flag.String("secret-path", "", "Yaml file with secret including Azure credentials")
+	useFlow        = flag.Bool("use-flow", false, "Set annotation to use flow for reconcilation")
 )
-
-func validateFlags() {
-	if len(*clientId) == 0 {
-		panic("client-id flag is not specified")
-	}
-	if len(*clientSecret) == 0 {
-		panic("client-secret flag is not specified")
-	}
-	if len(*subscriptionId) == 0 {
-		panic("subscription-id flag is not specified")
-	}
-	if len(*tenantId) == 0 {
-		panic("tenant-id flag is not specified")
-	}
-	if len(*region) == 0 {
-		panic("region flag is not specified")
-	}
-}
 
 type azureClientSet struct {
 	groups           resources.GroupsClient
@@ -176,9 +160,7 @@ var (
 )
 
 var _ = BeforeSuite(func() {
-	flag.Parse()
-	validateFlags()
-
+	setConfigVariablesFromFlags()
 	internalChartsPath := azure.InternalChartsPath
 	repoRoot := filepath.Join("..", "..", "..")
 	azure.InternalChartsPath = filepath.Join(repoRoot, azure.InternalChartsPath)
@@ -322,7 +304,6 @@ var _ = Describe("Infrastructure tests", func() {
 		It("should successfully create and delete a zonal cluster with NatGateway using an existing vNet and identity", func() {
 			foreignName, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
-
 			var cleanupHandle framework.CleanupActionHandle
 			cleanupHandle = framework.AddCleanupAction(func() {
 				Expect(ignoreAzureNotFoundError(teardownResourceGroup(ctx, clientSet, foreignName))).To(Succeed())
@@ -573,6 +554,11 @@ func runTest(
 	infra, err = newInfrastructure(namespaceName, providerConfig)
 	if err != nil {
 		return err
+	}
+
+	By("set flow annotation (based on config)")
+	if *useFlow {
+		metav1.SetMetaDataAnnotation(&infra.ObjectMeta, infrastructure.AnnotationKeyUseFlow, "true")
 	}
 
 	if err := c.Create(ctx, infra); err != nil {
@@ -1042,6 +1028,7 @@ func verifyDeletion(
 	az *azureClientSet,
 	identifier azureIdentifier,
 ) {
+	Expect(identifier.resourceGroup).To(Not(BeEmpty()))
 	_, err := az.groups.Get(ctx, identifier.resourceGroup)
 	Expect(err).To(HaveOccurred())
 	Expect(err).To(BeNotFoundError())

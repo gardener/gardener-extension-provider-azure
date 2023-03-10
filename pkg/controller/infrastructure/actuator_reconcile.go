@@ -16,11 +16,9 @@ package infrastructure
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
-	"github.com/gardener/gardener/extensions/pkg/util"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/go-logr/logr"
 
@@ -39,23 +37,37 @@ func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, infra *ext
 	if err != nil {
 		return err
 	}
-
-	terraformFiles, err := infrastructure.RenderTerraformerTemplate(infra, config, cluster)
+	factory := ReconcilerFactoryImpl{
+		ctx:              ctx,
+		log:              logger,
+		a:                a,
+		infra:            infra,
+		stateInitializer: stateInitializer,
+	}
+	strategy := StrategySelector{
+		Factory: factory,
+		Client:  a.Client(),
+	}
+	useFlow, err := strategy.ShouldReconcileWithFlow(infra, cluster)
 	if err != nil {
 		return err
 	}
+	return strategy.Reconcile(useFlow, ctx, infra, config, cluster)
+}
 
-	tf, err := internal.NewTerraformerWithAuth(logger, a.RESTConfig(), infrastructure.TerraformerPurpose, infra, a.disableProjectedTokenMount)
+func cleanupTerraform(ctx context.Context, logger logr.Logger, a *actuator, infra *extensionsv1alpha1.Infrastructure) error {
+	tf, err := internal.NewTerraformer(logger, a.RESTConfig(), infrastructure.TerraformerPurpose, infra, a.disableProjectedTokenMount)
 	if err != nil {
-		return util.DetermineError(err, helper.KnownCodes)
+		return err
+	}
+	// terraform pod from previous reconciliation might still be running, ensure they are gone before doing any operations
+	if err := tf.EnsureCleanedUp(ctx); err != nil {
+		return err
 	}
 
-	if err := tf.
-		InitializeWith(ctx, terraformer.DefaultInitializer(a.Client(), terraformFiles.Main, terraformFiles.Variables, terraformFiles.TFVars, stateInitializer)).
-		Apply(ctx); err != nil {
-
-		return util.DetermineError(fmt.Errorf("failed to apply the terraform config: %w", err), helper.KnownCodes)
+	if err := tf.CleanupConfiguration(ctx); err != nil {
+		return err
 	}
 
-	return a.updateProviderStatus(ctx, tf, infra, config, cluster)
+	return tf.RemoveTerraformerFinalizerFromConfig(ctx)
 }

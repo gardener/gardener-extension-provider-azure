@@ -32,7 +32,6 @@ import (
 )
 
 func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster) error {
-	var factory = azureclient.NewAzureClientFactory(a.client)
 
 	infrastructureStatus, err := getInfrastructureStatus(ctx, a, cluster)
 	if err != nil {
@@ -40,6 +39,10 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensi
 	}
 
 	opt, err := DetermineOptions(bastion, cluster, infrastructureStatus.ResourceGroup.Name)
+	if err != nil {
+		return err
+	}
+	factory, err := azureclient.NewAzureClientFactory(ctx, a.client, opt.SecretReference)
 	if err != nil {
 		return err
 	}
@@ -97,7 +100,8 @@ func removeNSGRule(ctx context.Context, log logr.Logger, factory azureclient.Fac
 		NSGEgressAllowOnlyResourceName(opt.BastionInstanceName),
 	}
 
-	rulesWereDeleted := deleteSecurityRuleDefinitionsByName(securityGroupResp.SecurityRules, rules...)
+	modifiedRules, rulesWereDeleted := deleteSecurityRuleDefinitionsByName(securityGroupResp.Properties.SecurityRules, rules...)
+	securityGroupResp.Properties.SecurityRules = modifiedRules
 	if !rulesWereDeleted {
 		return nil
 	}
@@ -112,7 +116,7 @@ func removeNSGRule(ctx context.Context, log logr.Logger, factory azureclient.Fac
 }
 
 func removePublicIP(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) error {
-	publicClient, err := factory.PublicIP(ctx, opt.SecretReference)
+	publicClient, err := factory.PublicIP()
 	if err != nil {
 		return err
 	}
@@ -127,7 +131,7 @@ func removePublicIP(ctx context.Context, log logr.Logger, factory azureclient.Fa
 }
 
 func removeNic(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) error {
-	nicClient, err := factory.NetworkInterface(ctx, opt.SecretReference)
+	nicClient, err := factory.NetworkInterface()
 	if err != nil {
 		return err
 	}
@@ -142,7 +146,7 @@ func removeNic(ctx context.Context, log logr.Logger, factory azureclient.Factory
 }
 
 func removeDisk(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) error {
-	diskClient, err := factory.Disk(ctx, opt.SecretReference)
+	diskClient, err := factory.Disk()
 	if err != nil {
 		return err
 	}
@@ -156,7 +160,7 @@ func removeDisk(ctx context.Context, log logr.Logger, factory azureclient.Factor
 }
 
 func removeBastionInstance(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) error {
-	vmClient, err := factory.VirtualMachine(ctx, opt.SecretReference)
+	vmClient, err := factory.VirtualMachine()
 	if err != nil {
 		return err
 	}

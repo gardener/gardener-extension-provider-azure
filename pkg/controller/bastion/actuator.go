@@ -21,8 +21,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/bastion"
 	"github.com/go-logr/logr"
@@ -51,21 +52,21 @@ func (a *actuator) InjectClient(client client.Client) error {
 	return nil
 }
 
-func createBastionInstance(ctx context.Context, factory azureclient.Factory, opt *Options, parameters *compute.VirtualMachine) (*compute.VirtualMachine, error) {
-	vmClient, err := factory.VirtualMachine(ctx, opt.SecretReference)
+func createBastionInstance(ctx context.Context, factory azureclient.Factory, opt *Options, parameters armcompute.VirtualMachine) (*armcompute.VirtualMachine, error) {
+	vmClient, err := factory.VirtualMachine()
 	if err != nil {
 		return nil, err
 	}
 
-	instance, err := vmClient.Create(ctx, opt.ResourceGroupName, opt.BastionInstanceName, parameters)
+	instance, err := vmClient.CreateOrUpdate(ctx, opt.ResourceGroupName, opt.BastionInstanceName, parameters)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create VM instance %s: %w", opt.BastionInstanceName, err)
 	}
 	return instance, nil
 }
 
-func createOrUpdatePublicIP(ctx context.Context, factory azureclient.Factory, opt *Options, parameters *network.PublicIPAddress) (*network.PublicIPAddress, error) {
-	publicClient, err := factory.PublicIP(ctx, opt.SecretReference)
+func createOrUpdatePublicIP(ctx context.Context, factory azureclient.Factory, opt *Options, parameters *armnetwork.PublicIPAddress) (*armnetwork.PublicIPAddress, error) {
+	publicClient, err := factory.PublicIP()
 	if err != nil {
 		return nil, err
 	}
@@ -77,12 +78,12 @@ func createOrUpdatePublicIP(ctx context.Context, factory azureclient.Factory, op
 	return ip, nil
 }
 
-func createOrUpdateNetworkSecGroup(ctx context.Context, factory azureclient.Factory, opt *Options, parameters *network.SecurityGroup) error {
-	if parameters == nil || parameters.SecurityRules == nil {
+func createOrUpdateNetworkSecGroup(ctx context.Context, factory azureclient.Factory, opt *Options, parameters *armnetwork.SecurityGroup) error {
+	if parameters == nil || parameters.Properties.SecurityRules == nil {
 		return fmt.Errorf("network security group nor SecurityRules can't be nil, securityGroupName: %s", opt.SecurityGroupName)
 	}
 
-	nsgClient, err := factory.NetworkSecurityGroup(ctx, opt.SecretReference)
+	nsgClient, err := factory.NetworkSecurityGroup()
 	if err != nil {
 		return err
 	}
@@ -94,13 +95,13 @@ func createOrUpdateNetworkSecGroup(ctx context.Context, factory azureclient.Fact
 	return nil
 }
 
-func getBastionInstance(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*compute.VirtualMachine, error) {
-	vmClient, err := factory.VirtualMachine(ctx, opt.SecretReference)
+func getBastionInstance(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*armcompute.VirtualMachine, error) {
+	vmClient, err := factory.VirtualMachine()
 	if err != nil {
 		return nil, err
 	}
 
-	instance, err := vmClient.Get(ctx, opt.ResourceGroupName, opt.BastionInstanceName, compute.InstanceViewTypesInstanceView)
+	instance, err := vmClient.Get(ctx, opt.ResourceGroupName, opt.BastionInstanceName, to.Ptr(armcompute.InstanceViewTypesInstanceView))
 	if err != nil {
 		if azureclient.IsAzureAPINotFoundError(err) {
 			log.Info("Instance not found,", "instance_name", opt.BastionInstanceName)
@@ -111,13 +112,13 @@ func getBastionInstance(ctx context.Context, log logr.Logger, factory azureclien
 	return instance, nil
 }
 
-func getNic(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*network.Interface, error) {
-	nicClient, err := factory.NetworkInterface(ctx, opt.SecretReference)
+func getNic(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*armnetwork.Interface, error) {
+	nicClient, err := factory.NetworkInterface()
 	if err != nil {
 		return nil, err
 	}
 
-	nic, err := nicClient.Get(ctx, opt.ResourceGroupName, opt.NicName, "")
+	nic, err := nicClient.Get(ctx, opt.ResourceGroupName, opt.NicName)
 	if err != nil {
 		if azureclient.IsAzureAPINotFoundError(err) {
 			log.Info("Nic not found,", "nic_name", opt.NicName)
@@ -129,13 +130,13 @@ func getNic(ctx context.Context, log logr.Logger, factory azureclient.Factory, o
 	return nic, nil
 }
 
-func getNetworkSecurityGroup(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*network.SecurityGroup, error) {
-	nsgClient, err := factory.NetworkSecurityGroup(ctx, opt.SecretReference)
+func getNetworkSecurityGroup(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*armnetwork.SecurityGroup, error) {
+	nsgClient, err := factory.NetworkSecurityGroup()
 	if err != nil {
 		return nil, err
 	}
 
-	nsgResp, err := nsgClient.Get(ctx, opt.ResourceGroupName, opt.SecurityGroupName, "")
+	nsgResp, err := nsgClient.Get(ctx, opt.ResourceGroupName, opt.SecurityGroupName)
 	if err != nil {
 		if azureclient.IsAzureAPINotFoundError(err) {
 			log.Error(err, "Network Security Group not found, test environment?", "nsg_name", opt.SecurityGroupName)
@@ -167,13 +168,13 @@ func getWorkersCIDR(cluster *controller.Cluster) ([]string, error) {
 	return nil, fmt.Errorf("InfrastructureConfig.Networks.Workers is nil")
 }
 
-func getPublicIP(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*network.PublicIPAddress, error) {
-	ipClient, err := factory.PublicIP(ctx, opt.SecretReference)
+func getPublicIP(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*armnetwork.PublicIPAddress, error) {
+	ipClient, err := factory.PublicIP()
 	if err != nil {
 		return nil, err
 	}
 
-	ip, err := ipClient.Get(ctx, opt.ResourceGroupName, opt.BastionPublicIPName, "")
+	ip, err := ipClient.Get(ctx, opt.ResourceGroupName, opt.BastionPublicIPName)
 	if err != nil {
 		if azureclient.IsAzureAPINotFoundError(err) {
 			log.Info("public IP not found,", "publicIP_name", opt.BastionPublicIPName)
@@ -184,9 +185,9 @@ func getPublicIP(ctx context.Context, log logr.Logger, factory azureclient.Facto
 	return ip, nil
 }
 
-func getSubnet(ctx context.Context, log logr.Logger, factory azureclient.Factory, infrastructureStatus *azure.InfrastructureStatus, opt *Options) (*network.Subnet, error) {
+func getSubnet(ctx context.Context, log logr.Logger, factory azureclient.Factory, infrastructureStatus *azure.InfrastructureStatus, opt *Options) (*armnetwork.Subnet, error) {
 	var sg string
-	subnetClient, err := factory.Subnet(ctx, opt.SecretReference)
+	subnetClient, err := factory.Subnet()
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +198,7 @@ func getSubnet(ctx context.Context, log logr.Logger, factory azureclient.Factory
 		sg = opt.ResourceGroupName
 	}
 
-	subnet, err := subnetClient.Get(ctx, sg, infrastructureStatus.Networks.VNet.Name, infrastructureStatus.Networks.Subnets[0].Name, "")
+	subnet, err := subnetClient.Get(ctx, sg, infrastructureStatus.Networks.VNet.Name, infrastructureStatus.Networks.Subnets[0].Name)
 	if err != nil {
 		return nil, err
 	}
@@ -210,16 +211,15 @@ func getSubnet(ctx context.Context, log logr.Logger, factory azureclient.Factory
 	return subnet, nil
 }
 
-func deleteSecurityRuleDefinitionsByName(rulesArr *[]network.SecurityRule, namesToRemove ...string) bool {
+func deleteSecurityRuleDefinitionsByName(rulesArr []*armnetwork.SecurityRule, namesToRemove ...string) ([]*armnetwork.SecurityRule, bool) {
+	rulesWereDeleted := false
 	if rulesArr == nil {
-		return false
+		return rulesArr, rulesWereDeleted
 	}
 
-	rulesWereDeleted := false
-	result := make([]network.SecurityRule, 0, len(*rulesArr))
-
+	result := make([]*armnetwork.SecurityRule, 0, len(rulesArr))
 rules:
-	for _, rule := range *rulesArr {
+	for _, rule := range rulesArr {
 		for _, nameToDelete := range namesToRemove {
 			if rule.Name != nil && *rule.Name == nameToDelete {
 				rulesWereDeleted = true
@@ -228,9 +228,7 @@ rules:
 		}
 		result = append(result, rule)
 	}
-
-	*rulesArr = result
-	return rulesWereDeleted
+	return result, rulesWereDeleted
 }
 
 func equalNotNil(str1 *string, str2 *string) bool {

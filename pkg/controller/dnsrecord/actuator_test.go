@@ -107,9 +107,9 @@ var _ = Describe("Actuator", func() {
 
 	Describe("#Reconcile", func() {
 		It("should reconcile the DNSRecord", func() {
-			azureClientFactory.EXPECT().DNSZone(ctx, dns.Spec.SecretRef).Return(azureDNSZoneClient, nil)
-			azureClientFactory.EXPECT().DNSRecordSet(ctx, dns.Spec.SecretRef).Return(azureDNSRecordSetClient, nil)
-			azureDNSZoneClient.EXPECT().GetAll(ctx).Return(zones, nil)
+			azureClientFactory.EXPECT().DNSZone().Return(azureDNSZoneClient, nil)
+			azureClientFactory.EXPECT().DNSRecordSet().Return(azureDNSRecordSetClient, nil)
+			azureDNSZoneClient.EXPECT().List(ctx).Return(zones, nil)
 			azureDNSRecordSetClient.EXPECT().CreateOrUpdate(ctx, zone, domainName, string(extensionsv1alpha1.DNSRecordTypeA), []string{address}, int64(120)).Return(nil)
 			azureDNSRecordSetClient.EXPECT().Delete(ctx, zone, "comment-"+domainName, "TXT").Return(nil)
 			sw.EXPECT().Patch(ctx, gomock.AssignableToTypeOf(&extensionsv1alpha1.DNSRecord{}), gomock.Any()).DoAndReturn(
@@ -130,8 +130,8 @@ var _ = Describe("Actuator", func() {
 		It("should delete the DNSRecord", func() {
 			dns.Status.Zone = pointer.String(zone)
 
-			azureClientFactory.EXPECT().DNSZone(ctx, dns.Spec.SecretRef).Return(azureDNSZoneClient, nil)
-			azureClientFactory.EXPECT().DNSRecordSet(ctx, dns.Spec.SecretRef).Return(azureDNSRecordSetClient, nil)
+			azureClientFactory.EXPECT().DNSZone().Return(azureDNSZoneClient, nil)
+			azureClientFactory.EXPECT().DNSRecordSet().Return(azureDNSRecordSetClient, nil)
 			azureDNSRecordSetClient.EXPECT().Delete(ctx, zone, domainName, string(extensionsv1alpha1.DNSRecordTypeA)).Return(nil)
 
 			err := a.Delete(ctx, logger, dns, nil)

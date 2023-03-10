@@ -56,18 +56,17 @@ func NewActuator(client client.Client, azureClientFactory azureclient.Factory) d
 
 func (a *actuator) InjectClient(client client.Client) error {
 	a.client = client
-	a.azureClientFactory = azureclient.NewAzureClientFactory(client)
 	return nil
 }
 
 // Reconcile reconciles the DNSRecord.
 func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, cluster *extensionscontroller.Cluster) error {
 	// Create Azure DNS zone and recordset clients
-	dnsZoneClient, err := a.azureClientFactory.DNSZone(ctx, dns.Spec.SecretRef)
+	dnsZoneClient, err := a.azureClientFactory.DNSZone()
 	if err != nil {
 		return util.DetermineError(fmt.Errorf("could not create Azure DNS zone client: %+v", err), helper.KnownCodes)
 	}
-	dnsRecordSetClient, err := a.azureClientFactory.DNSRecordSet(ctx, dns.Spec.SecretRef)
+	dnsRecordSetClient, err := a.azureClientFactory.DNSRecordSet()
 	if err != nil {
 		return util.DetermineError(fmt.Errorf("could not create Azure DNS recordset client: %+v", err), helper.KnownCodes)
 	}
@@ -109,11 +108,11 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, dns *extensio
 // Delete deletes the DNSRecord.
 func (a *actuator) Delete(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, cluster *extensionscontroller.Cluster) error {
 	// Create Azure DNS zone and recordset clients
-	dnsZoneClient, err := a.azureClientFactory.DNSZone(ctx, dns.Spec.SecretRef)
+	dnsZoneClient, err := a.azureClientFactory.DNSZone()
 	if err != nil {
 		return util.DetermineError(fmt.Errorf("could not create Azure DNS zone client: %+v", err), helper.KnownCodes)
 	}
-	dnsRecordSetClient, err := a.azureClientFactory.DNSRecordSet(ctx, dns.Spec.SecretRef)
+	dnsRecordSetClient, err := a.azureClientFactory.DNSRecordSet()
 	if err != nil {
 		return util.DetermineError(fmt.Errorf("could not create Azure DNS recordset client: %+v", err), helper.KnownCodes)
 	}
@@ -155,7 +154,7 @@ func (a *actuator) getZone(ctx context.Context, log logr.Logger, dns *extensions
 	default:
 		// The zone is not specified in the resource status or spec. Try to determine the zone by
 		// getting all zones of the account and searching for the longest zone name that is a suffix of dns.spec.Name
-		zones, err := dnsZoneClient.GetAll(ctx)
+		zones, err := dnsZoneClient.List(ctx)
 		if err != nil {
 			return "", &reconcilerutils.RequeueAfterError{
 				Cause:        fmt.Errorf("could not get DNS zones: %+v", err),
