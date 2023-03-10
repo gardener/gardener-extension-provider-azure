@@ -30,8 +30,9 @@ spec:
       role: driver-{{ .role }}
   template:
     metadata:
-{{- if .Values.podAnnotations }}
       annotations:
+        node.gardener.cloud/wait-for-csi-node-azure: {{ include (print "csi-driver-node.provisioner-" .role) . }}
+{{- if .Values.podAnnotations }}
 {{ toYaml .Values.podAnnotations | indent 8 }}
 {{- end }}
       labels:
