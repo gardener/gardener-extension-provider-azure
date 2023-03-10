@@ -152,7 +152,7 @@ func (a *actuator) getZone(ctx context.Context, log logr.Logger, dns *extensions
 	default:
 		// The zone is not specified in the resource status or spec. Try to determine the zone by
 		// getting all zones of the account and searching for the longest zone name that is a suffix of dns.spec.Name
-		zones, err := dnsZoneClient.GetAll(ctx)
+		zones, err := dnsZoneClient.List(ctx)
 		if err != nil {
 			return "", &reconcilerutils.RequeueAfterError{
 				Cause:        fmt.Errorf("could not get DNS zones: %+v", err),

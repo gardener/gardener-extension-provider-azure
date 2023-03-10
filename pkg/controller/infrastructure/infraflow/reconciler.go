@@ -19,17 +19,17 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow/shared"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils/flow"
 	"github.com/go-logr/logr"
 	"k8s.io/utils/pointer"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow/shared"
 )
 
 // Key names for the whiteboard object to pass results between the reconcilation tasks
@@ -60,7 +60,15 @@ func (f *FlowReconciler) Delete(ctx context.Context, infra *extensionsv1alpha1.I
 	if err != nil {
 		return err
 	}
-	return reconciler.Delete(ctx)
+
+	graph := flow.NewGraph("Azure infrastructure deletion")
+	foreignSubnets := f.addTask(graph, "delete subnets in foreign resource group", reconciler.deleteSubnetsInForeignGroup)
+	f.addTask(graph, "delete resource group", reconciler.deleteResourceGroup, shared.Dependencies(foreignSubnets))
+	fl := graph.Compile()
+	if err := fl.Run(ctx, flow.Opts{}); err != nil {
+		return flow.Causes(err)
+	}
+	return nil
 }
 
 // Reconcile reconciles all resources
@@ -81,26 +89,26 @@ func (f FlowReconciler) buildReconcileGraph(reconciler *azureReconciler) *flow.G
 	whiteboard := shared.NewWhiteboard()
 
 	g := flow.NewGraph("Azure infrastructure reconcilation")
-	resourceGroup := f.addTask(g, "resource group creation", reconciler.ResourceGroup)
+	resourceGroup := f.addTask(g, "resource group creation", reconciler.EnsureResourceGroup)
 
-	vnet := f.addTask(g, "vnet creation", reconciler.Vnet, shared.Dependencies(resourceGroup))
+	vnet := f.addTask(g, "vnet creation", reconciler.EnsureVnet, shared.Dependencies(resourceGroup))
 
-	f.addTask(g, "availability set creation", reconciler.AvailabilitySet, shared.Dependencies(resourceGroup))
+	f.addTask(g, "availability set creation", reconciler.EnsureAvailabilitySet, shared.Dependencies(resourceGroup))
 
 	routeTable := f.addTask(g, "route table creation", func(ctx context.Context) error {
-		routeTable, err := reconciler.RouteTables(ctx)
+		routeTable, err := reconciler.EnsureRouteTables(ctx)
 		whiteboard.Set(routeTableID, *routeTable.ID)
 		return err
 	}, shared.Dependencies(resourceGroup))
 
 	securityGroup := f.addTask(g, "security group creation", func(ctx context.Context) error {
-		securityGroup, err := reconciler.SecurityGroups(ctx)
+		securityGroup, err := reconciler.EnsureSecurityGroups(ctx)
 		whiteboard.Set(sGroupID, *securityGroup.ID)
 		return err
 	}, shared.Dependencies(resourceGroup))
 
 	ip := f.addTask(g, "ips creation", func(ctx context.Context) error {
-		ips, err := reconciler.PublicIPs(ctx)
+		ips, err := reconciler.EnsurePublicIPs(ctx)
 		if err != nil {
 			return err
 		}
@@ -113,8 +121,8 @@ func (f FlowReconciler) buildReconcileGraph(reconciler *azureReconciler) *flow.G
 	}, shared.Dependencies(resourceGroup))
 
 	natGateway := f.addTask(g, "nat gateway creation", func(ctx context.Context) error {
-		ips := whiteboard.GetObject(publicIPMap).(map[string][]network.PublicIPAddress)
-		resp, err := reconciler.NatGateways(ctx, ips)
+		ips := whiteboard.GetObject(publicIPMap).(map[string][]*armnetwork.PublicIPAddress)
+		resp, err := reconciler.EnsureNatGateways(ctx, ips)
 		whiteboard.SetObject(natGatewayMap, resp)
 		return err
 	}, shared.Dependencies(ip))
@@ -126,8 +134,8 @@ func (f FlowReconciler) buildReconcileGraph(reconciler *azureReconciler) *flow.G
 		securityGroup := armnetwork.SecurityGroup{
 			ID: whiteboard.Get(sGroupID),
 		}
-		natGateway := whiteboard.GetObject(natGatewayMap).(map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse)
-		return reconciler.Subnets(ctx, securityGroup, routeTable, natGateway)
+		natGateway := whiteboard.GetObject(natGatewayMap).(map[string]*armnetwork.NatGateway)
+		return reconciler.EnsureSubnets(ctx, securityGroup, routeTable, natGateway)
 	}, shared.Dependencies(securityGroup), shared.Dependencies(routeTable), shared.Dependencies(natGateway), shared.Dependencies(vnet))
 	return g
 

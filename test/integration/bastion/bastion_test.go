@@ -26,13 +26,6 @@ import (
 	"path/filepath"
 	"time"
 
-	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	azureinstall "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/install"
-	azurev1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	bastionctrl "github.com/gardener/gardener-extension-provider-azure/pkg/controller/bastion"
-	. "github.com/gardener/gardener-extension-provider-azure/test/integration/bastion"
-
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
@@ -61,6 +54,13 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+
+	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	azureinstall "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/install"
+	azurev1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	bastionctrl "github.com/gardener/gardener-extension-provider-azure/pkg/controller/bastion"
+	. "github.com/gardener/gardener-extension-provider-azure/test/integration/bastion"
 )
 
 var VNetCIDR = "10.250.0.0/16"
@@ -674,6 +674,20 @@ func checkSecurityRuleDoesNotExist(ctx context.Context, az *azureClientSet, opti
 	Expect(ignoreAzureNotFoundError(err)).To(Succeed())
 }
 
+// ruleExist is similar to bastionctrl.RuleExist but for the old network client
+func ruleExist(ruleName *string, rules *[]network.SecurityRule) bool {
+	if ruleName == nil {
+		return false
+	}
+
+	for _, rule := range *rules {
+		if rule.Name != nil && *rule.Name == *ruleName {
+			return true
+		}
+	}
+	return false
+}
+
 func verifyCreation(ctx context.Context, az *azureClientSet, options *bastionctrl.Options) {
 	By("RuleExist")
 	// does not have authorization to performsecurityRules get due to global rule. use security group to check it.
@@ -681,9 +695,9 @@ func verifyCreation(ctx context.Context, az *azureClientSet, options *bastionctr
 	Expect(err).NotTo(HaveOccurred())
 
 	// bastion NSG - Check Ingress / Egress firewalls created
-	bastionctrl.RuleExist(pointer.StringPtr(bastionctrl.NSGIngressAllowSSHResourceNameIPv4(options.BastionInstanceName)), sg.SecurityRules)
-	bastionctrl.RuleExist(pointer.StringPtr(bastionctrl.NSGEgressDenyAllResourceName(options.BastionInstanceName)), sg.SecurityRules)
-	bastionctrl.RuleExist(pointer.StringPtr(bastionctrl.NSGEgressAllowOnlyResourceName(options.BastionInstanceName)), sg.SecurityRules)
+	ruleExist(pointer.StringPtr(bastionctrl.NSGIngressAllowSSHResourceNameIPv4(options.BastionInstanceName)), sg.SecurityRules)
+	ruleExist(pointer.StringPtr(bastionctrl.NSGEgressDenyAllResourceName(options.BastionInstanceName)), sg.SecurityRules)
+	ruleExist(pointer.StringPtr(bastionctrl.NSGEgressAllowOnlyResourceName(options.BastionInstanceName)), sg.SecurityRules)
 
 	By("checking bastion instance")
 	// bastion instance

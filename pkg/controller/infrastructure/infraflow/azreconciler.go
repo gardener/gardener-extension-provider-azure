@@ -21,13 +21,13 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"k8s.io/utils/pointer"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
 
 // azureReconciler allows to reconcile the individual cloud resources
@@ -102,14 +102,18 @@ func (f azureReconciler) enrichStatusWithIdentity(ctx context.Context, status *v
 
 // Delete deletes all resources managed by the reconciler
 func (f azureReconciler) Delete(ctx context.Context) error {
+	if err := f.deleteSubnetsInForeignGroup(ctx); err != nil {
+		return fmt.Errorf("failed to delete foreign subnet: %w", err)
+	}
+	return f.deleteResourceGroup(ctx)
+}
+
+func (f azureReconciler) deleteResourceGroup(ctx context.Context) error {
 	client, err := f.factory.Group()
 	if err != nil {
 		return err
 	}
-	if err := f.deleteSubnetsInForeignGroup(ctx); err != nil {
-		return fmt.Errorf("failed to delete foreign subnet: %w", err)
-	}
-	return client.DeleteIfExists(ctx, f.tf.ResourceGroup())
+	return client.Delete(ctx, f.tf.ResourceGroup())
 }
 
 // deleteSubnetsInForeignGroup deletes all managed subnets in a foreign resource group
@@ -134,8 +138,8 @@ func (f azureReconciler) deleteSubnetsInForeignGroup(ctx context.Context) error 
 	return nil
 }
 
-// Vnet creates or updates a Vnet
-func (f azureReconciler) Vnet(ctx context.Context) error {
+// EnsureVnet creates or updates a Vnet
+func (f azureReconciler) EnsureVnet(ctx context.Context) error {
 	if f.tf.isCreate(Vnet) {
 		client, err := f.factory.Vnet()
 		if err != nil {
@@ -158,14 +162,15 @@ func (f azureReconciler) Vnet(ctx context.Context) error {
 			parameters.Properties.EnableDdosProtection = to.Ptr(true)
 			parameters.Properties.DdosProtectionPlan = &armnetwork.SubResource{ID: ddosId}
 		}
-		return client.CreateOrUpdate(ctx, f.tf.ResourceGroup(), f.tf.Vnet().Name(), parameters)
+		_, err = client.CreateOrUpdate(ctx, f.tf.ResourceGroup(), f.tf.Vnet().Name(), parameters)
+		return err
 	} else {
 		return nil // TODO update foreign vnet?
 	}
 }
 
-// RouteTables creates or updates a RouteTable
-func (f azureReconciler) RouteTables(ctx context.Context) (armnetwork.RouteTable, error) {
+// EnsureRouteTables creates or updates a RouteTable
+func (f azureReconciler) EnsureRouteTables(ctx context.Context) (armnetwork.RouteTable, error) {
 	client, err := f.factory.RouteTables()
 	if err != nil {
 		return armnetwork.RouteTable{}, err
@@ -175,24 +180,24 @@ func (f azureReconciler) RouteTables(ctx context.Context) (armnetwork.RouteTable
 	}
 	resp, err := client.CreateOrUpdate(ctx, f.tf.ResourceGroup(), f.tf.RouteTableName(), parameters)
 
-	return resp.RouteTable, err
+	return *resp, err
 }
 
-// SecurityGroups creates or updates a SecurityGroup
-func (f azureReconciler) SecurityGroups(ctx context.Context) (*network.SecurityGroup, error) {
+// EnsureSecurityGroups creates or updates a SecurityGroup
+func (f azureReconciler) EnsureSecurityGroups(ctx context.Context) (*armnetwork.SecurityGroup, error) {
 	client, err := f.factory.NetworkSecurityGroup()
 	if err != nil {
 		return nil, err
 	}
-	parameters := network.SecurityGroup{
+	parameters := armnetwork.SecurityGroup{
 		Location: to.Ptr(f.tf.Region()),
 	}
 	resp, err := client.CreateOrUpdate(ctx, f.tf.ResourceGroup(), f.tf.SecurityGroupName(), parameters)
 	return resp, err
 }
 
-// AvailabilitySet creates or updates an AvailabilitySet
-func (f azureReconciler) AvailabilitySet(ctx context.Context) error {
+// EnsureAvailabilitySet creates or updates an AvailabilitySet
+func (f azureReconciler) EnsureAvailabilitySet(ctx context.Context) error {
 	if f.tf.isCreate(AvailabilitySet) {
 		asClient, err := f.factory.AvailabilitySet()
 		if err != nil {
@@ -214,9 +219,9 @@ func (f azureReconciler) AvailabilitySet(ctx context.Context) error {
 	}
 }
 
-// PublicIPs creates or updates PublicIPs for the NATs
-func (f azureReconciler) PublicIPs(ctx context.Context) (map[string][]network.PublicIPAddress, error) {
-	res := make(map[string][]network.PublicIPAddress)
+// EnsurePublicIPs creates or updates PublicIPs for the NATs
+func (f azureReconciler) EnsurePublicIPs(ctx context.Context) (map[string][]*armnetwork.PublicIPAddress, error) {
+	res := make(map[string][]*armnetwork.PublicIPAddress)
 	client, err := f.factory.PublicIP()
 	if err != nil {
 		return res, err
@@ -230,28 +235,28 @@ func (f azureReconciler) PublicIPs(ctx context.Context) (map[string][]network.Pu
 		return res, nil
 	}
 	for _, ip := range ips {
-		params := network.PublicIPAddress{
+		params := armnetwork.PublicIPAddress{
 			Location: to.Ptr(f.tf.Region()),
-			Sku:      &network.PublicIPAddressSku{Name: network.PublicIPAddressSkuNameStandard},
-			PublicIPAddressPropertiesFormat: &network.PublicIPAddressPropertiesFormat{
-				PublicIPAllocationMethod: network.Static,
+			SKU:      &armnetwork.PublicIPAddressSKU{Name: to.Ptr(armnetwork.PublicIPAddressSKUNameStandard)},
+			Properties: &armnetwork.PublicIPAddressPropertiesFormat{
+				PublicIPAllocationMethod: to.Ptr(armnetwork.IPAllocationMethodStatic),
 			},
 		}
 		if ip.Zone() != nil {
-			params.Zones = &[]string{*ip.Zone()}
+			params.Zones = []*string{ip.Zone()}
 		}
 		resp, err := client.CreateOrUpdate(ctx, f.tf.ResourceGroup(), ip.IpName(), params)
 		if err != nil {
 			return res, err
 		}
-		res[ip.SubnetName()] = append(res[ip.SubnetName()], *resp)
+		res[ip.SubnetName()] = append(res[ip.SubnetName()], resp)
 
 	}
 	return res, nil
 }
 
 // EnrichResponseWithUserManagedIPs adds the IDs of user managed IPs to the input map of associated IPs of the NATs
-func (f azureReconciler) EnrichResponseWithUserManagedIPs(ctx context.Context, res map[string][]network.PublicIPAddress) error {
+func (f azureReconciler) EnrichResponseWithUserManagedIPs(ctx context.Context, res map[string][]*armnetwork.PublicIPAddress) error {
 	ips := f.tf.UserManagedIPs()
 	if len(ips) == 0 {
 		return nil
@@ -261,9 +266,9 @@ func (f azureReconciler) EnrichResponseWithUserManagedIPs(ctx context.Context, r
 		return err
 	}
 	for _, ip := range ips {
-		resp, err := client.Get(ctx, ip.ResourceGroup, ip.Name, "")
+		resp, err := client.Get(ctx, ip.ResourceGroup, ip.Name)
 		if err == nil {
-			res[ip.SubnetName] = append(res[ip.SubnetName], network.PublicIPAddress{
+			res[ip.SubnetName] = append(res[ip.SubnetName], &armnetwork.PublicIPAddress{
 				ID: resp.ID,
 			})
 		} else {
@@ -282,9 +287,9 @@ func checkAllZonesWithFn(name string, zones []zoneTf, check func(zone zoneTf, na
 	return false
 }
 
-// NatGateways creates or updates NAT Gateways. It also deletes old NATGateways.
-func (f azureReconciler) NatGateways(ctx context.Context, ips map[string][]network.PublicIPAddress) (res map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse, err error) {
-	res = make(map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse)
+// EnsureNatGateways creates or updates NAT Gateways. It also deletes old NATGateways.
+func (f azureReconciler) EnsureNatGateways(ctx context.Context, ips map[string][]*armnetwork.PublicIPAddress) (map[string]*armnetwork.NatGateway, error) {
+	res := make(map[string]*armnetwork.NatGateway)
 	client, err := f.factory.NatGateway()
 	if err != nil {
 		return res, err
@@ -303,7 +308,7 @@ func (f azureReconciler) NatGateways(ctx context.Context, ips map[string][]netwo
 	return res, nil
 }
 
-func (f azureReconciler) createOrUpdateNatGateway(ctx context.Context, nat zoneTf, ips map[string][]network.PublicIPAddress, client client.NatGateway) (armnetwork.NatGatewaysClientCreateOrUpdateResponse, error) {
+func (f azureReconciler) createOrUpdateNatGateway(ctx context.Context, nat zoneTf, ips map[string][]*armnetwork.PublicIPAddress, client client.NatGateway) (*armnetwork.NatGateway, error) {
 	params := armnetwork.NatGateway{
 		Properties: &armnetwork.NatGatewayPropertiesFormat{
 			IdleTimeoutInMinutes: nat.idleConnectionTimeoutMinutes,
@@ -313,7 +318,7 @@ func (f azureReconciler) createOrUpdateNatGateway(ctx context.Context, nat zoneT
 	}
 	ipResources, ok := ips[nat.SubnetName()]
 	if !ok {
-		return armnetwork.NatGatewaysClientCreateOrUpdateResponse{}, fmt.Errorf("no public IP found for NAT Gateway %s", nat.NatName())
+		return nil, fmt.Errorf("no public IP found for NAT Gateway %s", nat.NatName())
 	} else {
 		params.Properties.PublicIPAddresses = []*armnetwork.SubResource{}
 		for _, ip := range ipResources {
@@ -325,23 +330,24 @@ func (f azureReconciler) createOrUpdateNatGateway(ctx context.Context, nat zoneT
 	}
 	resp, err := client.CreateOrUpdate(ctx, f.tf.ResourceGroup(), nat.NatName(), params)
 	if err != nil {
-		return armnetwork.NatGatewaysClientCreateOrUpdateResponse{}, err
+		return nil, err
 	}
 	return resp, nil
 }
 
-// ResourceGroup creates or updates the resource group
-func (f azureReconciler) ResourceGroup(ctx context.Context) error {
+// EnsureResourceGroup creates or updates the resource group
+func (f azureReconciler) EnsureResourceGroup(ctx context.Context) error {
 	rgClient, err := f.factory.Group()
 	if err != nil {
 		return err
 	}
-	return rgClient.CreateOrUpdate(ctx, f.tf.ResourceGroup(), f.tf.Region())
+	_, err = rgClient.CreateOrUpdate(ctx, f.tf.ResourceGroup(), f.tf.Region())
+	return err
 }
 
 // delete IPs of NAT Gateways that got disabled
 func (f azureReconciler) deleteOldNatIPs(ctx context.Context, client client.PublicIP) error {
-	existingIPs, err := client.GetAll(ctx, f.tf.ResourceGroup())
+	existingIPs, err := client.List(ctx, f.tf.ResourceGroup())
 	if err != nil {
 		return err
 	}
@@ -362,7 +368,7 @@ func (f azureReconciler) deleteOldNatIPs(ctx context.Context, client client.Publ
 
 // delete NAT Gateways that got disabled
 func (f azureReconciler) deleteOldNatGateways(ctx context.Context, client client.NatGateway) error {
-	existingNats, err := client.GetAll(ctx, f.tf.ResourceGroup())
+	existingNats, err := client.List(ctx, f.tf.ResourceGroup())
 	if err != nil {
 		return err
 	}
@@ -381,8 +387,8 @@ func (f azureReconciler) deleteOldNatGateways(ctx context.Context, client client
 	return nil
 }
 
-// Subnets creates or updates subnets
-func (f azureReconciler) Subnets(ctx context.Context, securityGroup armnetwork.SecurityGroup, routeTable armnetwork.RouteTable, nats map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse) (err error) {
+// EnsureSubnets creates or updates subnets
+func (f azureReconciler) EnsureSubnets(ctx context.Context, securityGroup armnetwork.SecurityGroup, routeTable armnetwork.RouteTable, nats map[string]*armnetwork.NatGateway) (err error) {
 	subnetClient, err := f.factory.Subnet()
 	if err != nil {
 		return err
@@ -419,7 +425,7 @@ func (f azureReconciler) Subnets(ctx context.Context, securityGroup armnetwork.S
 		if vnetRgroup == nil {
 			vnetRgroup = to.Ptr(f.tf.ResourceGroup()) // expect that it was created previously
 		}
-		err = subnetClient.CreateOrUpdate(ctx, *vnetRgroup, f.tf.Vnet().Name(), subnet.SubnetName(), parameters)
+		_, err = subnetClient.CreateOrUpdate(ctx, *vnetRgroup, f.tf.Vnet().Name(), subnet.SubnetName(), parameters)
 	}
 	return err
 }

@@ -23,8 +23,8 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 )
 
-// GetAll returns a map of all zone names mapped to their IDs.
-func (c DNSZoneClient) GetAll(ctx context.Context) (map[string]string, error) {
+// List returns a map of all zone names mapped to their IDs.
+func (c DNSZoneClient) List(ctx context.Context) (map[string]string, error) {
 	zones := make(map[string]string)
 
 	results, err := c.client.ListComplete(ctx, nil)

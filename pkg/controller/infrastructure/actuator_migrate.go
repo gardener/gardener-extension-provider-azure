@@ -16,18 +16,19 @@ package infrastructure
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
+	"github.com/gardener/gardener/extensions/pkg/util"
+	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/go-logr/logr"
 
-	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 )
 
 // Migrate implements infrastructure.Actuator.
 func (a *actuator) Migrate(ctx context.Context, log logr.Logger, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
 	if err := cleanupTerraform(ctx, log, a, infra); err != nil {
-		return fmt.Errorf("failed to cleanup terraform resources: %w", err)
+		return util.DetermineError(err, helper.KnownCodes)
 	}
 	return nil
 }

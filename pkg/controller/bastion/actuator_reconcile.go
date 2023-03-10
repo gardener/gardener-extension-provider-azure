@@ -21,18 +21,19 @@ import (
 	"net"
 	"time"
 
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
-	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
-
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	"github.com/gardener/gardener/extensions/pkg/controller"
+	"github.com/gardener/gardener/extensions/pkg/util"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	ctrlerror "github.com/gardener/gardener/pkg/controllerutils/reconciler"
 	"github.com/gardener/gardener/pkg/extensions"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
+	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
 
 // bastionEndpoints holds the endpoints the bastion host provides
@@ -66,12 +67,12 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 
 	publicIP, err := ensurePublicIPAddress(ctx, log, factory, opt)
 	if err != nil {
-		return err
+		return util.DetermineError(err, helper.KnownCodes)
 	}
 
 	nic, err := ensureNic(ctx, log, factory, infrastructureStatus, opt, publicIP)
 	if err != nil {
-		return err
+		return util.DetermineError(err, helper.KnownCodes)
 	}
 
 	opt.NicID = *nic.ID
@@ -79,7 +80,7 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 	// assume it's not possible to not have an ipv4 address
 	opt.PrivateIPAddressV4, err = getPrivateIPv4Address(nic)
 	if err != nil {
-		return err
+		return util.DetermineError(err, helper.KnownCodes)
 	}
 
 	opt.PrivateIPAddressV6, err = getPrivateIPv6Address(nic)
@@ -89,18 +90,18 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 
 	err = ensureNetworkSecurityGroups(ctx, log, factory, opt)
 	if err != nil {
-		return err
+		return util.DetermineError(err, helper.KnownCodes)
 	}
 
 	err = ensureComputeInstance(ctx, log, bastion, factory, opt)
 	if err != nil {
-		return err
+		return util.DetermineError(err, helper.KnownCodes)
 	}
 
 	// check if the instance already exists and has an IP
 	endpoints, err := getInstanceEndpoints(nic, publicIP)
 	if err != nil {
-		return err
+		return util.DetermineError(err, helper.KnownCodes)
 	}
 
 	if !endpoints.Ready() {
@@ -150,15 +151,15 @@ func getInfrastructureStatus(ctx context.Context, a *actuator, cluster *extensio
 	return infrastructureStatus, nil
 }
 
-func getPrivateIPv4Address(nic *network.Interface) (string, error) {
-	if nic.IPConfigurations == nil {
-		return "", fmt.Errorf("nic.IPConfigurations %s is nil", *nic.ID)
+func getPrivateIPv4Address(nic *armnetwork.Interface) (string, error) {
+	if len(nic.Properties.IPConfigurations) == 0 {
+		return "", fmt.Errorf("nic.IPConfigurations %s is empty", *nic.ID)
 	}
 
-	ipConfigurations := *nic.IPConfigurations
+	ipConfigurations := nic.Properties.IPConfigurations
 	for _, ipConfiguration := range ipConfigurations {
-		if ipConfiguration.PrivateIPAddress != nil {
-			ipv4 := net.ParseIP(*ipConfiguration.PrivateIPAddress).To4()
+		if ipConfiguration.Properties.PrivateIPAddress != nil {
+			ipv4 := net.ParseIP(*ipConfiguration.Properties.PrivateIPAddress).To4()
 			if ipv4 != nil {
 				return ipv4.String(), nil
 			}
@@ -168,15 +169,15 @@ func getPrivateIPv4Address(nic *network.Interface) (string, error) {
 	return "", fmt.Errorf("failed to get IPv4 PrivateIPAddress on nic %s", *nic.ID)
 }
 
-func getPrivateIPv6Address(nic *network.Interface) (string, error) {
-	if nic.IPConfigurations == nil {
-		return "", fmt.Errorf("nic.IPConfigurations %s is nil", *nic.ID)
+func getPrivateIPv6Address(nic *armnetwork.Interface) (string, error) {
+	if len(nic.Properties.IPConfigurations) == 0 {
+		return "", fmt.Errorf("nic.IPConfigurations %s is empty", *nic.ID)
 	}
 
-	ipConfigurations := *nic.IPConfigurations
+	ipConfigurations := nic.Properties.IPConfigurations
 	for _, ipConfiguration := range ipConfigurations {
-		if ipConfiguration.PrivateIPAddress != nil {
-			ip := net.ParseIP(*ipConfiguration.PrivateIPAddress)
+		if ipConfiguration.Properties.PrivateIPAddress != nil {
+			ip := net.ParseIP(*ipConfiguration.Properties.PrivateIPAddress)
 			if len(ip.To4()) == net.IPv4len {
 				continue
 			}
@@ -196,11 +197,11 @@ func ensureNetworkSecurityGroups(ctx context.Context, log logr.Logger, factory a
 		return err
 	}
 
-	if expectedNSGRulesPresentAndValid(networkSecGroupResp.SecurityRules, expectedNSGRuleList) {
+	if expectedNSGRulesPresentAndValid(networkSecGroupResp.Properties.SecurityRules, expectedNSGRuleList) {
 		return nil
 	}
 
-	addOrReplaceNsgRulesDefinition(networkSecGroupResp.SecurityRules, expectedNSGRuleList)
+	networkSecGroupResp.Properties.SecurityRules = addOrReplaceNsgRulesDefinition(networkSecGroupResp.Properties.SecurityRules, expectedNSGRuleList)
 
 	if err := createOrUpdateNetworkSecGroup(ctx, factory, opt, networkSecGroupResp); err != nil {
 		return err
@@ -208,14 +209,14 @@ func ensureNetworkSecurityGroups(ctx context.Context, log logr.Logger, factory a
 
 	log.Info("created or updated bastion security rules of network security group",
 		"nsg", opt.SecurityGroupName,
-		"rules", networkSecGroupResp.SecurityRules,
+		"rules", networkSecGroupResp.Properties.SecurityRules,
 	)
 
 	return nil
 }
 
-func prepareNSGRules(opt *Options) *[]network.SecurityRule {
-	res := make([]network.SecurityRule, 0)
+func prepareNSGRules(opt *Options) []*armnetwork.SecurityRule {
+	res := make([]*armnetwork.SecurityRule, 0)
 	res = append(res, nsgEgressDenyAllIPv4(opt))
 	res = append(res, nsgEgressAllowSSHToWorkerIPv4(opt))
 
@@ -238,17 +239,17 @@ func prepareNSGRules(opt *Options) *[]network.SecurityRule {
 		res = append(res, nsgIngressAllowSSH(ipv6Name, opt.PrivateIPAddressV6, ipv6cidr))
 	}
 
-	return &res
+	return res
 }
 
-func ensurePublicIPAddress(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*network.PublicIPAddress, error) {
+func ensurePublicIPAddress(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*armnetwork.PublicIPAddress, error) {
 	publicIP, err := getPublicIP(ctx, log, factory, opt)
 	if err != nil {
 		return nil, err
 	}
 	if publicIP != nil {
-		if publicIP.ProvisioningState != "Succeeded" {
-			return nil, fmt.Errorf("public IP with name %v is not in \"Succeeded\" status: %s", publicIP.Name, publicIP.ProvisioningState)
+		if *publicIP.Properties.ProvisioningState != "Succeeded" {
+			return nil, fmt.Errorf("public IP with name %v is not in \"Succeeded\" status: %s", publicIP.Name, *publicIP.Properties.ProvisioningState)
 		}
 		return publicIP, nil
 	}
@@ -260,7 +261,7 @@ func ensurePublicIPAddress(ctx context.Context, log logr.Logger, factory azurecl
 		return nil, err
 	}
 
-	log.Info("bastion compute instance public ip address created", "publicIP", *publicIP.IPAddress)
+	log.Info("bastion compute instance public ip address created", "publicIP", *publicIP.Properties.IPAddress)
 	return publicIP, nil
 }
 
@@ -271,13 +272,13 @@ func ensureComputeInstance(ctx context.Context, log logr.Logger, bastion *extens
 	}
 
 	if instance != nil {
-		if instance.ProvisioningState == nil {
+		if instance.Properties.ProvisioningState == nil {
 			return fmt.Errorf("instance not running, status: nil")
 		}
-		if *instance.ProvisioningState == "Succeeded" {
+		if *instance.Properties.ProvisioningState == "Succeeded" {
 			return nil
 		} else {
-			return fmt.Errorf("instance not running, status: %v", *instance.ProvisioningState)
+			return fmt.Errorf("instance not running, status: %v", *instance.Properties.ProvisioningState)
 		}
 	}
 
@@ -296,14 +297,14 @@ func ensureComputeInstance(ctx context.Context, log logr.Logger, bastion *extens
 	return nil
 }
 
-func ensureNic(ctx context.Context, log logr.Logger, factory azureclient.Factory, infrastructureStatus *azure.InfrastructureStatus, opt *Options, publicIP *network.PublicIPAddress) (*network.Interface, error) {
+func ensureNic(ctx context.Context, log logr.Logger, factory azureclient.Factory, infrastructureStatus *azure.InfrastructureStatus, opt *Options, publicIP *armnetwork.PublicIPAddress) (*armnetwork.Interface, error) {
 	nic, err := getNic(ctx, log, factory, opt)
 	if err != nil {
 		return nil, err
 	}
 	if nic != nil {
-		if nic.ProvisioningState != "Succeeded" {
-			return nil, fmt.Errorf("network interface with name %v is not in \"Succeeded\" status: %s", nic.Name, nic.ProvisioningState)
+		if *nic.Properties.ProvisioningState != "Succeeded" {
+			return nil, fmt.Errorf("network interface with name %v is not in \"Succeeded\" status: %s", nic.Name, *nic.Properties.ProvisioningState)
 		}
 		return nic, nil
 	}
@@ -334,7 +335,7 @@ func ensureNic(ctx context.Context, log logr.Logger, factory azureclient.Factory
 	return nic, nil
 }
 
-func getInstanceEndpoints(nic *network.Interface, publicIP *network.PublicIPAddress) (*bastionEndpoints, error) {
+func getInstanceEndpoints(nic *armnetwork.Interface, publicIP *armnetwork.PublicIPAddress) (*bastionEndpoints, error) {
 	endpoints := &bastionEndpoints{}
 
 	internalIP, err := getPrivateIPv4Address(nic)
@@ -349,7 +350,7 @@ func getInstanceEndpoints(nic *network.Interface, publicIP *network.PublicIPAddr
 	// Azure does not automatically assign a public dns name to the instance (in contrast to e.g. AWS).
 	// As we provide an externalIP to connect to the bastion, having a public dns name would just be an alternative way to connect to the bastion.
 	// Out of this reason, we spare the effort to create a PTR record (see https://docs.microsoft.com/en-us/azure/dns/dns-reverse-dns-hosting) just for the sake of having it.
-	externalIP := publicIP.IPAddress
+	externalIP := publicIP.Properties.IPAddress
 	if ingress := addressToIngress(nil, externalIP); ingress != nil {
 		endpoints.public = ingress
 	}
@@ -382,20 +383,20 @@ func addressToIngress(dnsName *string, ipAddress *string) *corev1.LoadBalancerIn
 	return ingress
 }
 
-func expectedNSGRulesPresentAndValid(existingRules *[]network.SecurityRule, expectedRules *[]network.SecurityRule) bool {
+func expectedNSGRulesPresentAndValid(existingRules []*armnetwork.SecurityRule, expectedRules []*armnetwork.SecurityRule) bool {
 	if existingRules == nil || expectedRules == nil {
 		return false
 	}
 
-	for _, desRule := range *expectedRules {
+	for _, desRule := range expectedRules {
 		ruleExistAndValid := false
-		for _, existingRule := range *existingRules {
+		for _, existingRule := range existingRules {
 			// compare firewall rules by its names because names here kind of "IDs"
 			if equalNotNil(desRule.Name, existingRule.Name) {
-				if notEqualNotNil(desRule.SourceAddressPrefix, existingRule.SourceAddressPrefix) {
+				if notEqualNotNil(desRule.Properties.SourceAddressPrefix, existingRule.Properties.SourceAddressPrefix) {
 					return false
 				}
-				if notEqualNotNil(desRule.DestinationAddressPrefix, existingRule.DestinationAddressPrefix) {
+				if notEqualNotNil(desRule.Properties.DestinationAddressPrefix, existingRule.Properties.DestinationAddressPrefix) {
 					return false
 				}
 				ruleExistAndValid = true
@@ -408,23 +409,23 @@ func expectedNSGRulesPresentAndValid(existingRules *[]network.SecurityRule, expe
 	return true
 }
 
-func addOrReplaceNsgRulesDefinition(existingRules *[]network.SecurityRule, desiredRules *[]network.SecurityRule) {
+func addOrReplaceNsgRulesDefinition(existingRules []*armnetwork.SecurityRule, desiredRules []*armnetwork.SecurityRule) (newRules []*armnetwork.SecurityRule) {
 	if existingRules == nil || desiredRules == nil {
 		return
 	}
 
-	result := make([]network.SecurityRule, 0, len(*existingRules)+len(*desiredRules))
+	result := make([]*armnetwork.SecurityRule, 0, len(existingRules)+len(desiredRules))
 
 	bookedPriorityIDs := make(map[int32]bool)
-	for _, rule := range *existingRules {
-		if rule.Priority == nil {
+	for _, rule := range existingRules {
+		if rule.Properties.Priority == nil {
 			continue
 		}
-		bookedPriorityIDs[*rule.Priority] = true
+		bookedPriorityIDs[*rule.Properties.Priority] = true
 	}
 
 	// filter rules intended to be replaced
-	for _, existentRule := range *existingRules {
+	for _, existentRule := range existingRules {
 		if RuleExist(existentRule.Name, desiredRules) {
 			continue
 		}
@@ -432,21 +433,22 @@ func addOrReplaceNsgRulesDefinition(existingRules *[]network.SecurityRule, desir
 	}
 
 	// ensure uniq priority numbers
-	for _, desiredRule := range *desiredRules {
-		desiredRule.Priority = findNextFreeNumber(bookedPriorityIDs, *desiredRule.Priority)
+	for _, desiredRule := range desiredRules {
+		desiredRule.Properties.Priority = findNextFreeNumber(bookedPriorityIDs, *desiredRule.Properties.Priority)
 	}
 
-	result = append(result, *desiredRules...)
-	*existingRules = result
+	result = append(result, desiredRules...)
+	newRules = result
+	return
 }
 
 // RuleExist checks if the rule with the given name is present in the list of rules.
-func RuleExist(ruleName *string, rules *[]network.SecurityRule) bool {
+func RuleExist(ruleName *string, rules []*armnetwork.SecurityRule) bool {
 	if ruleName == nil {
 		return false
 	}
 
-	for _, rule := range *rules {
+	for _, rule := range rules {
 		if rule.Name != nil && *rule.Name == *ruleName {
 			return true
 		}

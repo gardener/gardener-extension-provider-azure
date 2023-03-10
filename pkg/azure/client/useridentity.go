@@ -21,6 +21,7 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/adal"
 	azureRest "github.com/Azure/go-autorest/autorest/azure"
+
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
@@ -33,8 +34,12 @@ func NewManagedUserIdentityClient(auth internal.ClientAuth) (*ManagedUserIdentit
 }
 
 // Get returns a Managed User Identity by name.
-func (m ManagedUserIdentityClient) Get(ctx context.Context, resourceGroup, id string) (msi.Identity, error) {
-	return m.client.Get(ctx, resourceGroup, id)
+func (m ManagedUserIdentityClient) Get(ctx context.Context, resourceGroup, id string) (*msi.Identity, error) {
+	res, err := m.client.Get(ctx, resourceGroup, id)
+	if err != nil {
+		return nil, FilterNotFoundError(err)
+	}
+	return &res, nil
 }
 
 func getAuthorizer(tenantId, clientId, clientSecret string) (autorest.Authorizer, error) {

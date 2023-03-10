@@ -19,6 +19,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
@@ -36,40 +37,33 @@ func NewResourceGroupsClient(auth internal.ClientAuth) (*ResourceGroupClient, er
 func (c ResourceGroupClient) Get(ctx context.Context, resourceGroupName string) (*armresources.ResourceGroup, error) {
 	res, err := c.client.Get(ctx, resourceGroupName, nil)
 	if err != nil {
-		return nil, err
+		return nil, FilterNotFoundError(err)
 	}
 	return &res.ResourceGroup, err
 }
 
 // CreateOrUpdate creates or updates a resource group
-func (c ResourceGroupClient) CreateOrUpdate(ctx context.Context, resourceGroupName, location string) error {
-	_, err := c.client.CreateOrUpdate(
+func (c ResourceGroupClient) CreateOrUpdate(ctx context.Context, resourceGroupName, location string) (*armresources.ResourceGroup, error) {
+	res, err := c.client.CreateOrUpdate(
 		ctx,
 		resourceGroupName,
 		armresources.ResourceGroup{
 			Location: to.Ptr(location),
 		},
 		nil)
-	return err
+	return &res.ResourceGroup, err
 }
 
-// DeleteIfExists deletes a resource group if it exists.
-func (c ResourceGroupClient) DeleteIfExists(ctx context.Context, resourceGroupName string) error {
+// Delete deletes a resource group if it exists.
+func (c ResourceGroupClient) Delete(ctx context.Context, resourceGroupName string) error {
 	resourceGroupResp, err := c.client.BeginDelete(
 		ctx,
 		resourceGroupName,
 		nil)
 	if err != nil {
-		if IsAzureAPINotFoundError(err) {
-			return nil
-		} else {
-			return err
-		}
+		return FilterNotFoundError(err)
 	}
 	_, err = resourceGroupResp.PollUntilDone(ctx, nil)
-	if IsAzureAPINotFoundError(err) {
-		return nil
-	} // ignore if resource group is already deleted
 	return err
 }
 

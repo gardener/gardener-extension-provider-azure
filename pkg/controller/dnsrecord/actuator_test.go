@@ -17,10 +17,6 @@ package dnsrecord_test
 import (
 	"context"
 
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	mockazureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client/mock"
-	. "github.com/gardener/gardener-extension-provider-azure/pkg/controller/dnsrecord"
-
 	"github.com/gardener/gardener/extensions/pkg/controller/dnsrecord"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
@@ -33,6 +29,10 @@ import (
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	mockazureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client/mock"
+	. "github.com/gardener/gardener-extension-provider-azure/pkg/controller/dnsrecord"
 )
 
 const (
@@ -109,7 +109,7 @@ var _ = Describe("Actuator", func() {
 		It("should reconcile the DNSRecord", func() {
 			azureClientFactory.EXPECT().DNSZone().Return(azureDNSZoneClient, nil)
 			azureClientFactory.EXPECT().DNSRecordSet().Return(azureDNSRecordSetClient, nil)
-			azureDNSZoneClient.EXPECT().GetAll(ctx).Return(zones, nil)
+			azureDNSZoneClient.EXPECT().List(ctx).Return(zones, nil)
 			azureDNSRecordSetClient.EXPECT().CreateOrUpdate(ctx, zone, domainName, string(extensionsv1alpha1.DNSRecordTypeA), []string{address}, int64(120)).Return(nil)
 			azureDNSRecordSetClient.EXPECT().Delete(ctx, zone, "comment-"+domainName, "TXT").Return(nil)
 			sw.EXPECT().Patch(ctx, gomock.AssignableToTypeOf(&extensionsv1alpha1.DNSRecord{}), gomock.Any()).DoAndReturn(

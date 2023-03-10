@@ -18,18 +18,18 @@ import (
 	"context"
 	"fmt"
 
-	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	mockazureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client/mock"
-	. "github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
-	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	mockazureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client/mock"
+	. "github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 )
 
 const (

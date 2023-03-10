@@ -36,7 +36,7 @@ func ensureBackupBucket(ctx context.Context, client client.Client, factory azure
 	if err != nil {
 		return "", "", err
 	}
-	if err := groupClient.CreateOrUpdate(ctx, backupBucket.Name, backupBucket.Spec.Region); err != nil {
+	if _, err := groupClient.CreateOrUpdate(ctx, backupBucket.Name, backupBucket.Spec.Region); err != nil {
 		return "", "", err
 	}
 

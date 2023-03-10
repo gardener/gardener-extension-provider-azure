@@ -17,12 +17,14 @@ package backupbucket
 import (
 	"context"
 
-	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
-	"github.com/go-logr/logr"
-
 	"github.com/gardener/gardener/extensions/pkg/controller/backupbucket"
+	"github.com/gardener/gardener/extensions/pkg/util"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"github.com/go-logr/logr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
+	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
 
 type actuator struct {
@@ -50,19 +52,19 @@ func (a *actuator) Reconcile(ctx context.Context, _ logr.Logger, backupBucket *e
 	if backupBucket.Status.GeneratedSecretRef == nil {
 		storageAccountName, storageAccountKey, err := ensureBackupBucket(ctx, a.client, factory, backupBucket)
 		if err != nil {
-			return err
+			return util.DetermineError(err, helper.KnownCodes)
 		}
 		// Create the generated backupbucket secret.
 		if err := a.createBackupBucketGeneratedSecret(ctx, backupBucket, storageAccountName, storageAccountKey); err != nil {
-			return err
+			return util.DetermineError(err, helper.KnownCodes)
 		}
 	}
 
 	storageClient, err := factory.Storage(ctx, *backupBucket.Status.GeneratedSecretRef)
 	if err != nil {
-		return err
+		return util.DetermineError(err, helper.KnownCodes)
 	}
-	return storageClient.CreateContainerIfNotExists(ctx, backupBucket.Name)
+	return util.DetermineError(storageClient.CreateContainerIfNotExists(ctx, backupBucket.Name), helper.KnownCodes)
 }
 
 func (a *actuator) Delete(ctx context.Context, _ logr.Logger, backupBucket *extensionsv1alpha1.BackupBucket) error {
@@ -77,22 +79,28 @@ func (a *actuator) Delete(ctx context.Context, _ logr.Logger, backupBucket *exte
 		return err
 	}
 
-	// Get a storage account client to delete the backup container in the storage account.
-	storageClient, err := factory.Storage(ctx, *backupBucket.Status.GeneratedSecretRef)
+	secret, err := a.getBackupBucketGeneratedSecret(ctx, backupBucket)
 	if err != nil {
-		return err
+		return util.DetermineError(err, helper.KnownCodes)
 	}
-	if err := storageClient.DeleteContainerIfExists(ctx, backupBucket.Name); err != nil {
-		return err
+	if secret != nil {
+		// Get a storage account client to delete the backup container in the storage account.
+		storageClient, err := factory.Storage(ctx, *backupBucket.Status.GeneratedSecretRef)
+		if err != nil {
+			return util.DetermineError(err, helper.KnownCodes)
+		}
+		if err := storageClient.DeleteContainerIfExists(ctx, backupBucket.Name); err != nil {
+			return util.DetermineError(err, helper.KnownCodes)
+		}
 	}
 
 	// Get resource group client and delete the resource group which contains the backup storage account.
 	groupClient, err := factory.Group()
 	if err != nil {
-		return err
+		return util.DetermineError(err, helper.KnownCodes)
 	}
-	if err := groupClient.DeleteIfExists(ctx, backupBucket.Name); err != nil {
-		return err
+	if err := groupClient.Delete(ctx, backupBucket.Name); err != nil {
+		return util.DetermineError(err, helper.KnownCodes)
 	}
 
 	// Delete the generated backup secret in the garden namespace.

@@ -500,8 +500,8 @@ func StatusFromTerraformState(config *api.InfrastructureConfig, tfState *Terrafo
 		infraState.AvailabilitySets = append(infraState.AvailabilitySets, apiv1alpha1.AvailabilitySet{
 			Name:               tfState.AvailabilitySetName,
 			ID:                 tfState.AvailabilitySetID,
-			CountFaultDomains:  pointer.Int32Ptr(int32(tfState.CountFaultDomains)),
-			CountUpdateDomains: pointer.Int32Ptr(int32(tfState.CountUpdateDomains)),
+			CountFaultDomains:  pointer.Int32(int32(tfState.CountFaultDomains)),
+			CountUpdateDomains: pointer.Int32(int32(tfState.CountUpdateDomains)),
 			Purpose:            apiv1alpha1.PurposeNodes,
 		})
 	}
@@ -509,8 +509,8 @@ func StatusFromTerraformState(config *api.InfrastructureConfig, tfState *Terrafo
 	return &infraState
 }
 
-// ComputeStatusTf computes the status based on the Terraformer and the given InfrastructureConfig.
-func ComputeStatusTf(ctx context.Context, tf terraformer.Terraformer, infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig, cluster *controller.Cluster) (*apiv1alpha1.InfrastructureStatus, error) {
+// ComputeTerraformStatus computes the status based on the Terraformer and the given InfrastructureConfig.
+func ComputeTerraformStatus(ctx context.Context, tf terraformer.Terraformer, infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig, cluster *controller.Cluster) (*apiv1alpha1.InfrastructureStatus, error) {
 	state, err := ExtractTerraformState(ctx, tf, infra, config, cluster)
 	if err != nil {
 		return nil, err

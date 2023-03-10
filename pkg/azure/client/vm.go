@@ -16,53 +16,54 @@ package client
 
 import (
 	"context"
-	"fmt"
-	"net/http"
 
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
-// Get will get virtual machines in a resource group.
-func (c VirtualMachinesClient) Get(ctx context.Context, resourceGroupName string, name string, instanceViewTypes compute.InstanceViewTypes) (*compute.VirtualMachine, error) {
-	vm, err := c.client.Get(ctx, resourceGroupName, name, instanceViewTypes)
+// NewVMClient creates a new VM client
+func NewVMClient(auth internal.ClientAuth) (VirtualMachine, error) {
+	cred, err := auth.GetAzClientCredentials()
 	if err != nil {
 		return nil, err
 	}
-	return &vm, nil
+	client, err := armcompute.NewVirtualMachinesClient(auth.SubscriptionID, cred, nil)
+	return &VirtualMachinesClient{client}, err
+}
+
+// Get will get virtual machines in a resource group.
+func (c VirtualMachinesClient) Get(ctx context.Context, resourceGroupName string, name string, expander *armcompute.InstanceViewTypes) (*armcompute.VirtualMachine, error) {
+	vm, err := c.client.Get(ctx, resourceGroupName, name, &armcompute.VirtualMachinesClientGetOptions{
+		Expand: expander,
+	})
+	if err != nil {
+		return nil, FilterNotFoundError(err)
+	}
+	return &vm.VirtualMachine, nil
 }
 
 // Create will Create a virtual machine.
-func (c VirtualMachinesClient) Create(ctx context.Context, resourceGroupName string, name string, parameters *compute.VirtualMachine) (*compute.VirtualMachine, error) {
-	future, err := c.client.CreateOrUpdate(ctx, resourceGroupName, name, *parameters)
+func (c VirtualMachinesClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, name string, parameters armcompute.VirtualMachine) (*armcompute.VirtualMachine, error) {
+	future, err := c.client.BeginCreateOrUpdate(ctx, resourceGroupName, name, parameters, nil)
 	if err != nil {
 		return nil, err
 	}
-	if err := future.WaitForCompletionRef(ctx, c.client.Client); err != nil {
-		return nil, err
-	}
-
-	vm, err := future.Result(c.client)
+	res, err := future.PollUntilDone(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
-	return &vm, nil
+	return &res.VirtualMachine, nil
 }
 
 // Delete will delete a virtual machine.
 func (c VirtualMachinesClient) Delete(ctx context.Context, resourceGroupName, name string, forceDeletion *bool) error {
-	future, err := c.client.Delete(ctx, resourceGroupName, name, forceDeletion)
+	future, err := c.client.BeginDelete(ctx, resourceGroupName, name, &armcompute.VirtualMachinesClientBeginDeleteOptions{
+		ForceDeletion: forceDeletion,
+	})
 	if err != nil {
-		return err
+		return FilterNotFoundError(err)
 	}
-	if err := future.WaitForCompletionRef(ctx, c.client.Client); err != nil {
-		return err
-	}
-	result, err := future.Result(c.client)
-	if err != nil {
-		return err
-	}
-	if result.StatusCode == http.StatusOK || result.StatusCode == http.StatusAccepted || result.StatusCode == http.StatusNoContent || result.StatusCode == http.StatusNotFound {
-		return nil
-	}
-	return fmt.Errorf("deletion of virtual machine %s failed. statuscode=%d", name, result.StatusCode)
+	_, err = future.PollUntilDone(ctx, nil)
+	return err
 }

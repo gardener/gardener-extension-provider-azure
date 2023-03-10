@@ -18,6 +18,7 @@ import (
 	"context"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
+
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
@@ -32,25 +33,22 @@ func NewSubnetsClient(auth internal.ClientAuth) (*SubnetsClient, error) {
 }
 
 // CreateOrUpdate creates or updates a subnet in a given virtual network.
-func (c SubnetsClient) CreateOrUpdate(ctx context.Context, resourceGroupName, vnetName, subnetName string, parameters armnetwork.Subnet) error {
+func (c SubnetsClient) CreateOrUpdate(ctx context.Context, resourceGroupName, vnetName, subnetName string, parameters armnetwork.Subnet) (*armnetwork.Subnet, error) {
 	poller, err := c.client.BeginCreateOrUpdate(ctx, resourceGroupName, vnetName, subnetName, parameters, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	_, err = poller.PollUntilDone(ctx, nil)
-	return err
+	res, err := poller.PollUntilDone(ctx, nil)
+	return &res.Subnet, err
 }
 
 // Get will get a subnet in a given virtual network. If the requested subnet not exists nil will be returned.
-func (c SubnetsClient) Get(ctx context.Context, resourceGroupName string, vnetName string, name string) (*armnetwork.SubnetsClientGetResponse, error) {
+func (c SubnetsClient) Get(ctx context.Context, resourceGroupName string, vnetName string, name string) (*armnetwork.Subnet, error) {
 	subnet, err := c.client.Get(ctx, resourceGroupName, vnetName, name, nil)
 	if err != nil {
-		if IsAzureAPINotFoundError(err) {
-			return nil, nil
-		}
-		return nil, err
+		return nil, FilterNotFoundError(err)
 	}
-	return &subnet, nil
+	return &subnet.Subnet, nil
 }
 
 // List lists all subnets of a given virtual network.
@@ -71,7 +69,7 @@ func (c SubnetsClient) List(ctx context.Context, resourceGroupName, vnetName str
 func (c SubnetsClient) Delete(ctx context.Context, resourceGroupName, vnetName, subnetName string) error {
 	poller, err := c.client.BeginDelete(ctx, resourceGroupName, vnetName, subnetName, nil)
 	if err != nil {
-		return err
+		return FilterNotFoundError(err)
 	}
 
 	_, err = poller.PollUntilDone(ctx, nil)

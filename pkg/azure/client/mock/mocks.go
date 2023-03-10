@@ -12,7 +12,6 @@ import (
 	armnetwork "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	armresources "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	msi "github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
-	network "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	client "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	gomock "github.com/golang/mock/gomock"
 	v1 "k8s.io/api/core/v1"
@@ -41,19 +40,19 @@ func (m *MockDNSZone) EXPECT() *MockDNSZoneMockRecorder {
 	return m.recorder
 }
 
-// GetAll mocks base method.
-func (m *MockDNSZone) GetAll(arg0 context.Context) (map[string]string, error) {
+// List mocks base method.
+func (m *MockDNSZone) List(arg0 context.Context) (map[string]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAll", arg0)
+	ret := m.ctrl.Call(m, "List", arg0)
 	ret0, _ := ret[0].(map[string]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetAll indicates an expected call of GetAll.
-func (mr *MockDNSZoneMockRecorder) GetAll(arg0 interface{}) *gomock.Call {
+// List indicates an expected call of List.
+func (mr *MockDNSZoneMockRecorder) List(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAll", reflect.TypeOf((*MockDNSZone)(nil).GetAll), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockDNSZone)(nil).List), arg0)
 }
 
 // MockDNSRecordSet is a mock of DNSRecordSet interface.
@@ -131,11 +130,12 @@ func (m *MockSubnet) EXPECT() *MockSubnetMockRecorder {
 }
 
 // CreateOrUpdate mocks base method.
-func (m *MockSubnet) CreateOrUpdate(arg0 context.Context, arg1, arg2, arg3 string, arg4 armnetwork.Subnet) error {
+func (m *MockSubnet) CreateOrUpdate(arg0 context.Context, arg1, arg2, arg3 string, arg4 armnetwork.Subnet) (*armnetwork.Subnet, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateOrUpdate", arg0, arg1, arg2, arg3, arg4)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(*armnetwork.Subnet)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // CreateOrUpdate indicates an expected call of CreateOrUpdate.
@@ -159,10 +159,10 @@ func (mr *MockSubnetMockRecorder) Delete(arg0, arg1, arg2, arg3 interface{}) *go
 }
 
 // Get mocks base method.
-func (m *MockSubnet) Get(arg0 context.Context, arg1, arg2, arg3 string) (*armnetwork.SubnetsClientGetResponse, error) {
+func (m *MockSubnet) Get(arg0 context.Context, arg1, arg2, arg3 string) (*armnetwork.Subnet, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(*armnetwork.SubnetsClientGetResponse)
+	ret0, _ := ret[0].(*armnetwork.Subnet)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -490,11 +490,12 @@ func (m *MockResourceGroup) EXPECT() *MockResourceGroupMockRecorder {
 }
 
 // CreateOrUpdate mocks base method.
-func (m *MockResourceGroup) CreateOrUpdate(arg0 context.Context, arg1, arg2 string) error {
+func (m *MockResourceGroup) CreateOrUpdate(arg0 context.Context, arg1, arg2 string) (*armresources.ResourceGroup, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateOrUpdate", arg0, arg1, arg2)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(*armresources.ResourceGroup)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // CreateOrUpdate indicates an expected call of CreateOrUpdate.
@@ -503,18 +504,18 @@ func (mr *MockResourceGroupMockRecorder) CreateOrUpdate(arg0, arg1, arg2 interfa
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdate", reflect.TypeOf((*MockResourceGroup)(nil).CreateOrUpdate), arg0, arg1, arg2)
 }
 
-// DeleteIfExists mocks base method.
-func (m *MockResourceGroup) DeleteIfExists(arg0 context.Context, arg1 string) error {
+// Delete mocks base method.
+func (m *MockResourceGroup) Delete(arg0 context.Context, arg1 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteIfExists", arg0, arg1)
+	ret := m.ctrl.Call(m, "Delete", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// DeleteIfExists indicates an expected call of DeleteIfExists.
-func (mr *MockResourceGroupMockRecorder) DeleteIfExists(arg0, arg1 interface{}) *gomock.Call {
+// Delete indicates an expected call of Delete.
+func (mr *MockResourceGroupMockRecorder) Delete(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteIfExists", reflect.TypeOf((*MockResourceGroup)(nil).DeleteIfExists), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockResourceGroup)(nil).Delete), arg0, arg1)
 }
 
 // Get mocks base method.
@@ -571,11 +572,12 @@ func (m *MockVnet) EXPECT() *MockVnetMockRecorder {
 }
 
 // CreateOrUpdate mocks base method.
-func (m *MockVnet) CreateOrUpdate(arg0 context.Context, arg1, arg2 string, arg3 armnetwork.VirtualNetwork) error {
+func (m *MockVnet) CreateOrUpdate(arg0 context.Context, arg1, arg2 string, arg3 armnetwork.VirtualNetwork) (*armnetwork.VirtualNetwork, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateOrUpdate", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(*armnetwork.VirtualNetwork)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // CreateOrUpdate indicates an expected call of CreateOrUpdate.
@@ -599,10 +601,10 @@ func (mr *MockVnetMockRecorder) Delete(arg0, arg1, arg2 interface{}) *gomock.Cal
 }
 
 // Get mocks base method.
-func (m *MockVnet) Get(arg0 context.Context, arg1, arg2 string) (armnetwork.VirtualNetworksClientGetResponse, error) {
+func (m *MockVnet) Get(arg0 context.Context, arg1, arg2 string) (*armnetwork.VirtualNetwork, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2)
-	ret0, _ := ret[0].(armnetwork.VirtualNetworksClientGetResponse)
+	ret0, _ := ret[0].(*armnetwork.VirtualNetwork)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -637,10 +639,10 @@ func (m *MockRouteTables) EXPECT() *MockRouteTablesMockRecorder {
 }
 
 // CreateOrUpdate mocks base method.
-func (m *MockRouteTables) CreateOrUpdate(arg0 context.Context, arg1, arg2 string, arg3 armnetwork.RouteTable) (armnetwork.RouteTablesClientCreateOrUpdateResponse, error) {
+func (m *MockRouteTables) CreateOrUpdate(arg0 context.Context, arg1, arg2 string, arg3 armnetwork.RouteTable) (*armnetwork.RouteTable, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateOrUpdate", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(armnetwork.RouteTablesClientCreateOrUpdateResponse)
+	ret0, _ := ret[0].(*armnetwork.RouteTable)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -666,10 +668,10 @@ func (mr *MockRouteTablesMockRecorder) Delete(arg0, arg1, arg2 interface{}) *gom
 }
 
 // Get mocks base method.
-func (m *MockRouteTables) Get(arg0 context.Context, arg1, arg2 string) (armnetwork.RouteTablesClientGetResponse, error) {
+func (m *MockRouteTables) Get(arg0 context.Context, arg1, arg2 string) (*armnetwork.RouteTable, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2)
-	ret0, _ := ret[0].(armnetwork.RouteTablesClientGetResponse)
+	ret0, _ := ret[0].(*armnetwork.RouteTable)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -704,10 +706,10 @@ func (m *MockNatGateway) EXPECT() *MockNatGatewayMockRecorder {
 }
 
 // CreateOrUpdate mocks base method.
-func (m *MockNatGateway) CreateOrUpdate(arg0 context.Context, arg1, arg2 string, arg3 armnetwork.NatGateway) (armnetwork.NatGatewaysClientCreateOrUpdateResponse, error) {
+func (m *MockNatGateway) CreateOrUpdate(arg0 context.Context, arg1, arg2 string, arg3 armnetwork.NatGateway) (*armnetwork.NatGateway, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateOrUpdate", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(armnetwork.NatGatewaysClientCreateOrUpdateResponse)
+	ret0, _ := ret[0].(*armnetwork.NatGateway)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -733,10 +735,10 @@ func (mr *MockNatGatewayMockRecorder) Delete(arg0, arg1, arg2 interface{}) *gomo
 }
 
 // Get mocks base method.
-func (m *MockNatGateway) Get(arg0 context.Context, arg1, arg2 string) (*armnetwork.NatGatewaysClientGetResponse, error) {
+func (m *MockNatGateway) Get(arg0 context.Context, arg1, arg2 string) (*armnetwork.NatGateway, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*armnetwork.NatGatewaysClientGetResponse)
+	ret0, _ := ret[0].(*armnetwork.NatGateway)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -747,19 +749,19 @@ func (mr *MockNatGatewayMockRecorder) Get(arg0, arg1, arg2 interface{}) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockNatGateway)(nil).Get), arg0, arg1, arg2)
 }
 
-// GetAll mocks base method.
-func (m *MockNatGateway) GetAll(arg0 context.Context, arg1 string) ([]*armnetwork.NatGateway, error) {
+// List mocks base method.
+func (m *MockNatGateway) List(arg0 context.Context, arg1 string) ([]*armnetwork.NatGateway, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAll", arg0, arg1)
+	ret := m.ctrl.Call(m, "List", arg0, arg1)
 	ret0, _ := ret[0].([]*armnetwork.NatGateway)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetAll indicates an expected call of GetAll.
-func (mr *MockNatGatewayMockRecorder) GetAll(arg0, arg1 interface{}) *gomock.Call {
+// List indicates an expected call of List.
+func (mr *MockNatGatewayMockRecorder) List(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAll", reflect.TypeOf((*MockNatGateway)(nil).GetAll), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockNatGateway)(nil).List), arg0, arg1)
 }
 
 // MockPublicIP is a mock of PublicIP interface.
@@ -786,10 +788,10 @@ func (m *MockPublicIP) EXPECT() *MockPublicIPMockRecorder {
 }
 
 // CreateOrUpdate mocks base method.
-func (m *MockPublicIP) CreateOrUpdate(arg0 context.Context, arg1, arg2 string, arg3 network.PublicIPAddress) (*network.PublicIPAddress, error) {
+func (m *MockPublicIP) CreateOrUpdate(arg0 context.Context, arg1, arg2 string, arg3 armnetwork.PublicIPAddress) (*armnetwork.PublicIPAddress, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateOrUpdate", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(*network.PublicIPAddress)
+	ret0, _ := ret[0].(*armnetwork.PublicIPAddress)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -815,33 +817,33 @@ func (mr *MockPublicIPMockRecorder) Delete(arg0, arg1, arg2 interface{}) *gomock
 }
 
 // Get mocks base method.
-func (m *MockPublicIP) Get(arg0 context.Context, arg1, arg2, arg3 string) (*network.PublicIPAddress, error) {
+func (m *MockPublicIP) Get(arg0 context.Context, arg1, arg2 string) (*armnetwork.PublicIPAddress, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(*network.PublicIPAddress)
+	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*armnetwork.PublicIPAddress)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Get indicates an expected call of Get.
-func (mr *MockPublicIPMockRecorder) Get(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+func (mr *MockPublicIPMockRecorder) Get(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockPublicIP)(nil).Get), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockPublicIP)(nil).Get), arg0, arg1, arg2)
 }
 
-// GetAll mocks base method.
-func (m *MockPublicIP) GetAll(arg0 context.Context, arg1 string) ([]network.PublicIPAddress, error) {
+// List mocks base method.
+func (m *MockPublicIP) List(arg0 context.Context, arg1 string) ([]*armnetwork.PublicIPAddress, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAll", arg0, arg1)
-	ret0, _ := ret[0].([]network.PublicIPAddress)
+	ret := m.ctrl.Call(m, "List", arg0, arg1)
+	ret0, _ := ret[0].([]*armnetwork.PublicIPAddress)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetAll indicates an expected call of GetAll.
-func (mr *MockPublicIPMockRecorder) GetAll(arg0, arg1 interface{}) *gomock.Call {
+// List indicates an expected call of List.
+func (mr *MockPublicIPMockRecorder) List(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAll", reflect.TypeOf((*MockPublicIP)(nil).GetAll), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockPublicIP)(nil).List), arg0, arg1)
 }
 
 // MockAvailabilitySet is a mock of AvailabilitySet interface.
@@ -868,10 +870,10 @@ func (m *MockAvailabilitySet) EXPECT() *MockAvailabilitySetMockRecorder {
 }
 
 // CreateOrUpdate mocks base method.
-func (m *MockAvailabilitySet) CreateOrUpdate(arg0 context.Context, arg1, arg2 string, arg3 armcompute.AvailabilitySet) (armcompute.AvailabilitySetsClientCreateOrUpdateResponse, error) {
+func (m *MockAvailabilitySet) CreateOrUpdate(arg0 context.Context, arg1, arg2 string, arg3 armcompute.AvailabilitySet) (*armcompute.AvailabilitySet, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateOrUpdate", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(armcompute.AvailabilitySetsClientCreateOrUpdateResponse)
+	ret0, _ := ret[0].(*armcompute.AvailabilitySet)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -883,12 +885,11 @@ func (mr *MockAvailabilitySetMockRecorder) CreateOrUpdate(arg0, arg1, arg2, arg3
 }
 
 // Delete mocks base method.
-func (m *MockAvailabilitySet) Delete(arg0 context.Context, arg1, arg2 string) (armcompute.AvailabilitySetsClientDeleteResponse, error) {
+func (m *MockAvailabilitySet) Delete(arg0 context.Context, arg1, arg2 string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Delete", arg0, arg1, arg2)
-	ret0, _ := ret[0].(armcompute.AvailabilitySetsClientDeleteResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // Delete indicates an expected call of Delete.
@@ -898,10 +899,10 @@ func (mr *MockAvailabilitySetMockRecorder) Delete(arg0, arg1, arg2 interface{}) 
 }
 
 // Get mocks base method.
-func (m *MockAvailabilitySet) Get(arg0 context.Context, arg1, arg2 string) (armcompute.AvailabilitySetsClientGetResponse, error) {
+func (m *MockAvailabilitySet) Get(arg0 context.Context, arg1, arg2 string) (*armcompute.AvailabilitySet, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2)
-	ret0, _ := ret[0].(armcompute.AvailabilitySetsClientGetResponse)
+	ret0, _ := ret[0].(*armcompute.AvailabilitySet)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -936,10 +937,10 @@ func (m *MockNetworkSecurityGroup) EXPECT() *MockNetworkSecurityGroupMockRecorde
 }
 
 // CreateOrUpdate mocks base method.
-func (m *MockNetworkSecurityGroup) CreateOrUpdate(arg0 context.Context, arg1, arg2 string, arg3 network.SecurityGroup) (*network.SecurityGroup, error) {
+func (m *MockNetworkSecurityGroup) CreateOrUpdate(arg0 context.Context, arg1, arg2 string, arg3 armnetwork.SecurityGroup) (*armnetwork.SecurityGroup, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateOrUpdate", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(*network.SecurityGroup)
+	ret0, _ := ret[0].(*armnetwork.SecurityGroup)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -950,19 +951,33 @@ func (mr *MockNetworkSecurityGroupMockRecorder) CreateOrUpdate(arg0, arg1, arg2,
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdate", reflect.TypeOf((*MockNetworkSecurityGroup)(nil).CreateOrUpdate), arg0, arg1, arg2, arg3)
 }
 
-// Get mocks base method.
-func (m *MockNetworkSecurityGroup) Get(arg0 context.Context, arg1, arg2, arg3 string) (*network.SecurityGroup, error) {
+// Delete mocks base method.
+func (m *MockNetworkSecurityGroup) Delete(arg0 context.Context, arg1, arg2 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(*network.SecurityGroup)
+	ret := m.ctrl.Call(m, "Delete", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Delete indicates an expected call of Delete.
+func (mr *MockNetworkSecurityGroupMockRecorder) Delete(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockNetworkSecurityGroup)(nil).Delete), arg0, arg1, arg2)
+}
+
+// Get mocks base method.
+func (m *MockNetworkSecurityGroup) Get(arg0 context.Context, arg1, arg2 string) (*armnetwork.SecurityGroup, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*armnetwork.SecurityGroup)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Get indicates an expected call of Get.
-func (mr *MockNetworkSecurityGroupMockRecorder) Get(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+func (mr *MockNetworkSecurityGroupMockRecorder) Get(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockNetworkSecurityGroup)(nil).Get), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockNetworkSecurityGroup)(nil).Get), arg0, arg1, arg2)
 }
 
 // MockManagedUserIdentity is a mock of ManagedUserIdentity interface.
@@ -989,10 +1004,10 @@ func (m *MockManagedUserIdentity) EXPECT() *MockManagedUserIdentityMockRecorder 
 }
 
 // Get mocks base method.
-func (m *MockManagedUserIdentity) Get(arg0 context.Context, arg1, arg2 string) (msi.Identity, error) {
+func (m *MockManagedUserIdentity) Get(arg0 context.Context, arg1, arg2 string) (*msi.Identity, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2)
-	ret0, _ := ret[0].(msi.Identity)
+	ret0, _ := ret[0].(*msi.Identity)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

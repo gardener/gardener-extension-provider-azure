@@ -22,17 +22,17 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	"github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	mockclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client/mock"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 	"github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gofrs/uuid"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	mockclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client/mock"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 )
 
 func newBasicConfig() *azure.InfrastructureConfig {
@@ -74,7 +74,7 @@ var _ = Describe("AzureReconciler", func() {
 
 				sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
-				err = sut.Vnet(context.TODO())
+				err = sut.EnsureVnet(context.TODO())
 				Expect(err).ToNot(HaveOccurred())
 			})
 			Context("with ddosId", func() {
@@ -98,7 +98,7 @@ var _ = Describe("AzureReconciler", func() {
 
 					sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 					Expect(err).ToNot(HaveOccurred())
-					err = sut.Vnet(context.TODO())
+					err = sut.EnsureVnet(context.TODO())
 					Expect(err).ToNot(HaveOccurred())
 				})
 
@@ -114,7 +114,7 @@ var _ = Describe("AzureReconciler", func() {
 
 				sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
-				err = sut.Vnet(context.TODO())
+				err = sut.EnsureVnet(context.TODO())
 				Expect(err).ToNot(HaveOccurred())
 
 			})
@@ -137,7 +137,7 @@ var _ = Describe("AzureReconciler", func() {
 
 			sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 			Expect(err).ToNot(HaveOccurred())
-			_, err = sut.RouteTables(context.TODO())
+			_, err = sut.EnsureRouteTables(context.TODO())
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
@@ -151,7 +151,7 @@ var _ = Describe("AzureReconciler", func() {
 
 			sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 			Expect(err).ToNot(HaveOccurred())
-			_, err = sut.SecurityGroups(context.TODO())
+			_, err = sut.EnsureSecurityGroups(context.TODO())
 			Expect(err).ToNot(HaveOccurred())
 
 		})
@@ -165,7 +165,7 @@ var _ = Describe("AzureReconciler", func() {
 				factory = mock.GetFactory()
 				sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
-				err = sut.AvailabilitySet(context.TODO())
+				err = sut.EnsureAvailabilitySet(context.TODO())
 				Expect(err).ToNot(HaveOccurred())
 			})
 		})
@@ -187,7 +187,7 @@ var _ = Describe("AzureReconciler", func() {
 				factory = mock.GetFactory()
 				sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
-				err = sut.AvailabilitySet(context.TODO())
+				err = sut.EnsureAvailabilitySet(context.TODO())
 				Expect(err).ToNot(HaveOccurred())
 			})
 		})
@@ -208,7 +208,7 @@ var _ = Describe("AzureReconciler", func() {
 			It("does not create NAT IPs and does not update user-managed public IPs", func() {
 				sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
-				_, err = sut.PublicIPs(context.TODO())
+				_, err = sut.EnsurePublicIPs(context.TODO())
 				Expect(err).ToNot(HaveOccurred())
 			})
 		})
@@ -217,13 +217,13 @@ var _ = Describe("AzureReconciler", func() {
 			cfg.Networks.Zones = []azure.Zone{{Name: 1, CIDR: "10.0.0.0/16", NatGateway: &azure.ZonedNatGatewayConfig{Enabled: true, IPAddresses: []azure.ZonedPublicIPReference{{Name: "my-ip", ResourceGroup: resourceGroupName}}}}, {Name: 2, CIDR: "10.1.0.0/16"}}
 			BeforeEach(func() {
 				mock := NewMockFactoryWrapper(resourceGroupName, location)
-				parameters := network.PublicIPAddress{
+				parameters := armnetwork.PublicIPAddress{
 					Location: to.Ptr(location),
-					Sku:      &network.PublicIPAddressSku{Name: network.PublicIPAddressSkuNameStandard},
-					PublicIPAddressPropertiesFormat: &network.PublicIPAddressPropertiesFormat{
-						PublicIPAllocationMethod: network.Static,
+					SKU:      &armnetwork.PublicIPAddressSKU{Name: to.Ptr(armnetwork.PublicIPAddressSKUNameStandard)},
+					Properties: &armnetwork.PublicIPAddressPropertiesFormat{
+						PublicIPAllocationMethod: to.Ptr(armnetwork.IPAllocationMethodStatic),
 					},
-					Zones: &[]string{"1"},
+					Zones: []*string{to.Ptr("1")},
 				}
 				mock.assertPublicIPCalledWithParameters(MatchAnyOfStrings([]string{"test_cluster-nat-gateway-z1-ip"}), parameters)
 				factory = mock.GetFactory()
@@ -231,7 +231,7 @@ var _ = Describe("AzureReconciler", func() {
 			It("only creates NAT IP for 1 zone and does not update user-managed public IPs", func() {
 				sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
-				_, err = sut.PublicIPs(context.TODO())
+				_, err = sut.EnsurePublicIPs(context.TODO())
 				Expect(err).ToNot(HaveOccurred())
 
 			})
@@ -260,14 +260,14 @@ var _ = Describe("AzureReconciler", func() {
 				ctrl := gomock.NewController(GinkgoT())
 				factory := mockclient.NewMockFactory(ctrl)
 				ip := mockclient.NewMockPublicIP(ctrl)
-				ip.EXPECT().GetAll(gomock.Any(), resourceGroupName).Return([]network.PublicIPAddress{{Name: to.Ptr("old-ip")}}, nil)
+				ip.EXPECT().List(gomock.Any(), resourceGroupName).Return([]*armnetwork.PublicIPAddress{{Name: to.Ptr("old-ip")}}, nil)
 				ip.EXPECT().Delete(gomock.Any(), resourceGroupName, "old-ip").Return(fmt.Errorf("delete error to not call create IP in test"))
 				factory.EXPECT().PublicIP().Return(ip, nil)
 
 				sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 				Expect(err).ToNot(HaveOccurred())
 
-				_, err = sut.PublicIPs(context.TODO())
+				_, err = sut.EnsurePublicIPs(context.TODO())
 				Expect(err).To(HaveOccurred())
 			})
 		})
@@ -296,7 +296,7 @@ var _ = Describe("AzureReconciler", func() {
 
 					sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 					Expect(err).ToNot(HaveOccurred())
-					_, err = sut.NatGateways(context.TODO(), map[string][]network.PublicIPAddress{"test_cluster-nodes-z1": {{
+					_, err = sut.EnsureNatGateways(context.TODO(), map[string][]*armnetwork.PublicIPAddress{"test_cluster-nodes-z1": {{
 						ID: ipId,
 					},
 					}})
@@ -313,14 +313,14 @@ var _ = Describe("AzureReconciler", func() {
 					ctrl := gomock.NewController(GinkgoT())
 					factory := mockclient.NewMockFactory(ctrl)
 					nat := mockclient.NewMockNatGateway(ctrl)
-					nat.EXPECT().GetAll(gomock.Any(), resourceGroupName).Return([]*armnetwork.NatGateway{{Name: to.Ptr("old-nat")}}, nil)
+					nat.EXPECT().List(gomock.Any(), resourceGroupName).Return([]*armnetwork.NatGateway{{Name: to.Ptr("old-nat")}}, nil)
 					nat.EXPECT().Delete(gomock.Any(), resourceGroupName, "old-nat").Return(fmt.Errorf("delete error to not call create NAT in test"))
 					factory.EXPECT().NatGateway().Return(nat, nil)
 
 					sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 					Expect(err).ToNot(HaveOccurred())
 
-					_, err = sut.NatGateways(context.TODO(), map[string][]network.PublicIPAddress{})
+					_, err = sut.EnsureNatGateways(context.TODO(), map[string][]*armnetwork.PublicIPAddress{})
 					Expect(err).To(HaveOccurred())
 				})
 			})
@@ -346,7 +346,7 @@ var _ = Describe("AzureReconciler", func() {
 
 					sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 					Expect(err).ToNot(HaveOccurred())
-					err = sut.Subnets(context.TODO(), armnetwork.SecurityGroup{}, armnetwork.RouteTable{}, map[string]armnetwork.NatGatewaysClientCreateOrUpdateResponse{})
+					err = sut.EnsureSubnets(context.TODO(), armnetwork.SecurityGroup{}, armnetwork.RouteTable{}, map[string]*armnetwork.NatGateway{})
 					Expect(err).ToNot(HaveOccurred())
 
 				})
@@ -367,7 +367,7 @@ var _ = Describe("AzureReconciler", func() {
 				It("enriches with 2 user managed IPs", func() {
 					sut, err := infraflow.NewAzureReconciler(infra, cfg, cluster, factory)
 					Expect(err).ToNot(HaveOccurred())
-					res := make(map[string][]network.PublicIPAddress)
+					res := make(map[string][]*armnetwork.PublicIPAddress)
 					err = sut.EnrichResponseWithUserManagedIPs(context.TODO(), res)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(res).To(HaveKey("test_cluster-nodes-z1"))
@@ -403,10 +403,10 @@ var _ = Describe("AzureReconciler", func() {
 				It("enriches the status with the AvailabilitySet and identity", func() {
 					ctrl := gomock.NewController(GinkgoT())
 					aclient := mockclient.NewMockAvailabilitySet(ctrl)
-					aclient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(armcompute.AvailabilitySetsClientGetResponse{AvailabilitySet: armcompute.AvailabilitySet{ID: to.Ptr("av-id")}}, nil)
+					aclient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(&armcompute.AvailabilitySet{ID: to.Ptr("av-id")}, nil)
 
 					iclient := mockclient.NewMockManagedUserIdentity(ctrl)
-					identity := msi.Identity{ID: to.Ptr("identity-id"), UserAssignedIdentityProperties: &msi.UserAssignedIdentityProperties{ClientID: to.Ptr(uuid.FromStringOrNil("69359037-9599-48e7-b8f2-48393c019135"))}}
+					identity := &msi.Identity{ID: to.Ptr("identity-id"), UserAssignedIdentityProperties: &msi.UserAssignedIdentityProperties{ClientID: to.Ptr(uuid.FromStringOrNil("69359037-9599-48e7-b8f2-48393c019135"))}}
 
 					iclient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(identity, nil)
 

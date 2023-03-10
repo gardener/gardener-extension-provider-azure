@@ -18,13 +18,12 @@ import (
 	"context"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
-	azurecompute "github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	azuredns "github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-05-01/dns"
-	azurenetwork "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	azurestorage "github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-04-01/storage"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
 // NewAzureClientFactory creates a new Azure client factory with the passed secret reference.
@@ -84,30 +83,12 @@ func (f azureFactory) StorageAccount() (StorageAccount, error) {
 
 // Vmss reads the secret from the passed reference and return an Azure virtual machine scale set client.
 func (f azureFactory) Vmss() (Vmss, error) {
-	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(f.auth)
-	if err != nil {
-		return nil, err
-	}
-	vmssClient := azurecompute.NewVirtualMachineScaleSetsClient(subscriptionID)
-	vmssClient.Authorizer = authorizer
-
-	return VmssClient{
-		client: vmssClient,
-	}, nil
+	return NewVmssClient(*f.auth)
 }
 
 // VirtualMachine reads the secret from the passed reference and return an Azure virtual machine client.
 func (f azureFactory) VirtualMachine() (VirtualMachine, error) {
-	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(f.auth)
-	if err != nil {
-		return nil, err
-	}
-	virtualMachinesClient := azurecompute.NewVirtualMachinesClient(subscriptionID)
-	virtualMachinesClient.Authorizer = authorizer
-
-	return VirtualMachinesClient{
-		client: virtualMachinesClient,
-	}, nil
+	return NewVMClient(*f.auth)
 }
 
 // DNSZone reads the secret from the passed reference and return an Azure DNS zone client.
@@ -140,58 +121,23 @@ func (f azureFactory) DNSRecordSet() (DNSRecordSet, error) {
 
 // NetworkSecurityGroup reads the secret from the passed reference and return an Azure network security group client.
 func (f azureFactory) NetworkSecurityGroup() (NetworkSecurityGroup, error) {
-	authorizer, id, err := internal.GetAuthorizerAndSubscriptionID(f.auth)
-	if err != nil {
-		return nil, err
-	}
-	networkSecurityGroupClient := azurenetwork.NewSecurityGroupsClient(id)
-	networkSecurityGroupClient.Authorizer = authorizer
-
-	return NetworkSecurityGroupClient{
-		client: networkSecurityGroupClient,
-	}, nil
+	return NewSecurityGroupClient(*f.auth)
 }
 
 // PublicIP reads the secret from the passed reference and return an Azure network PublicIPClient.
 func (f azureFactory) PublicIP() (PublicIP, error) {
-	authorizer, id, err := internal.GetAuthorizerAndSubscriptionID(f.auth)
-	if err != nil {
-		return nil, err
-	}
-	publicIPClient := azurenetwork.NewPublicIPAddressesClient(id)
-	publicIPClient.Authorizer = authorizer
+	return NewPublicIPClient(*f.auth)
 
-	return PublicIPClient{
-		client: publicIPClient,
-	}, nil
 }
 
 // NetworkInterface reads the secret from the passed reference and return an Azure network interface client.
 func (f azureFactory) NetworkInterface() (NetworkInterface, error) {
-	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(f.auth)
-	if err != nil {
-		return nil, err
-	}
-	networkInterfaceClient := azurenetwork.NewInterfacesClient(subscriptionID)
-	networkInterfaceClient.Authorizer = authorizer
-
-	return NetworkInterfaceClient{
-		client: networkInterfaceClient,
-	}, nil
+	return NewNetworkInterfaceClient(*f.auth)
 }
 
 // Disk reads the secret from the passed reference and return an Azure disk client.
 func (f azureFactory) Disk() (Disk, error) {
-	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(f.auth)
-	if err != nil {
-		return nil, err
-	}
-	disksClient := azurecompute.NewDisksClient(subscriptionID)
-	disksClient.Authorizer = authorizer
-
-	return DisksClient{
-		client: disksClient,
-	}, nil
+	return NewDisksClient(*f.auth)
 }
 
 // Vnet reads the secret from the passed reference and return an Azure Vnet client.
