@@ -18,11 +18,11 @@ import (
 	"fmt"
 	"strings"
 
+	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/strings/slices"
-
-	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 )
 
 // ValidateCloudProfileConfig validates a CloudProfileConfig object.

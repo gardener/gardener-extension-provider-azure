@@ -10,6 +10,7 @@ spec:
     containerPolicies:
     - containerName: '*'
       minAllowed:
+        cpu: {{ required ".Values.global.vpa.resourcePolicy.minAllowed.cpu is required" .Values.global.vpa.resourcePolicy.minAllowed.cpu }}
         memory: {{ required ".Values.global.vpa.resourcePolicy.minAllowed.memory is required" .Values.global.vpa.resourcePolicy.minAllowed.memory }}
   {{- end }}
   targetRef:

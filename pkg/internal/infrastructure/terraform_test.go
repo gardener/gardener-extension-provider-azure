@@ -17,8 +17,11 @@ package infrastructure
 import (
 	"encoding/json"
 
+	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+
 	"github.com/gardener/gardener/extensions/pkg/controller"
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -26,49 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
-
-	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
-
-func makeCluster(pods, services string, region string, countFaultDomain, countUpdateDomain int32) *controller.Cluster {
-	var (
-		shoot = gardencorev1beta1.Shoot{
-			Spec: gardencorev1beta1.ShootSpec{
-				Networking: gardencorev1beta1.Networking{
-					Pods:     &pods,
-					Services: &services,
-				},
-			},
-		}
-		cloudProfileConfig = apiv1alpha1.CloudProfileConfig{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: apiv1alpha1.SchemeGroupVersion.String(),
-				Kind:       "CloudProfileConfig",
-			},
-			CountFaultDomains: []apiv1alpha1.DomainCount{
-				{Region: region, Count: countFaultDomain},
-			},
-			CountUpdateDomains: []apiv1alpha1.DomainCount{
-				{Region: region, Count: countUpdateDomain},
-			},
-		}
-		cloudProfileConfigJSON, _ = json.Marshal(cloudProfileConfig)
-		cloudProfile              = gardencorev1beta1.CloudProfile{
-			Spec: gardencorev1beta1.CloudProfileSpec{
-				ProviderConfig: &runtime.RawExtension{
-					Raw: cloudProfileConfigJSON,
-				},
-			},
-		}
-	)
-
-	return &controller.Cluster{
-		Shoot:        &shoot,
-		CloudProfile: &cloudProfile,
-	}
-}
 
 var _ = Describe("Terraform", func() {
 	var (
@@ -127,7 +88,7 @@ var _ = Describe("Terraform", func() {
 			},
 		}
 
-		cluster = makeCluster("11.0.0.0/16", "12.0.0.0/16", infra.Spec.Region, countFaultDomain, countUpdateDomain)
+		cluster = MakeCluster("11.0.0.0/16", "12.0.0.0/16", infra.Spec.Region, countFaultDomain, countUpdateDomain)
 	})
 
 	Describe("#ComputeTerraformerTemplateValues", func() {
@@ -425,7 +386,7 @@ var _ = Describe("Terraform", func() {
 			It("should correctly compute terraform chart values with zonal NatGateway", func() {
 				config.Networks.NatGateway = &api.NatGatewayConfig{
 					Enabled: true,
-					Zone:    pointer.Int32(1),
+					Zone:    pointer.Int32Ptr(1),
 				}
 				expectedNatGatewayValues["enabled"] = true
 				expectedNatGatewayValues["zone"] = int32(1)
@@ -442,7 +403,7 @@ var _ = Describe("Terraform", func() {
 
 				config.Networks.NatGateway = &api.NatGatewayConfig{
 					Enabled: true,
-					Zone:    pointer.Int32(1),
+					Zone:    pointer.Int32Ptr(1),
 					IPAddresses: []api.PublicIPReference{{
 						Name:          ipName,
 						ResourceGroup: ipResourceGroup,
@@ -649,7 +610,7 @@ var _ = Describe("Terraform", func() {
 				AvailabilitySets: []apiv1alpha1.AvailabilitySet{
 					{
 						Name: availabilitySetName, ID: availabilitySetID, Purpose: apiv1alpha1.PurposeNodes,
-						CountFaultDomains: pointer.Int32(2), CountUpdateDomains: pointer.Int32(5),
+						CountFaultDomains: pointer.Int32Ptr(2), CountUpdateDomains: pointer.Int32Ptr(5),
 					},
 				},
 				SecurityGroups: []apiv1alpha1.SecurityGroup{

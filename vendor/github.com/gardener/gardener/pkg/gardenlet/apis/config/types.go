@@ -15,12 +15,12 @@
 package config
 
 import (
+	gardencore "github.com/gardener/gardener/pkg/apis/core"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	componentbaseconfig "k8s.io/component-base/config"
-
-	gardencore "github.com/gardener/gardener/pkg/apis/core"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -155,8 +155,8 @@ type GardenletControllerConfiguration struct {
 	ShootMigration *ShootMigrationControllerConfiguration
 	// ShootStateSync defines the configuration of the ShootState controller.
 	ShootStateSync *ShootStateSyncControllerConfiguration
-	// NetworkPolicy defines the configuration of the NetworkPolicy controller.
-	NetworkPolicy *NetworkPolicyControllerConfiguration
+	// SeedAPIServerNetworkPolicy defines the configuration of the SeedAPIServerNetworkPolicy controller.
+	SeedAPIServerNetworkPolicy *SeedAPIServerNetworkPolicyControllerConfiguration
 	// ManagedSeedControllerConfiguration defines the configuration of the ManagedSeed controller.
 	ManagedSeed *ManagedSeedControllerConfiguration
 	// ShootSecretControllerConfiguration defines the configuration of the ShootSecret controller.
@@ -284,10 +284,6 @@ type ShootCareControllerConfiguration struct {
 	SyncPeriod *metav1.Duration
 	// StaleExtensionHealthChecks defines the configuration of the check for stale extension health checks.
 	StaleExtensionHealthChecks *StaleExtensionHealthChecks
-	// ManagedResourceProgressingThreshold is the allowed duration a ManagedResource can be with condition
-	// Progressing=True before being considered as "stuck" from the shoot-care controller.
-	// If the field is not specified, the check for ManagedResource "stuck" in progressing state is not performed.
-	ManagedResourceProgressingThreshold *metav1.Duration
 	// ConditionThresholds defines the condition threshold per condition type.
 	ConditionThresholds []ConditionThreshold
 	// WebhookRemediatorEnabled specifies whether the remediator for webhooks not following the Kubernetes best
@@ -353,9 +349,9 @@ type ShootStateSyncControllerConfiguration struct {
 	ConcurrentSyncs *int
 }
 
-// NetworkPolicyControllerConfiguration defines the configuration of the NetworkPolicy
+// SeedAPIServerNetworkPolicyControllerConfiguration defines the configuration of the SeedAPIServerNetworkPolicy
 // controller.
-type NetworkPolicyControllerConfiguration struct {
+type SeedAPIServerNetworkPolicyControllerConfiguration struct {
 	// ConcurrentSyncs is the number of workers used for the controller to work on events.
 	ConcurrentSyncs *int
 }

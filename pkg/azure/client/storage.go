@@ -19,12 +19,12 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 // DeleteObjectsWithPrefix deletes the blob objects with the specific <prefix> from <container>.

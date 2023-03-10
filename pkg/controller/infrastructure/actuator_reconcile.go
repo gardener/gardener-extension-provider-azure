@@ -18,15 +18,14 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gardener/gardener/extensions/pkg/controller"
-	"github.com/gardener/gardener/extensions/pkg/terraformer"
-	"github.com/gardener/gardener/extensions/pkg/util"
-	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	"github.com/go-logr/logr"
-
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
+
+	"github.com/gardener/gardener/extensions/pkg/controller"
+	"github.com/gardener/gardener/extensions/pkg/terraformer"
+	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"github.com/go-logr/logr"
 )
 
 // Reconcile implements infrastructure.Actuator.
@@ -39,6 +38,20 @@ func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, infra *ext
 	if err != nil {
 		return err
 	}
+	if ShouldUseFlow(infra, cluster) {
+		if err := cleanupTerraform(ctx, logger, a, infra); err != nil {
+			return fmt.Errorf("failed to cleanup terraform resources: %w", err)
+		}
+		reconciler, err := NewFlowReconciler(ctx, a, infra, logger)
+		if err != nil {
+			return err
+		}
+		status, err := reconciler.Reconcile(ctx, infra, config, cluster)
+		if err != nil {
+			return err
+		}
+		return patchProviderStatus(ctx, infra, status, a.Client())
+	}
 
 	terraformFiles, err := infrastructure.RenderTerraformerTemplate(infra, config, cluster)
 	if err != nil {
@@ -47,15 +60,32 @@ func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, infra *ext
 
 	tf, err := internal.NewTerraformerWithAuth(logger, a.RESTConfig(), infrastructure.TerraformerPurpose, infra, a.disableProjectedTokenMount)
 	if err != nil {
-		return util.DetermineError(err, helper.KnownCodes)
+		return err
 	}
 
 	if err := tf.
 		InitializeWith(ctx, terraformer.DefaultInitializer(a.Client(), terraformFiles.Main, terraformFiles.Variables, terraformFiles.TFVars, stateInitializer)).
 		Apply(ctx); err != nil {
 
-		return util.DetermineError(fmt.Errorf("failed to apply the terraform config: %w", err), helper.KnownCodes)
+		return fmt.Errorf("failed to apply the terraform config: %w", err)
 	}
 
-	return a.updateProviderStatus(ctx, tf, infra, config, cluster)
+	return a.updateProviderStatusFromTf(ctx, tf, infra, config, cluster)
+}
+
+func cleanupTerraform(ctx context.Context, logger logr.Logger, a *actuator, infra *extensionsv1alpha1.Infrastructure) error {
+	tf, err := internal.NewTerraformer(logger, a.RESTConfig(), infrastructure.TerraformerPurpose, infra, a.disableProjectedTokenMount)
+	if err != nil {
+		return err
+	}
+	// terraform pod from previous reconciliation might still be running, ensure they are gone before doing any operations
+	if err := tf.EnsureCleanedUp(ctx); err != nil {
+		return err
+	}
+
+	if err := tf.CleanupConfiguration(ctx); err != nil {
+		return err
+	}
+
+	return tf.RemoveTerraformerFinalizerFromConfig(ctx)
 }

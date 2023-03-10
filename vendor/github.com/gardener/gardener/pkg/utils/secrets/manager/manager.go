@@ -20,6 +20,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gardener/gardener/pkg/utils"
+	secretutils "github.com/gardener/gardener/pkg/utils/secrets"
+
 	"github.com/go-logr/logr"
 	"github.com/mitchellh/hashstructure/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -27,9 +30,6 @@ import (
 	"k8s.io/utils/clock"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/gardener/gardener/pkg/utils"
-	secretsutils "github.com/gardener/gardener/pkg/utils/secrets"
 )
 
 const (
@@ -61,9 +61,6 @@ const (
 	// data is valid. In case the data contains a certificate it is the time part of the certificate's 'not after'
 	// field.
 	LabelKeyValidUntilTime = "valid-until-time"
-	// LabelKeyUseDataForName is a constant for a key of a label on a Secret describing that its data should be used
-	// instead of generating a fresh secret with the same name.
-	LabelKeyUseDataForName = "secrets-manager-use-data-for-name"
 
 	// LabelValueTrue is a constant for a value of a label on a Secret describing the value 'true'.
 	LabelValueTrue = "true"
@@ -284,7 +281,7 @@ func computeSecretInfo(obj *corev1.Secret) (secretInfo, error) {
 func ObjectMeta(
 	namespace string,
 	managerIdentity string,
-	config secretsutils.ConfigInterface,
+	config secretutils.ConfigInterface,
 	ignoreConfigChecksumForCASecretName bool,
 	lastRotationInitiationTime string,
 	signingCAChecksum *string,
@@ -326,13 +323,13 @@ func ObjectMeta(
 	}, nil
 }
 
-func computeSecretName(config secretsutils.ConfigInterface, labels map[string]string, ignoreConfigChecksumForCASecretName bool) string {
+func computeSecretName(config secretutils.ConfigInterface, labels map[string]string, ignoreConfigChecksumForCASecretName bool) string {
 	name := config.GetName()
 
 	// For backwards-compatibility, we might need to keep the static names of the CA secrets so that external components
 	// (like extensions, etc.) relying on them don't break. This is why it is possible to opt out of the fact that the
 	// config checksum is considered for the name computation.
-	if cfg, ok := config.(*secretsutils.CertificateSecretConfig); !ok || cfg.SigningCA != nil || !ignoreConfigChecksumForCASecretName {
+	if cfg, ok := config.(*secretutils.CertificateSecretConfig); !ok || cfg.SigningCA != nil || !ignoreConfigChecksumForCASecretName {
 		if infix := labels[LabelKeyChecksumConfig] + labels[LabelKeyChecksumSigningCA]; len(infix) > 0 {
 			name += "-" + utils.ComputeSHA256Hex([]byte(infix))[:8]
 		}
@@ -357,7 +354,7 @@ func Secret(objectMeta metav1.ObjectMeta, data map[string][]byte) *corev1.Secret
 
 func secretTypeForData(data map[string][]byte) corev1.SecretType {
 	secretType := corev1.SecretTypeOpaque
-	if data[secretsutils.DataKeyCertificate] != nil && data[secretsutils.DataKeyPrivateKey] != nil {
+	if data[secretutils.DataKeyCertificate] != nil && data[secretutils.DataKeyPrivateKey] != nil {
 		secretType = corev1.SecretTypeTLS
 	}
 	return secretType
@@ -368,16 +365,16 @@ func unixTime(in time.Time) string {
 }
 
 func isCASecret(data map[string][]byte) bool {
-	return data[secretsutils.DataKeyCertificateCA] != nil && data[secretsutils.DataKeyPrivateKeyCA] != nil
+	return data[secretutils.DataKeyCertificateCA] != nil && data[secretutils.DataKeyPrivateKeyCA] != nil
 }
 
-func certificateSecretConfig(config secretsutils.ConfigInterface) *secretsutils.CertificateSecretConfig {
-	var certificateConfig *secretsutils.CertificateSecretConfig
+func certificateSecretConfig(config secretutils.ConfigInterface) *secretutils.CertificateSecretConfig {
+	var certificateConfig *secretutils.CertificateSecretConfig
 
 	switch cfg := config.(type) {
-	case *secretsutils.CertificateSecretConfig:
+	case *secretutils.CertificateSecretConfig:
 		certificateConfig = cfg
-	case *secretsutils.ControlPlaneSecretConfig:
+	case *secretutils.ControlPlaneSecretConfig:
 		certificateConfig = cfg.CertificateSecretConfig
 	}
 

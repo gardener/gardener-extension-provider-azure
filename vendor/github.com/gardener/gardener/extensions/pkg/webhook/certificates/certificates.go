@@ -22,10 +22,10 @@ import (
 	"strings"
 	"time"
 
-	"k8s.io/utils/pointer"
-
 	"github.com/gardener/gardener/extensions/pkg/webhook"
-	secretsutils "github.com/gardener/gardener/pkg/utils/secrets"
+	secretutils "github.com/gardener/gardener/pkg/utils/secrets"
+
+	"k8s.io/utils/pointer"
 )
 
 // GenerateUnmanagedCertificates generates a one-off CA and server cert for a webhook server. The server certificate and
@@ -53,16 +53,16 @@ func GenerateUnmanagedCertificates(providerName, certDir, mode, url string) ([]b
 
 var caCertificateValidity = 30 * 24 * time.Hour // 30d
 
-func getWebhookCAConfig(name string) *secretsutils.CertificateSecretConfig {
-	return &secretsutils.CertificateSecretConfig{
+func getWebhookCAConfig(name string) *secretutils.CertificateSecretConfig {
+	return &secretutils.CertificateSecretConfig{
 		Name:       name,
 		CommonName: name,
-		CertType:   secretsutils.CACert,
+		CertType:   secretutils.CACert,
 		Validity:   &caCertificateValidity,
 	}
 }
 
-func getWebhookServerCertConfig(name, namespace, componentName, mode, url string) *secretsutils.CertificateSecretConfig {
+func getWebhookServerCertConfig(name, namespace, providerName, mode, url string) *secretutils.CertificateSecretConfig {
 	var (
 		dnsNames    []string
 		ipAddresses []net.IP
@@ -84,29 +84,31 @@ func getWebhookServerCertConfig(name, namespace, componentName, mode, url string
 		}
 
 	case webhook.ModeService:
-		dnsNames = []string{webhook.PrefixedName(componentName)}
+		dnsNames = []string{
+			fmt.Sprintf("gardener-extension-%s", providerName),
+		}
 		if namespace != "" {
 			dnsNames = append(dnsNames,
-				fmt.Sprintf("%s.%s", webhook.PrefixedName(componentName), namespace),
-				fmt.Sprintf("%s.%s.svc", webhook.PrefixedName(componentName), namespace),
+				fmt.Sprintf("gardener-extension-%s.%s", providerName, namespace),
+				fmt.Sprintf("gardener-extension-%s.%s.svc", providerName, namespace),
 			)
 		}
 	}
 
-	return &secretsutils.CertificateSecretConfig{
+	return &secretutils.CertificateSecretConfig{
 		Name:                        name,
-		CommonName:                  componentName,
+		CommonName:                  providerName,
 		DNSNames:                    dnsNames,
 		IPAddresses:                 ipAddresses,
-		CertType:                    secretsutils.ServerCert,
+		CertType:                    secretutils.ServerCert,
 		SkipPublishingCACertificate: true,
 	}
 }
 
 func writeCertificatesToDisk(certDir string, serverCert, serverKey []byte) error {
 	var (
-		serverKeyPath  = filepath.Join(certDir, secretsutils.DataKeyPrivateKey)
-		serverCertPath = filepath.Join(certDir, secretsutils.DataKeyCertificate)
+		serverKeyPath  = filepath.Join(certDir, secretutils.DataKeyPrivateKey)
+		serverCertPath = filepath.Join(certDir, secretutils.DataKeyCertificate)
 	)
 
 	if err := os.MkdirAll(certDir, 0755); err != nil {

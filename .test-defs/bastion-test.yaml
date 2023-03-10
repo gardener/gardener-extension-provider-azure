@@ -18,4 +18,4 @@ spec:
       --client-secret=${CLIENT_SECRET}
       --region=${REGION}
 
-  image: golang:1.19.5
+  image: eu.gcr.io/gardener-project/3rd/golang:1.19.2

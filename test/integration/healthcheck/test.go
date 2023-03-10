@@ -42,6 +42,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+
 	genericcontrolplaneactuator "github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
 	genericworkeractuator "github.com/gardener/gardener/extensions/pkg/controller/worker/genericactuator"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -52,8 +54,6 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 const (

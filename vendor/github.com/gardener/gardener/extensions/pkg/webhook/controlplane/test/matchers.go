@@ -18,9 +18,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/onsi/gomega/types"
-
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
+
+	"github.com/onsi/gomega/types"
 )
 
 // ContainElementWithPrefixContaining succeeds if actual contains a string having the given prefix

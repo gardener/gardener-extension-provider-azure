@@ -18,18 +18,18 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
-	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
+	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	mockazureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client/mock"
+	. "github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	mockazureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client/mock"
-	. "github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 )
 
 const (
@@ -72,10 +72,10 @@ var _ = Describe("InfrastructureHelper", func() {
 	})
 
 	Describe("#IsShootResourceGroupAvailable", func() {
-		var azureGroupClient *mockazureclient.MockGroup
+		var azureGroupClient *mockazureclient.MockResourceGroup
 
 		BeforeEach(func() {
-			azureGroupClient = mockazureclient.NewMockGroup(ctrl)
+			azureGroupClient = mockazureclient.NewMockResourceGroup(ctrl)
 			infraConfig.ResourceGroup = nil
 		})
 
@@ -88,8 +88,8 @@ var _ = Describe("InfrastructureHelper", func() {
 		})
 
 		It("should return true as resource group exists", func() {
-			azureClientFactory.EXPECT().Group(ctx, infra.Spec.SecretRef).Return(azureGroupClient, nil)
-			azureGroupClient.EXPECT().Get(ctx, clusterName).Return(&resources.Group{Name: &clusterName}, nil)
+			azureClientFactory.EXPECT().Group().Return(azureGroupClient, nil)
+			azureGroupClient.EXPECT().Get(ctx, clusterName).Return(&armresources.ResourceGroup{Name: &clusterName}, nil)
 
 			resourceGroupAvailable, err := IsShootResourceGroupAvailable(ctx, azureClientFactory, infra, infraConfig)
 
@@ -98,7 +98,7 @@ var _ = Describe("InfrastructureHelper", func() {
 		})
 
 		It("should return false as resource group does not exists", func() {
-			azureClientFactory.EXPECT().Group(ctx, infra.Spec.SecretRef).Return(azureGroupClient, nil)
+			azureClientFactory.EXPECT().Group().Return(azureGroupClient, nil)
 			azureGroupClient.EXPECT().Get(ctx, clusterName).Return(nil, nil)
 
 			resourceGroupAvailable, err := IsShootResourceGroupAvailable(ctx, azureClientFactory, infra, infraConfig)
@@ -112,7 +112,7 @@ var _ = Describe("InfrastructureHelper", func() {
 		var (
 			azureSubnetClient *mockazureclient.MockSubnet
 			baseSubnetName    string
-			subnetList        []network.Subnet
+			subnetList        []*armnetwork.Subnet
 			vnetName          string
 			vnetResourceGroup string
 		)
@@ -120,7 +120,7 @@ var _ = Describe("InfrastructureHelper", func() {
 		BeforeEach(func() {
 			azureSubnetClient = mockazureclient.NewMockSubnet(ctrl)
 			baseSubnetName = fmt.Sprintf("%s-nodes", clusterName)
-			subnetList = []network.Subnet{}
+			subnetList = []*armnetwork.Subnet{}
 			vnetName = "test-vnet"
 			vnetResourceGroup = "test-vnet-rg"
 
@@ -140,9 +140,9 @@ var _ = Describe("InfrastructureHelper", func() {
 		})
 
 		It("should delete exact name matching subnet in foreign virtual network", func() {
-			subnetList = append(subnetList, network.Subnet{Name: &baseSubnetName})
+			subnetList = append(subnetList, &armnetwork.Subnet{Name: &baseSubnetName})
 
-			azureClientFactory.EXPECT().Subnet(ctx, infra.Spec.SecretRef).Return(azureSubnetClient, nil)
+			azureClientFactory.EXPECT().Subnet().Return(azureSubnetClient, nil)
 			azureSubnetClient.EXPECT().List(ctx, vnetResourceGroup, vnetName).Return(subnetList, nil)
 			azureSubnetClient.EXPECT().Delete(ctx, vnetResourceGroup, vnetName, baseSubnetName)
 
@@ -152,9 +152,9 @@ var _ = Describe("InfrastructureHelper", func() {
 
 		It("should delete name matching subnet in foreign virtual network", func() {
 			subnetName := fmt.Sprintf("%s-z2", baseSubnetName)
-			subnetList = append(subnetList, network.Subnet{Name: &subnetName})
+			subnetList = append(subnetList, &armnetwork.Subnet{Name: &subnetName})
 
-			azureClientFactory.EXPECT().Subnet(ctx, infra.Spec.SecretRef).Return(azureSubnetClient, nil)
+			azureClientFactory.EXPECT().Subnet().Return(azureSubnetClient, nil)
 			azureSubnetClient.EXPECT().List(ctx, vnetResourceGroup, vnetName).Return(subnetList, nil)
 			azureSubnetClient.EXPECT().Delete(ctx, vnetResourceGroup, vnetName, subnetName)
 
@@ -164,9 +164,9 @@ var _ = Describe("InfrastructureHelper", func() {
 
 		It("should delete no subnet in foreign virtual network as none is name matching", func() {
 			subnetName := "test-abc"
-			subnetList = append(subnetList, network.Subnet{Name: &subnetName})
+			subnetList = append(subnetList, &armnetwork.Subnet{Name: &subnetName})
 
-			azureClientFactory.EXPECT().Subnet(ctx, infra.Spec.SecretRef).Return(azureSubnetClient, nil)
+			azureClientFactory.EXPECT().Subnet().Return(azureSubnetClient, nil)
 			azureSubnetClient.EXPECT().List(ctx, vnetResourceGroup, vnetName).Return(subnetList, nil)
 
 			err := DeleteNodeSubnetIfExists(ctx, azureClientFactory, infra, infraConfig)

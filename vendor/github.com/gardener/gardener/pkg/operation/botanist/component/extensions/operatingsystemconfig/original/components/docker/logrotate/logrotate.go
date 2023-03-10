@@ -15,9 +15,8 @@
 package logrotate
 
 import (
-	"k8s.io/utils/pointer"
-
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"k8s.io/utils/pointer"
 )
 
 // Config returns the content for logrotate units and files.

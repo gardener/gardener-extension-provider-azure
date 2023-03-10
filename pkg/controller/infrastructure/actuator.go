@@ -18,6 +18,10 @@ import (
 	"context"
 	"encoding/json"
 
+	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
+	infrainternal "github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
+
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/common"
 	"github.com/gardener/gardener/extensions/pkg/controller/infrastructure"
@@ -25,9 +29,11 @@ import (
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+)
 
-	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	infrainternal "github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
+const (
+	// AnnotationKeyUseFlow is the annotation key used to enable reconciliation with flow instead of terraformer.
+	AnnotationKeyUseFlow = "azure.provider.extensions.gardener.cloud/use-flow"
 )
 
 // InfrastructureState represents the last known State of an Infrastructure resource.
@@ -51,8 +57,8 @@ func NewActuator(disableProjectedTokenMount bool) infrastructure.Actuator {
 	}
 }
 
-func (a *actuator) updateProviderStatus(ctx context.Context, tf terraformer.Terraformer, infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig, cluster *controller.Cluster) error {
-	status, err := infrainternal.ComputeStatus(ctx, tf, infra, config, cluster)
+func (a *actuator) updateProviderStatusFromTf(ctx context.Context, tf terraformer.Terraformer, infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig, cluster *controller.Cluster) error {
+	status, err := infrainternal.ComputeStatusTf(ctx, tf, infra, config, cluster)
 	if err != nil {
 		return err
 	}
@@ -85,4 +91,10 @@ func (a *actuator) updateProviderStatus(ctx context.Context, tf terraformer.Terr
 	infra.Status.ProviderStatus = &runtime.RawExtension{Object: status}
 	infra.Status.State = &runtime.RawExtension{Raw: infraStateBytes}
 	return a.Client().Status().Patch(ctx, infra, patch)
+}
+
+func patchProviderStatus(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, status *v1alpha1.InfrastructureStatus, actuatorClient client.Client) error {
+	patch := client.MergeFrom(infra.DeepCopy())
+	infra.Status.ProviderStatus = &runtime.RawExtension{Object: status}
+	return actuatorClient.Status().Patch(ctx, infra, patch)
 }

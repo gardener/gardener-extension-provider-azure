@@ -20,20 +20,20 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
-	"github.com/gardener/gardener/pkg/utils"
-	"k8s.io/utils/pointer"
-
 	azureapi "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	azureapihelper "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
+
+	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
+	"github.com/gardener/gardener/pkg/utils"
+	"k8s.io/utils/pointer"
 )
 
 func (w *workerDelegate) reconcileVmoDependencies(ctx context.Context, infrastructureStatus *azureapi.InfrastructureStatus, workerProviderStatus *azureapi.WorkerStatus) ([]azureapi.VmoDependency, error) {
 	var vmoDependencies = copyVmoDependencies(workerProviderStatus)
 
-	vmoClient, err := w.clientFactory.Vmss(ctx, w.worker.Spec.SecretRef)
+	vmoClient, err := w.clientFactory.Vmss()
 	if err != nil {
 		return vmoDependencies, err
 	}
@@ -103,7 +103,7 @@ func (w *workerDelegate) reconcileVMO(ctx context.Context, client azureclient.Vm
 func (w *workerDelegate) cleanupVmoDependencies(ctx context.Context, infrastructureStatus *azureapi.InfrastructureStatus, workerProviderStatus *azureapi.WorkerStatus) ([]azureapi.VmoDependency, error) {
 	var vmoDependencies = copyVmoDependencies(workerProviderStatus)
 
-	vmoClient, err := w.clientFactory.Vmss(ctx, w.worker.Spec.SecretRef)
+	vmoClient, err := w.clientFactory.Vmss()
 	if err != nil {
 		return vmoDependencies, err
 	}
@@ -191,7 +191,7 @@ func (w *workerDelegate) determineWorkerPoolVmoDependency(ctx context.Context, i
 	}
 
 	// Second: The vmo dependency was not found in the worker status. Check if a corresponding vmo exists on Azure.
-	vmoClient, err := w.clientFactory.Vmss(ctx, w.worker.Spec.SecretRef)
+	vmoClient, err := w.clientFactory.Vmss()
 	if err != nil {
 		return nil, err
 	}
@@ -244,11 +244,11 @@ func generateAndCreateVmo(ctx context.Context, client azureclient.Vmss, workerPo
 	var properties = &compute.VirtualMachineScaleSet{
 		Location: &region,
 		VirtualMachineScaleSetProperties: &compute.VirtualMachineScaleSetProperties{
-			SinglePlacementGroup:     pointer.Bool(false),
+			SinglePlacementGroup:     pointer.BoolPtr(false),
 			PlatformFaultDomainCount: &faultDomainCount,
 		},
 		Tags: map[string]*string{
-			azure.MachineSetTagKey: pointer.String("1"),
+			azure.MachineSetTagKey: pointer.StringPtr("1"),
 		},
 	}
 

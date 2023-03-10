@@ -19,6 +19,8 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/config"
+
 	druidv1alpha1 "github.com/gardener/etcd-druid/api/v1alpha1"
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	gcontext "github.com/gardener/gardener/extensions/pkg/webhook/context"
@@ -39,8 +41,6 @@ import (
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
-
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/config"
 )
 
 const (
@@ -57,7 +57,7 @@ var _ = Describe("Ensurer", func() {
 		dummyContext = gcontext.NewGardenContext(nil, nil)
 
 		etcdStorage = &config.ETCDStorage{
-			ClassName: pointer.String("gardener.cloud-fast"),
+			ClassName: pointer.StringPtr("gardener.cloud-fast"),
 			Capacity:  utils.QuantityPtr(resource.MustParse("25Gi")),
 		}
 

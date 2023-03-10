@@ -22,9 +22,15 @@ import (
 	"os"
 	"time"
 
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	"github.com/gardener/gardener/pkg/client/kubernetes"
+	"github.com/gardener/gardener/pkg/utils"
+	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
+	"github.com/gardener/gardener/pkg/utils/kubernetes/health"
+	"github.com/gardener/gardener/pkg/utils/retry"
+
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
-	authenticationv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,14 +38,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	"github.com/gardener/gardener/pkg/client/kubernetes"
-	"github.com/gardener/gardener/pkg/utils"
-	kubernetesutils "github.com/gardener/gardener/pkg/utils/kubernetes"
-	"github.com/gardener/gardener/pkg/utils/kubernetes/health"
-	"github.com/gardener/gardener/pkg/utils/retry"
-	"github.com/gardener/gardener/test/utils/shoots/access"
 )
 
 // WaitUntilDaemonSetIsRunning waits until the daemon set with <daemonSetName> is running
@@ -239,7 +237,7 @@ func PodExecByLabel(ctx context.Context, podLabels labels.Selector, podContainer
 
 // DeleteAndWaitForResource deletes a kubernetes resource and waits for its deletion
 func DeleteAndWaitForResource(ctx context.Context, k8sClient kubernetes.Interface, resource client.Object, timeout time.Duration) error {
-	if err := kubernetesutils.DeleteObject(ctx, k8sClient.Client(), resource); err != nil {
+	if err := kutil.DeleteObject(ctx, k8sClient.Client(), resource); err != nil {
 		return err
 	}
 	return retry.UntilTimeout(ctx, 5*time.Second, timeout, func(ctx context.Context) (done bool, err error) {
@@ -272,7 +270,7 @@ func ScaleDeployment(ctx context.Context, client client.Client, desiredReplicas 
 	}
 
 	// scale the deployment
-	if err := kubernetes.ScaleDeployment(ctx, client, kubernetesutils.Key(namespace, name), *desiredReplicas); err != nil {
+	if err := kubernetes.ScaleDeployment(ctx, client, kutil.Key(namespace, name), *desiredReplicas); err != nil {
 		return nil, fmt.Errorf("failed to scale the replica count of deployment %q: '%w'", name, err)
 	}
 
@@ -287,7 +285,7 @@ func ScaleDeployment(ctx context.Context, client client.Client, desiredReplicas 
 func WaitUntilDeploymentScaled(ctx context.Context, client client.Client, namespace, name string, desiredReplicas int32) error {
 	return retry.Until(ctx, 5*time.Second, func(ctx context.Context) (done bool, err error) {
 		deployment := &appsv1.Deployment{}
-		if err := client.Get(ctx, kubernetesutils.Key(namespace, name), deployment); err != nil {
+		if err := client.Get(ctx, kutil.Key(namespace, name), deployment); err != nil {
 			return retry.SevereError(err)
 		}
 		if deployment.Spec.Replicas == nil || *deployment.Spec.Replicas != desiredReplicas {
@@ -305,7 +303,7 @@ func WaitUntilDeploymentScaled(ctx context.Context, client client.Client, namesp
 // GetDeploymentReplicas gets the spec.Replicas count from a deployment
 func GetDeploymentReplicas(ctx context.Context, client client.Client, namespace, name string) (*int32, error) {
 	deployment := &appsv1.Deployment{}
-	if err := client.Get(ctx, kubernetesutils.Key(namespace, name), deployment); err != nil {
+	if err := client.Get(ctx, kutil.Key(namespace, name), deployment); err != nil {
 		return nil, err
 	}
 	replicas := deployment.Spec.Replicas
@@ -322,11 +320,10 @@ func ShootReconciliationSuccessful(shoot *gardencorev1beta1.Shoot) (bool, string
 	}
 
 	shootConditions := map[gardencorev1beta1.ConditionType]struct{}{
-		gardencorev1beta1.ShootAPIServerAvailable:             {},
-		gardencorev1beta1.ShootControlPlaneHealthy:            {},
-		gardencorev1beta1.ShootObservabilityComponentsHealthy: {},
-		gardencorev1beta1.ShootEveryNodeReady:                 {},
-		gardencorev1beta1.ShootSystemComponentsHealthy:        {},
+		gardencorev1beta1.ShootAPIServerAvailable:      {},
+		gardencorev1beta1.ShootControlPlaneHealthy:     {},
+		gardencorev1beta1.ShootEveryNodeReady:          {},
+		gardencorev1beta1.ShootSystemComponentsHealthy: {},
 	}
 
 	for _, condition := range shoot.Status.Conditions {
@@ -357,35 +354,18 @@ func ShootReconciliationSuccessful(shoot *gardencorev1beta1.Shoot) (bool, string
 	return true, ""
 }
 
-// DownloadKubeconfig retrieves the static token kubeconfig for the given shoot and writes the kubeconfig to the
-// given download path.
+// DownloadKubeconfig downloads the shoot Kubeconfig
 func DownloadKubeconfig(ctx context.Context, client kubernetes.Interface, namespace, name, downloadPath string) error {
 	kubeconfig, err := GetObjectFromSecret(ctx, client, namespace, name, KubeconfigSecretKeyName)
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(downloadPath, []byte(kubeconfig), 0755)
-	if err != nil {
-		return err
+	if downloadPath != "" {
+		err = os.WriteFile(downloadPath, []byte(kubeconfig), 0755)
+		if err != nil {
+			return err
+		}
 	}
-
-	return nil
-}
-
-// DownloadAdminKubeconfigForShoot requests an admin kubeconfig for the given shoot and writes the kubeconfig to the
-// given download path. The kubeconfig expires in 6 hours.
-func DownloadAdminKubeconfigForShoot(ctx context.Context, client kubernetes.Interface, shoot *gardencorev1beta1.Shoot, downloadPath string) error {
-	const expirationSeconds = 6 * 3600 // 6h
-	kubeconfig, err := access.RequestAdminKubeconfigForShoot(ctx, client, shoot, pointer.Int64(expirationSeconds))
-	if err != nil {
-		return err
-	}
-
-	err = os.WriteFile(downloadPath, kubeconfig, 0755)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -415,39 +395,25 @@ func GetObjectFromSecret(ctx context.Context, k8sClient kubernetes.Interface, na
 	return "", fmt.Errorf("secret %s/%s did not contain object key %q", namespace, secretName, objectKey)
 }
 
-// CreateTokenForServiceAccount requests a service account token.
-func CreateTokenForServiceAccount(ctx context.Context, k8sClient kubernetes.Interface, serviceAccount *corev1.ServiceAccount, expirationSeconds *int64) (string, error) {
-	tokenRequest := &authenticationv1.TokenRequest{
-		Spec: authenticationv1.TokenRequestSpec{
-			ExpirationSeconds: expirationSeconds,
-		},
-	}
-
-	if err := k8sClient.Client().SubResource("token").Create(ctx, serviceAccount, tokenRequest); err != nil {
-		return "", err
-	}
-
-	return tokenRequest.Status.Token, nil
-}
-
 // NewClientFromServiceAccount returns a kubernetes client for a service account.
-func NewClientFromServiceAccount(ctx context.Context, k8sClient kubernetes.Interface, serviceAccount *corev1.ServiceAccount) (kubernetes.Interface, error) {
-	token, err := CreateTokenForServiceAccount(ctx, k8sClient, serviceAccount, pointer.Int64(3600))
+func NewClientFromServiceAccount(ctx context.Context, k8sClient kubernetes.Interface, account *corev1.ServiceAccount) (kubernetes.Interface, error) {
+	secret := &corev1.Secret{}
+	err := k8sClient.Client().Get(ctx, client.ObjectKey{Namespace: account.Namespace, Name: account.Secrets[0].Name}, secret)
 	if err != nil {
 		return nil, err
 	}
 
-	restConfig := &rest.Config{
+	serviceAccountConfig := &rest.Config{
 		Host: k8sClient.RESTConfig().Host,
 		TLSClientConfig: rest.TLSClientConfig{
 			Insecure: false,
 			CAData:   k8sClient.RESTConfig().CAData,
 		},
-		BearerToken: token,
+		BearerToken: string(secret.Data["token"]),
 	}
 
 	return kubernetes.NewWithConfig(
-		kubernetes.WithRESTConfig(restConfig),
+		kubernetes.WithRESTConfig(serviceAccountConfig),
 		kubernetes.WithClientOptions(client.Options{Scheme: kubernetes.GardenScheme}),
 		kubernetes.WithDisabledCachedClient(),
 	)
@@ -457,18 +423,18 @@ func NewClientFromServiceAccount(ctx context.Context, k8sClient kubernetes.Inter
 func WaitUntilPodIsRunning(ctx context.Context, log logr.Logger, name, namespace string, c kubernetes.Interface) error {
 	return retry.Until(ctx, defaultPollInterval, func(ctx context.Context) (done bool, err error) {
 		pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: name}}
-		podLog := log.WithValues("pod", client.ObjectKeyFromObject(pod))
+		log = log.WithValues("pod", client.ObjectKeyFromObject(pod))
 
 		if err := c.Client().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, pod); err != nil {
 			return retry.SevereError(err)
 		}
 
 		if !health.IsPodReady(pod) {
-			podLog.Info("Waiting for Pod to be ready")
+			log.Info("Waiting for Pod to be ready")
 			return retry.MinorError(fmt.Errorf(`pod "%s/%s" is not ready: %v`, namespace, name, err))
 		}
 
-		podLog.Info("Pod is ready now")
+		log.Info("Pod is ready now")
 		return retry.Ok()
 	})
 }

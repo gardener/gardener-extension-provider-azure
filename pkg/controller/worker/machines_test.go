@@ -21,6 +21,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gardener/gardener-extension-provider-azure/charts"
+	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
+	. "github.com/gardener/gardener-extension-provider-azure/pkg/controller/worker"
+
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
 	genericworkeractuator "github.com/gardener/gardener/extensions/pkg/controller/worker/genericactuator"
@@ -41,11 +46,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/pointer"
-
-	"github.com/gardener/gardener-extension-provider-azure/charts"
-	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
-	. "github.com/gardener/gardener-extension-provider-azure/pkg/controller/worker"
 )
 
 var _ = Describe("Machines", func() {
@@ -284,7 +284,7 @@ var _ = Describe("Machines", func() {
 							{
 								Version:               machineImageVersion,
 								URN:                   &machineImageURN,
-								AcceleratedNetworking: pointer.Bool(true),
+								AcceleratedNetworking: pointer.BoolPtr(true),
 							},
 							{
 								Version: machineImageVersionID,
@@ -304,7 +304,7 @@ var _ = Describe("Machines", func() {
 				machineTypes = []apiv1alpha1.MachineType{
 					{
 						Name:                  machineType,
-						AcceleratedNetworking: pointer.Bool(true),
+						AcceleratedNetworking: pointer.BoolPtr(true),
 					},
 				}
 

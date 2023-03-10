@@ -21,6 +21,10 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	"github.com/gardener/gardener/extensions/pkg/controller"
@@ -28,9 +32,6 @@ import (
 	"github.com/go-logr/logr"
 	"golang.org/x/crypto/ssh"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
 
 const (
@@ -52,7 +53,7 @@ func (a *actuator) InjectClient(client client.Client) error {
 }
 
 func createBastionInstance(ctx context.Context, factory azureclient.Factory, opt *Options, parameters *compute.VirtualMachine) (*compute.VirtualMachine, error) {
-	vmClient, err := factory.VirtualMachine(ctx, opt.SecretReference)
+	vmClient, err := factory.VirtualMachine()
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +66,7 @@ func createBastionInstance(ctx context.Context, factory azureclient.Factory, opt
 }
 
 func createOrUpdatePublicIP(ctx context.Context, factory azureclient.Factory, opt *Options, parameters *network.PublicIPAddress) (*network.PublicIPAddress, error) {
-	publicClient, err := factory.PublicIP(ctx, opt.SecretReference)
+	publicClient, err := factory.PublicIP()
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +83,7 @@ func createOrUpdateNetworkSecGroup(ctx context.Context, factory azureclient.Fact
 		return fmt.Errorf("network security group nor SecurityRules can't be nil, securityGroupName: %s", opt.SecurityGroupName)
 	}
 
-	nsgClient, err := factory.NetworkSecurityGroup(ctx, opt.SecretReference)
+	nsgClient, err := factory.NetworkSecurityGroup()
 	if err != nil {
 		return err
 	}
@@ -95,7 +96,7 @@ func createOrUpdateNetworkSecGroup(ctx context.Context, factory azureclient.Fact
 }
 
 func getBastionInstance(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*compute.VirtualMachine, error) {
-	vmClient, err := factory.VirtualMachine(ctx, opt.SecretReference)
+	vmClient, err := factory.VirtualMachine()
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +113,7 @@ func getBastionInstance(ctx context.Context, log logr.Logger, factory azureclien
 }
 
 func getNic(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*network.Interface, error) {
-	nicClient, err := factory.NetworkInterface(ctx, opt.SecretReference)
+	nicClient, err := factory.NetworkInterface()
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +131,7 @@ func getNic(ctx context.Context, log logr.Logger, factory azureclient.Factory, o
 }
 
 func getNetworkSecurityGroup(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*network.SecurityGroup, error) {
-	nsgClient, err := factory.NetworkSecurityGroup(ctx, opt.SecretReference)
+	nsgClient, err := factory.NetworkSecurityGroup()
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +169,7 @@ func getWorkersCIDR(cluster *controller.Cluster) ([]string, error) {
 }
 
 func getPublicIP(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*network.PublicIPAddress, error) {
-	ipClient, err := factory.PublicIP(ctx, opt.SecretReference)
+	ipClient, err := factory.PublicIP()
 	if err != nil {
 		return nil, err
 	}
@@ -184,9 +185,9 @@ func getPublicIP(ctx context.Context, log logr.Logger, factory azureclient.Facto
 	return ip, nil
 }
 
-func getSubnet(ctx context.Context, log logr.Logger, factory azureclient.Factory, infrastructureStatus *azure.InfrastructureStatus, opt *Options) (*network.Subnet, error) {
+func getSubnet(ctx context.Context, log logr.Logger, factory azureclient.Factory, infrastructureStatus *azure.InfrastructureStatus, opt *Options) (*armnetwork.SubnetsClientGetResponse, error) {
 	var sg string
-	subnetClient, err := factory.Subnet(ctx, opt.SecretReference)
+	subnetClient, err := factory.Subnet()
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +198,7 @@ func getSubnet(ctx context.Context, log logr.Logger, factory azureclient.Factory
 		sg = opt.ResourceGroupName
 	}
 
-	subnet, err := subnetClient.Get(ctx, sg, infrastructureStatus.Networks.VNet.Name, infrastructureStatus.Networks.Subnets[0].Name, "")
+	subnet, err := subnetClient.Get(ctx, sg, infrastructureStatus.Networks.VNet.Name, infrastructureStatus.Networks.Subnets[0].Name)
 	if err != nil {
 		return nil, err
 	}

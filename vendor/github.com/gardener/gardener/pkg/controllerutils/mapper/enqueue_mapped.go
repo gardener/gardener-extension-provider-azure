@@ -18,6 +18,8 @@ import (
 	"context"
 	"fmt"
 
+	ctxutils "github.com/gardener/gardener/pkg/utils/context"
+
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -30,8 +32,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
-
-	contextutils "github.com/gardener/gardener/pkg/utils/context"
 )
 
 // Mapper maps an object to a collection of keys to be enqueued
@@ -93,7 +93,7 @@ func (e *enqueueRequestsFromMapFunc) InjectCache(c cache.Cache) error {
 }
 
 func (e *enqueueRequestsFromMapFunc) InjectStopChannel(stopCh <-chan struct{}) error {
-	e.ctx = contextutils.FromStopChannel(stopCh)
+	e.ctx = ctxutils.FromStopChannel(stopCh)
 	return nil
 }
 

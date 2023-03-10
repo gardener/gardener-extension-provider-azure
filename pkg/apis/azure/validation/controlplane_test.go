@@ -15,13 +15,13 @@
 package validation_test
 
 import (
+	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	. "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/validation"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-
-	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	. "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/validation"
 )
 
 var _ = Describe("ControlPlaneConfig validation", func() {
@@ -48,7 +48,7 @@ var _ = Describe("ControlPlaneConfig validation", func() {
 				},
 			}
 
-			errorList := ValidateControlPlaneConfig(controlPlane, "1.24.8", fldPath)
+			errorList := ValidateControlPlaneConfig(controlPlane, "1.18.14", fldPath)
 
 			Expect(errorList).To(ConsistOf(
 				PointTo(MatchFields(IgnoreExtras, Fields{

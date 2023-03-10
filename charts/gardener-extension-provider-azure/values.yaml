@@ -12,6 +12,7 @@ vpa:
   enabled: true
   resourcePolicy:
     minAllowed:
+      cpu: 50m
       memory: 64Mi
   updatePolicy:
     updateMode: "Auto"
@@ -67,11 +68,6 @@ webhookConfig:
 leaderElection:
   resourceLock: leases
 
-## settings for metrics, e.g. scraping by seed-prometheus
-metrics:
-  ## enable metrics scraping
-  enableScraping: true
-
 config:
   clientConnection:
     acceptContentTypes: application/json
@@ -89,7 +85,6 @@ gardener:
   version: ""
   seed:
     provider: azure
-    region: ""
 
 # servicePrincipals:
 # - tenantID: tenant-1

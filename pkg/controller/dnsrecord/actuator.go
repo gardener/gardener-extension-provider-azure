@@ -19,9 +19,10 @@ import (
 	"fmt"
 	"time"
 
+	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
+
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/dnsrecord"
-	"github.com/gardener/gardener/extensions/pkg/util"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	extensionsv1alpha1helper "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1/helper"
@@ -29,9 +30,6 @@ import (
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	"github.com/go-logr/logr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
-	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
 
 const (
@@ -56,26 +54,25 @@ func NewActuator(client client.Client, azureClientFactory azureclient.Factory) d
 
 func (a *actuator) InjectClient(client client.Client) error {
 	a.client = client
-	a.azureClientFactory = azureclient.NewAzureClientFactory(client)
 	return nil
 }
 
 // Reconcile reconciles the DNSRecord.
 func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, cluster *extensionscontroller.Cluster) error {
 	// Create Azure DNS zone and recordset clients
-	dnsZoneClient, err := a.azureClientFactory.DNSZone(ctx, dns.Spec.SecretRef)
+	dnsZoneClient, err := a.azureClientFactory.DNSZone()
 	if err != nil {
-		return util.DetermineError(fmt.Errorf("could not create Azure DNS zone client: %+v", err), helper.KnownCodes)
+		return fmt.Errorf("could not create Azure DNS zone client: %+v", err)
 	}
-	dnsRecordSetClient, err := a.azureClientFactory.DNSRecordSet(ctx, dns.Spec.SecretRef)
+	dnsRecordSetClient, err := a.azureClientFactory.DNSRecordSet()
 	if err != nil {
-		return util.DetermineError(fmt.Errorf("could not create Azure DNS recordset client: %+v", err), helper.KnownCodes)
+		return fmt.Errorf("could not create Azure DNS recordset client: %+v", err)
 	}
 
 	// Determine DNS zone ID
 	zone, err := a.getZone(ctx, log, dns, dnsZoneClient)
 	if err != nil {
-		return util.DetermineError(err, helper.KnownCodes)
+		return err
 	}
 
 	// Create or update DNS recordset
@@ -109,19 +106,19 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, dns *extensio
 // Delete deletes the DNSRecord.
 func (a *actuator) Delete(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, cluster *extensionscontroller.Cluster) error {
 	// Create Azure DNS zone and recordset clients
-	dnsZoneClient, err := a.azureClientFactory.DNSZone(ctx, dns.Spec.SecretRef)
+	dnsZoneClient, err := a.azureClientFactory.DNSZone()
 	if err != nil {
-		return util.DetermineError(fmt.Errorf("could not create Azure DNS zone client: %+v", err), helper.KnownCodes)
+		return fmt.Errorf("could not create Azure DNS zone client: %+v", err)
 	}
-	dnsRecordSetClient, err := a.azureClientFactory.DNSRecordSet(ctx, dns.Spec.SecretRef)
+	dnsRecordSetClient, err := a.azureClientFactory.DNSRecordSet()
 	if err != nil {
-		return util.DetermineError(fmt.Errorf("could not create Azure DNS recordset client: %+v", err), helper.KnownCodes)
+		return fmt.Errorf("could not create Azure DNS recordset client: %+v", err)
 	}
 
 	// Determine DNS zone ID
 	zone, err := a.getZone(ctx, log, dns, dnsZoneClient)
 	if err != nil {
-		return util.DetermineError(err, helper.KnownCodes)
+		return err
 	}
 
 	// Delete DNS recordset

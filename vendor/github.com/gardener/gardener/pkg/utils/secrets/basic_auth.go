@@ -15,7 +15,12 @@
 package secrets
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/gardener/gardener/pkg/utils"
+
+	"k8s.io/apiserver/pkg/authentication/user"
 )
 
 type formatType string
@@ -24,7 +29,11 @@ const (
 	// BasicAuthFormatNormal indicates that the data map should be rendered the normal way (dedicated keys for
 	// username and password.
 	BasicAuthFormatNormal formatType = "normal"
+	// BasicAuthFormatCSV indicates that the data map should be rendered in the CSV-format.
+	BasicAuthFormatCSV formatType = "csv"
 
+	// DataKeyCSV is the key in a secret data holding the CSV format of a secret.
+	DataKeyCSV = "basic_auth.csv"
 	// DataKeyUserName is the key in a secret data holding the username.
 	DataKeyUserName = "username"
 	// DataKeyPassword is the key in a secret data holding the password.
@@ -35,22 +44,17 @@ const (
 
 // BasicAuthSecretConfig contains the specification for a to-be-generated basic authentication secret.
 type BasicAuthSecretConfig struct {
-	Name string
-	// Format is the format type.
-	//
-	// Do not remove this field, even though the field is not used and there is only one supported format ("normal").
-	// The secret manager computes the Secret hash based on the config object (BasicAuthSecretConfig). A field removal in the
-	// BasicAuthSecretConfig object would compute a new Secret hash and this would lead the existing Secrets to be regenerated.
-	// Hence, usages of the BasicAuthSecretConfig should continue to pass the Format field with value "normal".
+	Name   string
 	Format formatType
 
 	Username       string
 	PasswordLength int
 }
 
-// BasicAuth contains the username, the password and optionally hash of the password.
+// BasicAuth contains the username, the password, optionally hash of the password and the format for serializing the basic authentication
 type BasicAuth struct {
-	Name string
+	Name   string
+	Format formatType
 
 	Username string
 	Password string
@@ -69,7 +73,8 @@ func (s *BasicAuthSecretConfig) Generate() (DataInterface, error) {
 	}
 
 	basicAuth := &BasicAuth{
-		Name: s.Name,
+		Name:   s.Name,
+		Format: s.Format,
 
 		Username: s.Username,
 		Password: password,
@@ -82,9 +87,32 @@ func (s *BasicAuthSecretConfig) Generate() (DataInterface, error) {
 func (b *BasicAuth) SecretData() map[string][]byte {
 	data := map[string][]byte{}
 
-	data[DataKeyUserName] = []byte(b.Username)
-	data[DataKeyPassword] = []byte(b.Password)
-	data[DataKeySHA1Auth] = utils.CreateSHA1Secret(data[DataKeyUserName], data[DataKeyPassword])
+	switch b.Format {
+	case BasicAuthFormatNormal:
+		data[DataKeyUserName] = []byte(b.Username)
+		data[DataKeyPassword] = []byte(b.Password)
+		data[DataKeySHA1Auth] = utils.CreateSHA1Secret(data[DataKeyUserName], data[DataKeyPassword])
+
+		fallthrough
+
+	case BasicAuthFormatCSV:
+		data[DataKeyCSV] = []byte(fmt.Sprintf("%s,%s,%s,%s", b.Password, b.Username, b.Username, user.SystemPrivilegedGroup))
+	}
 
 	return data
+}
+
+// LoadBasicAuthFromCSV loads the basic auth username and the password from the given CSV-formatted <data>.
+func LoadBasicAuthFromCSV(name string, data []byte) (*BasicAuth, error) {
+	csv := strings.Split(string(data), ",")
+	if len(csv) < 2 {
+		return nil, fmt.Errorf("invalid CSV for loading basic auth data: %s", string(data))
+	}
+
+	return &BasicAuth{
+		Name:     name,
+		Format:   BasicAuthFormatCSV,
+		Username: csv[1],
+		Password: csv[0],
+	}, nil
 }

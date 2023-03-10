@@ -32,8 +32,8 @@ func (c StorageAccountClient) CreateStorageAccount(ctx context.Context, resource
 		},
 		AccountPropertiesCreateParameters: &storage.AccountPropertiesCreateParameters{
 			AccessTier:             storage.Cool,
-			EnableHTTPSTrafficOnly: pointer.Bool(true),
-			AllowBlobPublicAccess:  pointer.Bool(false),
+			EnableHTTPSTrafficOnly: pointer.BoolPtr(true),
+			AllowBlobPublicAccess:  pointer.BoolPtr(false),
 			MinimumTLSVersion:      storage.TLS12,
 		},
 	})

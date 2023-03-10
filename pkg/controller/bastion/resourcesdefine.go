@@ -17,13 +17,14 @@ package bastion
 import (
 	"encoding/base64"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	"github.com/Azure/go-autorest/autorest/to"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 )
 
-func nicDefine(opt *Options, publicIP *network.PublicIPAddress, subnet *network.Subnet) *network.Interface {
+func nicDefine(opt *Options, publicIP *network.PublicIPAddress, subnet *armnetwork.SubnetsClientGetResponse) *network.Interface {
 	return &network.Interface{
 		Name:     &opt.NicName,
 		Location: &opt.Location,

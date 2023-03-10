@@ -18,14 +18,12 @@ import (
 	"context"
 	"fmt"
 
+	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
+
 	"github.com/gardener/gardener/extensions/pkg/controller/backupentry/genericactuator"
-	"github.com/gardener/gardener/extensions/pkg/util"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/go-logr/logr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
-	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
 
 type actuator struct {
@@ -46,11 +44,14 @@ func (a *actuator) GetETCDSecretData(ctx context.Context, _ logr.Logger, be *ext
 }
 
 func (a *actuator) Delete(ctx context.Context, _ logr.Logger, backupEntry *extensionsv1alpha1.BackupEntry) error {
-	factory := azureclient.NewAzureClientFactory(a.client)
+	factory, err := azureclient.NewAzureClientFactory(ctx, a.client, backupEntry.Spec.SecretRef)
+	if err != nil {
+		return err
+	}
 	storageClient, err := factory.Storage(ctx, backupEntry.Spec.SecretRef)
 	if err != nil {
-		return util.DetermineError(err, helper.KnownCodes)
+		return err
 	}
 
-	return util.DetermineError(storageClient.DeleteObjectsWithPrefix(ctx, backupEntry.Spec.BucketName, fmt.Sprintf("%s/", backupEntry.Name)), helper.KnownCodes)
+	return storageClient.DeleteObjectsWithPrefix(ctx, backupEntry.Spec.BucketName, fmt.Sprintf("%s/", backupEntry.Name))
 }

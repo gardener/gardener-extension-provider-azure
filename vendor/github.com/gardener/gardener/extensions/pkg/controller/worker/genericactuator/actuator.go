@@ -36,14 +36,14 @@ import (
 
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
-	extensionsworkerhelper "github.com/gardener/gardener/extensions/pkg/controller/worker/helper"
+	workerhelper "github.com/gardener/gardener/extensions/pkg/controller/worker/helper"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	kubernetesclient "github.com/gardener/gardener/pkg/client/kubernetes"
+	gardenerkubernetes "github.com/gardener/gardener/pkg/client/kubernetes"
 	"github.com/gardener/gardener/pkg/controllerutils"
 	"github.com/gardener/gardener/pkg/utils/chart"
 	"github.com/gardener/gardener/pkg/utils/imagevector"
-	kubernetesutils "github.com/gardener/gardener/pkg/utils/kubernetes"
+	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 )
 
 // GardenPurposeMachineClass is a constant for the 'machineclass' value in a label.
@@ -60,8 +60,8 @@ type genericActuator struct {
 	clientset            kubernetes.Interface
 	reader               client.Reader
 	scheme               *runtime.Scheme
-	gardenerClientset    kubernetesclient.Interface
-	chartApplier         kubernetesclient.ChartApplier
+	gardenerClientset    gardenerkubernetes.Interface
+	chartApplier         gardenerkubernetes.ChartApplier
 	chartRendererFactory extensionscontroller.ChartRendererFactory
 }
 
@@ -113,7 +113,7 @@ func (a *genericActuator) InjectConfig(config *rest.Config) error {
 		return fmt.Errorf("could not create Kubernetes client: %w", err)
 	}
 
-	a.gardenerClientset, err = kubernetesclient.NewWithConfig(kubernetesclient.WithRESTConfig(config))
+	a.gardenerClientset, err = gardenerkubernetes.NewWithConfig(gardenerkubernetes.WithRESTConfig(config))
 	if err != nil {
 		return fmt.Errorf("could not create Gardener client: %w", err)
 	}
@@ -135,12 +135,12 @@ func (a *genericActuator) cleanupMachineDeployments(ctx context.Context, logger 
 	return nil
 }
 
-func (a *genericActuator) listMachineClassNames(ctx context.Context, namespace string, machineClassList client.ObjectList) (sets.Set[string], error) {
+func (a *genericActuator) listMachineClassNames(ctx context.Context, namespace string, machineClassList client.ObjectList) (sets.String, error) {
 	if err := a.client.List(ctx, machineClassList, client.InNamespace(namespace)); err != nil {
 		return nil, err
 	}
 
-	classNames := sets.New[string]()
+	classNames := sets.NewString()
 
 	if err := meta.EachListItem(machineClassList, func(machineClass runtime.Object) error {
 		accessor, err := meta.Accessor(machineClass)
@@ -257,7 +257,7 @@ func (a *genericActuator) shallowDeleteMachineClassSecrets(ctx context.Context, 
 
 // removeFinalizerFromWorkerSecretRef removes the MCM finalizers from the secret that is referenced by the worker
 func (a *genericActuator) removeFinalizerFromWorkerSecretRef(ctx context.Context, log logr.Logger, worker *extensionsv1alpha1.Worker) error {
-	secret, err := kubernetesutils.GetSecretByReference(ctx, a.client, &worker.Spec.SecretRef)
+	secret, err := kutil.GetSecretByReference(ctx, a.client, &worker.Spec.SecretRef)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return nil
@@ -368,7 +368,7 @@ const (
 //   - the machine set does not have a status that indicates (attempted) machine creation
 func isMachineControllerStuck(machineSets []machinev1alpha1.MachineSet, machineDeployments []machinev1alpha1.MachineDeployment) (bool, *string) {
 	// map the owner reference to the existing machine sets
-	ownerReferenceToMachineSet := extensionsworkerhelper.BuildOwnerToMachineSetsMap(machineSets)
+	ownerReferenceToMachineSet := workerhelper.BuildOwnerToMachineSetsMap(machineSets)
 
 	for _, machineDeployment := range machineDeployments {
 		if !controllerutil.ContainsFinalizer(&machineDeployment, mcmFinalizer) {
@@ -380,7 +380,7 @@ func isMachineControllerStuck(machineSets []machinev1alpha1.MachineSet, machineD
 			continue
 		}
 
-		machineSet := extensionsworkerhelper.GetMachineSetWithMachineClass(machineDeployment.Name, machineDeployment.Spec.Template.Spec.Class.Name, ownerReferenceToMachineSet)
+		machineSet := workerhelper.GetMachineSetWithMachineClass(machineDeployment.Name, machineDeployment.Spec.Template.Spec.Class.Name, ownerReferenceToMachineSet)
 		if machineSet == nil {
 			msg := fmt.Sprintf("missing machine set for machine deployment (%s/%s)", machineDeployment.Namespace, machineDeployment.Name)
 			return true, &msg

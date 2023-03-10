@@ -20,19 +20,16 @@ import (
 	"fmt"
 	"time"
 
+	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
+
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/gardener/gardener/extensions/pkg/controller"
-	"github.com/gardener/gardener/extensions/pkg/util"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	ctrlerror "github.com/gardener/gardener/pkg/controllerutils/reconciler"
 	"github.com/go-logr/logr"
-
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
-	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
 
 func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster) error {
-	var factory = azureclient.NewAzureClientFactory(a.client)
 
 	infrastructureStatus, err := getInfrastructureStatus(ctx, a, cluster)
 	if err != nil {
@@ -43,15 +40,19 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensi
 	if err != nil {
 		return err
 	}
+	factory, err := azureclient.NewAzureClientFactory(ctx, a.client, opt.SecretReference)
+	if err != nil {
+		return err
+	}
 
 	err = removeBastionInstance(ctx, log, factory, opt)
 	if err != nil {
-		return util.DetermineError(fmt.Errorf("failed to remove bastion instance: %w", err), helper.KnownCodes)
+		return fmt.Errorf("failed to remove bastion instance: %w", err)
 	}
 
 	deleted, err := isInstanceDeleted(ctx, log, factory, opt)
 	if err != nil {
-		return util.DetermineError(fmt.Errorf("failed to check for bastion instance: %w", err), helper.KnownCodes)
+		return fmt.Errorf("failed to check for bastion instance: %w", err)
 	}
 
 	if !deleted {
@@ -63,22 +64,22 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensi
 
 	err = removeNic(ctx, log, factory, opt)
 	if err != nil {
-		return util.DetermineError(fmt.Errorf("failed to remove nic: %w", err), helper.KnownCodes)
+		return fmt.Errorf("failed to remove nic: %w", err)
 	}
 
 	err = removePublicIP(ctx, log, factory, opt)
 	if err != nil {
-		return util.DetermineError(fmt.Errorf("failed to remove public ip: %w", err), helper.KnownCodes)
+		return fmt.Errorf("failed to remove public ip: %w", err)
 	}
 
 	err = removeDisk(ctx, log, factory, opt)
 	if err != nil {
-		return util.DetermineError(fmt.Errorf("failed to remove disk: %w", err), helper.KnownCodes)
+		return fmt.Errorf("failed to remove disk: %w", err)
 	}
 
 	err = removeNSGRule(ctx, log, factory, opt)
 	if err != nil {
-		return util.DetermineError(fmt.Errorf("failed to remove nsg rules: %w", err), helper.KnownCodes)
+		return fmt.Errorf("failed to remove nsg rules: %w", err)
 	}
 
 	return nil
@@ -112,7 +113,7 @@ func removeNSGRule(ctx context.Context, log logr.Logger, factory azureclient.Fac
 }
 
 func removePublicIP(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) error {
-	publicClient, err := factory.PublicIP(ctx, opt.SecretReference)
+	publicClient, err := factory.PublicIP()
 	if err != nil {
 		return err
 	}
@@ -127,7 +128,7 @@ func removePublicIP(ctx context.Context, log logr.Logger, factory azureclient.Fa
 }
 
 func removeNic(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) error {
-	nicClient, err := factory.NetworkInterface(ctx, opt.SecretReference)
+	nicClient, err := factory.NetworkInterface()
 	if err != nil {
 		return err
 	}
@@ -142,7 +143,7 @@ func removeNic(ctx context.Context, log logr.Logger, factory azureclient.Factory
 }
 
 func removeDisk(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) error {
-	diskClient, err := factory.Disk(ctx, opt.SecretReference)
+	diskClient, err := factory.Disk()
 	if err != nil {
 		return err
 	}
@@ -156,7 +157,7 @@ func removeDisk(ctx context.Context, log logr.Logger, factory azureclient.Factor
 }
 
 func removeBastionInstance(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) error {
-	vmClient, err := factory.VirtualMachine(ctx, opt.SecretReference)
+	vmClient, err := factory.VirtualMachine()
 	if err != nil {
 		return err
 	}

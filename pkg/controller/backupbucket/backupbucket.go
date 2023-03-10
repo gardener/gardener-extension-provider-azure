@@ -18,11 +18,11 @@ import (
 	"context"
 	"fmt"
 
+	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
+
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
 
 func ensureBackupBucket(ctx context.Context, client client.Client, factory azureclient.Factory, backupBucket *extensionsv1alpha1.BackupBucket) (string, string, error) {
@@ -32,7 +32,7 @@ func ensureBackupBucket(ctx context.Context, client client.Client, factory azure
 	)
 
 	// Get resource group client to ensure resource group to host backup storage account exists.
-	groupClient, err := factory.Group(ctx, backupBucket.Spec.SecretRef)
+	groupClient, err := factory.Group()
 	if err != nil {
 		return "", "", err
 	}
@@ -41,7 +41,7 @@ func ensureBackupBucket(ctx context.Context, client client.Client, factory azure
 	}
 
 	// Get storage account client to create the backup storage account.
-	storageAccountClient, err := factory.StorageAccount(ctx, backupBucket.Spec.SecretRef)
+	storageAccountClient, err := factory.StorageAccount()
 	if err != nil {
 		return "", "", err
 	}

@@ -27,7 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/sets"
-	utilyaml "k8s.io/apimachinery/pkg/util/yaml"
+	k8syaml "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -72,7 +72,7 @@ func ReadTestResources(scheme *runtime.Scheme, namespaceName, path string) ([]cl
 	}
 
 	// file extensions that may contain Webhooks
-	resourceExtensions := sets.New[string](".json", ".yaml", ".yml")
+	resourceExtensions := sets.NewString(".json", ".yaml", ".yml")
 
 	var objects []client.Object
 	for _, file := range files {
@@ -119,7 +119,7 @@ func readDocuments(fp string) ([][]byte, error) {
 	}
 
 	var docs [][]byte
-	reader := utilyaml.NewYAMLReader(bufio.NewReader(bytes.NewReader(b)))
+	reader := k8syaml.NewYAMLReader(bufio.NewReader(bytes.NewReader(b)))
 	for {
 		// Read document
 		doc, err := reader.Read()

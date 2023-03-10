@@ -17,8 +17,9 @@ package controllerutils
 import (
 	"context"
 
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // AddFinalizers ensures that the given finalizer is present in the given object and optimistic locking. If it is not

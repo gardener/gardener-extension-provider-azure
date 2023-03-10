@@ -15,10 +15,11 @@
 package imagevector
 
 import (
+	"io"
 	"os"
 
+	"gopkg.in/yaml.v2"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -28,12 +29,12 @@ const (
 )
 
 // ReadComponentOverwrite reads an ComponentImageVector from the given io.Reader.
-func ReadComponentOverwrite(buf []byte) (ComponentImageVectors, error) {
+func ReadComponentOverwrite(r io.Reader) (ComponentImageVectors, error) {
 	data := struct {
 		Components []ComponentImageVector `json:"components" yaml:"components"`
 	}{}
 
-	if err := yaml.Unmarshal(buf, &data); err != nil {
+	if err := yaml.NewDecoder(r).Decode(&data); err != nil {
 		return nil, err
 	}
 
@@ -51,10 +52,11 @@ func ReadComponentOverwrite(buf []byte) (ComponentImageVectors, error) {
 
 // ReadComponentOverwriteFile reads an ComponentImageVector from the file with the given name.
 func ReadComponentOverwriteFile(name string) (ComponentImageVectors, error) {
-	buf, err := os.ReadFile(name)
+	file, err := os.Open(name)
 	if err != nil {
 		return nil, err
 	}
+	defer file.Close()
 
-	return ReadComponentOverwrite(buf)
+	return ReadComponentOverwrite(file)
 }

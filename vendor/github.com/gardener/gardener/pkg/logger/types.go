@@ -31,6 +31,7 @@ const (
 var (
 	// AllLogLevels is a slice of all available log levels.
 	AllLogLevels = []string{DebugLevel, InfoLevel, ErrorLevel}
+
 	// AllLogFormats is a slice of all available log formats.
 	AllLogFormats = []string{FormatJSON, FormatText}
 )

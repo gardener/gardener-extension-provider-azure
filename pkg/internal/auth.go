@@ -18,26 +18,32 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	azureautorest "github.com/Azure/go-autorest/autorest"
 	azureauth "github.com/Azure/go-autorest/autorest/azure/auth"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 // ClientAuth represents a Azure Client Auth credentials.
 type ClientAuth struct {
 	// SubscriptionID is the Azure subscription ID.
-	SubscriptionID string
+	SubscriptionID string `yaml:"subscriptionID"`
 	// TenantID is the Azure tenant ID.
-	TenantID string
+	TenantID string `yaml:"tenantID"`
 	// ClientID is the Azure client ID.
-	ClientID string
+	ClientID string `yaml:"clientID"`
 	// ClientSecret is the Azure client secret.
-	ClientSecret string
+	ClientSecret string `yaml:"clientSecret"`
+}
+
+// GetAzClientCredentials returns the credential struct consumed by the Azure client
+func (clientAuth ClientAuth) GetAzClientCredentials() (*azidentity.ClientSecretCredential, error) {
+	return azidentity.NewClientSecretCredential(clientAuth.TenantID, clientAuth.ClientID, clientAuth.ClientSecret, nil)
 }
 
 // GetClientAuthData retrieves the client auth data specified by the secret reference.
@@ -47,11 +53,11 @@ func GetClientAuthData(ctx context.Context, c client.Client, secretRef corev1.Se
 		return nil, err
 	}
 
-	return ReadClientAuthDataFromSecret(secret, allowDNSKeys)
+	return NewClientAuthDataFromSecret(secret, allowDNSKeys)
 }
 
-// ReadClientAuthDataFromSecret reads the client auth details from the given secret.
-func ReadClientAuthDataFromSecret(secret *corev1.Secret, allowDNSKeys bool) (*ClientAuth, error) {
+// NewClientAuthDataFromSecret reads the client auth details from the given secret.
+func NewClientAuthDataFromSecret(secret *corev1.Secret, allowDNSKeys bool) (*ClientAuth, error) {
 	var altSubscriptionIDIDKey, altTenantIDKey, altClientIDKey, altClientSecretKey *string
 	if allowDNSKeys {
 		altSubscriptionIDIDKey = pointer.String(azure.DNSSubscriptionIDKey)
@@ -88,15 +94,19 @@ func ReadClientAuthDataFromSecret(secret *corev1.Secret, allowDNSKeys bool) (*Cl
 	}, nil
 }
 
-// GetAuthorizerAndSubscriptionID retrieves the client auth data specified by the secret reference
+// GetAuthorizerAndSubscriptionIDFromSecretRef retrieves the client auth data specified by the secret reference
 // to create and return an Azure Authorizer and a subscription id.
-func GetAuthorizerAndSubscriptionID(ctx context.Context, c client.Client, secretRef corev1.SecretReference, allowDNSKeys bool) (azureautorest.Authorizer, string, error) {
+func GetAuthorizerAndSubscriptionIDFromSecretRef(ctx context.Context, c client.Client, secretRef corev1.SecretReference, allowDNSKeys bool) (azureautorest.Authorizer, string, error) {
 	clientAuth, err := GetClientAuthData(ctx, c, secretRef, allowDNSKeys)
 	if err != nil {
 		return nil, "", err
 	}
-	clientCredentialsConfig := azureauth.NewClientCredentialsConfig(clientAuth.ClientID, clientAuth.ClientSecret, clientAuth.TenantID)
+	return GetAuthorizerAndSubscriptionID(clientAuth)
+}
 
+// GetAuthorizerAndSubscriptionID creates and returns an Azure Authorizer and a subscription id
+func GetAuthorizerAndSubscriptionID(clientAuth *ClientAuth) (azureautorest.Authorizer, string, error) {
+	clientCredentialsConfig := azureauth.NewClientCredentialsConfig(clientAuth.ClientID, clientAuth.ClientSecret, clientAuth.TenantID)
 	authorizer, err := clientCredentialsConfig.Authorizer()
 	if err != nil {
 		return nil, "", err

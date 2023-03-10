@@ -21,19 +21,18 @@ import (
 	"net"
 	"time"
 
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
+	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
+
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	"github.com/gardener/gardener/extensions/pkg/controller"
-	"github.com/gardener/gardener/extensions/pkg/util"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	ctrlerror "github.com/gardener/gardener/pkg/controllerutils/reconciler"
 	"github.com/gardener/gardener/pkg/extensions"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
-	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
 
 // bastionEndpoints holds the endpoints the bastion host provides
@@ -51,8 +50,6 @@ func (be *bastionEndpoints) Ready() bool {
 }
 
 func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster) error {
-	var factory = azureclient.NewAzureClientFactory(a.client)
-
 	infrastructureStatus, err := getInfrastructureStatus(ctx, a, cluster)
 	if err != nil {
 		return err
@@ -62,15 +59,19 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 	if err != nil {
 		return err
 	}
+	factory, err := azureclient.NewAzureClientFactory(ctx, a.client, opt.SecretReference)
+	if err != nil {
+		return err
+	}
 
 	publicIP, err := ensurePublicIPAddress(ctx, log, factory, opt)
 	if err != nil {
-		return util.DetermineError(err, helper.KnownCodes)
+		return err
 	}
 
 	nic, err := ensureNic(ctx, log, factory, infrastructureStatus, opt, publicIP)
 	if err != nil {
-		return util.DetermineError(err, helper.KnownCodes)
+		return err
 	}
 
 	opt.NicID = *nic.ID
@@ -78,7 +79,7 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 	// assume it's not possible to not have an ipv4 address
 	opt.PrivateIPAddressV4, err = getPrivateIPv4Address(nic)
 	if err != nil {
-		return util.DetermineError(err, helper.KnownCodes)
+		return err
 	}
 
 	opt.PrivateIPAddressV6, err = getPrivateIPv6Address(nic)
@@ -88,18 +89,18 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 
 	err = ensureNetworkSecurityGroups(ctx, log, factory, opt)
 	if err != nil {
-		return util.DetermineError(err, helper.KnownCodes)
+		return err
 	}
 
 	err = ensureComputeInstance(ctx, log, bastion, factory, opt)
 	if err != nil {
-		return util.DetermineError(err, helper.KnownCodes)
+		return err
 	}
 
 	// check if the instance already exists and has an IP
 	endpoints, err := getInstanceEndpoints(nic, publicIP)
 	if err != nil {
-		return util.DetermineError(err, helper.KnownCodes)
+		return err
 	}
 
 	if !endpoints.Ready() {
@@ -320,7 +321,7 @@ func ensureNic(ctx context.Context, log logr.Logger, factory azureclient.Factory
 
 	parameters := nicDefine(opt, publicIP, subnet)
 
-	nicClient, err := factory.NetworkInterface(ctx, opt.SecretReference)
+	nicClient, err := factory.NetworkInterface()
 	if err != nil {
 		return nil, err
 	}

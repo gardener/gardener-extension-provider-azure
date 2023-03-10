@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"time"
 
-	contextutils "github.com/gardener/gardener/pkg/utils/context"
+	utilcontext "github.com/gardener/gardener/pkg/utils/context"
 )
 
 type lastErrorAggregator struct {
@@ -61,8 +61,8 @@ func (f IntervalFactoryFunc) New(interval time.Duration) WaitFunc {
 	return f(interval)
 }
 
-// NewIntervalFactory returns a new IntervalFactory using the given contextutils.Ops.
-func NewIntervalFactory(contextOps contextutils.Ops) IntervalFactory {
+// NewIntervalFactory returns a new IntervalFactory using the given utilcontext.Ops.
+func NewIntervalFactory(contextOps utilcontext.Ops) IntervalFactory {
 	return IntervalFactoryFunc(func(interval time.Duration) WaitFunc {
 		return func(ctx context.Context) (context.Context, context.CancelFunc) {
 			return contextOps.WithTimeout(ctx, interval)
@@ -70,7 +70,7 @@ func NewIntervalFactory(contextOps contextutils.Ops) IntervalFactory {
 	})
 }
 
-var defaultIntervalFactory = NewIntervalFactory(contextutils.DefaultOps())
+var defaultIntervalFactory = NewIntervalFactory(utilcontext.DefaultOps())
 
 // DefaultIntervalFactory returns the default IntervalFactory.
 func DefaultIntervalFactory() IntervalFactory {
@@ -178,7 +178,7 @@ func UntilFor(ctx context.Context, waitFunc WaitFunc, agg ErrorAggregator, f Fun
 type ops struct {
 	intervalFactory        IntervalFactory
 	errorAggregatorFactory ErrorAggregatorFactory
-	contextOps             contextutils.Ops
+	contextOps             utilcontext.Ops
 }
 
 // Until implements Ops.
@@ -193,14 +193,14 @@ func (o *ops) UntilTimeout(ctx context.Context, interval, timeout time.Duration,
 	return o.Until(ctx, interval, f)
 }
 
-// NewOps returns the new ops with the given IntervalFactory, ErrorAggregatorFactory and contextutils.Ops.
-func NewOps(intervalFactory IntervalFactory, errorAggregatorFactory ErrorAggregatorFactory, contextOps contextutils.Ops) Ops {
+// NewOps returns the new ops with the given IntervalFactory, ErrorAggregatorFactory and utilcontext.Ops.
+func NewOps(intervalFactory IntervalFactory, errorAggregatorFactory ErrorAggregatorFactory, contextOps utilcontext.Ops) Ops {
 	return &ops{intervalFactory, errorAggregatorFactory, contextOps}
 }
 
-var defaultOps = NewOps(DefaultIntervalFactory(), DefaultErrorAggregatorFactory(), contextutils.DefaultOps())
+var defaultOps = NewOps(DefaultIntervalFactory(), DefaultErrorAggregatorFactory(), utilcontext.DefaultOps())
 
-// DefaultOps returns the default Ops with the DefaultIntervalFactory, DefaultErrorAggregatorFactory and contextutils.DefaultOps.
+// DefaultOps returns the default Ops with the DefaultIntervalFactory, DefaultErrorAggregatorFactory and utilcontext.DefaultOps.
 func DefaultOps() Ops {
 	return defaultOps
 }

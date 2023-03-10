@@ -15,11 +15,11 @@
 package validator
 
 import (
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener/extensions/pkg/util"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 func decodeWorkerConfig(decoder runtime.Decoder, worker *runtime.RawExtension) (*azure.WorkerConfig, error) {

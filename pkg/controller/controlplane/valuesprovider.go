@@ -20,6 +20,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	azureapihelper "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
+
 	"github.com/Masterminds/semver"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/common"
@@ -45,11 +50,6 @@ import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	autoscalingv1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	azureapihelper "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
 // Object names
@@ -57,7 +57,7 @@ import (
 const (
 	caNameControlPlane               = "ca-" + azure.Name + "-controlplane"
 	cloudControllerManagerServerName = azure.CloudControllerManagerName + "-server"
-	csiSnapshotValidationServerName  = azure.CSISnapshotValidationName + "-server"
+	csiSnapshotValidationServerName  = azure.CSISnapshotValidation + "-server"
 )
 
 func secretConfigsFunc(namespace string) []extensionssecretsmanager.SecretConfigWithOptions {
@@ -83,8 +83,8 @@ func secretConfigsFunc(namespace string) []extensionssecretsmanager.SecretConfig
 		{
 			Config: &secretutils.CertificateSecretConfig{
 				Name:                        csiSnapshotValidationServerName,
-				CommonName:                  azure.UsernamePrefix + azure.CSISnapshotValidationName,
-				DNSNames:                    kutil.DNSNamesForService(azure.CSISnapshotValidationName, namespace),
+				CommonName:                  azure.UsernamePrefix + azure.CSISnapshotValidation,
+				DNSNames:                    kutil.DNSNamesForService(azure.CSISnapshotValidation, namespace),
 				CertType:                    secretutils.ServerCert,
 				SkipPublishingCACertificate: true,
 			},
@@ -105,7 +105,6 @@ func shootAccessSecretsFunc(namespace string) []*gutil.ShootAccessSecret {
 		gutil.NewShootAccessSecret(azure.CSISnapshotterName, namespace),
 		gutil.NewShootAccessSecret(azure.CSIResizerName, namespace),
 		gutil.NewShootAccessSecret(azure.CSISnapshotControllerName, namespace),
-		gutil.NewShootAccessSecret(azure.CSISnapshotValidationName, namespace),
 		gutil.NewShootAccessSecret(azure.RemedyControllerName, namespace),
 	}
 }
@@ -164,11 +163,9 @@ var (
 					{Type: &appsv1.Deployment{}, Name: azure.CSISnapshotControllerName},
 					{Type: &autoscalingv1.VerticalPodAutoscaler{}, Name: azure.CSISnapshotControllerName + "-vpa"},
 					// csi-snapshot-validation-webhook
-					{Type: &appsv1.Deployment{}, Name: azure.CSISnapshotValidationName},
-					{Type: &corev1.Service{}, Name: azure.CSISnapshotValidationName},
+					{Type: &appsv1.Deployment{}, Name: azure.CSISnapshotValidation},
+					{Type: &corev1.Service{}, Name: azure.CSISnapshotValidation},
 					{Type: &networkingv1.NetworkPolicy{}, Name: "allow-kube-apiserver-to-csi-snapshot-validation"},
-					{Type: &rbacv1.ClusterRole{}, Name: azure.UsernamePrefix + azure.CSISnapshotValidationName},
-					{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.CSISnapshotValidationName},
 				},
 			},
 			{
@@ -257,7 +254,7 @@ var (
 					{Type: &rbacv1.Role{}, Name: azure.UsernamePrefix + azure.CSIResizerName},
 					{Type: &rbacv1.RoleBinding{}, Name: azure.UsernamePrefix + azure.CSIResizerName},
 					// csi-snapshot-validation-webhook
-					{Type: &admissionregistrationv1.ValidatingWebhookConfiguration{}, Name: azure.CSISnapshotValidationName},
+					{Type: &admissionregistrationv1.ValidatingWebhookConfiguration{}, Name: azure.CSISnapshotValidation},
 				},
 			},
 			{
@@ -442,6 +439,7 @@ func getConfigChartValues(infraStatus *apisazure.InfrastructureStatus, cp *exten
 
 	// Collect config chart values.
 	values := map[string]interface{}{
+		"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
 		"tenantId":          ca.TenantID,
 		"subscriptionId":    ca.SubscriptionID,
 		"aadClientId":       ca.ClientID,
@@ -711,7 +709,7 @@ func getControlPlaneShootChartValues(
 			},
 			"cloudProviderConfig": cloudProviderDiskConfig,
 			"webhookConfig": map[string]interface{}{
-				"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
+				"url":      "https://" + azure.CSISnapshotValidation + "." + cp.Namespace + "/volumesnapshot",
 				"caBundle": caBundle,
 			},
 			"pspDisabled": pspDisabled,

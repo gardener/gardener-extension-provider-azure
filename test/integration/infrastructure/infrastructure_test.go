@@ -75,25 +75,9 @@ var (
 	subscriptionId = flag.String("subscription-id", "", "Azure subscription ID")
 	tenantId       = flag.String("tenant-id", "", "Azure tenant ID")
 	region         = flag.String("region", "", "Azure region")
+	secretYamlPath = flag.String("secret-path", "", "Yaml file with secret including Azure credentials")
+	useFlow        = flag.Bool("use-flow", false, "Set annotation to use flow for reconcilation")
 )
-
-func validateFlags() {
-	if len(*clientId) == 0 {
-		panic("client-id flag is not specified")
-	}
-	if len(*clientSecret) == 0 {
-		panic("client-secret flag is not specified")
-	}
-	if len(*subscriptionId) == 0 {
-		panic("subscription-id flag is not specified")
-	}
-	if len(*tenantId) == 0 {
-		panic("tenant-id flag is not specified")
-	}
-	if len(*region) == 0 {
-		panic("region flag is not specified")
-	}
-}
 
 type azureClientSet struct {
 	groups           resources.GroupsClient
@@ -176,9 +160,7 @@ var (
 )
 
 var _ = BeforeSuite(func() {
-	flag.Parse()
-	validateFlags()
-
+	setConfigVariablesFromFlags()
 	internalChartsPath := azure.InternalChartsPath
 	repoRoot := filepath.Join("..", "..", "..")
 	azure.InternalChartsPath = filepath.Join(repoRoot, azure.InternalChartsPath)
@@ -204,7 +186,7 @@ var _ = BeforeSuite(func() {
 
 	By("starting test environment")
 	testEnv = &envtest.Environment{
-		UseExistingCluster: pointer.Bool(true),
+		UseExistingCluster: pointer.BoolPtr(true),
 		CRDInstallOptions: envtest.CRDInstallOptions{
 			Paths: []string{
 				filepath.Join(repoRoot, "example", "20-crd-extensions.gardener.cloud_clusters.yaml"),
@@ -288,8 +270,8 @@ var _ = Describe("Infrastructure tests", func() {
 			Expect(prepareNewIdentity(ctx, log, clientSet, foreignName, foreignName, *region)).To(Succeed())
 
 			vnetConfig := &azurev1alpha1.VNet{
-				Name:          pointer.String(foreignName),
-				ResourceGroup: pointer.String(foreignName),
+				Name:          pointer.StringPtr(foreignName),
+				ResourceGroup: pointer.StringPtr(foreignName),
 			}
 			identityConfig := &azurev1alpha1.IdentityConfig{
 				Name:          foreignName,
@@ -322,7 +304,6 @@ var _ = Describe("Infrastructure tests", func() {
 		It("should successfully create and delete a zonal cluster with NatGateway using an existing vNet and identity", func() {
 			foreignName, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
-
 			var cleanupHandle framework.CleanupActionHandle
 			cleanupHandle = framework.AddCleanupAction(func() {
 				Expect(ignoreAzureNotFoundError(teardownResourceGroup(ctx, clientSet, foreignName))).To(Succeed())
@@ -334,8 +315,8 @@ var _ = Describe("Infrastructure tests", func() {
 			Expect(prepareNewIdentity(ctx, log, clientSet, foreignName, foreignName, *region)).To(Succeed())
 
 			vnetConfig := &azurev1alpha1.VNet{
-				Name:          pointer.String(foreignName),
-				ResourceGroup: pointer.String(foreignName),
+				Name:          pointer.StringPtr(foreignName),
+				ResourceGroup: pointer.StringPtr(foreignName),
 			}
 			identityConfig := &azurev1alpha1.IdentityConfig{
 				Name:          foreignName,
@@ -471,8 +452,8 @@ var _ = Describe("Infrastructure tests", func() {
 			Expect(prepareNewIdentity(ctx, log, clientSet, foreignName, foreignName, *region)).To(Succeed())
 
 			vnetConfig := &azurev1alpha1.VNet{
-				Name:          pointer.String(foreignName),
-				ResourceGroup: pointer.String(foreignName),
+				Name:          pointer.StringPtr(foreignName),
+				ResourceGroup: pointer.StringPtr(foreignName),
 			}
 			identityConfig := &azurev1alpha1.IdentityConfig{
 				Name:          foreignName,
@@ -575,6 +556,11 @@ func runTest(
 		return err
 	}
 
+	By("set flow annotation (based on config)")
+	if *useFlow {
+		metav1.SetMetaDataAnnotation(&infra.ObjectMeta, infrastructure.AnnotationKeyUseFlow, "true")
+	}
+
 	if err := c.Create(ctx, infra); err != nil {
 		return err
 	}
@@ -622,7 +608,7 @@ func generateName() (string, error) {
 func newInfrastructureConfig(vnet *azurev1alpha1.VNet, natGateway *azurev1alpha1.NatGatewayConfig, id *azurev1alpha1.IdentityConfig, zoned bool) *azurev1alpha1.InfrastructureConfig {
 	if vnet == nil {
 		vnet = &azurev1alpha1.VNet{
-			CIDR: pointer.String(VNetCIDR),
+			CIDR: pointer.StringPtr(VNetCIDR),
 		}
 	}
 	nwConfig := azurev1alpha1.NetworkConfig{
@@ -755,7 +741,7 @@ func newInfrastructure(namespace string, providerConfig *azurev1alpha1.Infrastru
 func prepareNewResourceGroup(ctx context.Context, log logr.Logger, az *azureClientSet, groupName, location string) error {
 	log.Info("generating new ResourceGroups", "groupName", groupName)
 	_, err := az.groups.CreateOrUpdate(ctx, groupName, resources.Group{
-		Location: pointer.String(location),
+		Location: pointer.StringPtr(location),
 	})
 	return err
 }
@@ -770,8 +756,8 @@ func prepareNewVNet(ctx context.Context, log logr.Logger, az *azureClientSet, gr
 				},
 			},
 		},
-		Name:     pointer.String(vNetName),
-		Location: pointer.String(location),
+		Name:     pointer.StringPtr(vNetName),
+		Location: pointer.StringPtr(location),
 	})
 	if err != nil {
 		return err
@@ -787,7 +773,7 @@ func prepareNewVNet(ctx context.Context, log logr.Logger, az *azureClientSet, gr
 func prepareNewIdentity(ctx context.Context, log logr.Logger, az *azureClientSet, groupName, idName, location string) error {
 	log.Info("generating new Identity", "groupName", groupName, "idName", idName)
 	_, err := az.msi.CreateOrUpdate(ctx, groupName, idName, msi.Identity{
-		Location: pointer.String(location),
+		Location: pointer.StringPtr(location),
 	})
 	return err
 }
@@ -864,8 +850,8 @@ func verifyCreation(
 		vnet, err = az.vnet.Get(ctx, vnetResourceGroupName, status.Networks.VNet.Name, "")
 		Expect(err).ToNot(HaveOccurred())
 
-		result.vnetResourceGroup = pointer.String(vnetResourceGroupName)
-		result.vnet = pointer.String(status.Networks.VNet.Name)
+		result.vnetResourceGroup = pointer.StringPtr(vnetResourceGroupName)
+		result.vnet = pointer.StringPtr(status.Networks.VNet.Name)
 	} else {
 		Expect(status.Networks.VNet.ResourceGroup).To(BeNil())
 
@@ -1042,6 +1028,7 @@ func verifyDeletion(
 	az *azureClientSet,
 	identifier azureIdentifier,
 ) {
+	Expect(identifier.resourceGroup).To(Not(BeEmpty()))
 	_, err := az.groups.Get(ctx, identifier.resourceGroup)
 	Expect(err).To(HaveOccurred())
 	Expect(err).To(BeNotFoundError())

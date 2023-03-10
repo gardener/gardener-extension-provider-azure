@@ -19,7 +19,21 @@ import (
 	"fmt"
 	"os"
 
+	azureinstall "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/install"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	azurecmd "github.com/gardener/gardener-extension-provider-azure/pkg/cmd"
+	azurebackupbucket "github.com/gardener/gardener-extension-provider-azure/pkg/controller/backupbucket"
+	azurebackupentry "github.com/gardener/gardener-extension-provider-azure/pkg/controller/backupentry"
+	azurecontrolplane "github.com/gardener/gardener-extension-provider-azure/pkg/controller/controlplane"
+	azurecsimigration "github.com/gardener/gardener-extension-provider-azure/pkg/controller/csimigration"
+	azurednsrecord "github.com/gardener/gardener-extension-provider-azure/pkg/controller/dnsrecord"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/healthcheck"
+	azureinfrastructure "github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure"
+	azureworker "github.com/gardener/gardener-extension-provider-azure/pkg/controller/worker"
+	azurecontrolplaneexposure "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/controlplaneexposure"
+
 	druidv1alpha1 "github.com/gardener/etcd-druid/api/v1alpha1"
+	azurebastion "github.com/gardener/gardener-extension-provider-azure/pkg/controller/bastion"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	controllercmd "github.com/gardener/gardener/extensions/pkg/controller/cmd"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
@@ -38,21 +52,6 @@ import (
 	"k8s.io/component-base/version/verflag"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-
-	azureinstall "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/install"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	azurecmd "github.com/gardener/gardener-extension-provider-azure/pkg/cmd"
-	azurebackupbucket "github.com/gardener/gardener-extension-provider-azure/pkg/controller/backupbucket"
-	azurebackupentry "github.com/gardener/gardener-extension-provider-azure/pkg/controller/backupentry"
-	azurebastion "github.com/gardener/gardener-extension-provider-azure/pkg/controller/bastion"
-	azurecontrolplane "github.com/gardener/gardener-extension-provider-azure/pkg/controller/controlplane"
-	azurecsimigration "github.com/gardener/gardener-extension-provider-azure/pkg/controller/csimigration"
-	azurednsrecord "github.com/gardener/gardener-extension-provider-azure/pkg/controller/dnsrecord"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/healthcheck"
-	azureinfrastructure "github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure"
-	azureworker "github.com/gardener/gardener-extension-provider-azure/pkg/controller/worker"
-	azurecontrolplaneexposure "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/controlplaneexposure"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/webhook/topology"
 )
 
 // NewControllerManagerCommand creates a new command for running a Azure provider controller.
@@ -134,8 +133,9 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			Namespace: os.Getenv("WEBHOOK_CONFIG_NAMESPACE"),
 		}
 
+		gardenerVersion    = new(string)
 		controllerSwitches = azurecmd.ControllerSwitchOptions()
-		webhookSwitches    = azurecmd.WebhookSwitchOptions()
+		webhookSwitches    = azurecmd.WebhookSwitchOptions(gardenerVersion)
 		webhookOptions     = webhookcmd.NewAddToManagerOptions(
 			azure.Name,
 			genericactuator.ShootWebhooksResourceName,
@@ -143,8 +143,6 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			webhookServerOptions,
 			webhookSwitches,
 		)
-
-		seedOptions = &azurecmd.SeedConfigOptions{}
 
 		aggOption = controllercmd.NewOptionAggregator(
 			generalOpts,
@@ -164,7 +162,6 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			controllerSwitches,
 			reconcileOpts,
 			webhookOptions,
-			seedOptions,
 		)
 	)
 
@@ -218,6 +215,8 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			// add common meta types to schema for controller-runtime to use v1.ListOptions
 			metav1.AddToGroupVersion(scheme, machinev1alpha1.SchemeGroupVersion)
 
+			*gardenerVersion = generalOpts.Completed().GardenerVersion
+
 			configFileOpts.Completed().ApplyETCDStorage(&azurecontrolplaneexposure.DefaultAddOptions.ETCDStorage)
 			configFileOpts.Completed().ApplyHealthCheckConfig(&healthcheck.DefaultAddOptions.HealthCheckConfig)
 			healthCheckCtrlOpts.Completed().Apply(&healthcheck.DefaultAddOptions.Controller)
@@ -234,9 +233,6 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			reconcileOpts.Completed().Apply(&azureworker.DefaultAddOptions.IgnoreOperationAnnotation)
 			reconcileOpts.Completed().Apply(&azurebastion.DefaultAddOptions.IgnoreOperationAnnotation)
 			workerCtrlOpts.Completed().Apply(&azureworker.DefaultAddOptions.Controller)
-
-			topology.SeedRegion = seedOptions.Completed().Region
-			topology.SeedProvider = seedOptions.Completed().Provider
 
 			if _, err := webhookOptions.Completed().AddToManager(ctx, mgr); err != nil {
 				return fmt.Errorf("could not add webhooks to manager: %w", err)

@@ -19,9 +19,9 @@ import (
 	"io"
 	"strings"
 
-	"k8s.io/utils/clock"
-
 	"github.com/gardener/gardener/pkg/utils"
+
+	"k8s.io/utils/clock"
 )
 
 var (

@@ -17,16 +17,16 @@ package internal_test
 import (
 	"context"
 
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	. "github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
+
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	. "github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
 var _ = Describe("Azure Auth", func() {
@@ -84,9 +84,9 @@ var _ = Describe("Azure Auth", func() {
 		ctrl.Finish()
 	})
 
-	Describe("#ReadClientAuthDataFromSecret", func() {
+	Describe("#NewClientAuthDataFromSecret", func() {
 		It("should read the client auth data from the secret", func() {
-			actual, err := ReadClientAuthDataFromSecret(secret, false)
+			actual, err := NewClientAuthDataFromSecret(secret, false)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(actual).To(Equal(clientAuth))
 		})
@@ -163,7 +163,7 @@ var _ = Describe("Azure Auth", func() {
 					return nil
 				})
 
-			authorizer, subscription, err := GetAuthorizerAndSubscriptionID(ctx, c, secretRef, false)
+			authorizer, subscription, err := GetAuthorizerAndSubscriptionIDFromSecretRef(ctx, c, secretRef, false)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(subscription).To(ContainSubstring(subscriptionID))

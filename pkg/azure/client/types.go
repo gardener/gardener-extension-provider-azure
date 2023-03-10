@@ -17,37 +17,66 @@ package client
 import (
 	"context"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-05-01/dns"
+	"github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
-	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
 	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-04-01/storage"
 	"github.com/Azure/azure-storage-blob-go/azblob"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Factory represents a factory to produce clients for various Azure services.
 type Factory interface {
-	Group(context.Context, corev1.SecretReference) (Group, error)
 	Storage(context.Context, corev1.SecretReference) (Storage, error)
-	StorageAccount(context.Context, corev1.SecretReference) (StorageAccount, error)
-	Vmss(context.Context, corev1.SecretReference) (Vmss, error)
-	DNSZone(context.Context, corev1.SecretReference) (DNSZone, error)
-	DNSRecordSet(context.Context, corev1.SecretReference) (DNSRecordSet, error)
-	VirtualMachine(ctx context.Context, secretRef corev1.SecretReference) (VirtualMachine, error)
-	NetworkSecurityGroup(ctx context.Context, secretRef corev1.SecretReference) (NetworkSecurityGroup, error)
-	PublicIP(ctx context.Context, secretRef corev1.SecretReference) (PublicIP, error)
-	NetworkInterface(ctx context.Context, secretRef corev1.SecretReference) (NetworkInterface, error)
-	Disk(ctx context.Context, secretRef corev1.SecretReference) (Disk, error)
-	Subnet(ctx context.Context, secretRef corev1.SecretReference) (Subnet, error)
+	StorageAccount() (StorageAccount, error)
+	Vmss() (Vmss, error)
+	DNSZone() (DNSZone, error)
+	DNSRecordSet() (DNSRecordSet, error)
+	VirtualMachine() (VirtualMachine, error)
+	NetworkInterface() (NetworkInterface, error)
+	Disk() (Disk, error)
+	Group() (ResourceGroup, error)
+	NetworkSecurityGroup() (NetworkSecurityGroup, error)
+	Subnet() (Subnet, error)
+	PublicIP() (PublicIP, error)
+	Vnet() (Vnet, error)
+	RouteTables() (RouteTables, error)
+	NatGateway() (NatGateway, error)
+	AvailabilitySet() (AvailabilitySet, error)
+	ManagedUserIdentity() (ManagedUserIdentity, error)
 }
 
-// Group represents an Azure group client.
-type Group interface {
-	Get(context.Context, string) (*resources.Group, error)
-	CreateOrUpdate(context.Context, string, string) error
-	DeleteIfExits(context.Context, string) error
+// AvailabilitySet is an interface for the Azure AvailabilitySet service.
+type AvailabilitySet interface {
+	Get(ctx context.Context, resourceGroupName, availabilitySetName string) (result armcompute.AvailabilitySetsClientGetResponse, err error)
+	CreateOrUpdate(ctx context.Context, resourceGroupName string, availabilitySetName string, parameters armcompute.AvailabilitySet) (result armcompute.AvailabilitySetsClientCreateOrUpdateResponse, err error)
+	Delete(ctx context.Context, resourceGroupName string, availabilitySetName string) (result armcompute.AvailabilitySetsClientDeleteResponse, err error)
+}
+
+// NatGateway is an interface for the Azure NatGateway service.
+type NatGateway interface {
+	CreateOrUpdate(ctx context.Context, resourceGroupName, natGatewayName string, parameters armnetwork.NatGateway) (armnetwork.NatGatewaysClientCreateOrUpdateResponse, error)
+	Get(ctx context.Context, resourceGroupName, natGatewayName string) (*armnetwork.NatGatewaysClientGetResponse, error)
+	Delete(ctx context.Context, resourceGroupName, natGatewayName string) error
+	GetAll(ctx context.Context, resourceGroupName string) ([]*armnetwork.NatGateway, error)
+}
+
+// RouteTables is a client for the Azure RouteTable service.
+type RouteTables interface {
+	CreateOrUpdate(ctx context.Context, resourceGroupName, routeTableName string, parameters armnetwork.RouteTable) (armnetwork.RouteTablesClientCreateOrUpdateResponse, error)
+	Delete(ctx context.Context, resourceGroupName, name string) (err error)
+	Get(ctx context.Context, resourceGroupName, name string) (armnetwork.RouteTablesClientGetResponse, error)
+}
+
+// ManagedUserIdentity is a client for the Azure Managed User Identity service.
+type ManagedUserIdentity interface {
+	Get(context.Context, string, string) (msi.Identity, error)
 }
 
 // Storage represents an Azure (blob) storage client.
@@ -100,6 +129,7 @@ type PublicIP interface {
 	Get(ctx context.Context, resourceGroupName string, name string, expander string) (*network.PublicIPAddress, error)
 	CreateOrUpdate(ctx context.Context, resourceGroupName, name string, parameters network.PublicIPAddress) (*network.PublicIPAddress, error)
 	Delete(ctx context.Context, resourceGroupName, name string) error
+	GetAll(ctx context.Context, resourceGroupName string) ([]network.PublicIPAddress, error)
 }
 
 // NetworkInterface represents an Azure Network Interface client.
@@ -118,14 +148,31 @@ type Disk interface {
 
 // Subnet represents an Azure Subnet client.
 type Subnet interface {
-	Get(ctx context.Context, resourceGroupName string, vnetName string, name string, expander string) (*network.Subnet, error)
-	List(context.Context, string, string) ([]network.Subnet, error)
+	CreateOrUpdate(ctx context.Context, resourceGroupName, vnetName, subnetName string, parameters armnetwork.Subnet) error
+	Get(ctx context.Context, resourceGroupName string, vnetName string, name string) (*armnetwork.SubnetsClientGetResponse, error)
+	List(context.Context, string, string) ([]*armnetwork.Subnet, error)
 	Delete(context.Context, string, string, string) error
 }
 
-// AzureFactory is an implementation of Factory to produce clients for various Azure services.
-type AzureFactory struct {
-	client client.Client
+// ResourceGroup represents an Azure ResourceGroup client.
+type ResourceGroup interface {
+	CreateOrUpdate(ctx context.Context, resourceGroupName, location string) error
+	DeleteIfExists(ctx context.Context, resourceGroupName string) error
+	IsExisting(ctx context.Context, resourceGroupName string) (bool, error)
+	Get(ctx context.Context, resourceGroupName string) (*armresources.ResourceGroup, error)
+}
+
+// Vnet represents an Azure Virtual Network client.
+type Vnet interface {
+	CreateOrUpdate(ctx context.Context, resourceGroupName string, name string, parameters armnetwork.VirtualNetwork) (err error)
+	Delete(ctx context.Context, resourceGroupName, name string) error
+	Get(ctx context.Context, resourceGroupName, name string) (armnetwork.VirtualNetworksClientGetResponse, error)
+}
+
+// azureFactory is an implementation of Factory to produce clients for various Azure services.
+type azureFactory struct {
+	auth   *internal.ClientAuth
+	client client.Client // TODO remove? only used for storage client
 }
 
 // StorageClient is an implementation of Storage for a (blob) storage client.
@@ -138,14 +185,19 @@ type StorageAccountClient struct {
 	client storage.AccountsClient
 }
 
-// GroupClient is an implementation of Group for a resource group client.
-type GroupClient struct {
-	client resources.GroupsClient
-}
-
 // VmssClient is an implementation of Vmss for a virtual machine scale set client.
 type VmssClient struct {
 	client compute.VirtualMachineScaleSetsClient
+}
+
+// ResourceGroupClient is a newer client implementation of ResourceGroup.
+type ResourceGroupClient struct {
+	client *armresources.ResourceGroupsClient
+}
+
+// VnetClient is an implmenetation of Vnet for a virtual network client.
+type VnetClient struct {
+	client *armnetwork.VirtualNetworksClient
 }
 
 // VirtualMachinesClient is an implementation of Vm for a virtual machine client.
@@ -190,5 +242,25 @@ type DisksClient struct {
 
 // SubnetsClient is an implementation of Subnet for a Subnet client.
 type SubnetsClient struct {
-	client network.SubnetsClient
+	client *armnetwork.SubnetsClient
+}
+
+// RouteTablesClient is an implementation of RouteTables for a RouteTables client.
+type RouteTablesClient struct {
+	client *armnetwork.RouteTablesClient
+}
+
+// NatGatewayClient is an implementation of NatGateway for a Nat Gateway client.
+type NatGatewayClient struct {
+	client *armnetwork.NatGatewaysClient
+}
+
+// AvailabilitySetClient is an implementation of AvailabilitySet for an availability set client.
+type AvailabilitySetClient struct {
+	client *armcompute.AvailabilitySetsClient
+}
+
+// ManagedUserIdentityClient is an implementation of ManagedUserIdentity for a managed user identity client.
+type ManagedUserIdentityClient struct {
+	client msi.UserAssignedIdentitiesClient
 }

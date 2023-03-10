@@ -21,6 +21,14 @@ import (
 	"fmt"
 	"time"
 
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	"github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
+	"github.com/gardener/gardener/pkg/client/kubernetes"
+	gutil "github.com/gardener/gardener/pkg/utils/gardener"
+	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
+	"github.com/gardener/gardener/pkg/utils/retry"
+
 	"github.com/onsi/ginkgo/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -28,14 +36,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
-	"github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
-	"github.com/gardener/gardener/pkg/client/kubernetes"
-	kubernetesutils "github.com/gardener/gardener/pkg/utils/kubernetes"
-	"github.com/gardener/gardener/pkg/utils/retry"
-	"github.com/gardener/gardener/test/utils/shoots/access"
 )
 
 var shootCfg *ShootConfig
@@ -156,8 +156,9 @@ func (f *ShootFramework) AddShoot(ctx context.Context, shootName, shootNamespace
 	}
 
 	var (
-		shoot = &gardencorev1beta1.Shoot{}
-		err   error
+		shootClient kubernetes.Interface
+		shoot       = &gardencorev1beta1.Shoot{}
+		err         error
 	)
 
 	if err := f.GardenClient.Client().Get(ctx, client.ObjectKey{Namespace: shootNamespace, Name: shootName}, shoot); err != nil {
@@ -189,9 +190,11 @@ func (f *ShootFramework) AddShoot(ctx context.Context, shootName, shootNamespace
 	}
 
 	if !f.GardenerFramework.Config.SkipAccessingShoot {
-		var shootClient kubernetes.Interface
 		if err := retry.UntilTimeout(ctx, k8sClientInitPollInterval, k8sClientInitTimeout, func(ctx context.Context) (bool, error) {
-			shootClient, err = access.CreateShootClientFromAdminKubeconfig(ctx, f.GardenClient, f.Shoot)
+			shootClient, err = kubernetes.NewClientFromSecret(ctx, f.GardenClient.Client(), shoot.Namespace, shoot.Name+"."+gutil.ShootProjectSecretSuffixKubeconfig,
+				kubernetes.WithClientOptions(client.Options{Scheme: kubernetes.ShootScheme}),
+				kubernetes.WithDisabledCachedClient(),
+			)
 			if err != nil {
 				return retry.MinorError(fmt.Errorf("could not construct Shoot client: %w", err))
 			}
@@ -310,7 +313,7 @@ func (f *ShootFramework) WaitForShootCondition(ctx context.Context, interval, ti
 // available replica.
 func (f *ShootFramework) IsAPIServerRunning(ctx context.Context) (bool, error) {
 	deployment := &appsv1.Deployment{}
-	if err := f.SeedClient.Client().Get(ctx, kubernetesutils.Key(f.ShootSeedNamespace(), v1beta1constants.DeploymentNameKubeAPIServer), deployment); err != nil {
+	if err := f.SeedClient.Client().Get(ctx, kutil.Key(f.ShootSeedNamespace(), v1beta1constants.DeploymentNameKubeAPIServer), deployment); err != nil {
 		if apierrors.IsNotFound(err) {
 			return false, nil
 		}

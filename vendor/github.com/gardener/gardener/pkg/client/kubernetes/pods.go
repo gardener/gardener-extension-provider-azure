@@ -22,6 +22,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gardener/gardener/pkg/utils"
+
 	corev1 "k8s.io/api/core/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -29,8 +31,6 @@ import (
 	"k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/client-go/transport/spdy"
-
-	"github.com/gardener/gardener/pkg/utils"
 )
 
 // NewPodExecutor returns a podExecutor

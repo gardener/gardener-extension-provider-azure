@@ -17,9 +17,9 @@ package manager
 import (
 	"context"
 
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/gardener/gardener/pkg/utils/flow"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func (m *manager) Cleanup(ctx context.Context) error {

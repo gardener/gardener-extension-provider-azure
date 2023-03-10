@@ -15,15 +15,15 @@
 package validation_test
 
 import (
+	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	. "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/validation"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	gomegatypes "github.com/onsi/gomega/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/pointer"
-
-	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	. "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/validation"
 )
 
 var (
@@ -269,7 +269,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 				Entry("id, communityGalleryImageID and sharedGalleryImageID are non-empty", nil, &id, &communityGalleryImageID, &sharedGalleryImageID, ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
 					"Field": Equal("root.machineImages[0].versions[0]")})))),
-				Entry("urn, id, communityGalleryImageID and sharedGalleryImageID are empty", pointer.String(""), pointer.String(""), pointer.String(""), pointer.String(""), ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+				Entry("urn, id, communityGalleryImageID and sharedGalleryImageID are empty", pointer.StringPtr(""), pointer.StringPtr(""), pointer.StringPtr(""), pointer.StringPtr(""), ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
 					"Field": Equal("root.machineImages[0].versions[0]"),
 				})), PointTo(MatchFields(IgnoreExtras, Fields{

@@ -16,19 +16,20 @@ package infrastructure
 
 import (
 	"context"
-
-	"github.com/gardener/gardener/extensions/pkg/controller"
-	"github.com/gardener/gardener/extensions/pkg/terraformer"
-	"github.com/gardener/gardener/extensions/pkg/util"
-	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	"github.com/go-logr/logr"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"fmt"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
+	"github.com/go-logr/logr"
+
+	"github.com/gardener/gardener/extensions/pkg/controller"
+	"github.com/gardener/gardener/extensions/pkg/terraformer"
+	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
@@ -36,15 +37,29 @@ var (
 	NewAzureClientFactory = newAzureClientFactory
 )
 
-func newAzureClientFactory(client client.Client) azureclient.Factory {
-	return azureclient.NewAzureClientFactory(client)
+func newAzureClientFactory(ctx context.Context, client client.Client, secretRef v1.SecretReference) (azureclient.Factory, error) {
+	return azureclient.NewAzureClientFactory(ctx, client, secretRef)
 }
 
 // Delete implements infrastructure.Actuator.
 func (a *actuator) Delete(ctx context.Context, log logr.Logger, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
+	config, err := helper.InfrastructureConfigFromInfrastructure(infra)
+	if err != nil {
+		return err
+	}
+	if ShouldUseFlow(infra, cluster) {
+		if err := cleanupTerraform(ctx, log, a, infra); err != nil {
+			return fmt.Errorf("failed to cleanup terraform resources: %w", err)
+		}
+		reconciler, err := NewFlowReconciler(ctx, a, infra, log)
+		if err != nil {
+			return err
+		}
+		return reconciler.Delete(ctx, infra, config, cluster)
+	}
 	tf, err := internal.NewTerraformer(log, a.RESTConfig(), infrastructure.TerraformerPurpose, infra, a.disableProjectedTokenMount)
 	if err != nil {
-		return util.DetermineError(err, helper.KnownCodes)
+		return err
 	}
 
 	// terraform pod from previous reconciliation might still be running, ensure they are gone before doing any operations
@@ -52,12 +67,10 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, infra *extension
 		return err
 	}
 
-	config, err := helper.InfrastructureConfigFromInfrastructure(infra)
+	azureClientFactory, err := NewAzureClientFactory(ctx, a.Client(), infra.Spec.SecretRef)
 	if err != nil {
 		return err
 	}
-
-	azureClientFactory := NewAzureClientFactory(a.Client())
 	resourceGroupExists, err := infrastructure.IsShootResourceGroupAvailable(ctx, azureClientFactory, infra, config)
 	if err != nil {
 		if azureclient.IsAzureAPIUnauthorized(err) {
@@ -91,13 +104,13 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, infra *extension
 
 	terraformFiles, err := infrastructure.RenderTerraformerTemplate(infra, config, cluster)
 	if err != nil {
-		return util.DetermineError(err, helper.KnownCodes)
+		return err
 	}
 
-	return util.DetermineError(tf.
+	return tf.
 		InitializeWith(ctx, terraformer.DefaultInitializer(a.Client(), terraformFiles.Main, terraformFiles.Variables, terraformFiles.TFVars, terraformer.StateConfigMapInitializerFunc(NoOpStateInitializer))).
 		SetEnvVars(internal.TerraformerEnvVars(infra.Spec.SecretRef)...).
-		Destroy(ctx), helper.KnownCodes)
+		Destroy(ctx)
 }
 
 // NoOpStateInitializer is a no-op StateConfigMapInitializerFunc.

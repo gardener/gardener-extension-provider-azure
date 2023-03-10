@@ -22,10 +22,7 @@ import (
 
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	"k8s.io/utils/clock"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-
-	"github.com/gardener/gardener/extensions/pkg/webhook"
 )
 
 // DefaultSyncPeriod is the default sync period for the certificate reconciler and reloader.
@@ -38,20 +35,17 @@ func AddCertificateManagementToManager(
 	ctx context.Context,
 	mgr manager.Manager,
 	clock clock.Clock,
-	sourceWebhookConfig client.Object,
-	shootWebhookConfig *admissionregistrationv1.MutatingWebhookConfiguration,
+	seedWebhookConfig, shootWebhookConfig *admissionregistrationv1.MutatingWebhookConfiguration,
 	atomicShootWebhookConfig *atomic.Value,
-	shootNamespaceSelector map[string]string,
+	extensionName string,
 	shootWebhookManagedResourceName string,
-	componentName string,
-	namespace string,
-	mode string,
-	url string,
+	shootNamespaceSelector map[string]string,
+	namespace, mode, url string,
 ) error {
 	var (
-		identity         = webhook.PrefixedName(componentName) + "-webhook"
-		caSecretName     = "ca-" + componentName + "-webhook"
-		serverSecretName = componentName + "-webhook-server"
+		identity         = "gardener-extension-" + extensionName + "-webhook"
+		caSecretName     = "ca-" + extensionName + "-webhook"
+		serverSecretName = extensionName + "-webhook-server"
 	)
 
 	// first, add reconciler that manages the certificates and injects them into webhook configs
@@ -59,14 +53,14 @@ func AddCertificateManagementToManager(
 	if err := (&reconciler{
 		Clock:                           clock,
 		SyncPeriod:                      DefaultSyncPeriod,
-		SourceWebhookConfig:             sourceWebhookConfig,
+		SeedWebhookConfig:               seedWebhookConfig,
 		ShootWebhookConfig:              shootWebhookConfig,
 		AtomicShootWebhookConfig:        atomicShootWebhookConfig,
 		CASecretName:                    caSecretName,
 		ServerSecretName:                serverSecretName,
 		Namespace:                       namespace,
 		Identity:                        identity,
-		ComponentName:                   componentName,
+		ExtensionName:                   extensionName,
 		ShootWebhookManagedResourceName: shootWebhookManagedResourceName,
 		ShootNamespaceSelector:          shootNamespaceSelector,
 		Mode:                            mode,

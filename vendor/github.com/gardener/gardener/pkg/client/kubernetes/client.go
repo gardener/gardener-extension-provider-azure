@@ -32,10 +32,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	gardencoreinstall "github.com/gardener/gardener/pkg/apis/core/install"
+	gardenercoreinstall "github.com/gardener/gardener/pkg/apis/core/install"
 	seedmanagementinstall "github.com/gardener/gardener/pkg/apis/seedmanagement/install"
 	settingsinstall "github.com/gardener/gardener/pkg/apis/settings/install"
-	kubernetescache "github.com/gardener/gardener/pkg/client/kubernetes/cache"
+	kcache "github.com/gardener/gardener/pkg/client/kubernetes/cache"
 	"github.com/gardener/gardener/pkg/utils"
 	versionutils "github.com/gardener/gardener/pkg/utils/version"
 )
@@ -60,7 +60,7 @@ const (
 func init() {
 	// enable protobuf for Gardener API for controller-runtime clients
 	protobufSchemeBuilder := runtime.NewSchemeBuilder(
-		gardencoreinstall.AddToScheme,
+		gardenercoreinstall.AddToScheme,
 		seedmanagementinstall.AddToScheme,
 		settingsinstall.AddToScheme,
 	)
@@ -233,13 +233,15 @@ func ValidateConfigWithAllowList(config clientcmdapi.Config, allowedFields []str
 }
 
 var supportedKubernetesVersions = []string{
+	"1.17",
+	"1.18",
+	"1.19",
 	"1.20",
 	"1.21",
 	"1.22",
 	"1.23",
 	"1.24",
 	"1.25",
-	"1.26",
 }
 
 func checkIfSupportedKubernetesVersion(gitVersion string) error {
@@ -387,7 +389,7 @@ type FallbackClient struct {
 	Reader client.Reader
 }
 
-var cacheError = &kubernetescache.CacheError{}
+var cacheError = &kcache.CacheError{}
 
 // Get retrieves an obj for a given object key from the Kubernetes Cluster.
 // In case of a cache error, the underlying API reader is used to execute the request again.

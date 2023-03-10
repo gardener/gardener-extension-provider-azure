@@ -57,7 +57,7 @@ exported_pkg=(
 
 # check the changes only for the package that is in the exported_pkg list
 while IFS= read -r line; do
-    if [[ $line =~ ^"github.com/gardener/gardener" ]]; then
+    if [[ $line =~ "gardener/gardener" ]]; then
         temp=0
         for x in ${exported_pkg[*]}; do
             if [[ $line =~ $x ]]; then

@@ -17,9 +17,8 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/spf13/pflag"
-
 	"github.com/gardener/gardener/extensions/pkg/controller/heartbeat"
+	"github.com/spf13/pflag"
 )
 
 // Options are command line options that can be set for the heartbeat controller.

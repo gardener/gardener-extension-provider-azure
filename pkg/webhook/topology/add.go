@@ -32,36 +32,19 @@ const (
 	webhookPath = "topology"
 )
 
-var (
-	logger = log.Log.WithName("topology-webhook")
-	// SeedRegion is the region where the seed is located.
-	SeedRegion = ""
-	// SeedProvider is the provider type of the seed.
-	SeedProvider = ""
-)
+var logger = log.Log.WithName("topology-webhook")
 
-// AddOptions contains the configuration options for the topology webhook.
-type AddOptions struct {
-	// SeedRegion is the region where the seed is located.
-	SeedRegion string
-	// SeedProvider is the provider type of the seed.
-	SeedProvider string
-}
-
-// AddToManager adds the webhook to the manager.
+// AddToManager creates a webhook adds the webhook to the manager.
 func AddToManager(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
-	return AddToManagerWithOpts(mgr, AddOptions{
-		SeedRegion:   SeedRegion,
-		SeedProvider: SeedProvider,
-	})
-}
-
-// AddToManagerWithOpts creates the webhook with the given opts and adds that to the manager.
-func AddToManagerWithOpts(_ manager.Manager, options AddOptions) (*extensionswebhook.Webhook, error) {
 	logger.Info("Adding webhook to manager")
 
 	types := []extensionswebhook.Type{
 		{Obj: &corev1.Pod{}},
+	}
+
+	handler, err := extensionswebhook.NewBuilder(mgr, logger).WithMutator(New(), types...).Build()
+	if err != nil {
+		return nil, err
 	}
 
 	logger.Info("Creating webhook")
@@ -71,19 +54,11 @@ func AddToManagerWithOpts(_ manager.Manager, options AddOptions) (*extensionsweb
 		Path:     webhookPath,
 		Target:   extensionswebhook.TargetSeed,
 		Types:    types,
-		Webhook:  &admission.Webhook{Handler: New(logger, options), RecoverPanic: true},
+		Webhook:  &admission.Webhook{Handler: handler, RecoverPanic: true},
 		Selector: &metav1.LabelSelector{
-			MatchExpressions: []metav1.LabelSelectorRequirement{
-				{
-					Key:      v1beta1constants.GardenRole,
-					Operator: metav1.LabelSelectorOpNotIn,
-					Values:   []string{v1beta1constants.GardenRoleExtension},
-				},
-				{
-					Key:      corev1.LabelMetadataName,
-					Operator: metav1.LabelSelectorOpNotIn,
-					Values:   []string{metav1.NamespaceSystem, v1beta1constants.GardenNamespace},
-				},
+			MatchLabels: map[string]string{
+				v1beta1constants.LabelSeedProvider: azure.Type,
+				v1beta1constants.GardenRole:        v1beta1constants.GardenRoleShoot,
 			},
 		},
 	}, nil

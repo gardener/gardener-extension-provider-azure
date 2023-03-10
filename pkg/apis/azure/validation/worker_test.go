@@ -15,16 +15,17 @@
 package validation_test
 
 import (
+	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	. "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/validation"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-
-	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	. "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/validation"
 )
 
 var _ = Describe("ValidateWorkerConfig", func() {

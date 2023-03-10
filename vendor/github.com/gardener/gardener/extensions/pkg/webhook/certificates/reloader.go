@@ -20,18 +20,17 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gardener/gardener/pkg/controllerutils"
+	secretutils "github.com/gardener/gardener/pkg/utils/secrets"
+	secretsmanager "github.com/gardener/gardener/pkg/utils/secrets/manager"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/util/workqueue"
-	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	"github.com/gardener/gardener/pkg/controllerutils"
-	secretsutils "github.com/gardener/gardener/pkg/utils/secrets"
-	secretsmanager "github.com/gardener/gardener/pkg/utils/secrets/manager"
 )
 
 const certificateReloaderName = "webhook-certificate-reloader"
@@ -79,7 +78,7 @@ func (r *reloader) AddToManager(ctx context.Context, mgr manager.Manager) error 
 	// add controller that reloads the server cert secret periodically
 	ctrl, err := controller.NewUnmanaged(certificateReloaderName, mgr, controller.Options{
 		Reconciler:   r,
-		RecoverPanic: pointer.Bool(true),
+		RecoverPanic: true,
 		// if going into exponential backoff, wait at most the configured sync period
 		RateLimiter: workqueue.NewWithMaxWaitRateLimiter(workqueue.DefaultControllerRateLimiter(), r.SyncPeriod),
 	})
@@ -153,7 +152,7 @@ func (r *reloader) getServerCert(ctx context.Context, reader client.Reader) (boo
 	}
 
 	s := secretList.Items[0]
-	return true, s.Name, s.Data[secretsutils.DataKeyCertificate], s.Data[secretsutils.DataKeyPrivateKey], nil
+	return true, s.Name, s.Data[secretutils.DataKeyCertificate], s.Data[secretutils.DataKeyPrivateKey], nil
 }
 
 type nonLeaderElectionRunnable struct {

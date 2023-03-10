@@ -18,6 +18,17 @@ import (
 	"context"
 	"fmt"
 
+	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
+	"github.com/gardener/gardener/extensions/pkg/controller/common"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
+	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"github.com/gardener/gardener/pkg/controllerutils"
+	reconcilerutils "github.com/gardener/gardener/pkg/controllerutils/reconciler"
+	"github.com/gardener/gardener/pkg/extensions"
+	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
+
 	"github.com/go-logr/logr"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -25,15 +36,6 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
-
-	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
-	v1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
-	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	"github.com/gardener/gardener/pkg/controllerutils"
-	reconcilerutils "github.com/gardener/gardener/pkg/controllerutils/reconciler"
-	"github.com/gardener/gardener/pkg/extensions"
 )
 
 type reconciler struct {
@@ -97,7 +99,21 @@ func (r *reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		}
 	}
 
-	operationType := v1beta1helper.ComputeOperationType(dns.ObjectMeta, dns.Status.LastOperation)
+	operationType := gardencorev1beta1helper.ComputeOperationType(dns.ObjectMeta, dns.Status.LastOperation)
+
+	if cluster != nil && cluster.Shoot != nil && dns.Name != cluster.Shoot.Name+"-"+v1beta1constants.DNSRecordOwnerName && operationType != gardencorev1beta1.LastOperationTypeMigrate {
+		key := "dnsrecord:" + kutil.ObjectName(dns)
+		ok, watchdogCtx, cleanup, err := common.GetOwnerCheckResultAndContext(ctx, r.client, dns.Namespace, cluster.Shoot.Name, key)
+		if err != nil {
+			return reconcile.Result{}, err
+		} else if !ok {
+			return reconcile.Result{}, fmt.Errorf("this seed is not the owner of shoot %s", kutil.ObjectName(cluster.Shoot))
+		}
+		ctx = watchdogCtx
+		if cleanup != nil {
+			defer cleanup()
+		}
+	}
 
 	switch {
 	case extensionscontroller.ShouldSkipOperation(operationType, dns):
@@ -235,7 +251,7 @@ func (r *reconciler) delete(
 
 	switch getCreatedConditionStatus(dns.GetExtensionStatus()) {
 	case gardencorev1beta1.ConditionTrue, gardencorev1beta1.ConditionUnknown:
-		operationType := v1beta1helper.ComputeOperationType(dns.ObjectMeta, dns.Status.LastOperation)
+		operationType := gardencorev1beta1helper.ComputeOperationType(dns.ObjectMeta, dns.Status.LastOperation)
 		if err := r.statusUpdater.ProcessingCustom(ctx, log, dns, operationType, "Deleting the DNSRecord", nil); err != nil {
 			return reconcile.Result{}, err
 		}
@@ -265,7 +281,7 @@ func (r *reconciler) delete(
 
 func updateCreatedCondition(status extensionsv1alpha1.Status, conditionStatus gardencorev1beta1.ConditionStatus, reason, message string, updateIfExisting bool) error {
 	conditions := status.GetConditions()
-	c := v1beta1helper.GetCondition(conditions, extensionsv1alpha1.ConditionTypeCreated)
+	c := gardencorev1beta1helper.GetCondition(conditions, extensionsv1alpha1.ConditionTypeCreated)
 	if c != nil && !updateIfExisting {
 		return nil
 	}
@@ -273,7 +289,7 @@ func updateCreatedCondition(status extensionsv1alpha1.Status, conditionStatus ga
 		return nil
 	}
 
-	builder, err := v1beta1helper.NewConditionBuilder(extensionsv1alpha1.ConditionTypeCreated)
+	builder, err := gardencorev1beta1helper.NewConditionBuilder(extensionsv1alpha1.ConditionTypeCreated)
 	if err != nil {
 		return err
 	}
@@ -282,7 +298,7 @@ func updateCreatedCondition(status extensionsv1alpha1.Status, conditionStatus ga
 	}
 
 	new, _ := builder.WithStatus(conditionStatus).WithReason(reason).WithMessage(message).Build()
-	status.SetConditions(v1beta1helper.MergeConditions(conditions, new))
+	status.SetConditions(gardencorev1beta1helper.MergeConditions(conditions, new))
 	return nil
 }
 

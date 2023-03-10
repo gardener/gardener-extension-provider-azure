@@ -19,6 +19,10 @@ import (
 	"fmt"
 	"strings"
 
+	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	"github.com/gardener/gardener/pkg/controllerutils"
+	"github.com/gardener/gardener/pkg/utils/kubernetes"
+
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -26,10 +30,6 @@ import (
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
-
-	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
-	"github.com/gardener/gardener/pkg/controllerutils"
-	"github.com/gardener/gardener/pkg/utils/kubernetes"
 )
 
 const (
@@ -48,28 +48,8 @@ const (
 	ModeURLWithServiceName = "url-service"
 )
 
-// PrefixedName does not prefix the component name if it starts with "gardener-". Otherwise, it prefixes it with
-// "gardener-extension-".
-func PrefixedName(componentName string) string {
-	if !strings.HasPrefix(componentName, "gardener-") {
-		return NamePrefix + componentName
-	}
-	return componentName
-}
-
 // BuildWebhookConfigs builds MutatingWebhookConfiguration objects for seed and shoots from the given webhooks slice.
-func BuildWebhookConfigs(
-	webhooks []*Webhook,
-	c client.Client,
-	namespace, providerName string,
-	servicePort int,
-	mode, url string,
-	caBundle []byte,
-) (
-	seedWebhookConfig client.Object,
-	shootWebhookConfig *admissionregistrationv1.MutatingWebhookConfiguration,
-	err error,
-) {
+func BuildWebhookConfigs(webhooks []*Webhook, c client.Client, namespace, providerName string, servicePort int, mode, url string, caBundle []byte) (*admissionregistrationv1.MutatingWebhookConfiguration, *admissionregistrationv1.MutatingWebhookConfiguration, error) {
 	var (
 		exact       = admissionregistrationv1.Exact
 		sideEffects = admissionregistrationv1.SideEffectClassNone
@@ -112,17 +92,19 @@ func BuildWebhookConfigs(
 		case TargetSeed:
 			webhookToRegister.FailurePolicy = getFailurePolicy(admissionregistrationv1.Fail, webhook.FailurePolicy)
 			webhookToRegister.MatchPolicy = &exact
-			webhookToRegister.ClientConfig = BuildClientConfigFor(webhook.Path, namespace, providerName, servicePort, mode, url, caBundle)
+			webhookToRegister.ClientConfig = buildClientConfigFor(webhook, namespace, providerName, servicePort, mode, url, caBundle)
 			seedWebhooks = append(seedWebhooks, webhookToRegister)
 		case TargetShoot:
 			webhookToRegister.FailurePolicy = getFailurePolicy(admissionregistrationv1.Ignore, webhook.FailurePolicy)
 			webhookToRegister.MatchPolicy = &exact
-			webhookToRegister.ClientConfig = BuildClientConfigFor(webhook.Path, namespace, providerName, servicePort, shootMode, url, caBundle)
+			webhookToRegister.ClientConfig = buildClientConfigFor(webhook, namespace, providerName, servicePort, shootMode, url, caBundle)
 			shootWebhooks = append(shootWebhooks, webhookToRegister)
 		default:
 			return nil, nil, fmt.Errorf("invalid webhook target: %s", webhook.Target)
 		}
 	}
+
+	var seedWebhookConfig, shootWebhookConfig *admissionregistrationv1.MutatingWebhookConfiguration
 
 	// if all webhooks for one target are removed in a new version, extensions need to explicitly delete the respective
 	// webhook config
@@ -316,29 +298,24 @@ func buildRule(c client.Client, t Type) (*admissionregistrationv1.RuleWithOperat
 	}, nil
 }
 
-// BuildClientConfigFor builds the client config for a webhook.
-func BuildClientConfigFor(webhookPath string, namespace, componentName string, servicePort int, mode, url string, caBundle []byte) admissionregistrationv1.WebhookClientConfig {
+func buildClientConfigFor(webhook *Webhook, namespace, providerName string, servicePort int, mode, url string, caBundle []byte) admissionregistrationv1.WebhookClientConfig {
 	var (
-		path         = webhookPath
+		path         = "/" + webhook.Path
 		clientConfig = admissionregistrationv1.WebhookClientConfig{
 			// can be empty if injected later on
 			CABundle: caBundle,
 		}
 	)
 
-	if !strings.HasPrefix(path, "/") {
-		path = "/" + path
-	}
-
 	switch mode {
 	case ModeURL:
 		clientConfig.URL = pointer.String(fmt.Sprintf("https://%s%s", url, path))
 	case ModeURLWithServiceName:
-		clientConfig.URL = pointer.String(fmt.Sprintf("https://%s.%s:%d%s", PrefixedName(componentName), namespace, servicePort, path))
+		clientConfig.URL = pointer.String(fmt.Sprintf("https://gardener-extension-%s.%s:%d%s", providerName, namespace, servicePort, path))
 	case ModeService:
 		clientConfig.Service = &admissionregistrationv1.ServiceReference{
 			Namespace: namespace,
-			Name:      PrefixedName(componentName),
+			Name:      "gardener-extension-" + providerName,
 			Path:      &path,
 		}
 	}

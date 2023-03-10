@@ -17,9 +17,8 @@ package core
 import (
 	"fmt"
 
-	"k8s.io/apimachinery/pkg/runtime"
-
 	gardencore "github.com/gardener/gardener/pkg/apis/core"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // Accessor tries to create a `gardencore.Object` from the given runtime.Object.

@@ -17,10 +17,10 @@ package util
 import (
 	"errors"
 
-	"k8s.io/apimachinery/pkg/util/sets"
-
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	v1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
+	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
+
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 // DetermineError determines the Gardener error codes for the given error and returns an ErrorWithCodes with the error and codes.
@@ -30,7 +30,7 @@ func DetermineError(err error, knownCodes map[gardencorev1beta1.ErrorCode]func(s
 	}
 
 	// try to re-use codes from error
-	var coder v1beta1helper.Coder
+	var coder gardencorev1beta1helper.Coder
 	if errors.As(err, &coder) {
 		return err
 	}
@@ -40,15 +40,15 @@ func DetermineError(err error, knownCodes map[gardencorev1beta1.ErrorCode]func(s
 		return err
 	}
 
-	return v1beta1helper.NewErrorWithCodes(err, codes...)
+	return gardencorev1beta1helper.NewErrorWithCodes(err, codes...)
 }
 
 // DetermineErrorCodes determines error codes based on the given error.
 func DetermineErrorCodes(err error, knownCodes map[gardencorev1beta1.ErrorCode]func(string) bool) []gardencorev1beta1.ErrorCode {
 	var (
-		coder   v1beta1helper.Coder
+		coder   gardencorev1beta1helper.Coder
 		message = err.Error()
-		codes   = sets.New[string]()
+		codes   = sets.NewString()
 	)
 
 	if err == nil {
@@ -71,7 +71,7 @@ func DetermineErrorCodes(err error, knownCodes map[gardencorev1beta1.ErrorCode]f
 
 	// compute error code list based on code string set
 	var out []gardencorev1beta1.ErrorCode
-	for _, c := range sets.List(codes) {
+	for _, c := range codes.List() {
 		out = append(out, gardencorev1beta1.ErrorCode(c))
 	}
 	return out

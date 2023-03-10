@@ -17,14 +17,12 @@ package backupbucket
 import (
 	"context"
 
-	"github.com/gardener/gardener/extensions/pkg/controller/backupbucket"
-	"github.com/gardener/gardener/extensions/pkg/util"
-	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	"github.com/go-logr/logr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
+	"github.com/go-logr/logr"
+
+	"github.com/gardener/gardener/extensions/pkg/controller/backupbucket"
+	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type actuator struct {
@@ -42,26 +40,29 @@ func (a *actuator) InjectClient(client client.Client) error {
 }
 
 func (a *actuator) Reconcile(ctx context.Context, _ logr.Logger, backupBucket *extensionsv1alpha1.BackupBucket) error {
-	var factory = azureclient.NewAzureClientFactory(a.client)
+	factory, err := azureclient.NewAzureClientFactory(ctx, a.client, backupBucket.Spec.SecretRef)
+	if err != nil {
+		return err
+	}
 
 	// If the generated secret in the backupbucket status not exists that means
 	// no backupbucket exists and it need to be created.
 	if backupBucket.Status.GeneratedSecretRef == nil {
 		storageAccountName, storageAccountKey, err := ensureBackupBucket(ctx, a.client, factory, backupBucket)
 		if err != nil {
-			return util.DetermineError(err, helper.KnownCodes)
+			return err
 		}
 		// Create the generated backupbucket secret.
 		if err := a.createBackupBucketGeneratedSecret(ctx, backupBucket, storageAccountName, storageAccountKey); err != nil {
-			return util.DetermineError(err, helper.KnownCodes)
+			return err
 		}
 	}
 
 	storageClient, err := factory.Storage(ctx, *backupBucket.Status.GeneratedSecretRef)
 	if err != nil {
-		return util.DetermineError(err, helper.KnownCodes)
+		return err
 	}
-	return util.DetermineError(storageClient.CreateContainerIfNotExists(ctx, backupBucket.Name), helper.KnownCodes)
+	return storageClient.CreateContainerIfNotExists(ctx, backupBucket.Name)
 }
 
 func (a *actuator) Delete(ctx context.Context, _ logr.Logger, backupBucket *extensionsv1alpha1.BackupBucket) error {
@@ -71,30 +72,27 @@ func (a *actuator) Delete(ctx context.Context, _ logr.Logger, backupBucket *exte
 		return nil
 	}
 
-	var factory = azureclient.NewAzureClientFactory(a.client)
-
-	secret, err := a.getBackupBucketGeneratedSecret(ctx, backupBucket)
+	factory, err := azureclient.NewAzureClientFactory(ctx, a.client, backupBucket.Spec.SecretRef)
 	if err != nil {
-		return util.DetermineError(err, helper.KnownCodes)
+		return err
 	}
-	if secret != nil {
-		// Get a storage account client to delete the backup container in the storage account.
-		storageClient, err := factory.Storage(ctx, *backupBucket.Status.GeneratedSecretRef)
-		if err != nil {
-			return util.DetermineError(err, helper.KnownCodes)
-		}
-		if err := storageClient.DeleteContainerIfExists(ctx, backupBucket.Name); err != nil {
-			return util.DetermineError(err, helper.KnownCodes)
-		}
+
+	// Get a storage account client to delete the backup container in the storage account.
+	storageClient, err := factory.Storage(ctx, *backupBucket.Status.GeneratedSecretRef)
+	if err != nil {
+		return err
+	}
+	if err := storageClient.DeleteContainerIfExists(ctx, backupBucket.Name); err != nil {
+		return err
 	}
 
 	// Get resource group client and delete the resource group which contains the backup storage account.
-	groupClient, err := factory.Group(ctx, backupBucket.Spec.SecretRef)
+	groupClient, err := factory.Group()
 	if err != nil {
-		return util.DetermineError(err, helper.KnownCodes)
+		return err
 	}
-	if err := groupClient.DeleteIfExits(ctx, backupBucket.Name); err != nil {
-		return util.DetermineError(err, helper.KnownCodes)
+	if err := groupClient.DeleteIfExists(ctx, backupBucket.Name); err != nil {
+		return err
 	}
 
 	// Delete the generated backup secret in the garden namespace.

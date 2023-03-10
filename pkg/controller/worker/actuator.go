@@ -17,6 +17,12 @@ package worker
 import (
 	"context"
 
+	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/imagevector"
+
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/common"
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
@@ -27,12 +33,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/client-go/kubernetes"
-
-	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/imagevector"
 )
 
 type delegateFactory struct {
@@ -69,7 +69,10 @@ func (d *delegateFactory) WorkerDelegate(ctx context.Context, worker *extensions
 		return nil, err
 	}
 
-	factory := azureclient.NewAzureClientFactory(d.ClientContext.Client())
+	factory, err := azureclient.NewAzureClientFactory(ctx, d.ClientContext.Client(), worker.Spec.SecretRef)
+	if err != nil {
+		return nil, err
+	}
 	return NewWorkerDelegate(d.ClientContext, seedChartApplier, serverVersion.GitVersion, worker, cluster, factory)
 }
 

@@ -15,11 +15,10 @@
 package operations
 
 import (
+	gardenercore "github.com/gardener/gardener/pkg/apis/core"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	gardencore "github.com/gardener/gardener/pkg/apis/core"
 )
 
 // +genclient
@@ -73,7 +72,7 @@ type BastionStatus struct {
 	// Ingress holds the public IP and/or hostname of the bastion instance.
 	Ingress *corev1.LoadBalancerIngress
 	// Conditions represents the latest available observations of a Bastion's current state.
-	Conditions []gardencore.Condition
+	Conditions []gardenercore.Condition
 	// LastHeartbeatTimestamp is the time when the bastion was last marked as
 	// not to be deleted. When this is set, the ExpirationTimestamp is advanced
 	// as well.

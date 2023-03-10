@@ -10,6 +10,7 @@ spec:
     - containerName: azure-csi-snapshot-controller
       minAllowed:
         memory: {{ .Values.csiSnapshotController.resources.requests.memory }}
+        cpu: {{ .Values.csiSnapshotController.resources.requests.cpu }}
       controlledValues: RequestsOnly
   targetRef:
     apiVersion: apps/v1

@@ -17,16 +17,17 @@ package imagevector
 import (
 	"crypto/sha256"
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/util/validation/field"
-	"k8s.io/utils/strings/slices"
-	"sigs.k8s.io/yaml"
-
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	versionutils "github.com/gardener/gardener/pkg/utils/version"
+
+	"gopkg.in/yaml.v2"
+	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/utils/strings/slices"
 )
 
 const (
@@ -37,12 +38,12 @@ const (
 )
 
 // Read reads an ImageVector from the given io.Reader.
-func Read(buf []byte) (ImageVector, error) {
+func Read(r io.Reader) (ImageVector, error) {
 	vector := struct {
 		Images ImageVector `json:"images" yaml:"images"`
 	}{}
 
-	if err := yaml.Unmarshal(buf, &vector); err != nil {
+	if err := yaml.NewDecoder(r).Decode(&vector); err != nil {
 		return nil, err
 	}
 
@@ -55,12 +56,13 @@ func Read(buf []byte) (ImageVector, error) {
 
 // ReadFile reads an ImageVector from the file with the given name.
 func ReadFile(name string) (ImageVector, error) {
-	buf, err := os.ReadFile(name)
+	file, err := os.Open(name)
 	if err != nil {
 		return nil, err
 	}
+	defer file.Close()
 
-	return Read(buf)
+	return Read(file)
 }
 
 // ReadGlobalImageVectorWithEnvOverride reads the global image vector and applies the env override. Exposed for testing.

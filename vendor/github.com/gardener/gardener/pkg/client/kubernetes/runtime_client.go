@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"time"
 
+	kcache "github.com/gardener/gardener/pkg/client/kubernetes/cache"
+
 	"golang.org/x/time/rate"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -26,8 +28,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
-
-	kubernetescache "github.com/gardener/gardener/pkg/client/kubernetes/cache"
 )
 
 const (
@@ -78,7 +78,7 @@ func AggregatorCacheFunc(newCache cache.NewCacheFunc, typeToNewCache map[client.
 			gvkToCache[gvk] = cache
 		}
 
-		return kubernetescache.NewAggregator(fallbackCache, gvkToCache, scheme), nil
+		return kcache.NewAggregator(fallbackCache, gvkToCache, scheme), nil
 	}
 }
 

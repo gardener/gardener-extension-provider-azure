@@ -20,7 +20,6 @@ metadata:
   name: csi-driver-node-{{ .role }}
   namespace: {{ .Release.Namespace }}
   labels:
-    node.gardener.cloud/critical-component: "true"
     app: csi
     role: driver-{{ .role }}
 spec:
@@ -35,7 +34,6 @@ spec:
 {{ toYaml .Values.podAnnotations | indent 8 }}
 {{- end }}
       labels:
-        node.gardener.cloud/critical-component: "true"
         app: csi
         role: driver-{{ .role }}
     spec:
@@ -49,9 +47,11 @@ spec:
         operator: Exists
       - effect: NoExecute
         operator: Exists
+      {{- if semverCompare ">= 1.19" .Capabilities.KubeVersion.GitVersion }}
       securityContext:
         seccompProfile:
           type: RuntimeDefault
+      {{- end }}
       containers:
       - name: csi-driver
         image: {{ index .Values.images (print "csi-driver-" .role) }}
