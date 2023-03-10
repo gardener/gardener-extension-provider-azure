@@ -17,6 +17,6 @@ spec:
       --client-id=${CLIENT_ID}
       --client-secret=${CLIENT_SECRET}
       --region=${REGION}
-      --useFlow
+      --use-flow
 
   image: eu.gcr.io/gardener-project/3rd/golang:1.19.2
