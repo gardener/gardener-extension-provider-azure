@@ -569,6 +569,7 @@ func checkKubeAPIServerDeployment(dep *appsv1.Deployment, annotations map[string
 		Expect(dep.Spec.Template.Annotations).To(Equal(annotations))
 		Expect(c.VolumeMounts).To(ContainElement(cloudProviderConfigVolumeMount))
 		Expect(dep.Spec.Template.Spec.Volumes).To(ContainElement(cloudProviderConfigVolume))
+		Expect(dep.Spec.Template.Labels).To(HaveKeyWithValue("networking.resources.gardener.cloud/to-csi-snapshot-validation-tcp-443", "allowed"))
 		if k8sVersionAtLeast121 {
 			Expect(c.Command).To(ContainElement("--feature-gates=CSIMigration=true,CSIMigrationAzureDisk=true,CSIMigrationAzureFile=true"))
 		}
@@ -581,6 +582,7 @@ func checkKubeAPIServerDeployment(dep *appsv1.Deployment, annotations map[string
 		Expect(c.VolumeMounts).NotTo(ContainElement(cloudProviderConfigVolumeMount))
 		Expect(dep.Spec.Template.Spec.Volumes).NotTo(ContainElement(cloudProviderConfigVolume))
 		Expect(dep.Spec.Template.Annotations).To(BeNil())
+		Expect(dep.Spec.Template.Labels).To(HaveKeyWithValue("networking.resources.gardener.cloud/to-csi-snapshot-validation-tcp-443", "allowed"))
 	}
 }
 
