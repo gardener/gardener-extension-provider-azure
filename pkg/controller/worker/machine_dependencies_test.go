@@ -111,12 +111,12 @@ var _ = Describe("MachinesDependencies", func() {
 			}
 		})
 
-		Context("#DeployMachineDependencies", func() {
+		Context("#PreReconcileHook", func() {
 			It("should deploy no vmo dependency as it is not required", func() {
 				w := makeWorker(namespace, region, nil, nil)
 				workerDelegate := wrapNewWorkerDelegate(c, nil, w, cluster, factory)
 
-				err := workerDelegate.DeployMachineDependencies(ctx)
+				err := workerDelegate.PreReconcileHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -126,7 +126,7 @@ var _ = Describe("MachinesDependencies", func() {
 
 				expectVmoCreateToSucceed(ctx, vmoClient, resourceGroupName, vmoName, vmoID)
 				expectWorkerProviderStatusUpdateToSucceed(ctx, c, statusWriter)
-				err := workerDelegate.DeployMachineDependencies(ctx)
+				err := workerDelegate.PreReconcileHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
 				workerStatus := decodeWorkerProviderStatus(w)
@@ -144,7 +144,7 @@ var _ = Describe("MachinesDependencies", func() {
 
 				expectVmoGetToSucceed(ctx, vmoClient, resourceGroupName, vmoName, vmoID, faultDomainCount)
 				expectWorkerProviderStatusUpdateToSucceed(ctx, c, statusWriter)
-				err := workerDelegate.DeployMachineDependencies(ctx)
+				err := workerDelegate.PreReconcileHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
 				workerStatus := decodeWorkerProviderStatus(w)
@@ -164,7 +164,7 @@ var _ = Describe("MachinesDependencies", func() {
 				expectVmoGetToSucceed(ctx, vmoClient, resourceGroupName, vmoName, vmoID, oldFaultDomainCoaunt)
 				expectVmoCreateToSucceed(ctx, vmoClient, resourceGroupName, vmoName, vmoID)
 				expectWorkerProviderStatusUpdateToSucceed(ctx, c, statusWriter)
-				err := workerDelegate.DeployMachineDependencies(ctx)
+				err := workerDelegate.PreReconcileHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
 				workerStatus := decodeWorkerProviderStatus(w)
@@ -176,12 +176,12 @@ var _ = Describe("MachinesDependencies", func() {
 			})
 		})
 
-		Context("#CleanupMachineDependencies", func() {
+		Context("#PostReconcileHook", func() {
 			It("should cleanup nothing as no vmo was required", func() {
 				w := makeWorker(namespace, region, nil, nil)
 				workerDelegate := wrapNewWorkerDelegate(c, nil, w, nil, factory)
 
-				err := workerDelegate.CleanupMachineDependencies(ctx)
+				err := workerDelegate.PostReconcileHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -198,7 +198,7 @@ var _ = Describe("MachinesDependencies", func() {
 					},
 				})
 				expectWorkerProviderStatusUpdateToSucceed(ctx, c, statusWriter)
-				err := workerDelegate.CleanupMachineDependencies(ctx)
+				err := workerDelegate.PostReconcileHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -209,7 +209,7 @@ var _ = Describe("MachinesDependencies", func() {
 
 				expectVmoListToSucceed(ctx, vmoClient, resourceGroupName, generateExpectedVmo(vmoName, vmoID))
 				expectWorkerProviderStatusUpdateToSucceed(ctx, c, statusWriter)
-				err := workerDelegate.CleanupMachineDependencies(ctx)
+				err := workerDelegate.PostReconcileHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
 				workerStatus := decodeWorkerProviderStatus(w)
@@ -228,7 +228,7 @@ var _ = Describe("MachinesDependencies", func() {
 				expectVmoListToSucceed(ctx, vmoClient, resourceGroupName, generateExpectedVmo(vmoName, vmoID), generateExpectedVmo("orphan-managed-vmss", "/some/orphan/vmss/id"))
 				expectVmoDeleteToSucceed(ctx, vmoClient, resourceGroupName)
 				expectWorkerProviderStatusUpdateToSucceed(ctx, c, statusWriter)
-				err := workerDelegate.CleanupMachineDependencies(ctx)
+				err := workerDelegate.PostReconcileHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
 				workerStatus := decodeWorkerProviderStatus(w)
@@ -256,7 +256,7 @@ var _ = Describe("MachinesDependencies", func() {
 				expectVmoListToSucceed(ctx, vmoClient, resourceGroupName, generateExpectedVmo(deletedPoolVmoName, deletedPoolVmoID))
 				expectVmoDeleteToSucceed(ctx, vmoClient, resourceGroupName)
 				expectWorkerProviderStatusUpdateToSucceed(ctx, c, statusWriter)
-				err := workerDelegate.CleanupMachineDependencies(ctx)
+				err := workerDelegate.PostReconcileHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
 				workerStatus := decodeWorkerProviderStatus(w)
@@ -273,7 +273,112 @@ var _ = Describe("MachinesDependencies", func() {
 				expectVmoListToSucceed(ctx, vmoClient, resourceGroupName, generateExpectedVmo(vmoName, vmoID))
 				expectVmoDeleteToSucceed(ctx, vmoClient, resourceGroupName)
 				expectWorkerProviderStatusUpdateToSucceed(ctx, c, statusWriter)
-				err := workerDelegate.CleanupMachineDependencies(ctx)
+				err := workerDelegate.PostReconcileHook(ctx)
+				Expect(err).NotTo(HaveOccurred())
+
+				workerStatus := decodeWorkerProviderStatus(w)
+				Expect(workerStatus.VmoDependencies).To(HaveLen(0))
+			})
+		})
+
+		Context("#PostDeleteHook", func() {
+			It("should cleanup nothing as no vmo was required", func() {
+				w := makeWorker(namespace, region, nil, nil)
+				workerDelegate := wrapNewWorkerDelegate(c, nil, w, nil, factory)
+
+				err := workerDelegate.PostDeleteHook(ctx)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should not cleanup a vmo dependency as resource group is gone", func() {
+				w := makeWorker(namespace, region, nil, infrastructureStatus, pool)
+				w.Status.ProviderStatus = generateWorkerStatusWithVmo(vmoDependency)
+				workerDelegate := wrapNewWorkerDelegate(c, nil, w, cluster, factory)
+
+				vmoClient.EXPECT().List(ctx, resourceGroupName).Return(nil, autorest.DetailedError{
+					Original:   fmt.Errorf("ResourceGroupNotFound"),
+					StatusCode: http.StatusNotFound,
+					Response: &http.Response{
+						StatusCode: http.StatusNotFound,
+					},
+				})
+				expectWorkerProviderStatusUpdateToSucceed(ctx, c, statusWriter)
+				err := workerDelegate.PostDeleteHook(ctx)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should not cleanup a vmo dependency as worker pool still exists", func() {
+				w := makeWorker(namespace, region, nil, infrastructureStatus, pool)
+				w.Status.ProviderStatus = generateWorkerStatusWithVmo(vmoDependency)
+				workerDelegate := wrapNewWorkerDelegate(c, nil, w, cluster, factory)
+
+				expectVmoListToSucceed(ctx, vmoClient, resourceGroupName, generateExpectedVmo(vmoName, vmoID))
+				expectWorkerProviderStatusUpdateToSucceed(ctx, c, statusWriter)
+				err := workerDelegate.PostDeleteHook(ctx)
+				Expect(err).NotTo(HaveOccurred())
+
+				workerStatus := decodeWorkerProviderStatus(w)
+				Expect(workerStatus.VmoDependencies).To(ContainElements(MatchFields(IgnoreExtras, Fields{
+					"ID":       Equal(vmoDependency.ID),
+					"Name":     Equal(vmoDependency.Name),
+					"PoolName": Equal(vmoDependency.PoolName),
+				})))
+			})
+
+			It("should not cleanup vmo dependencies, but remove orphan managed vmos", func() {
+				w := makeWorker(namespace, region, nil, infrastructureStatus, pool)
+				w.Status.ProviderStatus = generateWorkerStatusWithVmo(vmoDependency)
+				workerDelegate := wrapNewWorkerDelegate(c, nil, w, cluster, factory)
+
+				expectVmoListToSucceed(ctx, vmoClient, resourceGroupName, generateExpectedVmo(vmoName, vmoID), generateExpectedVmo("orphan-managed-vmss", "/some/orphan/vmss/id"))
+				expectVmoDeleteToSucceed(ctx, vmoClient, resourceGroupName)
+				expectWorkerProviderStatusUpdateToSucceed(ctx, c, statusWriter)
+				err := workerDelegate.PostDeleteHook(ctx)
+				Expect(err).NotTo(HaveOccurred())
+
+				workerStatus := decodeWorkerProviderStatus(w)
+				Expect(workerStatus.VmoDependencies).To(ContainElements(MatchFields(IgnoreExtras, Fields{
+					"ID":       Equal(vmoDependency.ID),
+					"Name":     Equal(vmoDependency.Name),
+					"PoolName": Equal(vmoDependency.PoolName),
+				})))
+			})
+
+			It("should cleanup a vmo dependency as corresponding worker pool does not exist anymore", func() {
+				var (
+					deletedPoolVmoName       = "deleted-pool-vmo-name"
+					deletedPoolVmoID         = "deleted-pool-vmo-id"
+					deletedPoolVmoDependency = v1alpha1.VmoDependency{
+						ID:       deletedPoolVmoName,
+						Name:     deletedPoolVmoID,
+						PoolName: "deleted-pool-name",
+					}
+					w = makeWorker(namespace, region, nil, infrastructureStatus)
+				)
+				w.Status.ProviderStatus = generateWorkerStatusWithVmo(deletedPoolVmoDependency)
+				workerDelegate := wrapNewWorkerDelegate(c, nil, w, cluster, factory)
+
+				expectVmoListToSucceed(ctx, vmoClient, resourceGroupName, generateExpectedVmo(deletedPoolVmoName, deletedPoolVmoID))
+				expectVmoDeleteToSucceed(ctx, vmoClient, resourceGroupName)
+				expectWorkerProviderStatusUpdateToSucceed(ctx, c, statusWriter)
+				err := workerDelegate.PostDeleteHook(ctx)
+				Expect(err).NotTo(HaveOccurred())
+
+				workerStatus := decodeWorkerProviderStatus(w)
+				Expect(workerStatus.VmoDependencies).To(HaveLen(0))
+			})
+
+			It("should cleanup all vmo dependencies as Worker is intended to be deleted", func() {
+				w := makeWorker(namespace, region, nil, infrastructureStatus, pool)
+				w.Status.ProviderStatus = generateWorkerStatusWithVmo(vmoDependency)
+				w.GetObjectMeta().SetDeletionTimestamp(&metav1.Time{Time: time.Now()})
+
+				workerDelegate := wrapNewWorkerDelegate(c, nil, w, cluster, factory)
+
+				expectVmoListToSucceed(ctx, vmoClient, resourceGroupName, generateExpectedVmo(vmoName, vmoID))
+				expectVmoDeleteToSucceed(ctx, vmoClient, resourceGroupName)
+				expectWorkerProviderStatusUpdateToSucceed(ctx, c, statusWriter)
+				err := workerDelegate.PostDeleteHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
 				workerStatus := decodeWorkerProviderStatus(w)
