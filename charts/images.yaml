@@ -58,7 +58,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-controller-manager
-  tag: "v1.23.25"
+  tag: "v1.23.30"
   targetVersion: "1.23.x"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
@@ -72,7 +72,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-controller-manager
-  tag: "v1.24.12"
+  tag: "v1.24.17"
   targetVersion: "1.24.x"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
@@ -86,7 +86,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-controller-manager
-  tag: "v1.25.6"
+  tag: "v1.25.11"
   targetVersion: "1.25.x"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
@@ -100,7 +100,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-controller-manager
-  tag: "v1.26.2"
+  tag: "v1.26.7"
   targetVersion: ">= 1.26"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
@@ -199,7 +199,7 @@ images:
 - name: csi-driver-disk
   sourceRepository: github.com/kubernetes-sigs/azuredisk-csi-driver
   repository: mcr.microsoft.com/k8s/csi/azuredisk-csi
-  tag: "v1.25.0"
+  tag: "v1.27.0"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
     value:
@@ -212,7 +212,7 @@ images:
 - name: csi-driver-file
   sourceRepository: github.com/kubernetes-sigs/azurefile-csi-driver
   repository: mcr.microsoft.com/k8s/csi/azurefile-csi
-  tag: "v1.21.0"
+  tag: "v1.26.1"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
     value:
