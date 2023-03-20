@@ -153,7 +153,7 @@ var _ = Describe("ValuesProvider", func() {
 
 		infrastructureStatus = defaultInfrastructureStatus.DeepCopy()
 		controlPlaneConfig = defaultControlPlaneConfig.DeepCopy()
-		cluster = generateCluster(cidr, k8sVersionLessThan121, false, nil)
+		cluster = generateCluster(cidr, k8sVersionLessThan121, false, nil, nil, nil)
 	})
 
 	AfterEach(func() {
@@ -386,7 +386,7 @@ var _ = Describe("ValuesProvider", func() {
 		})
 
 		It("should return correct control plane chart values (k8s >= 1.21) without zoned infrastructure", func() {
-			cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil)
+			cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil, nil, &gardencorev1beta1.Seed{})
 			infrastructureStatus.Zoned = false
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 
@@ -412,6 +412,7 @@ var _ = Describe("ValuesProvider", func() {
 						"secrets": map[string]interface{}{
 							"server": "csi-snapshot-validation-server",
 						},
+						"topologyAwareRoutingEnabled": false,
 					},
 					"vmType": "vmss",
 				}),
@@ -425,7 +426,7 @@ var _ = Describe("ValuesProvider", func() {
 		})
 
 		It("should return correct control plane chart values (k8s >= 1.21) with zoned infrastructure", func() {
-			cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil)
+			cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil, nil, &gardencorev1beta1.Seed{})
 			infrastructureStatus.Zoned = true
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 
@@ -451,6 +452,7 @@ var _ = Describe("ValuesProvider", func() {
 						"secrets": map[string]interface{}{
 							"server": "csi-snapshot-validation-server",
 						},
+						"topologyAwareRoutingEnabled": false,
 					},
 				}),
 				azure.RemedyControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
@@ -463,9 +465,10 @@ var _ = Describe("ValuesProvider", func() {
 		})
 
 		It("should return correct control plane chart values when remedy controller is disabled", func() {
-			cluster = generateCluster(cidr, k8sVersionLessThan121, false, map[string]string{
+			shootAnnotations := map[string]string{
 				azure.DisableRemedyControllerAnnotation: "true",
-			})
+			}
+			cluster = generateCluster(cidr, k8sVersionLessThan121, false, shootAnnotations, nil, nil)
 
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, fakeSecretsManager, checksums, false)
@@ -482,6 +485,56 @@ var _ = Describe("ValuesProvider", func() {
 				azure.RemedyControllerName: remedyDisabled,
 			}))
 		})
+
+		DescribeTable("topologyAwareRoutingEnabled value",
+			func(seedSettings *gardencorev1beta1.SeedSettings, shootControlPlane *gardencorev1beta1.ControlPlane, expected bool) {
+				seed := &gardencorev1beta1.Seed{
+					Spec: gardencorev1beta1.SeedSpec{
+						Settings: seedSettings,
+					},
+				}
+				cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil, shootControlPlane, seed)
+
+				infrastructureStatus.Zoned = false
+				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+
+				values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, fakeSecretsManager, checksums, false)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values).To(HaveKey(azure.CSIControllerName))
+				Expect(values[azure.CSIControllerName]).To(HaveKeyWithValue("csiSnapshotValidationWebhook", HaveKeyWithValue("topologyAwareRoutingEnabled", expected)))
+			},
+
+			Entry("seed setting is nil, shoot control plane is not HA",
+				nil,
+				&gardencorev1beta1.ControlPlane{HighAvailability: nil},
+				false,
+			),
+			Entry("seed setting is disabled, shoot control plane is not HA",
+				&gardencorev1beta1.SeedSettings{TopologyAwareRouting: &gardencorev1beta1.SeedSettingTopologyAwareRouting{Enabled: false}},
+				&gardencorev1beta1.ControlPlane{HighAvailability: nil},
+				false,
+			),
+			Entry("seed setting is enabled, shoot control plane is not HA",
+				&gardencorev1beta1.SeedSettings{TopologyAwareRouting: &gardencorev1beta1.SeedSettingTopologyAwareRouting{Enabled: true}},
+				&gardencorev1beta1.ControlPlane{HighAvailability: nil},
+				false,
+			),
+			Entry("seed setting is nil, shoot control plane is HA with failure tolerance type 'zone'",
+				nil,
+				&gardencorev1beta1.ControlPlane{HighAvailability: &gardencorev1beta1.HighAvailability{FailureTolerance: gardencorev1beta1.FailureTolerance{Type: gardencorev1beta1.FailureToleranceTypeZone}}},
+				false,
+			),
+			Entry("seed setting is disabled, shoot control plane is HA with failure tolerance type 'zone'",
+				&gardencorev1beta1.SeedSettings{TopologyAwareRouting: &gardencorev1beta1.SeedSettingTopologyAwareRouting{Enabled: false}},
+				&gardencorev1beta1.ControlPlane{HighAvailability: &gardencorev1beta1.HighAvailability{FailureTolerance: gardencorev1beta1.FailureTolerance{Type: gardencorev1beta1.FailureToleranceTypeZone}}},
+				false,
+			),
+			Entry("seed setting is enabled, shoot control plane is HA with failure tolerance type 'zone'",
+				&gardencorev1beta1.SeedSettings{TopologyAwareRouting: &gardencorev1beta1.SeedSettingTopologyAwareRouting{Enabled: true}},
+				&gardencorev1beta1.ControlPlane{HighAvailability: &gardencorev1beta1.HighAvailability{FailureTolerance: gardencorev1beta1.FailureTolerance{Type: gardencorev1beta1.FailureToleranceTypeZone}}},
+				true,
+			),
+		)
 	})
 
 	Describe("#GetControlPlaneShootChartValues", func() {
@@ -581,7 +634,7 @@ var _ = Describe("ValuesProvider", func() {
 
 			BeforeEach(func() {
 				c.EXPECT().Get(ctx, cpDiskConfigKey, &corev1.Secret{}).DoAndReturn(clientGet(cpDiskConfig))
-				cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil)
+				cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil, nil, nil)
 			})
 
 			It("should return correct control plane shoot chart values for zoned cluster", func() {
@@ -654,9 +707,10 @@ var _ = Describe("ValuesProvider", func() {
 
 		Context("remedy controller is disabled", func() {
 			BeforeEach(func() {
-				cluster = generateCluster(cidr, k8sVersionLessThan121, false, map[string]string{
+				shootAnnotations := map[string]string{
 					azure.DisableRemedyControllerAnnotation: "true",
-				})
+				}
+				cluster = generateCluster(cidr, k8sVersionLessThan121, false, shootAnnotations, nil, nil)
 			})
 
 			It("should return correct control plane shoot chart values for zoned cluster", func() {
@@ -776,7 +830,7 @@ var _ = Describe("ValuesProvider", func() {
 		})
 
 		It("should return correct control plane shoot CRDs chart values (k8s >= 1.21)", func() {
-			cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil)
+			cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil, nil, nil)
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 			values, err := vp.GetControlPlaneShootCRDsChartValues(ctx, cp, cluster)
 			Expect(err).NotTo(HaveOccurred())
@@ -793,7 +847,7 @@ var _ = Describe("ValuesProvider", func() {
 		})
 
 		It("should return correct storage class chart values (k8s >= 1.21)", func() {
-			cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil)
+			cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil, nil, nil)
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 			values, err := vp.GetStorageClassesChartValues(ctx, cp, cluster)
 			Expect(err).NotTo(HaveOccurred())
@@ -843,8 +897,8 @@ func generateControlPlane(controlPlaneConfig *apisazure.ControlPlaneConfig, infr
 	}
 }
 
-func generateCluster(cidr, k8sVersion string, vpaEnabled bool, shootAnnotations map[string]string) *extensionscontroller.Cluster {
-	shoot := gardencorev1beta1.Shoot{
+func generateCluster(cidr, k8sVersion string, vpaEnabled bool, shootAnnotations map[string]string, shootControlPlane *gardencorev1beta1.ControlPlane, seed *gardencorev1beta1.Seed) *extensionscontroller.Cluster {
+	shoot := &gardencorev1beta1.Shoot{
 		Spec: gardencorev1beta1.ShootSpec{
 			Networking: gardencorev1beta1.Networking{
 				Pods: &cidr,
@@ -855,6 +909,7 @@ func generateCluster(cidr, k8sVersion string, vpaEnabled bool, shootAnnotations 
 					Enabled: vpaEnabled,
 				},
 			},
+			ControlPlane: shootControlPlane,
 		},
 	}
 	if shootAnnotations != nil {
@@ -867,6 +922,7 @@ func generateCluster(cidr, k8sVersion string, vpaEnabled bool, shootAnnotations 
 				"generic-token-kubeconfig.secret.gardener.cloud/name": genericTokenKubeconfigSecretName,
 			},
 		},
-		Shoot: &shoot,
+		Seed:  seed,
+		Shoot: shoot,
 	}
 }
