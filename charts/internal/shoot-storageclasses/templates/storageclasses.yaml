@@ -5,7 +5,9 @@ kind: StorageClass
 metadata:
   name: default
   annotations:
+    {{- if .Values.managedDefaultStorageClass }}
     storageclass.kubernetes.io/is-default-class: "true"
+    {{- end }}
     resources.gardener.cloud/delete-on-invalid-update: "true"
 provisioner: disk.csi.azure.com
 parameters:
@@ -67,13 +69,19 @@ parameters:
   skuName: Standard_LRS
 volumeBindingMode: WaitForFirstConsumer
 allowVolumeExpansion: true
-{{- end }}
+
 ---
-apiVersion: snapshot.storage.k8s.io/v1beta1
+
+apiVersion: snapshot.storage.k8s.io/v1
 kind: VolumeSnapshotClass
 metadata:
   name: default
   annotations:
+  {{- if .Values.managedDefaultVolumeSnapshotClass }}
+  annotations:
     snapshot.storage.kubernetes.io/is-default-class: "true"
+  {{- end }}
 driver: disk.csi.azure.com
 deletionPolicy: Delete
+
+{{- end }}

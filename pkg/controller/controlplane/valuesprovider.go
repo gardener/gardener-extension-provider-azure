@@ -45,6 +45,7 @@ import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	autoscalingv1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
@@ -414,17 +415,32 @@ func (vp *valuesProvider) GetControlPlaneShootCRDsChartValues(
 // GetStorageClassesChartValues returns the values for the storage classes chart applied by the generic actuator.
 func (vp *valuesProvider) GetStorageClassesChartValues(
 	_ context.Context,
-	_ *extensionsv1alpha1.ControlPlane,
+	cp *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
 ) (map[string]interface{}, error) {
+	// Decode providerConfig
+	cpConfig := &apisazure.ControlPlaneConfig{}
+	if cp.Spec.ProviderConfig != nil {
+		if _, _, err := vp.Decoder().Decode(cp.Spec.ProviderConfig.Raw, nil, cpConfig); err != nil {
+			return nil, fmt.Errorf("could not decode providerConfig of controlplane '%s': %w", kutil.ObjectName(cp), err)
+		}
+	}
+
 	k8sVersionLessThan121, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, "<", azure.CSIMigrationKubernetesVersion)
 	if err != nil {
 		return nil, err
 	}
 
-	return map[string]interface{}{
+	values := map[string]interface{}{
 		"useLegacyProvisioner": k8sVersionLessThan121,
-	}, nil
+	}
+
+	if cpConfig.Storage != nil {
+		values["managedDefaultStorageClass"] = pointer.BoolDeref(cpConfig.Storage.ManagedDefaultStorageClass, true)
+		values["managedDefaultVolumeSnapshotClass"] = pointer.BoolDeref(cpConfig.Storage.ManagedDefaultVolumeSnapshotClass, true)
+	}
+
+	return values, nil
 }
 
 func (vp *valuesProvider) removeAcrConfig(ctx context.Context, namespace string) error {

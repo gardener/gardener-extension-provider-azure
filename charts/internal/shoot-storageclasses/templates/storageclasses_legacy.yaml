@@ -5,7 +5,9 @@ kind: StorageClass
 metadata:
   name: default
   annotations:
+    {{- if .Values.managedDefaultClass }}
     storageclass.kubernetes.io/is-default-class: "true"
+    {{- end }}
     resources.gardener.cloud/delete-on-invalid-update: "true"
 allowVolumeExpansion: true
 provisioner: kubernetes.io/azure-disk

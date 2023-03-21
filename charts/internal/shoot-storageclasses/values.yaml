@@ -1,1 +1,3 @@
 useLegacyProvisioner: true
+managedDefaultStorageClass: true
+managedDefaultVolumeSnapshotClass: true

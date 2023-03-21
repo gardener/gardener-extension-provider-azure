@@ -42,6 +42,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
@@ -64,9 +65,10 @@ var _ = Describe("ValuesProvider", func() {
 
 		scheme = runtime.NewScheme()
 		_      = apisazure.AddToScheme(scheme)
+		_      = v1alpha1.AddToScheme(scheme)
 
 		infrastructureStatus *apisazure.InfrastructureStatus
-		controlPlaneConfig   *apisazure.ControlPlaneConfig
+		controlPlaneConfig   *v1alpha1.ControlPlaneConfig
 		cluster              *extensionscontroller.Cluster
 
 		defaultInfrastructureStatus = &apisazure.InfrastructureStatus{
@@ -99,8 +101,12 @@ var _ = Describe("ValuesProvider", func() {
 			Zoned: true,
 		}
 
-		defaultControlPlaneConfig = &apisazure.ControlPlaneConfig{
-			CloudControllerManager: &apisazure.CloudControllerManagerConfig{
+		defaultControlPlaneConfig = &v1alpha1.ControlPlaneConfig{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "ControlPlaneConfig",
+				APIVersion: v1alpha1.SchemeGroupVersion.String(),
+			},
+			CloudControllerManager: &v1alpha1.CloudControllerManagerConfig{
 				FeatureGates: map[string]bool{
 					"CustomResourceValidation": true,
 				},
@@ -789,7 +795,9 @@ var _ = Describe("ValuesProvider", func() {
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 			values, err := vp.GetStorageClassesChartValues(ctx, cp, cluster)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(values).To(Equal(map[string]interface{}{"useLegacyProvisioner": true}))
+			Expect(values).To(Equal(map[string]interface{}{
+				"useLegacyProvisioner": true,
+			}))
 		})
 
 		It("should return correct storage class chart values (k8s >= 1.21)", func() {
@@ -797,7 +805,41 @@ var _ = Describe("ValuesProvider", func() {
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 			values, err := vp.GetStorageClassesChartValues(ctx, cp, cluster)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(values).To(Equal(map[string]interface{}{"useLegacyProvisioner": false}))
+			Expect(values).To(Equal(map[string]interface{}{
+				"useLegacyProvisioner": false,
+			}))
+		})
+
+		It("should return correct storage class chart values when not using managed StorageClass (k8s >= 1.21)", func() {
+			controlPlaneConfig.Storage = &v1alpha1.Storage{
+				ManagedDefaultStorageClass:        pointer.Bool(false),
+				ManagedDefaultVolumeSnapshotClass: pointer.Bool(false),
+			}
+			cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil)
+			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+			values, err := vp.GetStorageClassesChartValues(ctx, cp, cluster)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(map[string]interface{}{
+				"useLegacyProvisioner":              false,
+				"managedDefaultStorageClass":        false,
+				"managedDefaultVolumeSnapshotClass": false,
+			}))
+		})
+
+		It("should return correct storage class chart values when not using managed StorageClass (k8s >= 1.21)", func() {
+			controlPlaneConfig.Storage = &v1alpha1.Storage{
+				ManagedDefaultStorageClass:        pointer.Bool(false),
+				ManagedDefaultVolumeSnapshotClass: pointer.Bool(true),
+			}
+			cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil)
+			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+			values, err := vp.GetStorageClassesChartValues(ctx, cp, cluster)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(map[string]interface{}{
+				"useLegacyProvisioner":              false,
+				"managedDefaultStorageClass":        false,
+				"managedDefaultVolumeSnapshotClass": true,
+			}))
 		})
 	})
 })
@@ -819,7 +861,7 @@ func clientGet(result runtime.Object) interface{} {
 	}
 }
 
-func generateControlPlane(controlPlaneConfig *apisazure.ControlPlaneConfig, infrastructureStatus *apisazure.InfrastructureStatus) *extensionsv1alpha1.ControlPlane {
+func generateControlPlane(controlPlaneConfig *v1alpha1.ControlPlaneConfig, infrastructureStatus *apisazure.InfrastructureStatus) *extensionsv1alpha1.ControlPlane {
 	return &extensionsv1alpha1.ControlPlane{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "control-plane",
