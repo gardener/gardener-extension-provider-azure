@@ -62,6 +62,9 @@ spec:
     cloudControllerManager:
       featureGates:
         CustomResourceValidation: true
+#    storage:
+#      managedDefaultVolumeSnapshotClass: true
+#      managedDefaultStorageClass: true
   infrastructureProviderStatus:
     apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
     kind: InfrastructureStatus

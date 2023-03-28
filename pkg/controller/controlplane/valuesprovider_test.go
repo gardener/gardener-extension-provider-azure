@@ -864,12 +864,12 @@ var _ = Describe("ValuesProvider", func() {
 			}))
 		})
 
-		It("should return correct storage class chart values when not using managed StorageClass (k8s >= 1.21)", func() {
+		It("should return correct storage class chart values when not using managed classes (k8s >= 1.21)", func() {
 			controlPlaneConfig.Storage = &v1alpha1.Storage{
 				ManagedDefaultStorageClass:        pointer.Bool(false),
 				ManagedDefaultVolumeSnapshotClass: pointer.Bool(false),
 			}
-			cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil)
+			cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil, nil, nil)
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 			values, err := vp.GetStorageClassesChartValues(ctx, cp, cluster)
 			Expect(err).NotTo(HaveOccurred())
@@ -885,7 +885,7 @@ var _ = Describe("ValuesProvider", func() {
 				ManagedDefaultStorageClass:        pointer.Bool(false),
 				ManagedDefaultVolumeSnapshotClass: pointer.Bool(true),
 			}
-			cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil)
+			cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil, nil, nil)
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 			values, err := vp.GetStorageClassesChartValues(ctx, cp, cluster)
 			Expect(err).NotTo(HaveOccurred())

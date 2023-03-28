@@ -1438,20 +1438,6 @@ string
 <tbody>
 <tr>
 <td>
-<code>managedDefaultVolumeSnapshotClass</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>ManagedDefaultVolumeSnapshotClass controls if the &lsquo;default&rsquo; VolumeSnapshotClass would be marked as default.
-Set to false to manually set the default to another class not managed by Gardener.
-Defaults to true.</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>managedDefaultStorageClass</code></br>
 <em>
 bool
@@ -1461,6 +1447,20 @@ bool
 <em>(Optional)</em>
 <p>ManagedDefaultStorageClass controls if the &lsquo;default&rsquo; StorageClass would be marked as default. Set to false to
 manually set the default to another class not managed by Gardener.
+Defaults to true.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>managedDefaultVolumeSnapshotClass</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ManagedDefaultVolumeSnapshotClass controls if the &lsquo;default&rsquo; VolumeSnapshotClass would be marked as default.
+Set to false to manually set the default to another class not managed by Gardener.
 Defaults to true.</p>
 </td>
 </tr>
