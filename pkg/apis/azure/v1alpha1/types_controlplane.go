@@ -28,6 +28,9 @@ type ControlPlaneConfig struct {
 	// CloudControllerManager contains configuration settings for the cloud-controller-manager.
 	// +optional
 	CloudControllerManager *CloudControllerManagerConfig `json:"cloudControllerManager,omitempty"`
+
+	// Storage contains configuration for storage in the cluster.
+	Storage *Storage `json:"storage,omitempty"`
 }
 
 // CloudControllerManagerConfig contains configuration settings for the cloud-controller-manager.
@@ -35,4 +38,18 @@ type CloudControllerManagerConfig struct {
 	// FeatureGates contains information about enabled feature gates.
 	// +optional
 	FeatureGates map[string]bool `json:"featureGates,omitempty"`
+}
+
+// Storage contains configuration for storage in the cluster.
+type Storage struct {
+	// ManagedDefaultVolumeSnapshotClass controls if the 'default' VolumeSnapshotClass would be marked as default.
+	// Set to false to manually set the default to another class not managed by Gardener.
+	// Defaults to true.
+	// +optional
+	ManagedDefaultVolumeSnapshotClass *bool `json:"managedDefaultVolumeSnapshotClass,omitempty"`
+	// ManagedDefaultStorageClass controls if the 'default' StorageClass would be marked as default. Set to false to
+	// manually set the default to another class not managed by Gardener.
+	// Defaults to true.
+	// +optional
+	ManagedDefaultStorageClass *bool `json:"managedDefaultStorageClass,omitempty"`
 }
