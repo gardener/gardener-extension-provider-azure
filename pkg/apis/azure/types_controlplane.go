@@ -41,14 +41,14 @@ type CloudControllerManagerConfig struct {
 
 // Storage contains configuration for storage in the cluster.
 type Storage struct {
-	// ManagedDefaultVolumeSnapshotClass controls if the 'default' VolumeSnapshotClass would be marked as default.
-	// Set to false to manually set the default to another class not managed by Gardener.
-	// Defaults to true.
-	// +optional
-	ManagedDefaultVolumeSnapshotClass *bool
 	// ManagedDefaultStorageClass controls if the 'default' StorageClass would be marked as default. Set to false to
 	// manually set the default to another class not managed by Gardener.
 	// Defaults to true.
 	// +optional
 	ManagedDefaultStorageClass *bool
+	// ManagedDefaultVolumeSnapshotClass controls if the 'default' VolumeSnapshotClass would be marked as default.
+	// Set to false to manually set the default to another class not managed by Gardener.
+	// Defaults to true.
+	// +optional
+	ManagedDefaultVolumeSnapshotClass *bool
 }

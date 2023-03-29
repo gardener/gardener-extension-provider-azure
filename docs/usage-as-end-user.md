@@ -313,6 +313,12 @@ The `cloudControllerManager.featureGates` contains a map of explicitly enabled o
 For production usage it's not recommend to use this field at all as you can enable alpha features or disable beta/stable features, potentially impacting the cluster stability.
 If you don't want to configure anything for the `cloudControllerManager` simply omit the key in the YAML specification.
 
+`storage` contains options for storage-related control plane component. 
+`storage.managedDefaultStorageClass` is enabled by default and will deploy a `storageClass` and mark it as a default (via the `storageclass.kubernetes.io/is-default-class` annotation)
+`storage.managedDefaultVolumeSnapshotClass` is enabled by default and will deploy a `volumeSnapshotClass` and mark it as a default (via the `snapshot.storage.kubernetes.io/is-default-classs` annotation)
+In case you want to manage your own default `storageClass` or `volumeSnapshotClass` you need to disable the respective options above, otherwise reconciliation of the controlplane may fail.
+
+
 ## `WorkerConfig`
 
 The Azure extension supports encryption for volumes plus support for additional data volumes per machine.

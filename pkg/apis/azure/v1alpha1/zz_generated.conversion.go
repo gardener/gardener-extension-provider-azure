@@ -861,8 +861,8 @@ func Convert_azure_SecurityGroup_To_v1alpha1_SecurityGroup(in *azure.SecurityGro
 }
 
 func autoConvert_v1alpha1_Storage_To_azure_Storage(in *Storage, out *azure.Storage, s conversion.Scope) error {
-	out.ManagedDefaultVolumeSnapshotClass = (*bool)(unsafe.Pointer(in.ManagedDefaultVolumeSnapshotClass))
 	out.ManagedDefaultStorageClass = (*bool)(unsafe.Pointer(in.ManagedDefaultStorageClass))
+	out.ManagedDefaultVolumeSnapshotClass = (*bool)(unsafe.Pointer(in.ManagedDefaultVolumeSnapshotClass))
 	return nil
 }
 
@@ -872,8 +872,8 @@ func Convert_v1alpha1_Storage_To_azure_Storage(in *Storage, out *azure.Storage, 
 }
 
 func autoConvert_azure_Storage_To_v1alpha1_Storage(in *azure.Storage, out *Storage, s conversion.Scope) error {
-	out.ManagedDefaultVolumeSnapshotClass = (*bool)(unsafe.Pointer(in.ManagedDefaultVolumeSnapshotClass))
 	out.ManagedDefaultStorageClass = (*bool)(unsafe.Pointer(in.ManagedDefaultStorageClass))
+	out.ManagedDefaultVolumeSnapshotClass = (*bool)(unsafe.Pointer(in.ManagedDefaultVolumeSnapshotClass))
 	return nil
 }
 
