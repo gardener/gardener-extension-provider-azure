@@ -63,14 +63,14 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, infra *extension
 		if azureclient.IsAzureAPIUnauthorized(err) {
 			log.Error(err, "Failed to check resource group availability due to invalid credentials")
 		} else {
-			return err
+			return util.DetermineError(err, helper.KnownCodes)
 		}
 	}
 
 	if !resourceGroupExists {
 		if !azureclient.IsAzureAPIUnauthorized(err) {
 			if err := infrastructure.DeleteNodeSubnetIfExists(ctx, azureClientFactory, infra, config); err != nil {
-				return err
+				return util.DetermineError(err, helper.KnownCodes)
 			}
 		}
 
