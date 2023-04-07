@@ -167,8 +167,6 @@ var (
 					{Type: &appsv1.Deployment{}, Name: azure.CSISnapshotValidationName},
 					{Type: &corev1.Service{}, Name: azure.CSISnapshotValidationName},
 					{Type: &networkingv1.NetworkPolicy{}, Name: "allow-kube-apiserver-to-csi-snapshot-validation"},
-					{Type: &rbacv1.ClusterRole{}, Name: azure.UsernamePrefix + azure.CSISnapshotValidationName},
-					{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.CSISnapshotValidationName},
 				},
 			},
 			{
@@ -258,6 +256,8 @@ var (
 					{Type: &rbacv1.RoleBinding{}, Name: azure.UsernamePrefix + azure.CSIResizerName},
 					// csi-snapshot-validation-webhook
 					{Type: &admissionregistrationv1.ValidatingWebhookConfiguration{}, Name: azure.CSISnapshotValidationName},
+					{Type: &rbacv1.ClusterRole{}, Name: azure.UsernamePrefix + azure.CSISnapshotValidationName},
+					{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.CSISnapshotValidationName},
 				},
 			},
 			{
