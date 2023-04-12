@@ -329,6 +329,8 @@ images:
 
 - name: remedy-controller-azure
   sourceRepository: github.com/gardener/remedy-controller
+  resourceId:
+    name: remedy-controller-image
   repository: eu.gcr.io/gardener-project/gardener/remedy-controller/remedy-controller-azure
   tag: "v0.10.0"
   labels:
