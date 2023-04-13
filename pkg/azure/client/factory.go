@@ -200,3 +200,17 @@ func (f AzureFactory) Subnet(ctx context.Context, secretRef corev1.SecretReferen
 		client: subnetsClient,
 	}, nil
 }
+
+// VirtualMachineImage reads the secret from the passed reference and return an Azure Virtual Machine Image client.
+func (f AzureFactory) VirtualMachineImage(ctx context.Context, secretRef corev1.SecretReference) (VirtualMachineImage, error) {
+	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(ctx, f.client, secretRef, false)
+	if err != nil {
+		return nil, err
+	}
+	virtualMachineImageClient := azurecompute.NewVirtualMachineImagesClient(subscriptionID)
+	virtualMachineImageClient.Authorizer = authorizer
+
+	return VirtualMachineImageClient{
+		client: virtualMachineImageClient,
+	}, nil
+}

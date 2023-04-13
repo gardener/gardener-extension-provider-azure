@@ -425,6 +425,21 @@ func (mr *MockFactoryMockRecorder) VirtualMachine(arg0, arg1 interface{}) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VirtualMachine", reflect.TypeOf((*MockFactory)(nil).VirtualMachine), arg0, arg1)
 }
 
+// VirtualMachineImage mocks base method.
+func (m *MockFactory) VirtualMachineImage(arg0 context.Context, arg1 v1.SecretReference) (client.VirtualMachineImage, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "VirtualMachineImage", arg0, arg1)
+	ret0, _ := ret[0].(client.VirtualMachineImage)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// VirtualMachineImage indicates an expected call of VirtualMachineImage.
+func (mr *MockFactoryMockRecorder) VirtualMachineImage(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VirtualMachineImage", reflect.TypeOf((*MockFactory)(nil).VirtualMachineImage), arg0, arg1)
+}
+
 // Vmss mocks base method.
 func (m *MockFactory) Vmss(arg0 context.Context, arg1 v1.SecretReference) (client.Vmss, error) {
 	m.ctrl.T.Helper()
