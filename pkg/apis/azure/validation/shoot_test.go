@@ -15,10 +15,15 @@
 package validation_test
 
 import (
+	"github.com/gardener/gardener-extension-networking-calico/pkg/apis/calico/install"
 	"github.com/gardener/gardener/pkg/apis/core"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
+	"github.com/onsi/gomega/types"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/pointer"
 
@@ -29,29 +34,62 @@ import (
 var _ = Describe("Shoot validation", func() {
 	Describe("#ValidateNetworking", func() {
 		networkingPath := field.NewPath("spec", "networking")
+		scheme := runtime.NewScheme()
+		utilruntime.Must(install.AddToScheme(scheme))
+		decoder := serializer.NewCodecFactory(scheme, serializer.EnableStrict).UniversalDecoder()
 
-		It("should return no error because nodes CIDR was provided", func() {
-			networking := core.Networking{
-				Nodes: pointer.String("1.2.3.4/5"),
-			}
+		DescribeTable("",
+			func(networking core.Networking, result types.GomegaMatcher) {
+				errorList := ValidateNetworking(decoder, networking, networkingPath)
 
-			errorList := ValidateNetworking(networking, networkingPath)
+				Expect(errorList).To(result)
+			},
 
-			Expect(errorList).To(BeEmpty())
-		})
-
-		It("should return an error because no nodes CIDR was provided", func() {
-			networking := core.Networking{}
-
-			errorList := ValidateNetworking(networking, networkingPath)
-
-			Expect(errorList).To(ConsistOf(
-				PointTo(MatchFields(IgnoreExtras, Fields{
-					"Type":  Equal(field.ErrorTypeRequired),
-					"Field": Equal("spec.networking.nodes"),
-				})),
-			))
-		})
+			Entry("should return no error because nodes CIDR was provided",
+				core.Networking{
+					Nodes: pointer.String("1.2.3.4/5"),
+				},
+				BeEmpty(),
+			),
+			Entry("should return an error because no nodes CIDR was provided",
+				core.Networking{},
+				ConsistOf(
+					PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":  Equal(field.ErrorTypeRequired),
+						"Field": Equal("spec.networking.nodes"),
+					})),
+				),
+			),
+			Entry("should return an error if calico is used with overlay network",
+				core.Networking{
+					Nodes:          pointer.String("1.2.3.4/5"),
+					Type:           "calico",
+					ProviderConfig: &runtime.RawExtension{Raw: []byte(`{"apiVersion":"calico.networking.extensions.gardener.cloud/v1alpha1","kind":"NetworkConfig","overlay":{"enabled":true}}`)},
+				},
+				ConsistOf(
+					PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":  Equal(field.ErrorTypeForbidden),
+						"Field": Equal("spec.networking.providerConfig.overlay.enabled"),
+					})),
+				),
+			),
+			Entry("should return no error if calico is used without overlay network",
+				core.Networking{
+					Nodes:          pointer.String("1.2.3.4/5"),
+					Type:           "calico",
+					ProviderConfig: &runtime.RawExtension{Raw: []byte(`{"apiVersion":"calico.networking.extensions.gardener.cloud/v1alpha1","kind":"NetworkConfig","overlay":{"enabled":false}}`)},
+				},
+				BeEmpty(),
+			),
+			Entry("should return no error if cilium is used with overlay network",
+				core.Networking{
+					Nodes:          pointer.String("1.2.3.4/5"),
+					Type:           "cilium",
+					ProviderConfig: &runtime.RawExtension{Raw: []byte(`{"apiVersion":"cilium.networking.extensions.gardener.cloud/v1alpha1","kind":"NetworkConfig","overlay":{"enabled":true}}`)},
+				},
+				BeEmpty(),
+			),
+		)
 	})
 
 	Describe("#ValidateWorkerConfig", func() {

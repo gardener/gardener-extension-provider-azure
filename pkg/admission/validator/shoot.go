@@ -112,7 +112,7 @@ func (s *shoot) validateShoot(shoot *core.Shoot, oldInfraConfig, infraConfig *ap
 	allErrs := field.ErrorList{}
 
 	// Network validation
-	allErrs = append(allErrs, azurevalidation.ValidateNetworking(shoot.Spec.Networking, nwPath)...)
+	allErrs = append(allErrs, azurevalidation.ValidateNetworking(s.decoder, shoot.Spec.Networking, nwPath)...)
 
 	// Cloudprofile validation
 	allErrs = append(allErrs, azurevalidation.ValidateInfrastructureConfigAgainstCloudProfile(oldInfraConfig, infraConfig, shoot.Spec.Region, cloudProfile, infraConfigPath)...)
