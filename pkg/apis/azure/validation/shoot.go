@@ -18,9 +18,13 @@ import (
 	"fmt"
 
 	"github.com/Masterminds/semver"
+	"github.com/gardener/gardener-extension-networking-calico/pkg/apis/calico"
+	calicopkg "github.com/gardener/gardener-extension-networking-calico/pkg/calico"
+	"github.com/gardener/gardener/extensions/pkg/util"
 	"github.com/gardener/gardener/pkg/apis/core"
 	validationutils "github.com/gardener/gardener/pkg/utils/validation"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
@@ -32,14 +36,32 @@ import (
 const maxDataVolumeCount = 64
 
 // ValidateNetworking validates the network settings of a Shoot.
-func ValidateNetworking(networking core.Networking, fldPath *field.Path) field.ErrorList {
+func ValidateNetworking(decoder runtime.Decoder, networking core.Networking, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if networking.Nodes == nil {
 		allErrs = append(allErrs, field.Required(fldPath.Child("nodes"), "a nodes CIDR must be provided for Azure shoots"))
 	}
+	if networking.Type == calicopkg.ReleaseName {
+		networkConfig, err := decodeCalicoNetworkingConfig(decoder, networking.ProviderConfig)
+		if err != nil {
+			allErrs = append(allErrs, field.InternalError(fldPath.Child("providerConfig"), err))
+		} else if networkConfig.Overlay != nil && networkConfig.Overlay.Enabled {
+			allErrs = append(allErrs, field.Forbidden(fldPath.Child("providerConfig").Child("overlay").Child("enabled"), "Calico overlay network is not supported on azure"))
+		}
+	}
 
 	return allErrs
+}
+
+func decodeCalicoNetworkingConfig(decoder runtime.Decoder, network *runtime.RawExtension) (*calico.NetworkConfig, error) {
+	networkConfig := &calico.NetworkConfig{}
+	if network != nil && network.Raw != nil {
+		if err := util.Decode(decoder, network.Raw, networkConfig); err != nil {
+			return nil, err
+		}
+	}
+	return networkConfig, nil
 }
 
 // ValidateWorkers validates the workers of a Shoot.
