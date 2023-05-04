@@ -10,7 +10,7 @@ metadata:
   labels:
 {{ include "labels" . | indent 4 }}
 spec:
-  maxUnavailable: {{ sub (int .Values.replicaCount) 1 }}
+  maxUnavailable: 1
   selector:
     matchLabels:
 {{ include "labels" . | indent 6 }}
