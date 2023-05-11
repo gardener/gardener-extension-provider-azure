@@ -40,7 +40,7 @@ var _ = Describe("Shoot validation", func() {
 
 		DescribeTable("",
 			func(networking core.Networking, result types.GomegaMatcher) {
-				errorList := ValidateNetworking(decoder, networking, networkingPath)
+				errorList := ValidateNetworking(decoder, &networking, networkingPath)
 
 				Expect(errorList).To(result)
 			},
@@ -63,7 +63,7 @@ var _ = Describe("Shoot validation", func() {
 			Entry("should return an error if calico is used with overlay network",
 				core.Networking{
 					Nodes:          pointer.String("1.2.3.4/5"),
-					Type:           "calico",
+					Type:           pointer.String("calico"),
 					ProviderConfig: &runtime.RawExtension{Raw: []byte(`{"apiVersion":"calico.networking.extensions.gardener.cloud/v1alpha1","kind":"NetworkConfig","overlay":{"enabled":true}}`)},
 				},
 				ConsistOf(
@@ -76,7 +76,7 @@ var _ = Describe("Shoot validation", func() {
 			Entry("should return no error if calico is used without overlay network",
 				core.Networking{
 					Nodes:          pointer.String("1.2.3.4/5"),
-					Type:           "calico",
+					Type:           pointer.String("calico"),
 					ProviderConfig: &runtime.RawExtension{Raw: []byte(`{"apiVersion":"calico.networking.extensions.gardener.cloud/v1alpha1","kind":"NetworkConfig","overlay":{"enabled":false}}`)},
 				},
 				BeEmpty(),
@@ -84,7 +84,7 @@ var _ = Describe("Shoot validation", func() {
 			Entry("should return no error if cilium is used with overlay network",
 				core.Networking{
 					Nodes:          pointer.String("1.2.3.4/5"),
-					Type:           "cilium",
+					Type:           pointer.String("cilium"),
 					ProviderConfig: &runtime.RawExtension{Raw: []byte(`{"apiVersion":"cilium.networking.extensions.gardener.cloud/v1alpha1","kind":"NetworkConfig","overlay":{"enabled":true}}`)},
 				},
 				BeEmpty(),

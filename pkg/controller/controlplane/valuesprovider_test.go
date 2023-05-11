@@ -942,7 +942,7 @@ func generateControlPlane(controlPlaneConfig *v1alpha1.ControlPlaneConfig, infra
 func generateCluster(cidr, k8sVersion string, vpaEnabled bool, shootAnnotations map[string]string, shootControlPlane *gardencorev1beta1.ControlPlane, seed *gardencorev1beta1.Seed) *extensionscontroller.Cluster {
 	shoot := &gardencorev1beta1.Shoot{
 		Spec: gardencorev1beta1.ShootSpec{
-			Networking: gardencorev1beta1.Networking{
+			Networking: &gardencorev1beta1.Networking{
 				Pods: &cidr,
 			},
 			Kubernetes: gardencorev1beta1.Kubernetes{

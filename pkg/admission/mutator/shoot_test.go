@@ -63,9 +63,9 @@ var _ = Describe("Shoot mutator", func() {
 						Type: azure.Type,
 					},
 					Region: "eastus",
-					Networking: gardencorev1beta1.Networking{
+					Networking: &gardencorev1beta1.Networking{
 						Nodes: pointer.String("10.250.0.0/16"),
-						Type:  "cilium",
+						Type:  pointer.String("cilium"),
 					},
 				},
 			}
@@ -81,9 +81,9 @@ var _ = Describe("Shoot mutator", func() {
 						Type: azure.Type,
 					},
 					Region: "eastus",
-					Networking: gardencorev1beta1.Networking{
+					Networking: &gardencorev1beta1.Networking{
 						Nodes: pointer.String("10.250.0.0/16"),
-						Type:  "cilium",
+						Type:  pointer.String("cilium"),
 					},
 				},
 			}
