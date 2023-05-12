@@ -23,6 +23,7 @@ import (
 	"github.com/gardener/gardener-extension-networking-cilium/pkg/cilium"
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -50,6 +51,11 @@ func (s *shoot) Mutate(ctx context.Context, new, old client.Object) error {
 	shoot, ok := new.(*gardencorev1beta1.Shoot)
 	if !ok {
 		return fmt.Errorf("wrong object type %T", new)
+	}
+
+	// skip validation if it's a workerless Shoot
+	if gardencorev1beta1helper.IsWorkerless(shoot) {
+		return nil
 	}
 
 	if shoot.Spec.Networking != nil && shoot.Spec.Networking.Type != nil && *shoot.Spec.Networking.Type != cilium.ReleaseName {

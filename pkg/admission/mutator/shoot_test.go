@@ -60,7 +60,8 @@ var _ = Describe("Shoot mutator", func() {
 				Spec: gardencorev1beta1.ShootSpec{
 					SeedName: pointer.String("azure"),
 					Provider: gardencorev1beta1.Provider{
-						Type: azure.Type,
+						Type:    azure.Type,
+						Workers: []gardencorev1beta1.Worker{{Name: "test"}},
 					},
 					Region: "eastus",
 					Networking: &gardencorev1beta1.Networking{
@@ -88,9 +89,20 @@ var _ = Describe("Shoot mutator", func() {
 				},
 			}
 		})
+		Context("Workerless Shoot", func() {
+			BeforeEach(func() {
+				shoot.Spec.Provider.Workers = nil
+			})
+
+			It("should return without mutation when shoot is in scheduled to new seed phase", func() {
+				shootExpected := shoot.DeepCopy()
+				err := shootMutator.Mutate(ctx, shoot, nil)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(shoot).To(DeepEqual(shootExpected))
+			})
+		})
 
 		Context("Mutate shoot networking providerconfig for type cilium", func() {
-
 			It("should return without mutation when shoot is in scheduled to new seed phase", func() {
 				shoot.Status.LastOperation = &gardencorev1beta1.LastOperation{
 					Description:    "test",
