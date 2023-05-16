@@ -52,7 +52,7 @@ func (s *shoot) Mutate(ctx context.Context, new, old client.Object) error {
 		return fmt.Errorf("wrong object type %T", new)
 	}
 
-	if shoot.Spec.Networking.Type != cilium.ReleaseName {
+	if shoot.Spec.Networking != nil && shoot.Spec.Networking.Type != nil && *shoot.Spec.Networking.Type != cilium.ReleaseName {
 		return nil
 	}
 
@@ -83,26 +83,28 @@ func (s *shoot) Mutate(ctx context.Context, new, old client.Object) error {
 		return nil
 	}
 
-	networkConfig, err := s.decodeNetworkingConfig(shoot.Spec.Networking.ProviderConfig)
-	if err != nil {
-		return err
-	}
-
-	if oldShoot == nil && networkConfig.Overlay == nil {
-		networkConfig.Overlay = overlay
-	}
-
-	if oldShoot != nil && networkConfig.Overlay == nil {
-		oldNetworkConfig, err := s.decodeNetworkingConfig(oldShoot.Spec.Networking.ProviderConfig)
+	if shoot.Spec.Networking != nil {
+		networkConfig, err := s.decodeNetworkingConfig(shoot.Spec.Networking.ProviderConfig)
 		if err != nil {
 			return err
 		}
-		if oldNetworkConfig.Overlay != nil {
-			networkConfig.Overlay = oldNetworkConfig.Overlay
+
+		if oldShoot == nil && networkConfig.Overlay == nil {
+			networkConfig.Overlay = overlay
 		}
-	}
-	shoot.Spec.Networking.ProviderConfig = &runtime.RawExtension{
-		Object: networkConfig,
+
+		if oldShoot != nil && oldShoot.Spec.Networking != nil && networkConfig.Overlay == nil {
+			oldNetworkConfig, err := s.decodeNetworkingConfig(oldShoot.Spec.Networking.ProviderConfig)
+			if err != nil {
+				return err
+			}
+			if oldNetworkConfig.Overlay != nil {
+				networkConfig.Overlay = oldNetworkConfig.Overlay
+			}
+		}
+		shoot.Spec.Networking.ProviderConfig = &runtime.RawExtension{
+			Object: networkConfig,
+		}
 	}
 
 	return nil
