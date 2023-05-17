@@ -21,6 +21,7 @@ import (
 
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	"github.com/gardener/gardener/pkg/apis/core"
+	gardencorehelper "github.com/gardener/gardener/pkg/apis/core/helper"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -75,6 +76,11 @@ func (s *shoot) Validate(ctx context.Context, new, old client.Object) error {
 		return fmt.Errorf("wrong object type %T", new)
 	}
 
+	// skip validation if it's a workerless Shoot
+	if gardencorehelper.IsWorkerless(shoot) {
+		return nil
+	}
+
 	cloudProfile := &gardencorev1beta1.CloudProfile{}
 	if err := s.client.Get(ctx, kutil.Key(shoot.Spec.CloudProfileName), cloudProfile); err != nil {
 		return err
@@ -114,11 +120,12 @@ func (s *shoot) validateShoot(shoot *core.Shoot, oldInfraConfig, infraConfig *ap
 	// Network validation
 	allErrs = append(allErrs, azurevalidation.ValidateNetworking(s.decoder, shoot.Spec.Networking, nwPath)...)
 
-	// Cloudprofile validation
-	allErrs = append(allErrs, azurevalidation.ValidateInfrastructureConfigAgainstCloudProfile(oldInfraConfig, infraConfig, shoot.Spec.Region, cloudProfile, infraConfigPath)...)
-
-	// Provider validation
-	allErrs = append(allErrs, azurevalidation.ValidateInfrastructureConfig(infraConfig, shoot.Spec.Networking.Nodes, shoot.Spec.Networking.Pods, shoot.Spec.Networking.Services, helper.HasShootVmoAlphaAnnotation(shoot.Annotations), infraConfigPath)...)
+	if infraConfig != nil {
+		// Cloudprofile validation
+		allErrs = append(allErrs, azurevalidation.ValidateInfrastructureConfigAgainstCloudProfile(oldInfraConfig, infraConfig, shoot.Spec.Region, cloudProfile, infraConfigPath)...)
+		// Provider validation
+		allErrs = append(allErrs, azurevalidation.ValidateInfrastructureConfig(infraConfig, shoot.Spec.Networking, helper.HasShootVmoAlphaAnnotation(shoot.Annotations), infraConfigPath)...)
+	}
 	if cpConfig != nil {
 		allErrs = append(allErrs, azurevalidation.ValidateControlPlaneConfig(cpConfig, shoot.Spec.Kubernetes.Version, cpConfigPath)...)
 	}

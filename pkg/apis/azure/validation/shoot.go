@@ -36,13 +36,18 @@ import (
 const maxDataVolumeCount = 64
 
 // ValidateNetworking validates the network settings of a Shoot.
-func ValidateNetworking(decoder runtime.Decoder, networking core.Networking, fldPath *field.Path) field.ErrorList {
+func ValidateNetworking(decoder runtime.Decoder, networking *core.Networking, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
+
+	if networking == nil {
+		allErrs = append(allErrs, field.Required(fldPath, "networking field can't be empty for Azure shoots"))
+		return allErrs
+	}
 
 	if networking.Nodes == nil {
 		allErrs = append(allErrs, field.Required(fldPath.Child("nodes"), "a nodes CIDR must be provided for Azure shoots"))
 	}
-	if networking.Type == calicopkg.ReleaseName {
+	if networking.Type != nil && *networking.Type == calicopkg.ReleaseName {
 		networkConfig, err := decodeCalicoNetworkingConfig(decoder, networking.ProviderConfig)
 		if err != nil {
 			allErrs = append(allErrs, field.InternalError(fldPath.Child("providerConfig"), err))

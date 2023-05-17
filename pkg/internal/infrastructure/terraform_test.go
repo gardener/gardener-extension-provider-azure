@@ -36,7 +36,7 @@ func makeCluster(pods, services string, region string, countFaultDomain, countUp
 	var (
 		shoot = gardencorev1beta1.Shoot{
 			Spec: gardencorev1beta1.ShootSpec{
-				Networking: gardencorev1beta1.Networking{
+				Networking: &gardencorev1beta1.Networking{
 					Pods:     &pods,
 					Services: &services,
 				},

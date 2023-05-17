@@ -106,8 +106,7 @@ func RegisterHealthChecks(mgr manager.Manager, opts healthcheck.DefaultAddArgs) 
 				PreCheckFunc:  csiEnabledPreCheckFunc,
 			},
 		},
-		// TODO(acumino): Remove this condition in a future release.
-		sets.New[gardencorev1beta1.ConditionType](gardencorev1beta1.ShootSystemComponentsHealthy),
+		sets.Set[gardencorev1beta1.ConditionType]{},
 	); err != nil {
 		return err
 	}
@@ -133,8 +132,7 @@ func RegisterHealthChecks(mgr manager.Manager, opts healthcheck.DefaultAddArgs) 
 				},
 			},
 		},
-		// TODO(acumino): Remove this condition in a future release.
-		sets.New[gardencorev1beta1.ConditionType](gardencorev1beta1.ShootSystemComponentsHealthy),
+		sets.Set[gardencorev1beta1.ConditionType]{},
 	)
 }
 

@@ -16,6 +16,7 @@ package validation
 import (
 	"fmt"
 
+	"github.com/gardener/gardener/pkg/apis/core"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	cidrvalidation "github.com/gardener/gardener/pkg/utils/validation/cidr"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
@@ -83,23 +84,24 @@ func validateInfrastructureConfigZones(oldInfra, infra *apisazure.Infrastructure
 }
 
 // ValidateInfrastructureConfig validates a InfrastructureConfig object.
-func ValidateInfrastructureConfig(infra *apisazure.InfrastructureConfig, nodesCIDR, podsCIDR, servicesCIDR *string, hasVmoAlphaAnnotation bool, fldPath *field.Path) field.ErrorList {
+func ValidateInfrastructureConfig(infra *apisazure.InfrastructureConfig, networking *core.Networking, hasVmoAlphaAnnotation bool, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	var (
-		nodes    cidrvalidation.CIDR
-		pods     cidrvalidation.CIDR
-		services cidrvalidation.CIDR
+		nodes, pods, services             cidrvalidation.CIDR
+		nodesCIDR, podsCIDR, servicesCIDR *string
 	)
 
-	if nodesCIDR != nil {
-		nodes = cidrvalidation.NewCIDR(*nodesCIDR, nil)
-	}
-	if podsCIDR != nil {
-		pods = cidrvalidation.NewCIDR(*podsCIDR, nil)
-	}
-	if servicesCIDR != nil {
-		services = cidrvalidation.NewCIDR(*servicesCIDR, nil)
+	if networking != nil {
+		if nodesCIDR = networking.Nodes; nodesCIDR != nil {
+			nodes = cidrvalidation.NewCIDR(*nodesCIDR, nil)
+		}
+		if podsCIDR = networking.Pods; podsCIDR != nil {
+			pods = cidrvalidation.NewCIDR(*podsCIDR, nil)
+		}
+		if servicesCIDR = networking.Services; servicesCIDR != nil {
+			services = cidrvalidation.NewCIDR(*servicesCIDR, nil)
+		}
 	}
 
 	// Currently, we will not allow deployments into existing resource groups or VNets although this functionality
