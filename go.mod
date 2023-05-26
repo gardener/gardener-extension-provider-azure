@@ -1,6 +1,6 @@
 module github.com/gardener/gardener-extension-provider-azure
 
-go 1.19
+go 1.20
 
 require (
 	github.com/Azure/azure-sdk-for-go v61.1.0+incompatible
