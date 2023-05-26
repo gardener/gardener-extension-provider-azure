@@ -72,7 +72,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-controller-manager
-  tag: "v1.24.17"
+  tag: "v1.24.20"
   targetVersion: "1.24.x"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
@@ -86,7 +86,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-controller-manager
-  tag: "v1.25.11"
+  tag: "v1.25.14"
   targetVersion: "1.25.x"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
@@ -100,7 +100,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-controller-manager
-  tag: "v1.26.7"
+  tag: "v1.26.10"
   targetVersion: ">= 1.26"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
