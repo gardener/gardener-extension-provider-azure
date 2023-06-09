@@ -118,7 +118,7 @@ func (s *shoot) validateShoot(shoot *core.Shoot, oldInfraConfig, infraConfig *ap
 	allErrs := field.ErrorList{}
 
 	// Network validation
-	allErrs = append(allErrs, azurevalidation.ValidateNetworking(s.decoder, shoot.Spec.Networking, nwPath)...)
+	allErrs = append(allErrs, azurevalidation.ValidateNetworking(s.lenientDecoder, shoot.Spec.Networking, nwPath)...)
 
 	if infraConfig != nil {
 		// Cloudprofile validation
