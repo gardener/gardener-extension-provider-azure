@@ -113,7 +113,20 @@ var _ = Describe("Ensurer", func() {
 				},
 			},
 		)
-
+		eContextK8s127 = gcontext.NewInternalGardenContext(
+			&extensionscontroller.Cluster{
+				Shoot: &gardencorev1beta1.Shoot{
+					Spec: gardencorev1beta1.ShootSpec{
+						Kubernetes: gardencorev1beta1.Kubernetes{
+							Version: "1.27.1",
+						},
+					},
+					Status: gardencorev1beta1.ShootStatus{
+						TechnicalID: namespace,
+					},
+				},
+			},
+		)
 		key    = client.ObjectKey{Namespace: namespace, Name: azure.CloudProviderConfigName}
 		secret = &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: azure.CloudProviderConfigName},
@@ -187,6 +200,13 @@ var _ = Describe("Ensurer", func() {
 			Expect(err).To(Not(HaveOccurred()))
 
 			checkKubeAPIServerDeployment(dep, nil, "1.21.0", true)
+		})
+
+		It("should add missing elements to kube-apiserver deployment (k8s >= 1.27)", func() {
+			err := ensurer.EnsureKubeAPIServerDeployment(ctx, eContextK8s127, dep, nil)
+			Expect(err).To(Not(HaveOccurred()))
+
+			checkKubeAPIServerDeployment(dep, annotations, "1.27.1", false)
 		})
 
 		It("should modify existing elements of kube-apiserver deployment", func() {
@@ -269,6 +289,13 @@ var _ = Describe("Ensurer", func() {
 			checkKubeControllerManagerDeployment(dep, nil, nil, "1.21.0", true)
 		})
 
+		It("should add missing elements to kube-controller-manager deployment (k8s >= 1.27)", func() {
+			err := ensurer.EnsureKubeControllerManagerDeployment(ctx, eContextK8s127, dep, nil)
+			Expect(err).To(Not(HaveOccurred()))
+
+			checkKubeControllerManagerDeployment(dep, annotations, kubeControllerManagerLabels, "1.27.0", false)
+		})
+
 		It("should modify existing elements of kube-controller-manager deployment", func() {
 			dep = &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: v1beta1constants.DeploymentNameKubeControllerManager},
@@ -345,6 +372,13 @@ var _ = Describe("Ensurer", func() {
 			Expect(err).To(Not(HaveOccurred()))
 
 			checkKubeSchedulerDeployment(dep, "1.21.0", true)
+		})
+
+		It("should add missing elements to kube-scheduler deployment (k8s >= 1.27)", func() {
+			err := ensurer.EnsureKubeSchedulerDeployment(ctx, eContextK8s127, dep, nil)
+			Expect(err).To(Not(HaveOccurred()))
+
+			checkKubeSchedulerDeployment(dep, "1.27.0", false)
 		})
 	})
 
@@ -555,13 +589,24 @@ var _ = Describe("Ensurer", func() {
 
 func checkKubeAPIServerDeployment(dep *appsv1.Deployment, annotations map[string]string, k8sVersion string, needsCSIMigrationCompletedFeatureGates bool) {
 	k8sVersionAtLeast121, _ := version.CompareVersions(k8sVersion, ">=", "1.21")
+	k8sVersionAtLeast127, _ := version.CompareVersions(k8sVersion, ">=", "1.27")
 
 	// Check that the kube-apiserver container still exists and contains all needed command line args,
 	// env vars, and volume mounts
 	c := extensionswebhook.ContainerWithName(dep.Spec.Template.Spec.Containers, "kube-apiserver")
 	Expect(c).To(Not(BeNil()))
 
-	if !needsCSIMigrationCompletedFeatureGates {
+	if k8sVersionAtLeast127 {
+		Expect(c.Command).To(ContainElement("--feature-gates=CSIMigrationAzureFile=true,InTreePluginAzureDiskUnregister=true,InTreePluginAzureFileUnregister=true"))
+		Expect(c.Command).NotTo(ContainElement("--cloud-provider=azure"))
+		Expect(c.Command).NotTo(ContainElement("--cloud-config=/etc/kubernetes/cloudprovider/cloudprovider.conf"))
+		Expect(c.Command).NotTo(test.ContainElementWithPrefixContaining("--enable-admission-plugins=", "PersistentVolumeLabel", ","))
+		Expect(c.Command).To(test.ContainElementWithPrefixContaining("--disable-admission-plugins=", "PersistentVolumeLabel", ","))
+		Expect(c.VolumeMounts).NotTo(ContainElement(cloudProviderConfigVolumeMount))
+		Expect(dep.Spec.Template.Spec.Volumes).NotTo(ContainElement(cloudProviderConfigVolume))
+		Expect(dep.Spec.Template.Annotations).To(BeNil())
+		Expect(dep.Spec.Template.Labels).To(HaveKeyWithValue("networking.resources.gardener.cloud/to-csi-snapshot-validation-tcp-443", "allowed"))
+	} else if !needsCSIMigrationCompletedFeatureGates {
 		Expect(c.Command).To(ContainElement("--cloud-provider=azure"))
 		Expect(c.Command).To(ContainElement("--cloud-config=/etc/kubernetes/cloudprovider/cloudprovider.conf"))
 		Expect(c.Command).To(test.ContainElementWithPrefixContaining("--enable-admission-plugins=", "PersistentVolumeLabel", ","))
@@ -588,6 +633,7 @@ func checkKubeAPIServerDeployment(dep *appsv1.Deployment, annotations map[string
 
 func checkKubeControllerManagerDeployment(dep *appsv1.Deployment, annotations, labels map[string]string, k8sVersion string, needsCSIMigrationCompletedFeatureGates bool) {
 	k8sVersionAtLeast121, _ := version.CompareVersions(k8sVersion, ">=", "1.21")
+	k8sVersionAtLeast127, _ := version.CompareVersions(k8sVersion, ">=", "1.27")
 
 	// Check that the kube-controller-manager container still exists and contains all needed command line args,
 	// env vars, and volume mounts
@@ -596,7 +642,19 @@ func checkKubeControllerManagerDeployment(dep *appsv1.Deployment, annotations, l
 
 	Expect(c.Command).To(ContainElement("--cloud-provider=external"))
 
-	if !needsCSIMigrationCompletedFeatureGates {
+	if k8sVersionAtLeast127 {
+		Expect(c.Command).To(ContainElement("--feature-gates=CSIMigrationAzureFile=true,InTreePluginAzureDiskUnregister=true,InTreePluginAzureFileUnregister=true"))
+		Expect(c.Command).NotTo(ContainElement("--cloud-config=/etc/kubernetes/cloudprovider/cloudprovider.conf"))
+		Expect(c.Command).NotTo(ContainElement("--external-cloud-volume-plugin=aws"))
+		Expect(dep.Spec.Template.Labels).To(BeNil())
+		Expect(dep.Spec.Template.Spec.Volumes).To(BeNil())
+		Expect(c.VolumeMounts).NotTo(ContainElement(cloudProviderConfigVolumeMount))
+		Expect(dep.Spec.Template.Spec.Volumes).NotTo(ContainElement(cloudProviderConfigVolume))
+		Expect(c.VolumeMounts).NotTo(ContainElement(etcSSLVolumeMount))
+		Expect(dep.Spec.Template.Spec.Volumes).NotTo(ContainElement(etcSSLVolume))
+		Expect(c.VolumeMounts).NotTo(ContainElement(usrShareCaCertsVolumeMount))
+		Expect(dep.Spec.Template.Spec.Volumes).NotTo(ContainElement(usrShareCaCertsVolume))
+	} else if !needsCSIMigrationCompletedFeatureGates {
 		Expect(c.Command).To(ContainElement("--cloud-config=/etc/kubernetes/cloudprovider/cloudprovider.conf"))
 		Expect(c.Command).To(ContainElement("--external-cloud-volume-plugin=azure"))
 		Expect(c.VolumeMounts).To(ContainElement(cloudProviderConfigVolumeMount))
@@ -629,12 +687,15 @@ func checkKubeSchedulerDeployment(dep *appsv1.Deployment, k8sVersion string, nee
 	if k8sVersionAtLeast121, _ := version.CompareVersions(k8sVersion, ">=", "1.21"); !k8sVersionAtLeast121 {
 		return
 	}
+	k8sVersionAtLeast127, _ := version.CompareVersions(k8sVersion, ">=", "1.27")
 
 	// Check that the kube-scheduler container still exists and contains all needed command line args.
 	c := extensionswebhook.ContainerWithName(dep.Spec.Template.Spec.Containers, "kube-scheduler")
 	Expect(c).To(Not(BeNil()))
 
-	if !needsCSIMigrationCompletedFeatureGates {
+	if k8sVersionAtLeast127 {
+		Expect(c.Command).To(ContainElement("--feature-gates=CSIMigrationAzureFile=true,InTreePluginAzureDiskUnregister=true,InTreePluginAzureFileUnregister=true"))
+	} else if !needsCSIMigrationCompletedFeatureGates {
 		Expect(c.Command).To(ContainElement("--feature-gates=CSIMigration=true,CSIMigrationAzureDisk=true,CSIMigrationAzureFile=true"))
 	} else {
 		Expect(c.Command).To(ContainElement("--feature-gates=CSIMigration=true,CSIMigrationAzureDisk=true,CSIMigrationAzureFile=true,InTreePluginAzureDiskUnregister=true,InTreePluginAzureFileUnregister=true"))
@@ -645,12 +706,15 @@ func checkClusterAutoscalerDeployment(dep *appsv1.Deployment, k8sVersion string,
 	if k8sVersionAtLeast121, _ := version.CompareVersions(k8sVersion, ">=", "1.21"); !k8sVersionAtLeast121 {
 		return
 	}
+	k8sVersionAtLeast127, _ := version.CompareVersions(k8sVersion, ">=", "1.27")
 
 	// Check that the cluster-autoscaler container still exists and contains all needed command line args.
 	c := extensionswebhook.ContainerWithName(dep.Spec.Template.Spec.Containers, "cluster-autoscaler")
 	Expect(c).To(Not(BeNil()))
 
-	if !needsCSIMigrationCompletedFeatureGates {
+	if k8sVersionAtLeast127 {
+		Expect(c.Command).To(ContainElement("--feature-gates=CSIMigrationAzureFile=true,InTreePluginAzureDiskUnregister=true,InTreePluginAzureFileUnregister=true"))
+	} else if !needsCSIMigrationCompletedFeatureGates {
 		Expect(c.Command).To(ContainElement("--feature-gates=CSIMigration=true,CSIMigrationAzureDisk=true,CSIMigrationAzureFile=true"))
 	} else {
 		Expect(c.Command).To(ContainElement("--feature-gates=CSIMigration=true,CSIMigrationAzureDisk=true,CSIMigrationAzureFile=true,InTreePluginAzureDiskUnregister=true,InTreePluginAzureFileUnregister=true"))
