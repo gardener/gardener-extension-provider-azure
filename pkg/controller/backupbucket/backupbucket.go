@@ -20,12 +20,11 @@ import (
 
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
 
-func ensureBackupBucket(ctx context.Context, client client.Client, factory azureclient.Factory, backupBucket *extensionsv1alpha1.BackupBucket) (string, string, error) {
+func ensureBackupBucket(ctx context.Context, factory azureclient.Factory, backupBucket *extensionsv1alpha1.BackupBucket) (string, string, error) {
 	var (
 		backupBucketNameSha = utils.ComputeSHA1Hex([]byte(backupBucket.Name))
 		storageAccountName  = fmt.Sprintf("bkp%s", backupBucketNameSha[:15])

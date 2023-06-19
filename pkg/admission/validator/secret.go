@@ -34,7 +34,7 @@ func NewSecretValidator() extensionswebhook.Validator {
 }
 
 // Validate checks whether the given new secret contains valid Azure credentials.
-func (s *secret) Validate(ctx context.Context, newObj, oldObj client.Object) error {
+func (s *secret) Validate(_ context.Context, newObj, oldObj client.Object) error {
 	var oldSecret *corev1.Secret
 	secret, ok := newObj.(*corev1.Secret)
 	if !ok {

@@ -70,10 +70,10 @@ func (s *shoot) InjectClient(client client.Client) error {
 }
 
 // Validate validates the given shoot object
-func (s *shoot) Validate(ctx context.Context, new, old client.Object) error {
-	shoot, ok := new.(*core.Shoot)
+func (s *shoot) Validate(ctx context.Context, newObj, oldObj client.Object) error {
+	shoot, ok := newObj.(*core.Shoot)
 	if !ok {
-		return fmt.Errorf("wrong object type %T", new)
+		return fmt.Errorf("wrong object type %T", newObj)
 	}
 
 	// skip validation if it's a workerless Shoot
@@ -86,10 +86,10 @@ func (s *shoot) Validate(ctx context.Context, new, old client.Object) error {
 		return err
 	}
 
-	if old != nil {
-		oldShoot, ok := old.(*core.Shoot)
+	if oldObj != nil {
+		oldShoot, ok := oldObj.(*core.Shoot)
 		if !ok {
-			return fmt.Errorf("wrong object type %T for old object", old)
+			return fmt.Errorf("wrong object type %T for old object", oldObj)
 		}
 		return s.validateUpdate(oldShoot, shoot, cloudProfile)
 	}
@@ -97,7 +97,7 @@ func (s *shoot) Validate(ctx context.Context, new, old client.Object) error {
 	return s.validateCreation(ctx, shoot, cloudProfile)
 }
 
-func (s *shoot) validateCreation(ctx context.Context, shoot *core.Shoot, cloudProfile *gardencorev1beta1.CloudProfile) error {
+func (s *shoot) validateCreation(_ context.Context, shoot *core.Shoot, cloudProfile *gardencorev1beta1.CloudProfile) error {
 	infraConfig, err := checkAndDecodeInfrastructureConfig(s.decoder, shoot.Spec.Provider.InfrastructureConfig, infraConfigPath)
 	if err != nil {
 		return err

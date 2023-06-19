@@ -616,7 +616,7 @@ var _ = Describe("Machines", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					// Test workerDelegate.UpdateMachineImagesStatus()
-					expectWorkerProviderStatusUpdateToSucceed(ctx, c, statusWriter)
+					expectWorkerProviderStatusUpdateToSucceed(ctx, statusWriter)
 					err = workerDelegate.UpdateMachineImagesStatus(ctx)
 					Expect(err).NotTo(HaveOccurred())
 

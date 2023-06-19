@@ -44,10 +44,10 @@ func (cp *cloudProfile) InjectScheme(scheme *runtime.Scheme) error {
 }
 
 // Validate validates the given CloudProfile objects.
-func (cp *cloudProfile) Validate(ctx context.Context, new, old client.Object) error {
-	cloudProfile, ok := new.(*core.CloudProfile)
+func (cp *cloudProfile) Validate(_ context.Context, newObj, _ client.Object) error {
+	cloudProfile, ok := newObj.(*core.CloudProfile)
 	if !ok {
-		return fmt.Errorf("wrong object type %T", new)
+		return fmt.Errorf("wrong object type %T", newObj)
 	}
 
 	providerConfigPath := field.NewPath("spec").Child("providerConfig")

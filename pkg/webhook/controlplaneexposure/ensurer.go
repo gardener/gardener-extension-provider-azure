@@ -58,25 +58,25 @@ func (e *ensurer) InjectClient(client client.Client) error {
 }
 
 // EnsureKubeAPIServerService ensures that the kube-apiserver service conforms to the provider requirements.
-func (e *ensurer) EnsureKubeAPIServerService(ctx context.Context, gctx gcontext.GardenContext, new, old *corev1.Service) error {
-	if v1beta1helper.IsAPIServerExposureManaged(new) {
+func (e *ensurer) EnsureKubeAPIServerService(_ context.Context, _ gcontext.GardenContext, newObj, _ *corev1.Service) error {
+	if v1beta1helper.IsAPIServerExposureManaged(newObj) {
 		return nil
 	}
 
-	if new.Annotations == nil {
-		new.Annotations = make(map[string]string)
+	if newObj.Annotations == nil {
+		newObj.Annotations = make(map[string]string)
 	}
-	new.Annotations["service.beta.kubernetes.io/azure-load-balancer-tcp-idle-timeout"] = "30"
+	newObj.Annotations["service.beta.kubernetes.io/azure-load-balancer-tcp-idle-timeout"] = "30"
 	return nil
 }
 
 // EnsureKubeAPIServerDeployment ensures that the kube-apiserver deployment conforms to the provider requirements.
-func (e *ensurer) EnsureKubeAPIServerDeployment(ctx context.Context, gctx gcontext.GardenContext, new, old *appsv1.Deployment) error {
-	if v1beta1helper.IsAPIServerExposureManaged(new) {
+func (e *ensurer) EnsureKubeAPIServerDeployment(ctx context.Context, _ gcontext.GardenContext, newObj, _ *appsv1.Deployment) error {
+	if v1beta1helper.IsAPIServerExposureManaged(newObj) {
 		return nil
 	}
 
-	cluster, err := controller.GetCluster(ctx, e.client, new.Namespace)
+	cluster, err := controller.GetCluster(ctx, e.client, newObj.Namespace)
 	if err != nil {
 		return err
 	}
@@ -86,24 +86,23 @@ func (e *ensurer) EnsureKubeAPIServerDeployment(ctx context.Context, gctx gconte
 	}
 
 	// Get load balancer address of the kube-apiserver service
-	address, err := kutil.GetLoadBalancerIngress(ctx, e.client, &corev1.Service{ObjectMeta: metav1.ObjectMeta{Namespace: new.Namespace, Name: v1beta1constants.DeploymentNameKubeAPIServer}})
+	address, err := kutil.GetLoadBalancerIngress(ctx, e.client, &corev1.Service{ObjectMeta: metav1.ObjectMeta{Namespace: newObj.Namespace, Name: v1beta1constants.DeploymentNameKubeAPIServer}})
 	if err != nil {
 		return fmt.Errorf("could not get kube-apiserver service load balancer address: %w", err)
 	}
 
-	if c := extensionswebhook.ContainerWithName(new.Spec.Template.Spec.Containers, "kube-apiserver"); c != nil {
+	if c := extensionswebhook.ContainerWithName(newObj.Spec.Template.Spec.Containers, "kube-apiserver"); c != nil {
 		c.Command = extensionswebhook.EnsureStringWithPrefix(c.Command, "--advertise-address=", address)
 	}
 	return nil
 }
 
 // EnsureETCD ensures that the etcd conform to the provider requirements.
-func (e *ensurer) EnsureETCD(ctx context.Context, gctx gcontext.GardenContext, new, old *druidv1alpha1.Etcd) error {
-
+func (e *ensurer) EnsureETCD(_ context.Context, _ gcontext.GardenContext, newObj, _ *druidv1alpha1.Etcd) error {
 	capacity := resource.MustParse("10Gi")
 	class := ""
 
-	if new.Name == v1beta1constants.ETCDMain && e.etcdStorage != nil {
+	if newObj.Name == v1beta1constants.ETCDMain && e.etcdStorage != nil {
 		if e.etcdStorage.Capacity != nil {
 			capacity = *e.etcdStorage.Capacity
 		}
@@ -112,8 +111,8 @@ func (e *ensurer) EnsureETCD(ctx context.Context, gctx gcontext.GardenContext, n
 		}
 	}
 
-	new.Spec.StorageClass = &class
-	new.Spec.StorageCapacity = &capacity
+	newObj.Spec.StorageClass = &class
+	newObj.Spec.StorageCapacity = &capacity
 
 	return nil
 }

@@ -125,7 +125,7 @@ var _ = Describe("MachinesDependencies", func() {
 				workerDelegate := wrapNewWorkerDelegate(c, nil, w, cluster, factory)
 
 				expectVmoCreateToSucceed(ctx, vmoClient, resourceGroupName, vmoName, vmoID)
-				expectWorkerProviderStatusUpdateToSucceed(ctx, c, statusWriter)
+				expectWorkerProviderStatusUpdateToSucceed(ctx, statusWriter)
 				err := workerDelegate.PreReconcileHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -143,7 +143,7 @@ var _ = Describe("MachinesDependencies", func() {
 				workerDelegate := wrapNewWorkerDelegate(c, nil, w, cluster, factory)
 
 				expectVmoGetToSucceed(ctx, vmoClient, resourceGroupName, vmoName, vmoID, faultDomainCount)
-				expectWorkerProviderStatusUpdateToSucceed(ctx, c, statusWriter)
+				expectWorkerProviderStatusUpdateToSucceed(ctx, statusWriter)
 				err := workerDelegate.PreReconcileHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -163,7 +163,7 @@ var _ = Describe("MachinesDependencies", func() {
 				var oldFaultDomainCoaunt int32 = 2
 				expectVmoGetToSucceed(ctx, vmoClient, resourceGroupName, vmoName, vmoID, oldFaultDomainCoaunt)
 				expectVmoCreateToSucceed(ctx, vmoClient, resourceGroupName, vmoName, vmoID)
-				expectWorkerProviderStatusUpdateToSucceed(ctx, c, statusWriter)
+				expectWorkerProviderStatusUpdateToSucceed(ctx, statusWriter)
 				err := workerDelegate.PreReconcileHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -197,7 +197,7 @@ var _ = Describe("MachinesDependencies", func() {
 						StatusCode: http.StatusNotFound,
 					},
 				})
-				expectWorkerProviderStatusUpdateToSucceed(ctx, c, statusWriter)
+				expectWorkerProviderStatusUpdateToSucceed(ctx, statusWriter)
 				err := workerDelegate.PostReconcileHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 			})
@@ -208,7 +208,7 @@ var _ = Describe("MachinesDependencies", func() {
 				workerDelegate := wrapNewWorkerDelegate(c, nil, w, cluster, factory)
 
 				expectVmoListToSucceed(ctx, vmoClient, resourceGroupName, generateExpectedVmo(vmoName, vmoID))
-				expectWorkerProviderStatusUpdateToSucceed(ctx, c, statusWriter)
+				expectWorkerProviderStatusUpdateToSucceed(ctx, statusWriter)
 				err := workerDelegate.PostReconcileHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -227,7 +227,7 @@ var _ = Describe("MachinesDependencies", func() {
 
 				expectVmoListToSucceed(ctx, vmoClient, resourceGroupName, generateExpectedVmo(vmoName, vmoID), generateExpectedVmo("orphan-managed-vmss", "/some/orphan/vmss/id"))
 				expectVmoDeleteToSucceed(ctx, vmoClient, resourceGroupName)
-				expectWorkerProviderStatusUpdateToSucceed(ctx, c, statusWriter)
+				expectWorkerProviderStatusUpdateToSucceed(ctx, statusWriter)
 				err := workerDelegate.PostReconcileHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -255,7 +255,7 @@ var _ = Describe("MachinesDependencies", func() {
 
 				expectVmoListToSucceed(ctx, vmoClient, resourceGroupName, generateExpectedVmo(deletedPoolVmoName, deletedPoolVmoID))
 				expectVmoDeleteToSucceed(ctx, vmoClient, resourceGroupName)
-				expectWorkerProviderStatusUpdateToSucceed(ctx, c, statusWriter)
+				expectWorkerProviderStatusUpdateToSucceed(ctx, statusWriter)
 				err := workerDelegate.PostReconcileHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -272,7 +272,7 @@ var _ = Describe("MachinesDependencies", func() {
 
 				expectVmoListToSucceed(ctx, vmoClient, resourceGroupName, generateExpectedVmo(vmoName, vmoID))
 				expectVmoDeleteToSucceed(ctx, vmoClient, resourceGroupName)
-				expectWorkerProviderStatusUpdateToSucceed(ctx, c, statusWriter)
+				expectWorkerProviderStatusUpdateToSucceed(ctx, statusWriter)
 				err := workerDelegate.PostReconcileHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -302,7 +302,7 @@ var _ = Describe("MachinesDependencies", func() {
 						StatusCode: http.StatusNotFound,
 					},
 				})
-				expectWorkerProviderStatusUpdateToSucceed(ctx, c, statusWriter)
+				expectWorkerProviderStatusUpdateToSucceed(ctx, statusWriter)
 				err := workerDelegate.PostDeleteHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 			})
@@ -313,7 +313,7 @@ var _ = Describe("MachinesDependencies", func() {
 				workerDelegate := wrapNewWorkerDelegate(c, nil, w, cluster, factory)
 
 				expectVmoListToSucceed(ctx, vmoClient, resourceGroupName, generateExpectedVmo(vmoName, vmoID))
-				expectWorkerProviderStatusUpdateToSucceed(ctx, c, statusWriter)
+				expectWorkerProviderStatusUpdateToSucceed(ctx, statusWriter)
 				err := workerDelegate.PostDeleteHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -332,7 +332,7 @@ var _ = Describe("MachinesDependencies", func() {
 
 				expectVmoListToSucceed(ctx, vmoClient, resourceGroupName, generateExpectedVmo(vmoName, vmoID), generateExpectedVmo("orphan-managed-vmss", "/some/orphan/vmss/id"))
 				expectVmoDeleteToSucceed(ctx, vmoClient, resourceGroupName)
-				expectWorkerProviderStatusUpdateToSucceed(ctx, c, statusWriter)
+				expectWorkerProviderStatusUpdateToSucceed(ctx, statusWriter)
 				err := workerDelegate.PostDeleteHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -360,7 +360,7 @@ var _ = Describe("MachinesDependencies", func() {
 
 				expectVmoListToSucceed(ctx, vmoClient, resourceGroupName, generateExpectedVmo(deletedPoolVmoName, deletedPoolVmoID))
 				expectVmoDeleteToSucceed(ctx, vmoClient, resourceGroupName)
-				expectWorkerProviderStatusUpdateToSucceed(ctx, c, statusWriter)
+				expectWorkerProviderStatusUpdateToSucceed(ctx, statusWriter)
 				err := workerDelegate.PostDeleteHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -377,7 +377,7 @@ var _ = Describe("MachinesDependencies", func() {
 
 				expectVmoListToSucceed(ctx, vmoClient, resourceGroupName, generateExpectedVmo(vmoName, vmoID))
 				expectVmoDeleteToSucceed(ctx, vmoClient, resourceGroupName)
-				expectWorkerProviderStatusUpdateToSucceed(ctx, c, statusWriter)
+				expectWorkerProviderStatusUpdateToSucceed(ctx, statusWriter)
 				err := workerDelegate.PostDeleteHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 

@@ -669,7 +669,7 @@ func verifyDeletion(ctx context.Context, az *azureClientSet, options *bastionctr
 
 func checkSecurityRuleDoesNotExist(ctx context.Context, az *azureClientSet, options *bastionctrl.Options, securityRuleName string) {
 	// does not have authorization to performsecurityRules get due to global rule. use security group to check it.
-	sg, err := az.securityGroups.Get(ctx, options.ResourceGroupName, options.SecurityGroupName, "")
+	sg, err := az.securityGroups.Get(ctx, options.ResourceGroupName, securityRuleName, "")
 	Expect(len(*sg.SecurityRules)).To(Equal(0))
 	Expect(ignoreAzureNotFoundError(err)).To(Succeed())
 }

@@ -72,7 +72,7 @@ func (m *mutator) Mutate(ctx context.Context, new, old client.Object) error {
 }
 
 // NetworkLayoutMigrationMutate annotates the infrastructure object with additonal information that are necessary during the reconciliation when migrating to a new network layout.
-func NetworkLayoutMigrationMutate(ctx context.Context, logger logr.Logger, newInfra, oldInfra *extensionsv1alpha1.Infrastructure) error {
+func NetworkLayoutMigrationMutate(_ context.Context, logger logr.Logger, newInfra, oldInfra *extensionsv1alpha1.Infrastructure) error {
 	var (
 		newProviderCfg, oldProviderCfg *azure.InfrastructureConfig
 		oldProviderStatus              *azure.InfrastructureStatus
