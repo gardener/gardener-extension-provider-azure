@@ -101,6 +101,6 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, infra *extension
 }
 
 // NoOpStateInitializer is a no-op StateConfigMapInitializerFunc.
-func NoOpStateInitializer(ctx context.Context, c client.Client, namespace, name string, owner *metav1.OwnerReference) error {
+func NoOpStateInitializer(_ context.Context, _ client.Client, _, _ string, _ *metav1.OwnerReference) error {
 	return nil
 }

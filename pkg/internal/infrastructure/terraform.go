@@ -173,7 +173,7 @@ func ComputeTerraformerTemplateValues(
 
 	var networkConfig map[string]interface{}
 	if helper.IsUsingSingleSubnetLayout(config) {
-		networkConfig, err = computeNetworkConfigSingleSubnetLayout(infra, config)
+		networkConfig, err = computeNetworkConfigSingleSubnetLayout(config)
 	} else {
 		networkConfig, err = computeNetworkConfigMultipleSubnetLayout(infra, config)
 	}
@@ -231,12 +231,12 @@ func generateVNetConfig(n *api.NetworkConfig, defaultVnetName string) (bool, map
 	return createVNet, vnetConfig, outputKeys, err
 }
 
-func computeNetworkConfigSingleSubnetLayout(infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig) (map[string]interface{}, error) {
+func computeNetworkConfigSingleSubnetLayout(config *api.InfrastructureConfig) (map[string]interface{}, error) {
 	var (
 		networkCfg = make(map[string]interface{})
 		subnets    []map[string]interface{}
 	)
-	natGatewayConfig, err := generateNatGatewayValues(infra, config.Networks.NatGateway)
+	natGatewayConfig, err := generateNatGatewayValues(config.Networks.NatGateway)
 	if err != nil {
 		return nil, err
 	}
@@ -274,7 +274,7 @@ func computeNetworkConfigMultipleSubnetLayout(infra *extensionsv1alpha1.Infrastr
 	return networkCfg, nil
 }
 
-func generateNatGatewayValues(infra *extensionsv1alpha1.Infrastructure, nat *api.NatGatewayConfig) (map[string]interface{}, error) {
+func generateNatGatewayValues(nat *api.NatGatewayConfig) (map[string]interface{}, error) {
 	natGatewayConfig := map[string]interface{}{
 		"enabled": false,
 	}

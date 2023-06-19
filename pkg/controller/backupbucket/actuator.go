@@ -47,7 +47,7 @@ func (a *actuator) Reconcile(ctx context.Context, _ logr.Logger, backupBucket *e
 	// If the generated secret in the backupbucket status not exists that means
 	// no backupbucket exists and it need to be created.
 	if backupBucket.Status.GeneratedSecretRef == nil {
-		storageAccountName, storageAccountKey, err := ensureBackupBucket(ctx, a.client, factory, backupBucket)
+		storageAccountName, storageAccountKey, err := ensureBackupBucket(ctx, factory, backupBucket)
 		if err != nil {
 			return util.DetermineError(err, helper.KnownCodes)
 		}

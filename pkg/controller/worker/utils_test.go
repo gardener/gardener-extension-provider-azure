@@ -64,7 +64,7 @@ func encode(obj runtime.Object) []byte {
 	return data
 }
 
-func expectWorkerProviderStatusUpdateToSucceed(ctx context.Context, c *mockclient.MockClient, statusWriter *mockclient.MockStatusWriter) {
+func expectWorkerProviderStatusUpdateToSucceed(ctx context.Context, statusWriter *mockclient.MockStatusWriter) {
 	statusWriter.EXPECT().Patch(ctx, gomock.AssignableToTypeOf(&extensionsv1alpha1.Worker{}), gomock.Any()).Return(nil)
 }
 
