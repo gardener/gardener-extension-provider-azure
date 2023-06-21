@@ -148,7 +148,7 @@ var _ = Describe("Ensurer", func() {
 
 		c = mockclient.NewMockClient(ctrl)
 
-		ensurer = NewEnsurer(logger)
+		ensurer = NewEnsurer(logger, false)
 		err := ensurer.(inject.Client).InjectClient(c)
 		Expect(err).To(Not(HaveOccurred()))
 	})
@@ -350,7 +350,7 @@ var _ = Describe("Ensurer", func() {
 				},
 			}
 
-			ensurer = NewEnsurer(logger)
+			ensurer = NewEnsurer(logger, false)
 		})
 
 		It("should not add anything to kube-scheduler deployment (k8s < 1.21)", func() {
@@ -404,7 +404,7 @@ var _ = Describe("Ensurer", func() {
 				},
 			}
 
-			ensurer = NewEnsurer(logger)
+			ensurer = NewEnsurer(logger, false)
 		})
 
 		It("should not add anything to cluster-autoscaler deployment (k8s < 1.21)", func() {

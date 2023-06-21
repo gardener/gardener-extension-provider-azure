@@ -87,6 +87,8 @@ config:
 
 gardener:
   version: ""
+  gardenlet:
+    featureGates: {}
   seed:
     provider: azure
     region: ""

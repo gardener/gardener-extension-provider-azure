@@ -51,6 +51,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/healthcheck"
 	azureinfrastructure "github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure"
 	azureworker "github.com/gardener/gardener-extension-provider-azure/pkg/controller/worker"
+	controlplanewebhook "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/controlplane"
 	azurecontrolplaneexposure "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/controlplaneexposure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/webhook/topology"
 )
@@ -234,6 +235,12 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			reconcileOpts.Completed().Apply(&azureworker.DefaultAddOptions.IgnoreOperationAnnotation)
 			reconcileOpts.Completed().Apply(&azurebastion.DefaultAddOptions.IgnoreOperationAnnotation)
 			workerCtrlOpts.Completed().Apply(&azureworker.DefaultAddOptions.Controller)
+
+			// TODO(rfranzke): Remove the GardenletManagesMCM fields as soon as the general options no longer support the
+			//  GardenletManagesMCM field.
+			azureworker.DefaultAddOptions.GardenletManagesMCM = generalOpts.Completed().GardenletManagesMCM
+			controlplanewebhook.GardenletManagesMCM = generalOpts.Completed().GardenletManagesMCM
+			healthcheck.GardenletManagesMCM = generalOpts.Completed().GardenletManagesMCM
 
 			topology.SeedRegion = seedOptions.Completed().Region
 			topology.SeedProvider = seedOptions.Completed().Provider
