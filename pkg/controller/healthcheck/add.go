@@ -113,6 +113,25 @@ func RegisterHealthChecks(mgr manager.Manager, opts healthcheck.DefaultAddArgs) 
 		return err
 	}
 
+	var (
+		workerHealthChecks = []healthcheck.ConditionTypeToHealthCheck{{
+			ConditionType: string(gardencorev1beta1.ShootEveryNodeReady),
+			HealthCheck:   worker.NewNodesChecker(),
+			ErrorCodeCheckFunc: func(err error) []gardencorev1beta1.ErrorCode {
+				return util.DetermineErrorCodes(err, helper.KnownCodes)
+			},
+		}}
+		workerConditionTypesToRemove = sets.New(gardencorev1beta1.ShootControlPlaneHealthy)
+	)
+
+	if !GardenletManagesMCM {
+		workerHealthChecks = append(workerHealthChecks, healthcheck.ConditionTypeToHealthCheck{
+			ConditionType: string(gardencorev1beta1.ShootControlPlaneHealthy),
+			HealthCheck:   general.NewSeedDeploymentHealthChecker(azure.MachineControllerManagerName),
+		})
+		workerConditionTypesToRemove = workerConditionTypesToRemove.Delete(gardencorev1beta1.ShootControlPlaneHealthy)
+	}
+
 	return healthcheck.DefaultRegistration(
 		azure.Type,
 		extensionsv1alpha1.SchemeGroupVersion.WithKind(extensionsv1alpha1.WorkerResource),
@@ -121,20 +140,8 @@ func RegisterHealthChecks(mgr manager.Manager, opts healthcheck.DefaultAddArgs) 
 		mgr,
 		opts,
 		nil,
-		[]healthcheck.ConditionTypeToHealthCheck{
-			{
-				ConditionType: string(gardencorev1beta1.ShootControlPlaneHealthy),
-				HealthCheck:   general.NewSeedDeploymentHealthChecker(azure.MachineControllerManagerName),
-			},
-			{
-				ConditionType: string(gardencorev1beta1.ShootEveryNodeReady),
-				HealthCheck:   worker.NewNodesChecker(),
-				ErrorCodeCheckFunc: func(err error) []gardencorev1beta1.ErrorCode {
-					return util.DetermineErrorCodes(err, helper.KnownCodes)
-				},
-			},
-		},
-		sets.Set[gardencorev1beta1.ConditionType]{},
+		workerHealthChecks,
+		workerConditionTypesToRemove,
 	)
 }
 
