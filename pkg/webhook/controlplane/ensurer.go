@@ -29,6 +29,7 @@ import (
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	oscutils "github.com/gardener/gardener/pkg/component/extensions/operatingsystemconfig/utils"
+	"github.com/gardener/gardener/pkg/component/machinecontrollermanager"
 	gutil "github.com/gardener/gardener/pkg/utils/gardener"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	"github.com/gardener/gardener/pkg/utils/version"
@@ -36,6 +37,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	vpaautoscalingv1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	kubeletconfigv1beta1 "k8s.io/kubelet/config/v1beta1"
@@ -43,6 +45,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/imagevector"
 )
 
 const (
@@ -64,6 +67,9 @@ type ensurer struct {
 	gardenletManagesMCM bool
 }
 
+// ImageVector is exposed for testing.
+var ImageVector = imagevector.ImageVector()
+
 // InjectClient injects the given client into the ensurer.
 func (e *ensurer) InjectClient(client client.Client) error {
 	e.client = client
@@ -75,6 +81,16 @@ func (e *ensurer) EnsureMachineControllerManagerDeployment(_ context.Context, _ 
 	if !e.gardenletManagesMCM {
 		return nil
 	}
+
+	image, err := ImageVector.FindImage(azure.MachineControllerManagerProviderAzureImageName)
+	if err != nil {
+		return err
+	}
+
+	sidecarContainer := machinecontrollermanager.ProviderSidecarContainer(newObj.Namespace, azure.Name, image.String())
+	sidecarContainer.Command = append(sidecarContainer.Command, "--machine-pv-reattach-timeout=150s")
+
+	newObj.Spec.Template.Spec.Containers = extensionswebhook.EnsureContainerWithName(newObj.Spec.Template.Spec.Containers, sidecarContainer)
 	return nil
 }
 
@@ -83,6 +99,25 @@ func (e *ensurer) EnsureMachineControllerManagerVPA(_ context.Context, _ gcontex
 	if !e.gardenletManagesMCM {
 		return nil
 	}
+
+	var (
+		minAllowed = corev1.ResourceList{
+			corev1.ResourceMemory: resource.MustParse("64Mi"),
+		}
+		maxAllowed = corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("2"),
+			corev1.ResourceMemory: resource.MustParse("5G"),
+		}
+	)
+
+	if newObj.Spec.ResourcePolicy == nil {
+		newObj.Spec.ResourcePolicy = &vpaautoscalingv1.PodResourcePolicy{}
+	}
+
+	newObj.Spec.ResourcePolicy.ContainerPolicies = extensionswebhook.EnsureVPAContainerResourcePolicyWithName(
+		newObj.Spec.ResourcePolicy.ContainerPolicies,
+		machinecontrollermanager.ProviderSidecarVPAContainerPolicy(azure.Name, minAllowed, maxAllowed),
+	)
 	return nil
 }
 
