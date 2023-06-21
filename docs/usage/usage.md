@@ -554,15 +554,11 @@ spec:
 
 ## CSI volume provisioners
 
-Every Azure shoot cluster that has at least Kubernetes v1.21 will be deployed with the Azure Disk CSI driver and the Azure File CSI driver.
-Both are compatible with the legacy in-tree volume provisioners that were deprecated by the Kubernetes community and will be removed in future versions of Kubernetes.
-End-users might want to update their custom `StorageClass`es to the new `disk.csi.azure.com` or `file.csi.azure.com` provisioner, respectively.
-Shoot clusters with Kubernetes v1.20 or less will use the in-tree `kubernetes.io/azure-disk` and `kubernetes.io/azure-file` volume provisioners in the kube-controller-manager and the kubelet.
+Every Azure shoot cluster will be deployed with the Azure Disk CSI driver and the Azure File CSI driver.
 
 ## Kubernetes Versions per Worker Pool
 
 This extension supports `gardener/gardener`'s `WorkerPoolKubernetesVersion` feature gate, i.e., having [worker pools with overridden Kubernetes versions](https://github.com/gardener/gardener/blob/8a9c88866ec5fce59b5acf57d4227eeeb73669d7/example/90-shoot.yaml#L69-L70) since `gardener-extension-provider-azure@v1.25`.
-Note that this feature is only usable for `Shoot`s whose `.spec.kubernetes.version` is greater or equal than the CSI migration version (`1.21`).
 
 ## Shoot CA Certificate and `ServiceAccount` Signing Key Rotation
 

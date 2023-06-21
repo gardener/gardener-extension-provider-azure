@@ -15,9 +15,6 @@
 package validation
 
 import (
-	"fmt"
-
-	"github.com/Masterminds/semver"
 	"github.com/gardener/gardener-extension-networking-calico/pkg/apis/calico"
 	calicopkg "github.com/gardener/gardener-extension-networking-calico/pkg/calico"
 	"github.com/gardener/gardener/extensions/pkg/util"
@@ -30,7 +27,6 @@ import (
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 const maxDataVolumeCount = 64
@@ -73,29 +69,8 @@ func decodeCalicoNetworkingConfig(decoder runtime.Decoder, network *runtime.RawE
 func ValidateWorkers(workers []core.Worker, infra *api.InfrastructureConfig, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	csiMigrationVersion, err := semver.NewVersion(azure.CSIMigrationKubernetesVersion)
-	if err != nil {
-		allErrs = append(allErrs, field.InternalError(fldPath, err))
-		return allErrs
-	}
-
 	for i, worker := range workers {
 		path := fldPath.Index(i)
-
-		// Ensure the kubelet version is not lower than the version in which the extension performs CSI migration.
-		if worker.Kubernetes != nil && worker.Kubernetes.Version != nil {
-			versionPath := path.Child("kubernetes", "version")
-
-			v, err := semver.NewVersion(*worker.Kubernetes.Version)
-			if err != nil {
-				allErrs = append(allErrs, field.Invalid(versionPath, *worker.Kubernetes.Version, err.Error()))
-				return allErrs
-			}
-
-			if v.LessThan(csiMigrationVersion) {
-				allErrs = append(allErrs, field.Forbidden(versionPath, fmt.Sprintf("cannot use kubelet version (%s) lower than CSI migration version (%s)", v.String(), csiMigrationVersion.String())))
-			}
-		}
 
 		if worker.Volume == nil {
 			allErrs = append(allErrs, field.Required(path.Child("volume"), "must not be nil"))
