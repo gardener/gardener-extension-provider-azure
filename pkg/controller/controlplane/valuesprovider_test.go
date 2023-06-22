@@ -108,7 +108,7 @@ var _ = Describe("ValuesProvider", func() {
 			},
 			CloudControllerManager: &v1alpha1.CloudControllerManagerConfig{
 				FeatureGates: map[string]bool{
-					"CustomResourceValidation": true,
+					"RotateKubeletServerCertificate": true,
 				},
 			},
 		}
@@ -341,15 +341,18 @@ var _ = Describe("ValuesProvider", func() {
 					"maintenance.gardener.cloud/restart": "true",
 				},
 				"featureGates": map[string]bool{
-					"CustomResourceValidation": true,
+					"RotateKubeletServerCertificate": true,
 				},
 				"tlsCipherSuites": []string{
 					"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
 					"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+					"TLS_AES_128_GCM_SHA256",
+					"TLS_AES_256_GCM_SHA384",
+					"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
+					"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
+					"TLS_CHACHA20_POLY1305_SHA256",
+					"TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305",
 					"TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305",
-					"TLS_RSA_WITH_AES_128_CBC_SHA",
-					"TLS_RSA_WITH_AES_256_CBC_SHA",
-					"TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA",
 				},
 				"secrets": map[string]interface{}{
 					"server": "cloud-controller-manager-server",

@@ -306,7 +306,7 @@ apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
 kind: ControlPlaneConfig
 cloudControllerManager:
   featureGates:
-    CustomResourceValidation: true
+    RotateKubeletServerCertificate: true
 ```
 
 The `cloudControllerManager.featureGates` contains a map of explicitly enabled or disabled feature gates.
