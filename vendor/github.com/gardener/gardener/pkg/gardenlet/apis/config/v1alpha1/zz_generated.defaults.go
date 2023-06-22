@@ -83,6 +83,9 @@ func SetObjectDefaults_GardenletConfiguration(in *GardenletConfiguration) {
 				SetDefaults_StaleExtensionHealthChecks(in.Controllers.ShootCare.StaleExtensionHealthChecks)
 			}
 		}
+		if in.Controllers.ShootState != nil {
+			SetDefaults_ShootStateControllerConfiguration(in.Controllers.ShootState)
+		}
 		if in.Controllers.ShootStateSync != nil {
 			SetDefaults_ShootStateSyncControllerConfiguration(in.Controllers.ShootStateSync)
 		}
@@ -94,6 +97,9 @@ func SetObjectDefaults_GardenletConfiguration(in *GardenletConfiguration) {
 		}
 		if in.Controllers.ShootSecret != nil {
 			SetDefaults_ShootSecretControllerConfiguration(in.Controllers.ShootSecret)
+		}
+		if in.Controllers.TokenRequestor != nil {
+			SetDefaults_TokenRequestorControllerConfiguration(in.Controllers.TokenRequestor)
 		}
 	}
 	if in.LeaderElection != nil {

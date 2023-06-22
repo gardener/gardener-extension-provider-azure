@@ -151,14 +151,18 @@ type GardenletControllerConfiguration struct {
 	Shoot *ShootControllerConfiguration
 	// ShootCare defines the configuration of the ShootCare controller.
 	ShootCare *ShootCareControllerConfiguration
+	// ShootState defines the configuration of the ShootState controller.
+	ShootState *ShootStateControllerConfiguration
 	// ShootStateSync defines the configuration of the ShootState controller.
 	ShootStateSync *ShootStateSyncControllerConfiguration
 	// NetworkPolicy defines the configuration of the NetworkPolicy controller.
 	NetworkPolicy *NetworkPolicyControllerConfiguration
-	// ManagedSeedControllerConfiguration defines the configuration of the ManagedSeed controller.
+	// ManagedSeed defines the configuration of the ManagedSeed controller.
 	ManagedSeed *ManagedSeedControllerConfiguration
 	// ShootSecretControllerConfiguration defines the configuration of the ShootSecret controller.
 	ShootSecret *ShootSecretControllerConfiguration
+	// TokenRequestorControllerConfiguration defines the configuration of the TokenRequestor controller.
+	TokenRequestor *TokenRequestorControllerConfiguration
 }
 
 // BackupBucketControllerConfiguration defines the configuration of the BackupBucket
@@ -289,6 +293,15 @@ type SeedCareControllerConfiguration struct {
 	ConditionThresholds []ConditionThreshold
 }
 
+// ShootStateControllerConfiguration defines the configuration of the ShootState controller.
+type ShootStateControllerConfiguration struct {
+	// ConcurrentSyncs is the number of workers used for the controller to work on events.
+	ConcurrentSyncs *int
+	// SyncPeriod is the duration how often the existing resources are reconciled (how
+	// often the health check of Seed clusters is performed
+	SyncPeriod *metav1.Duration
+}
+
 // ShootSecretControllerConfiguration defines the configuration of the ShootSecret controller.
 type ShootSecretControllerConfiguration struct {
 	// ConcurrentSyncs is the number of workers used for the controller to work on events.
@@ -348,6 +361,12 @@ type ManagedSeedControllerConfiguration struct {
 	// The applied jitterPeriod is taken from SyncJitterPeriod.
 	// Defaults to false.
 	JitterUpdates *bool
+}
+
+// TokenRequestorControllerConfiguration defines the configuration of the TokenRequestor controller.
+type TokenRequestorControllerConfiguration struct {
+	// ConcurrentSyncs is the number of workers used for the controller to work on events.
+	ConcurrentSyncs *int
 }
 
 // ResourcesConfiguration defines the total capacity for seed resources and the amount reserved for use by Gardener.
