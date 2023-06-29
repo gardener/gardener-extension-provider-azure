@@ -60,7 +60,7 @@ func publicIPAddressDefine(opt *Options) *network.PublicIPAddress {
 	}
 }
 
-func computeInstanceDefine(opt *Options, sku string, bastion *extensionsv1alpha1.Bastion, publickey string) *compute.VirtualMachine {
+func computeInstanceDefine(opt *Options, sku *compute.ImageReference, bastion *extensionsv1alpha1.Bastion, publickey string) *compute.VirtualMachine {
 	return &compute.VirtualMachine{
 		Location: &opt.Location,
 		VirtualMachineProperties: &compute.VirtualMachineProperties{
@@ -68,7 +68,7 @@ func computeInstanceDefine(opt *Options, sku string, bastion *extensionsv1alpha1
 				VMSize: compute.VirtualMachineSizeTypesStandardB1s,
 			},
 			StorageProfile: &compute.StorageProfile{
-				ImageReference: vmImage(sku),
+				ImageReference: sku,
 				OsDisk: &compute.OSDisk{
 					CreateOption: compute.DiskCreateOptionTypesFromImage,
 					DiskSizeGB:   to.Int32Ptr(32),
@@ -156,14 +156,5 @@ func nsgEgressAllowSSHToWorkerIPv4(opt *Options) network.SecurityRule {
 			Priority:                   to.Int32Ptr(401),
 			Description:                to.StringPtr("Allow Bastion egress to Shoot workers ipv4"),
 		},
-	}
-}
-
-func vmImage(sku string) *compute.ImageReference {
-	return &compute.ImageReference{
-		Publisher: to.StringPtr("Canonical"),
-		Offer:     to.StringPtr("UbuntuServer"),
-		Sku:       to.StringPtr(sku),
-		Version:   to.StringPtr("latest"),
 	}
 }

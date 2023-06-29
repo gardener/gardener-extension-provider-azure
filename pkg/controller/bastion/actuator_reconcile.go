@@ -22,7 +22,9 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
+	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/util"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -470,15 +472,15 @@ func findNextFreeNumber(set map[int32]bool, baseValue int32) *int32 {
 	return &baseValue
 }
 
-func getLatestSku(ctx context.Context, opt *Options, factory azureclient.Factory) (string, error) {
+func getLatestSku(ctx context.Context, opt *Options, factory azureclient.Factory) (*compute.ImageReference, error) {
 	vmImageclient, err := factory.VirtualMachineImage(ctx, opt.SecretReference)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	result, err := vmImageclient.ListSkus(ctx, opt.Location, *vmImage("").Publisher, *vmImage("").Offer)
+	result, err := vmImageclient.ListSkus(ctx, opt.Location, "Canonical", "UbuntuServer")
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	sku := sets.NewString()
@@ -492,9 +494,14 @@ func getLatestSku(ctx context.Context, opt *Options, factory azureclient.Factory
 	}
 
 	if sku.List()[len(sku.List())-1] == "" {
-		return "", errors.New("sku not found")
+		return nil, errors.New("sku not found")
 	}
 
-	return sku.List()[len(sku.List())-1], nil
+	return &compute.ImageReference{
+		Publisher: to.StringPtr("Canonical"),
+		Offer:     to.StringPtr("UbuntuServer"),
+		Sku:       to.StringPtr(sku.List()[len(sku.List())-1]),
+		Version:   to.StringPtr("latest"),
+	}, nil
 
 }
