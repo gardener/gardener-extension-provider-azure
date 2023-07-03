@@ -27,7 +27,7 @@ Gardener allows you to create a Kubernetes cluster on different infrastructure p
     Before you can provision and access a Kubernetes cluster on Azure, you need to add the Azure service principal, AD tenant and subscription credentials in Gardener.
     Gardener needs the credentials to provision and operate the Azure infrastructure for your Kubernetes cluster.
 
-    **Ensure that the Azure service principal has the actions defined within the [Azure Permissions](../../azure-permissions.md) within your Subscription assigned.
+    **Ensure that the Azure service principal has the actions defined within the [Azure Permissions](../../usage/azure-permissions.md) within your Subscription assigned.
     If no fine-grained permission/actions are required, then simply the built-in `Contributor` role can be assigned.**
 
 
@@ -46,7 +46,7 @@ Gardener allows you to create a Kubernetes cluster on different infrastructure p
     - Service Principal (SPN)
 
         A service principal consist of a `ClientID` (also called `ApplicationID`) and a Client Secret. For more information, see [Application and service principal objects in Azure Active Directory](https://docs.microsoft.com/en-us/azure/active-directory/develop/app-objects-and-service-principals). You need to obtain the:
-        - Client ID 
+        - Client ID
 
             Access the [Azure Portal](https://portal.azure.com) and navigate to the *Active Directory* service.
             Within the service navigate to *App registrations* and select your service principal. Copy the `ClientID` you see there.
@@ -71,7 +71,7 @@ Gardener allows you to create a Kubernetes cluster on different infrastructure p
     >After completing these steps, you should see your newly created secret in the *Infrastructure Secrets* section.
 
     <img src="images/secret-stored.png">
-    
+
 4. Register resource providers for your subscription.
     1. Go to your Azure dashboard
     2. Navigate to *Subscriptions* -> <your_subscription>
