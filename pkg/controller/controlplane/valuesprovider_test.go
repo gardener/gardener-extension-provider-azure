@@ -782,16 +782,6 @@ var _ = Describe("ValuesProvider", func() {
 	})
 
 	Describe("#GetStorageClassesChartValues()", func() {
-		It("should return correct storage class chart values", func() {
-			cluster = generateCluster(cidr, k8sVersion, true, nil, nil, nil)
-			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-			values, err := vp.GetStorageClassesChartValues(ctx, cp, cluster)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(values).To(Equal(map[string]interface{}{
-				"useLegacyProvisioner": false,
-			}))
-		})
-
 		It("should return correct storage class chart values when not using managed classes", func() {
 			controlPlaneConfig.Storage = &v1alpha1.Storage{
 				ManagedDefaultStorageClass:        pointer.Bool(false),
@@ -802,7 +792,6 @@ var _ = Describe("ValuesProvider", func() {
 			values, err := vp.GetStorageClassesChartValues(ctx, cp, cluster)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
-				"useLegacyProvisioner":              false,
 				"managedDefaultStorageClass":        false,
 				"managedDefaultVolumeSnapshotClass": false,
 			}))
@@ -818,7 +807,6 @@ var _ = Describe("ValuesProvider", func() {
 			values, err := vp.GetStorageClassesChartValues(ctx, cp, cluster)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
-				"useLegacyProvisioner":              false,
 				"managedDefaultStorageClass":        false,
 				"managedDefaultVolumeSnapshotClass": true,
 			}))

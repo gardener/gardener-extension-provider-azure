@@ -420,9 +420,7 @@ func (vp *valuesProvider) GetStorageClassesChartValues(
 		}
 	}
 
-	values := map[string]interface{}{
-		"useLegacyProvisioner": false,
-	}
+	values := map[string]interface{}{}
 	if cpConfig.Storage != nil {
 		values["managedDefaultStorageClass"] = pointer.BoolDeref(cpConfig.Storage.ManagedDefaultStorageClass, true)
 		values["managedDefaultVolumeSnapshotClass"] = pointer.BoolDeref(cpConfig.Storage.ManagedDefaultVolumeSnapshotClass, true)
