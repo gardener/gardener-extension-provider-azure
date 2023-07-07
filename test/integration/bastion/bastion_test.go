@@ -489,6 +489,10 @@ func setupEnvironmentObjects(ctx context.Context, c client.Client, namespace *co
 }
 
 func teardownShootEnvironment(ctx context.Context, c client.Client, namespace *corev1.Namespace, secret *corev1.Secret, cluster *extensionsv1alpha1.Cluster, worker *extensionsv1alpha1.Worker) {
+	workerCopy := worker.DeepCopy()
+	metav1.SetMetaDataAnnotation(&worker.ObjectMeta, "confirmation.gardener.cloud/deletion", "true")
+	Expect(c.Patch(ctx, worker, client.MergeFrom(workerCopy))).To(Succeed())
+
 	Expect(client.IgnoreNotFound(c.Delete(ctx, worker))).To(Succeed())
 	Expect(client.IgnoreNotFound(c.Delete(ctx, secret))).To(Succeed())
 	Expect(client.IgnoreNotFound(c.Delete(ctx, cluster))).To(Succeed())
@@ -548,7 +552,12 @@ func createWorker(name string) *extensionsv1alpha1.Worker {
 					},
 				},
 			},
-			Pools: []extensionsv1alpha1.WorkerPool{},
+			Pools:  []extensionsv1alpha1.WorkerPool{},
+			Region: *region,
+			SecretRef: corev1.SecretReference{
+				Name:      name,
+				Namespace: name,
+			},
 		},
 	}
 }

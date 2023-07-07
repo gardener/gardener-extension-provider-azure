@@ -60,7 +60,7 @@ func publicIPAddressDefine(opt *Options) *network.PublicIPAddress {
 	}
 }
 
-func computeInstanceDefine(opt *Options, bastion *extensionsv1alpha1.Bastion, publickey string) *compute.VirtualMachine {
+func computeInstanceDefine(opt *Options, sku *compute.ImageReference, bastion *extensionsv1alpha1.Bastion, publickey string) *compute.VirtualMachine {
 	return &compute.VirtualMachine{
 		Location: &opt.Location,
 		VirtualMachineProperties: &compute.VirtualMachineProperties{
@@ -68,12 +68,7 @@ func computeInstanceDefine(opt *Options, bastion *extensionsv1alpha1.Bastion, pu
 				VMSize: compute.VirtualMachineSizeTypesStandardB1s,
 			},
 			StorageProfile: &compute.StorageProfile{
-				ImageReference: &compute.ImageReference{
-					Publisher: to.StringPtr("Canonical"),
-					Offer:     to.StringPtr("UbuntuServer"),
-					Sku:       to.StringPtr("18.04-LTS"),
-					Version:   to.StringPtr("latest"),
-				},
+				ImageReference: sku,
 				OsDisk: &compute.OSDisk{
 					CreateOption: compute.DiskCreateOptionTypesFromImage,
 					DiskSizeGB:   to.Int32Ptr(32),

@@ -41,6 +41,7 @@ type Factory interface {
 	NetworkInterface(ctx context.Context, secretRef corev1.SecretReference) (NetworkInterface, error)
 	Disk(ctx context.Context, secretRef corev1.SecretReference) (Disk, error)
 	Subnet(ctx context.Context, secretRef corev1.SecretReference) (Subnet, error)
+	VirtualMachineImage(ctx context.Context, secretRef corev1.SecretReference) (VirtualMachineImage, error)
 }
 
 // Group represents an Azure group client.
@@ -123,6 +124,11 @@ type Subnet interface {
 	Delete(context.Context, string, string, string) error
 }
 
+// VirtualMachineImage represents an Azure Virtual Machine Image client.
+type VirtualMachineImage interface {
+	ListSkus(ctx context.Context, location string, publisherName string, offer string) (*compute.ListVirtualMachineImageResource, error)
+}
+
 // AzureFactory is an implementation of Factory to produce clients for various Azure services.
 type AzureFactory struct {
 	client client.Client
@@ -191,4 +197,9 @@ type DisksClient struct {
 // SubnetsClient is an implementation of Subnet for a Subnet client.
 type SubnetsClient struct {
 	client network.SubnetsClient
+}
+
+// VirtualMachineImageClient is an implementation of Virtual Machine Image for a Virtual Machine Image client.
+type VirtualMachineImageClient struct {
+	client compute.VirtualMachineImagesClient
 }

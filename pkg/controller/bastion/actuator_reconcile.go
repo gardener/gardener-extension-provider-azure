@@ -19,9 +19,12 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"regexp"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
+	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/util"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -29,6 +32,7 @@ import (
 	"github.com/gardener/gardener/pkg/extensions"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
@@ -286,7 +290,13 @@ func ensureComputeInstance(ctx context.Context, log logr.Logger, bastion *extens
 	if err != nil {
 		return err
 	}
-	parameters := computeInstanceDefine(opt, bastion, publickey)
+
+	sku, err := getLatestSku(ctx, opt, factory)
+	if err != nil {
+		return err
+	}
+
+	parameters := computeInstanceDefine(opt, sku, bastion, publickey)
 
 	_, err = createBastionInstance(ctx, factory, opt, parameters)
 	if err != nil {
@@ -460,4 +470,38 @@ func findNextFreeNumber(set map[int32]bool, baseValue int32) *int32 {
 	}
 	set[baseValue] = true
 	return &baseValue
+}
+
+func getLatestSku(ctx context.Context, opt *Options, factory azureclient.Factory) (*compute.ImageReference, error) {
+	vmImageclient, err := factory.VirtualMachineImage(ctx, opt.SecretReference)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := vmImageclient.ListSkus(ctx, opt.Location, "Canonical", "UbuntuServer")
+	if err != nil {
+		return nil, err
+	}
+
+	sku := sets.NewString()
+	re := regexp.MustCompile(`\d{2}\.\d{2}$`)
+	// regex only xx.xx version eg 18.04, 19.04
+	for _, v := range *result.Value {
+		if re.MatchString(*v.Name) {
+			sku.Insert(*v.Name)
+		}
+
+	}
+
+	if sku.List()[len(sku.List())-1] == "" {
+		return nil, errors.New("sku not found")
+	}
+
+	return &compute.ImageReference{
+		Publisher: to.StringPtr("Canonical"),
+		Offer:     to.StringPtr("UbuntuServer"),
+		Sku:       to.StringPtr(sku.List()[len(sku.List())-1]),
+		Version:   to.StringPtr("latest"),
+	}, nil
+
 }
