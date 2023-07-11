@@ -33,7 +33,7 @@ Gardener allows you to create a Kubernetes cluster on different infrastructure p
 
     - Tenant ID
 
-        To find your `TenantID`, follow this [guide](https://docs.microsoft.com/en-us/azure/active-directory/fundamentals/active-directory-how-to-find-tenant).
+        To find your `TenantID`, follow this [guide](https://learn.microsoft.com/en-us/azure/active-directory/fundamentals/how-to-find-tenant).
 
     - SubscriptionID
 
