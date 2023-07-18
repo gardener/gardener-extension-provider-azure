@@ -22,7 +22,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/gardener/gardener/extensions/pkg/controller/csimigration"
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
 	genericworkeractuator "github.com/gardener/gardener/extensions/pkg/controller/worker/genericactuator"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
@@ -97,9 +96,6 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		machineImages             []azureapi.MachineImage
 	)
 
-	const (
-		csiMigrationVersion = "1.21"
-	)
 	infrastructureStatus, err := w.decodeAzureInfrastructureStatus()
 	if err != nil {
 		return err
@@ -111,11 +107,6 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 	}
 
 	_, nodesSubnet, err := azureapihelper.FindSubnetByPurposeAndZone(infrastructureStatus.Networks.Subnets, azureapi.PurposeNodes, nil)
-	if err != nil {
-		return err
-	}
-
-	csiEnabled, _, err := csimigration.CheckCSIConditions(w.cluster, csiMigrationVersion)
 	if err != nil {
 		return err
 	}
@@ -174,7 +165,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 					Maximum:              pool.Maximum,
 					MaxSurge:             pool.MaxSurge,
 					MaxUnavailable:       pool.MaxUnavailable,
-					Labels:               addTopologyLabel(pool.Labels, csiEnabled, w.worker.Spec.Region, zone),
+					Labels:               addTopologyLabel(pool.Labels, w.worker.Spec.Region, zone),
 					Annotations:          pool.Annotations,
 					Taints:               pool.Taints,
 					MachineConfiguration: genericworkeractuator.ReadMachineConfiguration(pool),
@@ -434,8 +425,8 @@ func SanitizeAzureVMTag(label string) string {
 	return tagRegex.ReplaceAllString(strings.ToLower(label), "_")
 }
 
-func addTopologyLabel(labels map[string]string, csiEnabled bool, region string, zone *zoneInfo) map[string]string {
-	if csiEnabled && zone != nil {
+func addTopologyLabel(labels map[string]string, region string, zone *zoneInfo) map[string]string {
+	if zone != nil {
 		return utils.MergeStringMaps(labels, map[string]string{azureCSIDiskDriverTopologyKey: region + "-" + zone.name})
 	}
 	return labels

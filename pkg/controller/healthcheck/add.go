@@ -27,7 +27,6 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/util"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	"github.com/gardener/gardener/pkg/utils/version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/pointer"
@@ -58,13 +57,6 @@ var (
 // RegisterHealthChecks registers health checks for each extension resource
 // HealthChecks are grouped by extension (e.g worker), extension.type (e.g azure) and  Health Check Type (e.g SystemComponentsHealthy)
 func RegisterHealthChecks(mgr manager.Manager, opts healthcheck.DefaultAddArgs) error {
-	csiEnabledPreCheckFunc := func(_ context.Context, _ client.Client, _ client.Object, cluster *extensionscontroller.Cluster) bool {
-		csiEnabled, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, ">=", azure.CSIMigrationKubernetesVersion)
-		if err != nil {
-			return false
-		}
-		return csiEnabled
-	}
 	remedyControllerPreCheckFunc := func(_ context.Context, _ client.Client, _ client.Object, cluster *extensionscontroller.Cluster) bool {
 		return cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] != "true"
 	}
@@ -85,12 +77,10 @@ func RegisterHealthChecks(mgr manager.Manager, opts healthcheck.DefaultAddArgs) 
 			{
 				ConditionType: string(gardencorev1beta1.ShootControlPlaneHealthy),
 				HealthCheck:   general.NewSeedDeploymentHealthChecker(azure.CSIControllerDiskName),
-				PreCheckFunc:  csiEnabledPreCheckFunc,
 			},
 			{
 				ConditionType: string(gardencorev1beta1.ShootControlPlaneHealthy),
 				HealthCheck:   general.NewSeedDeploymentHealthChecker(azure.CSIControllerFileName),
-				PreCheckFunc:  csiEnabledPreCheckFunc,
 			},
 			{
 				ConditionType: string(gardencorev1beta1.ShootControlPlaneHealthy),
@@ -100,12 +90,10 @@ func RegisterHealthChecks(mgr manager.Manager, opts healthcheck.DefaultAddArgs) 
 			{
 				ConditionType: string(gardencorev1beta1.ShootControlPlaneHealthy),
 				HealthCheck:   general.NewSeedDeploymentHealthChecker(azure.CSISnapshotControllerName),
-				PreCheckFunc:  csiEnabledPreCheckFunc,
 			},
 			{
 				ConditionType: string(gardencorev1beta1.ShootControlPlaneHealthy),
 				HealthCheck:   general.NewSeedDeploymentHealthChecker(azure.CSISnapshotValidationName),
-				PreCheckFunc:  csiEnabledPreCheckFunc,
 			},
 		},
 		sets.Set[gardencorev1beta1.ConditionType]{},

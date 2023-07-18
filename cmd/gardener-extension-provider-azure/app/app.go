@@ -46,7 +46,6 @@ import (
 	azurebackupentry "github.com/gardener/gardener-extension-provider-azure/pkg/controller/backupentry"
 	azurebastion "github.com/gardener/gardener-extension-provider-azure/pkg/controller/bastion"
 	azurecontrolplane "github.com/gardener/gardener-extension-provider-azure/pkg/controller/controlplane"
-	azurecsimigration "github.com/gardener/gardener-extension-provider-azure/pkg/controller/csimigration"
 	azurednsrecord "github.com/gardener/gardener-extension-provider-azure/pkg/controller/dnsrecord"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/healthcheck"
 	azureinfrastructure "github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure"
@@ -227,7 +226,6 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			backupEntryCtrlOpts.Completed().Apply(&azurebackupentry.DefaultAddOptions.Controller)
 			bastionCtrlOpts.Completed().Apply(&azurebastion.DefaultAddOptions.Controller)
 			controlPlaneCtrlOpts.Completed().Apply(&azurecontrolplane.DefaultAddOptions.Controller)
-			csiMigrationCtrlOpts.Completed().Apply(&azurecsimigration.DefaultAddOptions.Controller)
 			dnsRecordCtrlOpts.Completed().Apply(&azurednsrecord.DefaultAddOptions.Controller)
 			infraCtrlOpts.Completed().Apply(&azureinfrastructure.DefaultAddOptions.Controller)
 			reconcileOpts.Completed().Apply(&azureinfrastructure.DefaultAddOptions.IgnoreOperationAnnotation)

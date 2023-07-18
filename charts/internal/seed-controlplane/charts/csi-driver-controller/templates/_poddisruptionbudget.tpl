@@ -1,10 +1,6 @@
 {{- define "csi-driver-controller.poddisruptionbudget" -}}
 ---
-{{- if semverCompare ">= 1.21-0" .Capabilities.KubeVersion.GitVersion }}
 apiVersion: policy/v1
-{{- else }}
-apiVersion: policy/v1beta1
-{{- end }}
 kind: PodDisruptionBudget
 metadata:
   name: csi-driver-controller-{{ .role }}

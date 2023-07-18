@@ -122,35 +122,6 @@ var _ = Describe("Shoot validation", func() {
 				infraConfig = &api.InfrastructureConfig{}
 			})
 
-			It("should pass when the kubernetes version is equal to the CSI migration version", func() {
-				workers[0].Kubernetes = &core.WorkerKubernetes{Version: pointer.String("1.21.0")}
-
-				errorList := ValidateWorkers(workers, infraConfig, field.NewPath(""))
-
-				Expect(errorList).To(BeEmpty())
-			})
-
-			It("should pass when the kubernetes version is higher to the CSI migration version", func() {
-				workers[0].Kubernetes = &core.WorkerKubernetes{Version: pointer.String("1.22.0")}
-
-				errorList := ValidateWorkers(workers, infraConfig, field.NewPath(""))
-
-				Expect(errorList).To(BeEmpty())
-			})
-
-			It("should not allow when the kubernetes version is lower than the CSI migration version", func() {
-				workers[0].Kubernetes = &core.WorkerKubernetes{Version: pointer.String("1.20.0")}
-
-				errorList := ValidateWorkers(workers, infraConfig, field.NewPath("workers"))
-
-				Expect(errorList).To(ConsistOf(
-					PointTo(MatchFields(IgnoreExtras, Fields{
-						"Type":  Equal(field.ErrorTypeForbidden),
-						"Field": Equal("workers[0].kubernetes.version"),
-					})),
-				))
-			})
-
 			Context("Non zoned cluster", func() {
 				BeforeEach(func() {
 					infraConfig.Zoned = false

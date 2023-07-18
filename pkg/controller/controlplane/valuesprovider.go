@@ -34,7 +34,6 @@ import (
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	secretutils "github.com/gardener/gardener/pkg/utils/secrets"
 	secretsmanager "github.com/gardener/gardener/pkg/utils/secrets/manager"
-	"github.com/gardener/gardener/pkg/utils/version"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -398,16 +397,11 @@ func (vp *valuesProvider) GetControlPlaneShootChartValues(
 func (vp *valuesProvider) GetControlPlaneShootCRDsChartValues(
 	_ context.Context,
 	_ *extensionsv1alpha1.ControlPlane,
-	cluster *extensionscontroller.Cluster,
+	_ *extensionscontroller.Cluster,
 ) (map[string]interface{}, error) {
-	k8sVersionLessThan121, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, "<", azure.CSIMigrationKubernetesVersion)
-	if err != nil {
-		return nil, err
-	}
-
 	return map[string]interface{}{
 		"volumesnapshots": map[string]interface{}{
-			"enabled": !k8sVersionLessThan121,
+			"enabled": true,
 		},
 	}, nil
 }
@@ -416,7 +410,7 @@ func (vp *valuesProvider) GetControlPlaneShootCRDsChartValues(
 func (vp *valuesProvider) GetStorageClassesChartValues(
 	_ context.Context,
 	cp *extensionsv1alpha1.ControlPlane,
-	cluster *extensionscontroller.Cluster,
+	_ *extensionscontroller.Cluster,
 ) (map[string]interface{}, error) {
 	// Decode providerConfig
 	cpConfig := &apisazure.ControlPlaneConfig{}
@@ -426,15 +420,7 @@ func (vp *valuesProvider) GetStorageClassesChartValues(
 		}
 	}
 
-	k8sVersionLessThan121, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, "<", azure.CSIMigrationKubernetesVersion)
-	if err != nil {
-		return nil, err
-	}
-
-	values := map[string]interface{}{
-		"useLegacyProvisioner": k8sVersionLessThan121,
-	}
-
+	values := map[string]interface{}{}
 	if cpConfig.Storage != nil {
 		values["managedDefaultStorageClass"] = pointer.BoolDeref(cpConfig.Storage.ManagedDefaultStorageClass, true)
 		values["managedDefaultVolumeSnapshotClass"] = pointer.BoolDeref(cpConfig.Storage.ManagedDefaultVolumeSnapshotClass, true)
@@ -611,15 +597,6 @@ func getCSIControllerChartValues(
 	infraStatus *apisazure.InfrastructureStatus,
 	checksums map[string]string,
 ) (map[string]interface{}, error) {
-	k8sVersionLessThan121, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, "<", azure.CSIMigrationKubernetesVersion)
-	if err != nil {
-		return nil, err
-	}
-
-	if k8sVersionLessThan121 {
-		return map[string]interface{}{"enabled": false}, nil
-	}
-
 	serverSecret, found := secretsReader.Get(csiSnapshotValidationServerName)
 	if !found {
 		return nil, fmt.Errorf("secret %q not found", csiSnapshotValidationServerName)
@@ -693,26 +670,19 @@ func getControlPlaneShootChartValues(
 		}
 	}
 
-	k8sVersionLessThan121, err := version.CompareVersions(cluster.Shoot.Spec.Kubernetes.Version, "<", azure.CSIMigrationKubernetesVersion)
-	if err != nil {
+	secret := &corev1.Secret{}
+	if err := client.Get(ctx, kutil.Key(cp.Namespace, azure.CloudProviderDiskConfigName), secret); err != nil {
 		return nil, err
 	}
 
-	if !k8sVersionLessThan121 {
-		secret := &corev1.Secret{}
-		if err := client.Get(ctx, kutil.Key(cp.Namespace, azure.CloudProviderDiskConfigName), secret); err != nil {
-			return nil, err
-		}
+	cloudProviderDiskConfig = string(secret.Data[azure.CloudProviderConfigMapKey])
+	cloudProviderDiskConfigChecksum = utils.ComputeChecksum(secret.Data)
 
-		cloudProviderDiskConfig = string(secret.Data[azure.CloudProviderConfigMapKey])
-		cloudProviderDiskConfigChecksum = utils.ComputeChecksum(secret.Data)
-
-		caSecret, found := secretsReader.Get(caNameControlPlane)
-		if !found {
-			return nil, fmt.Errorf("secret %q not found", caNameControlPlane)
-		}
-		caBundle = string(caSecret.Data[secretutils.DataKeyCertificateBundle])
+	caSecret, found := secretsReader.Get(caNameControlPlane)
+	if !found {
+		return nil, fmt.Errorf("secret %q not found", caNameControlPlane)
 	}
+	caBundle = string(caSecret.Data[secretutils.DataKeyCertificateBundle])
 
 	disableRemedyController := cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] == "true"
 	pspDisabled := gardencorev1beta1helper.IsPSPDisabled(cluster.Shoot)
@@ -727,7 +697,7 @@ func getControlPlaneShootChartValues(
 			"pspDisabled": pspDisabled,
 		},
 		azure.CSINodeName: map[string]interface{}{
-			"enabled":           !k8sVersionLessThan121,
+			"enabled":           true,
 			"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
 			"podAnnotations": map[string]interface{}{
 				"checksum/configmap-" + azure.CloudProviderDiskConfigName: cloudProviderDiskConfigChecksum,

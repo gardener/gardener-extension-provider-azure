@@ -108,7 +108,7 @@ var _ = Describe("ValuesProvider", func() {
 			},
 			CloudControllerManager: &v1alpha1.CloudControllerManagerConfig{
 				FeatureGates: map[string]bool{
-					"CustomResourceValidation": true,
+					"RotateKubeletServerCertificate": true,
 				},
 			},
 		}
@@ -116,8 +116,7 @@ var _ = Describe("ValuesProvider", func() {
 		cidr                    = "10.250.0.0/19"
 		cloudProviderConfigData = "foo"
 
-		k8sVersionLessThan121    = "1.20.1"
-		k8sVersionHigherEqual121 = "1.21.4"
+		k8sVersion = "1.24.8"
 
 		enabledTrue    = map[string]interface{}{"enabled": true}
 		enabledFalse   = map[string]interface{}{"enabled": false}
@@ -159,7 +158,7 @@ var _ = Describe("ValuesProvider", func() {
 
 		infrastructureStatus = defaultInfrastructureStatus.DeepCopy()
 		controlPlaneConfig = defaultControlPlaneConfig.DeepCopy()
-		cluster = generateCluster(cidr, k8sVersionLessThan121, false, nil, nil, nil)
+		cluster = generateCluster(cidr, k8sVersion, false, nil, nil, nil)
 	})
 
 	AfterEach(func() {
@@ -332,7 +331,7 @@ var _ = Describe("ValuesProvider", func() {
 			ccmChartValues = utils.MergeMaps(enabledTrue, map[string]interface{}{
 				"replicas":          1,
 				"clusterName":       namespace,
-				"kubernetesVersion": k8sVersionLessThan121,
+				"kubernetesVersion": k8sVersion,
 				"podNetwork":        cidr,
 				"podAnnotations": map[string]interface{}{
 					"checksum/secret-cloudprovider":         "8bafb35ff1ac60275d62e1cbd495aceb511fb354f74a20f7d06ecb48b3a68432",
@@ -342,15 +341,18 @@ var _ = Describe("ValuesProvider", func() {
 					"maintenance.gardener.cloud/restart": "true",
 				},
 				"featureGates": map[string]bool{
-					"CustomResourceValidation": true,
+					"RotateKubeletServerCertificate": true,
 				},
 				"tlsCipherSuites": []string{
 					"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
 					"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+					"TLS_AES_128_GCM_SHA256",
+					"TLS_AES_256_GCM_SHA384",
+					"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
+					"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
+					"TLS_CHACHA20_POLY1305_SHA256",
+					"TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305",
 					"TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305",
-					"TLS_RSA_WITH_AES_128_CBC_SHA",
-					"TLS_RSA_WITH_AES_256_CBC_SHA",
-					"TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA",
 				},
 				"secrets": map[string]interface{}{
 					"server": "cloud-controller-manager-server",
@@ -369,30 +371,8 @@ var _ = Describe("ValuesProvider", func() {
 			c.EXPECT().Delete(context.TODO(), &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: "allow-kube-apiserver-to-csi-snapshot-validation", Namespace: namespace}})
 		})
 
-		It("should return correct control plane chart values (k8s < 1.21)", func() {
-			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, fakeSecretsManager, checksums, false)
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(values).To(Equal(map[string]interface{}{
-				"global": map[string]interface{}{
-					"genericTokenKubeconfigSecretName": genericTokenKubeconfigSecretName,
-				},
-				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
-					"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
-				}),
-				azure.CSIControllerName: enabledFalse,
-				azure.RemedyControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
-					"replicas": 1,
-					"podAnnotations": map[string]interface{}{
-						"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
-					},
-				}),
-			}))
-		})
-
-		It("should return correct control plane chart values (k8s >= 1.21) without zoned infrastructure", func() {
-			cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil, nil, &gardencorev1beta1.Seed{})
+		It("should return correct control plane chart values without zoned infrastructure", func() {
+			cluster = generateCluster(cidr, k8sVersion, true, nil, nil, &gardencorev1beta1.Seed{})
 			infrastructureStatus.Zoned = false
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 
@@ -431,8 +411,8 @@ var _ = Describe("ValuesProvider", func() {
 			}))
 		})
 
-		It("should return correct control plane chart values (k8s >= 1.21) with zoned infrastructure", func() {
-			cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil, nil, &gardencorev1beta1.Seed{})
+		It("should return correct control plane chart values with zoned infrastructure", func() {
+			cluster = generateCluster(cidr, k8sVersion, true, nil, nil, &gardencorev1beta1.Seed{})
 			infrastructureStatus.Zoned = true
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 
@@ -474,7 +454,7 @@ var _ = Describe("ValuesProvider", func() {
 			shootAnnotations := map[string]string{
 				azure.DisableRemedyControllerAnnotation: "true",
 			}
-			cluster = generateCluster(cidr, k8sVersionLessThan121, false, shootAnnotations, nil, nil)
+			cluster = generateCluster(cidr, k8sVersion, false, shootAnnotations, nil, &gardencorev1beta1.Seed{})
 
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, fakeSecretsManager, checksums, false)
@@ -487,7 +467,22 @@ var _ = Describe("ValuesProvider", func() {
 				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
 					"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
 				}),
-				azure.CSIControllerName:    enabledFalse,
+				azure.CSIControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
+					"replicas": 1,
+					"podAnnotations": map[string]interface{}{
+						"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
+					},
+					"csiSnapshotController": map[string]interface{}{
+						"replicas": 1,
+					},
+					"csiSnapshotValidationWebhook": map[string]interface{}{
+						"replicas": 1,
+						"secrets": map[string]interface{}{
+							"server": "csi-snapshot-validation-server",
+						},
+						"topologyAwareRoutingEnabled": false,
+					},
+				}),
 				azure.RemedyControllerName: remedyDisabled,
 			}))
 		})
@@ -499,7 +494,7 @@ var _ = Describe("ValuesProvider", func() {
 						Settings: seedSettings,
 					},
 				}
-				cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil, shootControlPlane, seed)
+				cluster = generateCluster(cidr, k8sVersion, true, nil, shootControlPlane, seed)
 
 				infrastructureStatus.Zoned = false
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
@@ -545,13 +540,6 @@ var _ = Describe("ValuesProvider", func() {
 
 	Describe("#GetControlPlaneShootChartValues", func() {
 		var (
-			csiNodeNotEnabled = utils.MergeMaps(enabledFalse, map[string]interface{}{
-				"podAnnotations": map[string]interface{}{
-					"checksum/configmap-" + azure.CloudProviderDiskConfigName: "",
-				},
-				"cloudProviderConfig": "",
-				"kubernetesVersion":   "1.20.1",
-			})
 			globalVpaDisabled = map[string]interface{}{
 				"vpaEnabled": false,
 			}
@@ -563,7 +551,7 @@ var _ = Describe("ValuesProvider", func() {
 					"checksum/configmap-" + azure.CloudProviderDiskConfigName: checksums[azure.CloudProviderDiskConfigName],
 				},
 				"cloudProviderConfig": cloudProviderConfigData,
-				"kubernetesVersion":   "1.21.4",
+				"kubernetesVersion":   "1.24.8",
 			})
 			cloudControllerManager = map[string]interface{}{
 				"enabled":     true,
@@ -578,137 +566,89 @@ var _ = Describe("ValuesProvider", func() {
 			Expect(fakeClient.Create(context.TODO(), &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "cloud-controller-manager-server", Namespace: namespace}})).To(Succeed())
 		})
 
-		Context("k8s < 1.21", func() {
-			It("should return correct control plane shoot chart values for zoned cluster", func() {
-				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-				csiNode := utils.MergeMaps(csiNodeNotEnabled, map[string]interface{}{
-					"webhookConfig": map[string]interface{}{
-						"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
-						"caBundle": "",
-					},
-					"pspDisabled": false,
-				})
+		var (
+			cpDiskConfigKey = client.ObjectKey{Namespace: namespace, Name: azure.CloudProviderDiskConfigName}
+			cpDiskConfig    = &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      azure.CloudProviderDiskConfigName,
+					Namespace: namespace,
+				},
+				Data: map[string][]byte{
+					azure.CloudProviderConfigMapKey: []byte(cloudProviderConfigData),
+				},
+			}
+		)
 
-				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(values).To(Equal(map[string]interface{}{
-					"global":                         globalVpaDisabled,
-					azure.AllowEgressName:            enabledTrue,
-					azure.CloudControllerManagerName: cloudControllerManager,
-					azure.CSINodeName:                csiNode,
-					azure.RemedyControllerName:       enabledTrue,
-				}))
-			})
-
-			It("should return correct control plane shoot chart values for cluster with primary availabilityset (non zoned)", func() {
-				infrastructureStatus.Zoned = false
-				infrastructureStatus.AvailabilitySets = []apisazure.AvailabilitySet{primaryAvailabilitySet}
-				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-				csiNode := utils.MergeMaps(csiNodeNotEnabled, map[string]interface{}{
-					"webhookConfig": map[string]interface{}{
-						"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
-						"caBundle": "",
-					},
-					"pspDisabled": false,
-				})
-
-				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(values).To(Equal(map[string]interface{}{
-					"global":                         globalVpaDisabled,
-					azure.AllowEgressName:            enabledFalse,
-					azure.CloudControllerManagerName: cloudControllerManager,
-					azure.CSINodeName:                csiNode,
-					azure.RemedyControllerName:       enabledTrue,
-				}))
-			})
+		BeforeEach(func() {
+			c.EXPECT().Get(ctx, cpDiskConfigKey, &corev1.Secret{}).DoAndReturn(clientGet(cpDiskConfig))
+			cluster = generateCluster(cidr, k8sVersion, true, nil, nil, nil)
 		})
 
-		Context("k8s >= 1.21", func() {
-			var (
-				cpDiskConfigKey = client.ObjectKey{Namespace: namespace, Name: azure.CloudProviderDiskConfigName}
-				cpDiskConfig    = &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      azure.CloudProviderDiskConfigName,
-						Namespace: namespace,
-					},
-					Data: map[string][]byte{
-						azure.CloudProviderConfigMapKey: []byte(cloudProviderConfigData),
-					},
-				}
-			)
-
-			BeforeEach(func() {
-				c.EXPECT().Get(ctx, cpDiskConfigKey, &corev1.Secret{}).DoAndReturn(clientGet(cpDiskConfig))
-				cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil, nil, nil)
+		It("should return correct control plane shoot chart values for zoned cluster", func() {
+			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+			csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
+				"webhookConfig": map[string]interface{}{
+					"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
+					"caBundle": "",
+				},
+				"pspDisabled": false,
 			})
 
-			It("should return correct control plane shoot chart values for zoned cluster", func() {
-				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-				csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
-					"webhookConfig": map[string]interface{}{
-						"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
-						"caBundle": "",
-					},
-					"pspDisabled": false,
-				})
+			values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(map[string]interface{}{
+				"global":                         globalVpaEnabled,
+				azure.AllowEgressName:            enabledTrue,
+				azure.CloudControllerManagerName: cloudControllerManager,
+				azure.CSINodeName:                csiNode,
+				azure.RemedyControllerName:       enabledTrue,
+			}))
+		})
 
-				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(values).To(Equal(map[string]interface{}{
-					"global":                         globalVpaEnabled,
-					azure.AllowEgressName:            enabledTrue,
-					azure.CloudControllerManagerName: cloudControllerManager,
-					azure.CSINodeName:                csiNode,
-					azure.RemedyControllerName:       enabledTrue,
-				}))
+		It("should return correct control plane shoot chart values for cluster with primary availabilityset (non zoned)", func() {
+			infrastructureStatus.Zoned = false
+			infrastructureStatus.AvailabilitySets = []apisazure.AvailabilitySet{primaryAvailabilitySet}
+			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+			csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
+				"webhookConfig": map[string]interface{}{
+					"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
+					"caBundle": "",
+				},
+				"pspDisabled": false,
 			})
 
-			It("should return correct control plane shoot chart values for cluster with primary availabilityset (non zoned)", func() {
-				infrastructureStatus.Zoned = false
-				infrastructureStatus.AvailabilitySets = []apisazure.AvailabilitySet{primaryAvailabilitySet}
-				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-				csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
-					"webhookConfig": map[string]interface{}{
-						"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
-						"caBundle": "",
-					},
-					"pspDisabled": false,
-				})
+			values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(map[string]interface{}{
+				"global":                         globalVpaEnabled,
+				azure.AllowEgressName:            enabledFalse,
+				azure.CloudControllerManagerName: cloudControllerManager,
+				azure.CSINodeName:                csiNode,
+				azure.RemedyControllerName:       enabledTrue,
+			}))
+		})
 
-				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(values).To(Equal(map[string]interface{}{
-					"global":                         globalVpaEnabled,
-					azure.AllowEgressName:            enabledFalse,
-					azure.CloudControllerManagerName: cloudControllerManager,
-					azure.CSINodeName:                csiNode,
-					azure.RemedyControllerName:       enabledTrue,
-				}))
+		It("should return correct control plane shoot chart values for cluster with vmss flex (vmo, non zoned)", func() {
+			infrastructureStatus.Zoned = false
+			infrastructureStatus.AvailabilitySets = []apisazure.AvailabilitySet{}
+			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+			csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
+				"webhookConfig": map[string]interface{}{
+					"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
+					"caBundle": "",
+				},
+				"pspDisabled": false,
 			})
 
-			It("should return correct control plane shoot chart values for cluster with vmss flex (vmo, non zoned)", func() {
-				infrastructureStatus.Zoned = false
-				infrastructureStatus.AvailabilitySets = []apisazure.AvailabilitySet{}
-				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-				csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
-					"webhookConfig": map[string]interface{}{
-						"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
-						"caBundle": "",
-					},
-					"pspDisabled": false,
-				})
-
-				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(values).To(Equal(map[string]interface{}{
-					"global":                         globalVpaEnabled,
-					azure.AllowEgressName:            enabledTrue,
-					azure.CloudControllerManagerName: cloudControllerManager,
-					azure.CSINodeName:                csiNode,
-					azure.RemedyControllerName:       enabledTrue,
-				}))
-			})
+			values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(map[string]interface{}{
+				"global":                         globalVpaEnabled,
+				azure.AllowEgressName:            enabledTrue,
+				azure.CloudControllerManagerName: cloudControllerManager,
+				azure.CSINodeName:                csiNode,
+				azure.RemedyControllerName:       enabledTrue,
+			}))
 		})
 
 		Context("remedy controller is disabled", func() {
@@ -716,12 +656,12 @@ var _ = Describe("ValuesProvider", func() {
 				shootAnnotations := map[string]string{
 					azure.DisableRemedyControllerAnnotation: "true",
 				}
-				cluster = generateCluster(cidr, k8sVersionLessThan121, false, shootAnnotations, nil, nil)
+				cluster = generateCluster(cidr, k8sVersion, false, shootAnnotations, nil, nil)
 			})
 
 			It("should return correct control plane shoot chart values for zoned cluster", func() {
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-				csiNode := utils.MergeMaps(csiNodeNotEnabled, map[string]interface{}{
+				csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
 					"webhookConfig": map[string]interface{}{
 						"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 						"caBundle": "",
@@ -744,7 +684,7 @@ var _ = Describe("ValuesProvider", func() {
 				infrastructureStatus.Zoned = false
 				infrastructureStatus.AvailabilitySets = []apisazure.AvailabilitySet{primaryAvailabilitySet}
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-				csiNode := utils.MergeMaps(csiNodeNotEnabled, map[string]interface{}{
+				csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
 					"webhookConfig": map[string]interface{}{
 						"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 						"caBundle": "",
@@ -765,6 +705,10 @@ var _ = Describe("ValuesProvider", func() {
 		})
 
 		Context("podSecurityPolicy", func() {
+			BeforeEach(func() {
+				cluster = generateCluster(cidr, k8sVersion, false, nil, nil, nil)
+			})
+
 			It("should return correct shoot control plane chart when PodSecurityPolicy admission plugin is not disabled in the shoot", func() {
 				cluster.Shoot.Spec.Kubernetes.KubeAPIServer = &gardencorev1beta1.KubeAPIServerConfig{
 					AdmissionPlugins: []gardencorev1beta1.AdmissionPlugin{
@@ -774,7 +718,7 @@ var _ = Describe("ValuesProvider", func() {
 					},
 				}
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-				csiNode := utils.MergeMaps(csiNodeNotEnabled, map[string]interface{}{
+				csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
 					"webhookConfig": map[string]interface{}{
 						"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 						"caBundle": "",
@@ -803,7 +747,7 @@ var _ = Describe("ValuesProvider", func() {
 					},
 				}
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-				csiNode := utils.MergeMaps(csiNodeNotEnabled, map[string]interface{}{
+				csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
 					"webhookConfig": map[string]interface{}{
 						"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 						"caBundle": "",
@@ -828,15 +772,8 @@ var _ = Describe("ValuesProvider", func() {
 	})
 
 	Describe("#GetControlPlaneShootCRDsChartValues", func() {
-		It("should return correct control plane shoot CRDs chart values (k8s < 1.21)", func() {
-			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-			values, err := vp.GetControlPlaneShootCRDsChartValues(ctx, cp, cluster)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(values).To(Equal(map[string]interface{}{"volumesnapshots": map[string]interface{}{"enabled": false}}))
-		})
-
-		It("should return correct control plane shoot CRDs chart values (k8s >= 1.21)", func() {
-			cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil, nil, nil)
+		It("should return correct control plane shoot CRDs chart values", func() {
+			cluster = generateCluster(cidr, k8sVersion, true, nil, nil, nil)
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 			values, err := vp.GetControlPlaneShootCRDsChartValues(ctx, cp, cluster)
 			Expect(err).NotTo(HaveOccurred())
@@ -845,52 +782,31 @@ var _ = Describe("ValuesProvider", func() {
 	})
 
 	Describe("#GetStorageClassesChartValues()", func() {
-		It("should return correct storage class chart values (k8s < 1.21)", func() {
-			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-			values, err := vp.GetStorageClassesChartValues(ctx, cp, cluster)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(values).To(Equal(map[string]interface{}{
-				"useLegacyProvisioner": true,
-			}))
-		})
-
-		It("should return correct storage class chart values (k8s >= 1.21)", func() {
-			cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil, nil, nil)
-			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-			values, err := vp.GetStorageClassesChartValues(ctx, cp, cluster)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(values).To(Equal(map[string]interface{}{
-				"useLegacyProvisioner": false,
-			}))
-		})
-
-		It("should return correct storage class chart values when not using managed classes (k8s >= 1.21)", func() {
+		It("should return correct storage class chart values when not using managed classes", func() {
 			controlPlaneConfig.Storage = &v1alpha1.Storage{
 				ManagedDefaultStorageClass:        pointer.Bool(false),
 				ManagedDefaultVolumeSnapshotClass: pointer.Bool(false),
 			}
-			cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil, nil, nil)
+			cluster = generateCluster(cidr, k8sVersion, true, nil, nil, nil)
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 			values, err := vp.GetStorageClassesChartValues(ctx, cp, cluster)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
-				"useLegacyProvisioner":              false,
 				"managedDefaultStorageClass":        false,
 				"managedDefaultVolumeSnapshotClass": false,
 			}))
 		})
 
-		It("should return correct storage class chart values when not using managed StorageClass (k8s >= 1.21)", func() {
+		It("should return correct storage class chart values when not using managed StorageClass", func() {
 			controlPlaneConfig.Storage = &v1alpha1.Storage{
 				ManagedDefaultStorageClass:        pointer.Bool(false),
 				ManagedDefaultVolumeSnapshotClass: pointer.Bool(true),
 			}
-			cluster = generateCluster(cidr, k8sVersionHigherEqual121, true, nil, nil, nil)
+			cluster = generateCluster(cidr, k8sVersion, true, nil, nil, nil)
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 			values, err := vp.GetStorageClassesChartValues(ctx, cp, cluster)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
-				"useLegacyProvisioner":              false,
 				"managedDefaultStorageClass":        false,
 				"managedDefaultVolumeSnapshotClass": true,
 			}))
