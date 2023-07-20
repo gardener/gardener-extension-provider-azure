@@ -39,7 +39,7 @@ func (a *actuator) Restore(ctx context.Context, log logr.Logger, infra *extensio
 
 	patch := client.MergeFrom(infra.DeepCopy())
 	infra.Status.ProviderStatus = infraState.SavedProviderStatus
-	if err := a.Client().Status().Patch(ctx, infra, patch); err != nil {
+	if err := a.client.Status().Patch(ctx, infra, patch); err != nil {
 		return err
 	}
 

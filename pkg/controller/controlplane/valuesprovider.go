@@ -22,7 +22,6 @@ import (
 
 	"github.com/Masterminds/semver"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
-	"github.com/gardener/gardener/extensions/pkg/controller/common"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
 	extensionssecretsmanager "github.com/gardener/gardener/extensions/pkg/util/secret/manager"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
@@ -43,6 +42,7 @@ import (
 	storagev1 "k8s.io/api/storage/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	autoscalingv1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -299,7 +299,9 @@ func NewValuesProvider() genericactuator.ValuesProvider {
 // valuesProvider is a ValuesProvider that provides azure-specific values for the 2 charts applied by the generic actuator.
 type valuesProvider struct {
 	genericactuator.NoopValuesProvider
-	common.ClientContext
+	client  client.Client
+	scheme  *runtime.Scheme
+	decoder runtime.Decoder
 }
 
 // GetConfigChartValues returns the values for the config chart applied by the generic actuator.
@@ -307,7 +309,7 @@ func (vp *valuesProvider) GetConfigChartValues(ctx context.Context, cp *extensio
 	// Decode providerConfig
 	cpConfig := &apisazure.ControlPlaneConfig{}
 	if cp.Spec.ProviderConfig != nil {
-		if _, _, err := vp.Decoder().Decode(cp.Spec.ProviderConfig.Raw, nil, cpConfig); err != nil {
+		if _, _, err := vp.decoder.Decode(cp.Spec.ProviderConfig.Raw, nil, cpConfig); err != nil {
 			return nil, fmt.Errorf("could not decode providerConfig of controlplane '%s': %w", kutil.ObjectName(cp), err)
 		}
 	}
@@ -324,7 +326,7 @@ func (vp *valuesProvider) GetConfigChartValues(ctx context.Context, cp *extensio
 	}
 
 	// Get client auth
-	auth, err := internal.GetClientAuthData(ctx, vp.Client(), cp.Spec.SecretRef, false)
+	auth, err := internal.GetClientAuthData(ctx, vp.client, cp.Spec.SecretRef, false)
 	if err != nil {
 		return nil, fmt.Errorf("could not get service account from secret '%s/%s': %w", cp.Spec.SecretRef.Namespace, cp.Spec.SecretRef.Name, err)
 	}
@@ -352,13 +354,13 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 	// Decode providerConfig
 	cpConfig := &apisazure.ControlPlaneConfig{}
 	if cp.Spec.ProviderConfig != nil {
-		if _, _, err := vp.Decoder().Decode(cp.Spec.ProviderConfig.Raw, nil, cpConfig); err != nil {
+		if _, _, err := vp.decoder.Decode(cp.Spec.ProviderConfig.Raw, nil, cpConfig); err != nil {
 			return nil, fmt.Errorf("could not decode providerConfig of controlplane '%s': %w", kutil.ObjectName(cp), err)
 		}
 	}
 
 	cpConfigSecret := &corev1.Secret{}
-	if err := vp.Client().Get(ctx, kutil.Key(cp.Namespace, azure.CloudProviderConfigName), cpConfigSecret); err != nil {
+	if err := vp.client.Get(ctx, kutil.Key(cp.Namespace, azure.CloudProviderConfigName), cpConfigSecret); err != nil {
 		return nil, err
 	}
 	checksums[azure.CloudProviderConfigName] = utils.ComputeChecksum(cpConfigSecret.Data)
@@ -375,7 +377,7 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 	}
 
 	// TODO(oliver-goetz): Delete this in a future release.
-	if err := kutil.DeleteObject(ctx, vp.Client(), &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: "allow-kube-apiserver-to-csi-snapshot-validation", Namespace: cp.Namespace}}); err != nil {
+	if err := kutil.DeleteObject(ctx, vp.client, &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: "allow-kube-apiserver-to-csi-snapshot-validation", Namespace: cp.Namespace}}); err != nil {
 		return nil, fmt.Errorf("failed deleting legacy csi-snapshot-validation network policy: %w", err)
 	}
 
@@ -390,7 +392,7 @@ func (vp *valuesProvider) GetControlPlaneShootChartValues(
 	secretsReader secretsmanager.Reader,
 	_ map[string]string,
 ) (map[string]interface{}, error) {
-	return getControlPlaneShootChartValues(ctx, cp, cluster, secretsReader, vp.Client())
+	return getControlPlaneShootChartValues(ctx, cp, cluster, secretsReader, vp.client)
 }
 
 // GetControlPlaneShootCRDsChartValues returns the values for the control plane shoot CRDs chart applied by the generic actuator.
@@ -415,7 +417,7 @@ func (vp *valuesProvider) GetStorageClassesChartValues(
 	// Decode providerConfig
 	cpConfig := &apisazure.ControlPlaneConfig{}
 	if cp.Spec.ProviderConfig != nil {
-		if _, _, err := vp.Decoder().Decode(cp.Spec.ProviderConfig.Raw, nil, cpConfig); err != nil {
+		if _, _, err := vp.decoder.Decode(cp.Spec.ProviderConfig.Raw, nil, cpConfig); err != nil {
 			return nil, fmt.Errorf("could not decode providerConfig of controlplane '%s': %w", kutil.ObjectName(cp), err)
 		}
 	}
@@ -433,7 +435,7 @@ func (vp *valuesProvider) removeAcrConfig(ctx context.Context, namespace string)
 	cm := corev1.ConfigMap{}
 	cm.SetName(azure.CloudProviderAcrConfigName)
 	cm.SetNamespace(namespace)
-	return client.IgnoreNotFound(vp.Client().Delete(ctx, &cm))
+	return client.IgnoreNotFound(vp.client.Delete(ctx, &cm))
 }
 
 // getConfigChartValues collects and returns the configuration chart values.

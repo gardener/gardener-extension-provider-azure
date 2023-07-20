@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
-	"github.com/gardener/gardener/extensions/pkg/controller/common"
 	"github.com/gardener/gardener/extensions/pkg/controller/worker/genericactuator"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -48,7 +47,7 @@ func wrapNewWorkerDelegate(client *mockclient.MockClient, seedChartApplier *mock
 	_ = apiazure.AddToScheme(scheme)
 	_ = v1alpha1.AddToScheme(scheme)
 
-	workerDelegate, err := NewWorkerDelegate(common.NewClientContext(client, scheme, serializer.NewCodecFactory(scheme, serializer.EnableStrict).UniversalDecoder()), seedChartApplier, "", worker, cluster, factory)
+	workerDelegate, err := NewWorkerDelegate(client, serializer.NewCodecFactory(scheme, serializer.EnableStrict).UniversalDecoder(), scheme, seedChartApplier, "", worker, cluster, factory)
 	Expect(err).NotTo(HaveOccurred())
 	return workerDelegate
 }

@@ -19,11 +19,11 @@ import (
 	"encoding/json"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
-	"github.com/gardener/gardener/extensions/pkg/controller/common"
 	"github.com/gardener/gardener/extensions/pkg/controller/infrastructure"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
@@ -40,7 +40,8 @@ type InfrastructureState struct {
 }
 
 type actuator struct {
-	common.RESTConfigContext
+	client                     client.Client
+	restConfig                 *rest.Config
 	disableProjectedTokenMount bool
 }
 
@@ -84,5 +85,5 @@ func (a *actuator) updateProviderStatus(ctx context.Context, tf terraformer.Terr
 	patch := client.MergeFrom(infra.DeepCopy())
 	infra.Status.ProviderStatus = &runtime.RawExtension{Object: status}
 	infra.Status.State = &runtime.RawExtension{Raw: infraStateBytes}
-	return a.Client().Status().Patch(ctx, infra, patch)
+	return a.client.Status().Patch(ctx, infra, patch)
 }

@@ -45,13 +45,13 @@ func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, infra *ext
 		return err
 	}
 
-	tf, err := internal.NewTerraformerWithAuth(logger, a.RESTConfig(), infrastructure.TerraformerPurpose, infra, a.disableProjectedTokenMount)
+	tf, err := internal.NewTerraformerWithAuth(logger, a.restConfig, infrastructure.TerraformerPurpose, infra, a.disableProjectedTokenMount)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}
 
 	if err := tf.
-		InitializeWith(ctx, terraformer.DefaultInitializer(a.Client(), terraformFiles.Main, terraformFiles.Variables, terraformFiles.TFVars, stateInitializer)).
+		InitializeWith(ctx, terraformer.DefaultInitializer(a.client, terraformFiles.Main, terraformFiles.Variables, terraformFiles.TFVars, stateInitializer)).
 		Apply(ctx); err != nil {
 
 		return util.DetermineError(fmt.Errorf("failed to apply the terraform config: %w", err), helper.KnownCodes)
