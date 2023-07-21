@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	infrainternal "github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
@@ -46,8 +47,10 @@ type actuator struct {
 }
 
 // NewActuator creates a new infrastructure.Actuator.
-func NewActuator(disableProjectedTokenMount bool) infrastructure.Actuator {
+func NewActuator(mgr manager.Manager, disableProjectedTokenMount bool) infrastructure.Actuator {
 	return &actuator{
+		client:                     mgr.GetClient(),
+		restConfig:                 mgr.GetConfig(),
 		disableProjectedTokenMount: disableProjectedTokenMount,
 	}
 }

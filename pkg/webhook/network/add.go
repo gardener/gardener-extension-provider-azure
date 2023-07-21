@@ -36,6 +36,6 @@ func AddToManager(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 		Types: []extensionswebhook.Type{
 			{Obj: &extensionsv1alpha1.Network{}},
 		},
-		Mutator: network.NewMutator(logger, mutateNetworkConfig),
+		Mutator: network.NewMutator(mgr, logger, mutateNetworkConfig),
 	})
 }

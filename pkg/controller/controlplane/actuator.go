@@ -29,7 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 const (
@@ -42,12 +42,14 @@ const (
 
 // NewActuator creates a new Actuator that acts upon and updates the status of ControlPlane resources.
 func NewActuator(
+	mgr manager.Manager,
 	a controlplane.Actuator,
 	gracefulDeletionTimeout time.Duration,
 	gracefulDeletionWaitInterval time.Duration,
 ) controlplane.Actuator {
 	return &actuator{
 		Actuator:                     a,
+		client:                       mgr.GetClient(),
 		gracefulDeletionTimeout:      gracefulDeletionTimeout,
 		gracefulDeletionWaitInterval: gracefulDeletionWaitInterval,
 	}
@@ -59,17 +61,6 @@ type actuator struct {
 	client                       client.Client
 	gracefulDeletionTimeout      time.Duration
 	gracefulDeletionWaitInterval time.Duration
-}
-
-// InjectFunc enables injecting Kubernetes dependencies into actuator's dependencies.
-func (a *actuator) InjectFunc(f inject.Func) error {
-	return f(a.Actuator)
-}
-
-// InjectClient injects the given client into the valuesProvider.
-func (a *actuator) InjectClient(client client.Client) error {
-	a.client = client
-	return nil
 }
 
 // Delete reconciles the given controlplane and cluster, deleting the additional

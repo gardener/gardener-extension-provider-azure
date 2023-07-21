@@ -39,7 +39,7 @@ func AddToManager(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 
 	return cloudprovider.New(mgr, cloudprovider.Args{
 		Provider:             azure.Type,
-		Mutator:              cloudprovider.NewMutator(logger, NewEnsurer(logger)),
+		Mutator:              cloudprovider.NewMutator(mgr, logger, NewEnsurer(mgr, logger)),
 		EnableObjectSelector: true,
 	})
 }

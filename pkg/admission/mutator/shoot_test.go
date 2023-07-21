@@ -21,13 +21,14 @@ import (
 	ciliumv1alpha1 "github.com/gardener/gardener-extension-networking-cilium/pkg/apis/cilium/v1alpha1"
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	mockmanager "github.com/gardener/gardener/pkg/mock/controller-runtime/manager"
 	. "github.com/gardener/gardener/pkg/utils/test/matchers"
+	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/admission/mutator"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
@@ -39,6 +40,8 @@ var _ = Describe("Shoot mutator", func() {
 		const namespace = "garden-dev"
 
 		var (
+			ctrl         *gomock.Controller
+			mgr          *mockmanager.MockManager
 			shootMutator extensionswebhook.Mutator
 			shoot        *gardencorev1beta1.Shoot
 			oldShoot     *gardencorev1beta1.Shoot
@@ -47,10 +50,15 @@ var _ = Describe("Shoot mutator", func() {
 		)
 
 		BeforeEach(func() {
-			shootMutator = mutator.NewShootMutator()
 			scheme := runtime.NewScheme()
 			Expect(gardencorev1beta1.AddToScheme(scheme)).To(Succeed())
-			Expect(shootMutator.(inject.Scheme).InjectScheme(scheme)).To(Succeed())
+
+			ctrl = gomock.NewController(GinkgoT())
+			mgr = mockmanager.NewMockManager(ctrl)
+
+			mgr.EXPECT().GetScheme().Return(scheme)
+
+			shootMutator = mutator.NewShootMutator(mgr)
 
 			shoot = &gardencorev1beta1.Shoot{
 				ObjectMeta: metav1.ObjectMeta{

@@ -28,6 +28,7 @@ import (
 	"github.com/go-logr/logr"
 	"golang.org/x/crypto/ssh"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
@@ -42,13 +43,10 @@ type actuator struct {
 	client client.Client
 }
 
-func newActuator() bastion.Actuator {
-	return &actuator{}
-}
-
-func (a *actuator) InjectClient(client client.Client) error {
-	a.client = client
-	return nil
+func newActuator(mgr manager.Manager) bastion.Actuator {
+	return &actuator{
+		client: mgr.GetClient(),
+	}
 }
 
 func createBastionInstance(ctx context.Context, factory azureclient.Factory, opt *Options, parameters *compute.VirtualMachine) (*compute.VirtualMachine, error) {

@@ -30,6 +30,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
@@ -40,20 +41,23 @@ import (
 
 type delegateFactory struct {
 	client     client.Client
-	decoder    runtime.Decoder
 	restConfig *rest.Config
 	scheme     *runtime.Scheme
 }
 
 // NewActuator creates a new Actuator that updates the status of the handled WorkerPoolConfigs.
-func NewActuator(gardenletManagesMCM bool) worker.Actuator {
+func NewActuator(mgr manager.Manager, gardenletManagesMCM bool) (worker.Actuator, error) {
 	var (
 		mcmName              string
 		mcmChartSeed         *chart.Chart
 		mcmChartShoot        *chart.Chart
 		imageVector          imagevectorutils.ImageVector
 		chartRendererFactory extensionscontroller.ChartRendererFactory
-		workerDelegate       = &delegateFactory{}
+		workerDelegate       = &delegateFactory{
+			client:     mgr.GetClient(),
+			restConfig: mgr.GetConfig(),
+			scheme:     mgr.GetScheme(),
+		}
 	)
 
 	if !gardenletManagesMCM {
@@ -65,6 +69,7 @@ func NewActuator(gardenletManagesMCM bool) worker.Actuator {
 	}
 
 	return genericactuator.NewActuator(
+		mgr,
 		workerDelegate,
 		mcmName,
 		mcmChartSeed,
@@ -91,13 +96,13 @@ func (d *delegateFactory) WorkerDelegate(_ context.Context, worker *extensionsv1
 	}
 
 	factory := azureclient.NewAzureClientFactory(d.client)
-	return NewWorkerDelegate(d.client, d.decoder, d.scheme, seedChartApplier, serverVersion.GitVersion, worker, cluster, factory)
+	return NewWorkerDelegate(d.client, d.scheme, seedChartApplier, serverVersion.GitVersion, worker, cluster, factory)
 }
 
 type workerDelegate struct {
 	client         client.Client
-	decoder        runtime.Decoder
 	scheme         *runtime.Scheme
+	decoder        runtime.Decoder
 	lenientDecoder runtime.Decoder
 
 	seedChartApplier gardener.ChartApplier
@@ -117,7 +122,6 @@ type workerDelegate struct {
 // NewWorkerDelegate creates a new context for a worker reconciliation.
 func NewWorkerDelegate(
 	client client.Client,
-	decoder runtime.Decoder,
 	scheme *runtime.Scheme,
 	seedChartApplier gardener.ChartApplier,
 	serverVersion string,
@@ -132,8 +136,8 @@ func NewWorkerDelegate(
 
 	return &workerDelegate{
 		client:         client,
-		decoder:        decoder,
 		scheme:         scheme,
+		decoder:        serializer.NewCodecFactory(scheme, serializer.EnableStrict).UniversalDecoder(),
 		lenientDecoder: serializer.NewCodecFactory(scheme).UniversalDecoder(),
 
 		seedChartApplier: seedChartApplier,

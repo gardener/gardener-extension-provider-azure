@@ -41,8 +41,9 @@ type handler struct {
 // The LabelTopologyZone label that Azure CCM adds to nodes does not contain only the zone as it appears in Azure API
 // calls but also the region like "$region-$zone". When only "$zone" is present for the LabelTopologyZone selector key
 // this handler will adapt it to match the format that is used by the CCM labels.
-func New(log logr.Logger, opts AddOptions) *handler {
+func New(decoder *admission.Decoder, log logr.Logger, opts AddOptions) *handler {
 	return &handler{
+		decoder:  decoder,
 		log:      log,
 		region:   opts.SeedRegion,
 		provider: opts.SeedProvider,
@@ -101,11 +102,6 @@ func (h *handler) Handle(ctx context.Context, req admission.Request) admission.R
 
 	// Return a validation response if the resource should not be changed
 	return admission.ValidationResponse(true, "")
-}
-
-func (h *handler) InjectDecoder(d *admission.Decoder) error {
-	h.decoder = d
-	return nil
 }
 
 func (h *handler) Mutate(_ context.Context, new, old client.Object) error {

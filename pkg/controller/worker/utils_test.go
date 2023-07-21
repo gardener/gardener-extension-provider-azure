@@ -30,7 +30,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	apiazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
@@ -47,7 +46,7 @@ func wrapNewWorkerDelegate(client *mockclient.MockClient, seedChartApplier *mock
 	_ = apiazure.AddToScheme(scheme)
 	_ = v1alpha1.AddToScheme(scheme)
 
-	workerDelegate, err := NewWorkerDelegate(client, serializer.NewCodecFactory(scheme, serializer.EnableStrict).UniversalDecoder(), scheme, seedChartApplier, "", worker, cluster, factory)
+	workerDelegate, err := NewWorkerDelegate(client, scheme, seedChartApplier, "", worker, cluster, factory)
 	Expect(err).NotTo(HaveOccurred())
 	return workerDelegate
 }

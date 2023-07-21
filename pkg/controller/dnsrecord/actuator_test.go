@@ -20,6 +20,7 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/controller/dnsrecord"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
+	mockmanager "github.com/gardener/gardener/pkg/mock/controller-runtime/manager"
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
@@ -48,6 +49,7 @@ var _ = Describe("Actuator", func() {
 	var (
 		ctrl                    *gomock.Controller
 		c                       *mockclient.MockClient
+		mgr                     *mockmanager.MockManager
 		sw                      *mockclient.MockStatusWriter
 		azureClientFactory      *mockazureclient.MockFactory
 		azureDNSZoneClient      *mockazureclient.MockDNSZone
@@ -73,7 +75,10 @@ var _ = Describe("Actuator", func() {
 		ctx = context.TODO()
 		logger = log.Log.WithName("test")
 
-		a = NewActuator(c, azureClientFactory)
+		mgr = mockmanager.NewMockManager(ctrl)
+		mgr.EXPECT().GetClient().Return(c)
+
+		a = NewActuator(mgr, azureClientFactory)
 
 		dns = &extensionsv1alpha1.DNSRecord{
 			ObjectMeta: metav1.ObjectMeta{
