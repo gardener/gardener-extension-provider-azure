@@ -96,8 +96,8 @@ func secretConfigsFunc(namespace string) []extensionssecretsmanager.SecretConfig
 	}
 }
 
-func shootAccessSecretsFunc(namespace string) []*gutil.ShootAccessSecret {
-	return []*gutil.ShootAccessSecret{
+func shootAccessSecretsFunc(namespace string) []*gutil.AccessSecret {
+	return []*gutil.AccessSecret{
 		gutil.NewShootAccessSecret(azure.CloudControllerManagerName, namespace),
 		gutil.NewShootAccessSecret(azure.CSIControllerDiskName, namespace),
 		gutil.NewShootAccessSecret(azure.CSIControllerFileName, namespace),
