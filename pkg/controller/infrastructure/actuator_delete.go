@@ -42,7 +42,7 @@ func newAzureClientFactory(client client.Client) azureclient.Factory {
 
 // Delete implements infrastructure.Actuator.
 func (a *actuator) Delete(ctx context.Context, log logr.Logger, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
-	tf, err := internal.NewTerraformer(log, a.RESTConfig(), infrastructure.TerraformerPurpose, infra, a.disableProjectedTokenMount)
+	tf, err := internal.NewTerraformer(log, a.restConfig, infrastructure.TerraformerPurpose, infra, a.disableProjectedTokenMount)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}
@@ -57,7 +57,7 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, infra *extension
 		return err
 	}
 
-	azureClientFactory := NewAzureClientFactory(a.Client())
+	azureClientFactory := NewAzureClientFactory(a.client)
 	resourceGroupExists, err := infrastructure.IsShootResourceGroupAvailable(ctx, azureClientFactory, infra, config)
 	if err != nil {
 		if azureclient.IsAzureAPIUnauthorized(err) {
@@ -95,7 +95,7 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, infra *extension
 	}
 
 	return util.DetermineError(tf.
-		InitializeWith(ctx, terraformer.DefaultInitializer(a.Client(), terraformFiles.Main, terraformFiles.Variables, terraformFiles.TFVars, terraformer.StateConfigMapInitializerFunc(NoOpStateInitializer))).
+		InitializeWith(ctx, terraformer.DefaultInitializer(a.client, terraformFiles.Main, terraformFiles.Variables, terraformFiles.TFVars, terraformer.StateConfigMapInitializerFunc(NoOpStateInitializer))).
 		SetEnvVars(internal.TerraformerEnvVars(infra.Spec.SecretRef)...).
 		Destroy(ctx), helper.KnownCodes)
 }

@@ -57,11 +57,16 @@ func AddToManager(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 }
 
 // AddToManagerWithOpts creates the webhook with the given opts and adds that to the manager.
-func AddToManagerWithOpts(_ manager.Manager, options AddOptions) (*extensionswebhook.Webhook, error) {
+func AddToManagerWithOpts(mgr manager.Manager, options AddOptions) (*extensionswebhook.Webhook, error) {
 	logger.Info("Adding webhook to manager")
 
 	types := []extensionswebhook.Type{
 		{Obj: &corev1.Pod{}},
+	}
+
+	decoder, err := admission.NewDecoder(mgr.GetScheme())
+	if err != nil {
+		return nil, err
 	}
 
 	logger.Info("Creating webhook")
@@ -71,7 +76,7 @@ func AddToManagerWithOpts(_ manager.Manager, options AddOptions) (*extensionsweb
 		Path:     webhookPath,
 		Target:   extensionswebhook.TargetSeed,
 		Types:    types,
-		Webhook:  &admission.Webhook{Handler: New(logger, options), RecoverPanic: true},
+		Webhook:  &admission.Webhook{Handler: New(decoder, logger, options), RecoverPanic: true},
 		Selector: &metav1.LabelSelector{
 			MatchExpressions: []metav1.LabelSelectorRequirement{
 				{

@@ -153,7 +153,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 
 		workerConfig := &azureapi.WorkerConfig{}
 		if pool.ProviderConfig != nil && pool.ProviderConfig.Raw != nil {
-			if _, _, err := w.Decoder().Decode(pool.ProviderConfig.Raw, nil, workerConfig); err != nil {
+			if _, _, err := w.decoder.Decode(pool.ProviderConfig.Raw, nil, workerConfig); err != nil {
 				return fmt.Errorf("could not decode provider config: %+v", err)
 			}
 		}

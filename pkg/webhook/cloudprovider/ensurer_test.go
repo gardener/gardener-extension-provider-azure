@@ -21,16 +21,14 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/webhook/cloudprovider"
 	gcontext "github.com/gardener/gardener/extensions/pkg/webhook/context"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
+	mockmanager "github.com/gardener/gardener/pkg/mock/controller-runtime/manager"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/install"
 	. "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/cloudprovider"
 )
 
@@ -44,10 +42,10 @@ var _ = Describe("Ensurer", func() {
 		logger  = log.Log.WithName("azure-cloudprovider-webhook-test")
 		ctx     = context.TODO()
 		ensurer cloudprovider.Ensurer
-		scheme  *runtime.Scheme
 
 		ctrl *gomock.Controller
 		c    *mockclient.MockClient
+		mgr  *mockmanager.MockManager
 
 		secret                 *corev1.Secret
 		servicePrincipalSecret corev1.Secret
@@ -72,15 +70,12 @@ var _ = Describe("Ensurer", func() {
 
 		ctrl = gomock.NewController(GinkgoT())
 		c = mockclient.NewMockClient(ctrl)
-		scheme = runtime.NewScheme()
-		install.Install(scheme)
-		ensurer = NewEnsurer(logger)
 
-		err := ensurer.(inject.Scheme).InjectScheme(scheme)
-		Expect(err).NotTo(HaveOccurred())
+		mgr = mockmanager.NewMockManager(ctrl)
 
-		err = ensurer.(inject.Client).InjectClient(c)
-		Expect(err).NotTo(HaveOccurred())
+		mgr.EXPECT().GetClient().Return(c)
+
+		ensurer = NewEnsurer(mgr, logger)
 	})
 
 	AfterEach(func() {

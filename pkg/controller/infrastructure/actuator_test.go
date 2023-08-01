@@ -29,6 +29,7 @@ import (
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/extensions"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
+	mockmanager "github.com/gardener/gardener/pkg/mock/controller-runtime/manager"
 	"github.com/gardener/gardener/pkg/utils/test"
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
@@ -42,7 +43,6 @@ import (
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
@@ -65,6 +65,7 @@ var _ = Describe("Actuator", func() {
 	var (
 		ctrl               *gomock.Controller
 		c                  *mockclient.MockClient
+		mgr                *mockmanager.MockManager
 		sw                 *mockclient.MockStatusWriter
 		log                logr.Logger
 		tf                 *mockterraform.MockTerraformer
@@ -77,6 +78,8 @@ var _ = Describe("Actuator", func() {
 		providerStatus     *apiv1alpha1.InfrastructureStatus
 		tfState            *terraformer.RawState
 		revert             func()
+
+		err error
 	)
 
 	BeforeEach(func() {
@@ -87,14 +90,14 @@ var _ = Describe("Actuator", func() {
 		tf = mockterraform.NewMockTerraformer(ctrl)
 		c.EXPECT().Status().Return(sw).AnyTimes()
 
+		mgr = mockmanager.NewMockManager(ctrl)
+		mgr.EXPECT().GetClient().Return(c)
+		mgr.EXPECT().GetConfig().Return(&rest.Config{})
+
 		ctx = context.TODO()
 		log = logf.Log.WithName("test")
 
-		a = NewActuator(disableProjectedTokenMount)
-		err := a.(inject.Client).InjectClient(c)
-		Expect(err).NotTo(HaveOccurred())
-		err = a.(inject.Config).InjectConfig(&rest.Config{})
-		Expect(err).NotTo(HaveOccurred())
+		a = NewActuator(mgr, disableProjectedTokenMount)
 
 		providerConfig = &api.InfrastructureConfig{
 			Networks: api.NetworkConfig{

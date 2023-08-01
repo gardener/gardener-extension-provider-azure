@@ -24,6 +24,7 @@ import (
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
+	mockmanager "github.com/gardener/gardener/pkg/mock/controller-runtime/manager"
 	"github.com/gardener/gardener/pkg/utils"
 	secretsmanager "github.com/gardener/gardener/pkg/utils/secrets/manager"
 	fakesecretsmanager "github.com/gardener/gardener/pkg/utils/secrets/manager/fake"
@@ -39,7 +40,6 @@ import (
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
@@ -60,8 +60,9 @@ var _ = Describe("ValuesProvider", func() {
 		fakeClient         client.Client
 		fakeSecretsManager secretsmanager.Interface
 
-		c  *mockclient.MockClient
-		vp genericactuator.ValuesProvider
+		c   *mockclient.MockClient
+		vp  genericactuator.ValuesProvider
+		mgr *mockmanager.MockManager
 
 		scheme = runtime.NewScheme()
 		_      = apisazure.AddToScheme(scheme)
@@ -149,12 +150,11 @@ var _ = Describe("ValuesProvider", func() {
 		fakeSecretsManager = fakesecretsmanager.New(fakeClient, namespace)
 
 		c = mockclient.NewMockClient(ctrl)
-		vp = NewValuesProvider()
+		mgr = mockmanager.NewMockManager(ctrl)
+		mgr.EXPECT().GetClient().Return(c)
+		mgr.EXPECT().GetScheme().Return(scheme)
 
-		err := vp.(inject.Scheme).InjectScheme(scheme)
-		Expect(err).NotTo(HaveOccurred())
-		err = vp.(inject.Client).InjectClient(c)
-		Expect(err).NotTo(HaveOccurred())
+		vp = NewValuesProvider(mgr)
 
 		infrastructureStatus = defaultInfrastructureStatus.DeepCopy()
 		controlPlaneConfig = defaultControlPlaneConfig.DeepCopy()

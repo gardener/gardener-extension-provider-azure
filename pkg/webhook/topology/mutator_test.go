@@ -25,6 +25,7 @@ import (
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
@@ -49,7 +50,7 @@ var _ = Describe("Topology", func() {
 		ctrl = gomock.NewController(GinkgoT())
 		ctx = context.Background()
 
-		mutator = New(logr.Discard(), AddOptions{
+		mutator = New(&admission.Decoder{}, logr.Discard(), AddOptions{
 			SeedRegion:   region,
 			SeedProvider: azure.Type,
 		})

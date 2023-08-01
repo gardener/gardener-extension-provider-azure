@@ -25,6 +25,7 @@ import (
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	reconcilerutils "github.com/gardener/gardener/pkg/controllerutils/reconciler"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
+	mockmanager "github.com/gardener/gardener/pkg/mock/controller-runtime/manager"
 	"github.com/gardener/gardener/pkg/utils/test"
 	azurev1alpha1 "github.com/gardener/remedy-controller/pkg/apis/azure/v1alpha1"
 	"github.com/golang/mock/gomock"
@@ -34,7 +35,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 )
 
 var _ = Describe("Actuator", func() {
@@ -44,6 +44,7 @@ var _ = Describe("Actuator", func() {
 		logger = log.Log.WithName("test")
 
 		c        *mockclient.MockClient
+		mgr      *mockmanager.MockManager
 		a        *mockcontrolplane.MockActuator
 		actuator controlplane.Actuator
 
@@ -90,13 +91,13 @@ var _ = Describe("Actuator", func() {
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
 		c = mockclient.NewMockClient(ctrl)
+		mgr = mockmanager.NewMockManager(ctrl)
+		mgr.EXPECT().GetClient().Return(c)
+
 		a = mockcontrolplane.NewMockActuator(ctrl)
 		gracefulDeletionTimeout = 10 * time.Second
 		gracefulDeletionWaitInterval = 1 * time.Second
-		actuator = NewActuator(a, gracefulDeletionTimeout, gracefulDeletionWaitInterval)
-
-		err := actuator.(inject.Client).InjectClient(c)
-		Expect(err).NotTo(HaveOccurred())
+		actuator = NewActuator(mgr, a, gracefulDeletionTimeout, gracefulDeletionWaitInterval)
 	})
 
 	AfterEach(func() {

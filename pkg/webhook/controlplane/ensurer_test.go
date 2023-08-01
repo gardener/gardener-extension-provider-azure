@@ -28,6 +28,7 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
+	mockmanager "github.com/gardener/gardener/pkg/mock/controller-runtime/manager"
 	"github.com/gardener/gardener/pkg/utils/imagevector"
 	testutils "github.com/gardener/gardener/pkg/utils/test"
 	"github.com/golang/mock/gomock"
@@ -45,7 +46,6 @@ import (
 	kubeletconfigv1beta1 "k8s.io/kubelet/config/v1beta1"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
@@ -67,6 +67,7 @@ var _ = Describe("Ensurer", func() {
 
 		ensurer genericmutator.Ensurer
 		c       *mockclient.MockClient
+		mgr     *mockmanager.MockManager
 
 		dummyContext   = gcontext.NewGardenContext(nil, nil)
 		eContextK8s122 = gcontext.NewInternalGardenContext(
@@ -132,9 +133,10 @@ var _ = Describe("Ensurer", func() {
 
 		c = mockclient.NewMockClient(ctrl)
 
-		ensurer = NewEnsurer(logger, false)
-		err := ensurer.(inject.Client).InjectClient(c)
-		Expect(err).To(Not(HaveOccurred()))
+		mgr = mockmanager.NewMockManager(ctrl)
+		mgr.EXPECT().GetClient().Return(c)
+
+		ensurer = NewEnsurer(mgr, logger, false)
 	})
 
 	AfterEach(func() {
@@ -287,8 +289,6 @@ var _ = Describe("Ensurer", func() {
 					},
 				},
 			}
-
-			ensurer = NewEnsurer(logger, false)
 		})
 
 		It("should add missing elements to kube-scheduler deployment (k8s < 1.27)", func() {
@@ -307,10 +307,7 @@ var _ = Describe("Ensurer", func() {
 	})
 
 	Describe("#EnsureClusterAutoscalerDeployment", func() {
-		var (
-			dep     *appsv1.Deployment
-			ensurer genericmutator.Ensurer
-		)
+		var dep *appsv1.Deployment
 
 		BeforeEach(func() {
 			dep = &appsv1.Deployment{
@@ -327,8 +324,6 @@ var _ = Describe("Ensurer", func() {
 					},
 				},
 			}
-
-			ensurer = NewEnsurer(logger, false)
 		})
 
 		It("should add missing elements to cluster-autoscaler deployment (k8s < 1.27)", func() {
@@ -508,7 +503,8 @@ var _ = Describe("Ensurer", func() {
 
 		Context("when gardenlet does not manage MCM", func() {
 			BeforeEach(func() {
-				ensurer = NewEnsurer(logger, false)
+				mgr.EXPECT().GetClient().Return(c)
+				ensurer = NewEnsurer(mgr, logger, false)
 			})
 
 			It("should do nothing", func() {
@@ -520,7 +516,8 @@ var _ = Describe("Ensurer", func() {
 
 		Context("when gardenlet manages MCM", func() {
 			BeforeEach(func() {
-				ensurer = NewEnsurer(logger, true)
+				mgr.EXPECT().GetClient().Return(c)
+				ensurer = NewEnsurer(mgr, logger, true)
 				DeferCleanup(testutils.WithVar(&ImageVector, imagevector.ImageVector{{
 					Name:       "machine-controller-manager-provider-azure",
 					Repository: "foo",
@@ -586,7 +583,8 @@ var _ = Describe("Ensurer", func() {
 
 		Context("when gardenlet does not manage MCM", func() {
 			BeforeEach(func() {
-				ensurer = NewEnsurer(logger, false)
+				mgr.EXPECT().GetClient().Return(c)
+				ensurer = NewEnsurer(mgr, logger, false)
 			})
 
 			It("should do nothing", func() {
@@ -598,7 +596,8 @@ var _ = Describe("Ensurer", func() {
 
 		Context("when gardenlet manages MCM", func() {
 			BeforeEach(func() {
-				ensurer = NewEnsurer(logger, true)
+				mgr.EXPECT().GetClient().Return(c)
+				ensurer = NewEnsurer(mgr, logger, true)
 			})
 
 			It("should inject the sidecar container policy", func() {

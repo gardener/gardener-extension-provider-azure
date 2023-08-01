@@ -22,15 +22,16 @@ import (
 	gcontext "github.com/gardener/gardener/extensions/pkg/webhook/context"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 // NewEnsurer creates cloudprovider ensurer.
-func NewEnsurer(logger logr.Logger) cloudprovider.Ensurer {
+func NewEnsurer(mgr manager.Manager, logger logr.Logger) cloudprovider.Ensurer {
 	return &ensurer{
+		client: mgr.GetClient(),
 		logger: logger,
 	}
 }
@@ -38,17 +39,6 @@ func NewEnsurer(logger logr.Logger) cloudprovider.Ensurer {
 type ensurer struct {
 	logger logr.Logger
 	client client.Client
-}
-
-// InjectClient injects the given client into the ensurer.
-func (e *ensurer) InjectClient(client client.Client) error {
-	e.client = client
-	return nil
-}
-
-// InjectScheme injects the given scheme into the decoder of the ensurer.
-func (e *ensurer) InjectScheme(_ *runtime.Scheme) error {
-	return nil
 }
 
 // EnsureCloudProviderSecret ensures that cloudprovider secret contain
