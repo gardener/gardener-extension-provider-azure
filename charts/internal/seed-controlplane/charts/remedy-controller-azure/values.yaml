@@ -6,8 +6,6 @@ resources:
   requests:
     cpu: 50m
     memory: 72M 
-  limits:
-    memory: 1.4Gi
 
 manager:
   metricsPort: 10258
