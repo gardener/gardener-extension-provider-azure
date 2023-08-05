@@ -69,9 +69,6 @@ spec:
         - --tls-cipher-suites={{ .Values.tlsCipherSuites | join "," }}
         - --use-service-account-credentials
         - --v=2
-        {{- if semverCompare ">= 1.26.0-0, < 1.28.0-0" .Values.kubernetesVersion }}
-        - --deprecated-apply-beta-topology-labels=true
-        {{- end }}
         livenessProbe:
           httpGet:
             path: /healthz
