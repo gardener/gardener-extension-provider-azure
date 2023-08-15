@@ -230,10 +230,11 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			topology.SeedRegion = seedOptions.Completed().Region
 			topology.SeedProvider = seedOptions.Completed().Provider
 
-			if _, err := webhookOptions.Completed().AddToManager(ctx, mgr); err != nil {
+			shootWebhookConfig, err := webhookOptions.Completed().AddToManager(ctx, mgr)
+			if err != nil {
 				return fmt.Errorf("could not add webhooks to manager: %w", err)
 			}
-
+			azurecontrolplane.DefaultAddOptions.ShootWebhookConfig = shootWebhookConfig
 			azurecontrolplane.DefaultAddOptions.WebhookServerNamespace = webhookOptions.Server.Namespace
 
 			if err := controllerSwitches.Completed().AddToManager(ctx, mgr); err != nil {
