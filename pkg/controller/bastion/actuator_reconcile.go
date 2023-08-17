@@ -40,8 +40,10 @@ import (
 )
 
 const (
+	// IMAGE_PUBLISHER a const for the image published used in bastion.
 	IMAGE_PUBLISHER = "Canonical"
-	IMAGE_OFFER     = "0001-com-ubuntu-server-jammy"
+	// IMAGE_OFFER a const for the image offer used in bastion.
+	IMAGE_OFFER = "0001-com-ubuntu-server-jammy"
 )
 
 // bastionEndpoints holds the endpoints the bastion host provides
