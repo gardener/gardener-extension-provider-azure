@@ -32,12 +32,18 @@ import (
 	"github.com/gardener/gardener/pkg/extensions"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
+)
+
+const (
+	// IMAGE_PUBLISHER a const for the image published used in bastion.
+	IMAGE_PUBLISHER = "Canonical"
+	// IMAGE_OFFER a const for the image offer used in bastion.
+	IMAGE_OFFER = "0001-com-ubuntu-server-jammy"
 )
 
 // bastionEndpoints holds the endpoints the bastion host provides
@@ -55,7 +61,7 @@ func (be *bastionEndpoints) Ready() bool {
 }
 
 func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster) error {
-	var factory = azureclient.NewAzureClientFactory(a.client)
+	factory := azureclient.NewAzureClientFactory(a.client)
 
 	infrastructureStatus, err := getInfrastructureStatus(ctx, a, cluster)
 	if err != nil {
@@ -478,30 +484,28 @@ func getLatestSku(ctx context.Context, opt *Options, factory azureclient.Factory
 		return nil, err
 	}
 
-	result, err := vmImageclient.ListSkus(ctx, opt.Location, "Canonical", "UbuntuServer")
+	result, err := vmImageclient.ListSkus(ctx, opt.Location, IMAGE_PUBLISHER, IMAGE_OFFER)
 	if err != nil {
 		return nil, err
 	}
 
-	sku := sets.NewString()
-	re := regexp.MustCompile(`\d{2}\.\d{2}$`)
-	// regex only xx.xx version eg 18.04, 19.04
+	re := regexp.MustCompile(`^\d+_\d+-(?:lts|LTS)$`)
+	var sku string
 	for _, v := range *result.Value {
 		if re.MatchString(*v.Name) {
-			sku.Insert(*v.Name)
+			// images are sorted by the api and we only need to keep the latest image
+			sku = *v.Name
 		}
-
 	}
 
-	if sku.List()[len(sku.List())-1] == "" {
+	if sku == "" {
 		return nil, errors.New("sku not found")
 	}
 
 	return &compute.ImageReference{
-		Publisher: to.StringPtr("Canonical"),
-		Offer:     to.StringPtr("UbuntuServer"),
-		Sku:       to.StringPtr(sku.List()[len(sku.List())-1]),
+		Publisher: to.StringPtr(IMAGE_PUBLISHER),
+		Offer:     to.StringPtr(IMAGE_OFFER),
+		Sku:       to.StringPtr(sku),
 		Version:   to.StringPtr("latest"),
 	}, nil
-
 }
