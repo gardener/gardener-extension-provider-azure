@@ -25,7 +25,6 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
 	"github.com/gardener/gardener/extensions/pkg/controller/heartbeat"
 	heartbeatcmd "github.com/gardener/gardener/extensions/pkg/controller/heartbeat/cmd"
-	"github.com/gardener/gardener/extensions/pkg/controller/worker"
 	"github.com/gardener/gardener/extensions/pkg/util"
 	webhookcmd "github.com/gardener/gardener/extensions/pkg/webhook/cmd"
 	gardenerhealthz "github.com/gardener/gardener/pkg/healthz"
@@ -124,10 +123,6 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 		workerCtrlOpts = &controllercmd.ControllerOptions{
 			MaxConcurrentReconciles: 5,
 		}
-		workerReconcileOpts = &worker.Options{
-			DeployCRDs: true,
-		}
-		workerCtrlOptsUnprefixed = controllercmd.NewOptionAggregator(workerCtrlOpts, workerReconcileOpts)
 
 		// options for the webhook server
 		webhookServerOptions = &webhookcmd.ServerOptions{
@@ -157,7 +152,7 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			controllercmd.PrefixOption("csimigration-", csiMigrationCtrlOpts),
 			controllercmd.PrefixOption("dnsrecord-", dnsRecordCtrlOpts),
 			controllercmd.PrefixOption("infrastructure-", infraCtrlOpts),
-			controllercmd.PrefixOption("worker-", &workerCtrlOptsUnprefixed),
+			controllercmd.PrefixOption("worker-", workerCtrlOpts),
 			controllercmd.PrefixOption("healthcheck-", healthCheckCtrlOpts),
 			controllercmd.PrefixOption("heartbeat-", heartbeatCtrlOpts),
 			configFileOpts,
@@ -183,12 +178,6 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			}
 
 			util.ApplyClientConnectionConfigurationToRESTConfig(configFileOpts.Completed().Config.ClientConnection, restOpts.Completed().Config)
-
-			if workerReconcileOpts.Completed().DeployCRDs {
-				if err := worker.ApplyMachineResourcesForConfig(ctx, restOpts.Completed().Config); err != nil {
-					return fmt.Errorf("error ensuring the machine CRDs: %w", err)
-				}
-			}
 
 			mgr, err := manager.New(restOpts.Completed().Config, mgrOpts.Completed().Options())
 			if err != nil {
