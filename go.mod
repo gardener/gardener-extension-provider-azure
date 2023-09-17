@@ -1,6 +1,8 @@
 module github.com/gardener/gardener-extension-provider-azure
 
-go 1.20
+go 1.21
+
+toolchain go1.21.0
 
 require (
 	github.com/Azure/azure-sdk-for-go v61.1.0+incompatible
@@ -13,8 +15,8 @@ require (
 	github.com/Masterminds/sprig v2.22.0+incompatible
 	github.com/ahmetb/gen-crd-api-reference-docs v0.3.0
 	github.com/coreos/go-systemd/v22 v22.4.0
-	github.com/gardener/etcd-druid v0.18.1
-	github.com/gardener/gardener v1.75.0
+	github.com/gardener/etcd-druid v0.19.2
+	github.com/gardener/gardener v1.79.0
 	github.com/gardener/gardener-extension-networking-calico v1.27.1
 	github.com/gardener/gardener-extension-networking-cilium v1.18.0
 	github.com/gardener/machine-controller-manager v0.48.1
@@ -37,7 +39,7 @@ require (
 	k8s.io/kubelet v0.27.5
 	k8s.io/utils v0.0.0-20230209194617-a36077c30491
 	sigs.k8s.io/controller-runtime v0.15.2
-	sigs.k8s.io/controller-tools v0.11.3
+	sigs.k8s.io/controller-tools v0.11.4
 )
 
 require (
@@ -128,6 +130,7 @@ require (
 	github.com/ulikunitz/xz v0.5.10 // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
+	go.uber.org/mock v0.2.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/mod v0.10.0 // indirect
@@ -147,13 +150,14 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	istio.io/api v0.0.0-20230217221049-9d422bf48675 // indirect
 	istio.io/client-go v1.17.1 // indirect
+	k8s.io/apiserver v0.27.5 // indirect
 	k8s.io/gengo v0.0.0-20220902162205-c0856e24416d // indirect
 	k8s.io/helm v2.16.1+incompatible // indirect
 	k8s.io/klog v1.0.0 // indirect
 	k8s.io/klog/v2 v2.90.1 // indirect
-	k8s.io/kube-aggregator v0.26.3 // indirect
+	k8s.io/kube-aggregator v0.27.5 // indirect
 	k8s.io/kube-openapi v0.0.0-20230501164219-8b0f38b5fd1f // indirect
-	k8s.io/metrics v0.26.3 // indirect
+	k8s.io/metrics v0.27.5 // indirect
 	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20221212190805-d4f1e822ca11 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
