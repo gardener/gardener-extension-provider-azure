@@ -11,7 +11,7 @@ import (
 	network "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
 	resources "github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
 	client "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 	v1 "k8s.io/api/core/v1"
 )
 
