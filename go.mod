@@ -2,8 +2,6 @@ module github.com/gardener/gardener-extension-provider-azure
 
 go 1.21
 
-toolchain go1.21.0
-
 require (
 	github.com/Azure/azure-sdk-for-go v61.1.0+incompatible
 	github.com/Azure/azure-storage-blob-go v0.8.0
