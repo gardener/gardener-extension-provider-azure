@@ -14,34 +14,6 @@ images:
       availability_requirement: 'low'
 
 - name: cloud-controller-manager
-  sourceRepository: github.com/gardener/cloud-provider-azure
-  repository: eu.gcr.io/gardener-project/kubernetes/cloud-provider-azure
-  tag: "v1.22.17"
-  targetVersion: "1.22.x"
-  labels:
-  - name: 'gardener.cloud/cve-categorisation'
-    value:
-      network_exposure: 'protected'
-      authentication_enforced: false
-      user_interaction: 'gardener-operator'
-      confidentiality_requirement: 'high'
-      integrity_requirement: 'high'
-      availability_requirement: 'low'
-- name: cloud-controller-manager
-  sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
-  repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-controller-manager
-  tag: "v1.23.30"
-  targetVersion: "1.23.x"
-  labels:
-  - name: 'gardener.cloud/cve-categorisation'
-    value:
-      network_exposure: 'protected'
-      authentication_enforced: false
-      user_interaction: 'gardener-operator'
-      confidentiality_requirement: 'high'
-      integrity_requirement: 'high'
-      availability_requirement: 'low'
-- name: cloud-controller-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-controller-manager
   tag: "v1.24.21"
@@ -112,20 +84,6 @@ images:
       integrity_requirement: 'high'
       availability_requirement: 'low'
 
-- name: cloud-node-manager
-  sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
-  repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-node-manager
-  tag: "v1.23.30"
-  targetVersion: "< 1.24"
-  labels:
-  - name: 'gardener.cloud/cve-categorisation'
-    value:
-      network_exposure: 'protected'
-      authentication_enforced: false
-      user_interaction: 'gardener-operator'
-      confidentiality_requirement: 'high'
-      integrity_requirement: 'high'
-      availability_requirement: 'low'
 - name: cloud-node-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-node-manager
