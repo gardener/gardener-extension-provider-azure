@@ -15,8 +15,6 @@
 package azure
 
 import (
-	"path/filepath"
-
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 )
 
@@ -155,12 +153,5 @@ const (
 	ExtensionPurposeServicePrincipalSecret = "tenant-service-principal-secret"
 )
 
-var (
-	// ChartsPath is the path to the charts
-	ChartsPath = filepath.Join("charts")
-	// InternalChartsPath is the path to the internal charts
-	InternalChartsPath = filepath.Join(ChartsPath, "internal")
-
-	// UsernamePrefix is a constant for the username prefix of components deployed by Azure.
-	UsernamePrefix = extensionsv1alpha1.SchemeGroupVersion.Group + ":" + Name + ":"
-)
+// UsernamePrefix is a constant for the username prefix of components deployed by Azure.
+var UsernamePrefix = extensionsv1alpha1.SchemeGroupVersion.Group + ":" + Name + ":"

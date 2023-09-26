@@ -49,6 +49,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
+	"github.com/gardener/gardener-extension-provider-azure/charts"
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	azureapihelper "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
@@ -115,8 +116,9 @@ func shootAccessSecretsFunc(namespace string) []*gutil.AccessSecret {
 
 var (
 	configChart = &chart.Chart{
-		Name: "cloud-provider-config",
-		Path: filepath.Join(azure.InternalChartsPath, "cloud-provider-config"),
+		Name:       "cloud-provider-config",
+		EmbeddedFS: &charts.InternalChart,
+		Path:       filepath.Join(charts.InternalChartsPath, "cloud-provider-config"),
 		Objects: []*chart.Object{
 			{
 				Type: &corev1.Secret{},
@@ -130,8 +132,9 @@ var (
 	}
 
 	controlPlaneChart = &chart.Chart{
-		Name: "seed-controlplane",
-		Path: filepath.Join(azure.InternalChartsPath, "seed-controlplane"),
+		Name:       "seed-controlplane",
+		EmbeddedFS: &charts.InternalChart,
+		Path:       filepath.Join(charts.InternalChartsPath, "seed-controlplane"),
 		SubCharts: []*chart.Chart{
 			{
 				Name:   azure.CloudControllerManagerName,
@@ -187,8 +190,9 @@ var (
 	}
 
 	controlPlaneShootChart = &chart.Chart{
-		Name: "shoot-system-components",
-		Path: filepath.Join(azure.InternalChartsPath, "shoot-system-components"),
+		Name:       "shoot-system-components",
+		EmbeddedFS: &charts.InternalChart,
+		Path:       filepath.Join(charts.InternalChartsPath, "shoot-system-components"),
 		SubCharts: []*chart.Chart{
 			{
 				Name: "allow-egress",
@@ -273,8 +277,9 @@ var (
 	}
 
 	controlPlaneShootCRDsChart = &chart.Chart{
-		Name: "shoot-crds",
-		Path: filepath.Join(azure.InternalChartsPath, "shoot-crds"),
+		Name:       "shoot-crds",
+		EmbeddedFS: &charts.InternalChart,
+		Path:       filepath.Join(charts.InternalChartsPath, "shoot-crds"),
 		SubCharts: []*chart.Chart{
 			{
 				Name: "volumesnapshots",
@@ -288,8 +293,9 @@ var (
 	}
 
 	storageClassChart = &chart.Chart{
-		Name: "shoot-storageclasses",
-		Path: filepath.Join(azure.InternalChartsPath, "shoot-storageclasses"),
+		Name:       "shoot-storageclasses",
+		EmbeddedFS: &charts.InternalChart,
+		Path:       filepath.Join(charts.InternalChartsPath, "shoot-storageclasses"),
 	}
 )
 

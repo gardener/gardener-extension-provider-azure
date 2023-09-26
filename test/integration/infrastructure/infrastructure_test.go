@@ -181,9 +181,7 @@ var _ = BeforeSuite(func() {
 	flag.Parse()
 	validateFlags()
 
-	internalChartsPath := azure.InternalChartsPath
 	repoRoot := filepath.Join("..", "..", "..")
-	azure.InternalChartsPath = filepath.Join(repoRoot, azure.InternalChartsPath)
 
 	logf.SetLogger(logger.MustNewZapLogger(logger.DebugLevel, logger.FormatJSON, zap.WriteTo(GinkgoWriter)))
 
@@ -200,8 +198,6 @@ var _ = BeforeSuite(func() {
 
 		By("stopping test environment")
 		Expect(testEnv.Stop()).To(Succeed())
-
-		azure.InternalChartsPath = internalChartsPath
 	})
 
 	By("starting test environment")

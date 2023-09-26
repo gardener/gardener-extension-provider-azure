@@ -27,13 +27,15 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 
+	"github.com/gardener/gardener-extension-provider-azure/charts"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 var (
 	mcmChart = &chart.Chart{
-		Name: azure.MachineControllerManagerName,
-		Path: filepath.Join(azure.InternalChartsPath, azure.MachineControllerManagerName, "seed"),
+		Name:       azure.MachineControllerManagerName,
+		EmbeddedFS: &charts.InternalChart,
+		Path:       filepath.Join(charts.InternalChartsPath, azure.MachineControllerManagerName, "seed"),
 		Images: []string{azure.MachineControllerManagerImageName,
 			azure.MachineControllerManagerProviderAzureImageName},
 		Objects: []*chart.Object{
@@ -47,8 +49,9 @@ var (
 	}
 
 	mcmShootChart = &chart.Chart{
-		Name: azure.MachineControllerManagerName,
-		Path: filepath.Join(azure.InternalChartsPath, azure.MachineControllerManagerName, "shoot"),
+		Name:       azure.MachineControllerManagerName,
+		EmbeddedFS: &charts.InternalChart,
+		Path:       filepath.Join(charts.InternalChartsPath, azure.MachineControllerManagerName, "shoot"),
 		Objects: []*chart.Object{
 			{Type: &rbacv1.ClusterRole{}, Name: fmt.Sprintf("extensions.gardener.cloud:%s:%s", azure.Name, azure.MachineControllerManagerName)},
 			{Type: &rbacv1.ClusterRoleBinding{}, Name: fmt.Sprintf("extensions.gardener.cloud:%s:%s", azure.Name, azure.MachineControllerManagerName)},
