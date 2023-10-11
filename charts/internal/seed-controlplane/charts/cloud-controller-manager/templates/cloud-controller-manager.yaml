@@ -38,32 +38,22 @@ spec:
         image: {{ index .Values.images "cloud-controller-manager" }}
         imagePullPolicy: IfNotPresent
         command:
-        {{- if semverCompare ">= 1.23" .Values.kubernetesVersion }}
         - /usr/local/bin/cloud-controller-manager
         - --allocate-node-cidrs=false
-        {{- else }}
-        - /azure-cloud-controller-manager
-        - --allocate-node-cidrs=true
-        {{- end }}
         - --cloud-provider=azure
         - --cloud-config=/etc/kubernetes/cloudprovider/cloudprovider.conf
         - --cluster-cidr={{ .Values.podNetwork }}
         - --cluster-name={{ .Values.clusterName }}
         - --concurrent-service-syncs=1
         - --configure-cloud-routes=true
-        {{- if semverCompare ">= 1.23" .Values.kubernetesVersion }}
         - --controllers=*,-cloud-node
         - --route-reconciliation-period=10s
-        {{- end }}
         {{- include "cloud-controller-manager.featureGates" . | trimSuffix "," | indent 8 }}
         - --kubeconfig=/var/run/secrets/gardener.cloud/shoot/generic-kubeconfig/kubeconfig
         - --authentication-kubeconfig=/var/run/secrets/gardener.cloud/shoot/generic-kubeconfig/kubeconfig
         - --authorization-kubeconfig=/var/run/secrets/gardener.cloud/shoot/generic-kubeconfig/kubeconfig
         - --leader-elect=true
         - --secure-port={{ include "cloud-controller-manager.port" . }}
-        {{- if semverCompare "< 1.24" .Values.kubernetesVersion }}
-        - --port=0
-        {{- end }}
         - --tls-cert-file=/var/lib/cloud-controller-manager-server/tls.crt
         - --tls-private-key-file=/var/lib/cloud-controller-manager-server/tls.key
         - --tls-cipher-suites={{ .Values.tlsCipherSuites | join "," }}

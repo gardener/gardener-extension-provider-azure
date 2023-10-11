@@ -357,7 +357,7 @@ func (e *ensurer) ensureChecksumAnnotations(template *corev1.PodTemplateSpec) er
 }
 
 // EnsureKubeletServiceUnitOptions ensures that the kubelet.service unit options conform to the provider requirements.
-func (e *ensurer) EnsureKubeletServiceUnitOptions(ctx context.Context, gctx gcontext.GardenContext, kubeletVersion *semver.Version, new, _ []*unit.UnitOption) ([]*unit.UnitOption, error) {
+func (e *ensurer) EnsureKubeletServiceUnitOptions(ctx context.Context, gctx gcontext.GardenContext, _ *semver.Version, new, _ []*unit.UnitOption) ([]*unit.UnitOption, error) {
 	cluster, err := gctx.GetCluster(ctx)
 	if err != nil {
 		return nil, err
@@ -365,7 +365,7 @@ func (e *ensurer) EnsureKubeletServiceUnitOptions(ctx context.Context, gctx gcon
 
 	if opt := extensionswebhook.UnitOptionWithSectionAndName(new, "Service", "ExecStart"); opt != nil {
 		command := extensionswebhook.DeserializeCommandLine(opt.Value)
-		command, err := e.ensureKubeletCommandLineArgs(ctx, cluster, command, kubeletVersion)
+		command, err := e.ensureKubeletCommandLineArgs(ctx, cluster, command)
 		if err != nil {
 			return nil, err
 		}
@@ -374,12 +374,8 @@ func (e *ensurer) EnsureKubeletServiceUnitOptions(ctx context.Context, gctx gcon
 	return new, nil
 }
 
-func (e *ensurer) ensureKubeletCommandLineArgs(ctx context.Context, cluster *extensionscontroller.Cluster, command []string, kubeletVersion *semver.Version) ([]string, error) {
+func (e *ensurer) ensureKubeletCommandLineArgs(ctx context.Context, cluster *extensionscontroller.Cluster, command []string) ([]string, error) {
 	command = extensionswebhook.EnsureStringWithPrefix(command, "--cloud-provider=", "external")
-
-	if !version.ConstraintK8sGreaterEqual123.Check(kubeletVersion) {
-		command = extensionswebhook.EnsureStringWithPrefix(command, "--enable-controller-attach-detach=", "true")
-	}
 
 	acrConfigMap, err := e.getAcrConfigMap(ctx, cluster)
 	if err != nil {
@@ -409,9 +405,7 @@ func (e *ensurer) EnsureKubeletConfiguration(_ context.Context, _ gcontext.Garde
 	new.FeatureGates["InTreePluginAzureDiskUnregister"] = true
 	new.FeatureGates["InTreePluginAzureFileUnregister"] = true
 
-	if version.ConstraintK8sGreaterEqual123.Check(kubeletVersion) {
-		new.EnableControllerAttachDetach = pointer.Bool(true)
-	}
+	new.EnableControllerAttachDetach = pointer.Bool(true)
 
 	return nil
 }

@@ -1,5 +1,3 @@
-{{- if semverCompare ">= 1.23" .Capabilities.KubeVersion.GitVersion -}}
----
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -120,5 +118,4 @@ spec:
     name: cloud-node-manager
   updatePolicy:
     updateMode: "Auto"
-{{- end }}
 {{- end }}
