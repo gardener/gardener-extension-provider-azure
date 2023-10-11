@@ -15,8 +15,6 @@ require (
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/gardener/etcd-druid v0.20.1
 	github.com/gardener/gardener v1.81.0
-	github.com/gardener/gardener-extension-networking-calico v1.27.1
-	github.com/gardener/gardener-extension-networking-cilium v1.18.0
 	github.com/gardener/machine-controller-manager v0.50.0
 	github.com/gardener/remedy-controller v0.6.0
 	github.com/go-logr/logr v1.2.4

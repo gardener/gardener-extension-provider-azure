@@ -15,7 +15,6 @@
 package network
 
 import (
-	"github.com/gardener/gardener-extension-networking-calico/pkg/calico"
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	"github.com/gardener/gardener/extensions/pkg/webhook/network"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -32,7 +31,7 @@ func AddToManager(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 	logger.Info("Adding webhook to manager")
 	return network.New(mgr, network.Args{
 		CloudProvider:   azure.Type,
-		NetworkProvider: calico.Type,
+		NetworkProvider: "calico",
 		Types: []extensionswebhook.Type{
 			{Obj: &extensionsv1alpha1.Network{}},
 		},
