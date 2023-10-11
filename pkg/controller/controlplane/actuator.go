@@ -101,6 +101,16 @@ func (a *actuator) Delete(
 	return nil
 }
 
+// ForceDelete forcefully deletes the controlplane.
+func (a *actuator) ForceDelete(
+	ctx context.Context,
+	log logr.Logger,
+	cp *extensionsv1alpha1.ControlPlane,
+	cluster *extensionscontroller.Cluster,
+) error {
+	return a.Delete(ctx, log, cp, cluster)
+}
+
 // Migrate reconciles the given controlplane and cluster, migrating the additional
 // control plane components as needed.
 // Before delegating to the composed Actuator, it ensures that all remedy controller resources have been deleted.

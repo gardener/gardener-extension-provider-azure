@@ -100,6 +100,10 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, infra *extension
 		Destroy(ctx), helper.KnownCodes)
 }
 
+func (a *actuator) ForceDelete(_ context.Context, _ logr.Logger, _ *extensionsv1alpha1.Infrastructure, _ *controller.Cluster) error {
+	return nil
+}
+
 // NoOpStateInitializer is a no-op StateConfigMapInitializerFunc.
 func NoOpStateInitializer(_ context.Context, _ client.Client, _, _ string, _ *metav1.OwnerReference) error {
 	return nil
