@@ -43,8 +43,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
+	"github.com/gardener/gardener-extension-provider-azure/imagevector"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/imagevector"
 )
 
 const (

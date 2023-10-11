@@ -54,6 +54,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	azureinstall "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/install"
 	azurev1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
@@ -181,9 +182,7 @@ var _ = BeforeSuite(func() {
 	flag.Parse()
 	validateFlags()
 
-	internalChartsPath := azure.InternalChartsPath
 	repoRoot := filepath.Join("..", "..", "..")
-	azure.InternalChartsPath = filepath.Join(repoRoot, azure.InternalChartsPath)
 
 	logf.SetLogger(logger.MustNewZapLogger(logger.DebugLevel, logger.FormatJSON, zap.WriteTo(GinkgoWriter)))
 
@@ -200,8 +199,6 @@ var _ = BeforeSuite(func() {
 
 		By("stopping test environment")
 		Expect(testEnv.Stop()).To(Succeed())
-
-		azure.InternalChartsPath = internalChartsPath
 	})
 
 	By("starting test environment")
@@ -218,7 +215,9 @@ var _ = BeforeSuite(func() {
 	cfg, err := testEnv.Start()
 	Expect(err).ToNot(HaveOccurred())
 	mgr, err := manager.New(cfg, manager.Options{
-		MetricsBindAddress: "0",
+		Metrics: server.Options{
+			BindAddress: "0",
+		},
 	})
 	Expect(err).ToNot(HaveOccurred())
 
