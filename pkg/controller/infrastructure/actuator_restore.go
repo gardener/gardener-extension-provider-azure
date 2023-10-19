@@ -16,32 +16,36 @@ package infrastructure
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
-	"github.com/gardener/gardener/extensions/pkg/terraformer"
+	"github.com/gardener/gardener/extensions/pkg/util"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/go-logr/logr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 )
 
 // Restore implements infrastructure.Actuator.
 func (a *actuator) Restore(ctx context.Context, log logr.Logger, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
-	infraState := &InfrastructureState{}
-	if err := json.Unmarshal(infra.Status.State.Raw, infraState); err != nil {
-		return err
-	}
+	return util.DetermineError(a.restore(ctx, log, SelectorFunc(OnRestore), infra, cluster), helper.KnownCodes)
+}
 
-	terraformState, err := terraformer.UnmarshalRawState(infraState.TerraformState)
+func (a *actuator) restore(ctx context.Context, logger logr.Logger, selector StrategySelector, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
+	useFlow, err := selector.Select(infra, cluster)
 	if err != nil {
 		return err
 	}
 
-	patch := client.MergeFrom(infra.DeepCopy())
-	infra.Status.ProviderStatus = infraState.SavedProviderStatus
-	if err := a.client.Status().Patch(ctx, infra, patch); err != nil {
-		return err
+	factory := ReconcilerFactoryImpl{
+		ctx:   ctx,
+		log:   logger,
+		a:     a,
+		infra: infra,
 	}
 
-	return a.reconcile(ctx, log, infra, cluster, terraformer.CreateOrUpdateState{State: &terraformState.Data})
+	reconciler, err := factory.Build(useFlow)
+	if err != nil {
+		return err
+	}
+	return reconciler.Restore(ctx, infra, cluster)
 }

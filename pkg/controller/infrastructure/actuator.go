@@ -15,30 +15,11 @@
 package infrastructure
 
 import (
-	"context"
-	"encoding/json"
-
-	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/infrastructure"
-	"github.com/gardener/gardener/extensions/pkg/terraformer"
-	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-
-	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	infrainternal "github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 )
-
-// InfrastructureState represents the last known State of an Infrastructure resource.
-// It is saved after a reconciliation and used during restore operations.
-type InfrastructureState struct {
-	// SavedProviderStatus contains the infrastructure's ProviderStatus.
-	SavedProviderStatus *runtime.RawExtension `json:"savedProviderStatus,omitempty"`
-	// TerraformState contains the state of the applied terraform config.
-	TerraformState *runtime.RawExtension `json:"terraformState,omitempty"`
-}
 
 type actuator struct {
 	client                     client.Client
@@ -53,40 +34,4 @@ func NewActuator(mgr manager.Manager, disableProjectedTokenMount bool) infrastru
 		restConfig:                 mgr.GetConfig(),
 		disableProjectedTokenMount: disableProjectedTokenMount,
 	}
-}
-
-func (a *actuator) updateProviderStatus(ctx context.Context, tf terraformer.Terraformer, infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig, cluster *controller.Cluster) error {
-	status, err := infrainternal.ComputeStatus(ctx, tf, infra, config, cluster)
-	if err != nil {
-		return err
-	}
-
-	terraformState, err := tf.GetRawState(ctx)
-	if err != nil {
-		return err
-	}
-
-	stateByte, err := terraformState.Marshal()
-	if err != nil {
-		return err
-	}
-
-	infraState := &InfrastructureState{
-		SavedProviderStatus: &runtime.RawExtension{
-			Object: status,
-		},
-		TerraformState: &runtime.RawExtension{
-			Raw: stateByte,
-		},
-	}
-
-	infraStateBytes, err := json.Marshal(infraState)
-	if err != nil {
-		return err
-	}
-
-	patch := client.MergeFrom(infra.DeepCopy())
-	infra.Status.ProviderStatus = &runtime.RawExtension{Object: status}
-	infra.Status.State = &runtime.RawExtension{Raw: infraStateBytes}
-	return a.client.Status().Patch(ctx, infra, patch)
 }

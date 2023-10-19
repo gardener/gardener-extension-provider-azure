@@ -127,12 +127,12 @@ func ComputeTerraformerTemplateValues(
 		}
 	)
 
-	primaryAvSetRequired, err := isPrimaryAvailabilitySetRequired(infra, config, cluster)
+	primaryAvSetRequired, err := IsPrimaryAvailabilitySetRequired(infra, config, cluster)
 	if err != nil {
 		return nil, err
 	}
 
-	// check if we should use an existing ResourceGroup or create a new one
+	// check if we should use an existing ResourceGroupName or create a new one
 	if config.ResourceGroup != nil {
 		createResourceGroup = false
 		resourceGroupName = config.ResourceGroup.Name
@@ -361,7 +361,7 @@ type TerraformState struct {
 	Subnets []terraformSubnet
 	// RouteTableName is the name of the route table.
 	RouteTableName string
-	// SecurityGroupName is the name of the security group.
+	// SecuritGroupName is the name of the security group.
 	SecurityGroupName string
 	// IdentityID is the id of the identity.
 	IdentityID string
@@ -385,7 +385,7 @@ func ExtractTerraformState(ctx context.Context, tf terraformer.Terraformer, infr
 	}
 
 	outputKeys = append(outputKeys, computeSubnetOutputKeys(infra, config)...)
-	primaryAvSetRequired, err := isPrimaryAvailabilitySetRequired(infra, config, cluster)
+	primaryAvSetRequired, err := IsPrimaryAvailabilitySetRequired(infra, config, cluster)
 	if err != nil {
 		return nil, err
 	}
@@ -509,8 +509,8 @@ func StatusFromTerraformState(config *api.InfrastructureConfig, tfState *Terrafo
 	return &infraState
 }
 
-// ComputeStatus computes the status based on the Terraformer and the given InfrastructureConfig.
-func ComputeStatus(ctx context.Context, tf terraformer.Terraformer, infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig, cluster *controller.Cluster) (*apiv1alpha1.InfrastructureStatus, error) {
+// ComputeTerraformStatus computes the status based on the Terraformer and the given InfrastructureConfig.
+func ComputeTerraformStatus(ctx context.Context, tf terraformer.Terraformer, infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig, cluster *controller.Cluster) (*apiv1alpha1.InfrastructureStatus, error) {
 	state, err := ExtractTerraformState(ctx, tf, infra, config, cluster)
 	if err != nil {
 		return nil, err
@@ -581,8 +581,8 @@ func findDomainCounts(cluster *controller.Cluster, infra *extensionsv1alpha1.Inf
 	}, nil
 }
 
-// isPrimaryAvailabilitySetRequired determines if a cluster primary AvailabilitySet is required.
-func isPrimaryAvailabilitySetRequired(infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig, cluster *controller.Cluster) (bool, error) {
+// IsPrimaryAvailabilitySetRequired determines if a cluster primary AvailabilitySet is required.
+func IsPrimaryAvailabilitySetRequired(infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig, cluster *controller.Cluster) (bool, error) {
 	if config.Zoned {
 		return false, nil
 	}

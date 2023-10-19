@@ -16,46 +16,36 @@ package infrastructure
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
-	"github.com/gardener/gardener/extensions/pkg/terraformer"
 	"github.com/gardener/gardener/extensions/pkg/util"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/go-logr/logr"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 )
 
 // Reconcile implements infrastructure.Actuator.
 func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
-	return a.reconcile(ctx, log, infra, cluster, terraformer.StateConfigMapInitializerFunc(terraformer.CreateState))
+	return util.DetermineError(a.reconcile(ctx, log, SelectorFunc(OnReconcile), infra, cluster), helper.KnownCodes)
 }
 
-func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster, stateInitializer terraformer.StateConfigMapInitializer) error {
-	config, err := helper.InfrastructureConfigFromInfrastructure(infra)
+func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, selector StrategySelector, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
+	useFlow, err := selector.Select(infra, cluster)
 	if err != nil {
 		return err
 	}
 
-	terraformFiles, err := infrastructure.RenderTerraformerTemplate(infra, config, cluster)
+	factory := ReconcilerFactoryImpl{
+		ctx:   ctx,
+		log:   logger,
+		a:     a,
+		infra: infra,
+	}
+
+	reconciler, err := factory.Build(useFlow)
 	if err != nil {
 		return err
 	}
-
-	tf, err := internal.NewTerraformerWithAuth(logger, a.restConfig, infrastructure.TerraformerPurpose, infra, a.disableProjectedTokenMount)
-	if err != nil {
-		return util.DetermineError(err, helper.KnownCodes)
-	}
-
-	if err := tf.
-		InitializeWith(ctx, terraformer.DefaultInitializer(a.client, terraformFiles.Main, terraformFiles.Variables, terraformFiles.TFVars, stateInitializer)).
-		Apply(ctx); err != nil {
-
-		return util.DetermineError(fmt.Errorf("failed to apply the terraform config: %w", err), helper.KnownCodes)
-	}
-
-	return a.updateProviderStatus(ctx, tf, infra, config, cluster)
+	return reconciler.Reconcile(ctx, infra, cluster)
 }

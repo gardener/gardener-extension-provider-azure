@@ -17,189 +17,159 @@ package client
 import (
 	"context"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
-	"github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-05-01/dns"
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
-	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
-	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-04-01/storage"
-	"github.com/Azure/azure-storage-blob-go/azblob"
+	"github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
 	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
 // Factory represents a factory to produce clients for various Azure services.
 type Factory interface {
-	Group(context.Context, corev1.SecretReference) (Group, error)
+	Auth() *internal.ClientAuth
+
 	Storage(context.Context, corev1.SecretReference) (Storage, error)
-	StorageAccount(context.Context, corev1.SecretReference) (StorageAccount, error)
-	Vmss(context.Context, corev1.SecretReference) (Vmss, error)
-	DNSZone(context.Context, corev1.SecretReference) (DNSZone, error)
-	DNSRecordSet(context.Context, corev1.SecretReference) (DNSRecordSet, error)
-	VirtualMachine(ctx context.Context, secretRef corev1.SecretReference) (VirtualMachine, error)
-	NetworkSecurityGroup(ctx context.Context, secretRef corev1.SecretReference) (NetworkSecurityGroup, error)
-	PublicIP(ctx context.Context, secretRef corev1.SecretReference) (PublicIP, error)
-	NetworkInterface(ctx context.Context, secretRef corev1.SecretReference) (NetworkInterface, error)
-	Disk(ctx context.Context, secretRef corev1.SecretReference) (Disk, error)
-	Subnet(ctx context.Context, secretRef corev1.SecretReference) (Subnet, error)
-	VirtualMachineImage(ctx context.Context, secretRef corev1.SecretReference) (VirtualMachineImage, error)
+	StorageAccount() (StorageAccount, error)
+	Vmss() (Vmss, error)
+	DNSZone() (DNSZone, error)
+	DNSRecordSet() (DNSRecordSet, error)
+	VirtualMachine() (VirtualMachine, error)
+	NetworkInterface() (NetworkInterface, error)
+	Disk() (Disk, error)
+	Group() (ResourceGroup, error)
+	NetworkSecurityGroup() (NetworkSecurityGroup, error)
+	Subnet() (Subnet, error)
+	PublicIP() (PublicIP, error)
+	Vnet() (VirtualNetwork, error)
+	RouteTables() (RouteTables, error)
+	NatGateway() (NatGateway, error)
+	AvailabilitySet() (AvailabilitySet, error)
+	ManagedUserIdentity() (ManagedUserIdentity, error)
+	VirtualMachineImages() (VirtualMachineImages, error)
 }
 
-// Group represents an Azure group client.
-type Group interface {
-	Get(context.Context, string) (*resources.Group, error)
-	CreateOrUpdate(context.Context, string, string) error
-	DeleteIfExits(context.Context, string) error
+// ResourceGroup represents an Azure ResourceGroup k8sClient.
+type ResourceGroup interface {
+	ContainerCreateOrUpdateFunc[armresources.ResourceGroup]
+	ContainerDeleteFunc[armresources.ResourceGroup]
+	ContainerGetFunc[armresources.ResourceGroup]
+	ContainerCheckExistenceFunc[armresources.ResourceGroup]
 }
 
-// Storage represents an Azure (blob) storage client.
+// AvailabilitySet is an interface for the Azure AvailabilitySet service.
+type AvailabilitySet interface {
+	GetFunc[armcompute.AvailabilitySet]
+	CreateOrUpdateFunc[armcompute.AvailabilitySet]
+	DeleteFunc[armcompute.AvailabilitySet]
+}
+
+// NatGateway is an interface for the Azure NatGateway service.
+type NatGateway interface {
+	CreateOrUpdateFunc[armnetwork.NatGateway]
+	GetWithExpandFunc[armnetwork.NatGateway, *string]
+	ListFunc[armnetwork.NatGateway]
+	DeleteFunc[armnetwork.NatGateway]
+}
+
+// RouteTables is a k8sClient for the Azure RouteTable service.
+type RouteTables interface {
+	CreateOrUpdateFunc[armnetwork.RouteTable]
+	DeleteFunc[armnetwork.RouteTable]
+	GetFunc[armnetwork.RouteTable]
+}
+
+// ManagedUserIdentity is a k8sClient for the Azure Managed User Identity service.
+type ManagedUserIdentity interface {
+	GetFunc[msi.Identity]
+}
+
+// Vmss represents an Azure virtual machine scale set k8sClient.
+type Vmss interface {
+	ListFunc[armcompute.VirtualMachineScaleSet]
+	GetWithExpandFunc[armcompute.VirtualMachineScaleSet, *armcompute.ExpandTypesForGetVMScaleSets]
+	CreateOrUpdateFunc[armcompute.VirtualMachineScaleSet]
+	DeleteWithOptsFunc[armcompute.VirtualMachineScaleSet, *bool]
+}
+
+// VirtualMachine represents an Azure virtual machine k8sClient.
+type VirtualMachine interface {
+	GetWithExpandFunc[armcompute.VirtualMachine, *armcompute.InstanceViewTypes]
+	CreateOrUpdateFunc[armcompute.VirtualMachine]
+	DeleteWithOptsFunc[armcompute.VirtualMachine, *bool]
+}
+
+// NetworkSecurityGroup represents an Azure Network security group k8sClient.
+type NetworkSecurityGroup interface {
+	GetFunc[armnetwork.SecurityGroup]
+	CreateOrUpdateFunc[armnetwork.SecurityGroup]
+	DeleteFunc[armnetwork.SecurityGroup]
+}
+
+// PublicIP represents an Azure Network Public IP k8sClient.
+type PublicIP interface {
+	GetWithExpandFunc[armnetwork.PublicIPAddress, *string]
+	CreateOrUpdateFunc[armnetwork.PublicIPAddress]
+	DeleteFunc[armnetwork.PublicIPAddress]
+	ListFunc[armnetwork.PublicIPAddress]
+}
+
+// NetworkInterface represents an Azure Network Interface k8sClient.
+type NetworkInterface interface {
+	GetFunc[armnetwork.Interface]
+	CreateOrUpdateFunc[armnetwork.Interface]
+	DeleteFunc[armnetwork.Interface]
+}
+
+// Disk represents an Azure Disk k8sClient.
+type Disk interface {
+	GetFunc[armcompute.Disk]
+	CreateOrUpdateFunc[armcompute.Disk]
+	DeleteFunc[armcompute.Disk]
+}
+
+// Subnet represents an Azure Subnet k8sClient.
+type Subnet interface {
+	SubResourceCreateOrUpdateFunc[armnetwork.Subnet]
+	SubResourceGetWithExpandFunc[armnetwork.Subnet, *string]
+	SubResourceListFunc[armnetwork.Subnet]
+	SubResourceDeleteFunc[armnetwork.Subnet]
+}
+
+// VirtualNetwork represents an Azure Virtual Network k8sClient.
+type VirtualNetwork interface {
+	CreateOrUpdateFunc[armnetwork.VirtualNetwork]
+	GetFunc[armnetwork.VirtualNetwork]
+	DeleteFunc[armnetwork.VirtualNetwork]
+}
+
+// Storage represents an Azure (blob) storage k8sClient.
 type Storage interface {
 	DeleteObjectsWithPrefix(context.Context, string, string) error
 	CreateContainerIfNotExists(context.Context, string) error
 	DeleteContainerIfExists(context.Context, string) error
 }
 
-// StorageAccount represents an Azure storage account client.
+// StorageAccount represents an Azure storage account k8sClient.
 type StorageAccount interface {
 	CreateStorageAccount(context.Context, string, string, string) error
 	ListStorageAccountKey(context.Context, string, string) (string, error)
 }
 
-// Vmss represents an Azure virtual machine scale set client.
-type Vmss interface {
-	List(context.Context, string) ([]compute.VirtualMachineScaleSet, error)
-	Get(context.Context, string, string, compute.ExpandTypesForGetVMScaleSets) (*compute.VirtualMachineScaleSet, error)
-	Create(context.Context, string, string, *compute.VirtualMachineScaleSet) (*compute.VirtualMachineScaleSet, error)
-	Delete(context.Context, string, string, *bool) error
-}
-
-// VirtualMachine represents an Azure virtual machine client.
-type VirtualMachine interface {
-	Get(ctx context.Context, resourceGroupName string, name string, instanceViewTypes compute.InstanceViewTypes) (*compute.VirtualMachine, error)
-	Create(ctx context.Context, resourceGroupName string, name string, parameters *compute.VirtualMachine) (*compute.VirtualMachine, error)
-	Delete(ctx context.Context, resourceGroupName string, name string, forceDeletion *bool) error
-}
-
-// DNSZone represents an Azure DNS zone client.
+// DNSZone represents an Azure DNS zone k8sClient.
 type DNSZone interface {
-	GetAll(context.Context) (map[string]string, error)
+	List(context.Context) (map[string]string, error)
 }
 
-// DNSRecordSet represents an Azure DNS recordset client.
+// DNSRecordSet represents an Azure DNS recordset k8sClient.
 type DNSRecordSet interface {
 	CreateOrUpdate(context.Context, string, string, string, []string, int64) error
 	Delete(context.Context, string, string, string) error
 }
 
-// NetworkSecurityGroup represents an Azure Network security group client.
-type NetworkSecurityGroup interface {
-	Get(ctx context.Context, resourceGroupName string, networkSecurityGroupName, name string) (*network.SecurityGroup, error)
-	CreateOrUpdate(ctx context.Context, resourceGroupName, name string, parameters network.SecurityGroup) (*network.SecurityGroup, error)
-}
-
-// PublicIP represents an Azure Network PUblic IP client.
-type PublicIP interface {
-	Get(ctx context.Context, resourceGroupName string, name string, expander string) (*network.PublicIPAddress, error)
-	CreateOrUpdate(ctx context.Context, resourceGroupName, name string, parameters network.PublicIPAddress) (*network.PublicIPAddress, error)
-	Delete(ctx context.Context, resourceGroupName, name string) error
-}
-
-// NetworkInterface represents an Azure Network Interface client.
-type NetworkInterface interface {
-	Get(ctx context.Context, resourceGroupName string, name string, expander string) (*network.Interface, error)
-	CreateOrUpdate(ctx context.Context, resourceGroupName, name string, parameters network.Interface) (*network.Interface, error)
-	Delete(ctx context.Context, resourceGroupName, name string) error
-}
-
-// Disk represents an Azure Disk client.
-type Disk interface {
-	Get(ctx context.Context, resourceGroupName string, name string) (*compute.Disk, error)
-	CreateOrUpdate(ctx context.Context, resourceGroupName string, diskName string, disk compute.Disk) (*compute.Disk, error)
-	Delete(ctx context.Context, resourceGroupName, name string) error
-}
-
-// Subnet represents an Azure Subnet client.
-type Subnet interface {
-	Get(ctx context.Context, resourceGroupName string, vnetName string, name string, expander string) (*network.Subnet, error)
-	List(context.Context, string, string) ([]network.Subnet, error)
-	Delete(context.Context, string, string, string) error
-}
-
-// VirtualMachineImage represents an Azure Virtual Machine Image client.
-type VirtualMachineImage interface {
+// VirtualMachineImages represents an Azure Virtual Machine Image k8sClient.
+type VirtualMachineImages interface {
 	ListSkus(ctx context.Context, location string, publisherName string, offer string) (*compute.ListVirtualMachineImageResource, error)
-}
-
-// AzureFactory is an implementation of Factory to produce clients for various Azure services.
-type AzureFactory struct {
-	client client.Client
-}
-
-// StorageClient is an implementation of Storage for a (blob) storage client.
-type StorageClient struct {
-	serviceURL *azblob.ServiceURL
-}
-
-// StorageAccountClient is an implementation of StorageAccount for storage account client.
-type StorageAccountClient struct {
-	client storage.AccountsClient
-}
-
-// GroupClient is an implementation of Group for a resource group client.
-type GroupClient struct {
-	client resources.GroupsClient
-}
-
-// VmssClient is an implementation of Vmss for a virtual machine scale set client.
-type VmssClient struct {
-	client compute.VirtualMachineScaleSetsClient
-}
-
-// VirtualMachinesClient is an implementation of Vm for a virtual machine client.
-type VirtualMachinesClient struct {
-	client compute.VirtualMachinesClient
-}
-
-// DNSZoneClient is an implementation of DNSZone for a DNS zone client.
-type DNSZoneClient struct {
-	client dns.ZonesClient
-}
-
-// DNSRecordSetClient is an implementation of DNSRecordSet for a DNS recordset client.
-type DNSRecordSetClient struct {
-	client dns.RecordSetsClient
-}
-
-// NetworkSecurityGroupClient is an implementation of Network Security Group for a network security group client.
-type NetworkSecurityGroupClient struct {
-	client network.SecurityGroupsClient
-}
-
-// PublicIPClient is an implementation of Network Public IP Address.
-type PublicIPClient struct {
-	client network.PublicIPAddressesClient
-}
-
-// NetworkInterfaceClient is an implementation of Network Interface.
-type NetworkInterfaceClient struct {
-	client network.InterfacesClient
-}
-
-// SecurityRulesClient is an implementation of Network Security Groups rules.
-type SecurityRulesClient struct {
-	client network.SecurityRulesClient
-}
-
-// DisksClient is an implementation of Disk for a disk client.
-type DisksClient struct {
-	client compute.DisksClient
-}
-
-// SubnetsClient is an implementation of Subnet for a Subnet client.
-type SubnetsClient struct {
-	client network.SubnetsClient
-}
-
-// VirtualMachineImageClient is an implementation of Virtual Machine Image for a Virtual Machine Image client.
-type VirtualMachineImageClient struct {
-	client compute.VirtualMachineImagesClient
 }

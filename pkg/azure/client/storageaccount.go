@@ -22,8 +22,15 @@ import (
 	"k8s.io/utils/pointer"
 )
 
+var _ StorageAccount = &StorageAccountClient{}
+
+// StorageAccountClient is an implementation of StorageAccount for storage account k8sClient.
+type StorageAccountClient struct {
+	client storage.AccountsClient
+}
+
 // CreateStorageAccount creates a storage account.
-func (c StorageAccountClient) CreateStorageAccount(ctx context.Context, resourceGroupName, storageAccountName, region string) error {
+func (c *StorageAccountClient) CreateStorageAccount(ctx context.Context, resourceGroupName, storageAccountName, region string) error {
 	future, err := c.client.Create(ctx, resourceGroupName, storageAccountName, storage.AccountCreateParameters{
 		Kind:     storage.BlobStorage,
 		Location: &region,
@@ -45,7 +52,7 @@ func (c StorageAccountClient) CreateStorageAccount(ctx context.Context, resource
 }
 
 // ListStorageAccountKey lists the first key of a storage account.
-func (c StorageAccountClient) ListStorageAccountKey(ctx context.Context, resourceGroupName, storageAccountName string) (string, error) {
+func (c *StorageAccountClient) ListStorageAccountKey(ctx context.Context, resourceGroupName, storageAccountName string) (string, error) {
 	response, err := c.client.ListKeys(ctx, resourceGroupName, storageAccountName, storage.Kerb)
 	if err != nil {
 		return "", err

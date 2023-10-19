@@ -25,8 +25,15 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 )
 
+var _ DNSRecordSet = &DNSRecordSetClient{}
+
+// DNSRecordSetClient is an implementation of DNSRecordSet for a DNS recordset k8sClient.
+type DNSRecordSetClient struct {
+	client dns.RecordSetsClient
+}
+
 // CreateOrUpdate creates or updates the recordset with the given name, record type, values, and TTL in the zone with the given zone ID.
-func (c DNSRecordSetClient) CreateOrUpdate(ctx context.Context, zoneID string, name string, recordType string, values []string, ttl int64) error {
+func (c *DNSRecordSetClient) CreateOrUpdate(ctx context.Context, zoneID string, name string, recordType string, values []string, ttl int64) error {
 	resourceGroupName, zoneName := resourceGroupAndZoneNames(zoneID)
 	relativeRecordSetName, err := getRelativeRecordSetName(name, zoneName)
 	if err != nil {
@@ -40,7 +47,7 @@ func (c DNSRecordSetClient) CreateOrUpdate(ctx context.Context, zoneID string, n
 }
 
 // Delete deletes the recordset with the given name and record type in the zone with the given zone ID.
-func (c DNSRecordSetClient) Delete(ctx context.Context, zoneID string, name string, recordType string) error {
+func (c *DNSRecordSetClient) Delete(ctx context.Context, zoneID string, name string, recordType string) error {
 	resourceGroupName, zoneName := resourceGroupAndZoneNames(zoneID)
 	relativeRecordSetName, err := getRelativeRecordSetName(name, zoneName)
 	if err != nil {

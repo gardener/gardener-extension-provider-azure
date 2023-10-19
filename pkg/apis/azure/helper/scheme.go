@@ -23,12 +23,14 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/install"
+	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 )
 
 var (
@@ -39,6 +41,12 @@ var (
 
 	// lenientDecoder is a decoder that does not use strict mode.
 	lenientDecoder runtime.Decoder
+
+	// InfrastructureStateTypeMeta is the TypeMeta of the Azure InfrastructureStatus
+	InfrastructureStateTypeMeta = metav1.TypeMeta{
+		APIVersion: apiv1alpha1.SchemeGroupVersion.String(),
+		Kind:       "InfrastructureState",
+	}
 )
 
 func init() {
@@ -85,4 +93,23 @@ func CloudProfileConfigFromCluster(cluster *controller.Cluster) (*api.CloudProfi
 		}
 	}
 	return cloudProfileConfig, nil
+}
+
+// InfrastructureStateFromRaw extracts the state from the Infrastructure. If no state was available, it returns a "zero" value InfrastructureState object.
+func InfrastructureStateFromRaw(raw *runtime.RawExtension) (*api.InfrastructureState, error) {
+	state := &api.InfrastructureState{}
+	if raw != nil && raw.Raw != nil {
+		if _, _, err := lenientDecoder.Decode(raw.Raw, nil, state); err != nil {
+			return nil, err
+		}
+	}
+
+	if state.Data == nil {
+		state.Data = make(map[string]string)
+	}
+	if state.Items == nil {
+		state.Items = make([]api.AzureResource, 0)
+	}
+
+	return state, nil
 }

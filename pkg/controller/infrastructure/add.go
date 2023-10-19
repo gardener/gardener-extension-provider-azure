@@ -26,7 +26,9 @@ import (
 
 var (
 	// DefaultAddOptions are the default AddOptions for AddToManager.
-	DefaultAddOptions = AddOptions{}
+	DefaultAddOptions = AddOptions{
+		DisableProjectedTokenMount: true,
+	}
 )
 
 // AddOptions are options to apply when adding the Azure infrastructure controller to the manager.
