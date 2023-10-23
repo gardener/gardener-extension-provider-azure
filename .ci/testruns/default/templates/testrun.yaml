@@ -54,7 +54,7 @@ spec:
             value: tf
     - name: infra-flow-test
       definition:
-        name: infra-flow-test
+        name: infrastructure-test
         config:
           - name: REGION
             type: env
@@ -64,7 +64,7 @@ spec:
             value: flow
     - name: infra-flow-migration-test
       definition:
-        name: infra-flow-migration-test
+        name: infrastructure-test
         config:
           - name: REGION
             type: env
