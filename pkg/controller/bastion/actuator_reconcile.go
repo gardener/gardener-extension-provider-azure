@@ -22,9 +22,9 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
-	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/util"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -506,8 +506,9 @@ func getLatestSku(ctx context.Context, opt *Options, factory azureclient.Factory
 	}
 
 	return &armcompute.ImageReference{
-		Publisher: to.StringPtr(IMAGE_PUBLISHER),
-		Offer:     to.StringPtr(IMAGE_OFFER),
-		SKU:       to.StringPtr(sku),
+		Publisher: to.Ptr(IMAGE_PUBLISHER),
+		Offer:     to.Ptr(IMAGE_OFFER),
+		SKU:       to.Ptr(sku),
+		Version:   to.Ptr("latest"),
 	}, nil
 }
