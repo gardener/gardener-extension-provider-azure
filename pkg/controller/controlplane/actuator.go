@@ -108,7 +108,16 @@ func (a *actuator) ForceDelete(
 	cp *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
 ) error {
-	return a.Delete(ctx, log, cp, cluster)
+	// Call Delete on the composed Actuator
+	if err := a.Actuator.Delete(ctx, log, cp, cluster); err != nil {
+		return err
+	}
+
+	if cp.Spec.Purpose == nil || *cp.Spec.Purpose == extensionsv1alpha1.Normal {
+		// Delete all remaining remedy controller resources
+		return a.forceDeleteRemedyControllerResources(ctx, log, cp)
+	}
+	return nil
 }
 
 // Migrate reconciles the given controlplane and cluster, migrating the additional
