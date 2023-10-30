@@ -84,6 +84,10 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensi
 	return nil
 }
 
+func (a *actuator) ForceDelete(_ context.Context, _ logr.Logger, _ *extensionsv1alpha1.Bastion, _ *controller.Cluster) error {
+	return nil
+}
+
 func removeNSGRule(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) error {
 	securityGroupResp, err := getNetworkSecurityGroup(ctx, log, factory, opt)
 	if err != nil {
