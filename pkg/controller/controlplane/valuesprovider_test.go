@@ -289,6 +289,7 @@ var _ = Describe("ValuesProvider", func() {
 					"routeTableName":    "route-table-name",
 					"securityGroupName": "security-group-name-workers",
 					"maxNodes":          maxNodes,
+					"vmType":            "standard",
 				}))
 			})
 
@@ -316,6 +317,7 @@ var _ = Describe("ValuesProvider", func() {
 					"securityGroupName":   "security-group-name-workers",
 					"acrIdentityClientId": identityName,
 					"maxNodes":            maxNodes,
+					"vmType":              "standard",
 				}))
 			})
 		})
@@ -427,6 +429,7 @@ var _ = Describe("ValuesProvider", func() {
 				}),
 				azure.CSIControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
 					"replicas": 1,
+					"vmType":   "standard",
 					"podAnnotations": map[string]interface{}{
 						"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
 					},
@@ -469,6 +472,7 @@ var _ = Describe("ValuesProvider", func() {
 				}),
 				azure.CSIControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
 					"replicas": 1,
+					"vmType":   "standard",
 					"podAnnotations": map[string]interface{}{
 						"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
 					},

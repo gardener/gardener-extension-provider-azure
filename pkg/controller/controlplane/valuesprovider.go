@@ -496,6 +496,7 @@ func appendMachineSetValues(values map[string]interface{}, infraStatus *apisazur
 		return values
 	}
 
+	values["vmType"] = "standard"
 	return values
 }
 
@@ -628,6 +629,8 @@ func getCSIControllerChartValues(
 
 	if azureapihelper.IsVmoRequired(infraStatus) {
 		values["vmType"] = "vmss"
+	} else {
+		values["vmType"] = "standard"
 	}
 
 	return values, nil
