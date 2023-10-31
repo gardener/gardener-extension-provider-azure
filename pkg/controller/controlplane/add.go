@@ -17,6 +17,7 @@ package controlplane
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane"
@@ -43,6 +44,8 @@ type AddOptions struct {
 	IgnoreOperationAnnotation bool
 	// WebhookServerNamespace is the namespace in which the webhook server runs.
 	WebhookServerNamespace string
+	// ShootWebhookConfig specifies the desired Shoot MutatingWebhooksConfiguration.
+	ShootWebhookConfig *atomic.Value
 }
 
 // AddToManagerWithOptions adds a controller with the given Options to the given manager.
@@ -58,7 +61,7 @@ func AddToManagerWithOptions(ctx context.Context, mgr manager.Manager, opts AddO
 		secretConfigsFunc, shootAccessSecretsFunc, nil, nil,
 		configChart, controlPlaneChart, controlPlaneShootChart, controlPlaneShootCRDsChart, storageClassChart, nil,
 		NewValuesProvider(mgr), extensionscontroller.ChartRendererFactoryFunc(util.NewChartRendererForShoot),
-		imagevector.ImageVector(), "", nil, opts.WebhookServerNamespace, int32(defaultServer.Options.Port))
+		imagevector.ImageVector(), "", opts.ShootWebhookConfig, opts.WebhookServerNamespace, int32(defaultServer.Options.Port))
 	if err != nil {
 		return err
 	}
