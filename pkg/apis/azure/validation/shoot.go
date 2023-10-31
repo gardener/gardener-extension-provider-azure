@@ -15,9 +15,8 @@
 package validation
 
 import (
-	"github.com/gardener/gardener-extension-networking-calico/pkg/apis/calico"
-	calicopkg "github.com/gardener/gardener-extension-networking-calico/pkg/calico"
-	"github.com/gardener/gardener/extensions/pkg/util"
+	"encoding/json"
+
 	"github.com/gardener/gardener/pkg/apis/core"
 	validationutils "github.com/gardener/gardener/pkg/utils/validation"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
@@ -32,7 +31,7 @@ import (
 const maxDataVolumeCount = 64
 
 // ValidateNetworking validates the network settings of a Shoot.
-func ValidateNetworking(decoder runtime.Decoder, networking *core.Networking, fldPath *field.Path) field.ErrorList {
+func ValidateNetworking(networking *core.Networking, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if networking == nil {
@@ -43,24 +42,29 @@ func ValidateNetworking(decoder runtime.Decoder, networking *core.Networking, fl
 	if networking.Nodes == nil {
 		allErrs = append(allErrs, field.Required(fldPath.Child("nodes"), "a nodes CIDR must be provided for Azure shoots"))
 	}
-	if networking.Type != nil && *networking.Type == calicopkg.ReleaseName {
-		networkConfig, err := decodeCalicoNetworkingConfig(decoder, networking.ProviderConfig)
+	if networking.Type != nil && *networking.Type == "calico" && networking.ProviderConfig != nil {
+		networkConfig, err := decodeNetworkConfig(networking.ProviderConfig)
 		if err != nil {
 			allErrs = append(allErrs, field.InternalError(fldPath.Child("providerConfig"), err))
-		} else if networkConfig.Overlay != nil && networkConfig.Overlay.Enabled {
-			allErrs = append(allErrs, field.Forbidden(fldPath.Child("providerConfig").Child("overlay").Child("enabled"), "Calico overlay network is not supported on azure"))
+		} else if overlay, ok := networkConfig["overlay"].(map[string]interface{}); ok {
+			if overlay["enabled"].(bool) {
+				allErrs = append(allErrs, field.Forbidden(fldPath.Child("providerConfig").Child("overlay").Child("enabled"), "Calico overlay network is not supported on azure"))
+			}
+		} else {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("providerConfig").Child("overlay"), networkConfig["overlay"], "error decoding networking provider config"))
 		}
 	}
 
 	return allErrs
 }
 
-func decodeCalicoNetworkingConfig(decoder runtime.Decoder, network *runtime.RawExtension) (*calico.NetworkConfig, error) {
-	networkConfig := &calico.NetworkConfig{}
-	if network != nil && network.Raw != nil {
-		if err := util.Decode(decoder, network.Raw, networkConfig); err != nil {
-			return nil, err
-		}
+func decodeNetworkConfig(network *runtime.RawExtension) (map[string]interface{}, error) {
+	var networkConfig map[string]interface{}
+	if network == nil || network.Raw == nil {
+		return map[string]interface{}{}, nil
+	}
+	if err := json.Unmarshal(network.Raw, &networkConfig); err != nil {
+		return nil, err
 	}
 	return networkConfig, nil
 }

@@ -15,15 +15,12 @@
 package validation_test
 
 import (
-	"github.com/gardener/gardener-extension-networking-calico/pkg/apis/calico/install"
 	"github.com/gardener/gardener/pkg/apis/core"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	"github.com/onsi/gomega/types"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/pointer"
 
@@ -33,14 +30,11 @@ import (
 
 var _ = Describe("Shoot validation", func() {
 	Describe("#ValidateNetworking", func() {
-		networkingPath := field.NewPath("spec", "networking")
-		scheme := runtime.NewScheme()
-		utilruntime.Must(install.AddToScheme(scheme))
-		decoder := serializer.NewCodecFactory(scheme, serializer.EnableStrict).UniversalDecoder()
 
+		networkingPath := field.NewPath("spec", "networking")
 		DescribeTable("",
 			func(networking core.Networking, result types.GomegaMatcher) {
-				errorList := ValidateNetworking(decoder, &networking, networkingPath)
+				errorList := ValidateNetworking(&networking, networkingPath)
 
 				Expect(errorList).To(result)
 			},

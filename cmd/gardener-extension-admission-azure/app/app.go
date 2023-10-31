@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 
-	calicoinstall "github.com/gardener/gardener-extension-networking-calico/pkg/apis/calico/install"
 	controllercmd "github.com/gardener/gardener/extensions/pkg/controller/cmd"
 	webhookcmd "github.com/gardener/gardener/extensions/pkg/webhook/cmd"
 	"github.com/gardener/gardener/pkg/apis/core/install"
@@ -76,7 +75,6 @@ func NewAdmissionCommand(ctx context.Context) *cobra.Command {
 			if err := azureinstall.AddToScheme(mgr.GetScheme()); err != nil {
 				return fmt.Errorf("could not update manager scheme: %w", err)
 			}
-			calicoinstall.Install(mgr.GetScheme())
 
 			log.Info("Setting up webhook server")
 			if err := webhookOptions.Completed().AddToManager(mgr); err != nil {
