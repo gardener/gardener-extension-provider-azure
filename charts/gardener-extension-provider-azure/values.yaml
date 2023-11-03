@@ -90,6 +90,10 @@ gardener:
   seed:
     provider: azure
     region: ""
+    spec:
+      settings:
+        topologyAwareRouting:
+          enabled: false
 
 # servicePrincipals:
 # - tenantID: tenant-1
