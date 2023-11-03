@@ -14,7 +14,7 @@ require (
 	github.com/ahmetb/gen-crd-api-reference-docs v0.3.0
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/gardener/etcd-druid v0.20.1
-	github.com/gardener/gardener v1.81.0
+	github.com/gardener/gardener v1.81.6
 	github.com/gardener/machine-controller-manager v0.50.0
 	github.com/gardener/remedy-controller v0.6.0
 	github.com/go-logr/logr v1.2.4
@@ -162,7 +162,4 @@ require (
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
-replace (
-	github.com/gardener/gardener => github.com/acumino/gardener v1.32.1-0.20231026102135-c6327d058b6e
-	k8s.io/client-go => k8s.io/client-go v0.28.2
-)
+replace k8s.io/client-go => k8s.io/client-go v0.28.2
