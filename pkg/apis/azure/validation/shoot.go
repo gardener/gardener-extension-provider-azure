@@ -50,8 +50,6 @@ func ValidateNetworking(networking *core.Networking, fldPath *field.Path) field.
 			if overlay["enabled"].(bool) {
 				allErrs = append(allErrs, field.Forbidden(fldPath.Child("providerConfig").Child("overlay").Child("enabled"), "Calico overlay network is not supported on azure"))
 			}
-		} else {
-			allErrs = append(allErrs, field.Invalid(fldPath.Child("providerConfig").Child("overlay"), networkConfig["overlay"], "error decoding networking provider config"))
 		}
 	}
 
