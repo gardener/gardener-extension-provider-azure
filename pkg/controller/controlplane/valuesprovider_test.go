@@ -244,6 +244,7 @@ var _ = Describe("ValuesProvider", func() {
 					"routeTableName":      "route-table-name",
 					"securityGroupName":   "security-group-name-workers",
 					"maxNodes":            maxNodes,
+					"vmType":              "standard",
 				}))
 			})
 
