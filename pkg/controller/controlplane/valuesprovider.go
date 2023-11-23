@@ -486,6 +486,7 @@ func getConfigChartValues(infraStatus *apisazure.InfrastructureStatus, cp *exten
 }
 
 func appendMachineSetValues(values map[string]interface{}, infraStatus *apisazure.InfrastructureStatus) map[string]interface{} {
+	values["vmType"] = "standard"
 	if azureapihelper.IsVmoRequired(infraStatus) {
 		values["vmType"] = "vmss"
 		return values
@@ -493,10 +494,8 @@ func appendMachineSetValues(values map[string]interface{}, infraStatus *apisazur
 
 	if primaryAvailabilitySet, err := azureapihelper.FindAvailabilitySetByPurpose(infraStatus.AvailabilitySets, apisazure.PurposeNodes); err == nil {
 		values["availabilitySetName"] = primaryAvailabilitySet.Name
-		return values
 	}
 
-	values["vmType"] = "standard"
 	return values
 }
 
