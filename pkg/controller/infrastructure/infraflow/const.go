@@ -17,6 +17,8 @@ package infraflow
 const (
 	// ChildKeyIDs is the prefix key for all ids.
 	ChildKeyIDs = "ids"
+	// ChildKeyInventory is the prefix key for for the inventory struct.
+	ChildKeyInventory = "inventory"
 	// CreatedResourcesExistKey is a marker for the Terraform migration case. If the TF state is not empty
 	// we inject this marker into the state to block the deletion without having first a successful reconciliation.
 	CreatedResourcesExistKey = "resources_exist"

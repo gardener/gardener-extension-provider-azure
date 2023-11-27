@@ -18,22 +18,32 @@ import (
 	"fmt"
 )
 
-// TerminalSpecMismatchError is an error to indicate that the reconciliation cannot proceed or the operation requested is not supported.
-type TerminalSpecMismatchError struct {
+// SpecMismatchError is an error to indicate that the reconciliation cannot proceed or the operation requested is not supported.
+type SpecMismatchError struct {
+	// AzureResourceMetadata describe uniquely an Azure resource
 	AzureResourceMetadata
-	Offender string
+	// Field is the name of field that could not be reconciled.
+	Field string
+	// Expected is the value of the field that was expected.
 	Expected any
-	Found    any
+	// Found is the actual value of Field.
+	Found any
+	// Info contains additional information or instruction to the user.
+	Info *string
 }
 
-// NewTerminalSpecMismatch creates a TerminalSpecMismatch error.
-func NewTerminalSpecMismatch(identifier AzureResourceMetadata, offender string, expected, found any) *TerminalSpecMismatchError {
-	return &TerminalSpecMismatchError{AzureResourceMetadata: identifier, Offender: offender, Expected: expected, Found: found}
+// NewSpecMismatchError creates a TerminalSpecMismatch error.
+func NewSpecMismatchError(identifier AzureResourceMetadata, offender string, expected, found any, info *string) *SpecMismatchError {
+	return &SpecMismatchError{AzureResourceMetadata: identifier, Field: offender, Expected: expected, Found: found, Info: info}
 }
 
-func (t *TerminalSpecMismatchError) Error() string {
-	return fmt.Sprintf("differences between the current and target spec require the object to be deleted, but "+
-		"the operation is not supported. Resource: %s, Name: %s, Field: %s, Expected: %v, Found: %v", t.Kind, t.Name, t.Offender, t.Expected, t.Found)
+func (t *SpecMismatchError) Error() string {
+	s := fmt.Sprintf("differences between the current and target spec require the object to be deleted."+
+		"Resource: %s, Name: %s, Field: %s, Expected: %v, Found: %v", t.Kind, t.Name, t.Field, t.Expected, t.Found)
+	if t.Info != nil {
+		s = fmt.Sprintf("%s. Additional info: %s", s, *t.Info)
+	}
+	return s
 }
 
 // TerminalConditionError is an error to mark cases where the reconciliation cannot continue.
@@ -42,7 +52,7 @@ type TerminalConditionError struct {
 	error
 }
 
-// NewTerminalConditionError creates a TerminalConditinoError.
+// NewTerminalConditionError creates a TerminalConditionError.
 func NewTerminalConditionError(identifier AzureResourceMetadata, err error) *TerminalConditionError {
 	return &TerminalConditionError{identifier, err}
 }

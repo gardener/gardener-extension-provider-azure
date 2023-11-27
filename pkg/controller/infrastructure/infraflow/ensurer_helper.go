@@ -16,7 +16,6 @@ package infraflow
 
 import (
 	"strings"
-	"sync"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 
@@ -79,56 +78,55 @@ func Join[K comparable, V any](m1, m2 map[K]V) map[K]V {
 	return m1
 }
 
-// SimpleInventory is responsible for managing a list of all infrastructure created objects.
-type SimpleInventory struct {
-	sync.Mutex
-	inventory map[string]*arm.ResourceID
+// Inventory is responsible for managing a list of all infrastructure created objects.
+type Inventory struct {
+	shared.Whiteboard
 }
 
-// NewSimpleInventory returns a new instance of SimpleInventory.
-func NewSimpleInventory() *SimpleInventory {
-	return &SimpleInventory{
-		inventory: map[string]*arm.ResourceID{},
-	}
+// NewSimpleInventory returns a new instance of Inventory.
+func NewSimpleInventory(wb shared.Whiteboard) *Inventory {
+	return &Inventory{wb}
 }
 
 // Insert inserts the id to the inventory.
-func (i *SimpleInventory) Insert(id string) error {
-	i.Lock()
-	defer i.Unlock()
+func (i *Inventory) Insert(id string) error {
 	resourceID, err := arm.ParseResourceID(id)
 	if err != nil {
 		return err
 	}
 
-	i.inventory[id] = resourceID
+	i.GetChild(ChildKeyInventory).SetObject(id, resourceID)
+	return nil
+}
+
+// Get gets the item from the inventory.
+func (i *Inventory) Get(id string) *arm.ResourceID {
+	if i.GetChild(ChildKeyInventory).HasObject(id) {
+		return i.GetChild(ChildKeyInventory).GetObject(id).(*arm.ResourceID)
+	}
 	return nil
 }
 
 // Delete deletes the item with ID==id from the inventory and any children it may have. That means that it deletes any ID prefixed by id,
 // since azure IDs are hierarchical.
-func (i *SimpleInventory) Delete(id string) {
-	i.Lock()
-	defer i.Unlock()
-	delete(i.inventory, id)
-
+func (i *Inventory) Delete(id string) {
 	// since azure IDs are hierarchical, we remove from our inventory all items that are prefixed by the Id we want to remove.
-	for k := range i.inventory {
-		if strings.HasPrefix(k, id) {
-			delete(i.inventory, id)
+	for _, key := range i.GetChild(ChildKeyInventory).ObjectKeys() {
+		if strings.HasPrefix(key, id) {
+			i.GetChild(ChildKeyInventory).DeleteObject(key)
 		}
 	}
 }
 
 // ByKind returns a list of all the IDs of stored objects of a particular kind.
-func (i *SimpleInventory) ByKind(kind AzureResourceKind) []string {
-	i.Lock()
-	defer i.Unlock()
+func (i *Inventory) ByKind(kind AzureResourceKind) []string {
 	res := make([]string, 0)
-	for _, v := range i.inventory {
-		if v.ResourceType.String() == kind.String() {
-			res = append(res, v.Name)
-
+	for _, key := range i.GetChild(ChildKeyInventory).ObjectKeys() {
+		if i.GetChild(ChildKeyInventory).HasObject(key) {
+			resource := i.GetChild(ChildKeyInventory).GetObject(key).(*arm.ResourceID)
+			if resource.ResourceType.String() == kind.String() {
+				res = append(res, resource.Name)
+			}
 		}
 	}
 
@@ -136,16 +134,16 @@ func (i *SimpleInventory) ByKind(kind AzureResourceKind) []string {
 }
 
 // ToList returns a list of v1alpha1 API objects that correspond to the current inventory list.
-func (i *SimpleInventory) ToList() []v1alpha1.AzureResource {
-	i.Lock()
-	defer i.Unlock()
-
+func (i *Inventory) ToList() []v1alpha1.AzureResource {
 	var res []v1alpha1.AzureResource
-	for k, v := range i.inventory {
-		res = append(res, v1alpha1.AzureResource{
-			Kind: v.ResourceType.String(),
-			ID:   k,
-		})
+	for _, key := range i.GetChild(ChildKeyInventory).ObjectKeys() {
+		if i.GetChild(ChildKeyInventory).HasObject(key) {
+			resource := i.GetChild(ChildKeyInventory).GetObject(key).(*arm.ResourceID)
+			res = append(res, v1alpha1.AzureResource{
+				Kind: resource.ResourceType.String(),
+				ID:   key,
+			})
+		}
 	}
 	return res
 }

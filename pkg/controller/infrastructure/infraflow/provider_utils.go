@@ -60,6 +60,10 @@ const (
 	TemplateRouteTable = "/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Network/routeTables/%s"
 	// TemplateSecurityGroup is the template for the id of a security group.
 	TemplateSecurityGroup = "/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Network/networkSecurityGroups/%s"
+	// TemplateVirtualNetwork is the template for the id of a virtual network.
+	TemplateVirtualNetwork = "/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Network/virtualNetworks/%s"
+	// TemplateSubnet is the template for the id of a subnet.
+	TemplateSubnet = "/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Network/virtualNetworks/%s/subnets/%s"
 )
 
 // ResourceGroupIdFromTemplate returns the id of a resource group.
@@ -70,6 +74,11 @@ func ResourceGroupIdFromTemplate(subscription, name string) string {
 // GetIdFromTemplate returns the ID of a resource based on the target template.
 func GetIdFromTemplate(template, subscription, rgName, name string) string {
 	return fmt.Sprintf(template, subscription, rgName, name)
+}
+
+// GetIdFromTemplateWithParent returns the ID of a resource based on the target template.
+func GetIdFromTemplateWithParent(template, subscription, rgName, parent, name string) string {
+	return fmt.Sprintf(template, subscription, rgName, parent, name)
 }
 
 // AzureResourceMetadata is able to uniquely identify a resource.

@@ -36,7 +36,6 @@ import (
 type InfrastructureAdapter struct {
 	infra          *extensionsv1alpha1.Infrastructure
 	config         *azure.InfrastructureConfig
-	state          *azure.InfrastructureState
 	profile        *azure.CloudProfileConfig
 	cluster        *extensionscontroller.Cluster
 	subscriptionID string
@@ -51,14 +50,12 @@ type InfrastructureAdapter struct {
 func NewInfrastructureAdapter(
 	infra *extensionsv1alpha1.Infrastructure,
 	config *azure.InfrastructureConfig,
-	state *azure.InfrastructureState,
 	profile *azure.CloudProfileConfig,
 	cluster *extensionscontroller.Cluster,
 ) (*InfrastructureAdapter, error) {
 	ia := &InfrastructureAdapter{
 		infra:   infra,
 		config:  config,
-		state:   state,
 		profile: profile,
 		cluster: cluster,
 	}
@@ -608,35 +605,61 @@ func (s *SubnetConfig) ToProvider(base *armnetwork.Subnet) *armnetwork.Subnet {
 
 // ToProvider translates the config into the actual provider object.
 func (v *VirtualNetworkConfig) ToProvider(base *armnetwork.VirtualNetwork) *armnetwork.VirtualNetwork {
-	target := &armnetwork.VirtualNetwork{
-		Location: to.Ptr(v.Location),
-		Name:     to.Ptr(v.Name),
-		Properties: &armnetwork.VirtualNetworkPropertiesFormat{
-			AddressSpace: &armnetwork.AddressSpace{
-				AddressPrefixes: []*string{v.CIDR},
-			},
-		},
-	}
-	if ddosId := v.DDoSPlanID; ddosId != nil {
-		target.Properties.EnableDdosProtection = to.Ptr(true)
-		target.Properties.DdosProtectionPlan = &armnetwork.SubResource{ID: ddosId}
-	} else {
-		target.Properties.DdosProtectionPlan = nil
-		target.Properties.EnableDdosProtection = to.Ptr(false)
+	desired := &armnetwork.VirtualNetwork{
+		Location:   to.Ptr(v.Location),
+		Name:       to.Ptr(v.Name),
+		Properties: &armnetwork.VirtualNetworkPropertiesFormat{},
 	}
 
 	if base != nil {
-		target.Tags = base.Tags
-		target.Properties.BgpCommunities = base.Properties.BgpCommunities
-		target.Properties.EnableVMProtection = base.Properties.EnableVMProtection
-		target.Properties.DhcpOptions = base.Properties.DhcpOptions
-		target.Properties.Subnets = base.Properties.Subnets
-		target.Properties.VirtualNetworkPeerings = base.Properties.VirtualNetworkPeerings
-		target.Properties.FlowTimeoutInMinutes = base.Properties.FlowTimeoutInMinutes
-		target.Properties.Encryption = base.Properties.Encryption
+		desired.Tags = base.Tags
+		if base.Properties != nil {
+			desired.Properties = base.Properties
+		}
 	}
 
-	return target
+	// apply the desired changes in place.
+	desired.Properties.AddressSpace = &armnetwork.AddressSpace{
+		AddressPrefixes: []*string{v.CIDR},
+	}
+	if ddosId := v.DDoSPlanID; ddosId != nil {
+		desired.Properties.EnableDdosProtection = to.Ptr(true)
+		desired.Properties.DdosProtectionPlan = &armnetwork.SubResource{ID: ddosId}
+	} else {
+		desired.Properties.DdosProtectionPlan = nil
+		desired.Properties.EnableDdosProtection = to.Ptr(false)
+	}
+
+	return desired
+}
+
+// ToProvider translates the config into the actual provider object.
+func (r *SecurityGroupConfig) ToProvider(base *armnetwork.SecurityGroup) *armnetwork.SecurityGroup {
+	desired := &armnetwork.SecurityGroup{
+		Location:   to.Ptr(r.Location),
+		Name:       to.Ptr(r.Name),
+		Properties: &armnetwork.SecurityGroupPropertiesFormat{},
+	}
+
+	if base != nil && base.Properties != nil {
+		desired.Properties = base.Properties
+	}
+
+	return desired
+}
+
+// ToProvider translates the config into the actual provider object.
+func (r *RouteTableConfig) ToProvider(base *armnetwork.RouteTable) *armnetwork.RouteTable {
+	desired := &armnetwork.RouteTable{
+		Location:   to.Ptr(r.Location),
+		Name:       to.Ptr(r.Name),
+		Properties: &armnetwork.RouteTablePropertiesFormat{},
+	}
+	if base != nil && base.Properties != nil {
+		desired.Properties = base.Properties
+	}
+
+	return desired
 }
 
 func checkAllZonesWithFn[T any](t T, zones []ZoneConfig, check func(zone ZoneConfig, resource T) bool) bool {

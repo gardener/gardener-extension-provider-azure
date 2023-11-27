@@ -69,7 +69,9 @@ func (f *FlowContext) ensureResourceGroup(ctx context.Context) (*armresources.Re
 	if rg != nil {
 		if location := pointer.StringDeref(rg.Location, ""); location != rgCfg.Location {
 			// special case - return an error but do not proceed without user input.
-			return nil, NewTerminalSpecMismatch(rgCfg.AzureResourceMetadata, "location", rgCfg.Location, location)
+			return nil, NewSpecMismatchError(rgCfg.AzureResourceMetadata, "location", rgCfg.Location, location,
+				to.Ptr("This error is caused because the resource group location does not match the shoot's region. To proceed please delete the resource group"),
+			)
 		}
 
 		return rg, nil
@@ -129,7 +131,7 @@ func (f *FlowContext) ensureManagedVirtualNetwork(ctx context.Context) (*armnetw
 
 	if vnet != nil {
 		if location := pointer.StringDeref(vnet.Location, ""); location != f.adapter.Region() {
-			log.Error(NewTerminalSpecMismatch(vnetCfg.AzureResourceMetadata, "location", f.adapter.Region(), location), "vnet can't be reconciled and has to be deleted")
+			log.Error(NewSpecMismatchError(vnetCfg.AzureResourceMetadata, "location", f.adapter.Region(), location, nil), "vnet can't be reconciled and has to be deleted")
 			err = c.Delete(ctx, vnetCfg.ResourceGroup, vnetCfg.Name)
 			if err != nil {
 				return nil, err
@@ -140,8 +142,8 @@ func (f *FlowContext) ensureManagedVirtualNetwork(ctx context.Context) (*armnetw
 	}
 
 	vnet = vnetCfg.ToProvider(vnet)
-	log.V(2).Info("creating virtual network", "name", vnetCfg.Name)
-	log.V(5).Info("virtual network", "spec", *vnet)
+	log.V(2).Info("reconciling virtual network", "name", vnetCfg.Name)
+	log.V(5).Info("creating virtual network with spec", "spec", *vnet)
 	vnet, err = c.CreateOrUpdate(ctx, vnetCfg.ResourceGroup, vnetCfg.Name, *vnet)
 	if err != nil {
 		return nil, err
@@ -167,6 +169,7 @@ func (f *FlowContext) ensureUserVirtualNetwork(ctx context.Context) (*armnetwork
 	if vnet == nil {
 		return nil, NewTerminalConditionError(vnetCfg.AzureResourceMetadata, fmt.Errorf("user vnet not found"))
 	}
+
 	log.V(5).Info("found user virtual network", "name", vnetCfg.Name)
 	return vnet, nil
 }
@@ -207,14 +210,14 @@ func (f *FlowContext) ensureAvailabilitySet(ctx context.Context, log logr.Logger
 
 	if avset != nil {
 		if location := pointer.StringDeref(avset.Location, ""); location != f.adapter.Region() {
-			log.Error(NewTerminalSpecMismatch(avsetCfg.AzureResourceMetadata, "location", f.adapter.Region(), location), "will attempt to delete availability set due to irreconcilable error")
+			log.Error(NewSpecMismatchError(avsetCfg.AzureResourceMetadata, "location", f.adapter.Region(), location, nil), "will attempt to delete availability set due to irreconcilable error")
 			err = asClient.Delete(ctx, avsetCfg.ResourceGroup, avsetCfg.Name)
 			if err != nil {
 				return nil, err
 			}
 		}
 
-		// domain counts are immutable, therefore we live with whatever is currently present.
+		// domain counts are immutable, therefore we need live with whatever is currently present.
 		return avset, nil
 	}
 
@@ -227,8 +230,8 @@ func (f *FlowContext) ensureAvailabilitySet(ctx context.Context, log logr.Logger
 		},
 		SKU: &armcompute.SKU{Name: to.Ptr(string(armcompute.AvailabilitySetSKUTypesAligned))}, // equal to managed = True in tf
 	}
-	log.V(2).Info("creating availability set", "name", avset.Name)
-	log.V(5).Info("creating availability set", "spec", *avset)
+	log.V(2).Info("reconciling availability set", "name", avset.Name)
+	log.V(5).Info("reconciling availability set", "spec", *avset)
 	return asClient.CreateOrUpdate(ctx, f.adapter.ResourceGroupName(), avsetCfg.Name, *avset)
 }
 
@@ -262,18 +265,18 @@ func (f *FlowContext) ensureRouteTable(ctx context.Context) (*armnetwork.RouteTa
 
 	if rt != nil {
 		if location := pointer.StringDeref(rt.Location, ""); location != f.adapter.Region() {
-			return nil, NewTerminalSpecMismatch(rtCfg.AzureResourceMetadata, "location", f.adapter.Region(), location)
+			log.Error(NewSpecMismatchError(rtCfg.AzureResourceMetadata, "location", f.adapter.Region(), location, nil), "will attempt to delete route table due to irreconcilable error")
+			err = c.Delete(ctx, rtCfg.ResourceGroup, rtCfg.Name)
+			if err != nil {
+				return nil, err
+			}
+			rt = nil
 		}
 	}
 
-	// create the RouteTable
-	rt = &armnetwork.RouteTable{
-		Location:   to.Ptr(f.adapter.Region()),
-		Properties: &armnetwork.RouteTablePropertiesFormat{},
-	}
-	log.V(2).Info("creating route table", "name", rtCfg.Name)
-	log.V(5).Info("creating route table with spec", "spec", *rt)
-
+	rt = rtCfg.ToProvider(rt)
+	log.V(2).Info("reconciling route table", "name", rtCfg.Name)
+	log.V(5).Info("reconciling route table with spec", "spec", *rt)
 	return c.CreateOrUpdate(ctx, rtCfg.ResourceGroup, rtCfg.Name, *rt)
 }
 
@@ -310,18 +313,18 @@ func (f *FlowContext) ensureSecurityGroup(ctx context.Context) (*armnetwork.Secu
 
 	if sg != nil {
 		if location := pointer.StringDeref(sg.Location, ""); location != f.adapter.Region() {
-			return nil, NewTerminalSpecMismatch(sgCfg.AzureResourceMetadata, "location", f.adapter.Region(), location)
+			log.Error(NewSpecMismatchError(sgCfg.AzureResourceMetadata, "location", f.adapter.Region(), location, nil), "will attempt to delete security group due to irreconcilable error")
+			err = c.Delete(ctx, sgCfg.ResourceGroup, sgCfg.Name)
+			if err != nil {
+				return nil, err
+			}
+			sg = nil
 		}
-		return sg, nil
 	}
 
-	// create the NSG if it not there
-	sg = &armnetwork.SecurityGroup{
-		Location:   to.Ptr(f.adapter.Region()),
-		Properties: &armnetwork.SecurityGroupPropertiesFormat{},
-	}
-	log.V(2).Info("creating security group", "name", sgCfg.Name)
-	log.V(5).Info("creating security group with spec", "spec", *sg)
+	sg = sgCfg.ToProvider(sg)
+	log.V(2).Info("reconciling security group", "name", sgCfg.Name)
+	log.V(5).Info("reconciling security group with spec", "spec", *sg)
 	sg, err = c.CreateOrUpdate(ctx, sgCfg.ResourceGroup, sgCfg.Name, *sg)
 	if err != nil {
 		return nil, err
@@ -412,7 +415,7 @@ func (f *FlowContext) ensurePublicIps(ctx context.Context) error {
 
 		// delete all resources whose spec cannot be updated to match target spec.
 		if ok, offender, v := ForceNewIp(current, toReconcile[pipCfg.Name]); ok {
-			log.Info("will delete public IP because it can't be reconciled", "Resource Group", f.adapter.ResourceGroupName(), "Name", name, "Offender", offender, "Value", v)
+			log.Info("will delete public IP because it can't be reconciled", "Resource Group", f.adapter.ResourceGroupName(), "Name", name, "Field", offender, "Value", v)
 			toDelete[name] = *current.ID
 			continue
 		}
@@ -508,7 +511,7 @@ func (f *FlowContext) ensureNatGateways(ctx context.Context) error {
 			continue
 		}
 		if ok, offender, v := ForceNewNat(current, targetNat); ok {
-			log.Info("will delete NAT Gateway because it cannot be reconciled", "Resource Group", f.adapter.ResourceGroupName(), "Name", *current.Name, "Offender", offender, "Value", v)
+			log.Info("will delete NAT Gateway because it cannot be reconciled", "Resource Group", f.adapter.ResourceGroupName(), "Name", *current.Name, "Field", offender, "Value", v)
 			toDelete[name] = *current.ID
 			continue
 		}
@@ -607,7 +610,7 @@ func (f *FlowContext) ensureSubnets(ctx context.Context) (err error) {
 			continue
 		}
 		if ok, offender, v := ForceNewSubnet(current, target); ok {
-			log.Info("will delete subnet because it cannot be reconciled", "Resource Group", vnetRgroup, "Name", *current.Name, "Offender", offender, "Value", v)
+			log.Info("will delete subnet because it cannot be reconciled", "Resource Group", vnetRgroup, "Name", *current.Name, "Field", offender, "Value", v)
 			toDelete[name] = current
 			continue
 		}
@@ -665,7 +668,7 @@ func (f *FlowContext) EnsureManagedIdentity(ctx context.Context) (err error) {
 }
 
 // GetInfrastructureStatus returns the infrastructure status.
-func (f *FlowContext) GetInfrastructureStatus(ctx context.Context) (*v1alpha1.InfrastructureStatus, error) {
+func (f *FlowContext) GetInfrastructureStatus(_ context.Context) (*v1alpha1.InfrastructureStatus, error) {
 	status := &v1alpha1.InfrastructureStatus{
 		TypeMeta: infrastructure.StatusTypeMeta,
 		Networks: v1alpha1.NetworkStatus{
@@ -722,9 +725,12 @@ func (f *FlowContext) GetInfrastructureStatus(ctx context.Context) (*v1alpha1.In
 		}
 	}
 
-	err := f.enrichStatusWithIdentity(ctx, status)
-	if err != nil {
-		return status, err
+	if identity := f.cfg.Identity; identity != nil {
+		status.Identity = &v1alpha1.IdentityStatus{
+			ID:        *f.whiteboard.Get(KeyManagedIdentityId),
+			ClientID:  *f.whiteboard.Get(KeyManagedIdentityClientId),
+			ACRAccess: identity.ACRAccess != nil && *identity.ACRAccess,
+		}
 	}
 
 	return status, nil

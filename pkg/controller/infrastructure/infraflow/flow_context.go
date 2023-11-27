@@ -16,7 +16,6 @@ package infraflow
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
@@ -56,7 +55,7 @@ type FlowContext struct {
 	whiteboard  shared.Whiteboard
 	adapter     *InfrastructureAdapter
 	provider    Access
-	inventory   *SimpleInventory
+	inventory   *Inventory
 }
 
 // NewFlowContext creates a new FlowContext.
@@ -83,15 +82,7 @@ func NewFlowContext(factory client.Factory,
 		return nil, err
 	}
 
-	// var status *azure.InfrastructureStatus
-	// if infra.Status.ProviderStatus != nil {
-	// 	status, err = helper.InfrastructureStatusFromRaw(infra.Status.ProviderStatus)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// }
-
-	inv := NewSimpleInventory()
+	inv := NewSimpleInventory(wb)
 	for _, r := range state.Items {
 		if err := inv.Insert(r.ID); err != nil {
 			return nil, err
@@ -101,7 +92,6 @@ func NewFlowContext(factory client.Factory,
 	adapter, err := NewInfrastructureAdapter(
 		infra,
 		cfg,
-		state,
 		profile,
 		cluster,
 	)
@@ -135,16 +125,6 @@ func NewFlowContext(factory client.Factory,
 
 // Reconcile reconciles target infrastructure.
 func (f *FlowContext) Reconcile(ctx context.Context) (*v1alpha1.InfrastructureStatus, *runtime.RawExtension, error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err, ok := r.(error)
-			if !ok {
-				err = fmt.Errorf("panic: %v", r)
-			}
-			f.LogFromContext(ctx).Error(err, "recovered from panic")
-		}
-	}()
-
 	graph := f.buildReconcileGraph()
 	fl := graph.Compile()
 	if err := fl.Run(ctx, flow.Opts{

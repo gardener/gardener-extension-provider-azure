@@ -55,6 +55,8 @@ type Whiteboard interface {
 	SetAsDeleted(key string)
 	// Keys returns all stored keys, even for deleted ones
 	Keys() []string
+	// ObjectKeys returns all stored object keys
+	ObjectKeys() []string
 	// AsMap returns a map with all valid key/values
 	AsMap() map[string]string
 
@@ -164,6 +166,13 @@ func (w *whiteboard) Keys() []string {
 	defer w.Unlock()
 
 	return sortedKeys(w.data)
+}
+
+func (w *whiteboard) ObjectKeys() []string {
+	w.Lock()
+	defer w.Unlock()
+
+	return sortedKeys(w.objects)
 }
 
 func (w *whiteboard) AsMap() map[string]string {
