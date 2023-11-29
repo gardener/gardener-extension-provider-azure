@@ -83,7 +83,7 @@ func NewFlowContext(factory client.Factory,
 	}
 
 	inv := NewSimpleInventory(wb)
-	for _, r := range state.Items {
+	for _, r := range state.ManagedItems {
 		if err := inv.Insert(r.ID); err != nil {
 			return nil, err
 		}
@@ -179,7 +179,7 @@ func (f *FlowContext) buildReconcileGraph() *flow.Graph {
 
 // Delete deletes all resources managed by the reconciler
 func (f *FlowContext) Delete(ctx context.Context) error {
-	if len(f.state.Items) == 0 {
+	if len(f.state.ManagedItems) == 0 {
 		// special case where the credentials were invalid from the beginning
 		if _, ok := f.state.Data[CreatedResourcesExistKey]; !ok {
 			return nil

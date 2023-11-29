@@ -248,9 +248,9 @@ type InfrastructureState struct {
 	// Data is map to store things.
 	// +optional
 	Data map[string]string
-	// Items is a list of resources that were created during the infrastructure reconciliation.
+	// ManagedItems is a list of resources that were created during the infrastructure reconciliation.
 	// +optional
-	Items []AzureResource
+	ManagedItems []AzureResource
 }
 
 // AzureResource represents metadata information about created infrastructure resources.

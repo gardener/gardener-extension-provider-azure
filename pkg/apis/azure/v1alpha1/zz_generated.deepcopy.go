@@ -275,8 +275,8 @@ func (in *InfrastructureState) DeepCopyInto(out *InfrastructureState) {
 			(*out)[key] = val
 		}
 	}
-	if in.Items != nil {
-		in, out := &in.Items, &out.Items
+	if in.ManagedItems != nil {
+		in, out := &in.ManagedItems, &out.ManagedItems
 		*out = make([]AzureResource, len(*in))
 		copy(*out, *in)
 	}

@@ -682,7 +682,7 @@ map[string]string
 </tr>
 <tr>
 <td>
-<code>items</code></br>
+<code>managedItems</code></br>
 <em>
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.AzureResource">
 []AzureResource
@@ -691,7 +691,7 @@ map[string]string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Items is a list of resources that were created during the infrastructure reconciliation.</p>
+<p>ManagedItems is a list of resources that were created during the infrastructure reconciliation.</p>
 </td>
 </tr>
 </tbody>

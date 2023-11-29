@@ -580,7 +580,7 @@ func Convert_azure_InfrastructureConfig_To_v1alpha1_InfrastructureConfig(in *azu
 
 func autoConvert_v1alpha1_InfrastructureState_To_azure_InfrastructureState(in *InfrastructureState, out *azure.InfrastructureState, s conversion.Scope) error {
 	out.Data = *(*map[string]string)(unsafe.Pointer(&in.Data))
-	out.Items = *(*[]azure.AzureResource)(unsafe.Pointer(&in.Items))
+	out.ManagedItems = *(*[]azure.AzureResource)(unsafe.Pointer(&in.ManagedItems))
 	return nil
 }
 
@@ -591,7 +591,7 @@ func Convert_v1alpha1_InfrastructureState_To_azure_InfrastructureState(in *Infra
 
 func autoConvert_azure_InfrastructureState_To_v1alpha1_InfrastructureState(in *azure.InfrastructureState, out *InfrastructureState, s conversion.Scope) error {
 	out.Data = *(*map[string]string)(unsafe.Pointer(&in.Data))
-	out.Items = *(*[]AzureResource)(unsafe.Pointer(&in.Items))
+	out.ManagedItems = *(*[]AzureResource)(unsafe.Pointer(&in.ManagedItems))
 	return nil
 }
 

@@ -107,8 +107,8 @@ func InfrastructureStateFromRaw(raw *runtime.RawExtension) (*api.InfrastructureS
 	if state.Data == nil {
 		state.Data = make(map[string]string)
 	}
-	if state.Items == nil {
-		state.Items = make([]api.AzureResource, 0)
+	if state.ManagedItems == nil {
+		state.ManagedItems = make([]api.AzureResource, 0)
 	}
 
 	return state, nil

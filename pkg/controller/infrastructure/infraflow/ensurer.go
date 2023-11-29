@@ -739,8 +739,8 @@ func (f *FlowContext) GetInfrastructureStatus(_ context.Context) (*v1alpha1.Infr
 // GetInfrastructureState returns tha shoot's infrastructure state.
 func (f *FlowContext) GetInfrastructureState() (*runtime.RawExtension, error) {
 	state := &v1alpha1.InfrastructureState{
-		TypeMeta: helper.InfrastructureStateTypeMeta,
-		Items:    f.inventory.ToList(),
+		TypeMeta:     helper.InfrastructureStateTypeMeta,
+		ManagedItems: f.inventory.ToList(),
 	}
 
 	return &runtime.RawExtension{
