@@ -64,7 +64,10 @@ import (
 )
 
 const (
-	CountDomain = 1
+	CountDomain                = 1
+	reconcilerUseTF     string = "tf"
+	reconcilerMigrateTF string = "migrate"
+	reconcilerUseFlow   string = "flow"
 )
 
 var (
@@ -78,25 +81,9 @@ var (
 	subscriptionId = flag.String("subscription-id", "", "Azure subscription ID")
 	tenantId       = flag.String("tenant-id", "", "Azure tenant ID")
 	region         = flag.String("region", "", "Azure region")
+	secretYamlPath = flag.String("secret-path", "", "Yaml file with secret including Azure credentials")
+	reconciler     = flag.String("reconciler", reconcilerUseTF, "Set annotation to use flow for reconciliation")
 )
-
-func validateFlags() {
-	if len(*clientId) == 0 {
-		panic("client-id flag is not specified")
-	}
-	if len(*clientSecret) == 0 {
-		panic("client-secret flag is not specified")
-	}
-	if len(*subscriptionId) == 0 {
-		panic("subscription-id flag is not specified")
-	}
-	if len(*tenantId) == 0 {
-		panic("tenant-id flag is not specified")
-	}
-	if len(*region) == 0 {
-		panic("region flag is not specified")
-	}
-}
 
 type azureClientSet struct {
 	groups           resources.GroupsClient
@@ -569,13 +556,12 @@ var _ = Describe("Infrastructure tests", func() {
 				extensionsv1alpha1.InfrastructureResource,
 				10*time.Second,
 				30*time.Second,
-				1*time.Minute,
+				30*time.Second,
 				nil,
 			)
-			Expect(err).To(MatchError(ContainSubstring("could not acquire access token to parse claims")))
 			var errorWithCode *gardencorev1beta1helper.ErrorWithCodes
 			Expect(errors.As(err, &errorWithCode)).To(BeTrue())
-			Expect(errorWithCode.Codes()).To(ConsistOf(gardencorev1beta1.ErrorInfraUnauthenticated))
+			Expect(errorWithCode.Codes()).To(ContainElement(gardencorev1beta1.ErrorInfraUnauthenticated))
 		})
 	})
 })
@@ -664,6 +650,14 @@ func runTest(
 		return err
 	}
 
+	// if *reconciler == reconcilerUseFlow {
+	// 	log.Info("creating infrastructure with flow annotation")
+	// 	metav1.SetMetaDataAnnotation(&infra.ObjectMeta, azure.AnnotationKeyUseFlow, "true")
+	// } else if *reconciler == reconcilerUseTF {
+	// 	log.Info("creating infrastructure with terraform annotation")
+	// 	metav1.SetMetaDataAnnotation(&infra.ObjectMeta, azure.AnnotationKeyUseTF, "true")
+	// }
+
 	if err := c.Create(ctx, infra); err != nil {
 		return err
 	}
@@ -681,6 +675,29 @@ func runTest(
 		nil,
 	); err != nil {
 		return err
+	}
+
+	if *reconciler == reconcilerMigrateTF {
+		By("verifying terraform migration")
+		infraCopy := infra.DeepCopy()
+		metav1.SetMetaDataAnnotation(&infra.ObjectMeta, "gardener.cloud/operation", "reconcile")
+		metav1.SetMetaDataAnnotation(&infra.ObjectMeta, azure.AnnotationKeyUseFlow, "true")
+		Expect(c.Patch(ctx, infra, client.MergeFrom(infraCopy))).To(Succeed())
+
+		By("wait until infrastructure is reconciled")
+		if err := extensions.WaitUntilExtensionObjectReady(
+			ctx,
+			c,
+			log,
+			infra,
+			"Infrastructure",
+			10*time.Second,
+			30*time.Second,
+			16*time.Minute,
+			nil,
+		); err != nil {
+			return err
+		}
 	}
 
 	By("decode infrastructure status")
@@ -819,7 +836,7 @@ func newInfrastructure(namespace string, providerConfig *azurev1alpha1.Infrastru
 		return nil, err
 	}
 
-	return &extensionsv1alpha1.Infrastructure{
+	infra := &extensionsv1alpha1.Infrastructure{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "infrastructure",
 			Namespace: namespace,
@@ -838,7 +855,16 @@ func newInfrastructure(namespace string, providerConfig *azurev1alpha1.Infrastru
 			Region:       *region,
 			SSHPublicKey: []byte(sshPublicKey),
 		},
-	}, nil
+	}
+
+	if *reconciler == reconcilerUseFlow {
+		log.Info("creating infrastructure with flow annotation")
+		metav1.SetMetaDataAnnotation(&infra.ObjectMeta, azure.AnnotationKeyUseFlow, "true")
+	} else if *reconciler == reconcilerUseTF {
+		log.Info("creating infrastructure with terraform annotation")
+		metav1.SetMetaDataAnnotation(&infra.ObjectMeta, azure.AnnotationKeyUseTF, "true")
+	}
+	return infra, nil
 }
 
 func prepareNewResourceGroup(ctx context.Context, log logr.Logger, az *azureClientSet, groupName, location string) error {

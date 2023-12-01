@@ -266,3 +266,24 @@ type IdentityStatus struct {
 	// ACRAccess specifies if the identity should be used by the Shoot worker nodes to pull from an Azure Container Registry.
 	ACRAccess bool `json:"acrAccess"`
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// InfrastructureState contains state information of the infrastructure resource.
+type InfrastructureState struct {
+	metav1.TypeMeta `json:",inline"`
+	// Data is map to store things.
+	// +optional
+	Data map[string]string `json:"data,omitempty"`
+	// ManagedItems is a list of resources that were created during the infrastructure reconciliation.
+	// +optional
+	ManagedItems []AzureResource `json:"managedItems,omitempty"`
+}
+
+// AzureResource represents metadata information about created infrastructure resources.
+type AzureResource struct {
+	// Kind is the type of resource.
+	Kind string `json:"kind"`
+	// ID is the ID of the resource.
+	ID string `json:"id"`
+}

@@ -437,6 +437,47 @@ int32
 </tr>
 </tbody>
 </table>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.AzureResource">AzureResource
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.InfrastructureState">InfrastructureState</a>)
+</p>
+<p>
+<p>AzureResource represents metadata information about created infrastructure resources.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>kind</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Kind is the type of resource.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>id</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>ID is the ID of the resource.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.CloudControllerManagerConfig">CloudControllerManagerConfig
 </h3>
 <p>
@@ -610,6 +651,47 @@ bool
 </td>
 <td>
 <p>ACRAccess specifies if the identity should be used by the Shoot worker nodes to pull from an Azure Container Registry.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.InfrastructureState">InfrastructureState
+</h3>
+<p>
+<p>InfrastructureState contains state information of the infrastructure resource.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>data</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Data is map to store things.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>managedItems</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.AzureResource">
+[]AzureResource
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ManagedItems is a list of resources that were created during the infrastructure reconciliation.</p>
 </td>
 </tr>
 </tbody>

@@ -17,7 +17,7 @@ package bastion
 import (
 	"encoding/json"
 
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -35,6 +35,23 @@ import (
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 )
+
+func createRule(name, sourceAddrPrefix, destinationAddressPrefix string) *armnetwork.SecurityRule {
+	return &armnetwork.SecurityRule{
+		Name: pointer.String(name), Properties: &armnetwork.SecurityRulePropertiesFormat{
+			SourceAddressPrefix:      pointer.String(sourceAddrPrefix),
+			DestinationAddressPrefix: pointer.String(destinationAddressPrefix),
+		},
+	}
+}
+
+func createRuleWithPriority(name string, priority int32) *armnetwork.SecurityRule {
+	return &armnetwork.SecurityRule{
+		Name: pointer.String(name), Properties: &armnetwork.SecurityRulePropertiesFormat{
+			Priority: to.Int32Ptr(priority),
+		},
+	}
+}
 
 var _ = Describe("Bastion test", func() {
 	var (
@@ -66,7 +83,7 @@ var _ = Describe("Bastion test", func() {
 				CIDRs:              []string{"213.69.151.131/32", "2001:db8:3333:4444:5555:6666:7777:8888/128"},
 			}
 			rules := prepareNSGRules(opt)
-			Expect(len(*rules)).Should(Equal(4))
+			Expect(len(rules)).Should(Equal(4))
 		})
 		It("should return 2 rules without ipv6", func() {
 			opt := &Options{
@@ -74,78 +91,50 @@ var _ = Describe("Bastion test", func() {
 				CIDRs:              []string{"213.69.151.131/32", "2001:db8:3333:4444:5555:6666:7777:8888/128"},
 			}
 			rules := prepareNSGRules(opt)
-			Expect(len(*rules)).Should(Equal(3))
+			Expect(len(rules)).Should(Equal(3))
 		})
 	})
 
 	Describe("Testing manipulations with Firewall Rules", func() {
 		It("Should be valid", func() {
-			ruleSet1 := []network.SecurityRule{
-				{Name: pointer.String("ruleName2"), SecurityRulePropertiesFormat: &network.SecurityRulePropertiesFormat{
-					SourceAddressPrefix:      pointer.String("1.1.1.1"),
-					DestinationAddressPrefix: pointer.String("*"),
-				}},
-				{Name: pointer.String("ruleName1"), SecurityRulePropertiesFormat: &network.SecurityRulePropertiesFormat{
-					SourceAddressPrefix:      pointer.String("*"),
-					DestinationAddressPrefix: pointer.String("*"),
-				}},
+			ruleSet1 := []*armnetwork.SecurityRule{
+				createRule("ruleName2", "1.1.1.1", "*"),
+				createRule("ruleName1", "*", "*"),
 			}
 
-			ruleSet2 := []network.SecurityRule{
-				{Name: pointer.String("ruleName1"), SecurityRulePropertiesFormat: &network.SecurityRulePropertiesFormat{
-					SourceAddressPrefix:      pointer.String("8.8.8.8"),
-					DestinationAddressPrefix: pointer.String("*"),
-				}},
+			ruleSet2 := []*armnetwork.SecurityRule{
+				createRule("ruleName1", "8.8.8.8", "*"),
 			}
 
-			ruleSet3 := []network.SecurityRule{
-				{Name: pointer.String("ruleName1"), SecurityRulePropertiesFormat: &network.SecurityRulePropertiesFormat{
-					SourceAddressPrefix:      pointer.String("*"),
-					DestinationAddressPrefix: pointer.String("8.8.8.8"),
-				}},
+			ruleSet3 := []*armnetwork.SecurityRule{
+				createRule("ruleName1", "*", "8.8.8.8"),
 			}
 
-			Expect(expectedNSGRulesPresentAndValid(&ruleSet1, &ruleSet1)).To(Equal(true))
-			Expect(expectedNSGRulesPresentAndValid(&ruleSet1, &ruleSet2)).To(Equal(false))
-			Expect(expectedNSGRulesPresentAndValid(&ruleSet1, &ruleSet3)).To(Equal(false))
+			Expect(expectedNSGRulesPresentAndValid(ruleSet1, ruleSet1)).To(Equal(true))
+			Expect(expectedNSGRulesPresentAndValid(ruleSet1, ruleSet2)).To(Equal(false))
+			Expect(expectedNSGRulesPresentAndValid(ruleSet1, ruleSet3)).To(Equal(false))
 		})
 
 		It("should add Rules with new priority numbers and delete old one", func() {
-			oldSet := &[]network.SecurityRule{
-				{
-					Name:                         pointer.String("defaultRule"),
-					SecurityRulePropertiesFormat: &network.SecurityRulePropertiesFormat{Priority: pointer.Int32(50)},
-				},
-				{
-					Name:                         pointer.String("ruleName1"),
-					SecurityRulePropertiesFormat: &network.SecurityRulePropertiesFormat{Priority: pointer.Int32(100)},
-				},
-				{
-					Name:                         pointer.String("ruleName2"),
-					SecurityRulePropertiesFormat: &network.SecurityRulePropertiesFormat{Priority: pointer.Int32(200)},
-				},
+			oldSet := []*armnetwork.SecurityRule{
+				createRuleWithPriority("defaultRule", 50),
+				createRuleWithPriority("ruleName1", 100),
+				createRuleWithPriority("ruleName2", 200),
 			}
-			newSet := []network.SecurityRule{
-				{
-					Name:                         pointer.String("ruleName1"),
-					SecurityRulePropertiesFormat: &network.SecurityRulePropertiesFormat{Priority: pointer.Int32(100)},
-				},
-				{
-					Name:                         pointer.String("ruleName2"),
-					SecurityRulePropertiesFormat: &network.SecurityRulePropertiesFormat{Priority: pointer.Int32(200)},
-				},
+			newSet := []*armnetwork.SecurityRule{
+				createRuleWithPriority("ruleName1", 100),
+				createRuleWithPriority("ruleName2", 200),
 			}
 
-			addOrReplaceNsgRulesDefinition(oldSet, &newSet)
-			result := *oldSet
+			result := addOrReplaceNsgRulesDefinition(oldSet, newSet)
 
 			Expect(*result[0].Name).To(Equal("defaultRule"))
 			Expect(*result[1].Name).To(Equal("ruleName1"))
 			Expect(*result[2].Name).To(Equal("ruleName2"))
 
-			Expect(*result[0].Priority).To(Equal(int32(50)))
-			Expect(*result[1].Priority).To(Equal(int32(101)))
-			Expect(*result[2].Priority).To(Equal(int32(201)))
+			Expect(*result[0].Properties.Priority).To(Equal(int32(50)))
+			Expect(*result[1].Properties.Priority).To(Equal(int32(101)))
+			Expect(*result[2].Properties.Priority).To(Equal(int32(201)))
 		})
 	})
 
@@ -272,49 +261,50 @@ var _ = Describe("Bastion test", func() {
 
 	Describe("remove Security Rule", func() {
 		It("should return nil if pass nil", func() {
-			var rulesArr *[]network.SecurityRule = nil
-			result := deleteSecurityRuleDefinitionsByName(rulesArr, "")
+			var rulesArr []*armnetwork.SecurityRule = nil
+			var deleted bool
+			rulesArr, deleted = deleteSecurityRuleDefinitionsByName(rulesArr, "")
 
-			Expect(result).To(Equal(false))
+			Expect(deleted).To(Equal(false))
 			Expect(rulesArr).To(BeNil())
 		})
 
 		It("Should return single security rule and keep with NIL name", func() {
-			original := &[]network.SecurityRule{
+			original := []*armnetwork.SecurityRule{
 				{Name: nil},
 				{Name: pointer.String("ruleName1")},
 				{Name: pointer.String("ruleName2")},
 				{Name: pointer.String("ruleName3")},
 			}
 
-			someDeleted := deleteSecurityRuleDefinitionsByName(original, "ruleName1", "ruleName2", "non-exist-rule")
+			modified, someDeleted := deleteSecurityRuleDefinitionsByName(original, "ruleName1", "ruleName2", "non-exist-rule")
 
 			Expect(someDeleted).To(Equal(true))
-			Expect(original).To(Equal(&[]network.SecurityRule{
+			Expect(modified).To(Equal([]*armnetwork.SecurityRule{
 				{Name: nil},
 				{Name: pointer.String("ruleName3")},
 			}))
 
-			Expect(len(*original)).To(Equal(2))
+			Expect(len(modified)).To(Equal(2))
 		})
 	})
 
 	Describe("check getPrivateIPAddress ", func() {
-		nic := &network.Interface{
-			InterfacePropertiesFormat: &network.InterfacePropertiesFormat{
-				IPConfigurations: &[]network.InterfaceIPConfiguration{
+		nic := &armnetwork.Interface{
+			Properties: &armnetwork.InterfacePropertiesFormat{
+				IPConfigurations: []*armnetwork.InterfaceIPConfiguration{
 					{
-						InterfaceIPConfigurationPropertiesFormat: &network.InterfaceIPConfigurationPropertiesFormat{
+						Properties: &armnetwork.InterfaceIPConfigurationPropertiesFormat{
 							PrivateIPAddress: to.StringPtr("192.168.1.2"),
 						},
 					},
 					{
-						InterfaceIPConfigurationPropertiesFormat: &network.InterfaceIPConfigurationPropertiesFormat{
+						Properties: &armnetwork.InterfaceIPConfigurationPropertiesFormat{
 							PrivateIPAddress: to.StringPtr("2001:db8:3333:4444:5555:6666:7777:8888"),
 						},
 					},
 					{
-						InterfaceIPConfigurationPropertiesFormat: &network.InterfaceIPConfigurationPropertiesFormat{
+						Properties: &armnetwork.InterfaceIPConfigurationPropertiesFormat{
 							PrivateIPAddress: to.StringPtr("192.168.1.1"),
 						},
 					},

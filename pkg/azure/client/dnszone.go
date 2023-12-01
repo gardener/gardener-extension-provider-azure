@@ -20,11 +20,20 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-05-01/dns"
 	"github.com/Azure/go-autorest/autorest/to"
 )
 
-// GetAll returns a map of all zone names mapped to their IDs.
-func (c DNSZoneClient) GetAll(ctx context.Context) (map[string]string, error) {
+var _ DNSZone = &DNSZoneClient{}
+var resourceGroupRegex = regexp.MustCompile("/resourceGroups/([^/]+)/")
+
+// DNSZoneClient is an implementation of DNSZone for a DNS zone k8sClient.
+type DNSZoneClient struct {
+	client dns.ZonesClient
+}
+
+// List returns a map of all zone names mapped to their IDs.
+func (c *DNSZoneClient) List(ctx context.Context) (map[string]string, error) {
 	zones := make(map[string]string)
 
 	results, err := c.client.ListComplete(ctx, nil)
@@ -45,8 +54,6 @@ func (c DNSZoneClient) GetAll(ctx context.Context) (map[string]string, error) {
 
 	return zones, nil
 }
-
-var resourceGroupRegex = regexp.MustCompile("/resourceGroups/([^/]+)/")
 
 func getResourceGroupName(zoneID string) (string, error) {
 	submatches := resourceGroupRegex.FindStringSubmatch(zoneID)

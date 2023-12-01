@@ -42,27 +42,32 @@ const (
 	requeueAfterOnProviderError = 30 * time.Second
 )
 
+// DefaultAzureClientFactoryFunc is the default function for creating a DNS client. It can be overridden for tests.
+var DefaultAzureClientFactoryFunc = azureclient.NewAzureClientFactoryWithDNSSecret
+
 type actuator struct {
-	client             client.Client
-	azureClientFactory azureclient.Factory
+	client client.Client
 }
 
 // NewActuator creates a new dnsrecord.Actuator.
-func NewActuator(mgr manager.Manager, azureClientFactory azureclient.Factory) dnsrecord.Actuator {
+func NewActuator(mgr manager.Manager) dnsrecord.Actuator {
 	return &actuator{
-		client:             mgr.GetClient(),
-		azureClientFactory: azureClientFactory,
+		client: mgr.GetClient(),
 	}
 }
 
 // Reconcile reconciles the DNSRecord.
 func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, _ *extensionscontroller.Cluster) error {
 	// Create Azure DNS zone and recordset clients
-	dnsZoneClient, err := a.azureClientFactory.DNSZone(ctx, dns.Spec.SecretRef)
+	clientFactory, err := DefaultAzureClientFactoryFunc(ctx, a.client, dns.Spec.SecretRef)
+	if err != nil {
+		return err
+	}
+	dnsZoneClient, err := clientFactory.DNSZone()
 	if err != nil {
 		return util.DetermineError(fmt.Errorf("could not create Azure DNS zone client: %+v", err), helper.KnownCodes)
 	}
-	dnsRecordSetClient, err := a.azureClientFactory.DNSRecordSet(ctx, dns.Spec.SecretRef)
+	dnsRecordSetClient, err := clientFactory.DNSRecordSet()
 	if err != nil {
 		return util.DetermineError(fmt.Errorf("could not create Azure DNS recordset client: %+v", err), helper.KnownCodes)
 	}
@@ -104,11 +109,16 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, dns *extensio
 // Delete deletes the DNSRecord.
 func (a *actuator) Delete(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, _ *extensionscontroller.Cluster) error {
 	// Create Azure DNS zone and recordset clients
-	dnsZoneClient, err := a.azureClientFactory.DNSZone(ctx, dns.Spec.SecretRef)
+	clientFactory, err := DefaultAzureClientFactoryFunc(ctx, a.client, dns.Spec.SecretRef)
+	if err != nil {
+		return err
+	}
+	// Create Azure DNS zone and recordset clients
+	dnsZoneClient, err := clientFactory.DNSZone()
 	if err != nil {
 		return util.DetermineError(fmt.Errorf("could not create Azure DNS zone client: %+v", err), helper.KnownCodes)
 	}
-	dnsRecordSetClient, err := a.azureClientFactory.DNSRecordSet(ctx, dns.Spec.SecretRef)
+	dnsRecordSetClient, err := clientFactory.DNSRecordSet()
 	if err != nil {
 		return util.DetermineError(fmt.Errorf("could not create Azure DNS recordset client: %+v", err), helper.KnownCodes)
 	}
@@ -155,7 +165,7 @@ func (a *actuator) getZone(ctx context.Context, log logr.Logger, dns *extensions
 	default:
 		// The zone is not specified in the resource status or spec. Try to determine the zone by
 		// getting all zones of the account and searching for the longest zone name that is a suffix of dns.spec.Name
-		zones, err := dnsZoneClient.GetAll(ctx)
+		zones, err := dnsZoneClient.List(ctx)
 		if err != nil {
 			return "", &reconcilerutils.RequeueAfterError{
 				Cause:        fmt.Errorf("could not get DNS zones: %+v", err),

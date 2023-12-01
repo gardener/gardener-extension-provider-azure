@@ -83,7 +83,7 @@ func NewActuator(mgr manager.Manager, gardenletManagesMCM bool) (worker.Actuator
 	)
 }
 
-func (d *delegateFactory) WorkerDelegate(_ context.Context, worker *extensionsv1alpha1.Worker, cluster *extensionscontroller.Cluster) (genericactuator.WorkerDelegate, error) {
+func (d *delegateFactory) WorkerDelegate(ctx context.Context, worker *extensionsv1alpha1.Worker, cluster *extensionscontroller.Cluster) (genericactuator.WorkerDelegate, error) {
 	clientset, err := kubernetes.NewForConfig(d.restConfig)
 	if err != nil {
 		return nil, err
@@ -98,8 +98,11 @@ func (d *delegateFactory) WorkerDelegate(_ context.Context, worker *extensionsv1
 	if err != nil {
 		return nil, err
 	}
+	factory, err := azureclient.NewAzureClientFactory(ctx, d.client, worker.Spec.SecretRef)
+	if err != nil {
+		return nil, err
+	}
 
-	factory := azureclient.NewAzureClientFactory(d.client)
 	return NewWorkerDelegate(d.client, d.scheme, seedChartApplier, serverVersion.GitVersion, worker, cluster, factory)
 }
 

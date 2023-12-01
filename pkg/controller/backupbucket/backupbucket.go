@@ -18,6 +18,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils"
 
@@ -31,16 +33,18 @@ func ensureBackupBucket(ctx context.Context, factory azureclient.Factory, backup
 	)
 
 	// Get resource group client to ensure resource group to host backup storage account exists.
-	groupClient, err := factory.Group(ctx, backupBucket.Spec.SecretRef)
+	groupClient, err := factory.Group()
 	if err != nil {
 		return "", "", err
 	}
-	if err := groupClient.CreateOrUpdate(ctx, backupBucket.Name, backupBucket.Spec.Region); err != nil {
+	if _, err := groupClient.CreateOrUpdate(ctx, backupBucket.Name, armresources.ResourceGroup{
+		Location: to.Ptr(backupBucket.Spec.Region),
+	}); err != nil {
 		return "", "", err
 	}
 
 	// Get storage account client to create the backup storage account.
-	storageAccountClient, err := factory.StorageAccount(ctx, backupBucket.Spec.SecretRef)
+	storageAccountClient, err := factory.StorageAccount()
 	if err != nil {
 		return "", "", err
 	}

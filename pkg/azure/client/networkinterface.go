@@ -16,52 +16,55 @@ package client
 
 import (
 	"context"
-	"fmt"
-	"net/http"
 
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
+var _ NetworkInterface = &NetworkInterfaceClient{}
+
+// NetworkInterfaceClient is an implementation of Network Interface.
+type NetworkInterfaceClient struct {
+	client *armnetwork.InterfacesClient
+}
+
+// NewNetworkInterfaceClient creates a new NetworkInterfaceClient
+func NewNetworkInterfaceClient(auth internal.ClientAuth, tc azcore.TokenCredential, opts *arm.ClientOptions) (*NetworkInterfaceClient, error) {
+	client, err := armnetwork.NewInterfacesClient(auth.SubscriptionID, tc, opts)
+	return &NetworkInterfaceClient{client}, err
+}
+
 // CreateOrUpdate indicates an expected call of Network interface CreateOrUpdate.
-func (c NetworkInterfaceClient) CreateOrUpdate(ctx context.Context, resourceGroupName, name string, parameters network.Interface) (*network.Interface, error) {
-	future, err := c.client.CreateOrUpdate(ctx, resourceGroupName, name, parameters)
+func (c *NetworkInterfaceClient) CreateOrUpdate(ctx context.Context, resourceGroupName, name string, parameters armnetwork.Interface) (*armnetwork.Interface, error) {
+	future, err := c.client.BeginCreateOrUpdate(ctx, resourceGroupName, name, parameters, nil)
 	if err != nil {
 		return nil, err
 	}
-	if err := future.WaitForCompletionRef(ctx, c.client.Client); err != nil {
-		return nil, err
-	}
-	nic, err := future.Result(c.client)
+	res, err := future.PollUntilDone(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
-	return &nic, nil
+	return &res.Interface, nil
 }
 
 // Get will get a Network interface.
-func (c NetworkInterfaceClient) Get(ctx context.Context, resourceGroupName string, name string, expander string) (*network.Interface, error) {
-	nic, err := c.client.Get(ctx, resourceGroupName, name, expander)
+func (c *NetworkInterfaceClient) Get(ctx context.Context, resourceGroupName string, name string) (*armnetwork.Interface, error) {
+	nic, err := c.client.Get(ctx, resourceGroupName, name, nil)
 	if err != nil {
-		return nil, err
+		return nil, FilterNotFoundError(err)
 	}
-	return &nic, nil
+	return &nic.Interface, nil
 }
 
 // Delete will delete a Network interface.
-func (c NetworkInterfaceClient) Delete(ctx context.Context, resourceGroupName, name string) error {
-	future, err := c.client.Delete(ctx, resourceGroupName, name)
+func (c *NetworkInterfaceClient) Delete(ctx context.Context, resourceGroupName, name string) error {
+	future, err := c.client.BeginDelete(ctx, resourceGroupName, name, nil)
 	if err != nil {
-		return err
+		return FilterNotFoundError(err)
 	}
-	if err := future.WaitForCompletionRef(ctx, c.client.Client); err != nil {
-		return err
-	}
-	result, err := future.Result(c.client)
-	if err != nil {
-		return err
-	}
-	if result.StatusCode == http.StatusOK || result.StatusCode == http.StatusAccepted || result.StatusCode == http.StatusNoContent || result.StatusCode == http.StatusNotFound {
-		return nil
-	}
-	return fmt.Errorf("deletion of network interfaces %s failed. statuscode=%d", name, result.StatusCode)
+	_, err = future.PollUntilDone(ctx, nil)
+	return err
 }

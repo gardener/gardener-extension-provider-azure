@@ -28,6 +28,9 @@ import (
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
 
+// DefaultClientFactoryFunc is the default function to get a backup bucket client. Can be overridden for tests.
+var DefaultClientFactoryFunc = azureclient.NewAzureClientFactory
+
 type actuator struct {
 	backupbucket.Actuator
 	client client.Client
@@ -40,7 +43,10 @@ func newActuator(mgr manager.Manager) backupbucket.Actuator {
 }
 
 func (a *actuator) Reconcile(ctx context.Context, _ logr.Logger, backupBucket *extensionsv1alpha1.BackupBucket) error {
-	var factory = azureclient.NewAzureClientFactory(a.client)
+	factory, err := DefaultClientFactoryFunc(ctx, a.client, backupBucket.Spec.SecretRef)
+	if err != nil {
+		return err
+	}
 
 	// If the generated secret in the backupbucket status not exists that means
 	// no backupbucket exists and it need to be created.
@@ -69,7 +75,10 @@ func (a *actuator) Delete(ctx context.Context, _ logr.Logger, backupBucket *exte
 		return nil
 	}
 
-	var factory = azureclient.NewAzureClientFactory(a.client)
+	factory, err := azureclient.NewAzureClientFactory(ctx, a.client, backupBucket.Spec.SecretRef)
+	if err != nil {
+		return util.DetermineError(err, helper.KnownCodes)
+	}
 
 	secret, err := a.getBackupBucketGeneratedSecret(ctx, backupBucket)
 	if err != nil {
@@ -87,11 +96,11 @@ func (a *actuator) Delete(ctx context.Context, _ logr.Logger, backupBucket *exte
 	}
 
 	// Get resource group client and delete the resource group which contains the backup storage account.
-	groupClient, err := factory.Group(ctx, backupBucket.Spec.SecretRef)
+	groupClient, err := factory.Group()
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}
-	if err := groupClient.DeleteIfExits(ctx, backupBucket.Name); err != nil {
+	if err := groupClient.Delete(ctx, backupBucket.Name); err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}
 
