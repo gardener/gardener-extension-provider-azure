@@ -198,7 +198,7 @@ images:
 - name: csi-driver-file
   sourceRepository: github.com/kubernetes-sigs/azurefile-csi-driver
   repository: mcr.microsoft.com/oss/kubernetes-csi/azurefile-csi
-  tag: "v1.29.1"
+  tag: "v1.29.2"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
     value:
