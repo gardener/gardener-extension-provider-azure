@@ -27,13 +27,15 @@ import (
 	heartbeatcmd "github.com/gardener/gardener/extensions/pkg/controller/heartbeat/cmd"
 	"github.com/gardener/gardener/extensions/pkg/util"
 	webhookcmd "github.com/gardener/gardener/extensions/pkg/webhook/cmd"
+	"github.com/gardener/gardener/pkg/client/kubernetes"
 	gardenerhealthz "github.com/gardener/gardener/pkg/healthz"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	azurev1alpha1 "github.com/gardener/remedy-controller/pkg/apis/azure/v1alpha1"
+	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	autoscalingv1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/component-base/version/verflag"
+	"sigs.k8s.io/controller-runtime/pkg/cluster"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
@@ -48,7 +50,6 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/healthcheck"
 	azureinfrastructure "github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure"
 	azureworker "github.com/gardener/gardener-extension-provider-azure/pkg/controller/worker"
-	controlplanewebhook "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/controlplane"
 	azurecontrolplaneexposure "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/controlplaneexposure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/webhook/topology"
 )
@@ -202,8 +203,17 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 				return fmt.Errorf("could not update manager scheme: %w", err)
 			}
 
-			// add common meta types to schema for controller-runtime to use v1.ListOptions
-			metav1.AddToGroupVersion(scheme, machinev1alpha1.SchemeGroupVersion)
+			log := mgr.GetLogger()
+			gardenCluster, err := getGardenCluster(log)
+			if err != nil {
+				return err
+			}
+			log.Info("Adding garden cluster to manager")
+			if err := mgr.Add(gardenCluster); err != nil {
+				return fmt.Errorf("failed adding garden cluster to manager: %w", err)
+			}
+
+			log.Info("Adding controllers to manager")
 
 			configFileOpts.Completed().ApplyETCDStorage(&azurecontrolplaneexposure.DefaultAddOptions.ETCDStorage)
 			configFileOpts.Completed().ApplyHealthCheckConfig(&healthcheck.DefaultAddOptions.HealthCheckConfig)
@@ -220,12 +230,7 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			reconcileOpts.Completed().Apply(&azureworker.DefaultAddOptions.IgnoreOperationAnnotation)
 			reconcileOpts.Completed().Apply(&azurebastion.DefaultAddOptions.IgnoreOperationAnnotation)
 			workerCtrlOpts.Completed().Apply(&azureworker.DefaultAddOptions.Controller)
-
-			// TODO(rfranzke): Remove the GardenletManagesMCM fields as soon as the general options no longer support the
-			//  GardenletManagesMCM field.
-			azureworker.DefaultAddOptions.GardenletManagesMCM = generalOpts.Completed().GardenletManagesMCM
-			controlplanewebhook.GardenletManagesMCM = generalOpts.Completed().GardenletManagesMCM
-			healthcheck.GardenletManagesMCM = generalOpts.Completed().GardenletManagesMCM
+			azureworker.DefaultAddOptions.GardenCluster = gardenCluster
 
 			topology.SeedRegion = seedOptions.Completed().Region
 			topology.SeedProvider = seedOptions.Completed().Provider
@@ -265,4 +270,22 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 	aggOption.AddFlags(cmd.Flags())
 
 	return cmd
+}
+
+func getGardenCluster(log logr.Logger) (cluster.Cluster, error) {
+	log.Info("Getting rest config for garden")
+	gardenRESTConfig, err := kubernetes.RESTConfigFromKubeconfigFile(os.Getenv("GARDEN_KUBECONFIG"), kubernetes.AuthTokenFile)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Info("Setting up cluster object for garden")
+	gardenCluster, err := cluster.New(gardenRESTConfig, func(opts *cluster.Options) {
+		opts.Scheme = kubernetes.GardenScheme
+		opts.Logger = log
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed creating garden cluster object: %w", err)
+	}
+	return gardenCluster, nil
 }

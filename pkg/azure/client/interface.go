@@ -14,7 +14,9 @@
 
 package client
 
-import "context"
+import (
+	"context"
+)
 
 // GetFunc gets a resource of type T.
 type GetFunc[T any] interface {

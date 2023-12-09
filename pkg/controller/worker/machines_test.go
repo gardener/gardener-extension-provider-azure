@@ -23,7 +23,6 @@ import (
 
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
-	genericworkeractuator "github.com/gardener/gardener/extensions/pkg/controller/worker/genericactuator"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -66,7 +65,7 @@ var _ = Describe("Machines", func() {
 		chartApplier = mockkubernetes.NewMockChartApplier(ctrl)
 		statusWriter = mockclient.NewMockStatusWriter(ctrl)
 
-		// Let the client always the mocked status writer when Status() is called.
+		// Let the seedClient always the mocked status writer when Status() is called.
 		c.EXPECT().Status().AnyTimes().Return(statusWriter)
 
 		ctx = context.TODO()
@@ -79,30 +78,6 @@ var _ = Describe("Machines", func() {
 	})
 
 	Context("workerDelegate", func() {
-		Describe("#MachineClassKind", func() {
-			It("should return the correct kind of the machine class", func() {
-				w := makeWorker(namespace, region, nil, nil)
-				workerDelegate := wrapNewWorkerDelegate(c, nil, w, nil, nil)
-				Expect(workerDelegate.MachineClassKind()).To(Equal("MachineClass"))
-			})
-		})
-
-		Describe("#MachineClass", func() {
-			It("should return the correct type for the machine class", func() {
-				w := makeWorker(namespace, region, nil, nil)
-				workerDelegate := wrapNewWorkerDelegate(c, nil, w, nil, nil)
-				Expect(workerDelegate.MachineClass()).To(Equal(&machinev1alpha1.MachineClass{}))
-			})
-		})
-
-		Describe("#MachineClassList", func() {
-			It("should return the correct type for the machine class list", func() {
-				w := makeWorker(namespace, region, nil, nil)
-				workerDelegate := wrapNewWorkerDelegate(c, nil, w, nil, nil)
-				Expect(workerDelegate.MachineClassList()).To(Equal(&machinev1alpha1.MachineClassList{}))
-			})
-		})
-
 		Describe("#GenerateMachineDeployments, #DeployMachineClasses", func() {
 			const azureCSIDiskDriverTopologyKey = "topology.disk.csi.azure.com/zone"
 
@@ -864,6 +839,6 @@ func addNameAndSecretsToMachineClass(class map[string]interface{}, name string, 
 		"namespace": credentialsSecretRef.Namespace,
 	}
 	class["labels"] = map[string]string{
-		v1beta1constants.GardenerPurpose: genericworkeractuator.GardenPurposeMachineClass,
+		v1beta1constants.GardenerPurpose: v1beta1constants.GardenPurposeMachineClass,
 	}
 }

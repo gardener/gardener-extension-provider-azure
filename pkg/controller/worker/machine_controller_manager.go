@@ -16,47 +16,12 @@ package worker
 
 import (
 	"context"
-	"fmt"
-	"path/filepath"
 
-	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
-	"github.com/gardener/gardener/pkg/utils/chart"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
 
-	"github.com/gardener/gardener-extension-provider-azure/charts"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-)
-
-var (
-	mcmChart = &chart.Chart{
-		Name:       azure.MachineControllerManagerName,
-		EmbeddedFS: &charts.InternalChart,
-		Path:       filepath.Join(charts.InternalChartsPath, azure.MachineControllerManagerName, "seed"),
-		Images: []string{azure.MachineControllerManagerImageName,
-			azure.MachineControllerManagerProviderAzureImageName},
-		Objects: []*chart.Object{
-			{Type: &appsv1.Deployment{}, Name: azure.MachineControllerManagerName},
-			{Type: &corev1.Service{}, Name: azure.MachineControllerManagerName},
-			{Type: &corev1.ServiceAccount{}, Name: azure.MachineControllerManagerName},
-			{Type: &corev1.Secret{}, Name: azure.MachineControllerManagerName},
-			{Type: extensionscontroller.GetVerticalPodAutoscalerObject(), Name: azure.MachineControllerManagerVpaName},
-			{Type: &corev1.ConfigMap{}, Name: azure.MachineControllerManagerMonitoringConfigName},
-		},
-	}
-
-	mcmShootChart = &chart.Chart{
-		Name:       azure.MachineControllerManagerName,
-		EmbeddedFS: &charts.InternalChart,
-		Path:       filepath.Join(charts.InternalChartsPath, azure.MachineControllerManagerName, "shoot"),
-		Objects: []*chart.Object{
-			{Type: &rbacv1.ClusterRole{}, Name: fmt.Sprintf("extensions.gardener.cloud:%s:%s", azure.Name, azure.MachineControllerManagerName)},
-			{Type: &rbacv1.ClusterRoleBinding{}, Name: fmt.Sprintf("extensions.gardener.cloud:%s:%s", azure.Name, azure.MachineControllerManagerName)},
-		},
-	}
 )
 
 func (w *workerDelegate) GetMachineControllerManagerChartValues(ctx context.Context) (map[string]interface{}, error) {
