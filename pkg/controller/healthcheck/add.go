@@ -100,17 +100,6 @@ func RegisterHealthChecks(ctx context.Context, mgr manager.Manager, opts healthc
 		return err
 	}
 
-	var (
-		workerHealthChecks = []healthcheck.ConditionTypeToHealthCheck{{
-			ConditionType: string(gardencorev1beta1.ShootEveryNodeReady),
-			HealthCheck:   worker.NewNodesChecker(),
-			ErrorCodeCheckFunc: func(err error) []gardencorev1beta1.ErrorCode {
-				return util.DetermineErrorCodes(err, helper.KnownCodes)
-			},
-		}}
-		workerConditionTypesToRemove = sets.New(gardencorev1beta1.ShootControlPlaneHealthy)
-	)
-
 	return healthcheck.DefaultRegistration(
 		ctx,
 		azure.Type,
@@ -120,8 +109,14 @@ func RegisterHealthChecks(ctx context.Context, mgr manager.Manager, opts healthc
 		mgr,
 		opts,
 		nil,
-		workerHealthChecks,
-		workerConditionTypesToRemove,
+		[]healthcheck.ConditionTypeToHealthCheck{{
+			ConditionType: string(gardencorev1beta1.ShootEveryNodeReady),
+			HealthCheck:   worker.NewNodesChecker(),
+			ErrorCodeCheckFunc: func(err error) []gardencorev1beta1.ErrorCode {
+				return util.DetermineErrorCodes(err, helper.KnownCodes)
+			},
+		}},
+		sets.New(gardencorev1beta1.ShootControlPlaneHealthy),
 	)
 }
 

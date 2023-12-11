@@ -142,7 +142,8 @@ func (c *BasicFlowContext) AddTask(g *flow.Graph, name string, fn flow.TaskFn, o
 	task := flow.Task{
 		Name:   name,
 		Fn:     c.wrapTaskFn(g.Name(), name, tunedFn),
-		SkipIf: allOptions.DoIf != nil && !*allOptions.DoIf}
+		SkipIf: allOptions.DoIf != nil && !*allOptions.DoIf,
+	}
 
 	if len(allOptions.Dependencies) > 0 {
 		task.Dependencies = flow.NewTaskIDs(allOptions.Dependencies...)

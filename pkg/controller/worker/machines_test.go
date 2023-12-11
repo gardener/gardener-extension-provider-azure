@@ -65,7 +65,7 @@ var _ = Describe("Machines", func() {
 		chartApplier = mockkubernetes.NewMockChartApplier(ctrl)
 		statusWriter = mockclient.NewMockStatusWriter(ctrl)
 
-		// Let the seedClient always the mocked status writer when Status() is called.
+		// Let the seed client always the mocked status writer when Status() is called.
 		c.EXPECT().Status().AnyTimes().Return(statusWriter)
 
 		ctx = context.TODO()
