@@ -60,7 +60,7 @@ var _ = Describe("MachinesDependencies", func() {
 		statusWriter = mockclient.NewMockStatusWriter(ctrl)
 		factory = factorymock.NewMockFactory(ctrl)
 
-		// Let the seedClient always the mocked status writer when Status() is called.
+		// Let the seed client always the mocked status writer when Status() is called.
 		c.EXPECT().Status().AnyTimes().Return(statusWriter)
 
 		ctx = context.TODO()
@@ -87,7 +87,7 @@ var _ = Describe("MachinesDependencies", func() {
 		)
 
 		BeforeEach(func() {
-			// Create a vmo seedClient mock and let the factory always return the mocked vmo seedClient.
+			// Create a vmo seed client mock and let the factory always return the mocked vmo seed client.
 			vmoClient = vmssmock.NewMockVmss(ctrl)
 			factory.EXPECT().Vmss().AnyTimes().Return(vmoClient, nil)
 
