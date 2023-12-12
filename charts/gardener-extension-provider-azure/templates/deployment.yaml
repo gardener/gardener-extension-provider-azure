@@ -76,9 +76,6 @@ spec:
         - --seed-provider={{ .Values.gardener.seed.provider }}
         - --seed-region={{ .Values.gardener.seed.region }}
         {{- end }}
-        {{- if .Values.gardener.gardenlet.featureGates.MachineControllerManagerDeployment }}
-        - --gardenlet-manages-mcm={{ .Values.gardener.gardenlet.featureGates.MachineControllerManagerDeployment }}
-        {{- end }}
         env:
         - name: LEADER_ELECTION_NAMESPACE
           valueFrom:

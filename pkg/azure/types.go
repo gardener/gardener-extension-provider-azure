@@ -52,8 +52,6 @@ const (
 	CSILivenessProbeImageName = "csi-liveness-probe"
 	// CSISnapshotValidationWebhookImageName is the name of the csi-snapshot-validation-webhook image.
 	CSISnapshotValidationWebhookImageName = "csi-snapshot-validation-webhook"
-	// MachineControllerManagerImageName is the name of the MachineControllerManager image.
-	MachineControllerManagerImageName = "machine-controller-manager"
 	// MachineControllerManagerProviderAzureImageName is the name of the MachineController Azure image.
 	MachineControllerManagerProviderAzureImageName = "machine-controller-manager-provider-azure"
 	// TerraformerImageName is the name of the Terraformer image.

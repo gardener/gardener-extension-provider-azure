@@ -50,8 +50,6 @@ var (
 			},
 		},
 	}
-	// GardenletManagesMCM specifies whether the machine-controller-manager is managed by gardenlet.
-	GardenletManagesMCM bool
 )
 
 // RegisterHealthChecks registers health checks for each extension resource
@@ -102,25 +100,6 @@ func RegisterHealthChecks(ctx context.Context, mgr manager.Manager, opts healthc
 		return err
 	}
 
-	var (
-		workerHealthChecks = []healthcheck.ConditionTypeToHealthCheck{{
-			ConditionType: string(gardencorev1beta1.ShootEveryNodeReady),
-			HealthCheck:   worker.NewNodesChecker(),
-			ErrorCodeCheckFunc: func(err error) []gardencorev1beta1.ErrorCode {
-				return util.DetermineErrorCodes(err, helper.KnownCodes)
-			},
-		}}
-		workerConditionTypesToRemove = sets.New(gardencorev1beta1.ShootControlPlaneHealthy)
-	)
-
-	if !GardenletManagesMCM {
-		workerHealthChecks = append(workerHealthChecks, healthcheck.ConditionTypeToHealthCheck{
-			ConditionType: string(gardencorev1beta1.ShootControlPlaneHealthy),
-			HealthCheck:   general.NewSeedDeploymentHealthChecker(azure.MachineControllerManagerName),
-		})
-		workerConditionTypesToRemove = workerConditionTypesToRemove.Delete(gardencorev1beta1.ShootControlPlaneHealthy)
-	}
-
 	return healthcheck.DefaultRegistration(
 		ctx,
 		azure.Type,
@@ -130,8 +109,14 @@ func RegisterHealthChecks(ctx context.Context, mgr manager.Manager, opts healthc
 		mgr,
 		opts,
 		nil,
-		workerHealthChecks,
-		workerConditionTypesToRemove,
+		[]healthcheck.ConditionTypeToHealthCheck{{
+			ConditionType: string(gardencorev1beta1.ShootEveryNodeReady),
+			HealthCheck:   worker.NewNodesChecker(),
+			ErrorCodeCheckFunc: func(err error) []gardencorev1beta1.ErrorCode {
+				return util.DetermineErrorCodes(err, helper.KnownCodes)
+			},
+		}},
+		sets.New(gardencorev1beta1.ShootControlPlaneHealthy),
 	)
 }
 
