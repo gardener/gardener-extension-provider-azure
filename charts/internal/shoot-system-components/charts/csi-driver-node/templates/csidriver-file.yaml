@@ -2,6 +2,8 @@ apiVersion: storage.k8s.io/v1
 kind: CSIDriver
 metadata:
   name: file.csi.azure.com
+  annotations:
+    resources.gardener.cloud/delete-on-invalid-update: "true"
 spec:
   attachRequired: false
   podInfoOnMount: true
