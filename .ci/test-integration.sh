@@ -12,6 +12,6 @@ mkdir -p /tm
     --tm-kubeconfig-path=/tm/kubeconfig \
     --no-execution-group \
     --testrun-prefix tm-extension-azure- \
-    --timeout=3600 \
+    --timeout=10800 \
     --testruns-chart-path=.ci/testruns/default \
     --set revision="$(git rev-parse HEAD)"
