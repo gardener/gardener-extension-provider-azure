@@ -14,4 +14,7 @@ spec:
     matchLabels:
       app: csi
       role: controller-{{ .role }}
+{{- if semverCompare ">= 1.26-0" .Capabilities.KubeVersion.Version }}
+  unhealthyPodEvictionPolicy: AlwaysAllow
+{{- end }}
 {{- end -}}
