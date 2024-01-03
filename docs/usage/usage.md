@@ -411,7 +411,7 @@ spec:
     nodes: 10.250.0.0/16
     services: 100.64.0.0/13
   kubernetes:
-    version: 1.24.3
+    version: 1.28.2
   maintenance:
     autoUpdate:
       kubernetesVersion: true
@@ -468,7 +468,7 @@ spec:
     nodes: 10.250.0.0/16
     services: 100.64.0.0/13
   kubernetes:
-    version: 1.24.3
+    version: 1.28.2
   maintenance:
     autoUpdate:
       kubernetesVersion: true
@@ -540,7 +540,7 @@ spec:
     nodes: 10.250.0.0/16
     services: 100.64.0.0/13
   kubernetes:
-    version: 1.24.3
+    version: 1.28.2
   maintenance:
     autoUpdate:
       kubernetesVersion: true

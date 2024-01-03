@@ -117,7 +117,7 @@ var _ = Describe("ValuesProvider", func() {
 		cidr                    = "10.250.0.0/19"
 		cloudProviderConfigData = "foo"
 
-		k8sVersion = "1.24.8"
+		k8sVersion = "1.28.2"
 
 		enabledTrue    = map[string]interface{}{"enabled": true}
 		enabledFalse   = map[string]interface{}{"enabled": false}
@@ -556,7 +556,7 @@ var _ = Describe("ValuesProvider", func() {
 					"checksum/configmap-" + azure.CloudProviderDiskConfigName: checksums[azure.CloudProviderDiskConfigName],
 				},
 				"cloudProviderConfig": cloudProviderConfigData,
-				"kubernetesVersion":   "1.24.8",
+				"kubernetesVersion":   "1.28.2",
 			})
 			cloudControllerManager = map[string]interface{}{
 				"enabled": true,
