@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"strings"
 
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
@@ -36,7 +35,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -231,7 +229,6 @@ var (
 					{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.CSIDriverName},
 					{Type: &rbacv1.ClusterRole{}, Name: azure.UsernamePrefix + azure.CSIControllerFileName},
 					{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.CSIControllerFileName},
-					{Type: &policyv1beta1.PodSecurityPolicy{}, Name: strings.Replace(azure.UsernamePrefix+azure.CSIDriverName, ":", ".", -1)},
 					{Type: extensionscontroller.GetVerticalPodAutoscalerObject(), Name: azure.CSINodeDiskName},
 					{Type: extensionscontroller.GetVerticalPodAutoscalerObject(), Name: azure.CSINodeFileName},
 					// csi-provisioner
@@ -693,7 +690,6 @@ func getControlPlaneShootChartValues(
 	caBundle = string(caSecret.Data[secretutils.DataKeyCertificateBundle])
 
 	disableRemedyController := cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] == "true"
-	pspDisabled := gardencorev1beta1helper.IsPSPDisabled(cluster.Shoot)
 
 	return map[string]interface{}{
 		"global": map[string]interface{}{
@@ -701,8 +697,7 @@ func getControlPlaneShootChartValues(
 		},
 		azure.AllowEgressName: map[string]interface{}{"enabled": infraStatus.Zoned || azureapihelper.IsVmoRequired(infraStatus)},
 		azure.CloudControllerManagerName: map[string]interface{}{
-			"enabled":     true,
-			"pspDisabled": pspDisabled,
+			"enabled": true,
 		},
 		azure.CSINodeName: map[string]interface{}{
 			"enabled":           true,
@@ -715,7 +710,6 @@ func getControlPlaneShootChartValues(
 				"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 				"caBundle": caBundle,
 			},
-			"pspDisabled": pspDisabled,
 		},
 		azure.RemedyControllerName: map[string]interface{}{
 			"enabled": !disableRemedyController,
