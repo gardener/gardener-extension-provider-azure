@@ -14,4 +14,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-./vendor/github.com/gardener/gardener/hack/hook-me.sh azure $@
+bash ${GARDENER_HACK_DIR}/hook-me.sh azure "$@"
