@@ -128,8 +128,6 @@ elif name == 'egress-filter-refresher':
     names = ['egress-filter']
 elif name == 'apiserver-proxy':
     names = ['apiserver-proxy-sidecar']
-elif name == 'remedy-controller':
-    names = ['remedy-controller-azure']
 else:
     names = [name]
 
