@@ -318,7 +318,7 @@ images:
   resourceId:
     name: remedy-controller-image
   repository: europe-docker.pkg.dev/gardener-project/releases/gardener/remedy-controller/remedy-controller-azure
-  tag: "v0.10.0"
+  tag: "v0.11.0"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
     value:
