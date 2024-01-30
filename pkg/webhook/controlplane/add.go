@@ -31,8 +31,6 @@ import (
 
 var (
 	logger = log.Log.WithName("azure-controlplane-webhook")
-	// GardenletManagesMCM specifies whether the machine-controller-manager should be managed.
-	GardenletManagesMCM bool
 )
 
 // AddToManager creates a webhook and adds it to the manager.

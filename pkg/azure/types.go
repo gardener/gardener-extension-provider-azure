@@ -134,12 +134,6 @@ const (
 	CSILivenessProbeName = "csi-liveness-probe"
 	// CSISnapshotValidationName is the constant for the name of the csi-snapshot-validation-webhook component.
 	CSISnapshotValidationName = "csi-snapshot-validation"
-	// MachineControllerManagerName is a constant for the name of the machine-controller-manager.
-	MachineControllerManagerName = "machine-controller-manager"
-	// MachineControllerManagerVpaName is the name of the VerticalPodAutoscaler of the machine-controller-manager deployment.
-	MachineControllerManagerVpaName = "machine-controller-manager-vpa"
-	// MachineControllerManagerMonitoringConfigName is the name of the ConfigMap containing monitoring stack configurations for machine-controller-manager.
-	MachineControllerManagerMonitoringConfigName = "machine-controller-manager-monitoring-config"
 	// RemedyControllerName is a constant for the name of the remedy-controller.
 	RemedyControllerName = "remedy-controller-azure"
 	// DisableRemedyControllerAnnotation disables the Azure remedy controller (enabled by default)

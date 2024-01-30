@@ -27,11 +27,7 @@
 			1.2) HealthCondition Type: Shoot SystemComponentsHealthy
 				- update the ManagedResource 'extension-shoot-system-components' with an unhealthy condition and verify health check conditions in the ControlPlane status.
 		2) Worker
-			2.1) HealthCondition Type: Shoot ControlPlaneHealthy
-				- delete the deployment 'machine-controller-manager' and verify health check conditions in the Worker status.
-			2.2) HealthCondition Type: Shoot SystemComponentsHealthy
-				- update the ManagedResource 'extension-worker-mcm-shoot' with an unhealthy condition and verify health check conditions in the Worker status.
-			2.3) HealthCondition Type: Shoot EveryNodeReady
+			2.1) HealthCondition Type: Shoot EveryNodeReady
 				- delete a machine of the shoot cluster and verify the health check conditions in the Worker status report a missing node.
  **/
 
@@ -82,13 +78,6 @@ var _ = ginkgo.Describe("Azure integration test: health checks", func() {
 	})
 
 	ginkgo.Context("Worker", func() {
-
-		ginkgo.Context("Condition type: ShootControlPlaneHealthy", func() {
-			f.Serial().Release().CIt(fmt.Sprintf("Worker CRD should contain unhealthy condition because the deployment '%s' cannot be found in the shoot namespace in the seed", azure.MachineControllerManagerName), func(ctx context.Context) {
-				err := healthcheckoperation.WorkerHealthCheckDeleteSeedDeployment(ctx, f, f.Shoot.GetName(), azure.MachineControllerManagerName, gardencorev1beta1.ShootControlPlaneHealthy)
-				framework.ExpectNoError(err)
-			}, timeout)
-		})
 
 		ginkgo.Context("Condition type: ShootEveryNodeReady", func() {
 			f.Serial().Release().CIt("Worker CRD should contain unhealthy condition because not enough machines are available", func(ctx context.Context) {
