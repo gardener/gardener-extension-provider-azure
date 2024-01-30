@@ -30,7 +30,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-controller-manager
-  tag: "v1.25.20"
+  tag: "v1.25.24"
   targetVersion: "1.25.x"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
@@ -44,7 +44,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-controller-manager
-  tag: "v1.26.16"
+  tag: "v1.26.19"
   targetVersion: "1.26.x"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
@@ -58,7 +58,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-controller-manager
-  tag: "v1.27.10"
+  tag: "v1.27.13"
   targetVersion: "1.27.x"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
@@ -72,8 +72,22 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-controller-manager
-  tag: "v1.28.2"
-  targetVersion: ">= 1.28"
+  tag: "v1.28.5"
+  targetVersion: "1.28.x"
+  labels:
+  - name: 'gardener.cloud/cve-categorisation'
+    value:
+      network_exposure: 'protected'
+      authentication_enforced: false
+      user_interaction: 'gardener-operator'
+      confidentiality_requirement: 'high'
+      integrity_requirement: 'high'
+      availability_requirement: 'low'
+- name: cloud-controller-manager
+  sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
+  repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-controller-manager
+  tag: "v1.29.0"
+  targetVersion: ">= 1.29"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
     value:
@@ -101,7 +115,7 @@ images:
 - name: cloud-node-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-node-manager
-  tag: "v1.25.20"
+  tag: "v1.25.24"
   targetVersion: "1.25.x"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
@@ -115,7 +129,7 @@ images:
 - name: cloud-node-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-node-manager
-  tag: "v1.26.16"
+  tag: "v1.26.19"
   targetVersion: "1.26.x"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
@@ -129,7 +143,7 @@ images:
 - name: cloud-node-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-node-manager
-  tag: "v1.27.10"
+  tag: "v1.27.13"
   targetVersion: "1.27.x"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
@@ -143,8 +157,22 @@ images:
 - name: cloud-node-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-node-manager
-  tag: "v1.28.2"
-  targetVersion: ">= 1.28"
+  tag: "v1.28.5"
+  targetVersion: "1.28.x"
+  labels:
+  - name: 'gardener.cloud/cve-categorisation'
+    value:
+      network_exposure: 'protected'
+      authentication_enforced: false
+      user_interaction: 'gardener-operator'
+      confidentiality_requirement: 'high'
+      integrity_requirement: 'high'
+      availability_requirement: 'low'
+- name: cloud-node-manager
+  sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
+  repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-node-manager
+  tag: "v1.29.0"
+  targetVersion: ">= 1.29"
   labels:
   - name: 'gardener.cloud/cve-categorisation'
     value:
