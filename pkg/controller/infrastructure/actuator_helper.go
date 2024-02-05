@@ -17,7 +17,6 @@ package infrastructure
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
@@ -30,7 +29,6 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	azuretypes "github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
-	infrainternal "github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 )
 
 var (
@@ -90,16 +88,7 @@ func hasFlowState(status extensionsv1alpha1.InfrastructureStatus) (bool, error) 
 		return true, nil
 	}
 
-	infraState := &infrainternal.InfrastructureState{}
-	if err := json.Unmarshal(status.State.Raw, infraState); err != nil {
-		return false, err
-	}
-
-	if infraState.TerraformState != nil {
-		return false, nil
-	}
-
-	return false, fmt.Errorf("unknown infrastructure state format")
+	return false, nil
 }
 
 // HasFlowAnnotation returns true if the new flow reconciler should be used for the reconciliation.
