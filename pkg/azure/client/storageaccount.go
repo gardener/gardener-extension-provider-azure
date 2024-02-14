@@ -35,7 +35,7 @@ func (c *StorageAccountClient) CreateStorageAccount(ctx context.Context, resourc
 		Kind:     storage.BlobStorage,
 		Location: &region,
 		Sku: &storage.Sku{
-			Name: storage.StandardLRS,
+			Name: storage.StandardZRS,
 		},
 		AccountPropertiesCreateParameters: &storage.AccountPropertiesCreateParameters{
 			AccessTier:             storage.Cool,
