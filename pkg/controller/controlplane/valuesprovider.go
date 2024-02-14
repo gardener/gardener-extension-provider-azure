@@ -540,18 +540,13 @@ func getControlPlaneChartValues(
 		return nil, err
 	}
 
-	remedy, err := getRemedyControllerChartValues(cluster, checksums, scaledDown)
-	if err != nil {
-		return nil, err
-	}
-
 	return map[string]interface{}{
 		"global": map[string]interface{}{
 			"genericTokenKubeconfigSecretName": extensionscontroller.GenericTokenKubeconfigSecretNameFromCluster(cluster),
 		},
 		azure.CloudControllerManagerName: ccm,
 		azure.CSIControllerName:          csi,
-		azure.RemedyControllerName:       remedy,
+		azure.RemedyControllerName:       map[string]interface{}{"enabled": true, "replicas": 0},
 	}, nil
 }
 
@@ -635,25 +630,6 @@ func getCSIControllerChartValues(
 	return values, nil
 }
 
-// getRemedyControllerChartValues collects and returns the remedy controller chart values.
-func getRemedyControllerChartValues(
-	cluster *extensionscontroller.Cluster,
-	checksums map[string]string,
-	scaledDown bool,
-) (map[string]interface{}, error) {
-	disableRemedyController := cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] == "true"
-	if disableRemedyController {
-		return map[string]interface{}{"enabled": true, "replicas": 0}, nil
-	}
-	return map[string]interface{}{
-		"enabled":  true,
-		"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
-		"podAnnotations": map[string]interface{}{
-			"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
-		},
-	}, nil
-}
-
 // getControlPlaneShootChartValues collects and returns the control plane shoot chart values.
 func getControlPlaneShootChartValues(
 	ctx context.Context,
@@ -692,7 +668,6 @@ func getControlPlaneShootChartValues(
 	}
 	caBundle = string(caSecret.Data[secretutils.DataKeyCertificateBundle])
 
-	disableRemedyController := cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] == "true"
 	pspDisabled := gardencorev1beta1helper.IsPSPDisabled(cluster.Shoot)
 
 	return map[string]interface{}{
@@ -718,7 +693,7 @@ func getControlPlaneShootChartValues(
 			"pspDisabled": pspDisabled,
 		},
 		azure.RemedyControllerName: map[string]interface{}{
-			"enabled": !disableRemedyController,
+			"enabled": false,
 		},
 	}, err
 }

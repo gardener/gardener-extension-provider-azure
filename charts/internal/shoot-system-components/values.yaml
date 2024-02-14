@@ -5,7 +5,7 @@ cloud-controller-manager:
 csi-driver-node:
   enabled: false
 remedy-controller-azure:
-  enabled: true
+  enabled: false
 
 global:
   vpaEnabled: false
