@@ -22,7 +22,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
-	corev1 "k8s.io/api/core/v1"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
@@ -31,7 +30,6 @@ import (
 type Factory interface {
 	Auth() *internal.ClientAuth
 
-	Storage(context.Context, corev1.SecretReference) (Storage, error)
 	StorageAccount() (StorageAccount, error)
 	Vmss() (Vmss, error)
 	DNSZone() (DNSZone, error)
@@ -145,13 +143,6 @@ type VirtualNetwork interface {
 	DeleteFunc[armnetwork.VirtualNetwork]
 }
 
-// Storage represents an Azure (blob) storage k8sClient.
-type Storage interface {
-	DeleteObjectsWithPrefix(context.Context, string, string) error
-	CreateContainerIfNotExists(context.Context, string) error
-	DeleteContainerIfExists(context.Context, string) error
-}
-
 // StorageAccount represents an Azure storage account k8sClient.
 type StorageAccount interface {
 	CreateStorageAccount(context.Context, string, string, string) error
@@ -172,4 +163,11 @@ type DNSRecordSet interface {
 // VirtualMachineImages represents an Azure Virtual Machine Image k8sClient.
 type VirtualMachineImages interface {
 	ListSkus(ctx context.Context, location string, publisherName string, offer string) (*compute.ListVirtualMachineImageResource, error)
+}
+
+// Storage represents an Azure (blob) storage k8sClient.
+type Storage interface {
+	DeleteObjectsWithPrefix(context.Context, string, string) error
+	CreateContainerIfNotExists(context.Context, string) error
+	DeleteContainerIfExists(context.Context, string) error
 }

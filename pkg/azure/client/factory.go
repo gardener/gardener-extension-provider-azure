@@ -27,9 +27,7 @@ import (
 )
 
 // AzureFactory is an implementation of Factory to produce clients for various Azure services.
-// TODO(KA): client is still important because of how the storage client is constructed. Ideally we shouldn't need a k8s client.
 type azureFactory struct {
-	client          client.Client
 	auth            *internal.ClientAuth
 	tokenCredential azcore.TokenCredential
 }
@@ -40,7 +38,7 @@ func NewAzureClientFactory(ctx context.Context, client client.Client, secretRef 
 	if err != nil {
 		return nil, err
 	}
-	return NewAzureClientFactoryWithAuth(auth, client)
+	return NewAzureClientFactoryWithAuth(auth)
 }
 
 // NewAzureClientFactoryWithDNSSecret creates a new Azure client factory with the passed secret reference using the DNS secret keys.
@@ -49,17 +47,16 @@ func NewAzureClientFactoryWithDNSSecret(ctx context.Context, client client.Clien
 	if err != nil {
 		return nil, err
 	}
-	return NewAzureClientFactoryWithAuth(auth, client)
+	return NewAzureClientFactoryWithAuth(auth)
 }
 
 // NewAzureClientFactoryWithAuth creates a new Azure client factory with the passed credentials.
-func NewAzureClientFactoryWithAuth(auth *internal.ClientAuth, client client.Client) (Factory, error) {
+func NewAzureClientFactoryWithAuth(auth *internal.ClientAuth) (Factory, error) {
 	cred, err := auth.GetAzClientCredentials()
 	if err != nil {
 		return nil, err
 	}
 	return azureFactory{
-		client:          client,
 		auth:            auth,
 		tokenCredential: cred,
 	}, nil
@@ -67,18 +64,6 @@ func NewAzureClientFactoryWithAuth(auth *internal.ClientAuth, client client.Clie
 
 func (f azureFactory) Auth() *internal.ClientAuth {
 	return f.auth
-}
-
-// Storage reads the secret from the passed reference and return an Azure (blob) storage client.
-func (f azureFactory) Storage(ctx context.Context, secretRef corev1.SecretReference) (Storage, error) {
-	serviceURL, err := newStorageClient(ctx, f.client, &secretRef)
-	if err != nil {
-		return nil, err
-	}
-
-	return &StorageClient{
-		serviceURL: serviceURL,
-	}, nil
 }
 
 // StorageAccount reads the secret from the passed reference and return an Azure storage account client.
@@ -192,4 +177,16 @@ func (f azureFactory) ManagedUserIdentity() (ManagedUserIdentity, error) {
 // VirtualMachineImages returns a VirtualMachineImages client.
 func (f azureFactory) VirtualMachineImages() (VirtualMachineImages, error) {
 	return NewVirtualMachineImagesClient(*f.auth)
+}
+
+// NewBlobStorageClient reads the secret from the passed reference and return an Azure (blob) storage client.
+func NewBlobStorageClient(ctx context.Context, c client.Client, secretRef corev1.SecretReference) (Storage, error) {
+	serviceURL, err := newStorageClient(ctx, c, &secretRef)
+	if err != nil {
+		return nil, err
+	}
+
+	return &StorageClient{
+		serviceURL: serviceURL,
+	}, nil
 }
