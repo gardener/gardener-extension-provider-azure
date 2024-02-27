@@ -15,7 +15,6 @@ import (
 	client "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	internal "github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 	gomock "go.uber.org/mock/gomock"
-	v1 "k8s.io/api/core/v1"
 )
 
 // MockDNSZone is a mock of DNSZone interface.
@@ -389,21 +388,6 @@ func (m *MockFactory) RouteTables() (client.RouteTables, error) {
 func (mr *MockFactoryMockRecorder) RouteTables() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RouteTables", reflect.TypeOf((*MockFactory)(nil).RouteTables))
-}
-
-// Storage mocks base method.
-func (m *MockFactory) Storage(arg0 context.Context, arg1 v1.SecretReference) (client.Storage, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Storage", arg0, arg1)
-	ret0, _ := ret[0].(client.Storage)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Storage indicates an expected call of Storage.
-func (mr *MockFactoryMockRecorder) Storage(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Storage", reflect.TypeOf((*MockFactory)(nil).Storage), arg0, arg1)
 }
 
 // StorageAccount mocks base method.
