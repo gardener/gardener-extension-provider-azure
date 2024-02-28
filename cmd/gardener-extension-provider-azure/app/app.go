@@ -51,6 +51,7 @@ import (
 	azureinfrastructure "github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure"
 	azureworker "github.com/gardener/gardener-extension-provider-azure/pkg/controller/worker"
 	azurecontrolplaneexposure "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/controlplaneexposure"
+	haNamespace "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/highavailability/namespace"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/webhook/topology"
 )
 
@@ -234,6 +235,8 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 
 			topology.SeedRegion = seedOptions.Completed().Region
 			topology.SeedProvider = seedOptions.Completed().Provider
+			haNamespace.SeedRegion = seedOptions.Completed().Region
+			haNamespace.SeedProvider = seedOptions.Completed().Provider
 
 			shootWebhookConfig, err := webhookOptions.Completed().AddToManager(ctx, mgr, nil)
 			if err != nil {
