@@ -22,10 +22,10 @@ type StorageAccountClient struct {
 // CreateStorageAccount creates a storage account.
 func (c *StorageAccountClient) CreateStorageAccount(ctx context.Context, resourceGroupName, storageAccountName, region string) error {
 	future, err := c.client.Create(ctx, resourceGroupName, storageAccountName, storage.AccountCreateParameters{
-		Kind:     storage.BlobStorage,
+		Kind:     storage.StorageV2,
 		Location: &region,
 		Sku: &storage.Sku{
-			Name: storage.StandardLRS,
+			Name: storage.StandardZRS,
 		},
 		AccountPropertiesCreateParameters: &storage.AccountPropertiesCreateParameters{
 			AccessTier:             storage.Cool,
