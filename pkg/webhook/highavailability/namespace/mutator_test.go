@@ -48,7 +48,8 @@ var _ = Describe("Topology", func() {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "foo",
 				Annotations: map[string]string{
-					v1alpha1.HighAvailabilityConfigZones: "2,westeurope-1,3",
+					v1alpha1.HighAvailabilityConfigZones:                "2,westeurope-1,3",
+					v1alpha1.HighAvailabilityConfigFailureToleranceType: "zone",
 				},
 			},
 		}
@@ -77,6 +78,13 @@ var _ = Describe("Topology", func() {
 				Expect(nsOld).To(Equal(ns))
 			})
 
+			It("it should not mutate if the HA type is not zone", func() {
+				ns.Annotations[v1alpha1.HighAvailabilityConfigFailureToleranceType] = ""
+				nsOld := ns.DeepCopy()
+				err := mutator.Mutate(ctx, ns, nil)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(nsOld).To(Equal(ns))
+			})
 		})
 	})
 })
