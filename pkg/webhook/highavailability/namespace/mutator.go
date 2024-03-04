@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"github.com/gardener/gardener/pkg/apis/resources/v1alpha1"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -104,6 +105,10 @@ func (h *handler) Mutate(_ context.Context, new, _ client.Object) error {
 	}
 
 	annotations := new.GetAnnotations()
+	if v, ok := annotations[v1alpha1.HighAvailabilityConfigFailureToleranceType]; !ok || v != string(v1beta1.FailureToleranceTypeZone) {
+		return nil
+	}
+
 	var zonesRaw []string
 	if zoneAnnotation, ok := annotations[v1alpha1.HighAvailabilityConfigZones]; !ok {
 		return nil
