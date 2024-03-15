@@ -546,12 +546,12 @@ var _ = Describe("Infrastructure tests", func() {
 				extensionsv1alpha1.InfrastructureResource,
 				10*time.Second,
 				30*time.Second,
-				30*time.Second,
+				60*time.Second,
 				nil,
 			)
 			var errorWithCode *gardencorev1beta1helper.ErrorWithCodes
 			Expect(errors.As(err, &errorWithCode)).To(BeTrue())
-			Expect(errorWithCode.Codes()).To(ContainElement(gardencorev1beta1.ErrorInfraUnauthenticated))
+			Expect(errorWithCode.Codes()).To(ContainElement(gardencorev1beta1.ErrorInfraUnauthorized))
 		})
 	})
 })
