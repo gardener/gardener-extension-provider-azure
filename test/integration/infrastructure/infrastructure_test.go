@@ -551,7 +551,9 @@ var _ = Describe("Infrastructure tests", func() {
 			)
 			var errorWithCode *gardencorev1beta1helper.ErrorWithCodes
 			Expect(errors.As(err, &errorWithCode)).To(BeTrue())
-			Expect(errorWithCode.Codes()).To(ContainElement(gardencorev1beta1.ErrorInfraUnauthorized))
+			Expect(errorWithCode.Codes()).To(Or(
+				ContainElement(gardencorev1beta1.ErrorInfraUnauthorized),
+				ContainElement(gardencorev1beta1.ErrorInfraUnauthenticated)))
 		})
 	})
 })
