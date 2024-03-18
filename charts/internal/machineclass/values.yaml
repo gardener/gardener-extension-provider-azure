@@ -11,6 +11,9 @@ machineClasses:
     subnet: my-subnet-in-my-vnet
     # vnetResourceGroup: my-vnet-resource-group
     # acceleratedNetworking: true
+  diagnosticsProfile:
+    enabled: false
+    # storageURI: my-custom-azure-storage
   tags:
     Name: shoot-crazy-botany
     kubernetes.io-cluster-shoot-crazy-botany: "1"

@@ -353,13 +353,20 @@ nodeTemplate: # (to be specified only if the node capacity would be different fr
     cpu: 2
     gpu: 1
     memory: 50Gi
+diagnosticsProfile:
+  enabled: true
+  # storageURI: <string>
 ```
 
 The `.nodeTemplate` is used to specify resource information of the machine during runtime. This then helps in Scale-from-Zero. 
 Some points to note for this field:
-    - Currently only cpu, gpu and memory are configurable.
-    - a change in the value lead to a rolling update of the machine in the workerpool
-    - all the resources needs to be specified
+- Currently only cpu, gpu and memory are configurable.
+- a change in the value lead to a rolling update of the machine in the worker pool
+- all the resources needs to be specified
+
+The `.diagnosticsProfile` is used to enable [machine boot diagnostics](https://learn.microsoft.com/en-us/azure/virtual-machines/boot-diagnostics) (disabled per default).
+A storage account is used for storing vm's boot console output and screenshots.
+If `.diagnosticsProfile.StorageURI` is not specified azure managed storage will be used (recommended way).
 
 ## Example `Shoot` manifest (non-zoned)
 
