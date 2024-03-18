@@ -113,3 +113,8 @@ spec:
   # - name: kubelet-dir
   #   type: standard
   #   size: 36Gi
+  # providerConfig:
+  #   apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+  #   kind: WorkerConfig
+  #   diagnosticsProfile:
+  #     enabled: false

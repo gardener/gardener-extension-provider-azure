@@ -204,6 +204,16 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				machineClassSpec["zone"] = zone.name
 			}
 
+			if workerConfig.DiagnosticsProfile != nil {
+				diagnosticProfile := map[string]interface{}{
+					"enabled": workerConfig.DiagnosticsProfile.Enabled,
+				}
+				if workerConfig.DiagnosticsProfile.StorageURI != nil {
+					diagnosticProfile["storageURI"] = workerConfig.DiagnosticsProfile.StorageURI
+				}
+				machineClassSpec["diagnosticsProfile"] = diagnosticProfile
+			}
+
 			if pool.NodeTemplate != nil {
 				//	Currently Zone field is mandatory, and passing it an
 				//	empty string turns it to `null` string during marshalling which fails CRD validation
