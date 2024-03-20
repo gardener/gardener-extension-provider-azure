@@ -6,6 +6,7 @@ package worker_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -141,6 +142,10 @@ var _ = Describe("Machines", func() {
 				nodeTemplateZone3 machinev1alpha1.NodeTemplate
 				nodeTemplateZone4 machinev1alpha1.NodeTemplate
 
+				diagnosticProfile apiv1alpha1.DiagnosticsProfile
+				providerConfig    *runtime.RawExtension
+				workerConfig      apiv1alpha1.WorkerConfig
+
 				shootVersionMajorMinor string
 				shootVersion           string
 
@@ -224,6 +229,25 @@ var _ = Describe("Machines", func() {
 					InstanceType: machineType,
 					Region:       region,
 					Zone:         "no-zone",
+				}
+
+				diagnosticProfile = apiv1alpha1.DiagnosticsProfile{
+					Enabled:    true,
+					StorageURI: pointer.String("azure-storage-uri"),
+				}
+
+				workerConfig = apiv1alpha1.WorkerConfig{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: apiv1alpha1.SchemeGroupVersion.String(),
+						Kind:       "WorkerConfig",
+					},
+					DiagnosticsProfile: &diagnosticProfile,
+				}
+
+				marshalledWorkerConfig, err := json.Marshal(workerConfig)
+				Expect(err).To(BeNil())
+				providerConfig = &runtime.RawExtension{
+					Raw: marshalledWorkerConfig,
 				}
 
 				namePool2 = "pool-zones"
@@ -310,7 +334,8 @@ var _ = Describe("Machines", func() {
 							Type: &dataVolume2Type,
 						},
 					},
-					Labels: labels,
+					Labels:         labels,
+					ProviderConfig: providerConfig,
 				}
 
 				pool2 = extensionsv1alpha1.WorkerPool{
@@ -501,6 +526,11 @@ var _ = Describe("Machines", func() {
 					machineClassPool2["nodeTemplate"] = nodeTemplateZone2
 					machineClassPool3["nodeTemplate"] = nodeTemplateZone3
 					machineClassPool4["nodeTemplate"] = nodeTemplateZone4
+
+					machineClassPool1["diagnosticsProfile"] = map[string]interface{}{
+						"enabled":    diagnosticProfile.Enabled,
+						"storageURI": diagnosticProfile.StorageURI,
+					}
 
 					machineClassPool1["dataDisks"] = []map[string]interface{}{
 						{
