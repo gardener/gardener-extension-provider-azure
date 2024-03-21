@@ -16,20 +16,6 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-controller-manager
-  tag: "v1.24.21"
-  targetVersion: "1.24.x"
-  labels:
-  - name: 'gardener.cloud/cve-categorisation'
-    value:
-      network_exposure: 'protected'
-      authentication_enforced: false
-      user_interaction: 'gardener-operator'
-      confidentiality_requirement: 'high'
-      integrity_requirement: 'high'
-      availability_requirement: 'low'
-- name: cloud-controller-manager
-  sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
-  repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-controller-manager
   tag: "v1.25.24"
   targetVersion: "1.25.x"
   labels:
@@ -98,20 +84,6 @@ images:
       integrity_requirement: 'high'
       availability_requirement: 'low'
 
-- name: cloud-node-manager
-  sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
-  repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-node-manager
-  tag: "v1.24.21"
-  targetVersion: "1.24.x"
-  labels:
-  - name: 'gardener.cloud/cve-categorisation'
-    value:
-      network_exposure: 'protected'
-      authentication_enforced: false
-      user_interaction: 'gardener-operator'
-      confidentiality_requirement: 'high'
-      integrity_requirement: 'high'
-      availability_requirement: 'low'
 - name: cloud-node-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-node-manager

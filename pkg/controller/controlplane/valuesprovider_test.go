@@ -107,7 +107,7 @@ var _ = Describe("ValuesProvider", func() {
 		cidr                    = "10.250.0.0/19"
 		cloudProviderConfigData = "foo"
 
-		k8sVersion = "1.24.8"
+		k8sVersion = "1.28.2"
 
 		enabledTrue    = map[string]interface{}{"enabled": true}
 		enabledFalse   = map[string]interface{}{"enabled": false}
@@ -546,11 +546,10 @@ var _ = Describe("ValuesProvider", func() {
 					"checksum/configmap-" + azure.CloudProviderDiskConfigName: checksums[azure.CloudProviderDiskConfigName],
 				},
 				"cloudProviderConfig": cloudProviderConfigData,
-				"kubernetesVersion":   "1.24.8",
+				"kubernetesVersion":   "1.28.2",
 			})
 			cloudControllerManager = map[string]interface{}{
-				"enabled":     true,
-				"pspDisabled": false,
+				"enabled": true,
 			}
 		)
 
@@ -586,7 +585,6 @@ var _ = Describe("ValuesProvider", func() {
 					"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 					"caBundle": "",
 				},
-				"pspDisabled": false,
 			})
 
 			values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
@@ -609,7 +607,6 @@ var _ = Describe("ValuesProvider", func() {
 					"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 					"caBundle": "",
 				},
-				"pspDisabled": false,
 			})
 
 			values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
@@ -632,7 +629,6 @@ var _ = Describe("ValuesProvider", func() {
 					"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 					"caBundle": "",
 				},
-				"pspDisabled": false,
 			})
 
 			values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
@@ -661,7 +657,6 @@ var _ = Describe("ValuesProvider", func() {
 						"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 						"caBundle": "",
 					},
-					"pspDisabled": false,
 				})
 
 				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
@@ -684,7 +679,6 @@ var _ = Describe("ValuesProvider", func() {
 						"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
 						"caBundle": "",
 					},
-					"pspDisabled": false,
 				})
 
 				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
@@ -695,72 +689,6 @@ var _ = Describe("ValuesProvider", func() {
 					azure.CloudControllerManagerName: cloudControllerManager,
 					azure.CSINodeName:                csiNode,
 					azure.RemedyControllerName:       enabledFalse,
-				}))
-			})
-		})
-
-		Context("podSecurityPolicy", func() {
-			BeforeEach(func() {
-				cluster = generateCluster(cidr, k8sVersion, false, nil, nil, nil)
-			})
-
-			It("should return correct shoot control plane chart when PodSecurityPolicy admission plugin is not disabled in the shoot", func() {
-				cluster.Shoot.Spec.Kubernetes.KubeAPIServer = &gardencorev1beta1.KubeAPIServerConfig{
-					AdmissionPlugins: []gardencorev1beta1.AdmissionPlugin{
-						{
-							Name: "PodSecurityPolicy",
-						},
-					},
-				}
-				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-				csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
-					"webhookConfig": map[string]interface{}{
-						"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
-						"caBundle": "",
-					},
-					"pspDisabled": false,
-				})
-
-				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(values).To(Equal(map[string]interface{}{
-					"global":                         globalVpaDisabled,
-					azure.AllowEgressName:            enabledTrue,
-					azure.CloudControllerManagerName: cloudControllerManager,
-					azure.CSINodeName:                csiNode,
-					azure.RemedyControllerName:       enabledTrue,
-				}))
-			})
-
-			It("should return correct shoot control plane chart when PodSecurityPolicy admission plugin is disabled in the shoot", func() {
-				cluster.Shoot.Spec.Kubernetes.KubeAPIServer = &gardencorev1beta1.KubeAPIServerConfig{
-					AdmissionPlugins: []gardencorev1beta1.AdmissionPlugin{
-						{
-							Name:     "PodSecurityPolicy",
-							Disabled: pointer.Bool(true),
-						},
-					},
-				}
-				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-				csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
-					"webhookConfig": map[string]interface{}{
-						"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
-						"caBundle": "",
-					},
-					"pspDisabled": true,
-				})
-				cloudControllerManagerPSPDisabled := utils.MergeMaps(cloudControllerManager, map[string]interface{}{
-					"pspDisabled": true,
-				})
-
-				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(values).To(Equal(map[string]interface{}{
-					"global":                         globalVpaDisabled,
-					azure.AllowEgressName:            enabledTrue,
-					azure.CloudControllerManagerName: cloudControllerManagerPSPDisabled,
-					azure.CSINodeName:                csiNode,
-					azure.RemedyControllerName:       enabledTrue,
 				}))
 			})
 		})
