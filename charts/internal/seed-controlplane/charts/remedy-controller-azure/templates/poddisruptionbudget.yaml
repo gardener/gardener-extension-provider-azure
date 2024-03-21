@@ -10,3 +10,6 @@ spec:
   selector:
     matchLabels:
       app: remedy-controller-azure
+{{- if semverCompare ">= 1.26-0" .Capabilities.KubeVersion.Version }}
+  unhealthyPodEvictionPolicy: AlwaysAllow
+{{- end }}
