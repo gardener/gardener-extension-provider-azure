@@ -664,7 +664,7 @@ func (f *FlowContext) GetInfrastructureStatus(_ context.Context) (*v1alpha1.Infr
 		TypeMeta: infrastructure.StatusTypeMeta,
 		Networks: v1alpha1.NetworkStatus{
 			VNet: v1alpha1.VNetStatus{
-				Name: f.adapter.VirtualNetworkConfig().ResourceGroup,
+				Name: f.adapter.VirtualNetworkConfig().Name,
 			},
 			Layout: v1alpha1.NetworkLayoutSingleSubnet,
 		},
