@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
 	genericworkeractuator "github.com/gardener/gardener/extensions/pkg/controller/worker/genericactuator"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
@@ -20,6 +21,7 @@ import (
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	"github.com/gardener/gardener/pkg/utils"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -85,6 +87,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		machineDeployments        = worker.MachineDeployments{}
 		machineClasses            []map[string]interface{}
 		machineImages             []azureapi.MachineImage
+		skipAgreementPools        = sets.New[string]()
 	)
 
 	infrastructureStatus, err := w.decodeAzureInfrastructureStatus()
@@ -100,6 +103,12 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 	_, nodesSubnet, err := azureapihelper.FindSubnetByPurposeAndZone(infrastructureStatus.Networks.Subnets, azureapi.PurposeNodes, nil)
 	if err != nil {
 		return err
+	}
+
+	if v, ok := w.cluster.Shoot.GetAnnotations()["azure.provider.extensions.gardener.cloud/skip-marketplace-agreement"]; ok {
+		for _, p := range strings.Split(v, ",") {
+			skipAgreementPools.Insert(p)
+		}
 	}
 
 	for _, pool := range w.worker.Spec.Pools {
@@ -135,6 +144,9 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			image["sharedGalleryImageID"] = *sharedGalleryImageID
 		} else {
 			image["id"] = *id
+		}
+		if skipAgreementPools.Has(pool.Name) {
+			image["privatePlan"] = true
 		}
 
 		disks, err := computeDisks(pool)
@@ -264,6 +276,13 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				machineClassSpec["operatingSystem"] = map[string]interface{}{
 					"operatingSystemName":    pool.MachineImage.Name,
 					"operatingSystemVersion": pool.MachineImage.Version,
+				}
+			}
+
+			// special processing of confidential VMs.
+			if w.isConfidentialVM(pool.MachineType) {
+				machineClassSpec["securityProfile"] = map[string]interface{}{
+					"securityType": string(armcompute.SecurityTypesConfidentialVM),
 				}
 			}
 
@@ -470,4 +489,12 @@ func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPo
 		return "", err
 	}
 	return workerPoolHash, nil
+}
+
+// TODO(AK): Remove when we have support for VM Capabilities
+func (w *workerDelegate) isConfidentialVM(family string) bool {
+	if strings.HasPrefix(strings.ToLower(family), "standard_ec") || strings.HasPrefix(strings.ToLower(family), "standard_dc") {
+		return true
+	}
+	return false
 }

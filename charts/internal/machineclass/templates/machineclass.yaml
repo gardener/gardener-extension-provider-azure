@@ -36,6 +36,10 @@ nodeTemplate:
 providerSpec:
   location: {{ $machineClass.region }}
   properties:
+    {{- if $machineClass.securityProfile }}
+    securityProfile:
+      securityType: {{ $machineClass.securityProfile.securityType }}
+    {{- end }}
     {{- if hasKey $machineClass "zone" }}
     zone: {{ $machineClass.zone }}
     {{- end }}
@@ -71,6 +75,9 @@ providerSpec:
         sharedGalleryImageID: {{ $machineClass.image.sharedGalleryImageID }}
 {{- else }}
         urn: {{ $machineClass.image.urn }}
+{{- end }}
+{{- if $machineClass.image.privatePlan }}
+        privatePlan: {{ $machineClass.image.privatePlan }}
 {{- end }}
       osDisk:
         caching: None
