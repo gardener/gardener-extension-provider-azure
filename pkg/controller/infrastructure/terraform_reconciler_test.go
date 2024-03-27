@@ -220,7 +220,7 @@ var _ = Describe("Actuator", func() {
 			azureGroupClient = azureclientmocks.NewMockResourceGroup(ctrl)
 			resourceGroupName = infra.Namespace
 
-			NewAzureClientFactory = func(context.Context, client.Client, v1.SecretReference) (azureclient.Factory, error) {
+			DefaultAzureClientFactoryFunc = func(context.Context, client.Client, v1.SecretReference, bool, ...azureclient.AzureFactoryOption) (azureclient.Factory, error) {
 				return azureClientFactory, nil
 			}
 		})

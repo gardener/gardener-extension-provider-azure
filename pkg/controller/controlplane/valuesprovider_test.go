@@ -21,6 +21,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/mock/gomock"
+	"golang.org/x/exp/maps"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -61,6 +62,8 @@ var _ = Describe("ValuesProvider", func() {
 		infrastructureStatus *apisazure.InfrastructureStatus
 		controlPlaneConfig   *v1alpha1.ControlPlaneConfig
 		cluster              *extensionscontroller.Cluster
+
+		ControlPlaneChartValues map[string]interface{}
 
 		defaultInfrastructureStatus = &apisazure.InfrastructureStatus{
 			ResourceGroup: apisazure.ResourceGroup{
@@ -149,6 +152,21 @@ var _ = Describe("ValuesProvider", func() {
 		infrastructureStatus = defaultInfrastructureStatus.DeepCopy()
 		controlPlaneConfig = defaultControlPlaneConfig.DeepCopy()
 		cluster = generateCluster(cidr, k8sVersion, false, nil, nil, nil)
+
+		ControlPlaneChartValues = map[string]interface{}{
+			"cloud":             "AZUREPUBLICCLOUD",
+			"tenantId":          "TenantID",
+			"subscriptionId":    "SubscriptionID",
+			"aadClientId":       "ClientID",
+			"aadClientSecret":   "ClientSecret",
+			"resourceGroup":     "rg-abcd1234",
+			"vnetName":          "vnet-abcd1234",
+			"subnetName":        "subnet-abcd1234-nodes",
+			"region":            "eu-west-1a",
+			"routeTableName":    "route-table-name",
+			"securityGroupName": "security-group-name-workers",
+			"vmType":            "standard",
+		}
 	})
 
 	AfterEach(func() {
@@ -221,21 +239,11 @@ var _ = Describe("ValuesProvider", func() {
 
 				values, err := vp.GetConfigChartValues(ctx, cp, cluster)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(values).To(Equal(map[string]interface{}{
-					"tenantId":            "TenantID",
-					"subscriptionId":      "SubscriptionID",
-					"aadClientId":         "ClientID",
-					"aadClientSecret":     "ClientSecret",
-					"resourceGroup":       "rg-abcd1234",
-					"vnetName":            "vnet-abcd1234",
-					"subnetName":          "subnet-abcd1234-nodes",
-					"region":              "eu-west-1a",
+				maps.Copy(ControlPlaneChartValues, map[string]interface{}{
 					"availabilitySetName": primaryAvailabilitySetName,
-					"routeTableName":      "route-table-name",
-					"securityGroupName":   "security-group-name-workers",
 					"maxNodes":            maxNodes,
-					"vmType":              "standard",
-				}))
+				})
+				Expect(values).To(Equal(ControlPlaneChartValues))
 			})
 
 			It("should return correct config chart valued for cluser with vmo (non-zoned)", func() {
@@ -246,20 +254,11 @@ var _ = Describe("ValuesProvider", func() {
 
 				values, err := vp.GetConfigChartValues(ctx, cp, cluster)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(values).To(Equal(map[string]interface{}{
-					"tenantId":          "TenantID",
-					"subscriptionId":    "SubscriptionID",
-					"aadClientId":       "ClientID",
-					"aadClientSecret":   "ClientSecret",
-					"resourceGroup":     "rg-abcd1234",
-					"vnetName":          "vnet-abcd1234",
-					"subnetName":        "subnet-abcd1234-nodes",
-					"region":            "eu-west-1a",
-					"routeTableName":    "route-table-name",
-					"securityGroupName": "security-group-name-workers",
-					"maxNodes":          maxNodes,
-					"vmType":            "vmss",
-				}))
+				maps.Copy(ControlPlaneChartValues, map[string]interface{}{
+					"maxNodes": maxNodes,
+					"vmType":   "vmss",
+				})
+				Expect(values).To(Equal(ControlPlaneChartValues))
 			})
 
 			It("should return correct config chart values for zoned cluster", func() {
@@ -268,20 +267,10 @@ var _ = Describe("ValuesProvider", func() {
 
 				values, err := vp.GetConfigChartValues(ctx, cp, cluster)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(values).To(Equal(map[string]interface{}{
-					"tenantId":          "TenantID",
-					"subscriptionId":    "SubscriptionID",
-					"aadClientId":       "ClientID",
-					"aadClientSecret":   "ClientSecret",
-					"resourceGroup":     "rg-abcd1234",
-					"vnetName":          "vnet-abcd1234",
-					"subnetName":        "subnet-abcd1234-nodes",
-					"region":            "eu-west-1a",
-					"routeTableName":    "route-table-name",
-					"securityGroupName": "security-group-name-workers",
-					"maxNodes":          maxNodes,
-					"vmType":            "standard",
-				}))
+				maps.Copy(ControlPlaneChartValues, map[string]interface{}{
+					"maxNodes": maxNodes,
+				})
+				Expect(values).To(Equal(ControlPlaneChartValues))
 			})
 
 			It("should return correct control plane chart values with identity", func() {
@@ -295,21 +284,11 @@ var _ = Describe("ValuesProvider", func() {
 
 				values, err := vp.GetConfigChartValues(ctx, cp, cluster)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(values).To(Equal(map[string]interface{}{
-					"tenantId":            "TenantID",
-					"subscriptionId":      "SubscriptionID",
-					"aadClientId":         "ClientID",
-					"aadClientSecret":     "ClientSecret",
-					"resourceGroup":       "rg-abcd1234",
-					"vnetName":            "vnet-abcd1234",
-					"subnetName":          "subnet-abcd1234-nodes",
-					"region":              "eu-west-1a",
-					"routeTableName":      "route-table-name",
-					"securityGroupName":   "security-group-name-workers",
-					"acrIdentityClientId": identityName,
+				maps.Copy(ControlPlaneChartValues, map[string]interface{}{
 					"maxNodes":            maxNodes,
-					"vmType":              "standard",
-				}))
+					"acrIdentityClientId": identityName,
+				})
+				Expect(values).To(Equal(ControlPlaneChartValues))
 			})
 		})
 	})

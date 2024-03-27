@@ -10,6 +10,8 @@
 </p>
 Resource Types:
 <ul><li>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.BackupConfig">BackupConfig</a>
+</li><li>
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.CloudProfileConfig">CloudProfileConfig</a>
 </li><li>
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.ControlPlaneConfig">ControlPlaneConfig</a>
@@ -20,6 +22,52 @@ Resource Types:
 </li><li>
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.WorkerStatus">WorkerStatus</a>
 </li></ul>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.BackupConfig">BackupConfig
+</h3>
+<p>
+<p>BackupConfig is the provider-specific configuration for backup buckets/entries</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code></br>
+string</td>
+<td>
+<code>
+azure.provider.extensions.gardener.cloud/v1alpha1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code></br>
+string
+</td>
+<td><code>BackupConfig</code></td>
+</tr>
+<tr>
+<td>
+<code>cloudConfiguration</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.CloudConfiguration">
+CloudConfiguration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CloudConfiguration contains config that controls which cloud to connect to.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.CloudProfileConfig">CloudProfileConfig
 </h3>
 <p>
@@ -103,6 +151,20 @@ logical names and versions to provider-specific identifiers.</p>
 <td>
 <em>(Optional)</em>
 <p>MachineTypes is a list of machine types complete with provider specific information.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>cloudConfiguration</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.CloudConfiguration">
+CloudConfiguration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CloudConfiguration contains config that controls which cloud to connect to.</p>
 </td>
 </tr>
 </tbody>
@@ -474,6 +536,38 @@ string
 </td>
 <td>
 <p>ID is the ID of the resource.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.CloudConfiguration">CloudConfiguration
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.BackupConfig">BackupConfig</a>, 
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.CloudProfileConfig">CloudProfileConfig</a>)
+</p>
+<p>
+<p>CloudConfiguration contains detailed config for the cloud to connect to. Currently we only support selection of well-
+known Azure-instances by name, but this could be extended in future to support private clouds.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name is the name of the cloud to connect to, e.g. &ldquo;AzurePublic&rdquo; or &ldquo;AzureChina&rdquo;.</p>
 </td>
 </tr>
 </tbody>

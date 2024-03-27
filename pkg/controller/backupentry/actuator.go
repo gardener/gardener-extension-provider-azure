@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
@@ -41,7 +42,17 @@ func (a *actuator) GetETCDSecretData(_ context.Context, _ logr.Logger, _ *extens
 }
 
 func (a *actuator) Delete(ctx context.Context, _ logr.Logger, backupEntry *extensionsv1alpha1.BackupEntry) error {
-	storageClient, err := DefaultBlobStorageClient(ctx, a.client, backupEntry.Spec.SecretRef)
+	backupConfig, err := helper.BackupConfigFromBackupEntry(backupEntry)
+	if err != nil {
+		return err
+	}
+
+	var cloudConfiguration *azure.CloudConfiguration
+	if backupConfig != nil {
+		cloudConfiguration = backupConfig.CloudConfiguration
+	}
+
+	storageClient, err := DefaultBlobStorageClient(ctx, a.client, backupEntry.Spec.SecretRef, cloudConfiguration)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}

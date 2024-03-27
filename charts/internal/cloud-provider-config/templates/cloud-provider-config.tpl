@@ -1,5 +1,5 @@
 {{- define "cloud-provider-config-base" -}}
-cloud: AZUREPUBLICCLOUD
+cloud: "{{ .Values.cloud }}"
 location: "{{ .Values.region }}"
 resourceGroup: "{{ .Values.resourceGroup }}"
 routeTableName: "{{ .Values.routeTableName }}"
