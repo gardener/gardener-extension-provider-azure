@@ -254,6 +254,8 @@ var _ = Describe("Infrastructure tests", func() {
 		It("should successfully create and delete AvailabilitySet cluster using existing vNet and existing identity", func() {
 			foreignName, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
+			foreignNameVnet := foreignName + "-vnet"
+			foreignNameId := foreignName + "-id"
 
 			var cleanupHandle framework.CleanupActionHandle
 			cleanupHandle = framework.AddCleanupAction(func() {
@@ -262,15 +264,15 @@ var _ = Describe("Infrastructure tests", func() {
 			})
 
 			Expect(prepareNewResourceGroup(ctx, log, clientSet, foreignName, *region)).To(Succeed())
-			Expect(prepareNewVNet(ctx, log, clientSet, foreignName, foreignName, *region, VNetCIDR)).To(Succeed())
-			Expect(prepareNewIdentity(ctx, log, clientSet, foreignName, foreignName, *region)).To(Succeed())
+			Expect(prepareNewVNet(ctx, log, clientSet, foreignName, foreignNameVnet, *region, VNetCIDR)).To(Succeed())
+			Expect(prepareNewIdentity(ctx, log, clientSet, foreignName, foreignNameId, *region)).To(Succeed())
 
 			vnetConfig := &azurev1alpha1.VNet{
-				Name:          pointer.String(foreignName),
+				Name:          pointer.String(foreignNameVnet),
 				ResourceGroup: pointer.String(foreignName),
 			}
 			identityConfig := &azurev1alpha1.IdentityConfig{
-				Name:          foreignName,
+				Name:          foreignNameId,
 				ResourceGroup: foreignName,
 			}
 			providerConfig := newInfrastructureConfig(vnetConfig, nil, identityConfig, false)
@@ -300,6 +302,8 @@ var _ = Describe("Infrastructure tests", func() {
 		It("should successfully create and delete a zonal cluster with NatGateway using an existing vNet and identity", func() {
 			foreignName, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
+			foreignNameVnet := foreignName + "-vnet"
+			foreignNameId := foreignName + "-id"
 
 			var cleanupHandle framework.CleanupActionHandle
 			cleanupHandle = framework.AddCleanupAction(func() {
@@ -308,15 +312,15 @@ var _ = Describe("Infrastructure tests", func() {
 			})
 
 			Expect(prepareNewResourceGroup(ctx, log, clientSet, foreignName, *region)).To(Succeed())
-			Expect(prepareNewVNet(ctx, log, clientSet, foreignName, foreignName, *region, VNetCIDR)).To(Succeed())
-			Expect(prepareNewIdentity(ctx, log, clientSet, foreignName, foreignName, *region)).To(Succeed())
+			Expect(prepareNewVNet(ctx, log, clientSet, foreignName, foreignNameVnet, *region, VNetCIDR)).To(Succeed())
+			Expect(prepareNewIdentity(ctx, log, clientSet, foreignName, foreignNameId, *region)).To(Succeed())
 
 			vnetConfig := &azurev1alpha1.VNet{
-				Name:          pointer.String(foreignName),
+				Name:          pointer.String(foreignNameVnet),
 				ResourceGroup: pointer.String(foreignName),
 			}
 			identityConfig := &azurev1alpha1.IdentityConfig{
-				Name:          foreignName,
+				Name:          foreignNameId,
 				ResourceGroup: foreignName,
 			}
 			natGatewayConfig := &azurev1alpha1.NatGatewayConfig{
@@ -437,6 +441,8 @@ var _ = Describe("Infrastructure tests", func() {
 		It("should successfully create and delete VMO cluster with NatGateway using an existing vNet and identity", func() {
 			foreignName, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
+			foreignNameVnet := foreignName + "-vnet"
+			foreignNameId := foreignName + "-id"
 
 			var cleanupHandle framework.CleanupActionHandle
 			cleanupHandle = framework.AddCleanupAction(func() {
@@ -445,15 +451,15 @@ var _ = Describe("Infrastructure tests", func() {
 			})
 
 			Expect(prepareNewResourceGroup(ctx, log, clientSet, foreignName, *region)).To(Succeed())
-			Expect(prepareNewVNet(ctx, log, clientSet, foreignName, foreignName, *region, VNetCIDR)).To(Succeed())
-			Expect(prepareNewIdentity(ctx, log, clientSet, foreignName, foreignName, *region)).To(Succeed())
+			Expect(prepareNewVNet(ctx, log, clientSet, foreignName, foreignNameVnet, *region, VNetCIDR)).To(Succeed())
+			Expect(prepareNewIdentity(ctx, log, clientSet, foreignName, foreignNameId, *region)).To(Succeed())
 
 			vnetConfig := &azurev1alpha1.VNet{
-				Name:          pointer.String(foreignName),
+				Name:          pointer.String(foreignNameVnet),
 				ResourceGroup: pointer.String(foreignName),
 			}
 			identityConfig := &azurev1alpha1.IdentityConfig{
-				Name:          foreignName,
+				Name:          foreignNameId,
 				ResourceGroup: foreignName,
 			}
 			natGatewayConfig := &azurev1alpha1.NatGatewayConfig{
