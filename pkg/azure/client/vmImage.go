@@ -6,7 +6,10 @@ package client
 
 import (
 	"context"
+	"errors"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
@@ -20,9 +23,25 @@ type VirtualMachineImageClient struct {
 }
 
 // NewVirtualMachineImagesClient creates a new VirtualMachineImagesClient client.
-func NewVirtualMachineImagesClient(auth internal.ClientAuth) (*VirtualMachineImageClient, error) {
-	client := compute.NewVirtualMachineImagesClient(auth.SubscriptionID)
-	authorizer, err := getAuthorizer(auth.TenantID, auth.ClientID, auth.ClientSecret)
+func NewVirtualMachineImagesClient(auth internal.ClientAuth, opts *policy.ClientOptions) (*VirtualMachineImageClient, error) {
+	var cloudConfiguration cloud.Configuration
+
+	if opts == nil {
+		cloudConfiguration = cloud.AzurePublic
+	} else {
+		cloudConfiguration = opts.Cloud
+	}
+
+	var resourceManagerEndpoint string
+	activeDirectoryEndpoint := cloudConfiguration.ActiveDirectoryAuthorityHost
+	if c, ok := cloudConfiguration.Services[cloud.ResourceManager]; ok {
+		resourceManagerEndpoint = c.Endpoint
+	} else {
+		return nil, errors.New("unable to determine ResourceManager endpoint from given cloud configuration")
+	}
+
+	client := compute.NewVirtualMachineImagesClientWithBaseURI(resourceManagerEndpoint, auth.SubscriptionID)
+	authorizer, err := getAuthorizer(auth.TenantID, auth.ClientID, auth.ClientSecret, activeDirectoryEndpoint, resourceManagerEndpoint)
 	client.Authorizer = authorizer
 	return &VirtualMachineImageClient{client}, err
 }

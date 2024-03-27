@@ -17,6 +17,7 @@ import (
 	ctrlerror "github.com/gardener/gardener/pkg/controllerutils/reconciler"
 	"github.com/go-logr/logr"
 
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
@@ -32,7 +33,29 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensi
 	if err != nil {
 		return err
 	}
-	factory, err := azureclient.NewAzureClientFactory(ctx, a.client, opt.SecretReference)
+
+	cloudProfile, err := helper.CloudProfileConfigFromCluster(cluster)
+	if err != nil {
+		return err
+	}
+
+	var cloudConfiguration *azure.CloudConfiguration
+	if cloudProfile != nil {
+		cloudConfiguration = cloudProfile.CloudConfiguration
+	}
+
+	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(cloudConfiguration)
+	if err != nil {
+		return err
+	}
+
+	factory, err := azureclient.NewAzureClientFactoryFromSecret(
+		ctx,
+		a.client,
+		opt.SecretReference,
+		false,
+		azureclient.WithCloudConfiguration(azCloudConfiguration),
+	)
 	if err != nil {
 		return err
 	}

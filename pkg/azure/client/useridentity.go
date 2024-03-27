@@ -7,10 +7,12 @@ package client
 import (
 	"context"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
 	"github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/adal"
-	azureRest "github.com/Azure/go-autorest/autorest/azure"
+	"github.com/pkg/errors"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
@@ -23,9 +25,25 @@ type ManagedUserIdentityClient struct {
 }
 
 // NewManagedUserIdentityClient creates a new ManagedUserIdentityClient
-func NewManagedUserIdentityClient(auth internal.ClientAuth) (*ManagedUserIdentityClient, error) {
-	msiClient := msi.NewUserAssignedIdentitiesClient(auth.SubscriptionID)
-	authorizer, err := getAuthorizer(auth.TenantID, auth.ClientID, auth.ClientSecret)
+func NewManagedUserIdentityClient(auth internal.ClientAuth, opts *policy.ClientOptions) (*ManagedUserIdentityClient, error) {
+	var cloudConfiguration cloud.Configuration
+
+	if opts == nil {
+		cloudConfiguration = cloud.AzurePublic
+	} else {
+		cloudConfiguration = opts.Cloud
+	}
+
+	var resourceManagerEndpoint string
+	activeDirectoryEndpoint := cloudConfiguration.ActiveDirectoryAuthorityHost
+	if c, ok := cloudConfiguration.Services[cloud.ResourceManager]; ok {
+		resourceManagerEndpoint = c.Endpoint
+	} else {
+		return nil, errors.New("unable to determine ResourceManager endpoint from given cloud configuration")
+	}
+
+	msiClient := msi.NewUserAssignedIdentitiesClientWithBaseURI(resourceManagerEndpoint, auth.SubscriptionID)
+	authorizer, err := getAuthorizer(auth.TenantID, auth.ClientID, auth.ClientSecret, activeDirectoryEndpoint, resourceManagerEndpoint)
 	msiClient.Authorizer = authorizer
 	return &ManagedUserIdentityClient{msiClient}, err
 }
@@ -39,12 +57,13 @@ func (m *ManagedUserIdentityClient) Get(ctx context.Context, resourceGroup, id s
 	return &res, nil
 }
 
-func getAuthorizer(tenantId, clientId, clientSecret string) (autorest.Authorizer, error) {
-	oauthConfig, err := adal.NewOAuthConfig(azureRest.PublicCloud.ActiveDirectoryEndpoint, tenantId)
+func getAuthorizer(tenantId, clientId, clientSecret, activeDirectoryEndpoint, resourceManagerEndpoint string) (autorest.Authorizer, error) {
+
+	oauthConfig, err := adal.NewOAuthConfig(activeDirectoryEndpoint, tenantId)
 	if err != nil {
 		return nil, err
 	}
-	spToken, err := adal.NewServicePrincipalToken(*oauthConfig, clientId, clientSecret, azureRest.PublicCloud.ResourceManagerEndpoint)
+	spToken, err := adal.NewServicePrincipalToken(*oauthConfig, clientId, clientSecret, resourceManagerEndpoint)
 	if err != nil {
 		return nil, err
 	}

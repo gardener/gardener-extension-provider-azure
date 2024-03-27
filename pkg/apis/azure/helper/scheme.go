@@ -82,6 +82,30 @@ func CloudProfileConfigFromCluster(cluster *controller.Cluster) (*api.CloudProfi
 	return cloudProfileConfig, nil
 }
 
+// BackupConfigFromBackupBucket decodes the provider specific config from a given BackupBucket object.
+func BackupConfigFromBackupBucket(backupBucket *extensionsv1alpha1.BackupBucket) (*api.BackupConfig, error) {
+	var backupConfig *api.BackupConfig
+	if backupBucket != nil && backupBucket.Spec.DefaultSpec.ProviderConfig != nil {
+		backupConfig = &api.BackupConfig{}
+		if _, _, err := decoder.Decode(backupBucket.Spec.ProviderConfig.Raw, nil, backupConfig); err != nil {
+			return nil, err
+		}
+	}
+	return backupConfig, nil
+}
+
+// BackupConfigFromBackupEntry  decodes the provider specific config from a given BackupEntry object.
+func BackupConfigFromBackupEntry(backupEntry *extensionsv1alpha1.BackupEntry) (*api.BackupConfig, error) {
+	var backupConfig *api.BackupConfig
+	if backupEntry != nil && backupEntry.Spec.DefaultSpec.ProviderConfig != nil {
+		backupConfig = &api.BackupConfig{}
+		if _, _, err := decoder.Decode(backupEntry.Spec.ProviderConfig.Raw, nil, backupConfig); err != nil {
+			return nil, err
+		}
+	}
+	return backupConfig, nil
+}
+
 // InfrastructureStateFromRaw extracts the state from the Infrastructure. If no state was available, it returns a "zero" value InfrastructureState object.
 func InfrastructureStateFromRaw(raw *runtime.RawExtension) (*api.InfrastructureState, error) {
 	state := &api.InfrastructureState{}

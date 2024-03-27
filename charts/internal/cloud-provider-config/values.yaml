@@ -1,3 +1,4 @@
+cloud: AZUREPUBLICCLOUD # aka AZURECLOUD. Other possible values: AZURECHINACLOUD/AZUREUSGOVERNMENT
 tenantId: fooTenant
 subscriptionId: barSub
 aadClientId: fooClient

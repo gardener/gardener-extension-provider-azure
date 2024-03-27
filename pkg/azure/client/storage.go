@@ -24,8 +24,9 @@ type StorageClient struct {
 	serviceURL *azblob.ServiceURL
 }
 
-// newStorageClient creates a client for an Azure Blob storage by reading auth information from secret reference.
-func newStorageClient(ctx context.Context, client client.Client, secretRef *corev1.SecretReference) (*azblob.ServiceURL, error) {
+// newStorageClient creates a client for an Azure Blob storage by reading auth information from secret reference. Requires passing the storage domain (formerly
+// blobstorage host name) to determine the endpoint to build the service url for.
+func newStorageClient(ctx context.Context, client client.Client, secretRef *corev1.SecretReference, storageDomain string) (*azblob.ServiceURL, error) {
 	secret, err := extensionscontroller.GetSecretByReference(ctx, client, secretRef)
 	if err != nil {
 		return nil, err
@@ -52,7 +53,7 @@ func newStorageClient(ctx context.Context, client client.Client, secretRef *core
 		},
 	})
 
-	storageAccountURL, err := url.Parse(fmt.Sprintf("https://%s.%s", storageAccountName, azure.AzureBlobStorageHostName))
+	storageAccountURL, err := url.Parse(fmt.Sprintf("https://%s.%s", storageAccountName, storageDomain))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse service url: %v", err)
 	}

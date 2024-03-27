@@ -60,17 +60,39 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 	if err != nil {
 		return err
 	}
-	factory, err := azureclient.NewAzureClientFactory(ctx, a.client, opt.SecretReference)
+
+	cloudProfile, err := helper.CloudProfileConfigFromCluster(cluster)
 	if err != nil {
 		return err
 	}
 
-	publicIP, err := ensurePublicIPAddress(ctx, log, factory, opt)
+	var cloudConfiguration *azure.CloudConfiguration
+	if cloudProfile != nil {
+		cloudConfiguration = cloudProfile.CloudConfiguration
+	}
+
+	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(cloudConfiguration)
+	if err != nil {
+		return err
+	}
+
+	clientFactory, err := azureclient.NewAzureClientFactoryFromSecret(
+		ctx,
+		a.client,
+		opt.SecretReference,
+		false,
+		azureclient.WithCloudConfiguration(azCloudConfiguration),
+	)
+	if err != nil {
+		return err
+	}
+
+	publicIP, err := ensurePublicIPAddress(ctx, log, clientFactory, opt)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}
 
-	nic, err := ensureNic(ctx, log, factory, infrastructureStatus, opt, publicIP)
+	nic, err := ensureNic(ctx, log, clientFactory, infrastructureStatus, opt, publicIP)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}
@@ -88,12 +110,12 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 		log.Info(err.Error())
 	}
 
-	err = ensureNetworkSecurityGroups(ctx, log, factory, opt)
+	err = ensureNetworkSecurityGroups(ctx, log, clientFactory, opt)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}
 
-	err = ensureComputeInstance(ctx, log, bastion, factory, opt)
+	err = ensureComputeInstance(ctx, log, bastion, clientFactory, opt)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}
