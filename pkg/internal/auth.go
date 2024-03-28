@@ -13,7 +13,7 @@ import (
 	azureauth "github.com/Azure/go-autorest/autorest/azure/auth"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
@@ -50,10 +50,10 @@ func GetClientAuthData(ctx context.Context, c client.Client, secretRef corev1.Se
 func NewClientAuthDataFromSecret(secret *corev1.Secret, allowDNSKeys bool) (*ClientAuth, error) {
 	var altSubscriptionIDIDKey, altTenantIDKey, altClientIDKey, altClientSecretKey *string
 	if allowDNSKeys {
-		altSubscriptionIDIDKey = pointer.String(azure.DNSSubscriptionIDKey)
-		altTenantIDKey = pointer.String(azure.DNSTenantIDKey)
-		altClientIDKey = pointer.String(azure.DNSClientIDKey)
-		altClientSecretKey = pointer.String(azure.DNSClientSecretKey)
+		altSubscriptionIDIDKey = ptr.To(azure.DNSSubscriptionIDKey)
+		altTenantIDKey = ptr.To(azure.DNSTenantIDKey)
+		altClientIDKey = ptr.To(azure.DNSClientIDKey)
+		altClientSecretKey = ptr.To(azure.DNSClientSecretKey)
 	}
 
 	subscriptionID, ok := getSecretDataValue(secret, azure.SubscriptionIDKey, altSubscriptionIDIDKey)

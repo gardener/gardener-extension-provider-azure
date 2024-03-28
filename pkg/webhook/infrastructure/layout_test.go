@@ -16,7 +16,7 @@ import (
 	"go.uber.org/mock/gomock"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	azurev1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
@@ -54,7 +54,7 @@ var _ = Describe("Mutate", func() {
 						APIVersion: azurev1alpha1.SchemeGroupVersion.String(),
 					},
 					Networks: azurev1alpha1.NetworkConfig{
-						Workers: pointer.String(workerCIDR),
+						Workers: ptr.To(workerCIDR),
 					},
 					Zoned: true,
 				}

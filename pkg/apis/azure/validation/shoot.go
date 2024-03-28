@@ -148,7 +148,7 @@ func validateVolumeFunc(volumeType *string, volumeSize string, encrypted *bool, 
 		allErrs = append(allErrs, field.Required(fldPath.Child("size"), "must not be empty"))
 	}
 	if encrypted != nil {
-		allErrs = append(allErrs, field.NotSupported(fldPath.Child("encrypted"), *encrypted, nil))
+		allErrs = append(allErrs, field.NotSupported(fldPath.Child("encrypted"), *encrypted, []string{}))
 	}
 	return allErrs
 }

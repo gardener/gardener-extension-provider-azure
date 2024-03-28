@@ -15,7 +15,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
@@ -58,7 +58,7 @@ func (f *FlowContext) ensureResourceGroup(ctx context.Context) (*armresources.Re
 	}
 
 	if rg != nil {
-		if location := pointer.StringDeref(rg.Location, ""); location != rgCfg.Location {
+		if location := ptr.Deref(rg.Location, ""); location != rgCfg.Location {
 			// special case - return an error but do not proceed without user input.
 			return nil, NewSpecMismatchError(rgCfg.AzureResourceMetadata, "location", rgCfg.Location, location,
 				to.Ptr("This error is caused because the resource group location does not match the shoot's region. To proceed please delete the resource group"),
@@ -121,7 +121,7 @@ func (f *FlowContext) ensureManagedVirtualNetwork(ctx context.Context) (*armnetw
 	}
 
 	if vnet != nil {
-		if location := pointer.StringDeref(vnet.Location, ""); location != f.adapter.Region() {
+		if location := ptr.Deref(vnet.Location, ""); location != f.adapter.Region() {
 			log.Error(NewSpecMismatchError(vnetCfg.AzureResourceMetadata, "location", f.adapter.Region(), location, nil), "vnet can't be reconciled and has to be deleted")
 			err = c.Delete(ctx, vnetCfg.ResourceGroup, vnetCfg.Name)
 			if err != nil {
@@ -200,7 +200,7 @@ func (f *FlowContext) ensureAvailabilitySet(ctx context.Context, log logr.Logger
 	}
 
 	if avset != nil {
-		if location := pointer.StringDeref(avset.Location, ""); location != f.adapter.Region() {
+		if location := ptr.Deref(avset.Location, ""); location != f.adapter.Region() {
 			log.Error(NewSpecMismatchError(avsetCfg.AzureResourceMetadata, "location", f.adapter.Region(), location, nil), "will attempt to delete availability set due to irreconcilable error")
 			err = asClient.Delete(ctx, avsetCfg.ResourceGroup, avsetCfg.Name)
 			if err != nil {
@@ -255,7 +255,7 @@ func (f *FlowContext) ensureRouteTable(ctx context.Context) (*armnetwork.RouteTa
 	}
 
 	if rt != nil {
-		if location := pointer.StringDeref(rt.Location, ""); location != f.adapter.Region() {
+		if location := ptr.Deref(rt.Location, ""); location != f.adapter.Region() {
 			log.Error(NewSpecMismatchError(rtCfg.AzureResourceMetadata, "location", f.adapter.Region(), location, nil), "will attempt to delete route table due to irreconcilable error")
 			err = c.Delete(ctx, rtCfg.ResourceGroup, rtCfg.Name)
 			if err != nil {
@@ -303,7 +303,7 @@ func (f *FlowContext) ensureSecurityGroup(ctx context.Context) (*armnetwork.Secu
 	}
 
 	if sg != nil {
-		if location := pointer.StringDeref(sg.Location, ""); location != f.adapter.Region() {
+		if location := ptr.Deref(sg.Location, ""); location != f.adapter.Region() {
 			log.Error(NewSpecMismatchError(sgCfg.AzureResourceMetadata, "location", f.adapter.Region(), location, nil), "will attempt to delete security group due to irreconcilable error")
 			err = c.Delete(ctx, sgCfg.ResourceGroup, sgCfg.Name)
 			if err != nil {

@@ -10,7 +10,7 @@ import (
 	. "github.com/onsi/gomega/gstruct"
 	gomegatypes "github.com/onsi/gomega/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	. "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/validation"
@@ -51,7 +51,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 							{
 								Version:      "Version",
 								URN:          &urn,
-								Architecture: pointer.String("amd64"),
+								Architecture: ptr.To("amd64"),
 							},
 						},
 					},
@@ -91,7 +91,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 			})
 
 			It("should forbid unsupported machine image architecture", func() {
-				cloudProfileConfig.MachineImages[0].Versions[0].Architecture = pointer.String("foo")
+				cloudProfileConfig.MachineImages[0].Versions[0].Architecture = ptr.To("foo")
 
 				errorList := ValidateCloudProfileConfig(cloudProfileConfig, root)
 				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
@@ -109,7 +109,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 								{
 									Version:      "1.2.3",
 									URN:          &urn,
-									Architecture: pointer.String("amd64"),
+									Architecture: ptr.To("amd64"),
 								},
 							},
 						},
@@ -136,7 +136,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 								{
 									Version:      "1.2.3",
 									ID:           &id,
-									Architecture: pointer.String("amd64"),
+									Architecture: ptr.To("amd64"),
 								},
 							},
 						},
@@ -159,7 +159,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 								{
 									Version:                 "1.2.3",
 									CommunityGalleryImageID: &communityGalleryImageID,
-									Architecture:            pointer.String("amd64"),
+									Architecture:            ptr.To("amd64"),
 								},
 							},
 						},
@@ -184,7 +184,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 								{
 									Version:              "1.2.3",
 									SharedGalleryImageID: &sharedGalleryImageID,
-									Architecture:         pointer.String("amd64"),
+									Architecture:         ptr.To("amd64"),
 								},
 							},
 						},
@@ -212,7 +212,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 									CommunityGalleryImageID: communityGalleryImageID,
 									SharedGalleryImageID:    sharedGalleryImageID,
 									URN:                     urn,
-									Architecture:            pointer.String("amd64"),
+									Architecture:            ptr.To("amd64"),
 								},
 							},
 						},
@@ -259,7 +259,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 				Entry("id, communityGalleryImageID and sharedGalleryImageID are non-empty", nil, &id, &communityGalleryImageID, &sharedGalleryImageID, ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
 					"Field": Equal("root.machineImages[0].versions[0]")})))),
-				Entry("urn, id, communityGalleryImageID and sharedGalleryImageID are empty", pointer.String(""), pointer.String(""), pointer.String(""), pointer.String(""), ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+				Entry("urn, id, communityGalleryImageID and sharedGalleryImageID are empty", ptr.To(""), ptr.To(""), ptr.To(""), ptr.To(""), ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
 					"Field": Equal("root.machineImages[0].versions[0]"),
 				})), PointTo(MatchFields(IgnoreExtras, Fields{
@@ -280,7 +280,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 				cloudProfileConfig.MachineImages = []apisazure.MachineImages{
 					{
 						Name:     "abc",
-						Versions: []apisazure.MachineImageVersion{{Architecture: pointer.String("amd64")}},
+						Versions: []apisazure.MachineImageVersion{{Architecture: ptr.To("amd64")}},
 					},
 				}
 

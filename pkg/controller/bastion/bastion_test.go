@@ -21,23 +21,23 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 )
 
 func createRule(name, sourceAddrPrefix, destinationAddressPrefix string) *armnetwork.SecurityRule {
 	return &armnetwork.SecurityRule{
-		Name: pointer.String(name), Properties: &armnetwork.SecurityRulePropertiesFormat{
-			SourceAddressPrefix:      pointer.String(sourceAddrPrefix),
-			DestinationAddressPrefix: pointer.String(destinationAddressPrefix),
+		Name: ptr.To(name), Properties: &armnetwork.SecurityRulePropertiesFormat{
+			SourceAddressPrefix:      ptr.To(sourceAddrPrefix),
+			DestinationAddressPrefix: ptr.To(destinationAddressPrefix),
 		},
 	}
 }
 
 func createRuleWithPriority(name string, priority int32) *armnetwork.SecurityRule {
 	return &armnetwork.SecurityRule{
-		Name: pointer.String(name), Properties: &armnetwork.SecurityRulePropertiesFormat{
+		Name: ptr.To(name), Properties: &armnetwork.SecurityRulePropertiesFormat{
 			Priority: to.Int32Ptr(priority),
 		},
 	}
@@ -53,7 +53,7 @@ var _ = Describe("Bastion test", func() {
 	)
 	BeforeEach(func() {
 		vNetCIDR := api.VNet{
-			CIDR: pointer.String("10.0.0.1/32"),
+			CIDR: ptr.To("10.0.0.1/32"),
 		}
 		cluster = createAzureTestCluster(vNetCIDR)
 		bastion = createTestBastion()
@@ -262,9 +262,9 @@ var _ = Describe("Bastion test", func() {
 		It("Should return single security rule and keep with NIL name", func() {
 			original := []*armnetwork.SecurityRule{
 				{Name: nil},
-				{Name: pointer.String("ruleName1")},
-				{Name: pointer.String("ruleName2")},
-				{Name: pointer.String("ruleName3")},
+				{Name: ptr.To("ruleName1")},
+				{Name: ptr.To("ruleName2")},
+				{Name: ptr.To("ruleName3")},
 			}
 
 			modified, someDeleted := deleteSecurityRuleDefinitionsByName(original, "ruleName1", "ruleName2", "non-exist-rule")
@@ -272,7 +272,7 @@ var _ = Describe("Bastion test", func() {
 			Expect(someDeleted).To(Equal(true))
 			Expect(modified).To(Equal([]*armnetwork.SecurityRule{
 				{Name: nil},
-				{Name: pointer.String("ruleName3")},
+				{Name: ptr.To("ruleName3")},
 			}))
 
 			Expect(len(modified)).To(Equal(2))
@@ -320,7 +320,7 @@ func createShootTestStruct(vNet api.VNet) *gardencorev1beta1.Shoot {
 	config := &api.InfrastructureConfig{
 		Networks: api.NetworkConfig{
 			VNet:             vNet,
-			Workers:          pointer.String("10.250.0.0/16"),
+			Workers:          ptr.To("10.250.0.0/16"),
 			ServiceEndpoints: []string{},
 		},
 		Zoned: true,
@@ -332,7 +332,7 @@ func createShootTestStruct(vNet api.VNet) *gardencorev1beta1.Shoot {
 	return &gardencorev1beta1.Shoot{
 		Spec: gardencorev1beta1.ShootSpec{
 			Region:            "westeurope",
-			SecretBindingName: pointer.String(v1beta1constants.SecretNameCloudProvider),
+			SecretBindingName: ptr.To(v1beta1constants.SecretNameCloudProvider),
 			Provider: gardencorev1beta1.Provider{
 				InfrastructureConfig: &runtime.RawExtension{
 					Raw: infrastructureConfigBytes,

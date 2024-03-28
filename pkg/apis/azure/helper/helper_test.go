@@ -7,7 +7,7 @@ package helper_test
 import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	. "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
@@ -45,7 +45,7 @@ var _ = Describe("Helper", func() {
 		Entry("entry not found", []api.Subnet{{Name: "bar", Purpose: purposeWrong}}, purpose, nil, nil, true),
 		Entry("entry exists", []api.Subnet{{Name: "bar", Purpose: purpose}}, purpose, nil, &api.Subnet{Name: "bar", Purpose: purpose}, false),
 		Entry("entry with zone", []api.Subnet{{Name: "bar", Purpose: purpose, Zone: &zone}}, purpose, &zone, &api.Subnet{Name: "bar", Purpose: purpose, Zone: &zone}, false),
-		Entry("entry with zone not found", []api.Subnet{{Name: "bar", Purpose: purpose, Zone: &zone}}, purpose, pointer.String("badzone"), nil, true),
+		Entry("entry with zone not found", []api.Subnet{{Name: "bar", Purpose: purpose, Zone: &zone}}, purpose, ptr.To("badzone"), nil, true),
 	)
 
 	DescribeTable("#FindSecurityGroupByPurpose",
@@ -90,18 +90,18 @@ var _ = Describe("Helper", func() {
 			expectResults(machineImage, expectedMachineImage, err, expectErr)
 		},
 
-		Entry("list is nil", nil, "foo", "1.2.3", pointer.String("foo"), nil, true),
-		Entry("empty list", []api.MachineImage{}, "foo", "1.2.3", pointer.String("foo"), nil, true),
-		Entry("entry not found (no name)", []api.MachineImage{{Name: "bar", Version: "1.2.3", URN: &urn, Architecture: pointer.String("foo")}}, "foo", "1.2.3", pointer.String("foo"), nil, true),
-		Entry("entry not found (no version)", []api.MachineImage{{Name: "bar", Version: "1.2.3", URN: &urn, Architecture: pointer.String("foo")}}, "bar", "1.2.4", pointer.String("foo"), nil, true),
-		Entry("entry not found (no architecture)", []api.MachineImage{{Name: "bar", Version: "1.2.3", URN: &urn, Architecture: pointer.String("bar")}}, "bar", "1.2.3", pointer.String("foo"), nil, true),
-		Entry("entry exists(urn)", []api.MachineImage{{Name: "bar", Version: "1.2.3", URN: &urn, Architecture: pointer.String("foo")}}, "bar", "1.2.3", pointer.String("foo"), &api.MachineImage{Name: "bar", Version: "1.2.3", URN: &urn, Architecture: pointer.String("foo")}, false),
-		Entry("entry exists(urn) if architecture is nil", []api.MachineImage{{Name: "bar", Version: "1.2.3", URN: &urn}}, "bar", "1.2.3", pointer.String("amd64"), &api.MachineImage{Name: "bar", Version: "1.2.3", URN: &urn, Architecture: pointer.String("amd64")}, false),
-		Entry("entry exists(id)", []api.MachineImage{{Name: "bar", Version: "1.2.3", ID: &imageID, Architecture: pointer.String("foo")}}, "bar", "1.2.3", pointer.String("foo"), &api.MachineImage{Name: "bar", Version: "1.2.3", ID: &imageID, Architecture: pointer.String("foo")}, false),
-		Entry("entry exists(communityGalleryImageID)", []api.MachineImage{{Name: "bar", Version: "1.2.3", CommunityGalleryImageID: &communityImageId, Architecture: pointer.String("foo")}}, "bar", "1.2.3", pointer.String("foo"), &api.MachineImage{Name: "bar", Version: "1.2.3", CommunityGalleryImageID: &communityImageId, Architecture: pointer.String("foo")}, false),
-		Entry("entry exists(sharedGalleryImageID)", []api.MachineImage{{Name: "bar", Version: "1.2.3", SharedGalleryImageID: &sharedImageId, Architecture: pointer.String("foo")}}, "bar", "1.2.3", pointer.String("foo"), &api.MachineImage{Name: "bar", Version: "1.2.3", SharedGalleryImageID: &sharedImageId, Architecture: pointer.String("foo")}, false),
-		Entry("entry exists(accelerated networking active)", []api.MachineImage{{Name: "bar", Version: "1.2.3", URN: &urn, AcceleratedNetworking: &boolTrue, Architecture: pointer.String("foo")}}, "bar", "1.2.3", pointer.String("foo"), &api.MachineImage{Name: "bar", Version: "1.2.3", URN: &urn, AcceleratedNetworking: &boolTrue, Architecture: pointer.String("foo")}, false),
-		Entry("entry exists(accelerated networking inactive)", []api.MachineImage{{Name: "bar", Version: "1.2.3", URN: &urn, AcceleratedNetworking: &boolFalse, Architecture: pointer.String("foo")}}, "bar", "1.2.3", pointer.String("foo"), &api.MachineImage{Name: "bar", Version: "1.2.3", URN: &urn, AcceleratedNetworking: &boolFalse, Architecture: pointer.String("foo")}, false),
+		Entry("list is nil", nil, "foo", "1.2.3", ptr.To("foo"), nil, true),
+		Entry("empty list", []api.MachineImage{}, "foo", "1.2.3", ptr.To("foo"), nil, true),
+		Entry("entry not found (no name)", []api.MachineImage{{Name: "bar", Version: "1.2.3", URN: &urn, Architecture: ptr.To("foo")}}, "foo", "1.2.3", ptr.To("foo"), nil, true),
+		Entry("entry not found (no version)", []api.MachineImage{{Name: "bar", Version: "1.2.3", URN: &urn, Architecture: ptr.To("foo")}}, "bar", "1.2.4", ptr.To("foo"), nil, true),
+		Entry("entry not found (no architecture)", []api.MachineImage{{Name: "bar", Version: "1.2.3", URN: &urn, Architecture: ptr.To("bar")}}, "bar", "1.2.3", ptr.To("foo"), nil, true),
+		Entry("entry exists(urn)", []api.MachineImage{{Name: "bar", Version: "1.2.3", URN: &urn, Architecture: ptr.To("foo")}}, "bar", "1.2.3", ptr.To("foo"), &api.MachineImage{Name: "bar", Version: "1.2.3", URN: &urn, Architecture: ptr.To("foo")}, false),
+		Entry("entry exists(urn) if architecture is nil", []api.MachineImage{{Name: "bar", Version: "1.2.3", URN: &urn}}, "bar", "1.2.3", ptr.To("amd64"), &api.MachineImage{Name: "bar", Version: "1.2.3", URN: &urn, Architecture: ptr.To("amd64")}, false),
+		Entry("entry exists(id)", []api.MachineImage{{Name: "bar", Version: "1.2.3", ID: &imageID, Architecture: ptr.To("foo")}}, "bar", "1.2.3", ptr.To("foo"), &api.MachineImage{Name: "bar", Version: "1.2.3", ID: &imageID, Architecture: ptr.To("foo")}, false),
+		Entry("entry exists(communityGalleryImageID)", []api.MachineImage{{Name: "bar", Version: "1.2.3", CommunityGalleryImageID: &communityImageId, Architecture: ptr.To("foo")}}, "bar", "1.2.3", ptr.To("foo"), &api.MachineImage{Name: "bar", Version: "1.2.3", CommunityGalleryImageID: &communityImageId, Architecture: ptr.To("foo")}, false),
+		Entry("entry exists(sharedGalleryImageID)", []api.MachineImage{{Name: "bar", Version: "1.2.3", SharedGalleryImageID: &sharedImageId, Architecture: ptr.To("foo")}}, "bar", "1.2.3", ptr.To("foo"), &api.MachineImage{Name: "bar", Version: "1.2.3", SharedGalleryImageID: &sharedImageId, Architecture: ptr.To("foo")}, false),
+		Entry("entry exists(accelerated networking active)", []api.MachineImage{{Name: "bar", Version: "1.2.3", URN: &urn, AcceleratedNetworking: &boolTrue, Architecture: ptr.To("foo")}}, "bar", "1.2.3", ptr.To("foo"), &api.MachineImage{Name: "bar", Version: "1.2.3", URN: &urn, AcceleratedNetworking: &boolTrue, Architecture: ptr.To("foo")}, false),
+		Entry("entry exists(accelerated networking inactive)", []api.MachineImage{{Name: "bar", Version: "1.2.3", URN: &urn, AcceleratedNetworking: &boolFalse, Architecture: ptr.To("foo")}}, "bar", "1.2.3", ptr.To("foo"), &api.MachineImage{Name: "bar", Version: "1.2.3", URN: &urn, AcceleratedNetworking: &boolFalse, Architecture: ptr.To("foo")}, false),
 	)
 
 	DescribeTable("#FindDomainCountByRegion",
@@ -130,25 +130,25 @@ var _ = Describe("Helper", func() {
 			}
 		},
 
-		Entry("list is nil", nil, "ubuntu", "1", pointer.String("foo"), nil),
+		Entry("list is nil", nil, "ubuntu", "1", ptr.To("foo"), nil),
 
-		Entry("profile empty list", []api.MachineImages{}, "ubuntu", "1", pointer.String("foo"), nil),
-		Entry("profile entry not found (image does not exist)", makeProfileMachineImages("debian", "1", "3", "5", "7", pointer.String("foo")), "ubuntu", "1", pointer.String("foo"), nil),
-		Entry("profile entry not found (version does not exist)", makeProfileMachineImages("ubuntu", "2", "4", "6", "7", pointer.String("foo")), "ubuntu", "1", pointer.String("foo"), nil),
-		Entry("profile entry not found (no architecture)", makeProfileMachineImages("ubuntu", "2", "4", "6", "7", pointer.String("bar")), "ubuntu", "2", pointer.String("foo"), nil),
-		Entry("profile entry(urn)", makeProfileMachineImages("ubuntu", "1", "3", "5", "6", pointer.String("foo")), "ubuntu", "1", pointer.String("foo"), &api.MachineImage{Name: "ubuntu", Version: "1", URN: &profileURN, Architecture: pointer.String("foo")}),
-		Entry("profile entry(id)", makeProfileMachineImages("ubuntu", "1", "3", "5", "6", pointer.String("foo")), "ubuntu", "3", pointer.String("foo"), &api.MachineImage{Name: "ubuntu", Version: "3", ID: &profileID, Architecture: pointer.String("foo")}),
-		Entry("profile entry(communiyGalleryId)", makeProfileMachineImages("ubuntu", "1", "3", "5", "6", pointer.String("foo")), "ubuntu", "5", pointer.String("foo"), &api.MachineImage{Name: "ubuntu", Version: "5", CommunityGalleryImageID: &profileCommunityImageId, Architecture: pointer.String("foo")}),
-		Entry("profile entry(sharedGalleryId)", makeProfileMachineImages("ubuntu", "1", "3", "5", "6", pointer.String("foo")), "ubuntu", "6", pointer.String("foo"), &api.MachineImage{Name: "ubuntu", Version: "6", SharedGalleryImageID: &profileSharedImageId, Architecture: pointer.String("foo")}),
+		Entry("profile empty list", []api.MachineImages{}, "ubuntu", "1", ptr.To("foo"), nil),
+		Entry("profile entry not found (image does not exist)", makeProfileMachineImages("debian", "1", "3", "5", "7", ptr.To("foo")), "ubuntu", "1", ptr.To("foo"), nil),
+		Entry("profile entry not found (version does not exist)", makeProfileMachineImages("ubuntu", "2", "4", "6", "7", ptr.To("foo")), "ubuntu", "1", ptr.To("foo"), nil),
+		Entry("profile entry not found (no architecture)", makeProfileMachineImages("ubuntu", "2", "4", "6", "7", ptr.To("bar")), "ubuntu", "2", ptr.To("foo"), nil),
+		Entry("profile entry(urn)", makeProfileMachineImages("ubuntu", "1", "3", "5", "6", ptr.To("foo")), "ubuntu", "1", ptr.To("foo"), &api.MachineImage{Name: "ubuntu", Version: "1", URN: &profileURN, Architecture: ptr.To("foo")}),
+		Entry("profile entry(id)", makeProfileMachineImages("ubuntu", "1", "3", "5", "6", ptr.To("foo")), "ubuntu", "3", ptr.To("foo"), &api.MachineImage{Name: "ubuntu", Version: "3", ID: &profileID, Architecture: ptr.To("foo")}),
+		Entry("profile entry(communiyGalleryId)", makeProfileMachineImages("ubuntu", "1", "3", "5", "6", ptr.To("foo")), "ubuntu", "5", ptr.To("foo"), &api.MachineImage{Name: "ubuntu", Version: "5", CommunityGalleryImageID: &profileCommunityImageId, Architecture: ptr.To("foo")}),
+		Entry("profile entry(sharedGalleryId)", makeProfileMachineImages("ubuntu", "1", "3", "5", "6", ptr.To("foo")), "ubuntu", "6", ptr.To("foo"), &api.MachineImage{Name: "ubuntu", Version: "6", SharedGalleryImageID: &profileSharedImageId, Architecture: ptr.To("foo")}),
 
-		Entry("valid image reference, only urn", makeProfileMachineImageWithURNandIDandCommunityGalleryIDandSharedGalleryImageID("ubuntu", "1", &profileURN, nil, nil, nil, pointer.String("foo")),
-			"ubuntu", "1", pointer.String("foo"), &api.MachineImage{Name: "ubuntu", Version: "1", URN: &profileURN, Architecture: pointer.String("foo")}),
-		Entry("valid image reference, only id", makeProfileMachineImageWithURNandIDandCommunityGalleryIDandSharedGalleryImageID("ubuntu", "1", nil, &profileID, nil, nil, pointer.String("foo")),
-			"ubuntu", "1", pointer.String("foo"), &api.MachineImage{Name: "ubuntu", Version: "1", ID: &profileID, Architecture: pointer.String("foo")}),
-		Entry("valid image reference, only communityGalleryImageID", makeProfileMachineImageWithURNandIDandCommunityGalleryIDandSharedGalleryImageID("ubuntu", "1", nil, nil, &profileCommunityImageId, nil, pointer.String("foo")),
-			"ubuntu", "1", pointer.String("foo"), &api.MachineImage{Name: "ubuntu", Version: "1", CommunityGalleryImageID: &profileCommunityImageId, Architecture: pointer.String("foo")}),
-		Entry("valid image reference, only sharedGalleryImageID", makeProfileMachineImageWithURNandIDandCommunityGalleryIDandSharedGalleryImageID("ubuntu", "1", nil, nil, nil, &profileSharedImageId, pointer.String("foo")),
-			"ubuntu", "1", pointer.String("foo"), &api.MachineImage{Name: "ubuntu", Version: "1", SharedGalleryImageID: &profileSharedImageId, Architecture: pointer.String("foo")}),
+		Entry("valid image reference, only urn", makeProfileMachineImageWithURNandIDandCommunityGalleryIDandSharedGalleryImageID("ubuntu", "1", &profileURN, nil, nil, nil, ptr.To("foo")),
+			"ubuntu", "1", ptr.To("foo"), &api.MachineImage{Name: "ubuntu", Version: "1", URN: &profileURN, Architecture: ptr.To("foo")}),
+		Entry("valid image reference, only id", makeProfileMachineImageWithURNandIDandCommunityGalleryIDandSharedGalleryImageID("ubuntu", "1", nil, &profileID, nil, nil, ptr.To("foo")),
+			"ubuntu", "1", ptr.To("foo"), &api.MachineImage{Name: "ubuntu", Version: "1", ID: &profileID, Architecture: ptr.To("foo")}),
+		Entry("valid image reference, only communityGalleryImageID", makeProfileMachineImageWithURNandIDandCommunityGalleryIDandSharedGalleryImageID("ubuntu", "1", nil, nil, &profileCommunityImageId, nil, ptr.To("foo")),
+			"ubuntu", "1", ptr.To("foo"), &api.MachineImage{Name: "ubuntu", Version: "1", CommunityGalleryImageID: &profileCommunityImageId, Architecture: ptr.To("foo")}),
+		Entry("valid image reference, only sharedGalleryImageID", makeProfileMachineImageWithURNandIDandCommunityGalleryIDandSharedGalleryImageID("ubuntu", "1", nil, nil, nil, &profileSharedImageId, ptr.To("foo")),
+			"ubuntu", "1", ptr.To("foo"), &api.MachineImage{Name: "ubuntu", Version: "1", SharedGalleryImageID: &profileSharedImageId, Architecture: ptr.To("foo")}),
 	)
 
 	DescribeTable("#IsVmoRequired",

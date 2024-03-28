@@ -13,11 +13,11 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
-	mockmanager "github.com/gardener/gardener/pkg/mock/controller-runtime/manager"
 	"github.com/gardener/gardener/pkg/utils"
 	secretsmanager "github.com/gardener/gardener/pkg/utils/secrets/manager"
 	fakesecretsmanager "github.com/gardener/gardener/pkg/utils/secrets/manager/fake"
+	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
+	mockmanager "github.com/gardener/gardener/third_party/mock/controller-runtime/manager"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/mock/gomock"
@@ -27,7 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -707,8 +707,8 @@ var _ = Describe("ValuesProvider", func() {
 	Describe("#GetStorageClassesChartValues()", func() {
 		It("should return correct storage class chart values when not using managed classes", func() {
 			controlPlaneConfig.Storage = &v1alpha1.Storage{
-				ManagedDefaultStorageClass:        pointer.Bool(false),
-				ManagedDefaultVolumeSnapshotClass: pointer.Bool(false),
+				ManagedDefaultStorageClass:        ptr.To(false),
+				ManagedDefaultVolumeSnapshotClass: ptr.To(false),
 			}
 			cluster = generateCluster(cidr, k8sVersion, true, nil, nil, nil)
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
@@ -722,8 +722,8 @@ var _ = Describe("ValuesProvider", func() {
 
 		It("should return correct storage class chart values when not using managed StorageClass", func() {
 			controlPlaneConfig.Storage = &v1alpha1.Storage{
-				ManagedDefaultStorageClass:        pointer.Bool(false),
-				ManagedDefaultVolumeSnapshotClass: pointer.Bool(true),
+				ManagedDefaultStorageClass:        ptr.To(false),
+				ManagedDefaultVolumeSnapshotClass: ptr.To(true),
 			}
 			cluster = generateCluster(cidr, k8sVersion, true, nil, nil, nil)
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
@@ -743,7 +743,7 @@ func encode(obj runtime.Object) []byte {
 }
 
 func clientGet(result runtime.Object) interface{} {
-	return func(ctx context.Context, key client.ObjectKey, obj runtime.Object, _ ...client.GetOption) error {
+	return func(_ context.Context, _ client.ObjectKey, obj runtime.Object, _ ...client.GetOption) error {
 		switch obj.(type) {
 		case *corev1.Secret:
 			*obj.(*corev1.Secret) = *result.(*corev1.Secret)

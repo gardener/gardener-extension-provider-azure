@@ -17,10 +17,10 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/webhook/controlplane/test"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
-	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
-	mockmanager "github.com/gardener/gardener/pkg/mock/controller-runtime/manager"
 	"github.com/gardener/gardener/pkg/utils/imagevector"
 	testutils "github.com/gardener/gardener/pkg/utils/test"
+	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
+	mockmanager "github.com/gardener/gardener/third_party/mock/controller-runtime/manager"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/mock/gomock"
@@ -34,7 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	vpaautoscalingv1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	kubeletconfigv1beta1 "k8s.io/kubelet/config/v1beta1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
@@ -322,7 +322,7 @@ var _ = Describe("Ensurer", func() {
 		})
 
 		DescribeTable("should modify existing elements of kubelet.service unit options",
-			func(gctx gcontext.GardenContext, cloudProvider string, withACRConfig bool, withControllerAttachDetachFlag bool) {
+			func(gctx gcontext.GardenContext, cloudProvider string, withACRConfig bool, _ bool) {
 				newUnitOptions := []*unit.UnitOption{
 					{
 						Section: "Service",
@@ -380,7 +380,7 @@ var _ = Describe("Ensurer", func() {
 					FeatureGates: map[string]bool{
 						"Foo": true,
 					},
-					EnableControllerAttachDetach: pointer.Bool(true),
+					EnableControllerAttachDetach: ptr.To(true),
 				}
 				kubeletConfig := *oldKubeletConfig
 
@@ -416,8 +416,8 @@ var _ = Describe("Ensurer", func() {
 				Data:       map[string][]byte{"abc": []byte("xyz"), azure.CloudProviderConfigMapKey: []byte(cloudProviderConfigContent)},
 			}
 
-			existingData = pointer.String("[LoadBalancer]\nlb-version=v2\nlb-provider:\n")
-			emptydata    = pointer.String("")
+			existingData = ptr.To("[LoadBalancer]\nlb-version=v2\nlb-provider:\n")
+			emptydata    = ptr.To("")
 		)
 
 		It("cloud provider secret does not exist", func() {
@@ -461,7 +461,7 @@ var _ = Describe("Ensurer", func() {
 			DeferCleanup(testutils.WithVar(&ImageVector, imagevector.ImageVector{{
 				Name:       "machine-controller-manager-provider-azure",
 				Repository: "foo",
-				Tag:        pointer.String("bar"),
+				Tag:        ptr.To("bar"),
 			}}))
 		})
 
@@ -619,7 +619,7 @@ func checkClusterAutoscalerDeployment(dep *appsv1.Deployment, k8sLess127 bool) {
 }
 
 func clientGet(result runtime.Object) interface{} {
-	return func(ctx context.Context, key client.ObjectKey, obj runtime.Object, _ ...client.GetOption) error {
+	return func(_ context.Context, _ client.ObjectKey, obj runtime.Object, _ ...client.GetOption) error {
 		switch obj.(type) {
 		case *corev1.Secret:
 			*obj.(*corev1.Secret) = *result.(*corev1.Secret)

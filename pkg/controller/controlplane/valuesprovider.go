@@ -32,7 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	autoscalingv1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
@@ -420,8 +420,8 @@ func (vp *valuesProvider) GetStorageClassesChartValues(
 
 	values := map[string]interface{}{}
 	if cpConfig.Storage != nil {
-		values["managedDefaultStorageClass"] = pointer.BoolDeref(cpConfig.Storage.ManagedDefaultStorageClass, true)
-		values["managedDefaultVolumeSnapshotClass"] = pointer.BoolDeref(cpConfig.Storage.ManagedDefaultVolumeSnapshotClass, true)
+		values["managedDefaultStorageClass"] = ptr.Deref(cpConfig.Storage.ManagedDefaultStorageClass, true)
+		values["managedDefaultVolumeSnapshotClass"] = ptr.Deref(cpConfig.Storage.ManagedDefaultVolumeSnapshotClass, true)
 	}
 
 	return values, nil

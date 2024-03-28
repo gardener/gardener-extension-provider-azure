@@ -62,7 +62,7 @@ func AddToManagerWithOpts(mgr manager.Manager, options AddOptions) (*extensionsw
 		Target:   extensionswebhook.TargetSeed,
 		Types:    types,
 		Webhook:  &admission.Webhook{Handler: New(admission.NewDecoder(mgr.GetScheme()), logger, options), RecoverPanic: true},
-		Selector: &metav1.LabelSelector{
+		NamespaceSelector: &metav1.LabelSelector{
 			MatchExpressions: []metav1.LabelSelectorRequirement{
 				{
 					Key:      v1beta1constants.GardenRole,
