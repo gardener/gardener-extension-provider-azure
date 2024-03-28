@@ -14,7 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	. "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/validation"
@@ -104,8 +104,8 @@ var _ = Describe("InfrastructureConfig validation", func() {
 
 			It("should forbid specifying a vnet resource group with empty name or resource group", func() {
 				infrastructureConfig.Networks.VNet = apisazure.VNet{
-					Name:          pointer.String(""),
-					ResourceGroup: pointer.String(""),
+					Name:          ptr.To(""),
+					ResourceGroup: ptr.To(""),
 				}
 				errorList := ValidateInfrastructureConfig(infrastructureConfig, &networking, hasVmoAlphaAnnotation, providerPath)
 
@@ -164,7 +164,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			})
 
 			It("should pass if no vnet cidr is specified and default is applied", func() {
-				networking.Nodes = pointer.String("10.250.3.0/24")
+				networking.Nodes = ptr.To("10.250.3.0/24")
 				infrastructureConfig.ResourceGroup = nil
 				infrastructureConfig.Networks = apisazure.NetworkConfig{
 					Workers: &workers,
@@ -174,7 +174,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			})
 
 			It("should allow to provide a ddos protection plan for a managed vnet", func() {
-				networking.Nodes = pointer.String("10.250.3.0/24")
+				networking.Nodes = ptr.To("10.250.3.0/24")
 				infrastructureConfig.ResourceGroup = nil
 				infrastructureConfig.Networks.VNet.DDosProtectionPlanID = &ddosProtectionPlanID
 				errorList := ValidateInfrastructureConfig(infrastructureConfig, &networking, hasVmoAlphaAnnotation, providerPath)
@@ -282,7 +282,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			})
 
 			It("should forbid Pod CIDR to overlap with VNet CIDR", func() {
-				networking.Pods = pointer.String("10.0.0.1/32")
+				networking.Pods = ptr.To("10.0.0.1/32")
 
 				errorList := ValidateInfrastructureConfig(infrastructureConfig, &networking, hasVmoAlphaAnnotation, providerPath)
 
@@ -293,7 +293,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			})
 
 			It("should forbid Services CIDR to overlap with VNet CIDR", func() {
-				networking.Services = pointer.String("10.0.0.1/32")
+				networking.Services = ptr.To("10.0.0.1/32")
 
 				errorList := ValidateInfrastructureConfig(infrastructureConfig, &networking, hasVmoAlphaAnnotation, providerPath)
 
@@ -305,9 +305,9 @@ var _ = Describe("InfrastructureConfig validation", func() {
 
 			It("should forbid non canonical CIDRs", func() {
 				vpcCIDR := "10.0.0.3/8"
-				networking.Nodes = pointer.String("10.250.0.3/16")
-				networking.Pods = pointer.String("100.96.0.4/11")
-				networking.Services = pointer.String("100.64.0.5/13")
+				networking.Nodes = ptr.To("10.250.0.3/16")
+				networking.Pods = ptr.To("100.96.0.4/11")
+				networking.Services = ptr.To("100.64.0.5/13")
 				workers := "10.250.3.8/24"
 
 				infrastructureConfig.Networks.Workers = &workers
@@ -367,7 +367,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 
 			It("should fail as NatGatway is disabled but additional config for the NatGateway is supplied", func() {
 				infrastructureConfig.Networks.NatGateway.Enabled = false
-				infrastructureConfig.Networks.NatGateway.Zone = pointer.Int32(2)
+				infrastructureConfig.Networks.NatGateway.Zone = ptr.To(int32(2))
 
 				errorList := ValidateInfrastructureConfig(infrastructureConfig, &networking, hasVmoAlphaAnnotation, providerPath)
 				Expect(errorList).To(ConsistOfFields(Fields{
@@ -390,13 +390,13 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			})
 
 			It("should pass as the NatGateway has a zone", func() {
-				infrastructureConfig.Networks.NatGateway.Zone = pointer.Int32(2)
+				infrastructureConfig.Networks.NatGateway.Zone = ptr.To(int32(2))
 				Expect(ValidateInfrastructureConfig(infrastructureConfig, &networking, hasVmoAlphaAnnotation, providerPath)).To(BeEmpty())
 			})
 
 			Context("User provided public IP", func() {
 				BeforeEach(func() {
-					infrastructureConfig.Networks.NatGateway.Zone = pointer.Int32(1)
+					infrastructureConfig.Networks.NatGateway.Zone = ptr.To(int32(1))
 					infrastructureConfig.Networks.NatGateway.IPAddresses = []apisazure.PublicIPReference{{
 						Name:          "public-ip-name",
 						ResourceGroup: "public-ip-resource-group",
@@ -580,7 +580,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 
 			It("should forbid zone CIDRs which are not in Vnet and Nodes CIDR", func() {
 				vpcCIDR := "10.0.0.0/8"
-				networking.Nodes = pointer.String("10.150.0.0/16")
+				networking.Nodes = ptr.To("10.150.0.0/16")
 
 				infrastructureConfig.Networks.VNet.CIDR = &vpcCIDR
 				errorList := ValidateInfrastructureConfig(infrastructureConfig, &networking, hasVmoAlphaAnnotation, providerPath)
@@ -699,7 +699,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 		Context("vnet config update", func() {
 			It("should allow to resize the vnet cidr", func() {
 				newInfrastructureConfig := infrastructureConfig.DeepCopy()
-				newInfrastructureConfig.Networks.VNet.CIDR = pointer.String("10.0.0.0/7")
+				newInfrastructureConfig.Networks.VNet.CIDR = ptr.To("10.0.0.0/7")
 
 				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, providerPath)
 				Expect(errorList).Should(BeEmpty())
@@ -707,7 +707,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 
 			It("should forbid shrinking vnet cidr", func() {
 				newInfrastructureConfig := infrastructureConfig.DeepCopy()
-				newInfrastructureConfig.Networks.VNet.CIDR = pointer.String("10.0.0.0/9")
+				newInfrastructureConfig.Networks.VNet.CIDR = ptr.To("10.0.0.0/9")
 
 				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, providerPath)
 				Expect(errorList).To(ConsistOfFields(Fields{
@@ -718,12 +718,12 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			})
 
 			It("should forbid to modify the external vnet config", func() {
-				infrastructureConfig.Networks.VNet.Name = pointer.String("external-vnet-name")
-				infrastructureConfig.Networks.VNet.ResourceGroup = pointer.String("external-vnet-rg")
+				infrastructureConfig.Networks.VNet.Name = ptr.To("external-vnet-name")
+				infrastructureConfig.Networks.VNet.ResourceGroup = ptr.To("external-vnet-rg")
 
 				newInfrastructureConfig := infrastructureConfig.DeepCopy()
-				newInfrastructureConfig.Networks.VNet.Name = pointer.String("modified")
-				newInfrastructureConfig.Networks.VNet.ResourceGroup = pointer.String("modified")
+				newInfrastructureConfig.Networks.VNet.Name = ptr.To("modified")
+				newInfrastructureConfig.Networks.VNet.ResourceGroup = ptr.To("modified")
 
 				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, providerPath)
 				Expect(errorList).To(ConsistOfFields(Fields{
@@ -741,8 +741,8 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				infrastructureConfig.Networks.VNet = apisazure.VNet{}
 
 				newInfrastructureConfig := infrastructureConfig.DeepCopy()
-				newInfrastructureConfig.Networks.VNet.Name = pointer.String("modified")
-				newInfrastructureConfig.Networks.VNet.ResourceGroup = pointer.String("modified")
+				newInfrastructureConfig.Networks.VNet.Name = ptr.To("modified")
+				newInfrastructureConfig.Networks.VNet.ResourceGroup = ptr.To("modified")
 
 				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, providerPath)
 				Expect(errorList).To(ConsistOfFields(Fields{

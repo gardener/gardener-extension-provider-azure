@@ -12,7 +12,7 @@ import (
 	"github.com/onsi/gomega/types"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	. "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/validation"
@@ -31,7 +31,7 @@ var _ = Describe("Shoot validation", func() {
 
 			Entry("should return no error because nodes CIDR was provided",
 				core.Networking{
-					Nodes: pointer.String("1.2.3.4/5"),
+					Nodes: ptr.To("1.2.3.4/5"),
 				},
 				BeEmpty(),
 			),
@@ -46,8 +46,8 @@ var _ = Describe("Shoot validation", func() {
 			),
 			Entry("should return an error if calico is used with overlay network",
 				core.Networking{
-					Nodes:          pointer.String("1.2.3.4/5"),
-					Type:           pointer.String("calico"),
+					Nodes:          ptr.To("1.2.3.4/5"),
+					Type:           ptr.To("calico"),
 					ProviderConfig: &runtime.RawExtension{Raw: []byte(`{"apiVersion":"calico.networking.extensions.gardener.cloud/v1alpha1","kind":"NetworkConfig","overlay":{"enabled":true}}`)},
 				},
 				ConsistOf(
@@ -59,16 +59,16 @@ var _ = Describe("Shoot validation", func() {
 			),
 			Entry("should return no error if calico is used without overlay network",
 				core.Networking{
-					Nodes:          pointer.String("1.2.3.4/5"),
-					Type:           pointer.String("calico"),
+					Nodes:          ptr.To("1.2.3.4/5"),
+					Type:           ptr.To("calico"),
 					ProviderConfig: &runtime.RawExtension{Raw: []byte(`{"apiVersion":"calico.networking.extensions.gardener.cloud/v1alpha1","kind":"NetworkConfig","overlay":{"enabled":false}}`)},
 				},
 				BeEmpty(),
 			),
 			Entry("should return no error if cilium is used with overlay network",
 				core.Networking{
-					Nodes:          pointer.String("1.2.3.4/5"),
-					Type:           pointer.String("cilium"),
+					Nodes:          ptr.To("1.2.3.4/5"),
+					Type:           ptr.To("cilium"),
 					ProviderConfig: &runtime.RawExtension{Raw: []byte(`{"apiVersion":"cilium.networking.extensions.gardener.cloud/v1alpha1","kind":"NetworkConfig","overlay":{"enabled":true}}`)},
 				},
 				BeEmpty(),
@@ -87,14 +87,14 @@ var _ = Describe("Shoot validation", func() {
 				{
 					Name: "worker1",
 					Volume: &core.Volume{
-						Type:       pointer.String("Volume"),
+						Type:       ptr.To("Volume"),
 						VolumeSize: "30G",
 					},
 				},
 				{
 					Name: "worker2",
 					Volume: &core.Volume{
-						Type:       pointer.String("Volume"),
+						Type:       ptr.To("Volume"),
 						VolumeSize: "20G",
 					},
 				},
@@ -140,8 +140,7 @@ var _ = Describe("Shoot validation", func() {
 				})
 
 				It("should pass because workers are configured correctly", func() {
-					errorList := ValidateWorkers(workers,
-						infraConfig, field.NewPath(""))
+					errorList := ValidateWorkers(workers, infraConfig, field.NewPath(""))
 
 					Expect(errorList).To(BeEmpty())
 				})
@@ -163,8 +162,8 @@ var _ = Describe("Shoot validation", func() {
 				It("should forbid because volume type and size are not configured", func() {
 					workers[0].Volume.Type = nil
 					workers[0].Volume.VolumeSize = ""
-					workers[0].Volume.Encrypted = pointer.Bool(false)
-					workers[0].DataVolumes = []core.DataVolume{{Encrypted: pointer.Bool(true)}}
+					workers[0].Volume.Encrypted = ptr.To(false)
+					workers[0].DataVolumes = []core.DataVolume{{Encrypted: ptr.To(true)}}
 
 					errorList := ValidateWorkers(workers,
 						infraConfig, field.NewPath("workers"))
@@ -202,7 +201,7 @@ var _ = Describe("Shoot validation", func() {
 						workers[0].DataVolumes = append(workers[0].DataVolumes, core.DataVolume{
 							Name:       "foo",
 							VolumeSize: "20Gi",
-							Type:       pointer.String("foo"),
+							Type:       ptr.To("foo"),
 						})
 					}
 

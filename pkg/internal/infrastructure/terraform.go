@@ -16,7 +16,7 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
@@ -490,8 +490,8 @@ func StatusFromTerraformState(config *api.InfrastructureConfig, tfState *Terrafo
 		infraState.AvailabilitySets = append(infraState.AvailabilitySets, apiv1alpha1.AvailabilitySet{
 			Name:               tfState.AvailabilitySetName,
 			ID:                 tfState.AvailabilitySetID,
-			CountFaultDomains:  pointer.Int32(int32(tfState.CountFaultDomains)),
-			CountUpdateDomains: pointer.Int32(int32(tfState.CountUpdateDomains)),
+			CountFaultDomains:  ptr.To(int32(tfState.CountFaultDomains)),
+			CountUpdateDomains: ptr.To(int32(tfState.CountUpdateDomains)),
 			Purpose:            apiv1alpha1.PurposeNodes,
 		})
 	}
@@ -636,7 +636,7 @@ func computeInfrastructureSubnets(infra *extensionsv1alpha1.Infrastructure, vars
 		case strings.HasPrefix(key, TerraformerOutputKeySubnetNamePrefix):
 			result = append(result, terraformSubnet{
 				name:     value,
-				zone:     pointer.String(strings.TrimPrefix(key, TerraformerOutputKeySubnetNamePrefix)),
+				zone:     ptr.To(strings.TrimPrefix(key, TerraformerOutputKeySubnetNamePrefix)),
 				migrated: false,
 			})
 		case key == TerraformerOutputKeySubnetName:

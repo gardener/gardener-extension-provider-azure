@@ -42,13 +42,13 @@ func AddToManager(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 
 	logger.Info("Creating webhook")
 	return &extensionswebhook.Webhook{
-		Name:     WebhookName,
-		Target:   extensionswebhook.TargetSeed,
-		Provider: azure.Type,
-		Types:    types,
-		Webhook:  &admission.Webhook{Handler: handler, RecoverPanic: true},
-		Path:     webhookPath,
-		Selector: buildSelector(azure.Type),
+		Name:              WebhookName,
+		Target:            extensionswebhook.TargetSeed,
+		Provider:          azure.Type,
+		Types:             types,
+		Webhook:           &admission.Webhook{Handler: handler, RecoverPanic: true},
+		Path:              webhookPath,
+		NamespaceSelector: buildSelector(azure.Type),
 	}, nil
 }
 
