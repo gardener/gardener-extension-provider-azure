@@ -40,6 +40,7 @@ import (
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	azureapihelper "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/features"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
@@ -628,7 +629,10 @@ func getRemedyControllerChartValues(
 	checksums map[string]string,
 	scaledDown bool,
 ) (map[string]interface{}, error) {
-	disableRemedyController := cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] == "true"
+	disableRemedyController :=
+		cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] == "true" ||
+			features.ExtensionFeatureGate.Enabled(features.DisableRemedyController)
+
 	if disableRemedyController {
 		return map[string]interface{}{"enabled": true, "replicas": 0}, nil
 	}
@@ -679,7 +683,8 @@ func getControlPlaneShootChartValues(
 	}
 	caBundle = string(caSecret.Data[secretutils.DataKeyCertificateBundle])
 
-	disableRemedyController := cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] == "true"
+	disableRemedyController := cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] == "true" ||
+		features.ExtensionFeatureGate.Enabled(features.DisableRemedyController)
 
 	return map[string]interface{}{
 		"global": map[string]interface{}{

@@ -82,6 +82,8 @@ config:
       capacity: 33Gi
       provisioner: kubernetes.io/azure-disk
       volumeBindingMode: WaitForFirstConsumer
+  featureGates:
+    disableRemedyController: false
 
 gardener:
   version: ""
