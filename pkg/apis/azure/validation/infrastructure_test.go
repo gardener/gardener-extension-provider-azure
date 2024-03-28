@@ -367,7 +367,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 
 			It("should fail as NatGatway is disabled but additional config for the NatGateway is supplied", func() {
 				infrastructureConfig.Networks.NatGateway.Enabled = false
-				infrastructureConfig.Networks.NatGateway.Zone = ptr.To(int32(2))
+				infrastructureConfig.Networks.NatGateway.Zone = ptr.To[int32](2)
 
 				errorList := ValidateInfrastructureConfig(infrastructureConfig, &networking, hasVmoAlphaAnnotation, providerPath)
 				Expect(errorList).To(ConsistOfFields(Fields{
@@ -390,13 +390,13 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			})
 
 			It("should pass as the NatGateway has a zone", func() {
-				infrastructureConfig.Networks.NatGateway.Zone = ptr.To(int32(2))
+				infrastructureConfig.Networks.NatGateway.Zone = ptr.To[int32](2)
 				Expect(ValidateInfrastructureConfig(infrastructureConfig, &networking, hasVmoAlphaAnnotation, providerPath)).To(BeEmpty())
 			})
 
 			Context("User provided public IP", func() {
 				BeforeEach(func() {
-					infrastructureConfig.Networks.NatGateway.Zone = ptr.To(int32(1))
+					infrastructureConfig.Networks.NatGateway.Zone = ptr.To[int32](1)
 					infrastructureConfig.Networks.NatGateway.IPAddresses = []apisazure.PublicIPReference{{
 						Name:          "public-ip-name",
 						ResourceGroup: "public-ip-resource-group",

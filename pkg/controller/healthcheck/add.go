@@ -35,7 +35,7 @@ var (
 		HealthCheckConfig: healthcheckconfig.HealthCheckConfig{
 			SyncPeriod: metav1.Duration{Duration: defaultSyncPeriod},
 			ShootRESTOptions: &healthcheckconfig.RESTOptions{
-				QPS:   ptr.To(float32(100)),
+				QPS:   ptr.To[float32](100),
 				Burst: ptr.To(130),
 			},
 		},

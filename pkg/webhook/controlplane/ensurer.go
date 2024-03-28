@@ -455,7 +455,7 @@ func (e *ensurer) ensureAcrConfigFile(ctx context.Context, gctx gcontext.GardenC
 	// Add new ACR systemd file.
 	*files = append(*files, extensionsv1alpha1.File{
 		Path:        acrConfigPath,
-		Permissions: ptr.To(int32(0644)),
+		Permissions: ptr.To[int32](0644),
 		Content: extensionsv1alpha1.FileContent{
 			Inline: fci,
 		},

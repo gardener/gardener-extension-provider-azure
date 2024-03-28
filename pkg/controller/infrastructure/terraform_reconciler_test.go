@@ -332,8 +332,8 @@ var _ = Describe("Actuator", func() {
 		It("should restore infrastructure with countFault and countUpdate domain values found in ProviderStatus if availability set is required", func() {
 			providerStatus.AvailabilitySets = append(providerStatus.AvailabilitySets, apiv1alpha1.AvailabilitySet{
 				Purpose:            apiv1alpha1.PurposeNodes,
-				CountFaultDomains:  ptr.To(int32(6)),
-				CountUpdateDomains: ptr.To(int32(7)),
+				CountFaultDomains:  ptr.To[int32](6),
+				CountUpdateDomains: ptr.To[int32](7),
 				ID:                 "id",
 				Name:               "name",
 			})
