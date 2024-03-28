@@ -20,6 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
@@ -32,7 +33,7 @@ const (
 )
 
 // DefaultAzureClientFactoryFunc is the default function for creating a DNS client. It can be overridden for tests.
-var DefaultAzureClientFactoryFunc = azureclient.NewAzureClientFactoryWithDNSSecret
+var DefaultAzureClientFactoryFunc = azureclient.NewAzureClientFactoryFromSecret
 
 type actuator struct {
 	client client.Client
@@ -46,12 +47,33 @@ func NewActuator(mgr manager.Manager) dnsrecord.Actuator {
 }
 
 // Reconcile reconciles the DNSRecord.
-func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, _ *extensionscontroller.Cluster) error {
-	// Create Azure DNS zone and recordset clients
-	clientFactory, err := DefaultAzureClientFactoryFunc(ctx, a.client, dns.Spec.SecretRef)
+func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, cluster *extensionscontroller.Cluster) error {
+	cloudProfile, err := helper.CloudProfileConfigFromCluster(cluster)
 	if err != nil {
 		return err
 	}
+
+	var cloudConfiguration *azure.CloudConfiguration
+	if cloudProfile != nil {
+		cloudConfiguration = cloudProfile.CloudConfiguration
+	}
+
+	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(cloudConfiguration)
+	if err != nil {
+		return err
+	}
+
+	clientFactory, err := DefaultAzureClientFactoryFunc(
+		ctx,
+		a.client,
+		dns.Spec.SecretRef,
+		true,
+		azureclient.WithCloudConfiguration(azCloudConfiguration),
+	)
+	if err != nil {
+		return err
+	}
+	// Create Azure DNS zone and recordset clients
 	dnsZoneClient, err := clientFactory.DNSZone()
 	if err != nil {
 		return util.DetermineError(fmt.Errorf("could not create Azure DNS zone client: %+v", err), helper.KnownCodes)
@@ -84,12 +106,33 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, dns *extensio
 }
 
 // Delete deletes the DNSRecord.
-func (a *actuator) Delete(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, _ *extensionscontroller.Cluster) error {
-	// Create Azure DNS zone and recordset clients
-	clientFactory, err := DefaultAzureClientFactoryFunc(ctx, a.client, dns.Spec.SecretRef)
+func (a *actuator) Delete(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, cluster *extensionscontroller.Cluster) error {
+	cloudProfile, err := helper.CloudProfileConfigFromCluster(cluster)
 	if err != nil {
 		return err
 	}
+
+	var cloudConfiguration *azure.CloudConfiguration
+	if cloudProfile != nil {
+		cloudConfiguration = cloudProfile.CloudConfiguration
+	}
+
+	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(cloudConfiguration)
+	if err != nil {
+		return err
+	}
+
+	clientFactory, err := DefaultAzureClientFactoryFunc(
+		ctx,
+		a.client,
+		dns.Spec.SecretRef,
+		true,
+		azureclient.WithCloudConfiguration(azCloudConfiguration),
+	)
+	if err != nil {
+		return err
+	}
+
 	// Create Azure DNS zone and recordset clients
 	dnsZoneClient, err := clientFactory.DNSZone()
 	if err != nil {

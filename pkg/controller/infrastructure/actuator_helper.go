@@ -12,23 +12,12 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	azuretypes "github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
-
-var (
-	// NewAzureClientFactory initializes a new AzureClientFactory. Exposed for testing.
-	NewAzureClientFactory = newAzureClientFactory
-)
-
-func newAzureClientFactory(ctx context.Context, client client.Client, secretRef v1.SecretReference) (azureclient.Factory, error) {
-	return azureclient.NewAzureClientFactory(ctx, client, secretRef)
-}
 
 func patchProviderStatusAndState(
 	ctx context.Context,

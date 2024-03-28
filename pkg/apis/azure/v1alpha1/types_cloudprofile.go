@@ -25,6 +25,16 @@ type CloudProfileConfig struct {
 	// MachineTypes is a list of machine types complete with provider specific information.
 	// +optional
 	MachineTypes []MachineType `json:"machineTypes,omitempty"`
+	// CloudConfiguration contains config that controls which cloud to connect to.
+	// +optional
+	CloudConfiguration *CloudConfiguration `json:"cloudConfiguration,omitempty"`
+}
+
+// CloudConfiguration contains detailed config for the cloud to connect to. Currently we only support selection of well-
+// known Azure-instances by name, but this could be extended in future to support private clouds.
+type CloudConfiguration struct {
+	// Name is the name of the cloud to connect to, e.g. "AzurePublic" or "AzureChina".
+	Name string `json:"name,omitempty"`
 }
 
 // DomainCount defines the region and the count for this domain count value.

@@ -22,6 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cluster"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
@@ -70,12 +71,34 @@ func (d *delegateFactory) WorkerDelegate(ctx context.Context, worker *extensions
 	if err != nil {
 		return nil, err
 	}
-	factory, err := azureclient.NewAzureClientFactory(ctx, d.seedClient, worker.Spec.SecretRef)
+
+	cloudProfile, err := helper.CloudProfileConfigFromCluster(cluster)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewWorkerDelegate(d.seedClient, d.scheme, seedChartApplier, serverVersion.GitVersion, worker, cluster, factory)
+	var cloudConfiguration *azure.CloudConfiguration
+	if cloudProfile != nil {
+		cloudConfiguration = cloudProfile.CloudConfiguration
+	}
+
+	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(cloudConfiguration)
+	if err != nil {
+		return nil, err
+	}
+
+	clientFactory, err := azureclient.NewAzureClientFactoryFromSecret(
+		ctx,
+		d.seedClient,
+		worker.Spec.SecretRef,
+		false,
+		azureclient.WithCloudConfiguration(azCloudConfiguration),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewWorkerDelegate(d.seedClient, d.scheme, seedChartApplier, serverVersion.GitVersion, worker, cluster, clientFactory)
 }
 
 type workerDelegate struct {

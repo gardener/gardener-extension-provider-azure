@@ -8,6 +8,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
@@ -21,12 +23,8 @@ type AvailabilitySetClient struct {
 }
 
 // NewAvailabilitySetClient creates a new AvailabilitySetClient.
-func NewAvailabilitySetClient(auth internal.ClientAuth) (*AvailabilitySetClient, error) {
-	cred, err := auth.GetAzClientCredentials()
-	if err != nil {
-		return nil, err
-	}
-	client, err := armcompute.NewAvailabilitySetsClient(auth.SubscriptionID, cred, nil)
+func NewAvailabilitySetClient(auth internal.ClientAuth, tc azcore.TokenCredential, opts *policy.ClientOptions) (*AvailabilitySetClient, error) {
+	client, err := armcompute.NewAvailabilitySetsClient(auth.SubscriptionID, tc, opts)
 	return &AvailabilitySetClient{client}, err
 }
 
