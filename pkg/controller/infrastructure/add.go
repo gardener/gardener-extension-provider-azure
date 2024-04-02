@@ -7,6 +7,7 @@ package infrastructure
 import (
 	"context"
 
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener/extensions/pkg/controller/infrastructure"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -40,6 +41,7 @@ func AddToManagerWithOptions(ctx context.Context, mgr manager.Manager, options A
 		ControllerOptions: options.Controller,
 		Predicates:        infrastructure.DefaultPredicates(ctx, mgr, options.IgnoreOperationAnnotation),
 		Type:              azure.Type,
+		KnownCodes:        helper.KnownCodes,
 	})
 }
 
