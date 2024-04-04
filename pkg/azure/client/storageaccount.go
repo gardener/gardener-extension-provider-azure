@@ -9,7 +9,7 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-04-01/storage"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 var _ StorageAccount = &StorageAccountClient{}
@@ -29,8 +29,8 @@ func (c *StorageAccountClient) CreateStorageAccount(ctx context.Context, resourc
 		},
 		AccountPropertiesCreateParameters: &storage.AccountPropertiesCreateParameters{
 			AccessTier:             storage.Cool,
-			EnableHTTPSTrafficOnly: pointer.Bool(true),
-			AllowBlobPublicAccess:  pointer.Bool(false),
+			EnableHTTPSTrafficOnly: ptr.To(true),
+			AllowBlobPublicAccess:  ptr.To(false),
 			MinimumTLSVersion:      storage.TLS12,
 		},
 	})

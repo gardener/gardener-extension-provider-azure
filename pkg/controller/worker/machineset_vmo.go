@@ -13,7 +13,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
 	"github.com/gardener/gardener/pkg/utils"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	azureapi "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	azureapihelper "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
@@ -107,7 +107,7 @@ func (w *workerDelegate) cleanupVmoDependencies(ctx context.Context, infrastruct
 	// Delete all vmo workerpool dependencies as the Worker is intended to be deleted.
 	if w.worker.ObjectMeta.DeletionTimestamp != nil {
 		for _, dependency := range workerProviderStatus.VmoDependencies {
-			if err := vmoClient.Delete(ctx, infrastructureStatus.ResourceGroup.Name, dependency.Name, pointer.Bool(false)); err != nil {
+			if err := vmoClient.Delete(ctx, infrastructureStatus.ResourceGroup.Name, dependency.Name, ptr.To(false)); err != nil {
 				return vmoDependencies, err
 			}
 			vmoDependencies = removeVmoDependency(vmoDependencies, dependency)
@@ -128,7 +128,7 @@ func (w *workerDelegate) cleanupVmoDependencies(ctx context.Context, infrastruct
 		}
 
 		// Delete the dependency as no corresponding workerpool exist anymore.
-		if err := vmoClient.Delete(ctx, infrastructureStatus.ResourceGroup.Name, dependency.Name, pointer.Bool(false)); err != nil {
+		if err := vmoClient.Delete(ctx, infrastructureStatus.ResourceGroup.Name, dependency.Name, ptr.To(false)); err != nil {
 			return vmoDependencies, err
 		}
 		vmoDependencies = removeVmoDependency(vmoDependencies, dependency)
@@ -152,7 +152,7 @@ func cleanupOrphanVMODependencies(ctx context.Context, client azureclient.Vmss, 
 			}
 		}
 		if !vmoExists {
-			if err := client.Delete(ctx, resourceGroupName, *vmo.Name, pointer.Bool(false)); err != nil {
+			if err := client.Delete(ctx, resourceGroupName, *vmo.Name, ptr.To(false)); err != nil {
 				return err
 			}
 		}
@@ -235,11 +235,11 @@ func generateAndCreateVmo(ctx context.Context, client azureclient.Vmss, workerPo
 	var properties = armcompute.VirtualMachineScaleSet{
 		Location: &region,
 		Properties: &armcompute.VirtualMachineScaleSetProperties{
-			SinglePlacementGroup:     pointer.Bool(false),
+			SinglePlacementGroup:     ptr.To(false),
 			PlatformFaultDomainCount: &faultDomainCount,
 		},
 		Tags: map[string]*string{
-			azure.MachineSetTagKey: pointer.String("1"),
+			azure.MachineSetTagKey: ptr.To("1"),
 		},
 	}
 

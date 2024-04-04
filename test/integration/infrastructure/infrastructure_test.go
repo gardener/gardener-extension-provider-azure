@@ -38,7 +38,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -180,7 +180,7 @@ var _ = BeforeSuite(func() {
 
 	By("starting test environment")
 	testEnv = &envtest.Environment{
-		UseExistingCluster: pointer.Bool(true),
+		UseExistingCluster: ptr.To(true),
 		CRDInstallOptions: envtest.CRDInstallOptions{
 			Paths: []string{
 				filepath.Join(repoRoot, "example", "20-crd-extensions.gardener.cloud_clusters.yaml"),
@@ -268,8 +268,8 @@ var _ = Describe("Infrastructure tests", func() {
 			Expect(prepareNewIdentity(ctx, log, clientSet, foreignName, foreignNameId, *region)).To(Succeed())
 
 			vnetConfig := &azurev1alpha1.VNet{
-				Name:          pointer.String(foreignNameVnet),
-				ResourceGroup: pointer.String(foreignName),
+				Name:          ptr.To(foreignNameVnet),
+				ResourceGroup: ptr.To(foreignName),
 			}
 			identityConfig := &azurev1alpha1.IdentityConfig{
 				Name:          foreignNameId,
@@ -316,8 +316,8 @@ var _ = Describe("Infrastructure tests", func() {
 			Expect(prepareNewIdentity(ctx, log, clientSet, foreignName, foreignNameId, *region)).To(Succeed())
 
 			vnetConfig := &azurev1alpha1.VNet{
-				Name:          pointer.String(foreignNameVnet),
-				ResourceGroup: pointer.String(foreignName),
+				Name:          ptr.To(foreignNameVnet),
+				ResourceGroup: ptr.To(foreignName),
 			}
 			identityConfig := &azurev1alpha1.IdentityConfig{
 				Name:          foreignNameId,
@@ -455,8 +455,8 @@ var _ = Describe("Infrastructure tests", func() {
 			Expect(prepareNewIdentity(ctx, log, clientSet, foreignName, foreignNameId, *region)).To(Succeed())
 
 			vnetConfig := &azurev1alpha1.VNet{
-				Name:          pointer.String(foreignNameVnet),
-				ResourceGroup: pointer.String(foreignName),
+				Name:          ptr.To(foreignNameVnet),
+				ResourceGroup: ptr.To(foreignName),
 			}
 			identityConfig := &azurev1alpha1.IdentityConfig{
 				Name:          foreignNameId,
@@ -726,7 +726,7 @@ func generateName() (string, error) {
 func newInfrastructureConfig(vnet *azurev1alpha1.VNet, natGateway *azurev1alpha1.NatGatewayConfig, id *azurev1alpha1.IdentityConfig, zoned bool) *azurev1alpha1.InfrastructureConfig {
 	if vnet == nil {
 		vnet = &azurev1alpha1.VNet{
-			CIDR: pointer.String(VNetCIDR),
+			CIDR: ptr.To(VNetCIDR),
 		}
 	}
 	nwConfig := azurev1alpha1.NetworkConfig{
@@ -868,7 +868,7 @@ func newInfrastructure(namespace string, providerConfig *azurev1alpha1.Infrastru
 func prepareNewResourceGroup(ctx context.Context, log logr.Logger, az *azureClientSet, groupName, location string) error {
 	log.Info("generating new ResourceGroups", "groupName", groupName)
 	_, err := az.groups.CreateOrUpdate(ctx, groupName, resources.Group{
-		Location: pointer.String(location),
+		Location: ptr.To(location),
 	})
 	return err
 }
@@ -883,8 +883,8 @@ func prepareNewVNet(ctx context.Context, log logr.Logger, az *azureClientSet, gr
 				},
 			},
 		},
-		Name:     pointer.String(vNetName),
-		Location: pointer.String(location),
+		Name:     ptr.To(vNetName),
+		Location: ptr.To(location),
 	})
 	if err != nil {
 		return err
@@ -900,7 +900,7 @@ func prepareNewVNet(ctx context.Context, log logr.Logger, az *azureClientSet, gr
 func prepareNewIdentity(ctx context.Context, log logr.Logger, az *azureClientSet, groupName, idName, location string) error {
 	log.Info("generating new Identity", "groupName", groupName, "idName", idName)
 	_, err := az.msi.CreateOrUpdate(ctx, groupName, idName, msi.Identity{
-		Location: pointer.String(location),
+		Location: ptr.To(location),
 	})
 	return err
 }
@@ -908,7 +908,7 @@ func prepareNewIdentity(ctx context.Context, log logr.Logger, az *azureClientSet
 func prepareNewNatIp(ctx context.Context, log logr.Logger, az *azureClientSet, groupName, pubIpName, location, zone string) error {
 	log.Info("generating new nat ip", "groupName", groupName, "pubIpName", pubIpName)
 	_, err := az.pubIp.CreateOrUpdate(ctx, groupName, pubIpName, network.PublicIPAddress{
-		Name: pointer.String(pubIpName),
+		Name: ptr.To(pubIpName),
 		Sku: &network.PublicIPAddressSku{
 			Name: network.PublicIPAddressSkuNameStandard,
 		},
@@ -977,8 +977,8 @@ func verifyCreation(
 		vnet, err = az.vnet.Get(ctx, vnetResourceGroupName, status.Networks.VNet.Name, "")
 		Expect(err).ToNot(HaveOccurred())
 
-		result.vnetResourceGroup = pointer.String(vnetResourceGroupName)
-		result.vnet = pointer.String(status.Networks.VNet.Name)
+		result.vnetResourceGroup = ptr.To(vnetResourceGroupName)
+		result.vnet = ptr.To(status.Networks.VNet.Name)
 	} else {
 		Expect(status.Networks.VNet.ResourceGroup).To(BeNil())
 

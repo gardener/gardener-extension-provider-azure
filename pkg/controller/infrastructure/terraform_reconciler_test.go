@@ -18,9 +18,9 @@ import (
 	"github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/extensions"
-	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
-	mockmanager "github.com/gardener/gardener/pkg/mock/controller-runtime/manager"
 	"github.com/gardener/gardener/pkg/utils/test"
+	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
+	mockmanager "github.com/gardener/gardener/third_party/mock/controller-runtime/manager"
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -31,7 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -93,9 +93,9 @@ var _ = Describe("Actuator", func() {
 		providerConfig = &api.InfrastructureConfig{
 			Networks: api.NetworkConfig{
 				VNet: api.VNet{
-					CIDR: pointer.String("10.222.0.0/16"),
+					CIDR: ptr.To("10.222.0.0/16"),
 				},
-				Workers: pointer.String("10.222.0.0/16"),
+				Workers: ptr.To("10.222.0.0/16"),
 			},
 			Zoned: true,
 		}
@@ -332,8 +332,8 @@ var _ = Describe("Actuator", func() {
 		It("should restore infrastructure with countFault and countUpdate domain values found in ProviderStatus if availability set is required", func() {
 			providerStatus.AvailabilitySets = append(providerStatus.AvailabilitySets, apiv1alpha1.AvailabilitySet{
 				Purpose:            apiv1alpha1.PurposeNodes,
-				CountFaultDomains:  pointer.Int32(6),
-				CountUpdateDomains: pointer.Int32(7),
+				CountFaultDomains:  ptr.To[int32](6),
+				CountUpdateDomains: ptr.To[int32](7),
 				ID:                 "id",
 				Name:               "name",
 			})
@@ -355,7 +355,7 @@ var _ = Describe("Actuator", func() {
 
 			tf.EXPECT().InitializeWith(ctx, gomock.Any()).Return(tf)
 			tf.EXPECT().Apply(ctx)
-			tf.EXPECT().GetStateOutputVariables(ctx, gomock.Any()).DoAndReturn(func(ctx context.Context, variables ...string) (map[string]string, error) {
+			tf.EXPECT().GetStateOutputVariables(ctx, gomock.Any()).DoAndReturn(func(_ context.Context, variables ...string) (map[string]string, error) {
 				Expect(variables).To(ContainElements(
 					infrainternal.TerraformerOutputKeyCountFaultDomains,
 					infrainternal.TerraformerOutputKeyCountUpdateDomains,

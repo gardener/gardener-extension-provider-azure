@@ -10,14 +10,14 @@ import (
 
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	mockmanager "github.com/gardener/gardener/pkg/mock/controller-runtime/manager"
 	. "github.com/gardener/gardener/pkg/utils/test/matchers"
+	mockmanager "github.com/gardener/gardener/third_party/mock/controller-runtime/manager"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/mock/gomock"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/admission/mutator"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
@@ -55,15 +55,15 @@ var _ = Describe("Shoot mutator", func() {
 					Namespace: namespace,
 				},
 				Spec: gardencorev1beta1.ShootSpec{
-					SeedName: pointer.String("azure"),
+					SeedName: ptr.To("azure"),
 					Provider: gardencorev1beta1.Provider{
 						Type:    azure.Type,
 						Workers: []gardencorev1beta1.Worker{{Name: "test"}},
 					},
 					Region: "eastus",
 					Networking: &gardencorev1beta1.Networking{
-						Nodes: pointer.String("10.250.0.0/16"),
-						Type:  pointer.String("cilium"),
+						Nodes: ptr.To("10.250.0.0/16"),
+						Type:  ptr.To("cilium"),
 					},
 				},
 			}
@@ -74,14 +74,14 @@ var _ = Describe("Shoot mutator", func() {
 					Namespace: namespace,
 				},
 				Spec: gardencorev1beta1.ShootSpec{
-					SeedName: pointer.String("azure"),
+					SeedName: ptr.To("azure"),
 					Provider: gardencorev1beta1.Provider{
 						Type: azure.Type,
 					},
 					Region: "eastus",
 					Networking: &gardencorev1beta1.Networking{
-						Nodes: pointer.String("10.250.0.0/16"),
-						Type:  pointer.String("cilium"),
+						Nodes: ptr.To("10.250.0.0/16"),
+						Type:  ptr.To("cilium"),
 					},
 				},
 			}
@@ -108,7 +108,7 @@ var _ = Describe("Shoot mutator", func() {
 					Type:           gardencorev1beta1.LastOperationTypeReconcile,
 					State:          gardencorev1beta1.LastOperationStateProcessing,
 				}
-				shoot.Status.SeedName = pointer.String("aws")
+				shoot.Status.SeedName = ptr.To("aws")
 				shootExpected := shoot.DeepCopy()
 				err := shootMutator.Mutate(ctx, shoot, nil)
 				Expect(err).NotTo(HaveOccurred())
@@ -123,7 +123,7 @@ var _ = Describe("Shoot mutator", func() {
 					Type:           gardencorev1beta1.LastOperationTypeMigrate,
 					State:          gardencorev1beta1.LastOperationStateProcessing,
 				}
-				shoot.Status.SeedName = pointer.String("azure")
+				shoot.Status.SeedName = ptr.To("azure")
 				shootExpected := shoot.DeepCopy()
 				err := shootMutator.Mutate(ctx, shoot, shoot)
 				Expect(err).NotTo(HaveOccurred())

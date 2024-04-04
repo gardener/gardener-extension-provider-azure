@@ -16,14 +16,14 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
+	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	"go.uber.org/mock/gomock"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	azureapi "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
@@ -380,8 +380,8 @@ var _ = Describe("MachinesDependencies", func() {
 func expectVmoGetToSucceed(ctx context.Context, c *vmssmock.MockVmss, resourceGroupName, name, id string, faultDomainCount int32) {
 	// As the vmo name (parameter 3) contains a random suffix, we use simply anything of type string for the mock.
 	c.EXPECT().Get(ctx, resourceGroupName, gomock.AssignableToTypeOf(""), to.Ptr(armcompute.ExpandTypesForGetVMScaleSetsUserData)).Return(&armcompute.VirtualMachineScaleSet{
-		ID:   pointer.String(id),
-		Name: pointer.String(name),
+		ID:   ptr.To(id),
+		Name: ptr.To(name),
 		Properties: &armcompute.VirtualMachineScaleSetProperties{
 			PlatformFaultDomainCount: &faultDomainCount,
 		},
@@ -395,14 +395,14 @@ func expectVmoListToSucceed(ctx context.Context, c *vmssmock.MockVmss, resourceG
 func expectVmoCreateToSucceed(ctx context.Context, c *vmssmock.MockVmss, resourceGroupName, name, id string) {
 	// As the vmo name (parameter 3) contains a random suffix, we use simply anything of type string for the mock.
 	c.EXPECT().CreateOrUpdate(ctx, resourceGroupName, gomock.AssignableToTypeOf(""), gomock.AssignableToTypeOf(armcompute.VirtualMachineScaleSet{})).Return(&armcompute.VirtualMachineScaleSet{
-		ID:   pointer.String(id),
-		Name: pointer.String(name),
+		ID:   ptr.To(id),
+		Name: ptr.To(name),
 	}, nil)
 }
 
 func expectVmoDeleteToSucceed(ctx context.Context, c *vmssmock.MockVmss, resourceGroupName string) {
 	// As the vmo name (parameter 3) contains a random suffix, we use simply anything of type string for the mock.
-	c.EXPECT().Delete(ctx, resourceGroupName, gomock.AssignableToTypeOf(""), pointer.Bool(false)).AnyTimes().Return(nil)
+	c.EXPECT().Delete(ctx, resourceGroupName, gomock.AssignableToTypeOf(""), ptr.To(false)).AnyTimes().Return(nil)
 }
 
 func generateWorkerStatusWithVmo(vmos ...v1alpha1.VmoDependency) *runtime.RawExtension {
@@ -422,10 +422,10 @@ func generateWorkerStatusWithVmo(vmos ...v1alpha1.VmoDependency) *runtime.RawExt
 
 func generateExpectedVmo(name, id string) *armcompute.VirtualMachineScaleSet {
 	return &armcompute.VirtualMachineScaleSet{
-		ID:   pointer.String(id),
-		Name: pointer.String(name),
+		ID:   ptr.To(id),
+		Name: ptr.To(name),
 		Tags: map[string]*string{
-			azure.MachineSetTagKey: pointer.String("1"),
+			azure.MachineSetTagKey: ptr.To("1"),
 		},
 	}
 }
