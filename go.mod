@@ -22,7 +22,7 @@ require (
 	github.com/gardener/etcd-druid v0.22.0
 	github.com/gardener/gardener v1.91.2
 	github.com/gardener/machine-controller-manager v0.52.0
-	github.com/gardener/remedy-controller v0.6.0
+	github.com/gardener/remedy-controller v0.11.0
 	github.com/go-logr/logr v1.4.1
 	github.com/google/go-cmp v0.6.0
 	github.com/onsi/ginkgo/v2 v2.17.0
