@@ -64,7 +64,7 @@ var _ = Describe("Actuator", func() {
 
 		c.EXPECT().Status().Return(sw).AnyTimes()
 
-		DefaultAzureClientFactoryFunc = func(_ context.Context, _ client.Client, _ corev1.SecretReference) (azclient.Factory, error) {
+		DefaultAzureClientFactoryFunc = func(_ context.Context, _ client.Client, _ corev1.SecretReference, _ bool, _ ...azclient.AzureFactoryOption) (azclient.Factory, error) {
 			return azureClientFactory, nil
 		}
 
