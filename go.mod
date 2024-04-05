@@ -33,6 +33,7 @@ require (
 	go.uber.org/atomic v1.10.0
 	go.uber.org/mock v0.4.0
 	golang.org/x/crypto v0.21.0
+	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa
 	golang.org/x/tools v0.17.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.29.3
@@ -142,7 +143,6 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
-	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa // indirect
 	golang.org/x/mod v0.14.0 // indirect
 	golang.org/x/net v0.21.0 // indirect
 	golang.org/x/oauth2 v0.16.0 // indirect
