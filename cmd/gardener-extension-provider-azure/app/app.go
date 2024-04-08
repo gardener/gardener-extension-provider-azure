@@ -40,6 +40,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/healthcheck"
 	azureinfrastructure "github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure"
 	azureworker "github.com/gardener/gardener-extension-provider-azure/pkg/controller/worker"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/features"
 	azurecontrolplaneexposure "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/controlplaneexposure"
 	haNamespace "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/highavailability/namespace"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/webhook/topology"
@@ -164,6 +165,10 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			}
 
 			if err := heartbeatCtrlOpts.Validate(); err != nil {
+				return err
+			}
+
+			if err := features.ExtensionFeatureGate.SetFromMap(configFileOpts.Completed().Config.FeatureGates); err != nil {
 				return err
 			}
 
