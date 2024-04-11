@@ -507,6 +507,23 @@ var _ = Describe("Machines", func() {
 						"type": volumeType,
 					}
 
+					machineClassPool1["operatingSystem"] = map[string]interface{}{
+						"operatingSystemName":    machineImageName,
+						"operatingSystemVersion": machineImageVersion,
+					}
+					machineClassPool2["operatingSystem"] = map[string]interface{}{
+						"operatingSystemName":    machineImageName,
+						"operatingSystemVersion": machineImageVersionID,
+					}
+					machineClassPool3["operatingSystem"] = map[string]interface{}{
+						"operatingSystemName":    machineImageName,
+						"operatingSystemVersion": machineImageVersionCommunityID,
+					}
+					machineClassPool4["operatingSystem"] = map[string]interface{}{
+						"operatingSystemName":    machineImageName,
+						"operatingSystemVersion": machineImageVersionSharedID,
+					}
+
 					machineClasses = map[string]interface{}{"machineClasses": []map[string]interface{}{
 						machineClassPool1,
 						machineClassPool2,
