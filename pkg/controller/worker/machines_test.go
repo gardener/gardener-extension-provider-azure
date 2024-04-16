@@ -709,6 +709,43 @@ var _ = Describe("Machines", func() {
 						Expect(err).NotTo(HaveOccurred())
 						Expect(result).To(Equal(machineDeployments))
 					})
+
+					It("should set expected cluster-autoscaler annotations on the machine deployment", func() {
+						w.Spec.Pools[0].ClusterAutoscaler = &extensionsv1alpha1.ClusterAutoscalerOptions{
+							MaxNodeProvisionTime:             ptr.To(metav1.Duration{Duration: time.Minute}),
+							ScaleDownGpuUtilizationThreshold: ptr.To("0.4"),
+							ScaleDownUnneededTime:            ptr.To(metav1.Duration{Duration: 2 * time.Minute}),
+							ScaleDownUnreadyTime:             ptr.To(metav1.Duration{Duration: 3 * time.Minute}),
+							ScaleDownUtilizationThreshold:    ptr.To("0.5"),
+						}
+
+						w.Spec.Pools = append(w.Spec.Pools, pool2)
+						w.Spec.Pools[1].Zones = []string{zone1, zone2}
+
+						workerDelegate := wrapNewWorkerDelegate(c, chartApplier, w, cluster, nil)
+
+						result, err := workerDelegate.GenerateMachineDeployments(ctx)
+
+						Expect(err).NotTo(HaveOccurred())
+						Expect(result).NotTo(BeNil())
+
+						Expect(result[0].ClusterAutoscalerAnnotations).NotTo(BeNil())
+						Expect(result[1].ClusterAutoscalerAnnotations).NotTo(BeNil())
+						Expect(result[2].ClusterAutoscalerAnnotations).To(BeNil())
+						Expect(result[3].ClusterAutoscalerAnnotations).To(BeNil())
+
+						Expect(result[0].ClusterAutoscalerAnnotations[extensionsv1alpha1.MaxNodeProvisionTimeAnnotation]).To(Equal("1m0s"))
+						Expect(result[0].ClusterAutoscalerAnnotations[extensionsv1alpha1.ScaleDownGpuUtilizationThresholdAnnotation]).To(Equal("0.4"))
+						Expect(result[0].ClusterAutoscalerAnnotations[extensionsv1alpha1.ScaleDownUnneededTimeAnnotation]).To(Equal("2m0s"))
+						Expect(result[0].ClusterAutoscalerAnnotations[extensionsv1alpha1.ScaleDownUnreadyTimeAnnotation]).To(Equal("3m0s"))
+						Expect(result[0].ClusterAutoscalerAnnotations[extensionsv1alpha1.ScaleDownUtilizationThresholdAnnotation]).To(Equal("0.5"))
+
+						Expect(result[1].ClusterAutoscalerAnnotations[extensionsv1alpha1.MaxNodeProvisionTimeAnnotation]).To(Equal("1m0s"))
+						Expect(result[1].ClusterAutoscalerAnnotations[extensionsv1alpha1.ScaleDownGpuUtilizationThresholdAnnotation]).To(Equal("0.4"))
+						Expect(result[1].ClusterAutoscalerAnnotations[extensionsv1alpha1.ScaleDownUnneededTimeAnnotation]).To(Equal("2m0s"))
+						Expect(result[1].ClusterAutoscalerAnnotations[extensionsv1alpha1.ScaleDownUnreadyTimeAnnotation]).To(Equal("3m0s"))
+						Expect(result[1].ClusterAutoscalerAnnotations[extensionsv1alpha1.ScaleDownUtilizationThresholdAnnotation]).To(Equal("0.5"))
+					})
 				})
 			})
 
