@@ -154,7 +154,7 @@ func (f azureFactory) ManagedUserIdentity() (ManagedUserIdentity, error) {
 
 // VirtualMachineImages returns a VirtualMachineImages client.
 func (f azureFactory) VirtualMachineImages() (VirtualMachineImages, error) {
-	return NewVirtualMachineImagesClient(*f.auth, f.clientOpts)
+	return NewVirtualMachineImagesClient(f.auth, f.tokenCredential, f.clientOpts)
 }
 
 // NewBlobStorageClient reads the secret from the passed reference and return an Azure (blob) storage client.

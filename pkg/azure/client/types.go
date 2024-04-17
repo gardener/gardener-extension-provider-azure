@@ -10,7 +10,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
 )
 
@@ -148,7 +147,7 @@ type DNSRecordSet interface {
 
 // VirtualMachineImages represents an Azure Virtual Machine Image k8sClient.
 type VirtualMachineImages interface {
-	ListSkus(ctx context.Context, location string, publisherName string, offer string) (*compute.ListVirtualMachineImageResource, error)
+	ListSkus(ctx context.Context, location string, publisherName string, offer string) (*armcompute.VirtualMachineImagesClientListSKUsResponse, error)
 }
 
 // Storage represents an Azure (blob) storage k8sClient.

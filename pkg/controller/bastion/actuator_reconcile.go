@@ -506,7 +506,7 @@ func getLatestSku(ctx context.Context, opt *Options, factory azureclient.Factory
 
 	re := regexp.MustCompile(`^\d+_\d+-(?:lts|LTS)$`)
 	var sku string
-	for _, v := range *result.Value {
+	for _, v := range result.VirtualMachineImageResourceArray {
 		if re.MatchString(*v.Name) {
 			// images are sorted by the api and we only need to keep the latest image
 			sku = *v.Name
