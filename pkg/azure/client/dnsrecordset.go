@@ -10,16 +10,25 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-05-01/dns"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/dns/armdns"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
 var _ DNSRecordSet = &DNSRecordSetClient{}
 
 // DNSRecordSetClient is an implementation of DNSRecordSet for a DNS recordset k8sClient.
 type DNSRecordSetClient struct {
-	client dns.RecordSetsClient
+	client *armdns.RecordSetsClient
+}
+
+// NewDnsRecordSetClient creates a new DnsRecordSetClient
+func NewDnsRecordSetClient(auth *internal.ClientAuth, tc azcore.TokenCredential, opts *policy.ClientOptions) (*DNSRecordSetClient, error) {
+	client, err := armdns.NewRecordSetsClient(auth.SubscriptionID, tc, opts)
+	return &DNSRecordSetClient{client}, err
 }
 
 // CreateOrUpdate creates or updates the recordset with the given name, record type, values, and TTL in the zone with the given zone ID.
@@ -29,10 +38,10 @@ func (c *DNSRecordSetClient) CreateOrUpdate(ctx context.Context, zoneID string, 
 	if err != nil {
 		return err
 	}
-	params := dns.RecordSet{
-		RecordSetProperties: newRecordSetProperties(dns.RecordType(recordType), values, ttl),
+	params := armdns.RecordSet{
+		Properties: newRecordSetProperties(armdns.RecordType(recordType), values, ttl),
 	}
-	_, err = c.client.CreateOrUpdate(ctx, resourceGroupName, zoneName, relativeRecordSetName, dns.RecordType(recordType), params, "", "")
+	_, err = c.client.CreateOrUpdate(ctx, resourceGroupName, zoneName, relativeRecordSetName, armdns.RecordType(recordType), params, nil)
 	return err
 }
 
@@ -43,7 +52,7 @@ func (c *DNSRecordSetClient) Delete(ctx context.Context, zoneID string, name str
 	if err != nil {
 		return err
 	}
-	_, err = c.client.Delete(ctx, resourceGroupName, zoneName, relativeRecordSetName, dns.RecordType(recordType), "")
+	_, err = c.client.Delete(ctx, resourceGroupName, zoneName, relativeRecordSetName, armdns.RecordType(recordType), nil)
 	return ignoreAzureNotFoundError(err)
 }
 
@@ -58,31 +67,31 @@ func getRelativeRecordSetName(name, zoneName string) (string, error) {
 	return strings.TrimSuffix(name, suffix), nil
 }
 
-func newRecordSetProperties(recordType dns.RecordType, values []string, ttl int64) *dns.RecordSetProperties {
-	rrp := &dns.RecordSetProperties{
+func newRecordSetProperties(recordType armdns.RecordType, values []string, ttl int64) *armdns.RecordSetProperties {
+	rrp := &armdns.RecordSetProperties{
 		TTL: to.Int64Ptr(ttl),
 	}
 	switch recordType {
-	case dns.A:
-		var aRecords []dns.ARecord
+	case armdns.RecordTypeA:
+		var aRecords []*armdns.ARecord
 		for _, value := range values {
-			aRecords = append(aRecords, dns.ARecord{
-				Ipv4Address: to.StringPtr(value),
+			aRecords = append(aRecords, &armdns.ARecord{
+				IPv4Address: to.StringPtr(value),
 			})
 		}
-		rrp.ARecords = &aRecords
-	case dns.CNAME:
-		rrp.CnameRecord = &dns.CnameRecord{
+		rrp.ARecords = aRecords
+	case armdns.RecordTypeCNAME:
+		rrp.CnameRecord = &armdns.CnameRecord{
 			Cname: to.StringPtr(values[0]),
 		}
-	case dns.TXT:
-		var txtRecords []dns.TxtRecord
+	case armdns.RecordTypeTXT:
+		var txtRecords []*armdns.TxtRecord
 		for _, value := range values {
-			txtRecords = append(txtRecords, dns.TxtRecord{
-				Value: &[]string{value},
+			txtRecords = append(txtRecords, &armdns.TxtRecord{
+				Value: []*string{to.StringPtr(value)},
 			})
 		}
-		rrp.TxtRecords = &txtRecords
+		rrp.TxtRecords = txtRecords
 	}
 	return rrp
 }
