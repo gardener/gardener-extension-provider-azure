@@ -12,7 +12,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
-	azurestorage "github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-04-01/storage"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -75,17 +74,7 @@ func NewAzureClientFactory(authCredentials *internal.ClientAuth, options ...Azur
 
 // StorageAccount returns an Azure storage account client.
 func (f azureFactory) StorageAccount() (StorageAccount, error) {
-	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(f.auth)
-	if err != nil {
-		return nil, err
-	}
-	endpointUrl := f.clientOpts.Cloud.Services[cloud.ResourceManager].Endpoint
-	storageAccountClient := azurestorage.NewAccountsClientWithBaseURI(endpointUrl, subscriptionID)
-	storageAccountClient.Authorizer = authorizer
-
-	return &StorageAccountClient{
-		client: storageAccountClient,
-	}, nil
+	return NewStorageAccountClient(f.auth, f.tokenCredential, f.clientOpts)
 }
 
 // DNSZone returns an Azure DNS zone client.
