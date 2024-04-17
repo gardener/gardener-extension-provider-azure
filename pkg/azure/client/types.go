@@ -12,14 +12,10 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
-
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
 // Factory represents a factory to produce clients for various Azure services.
 type Factory interface {
-	Auth() *internal.ClientAuth
-
 	StorageAccount() (StorageAccount, error)
 	Vmss() (Vmss, error)
 	DNSZone() (DNSZone, error)

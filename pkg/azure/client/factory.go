@@ -74,11 +74,6 @@ func NewAzureClientFactory(authCredentials *internal.ClientAuth, options ...Azur
 	return *factory, nil
 }
 
-// TODO: Seems unused, clear with @kon-angelo
-func (f azureFactory) Auth() *internal.ClientAuth {
-	return f.auth
-}
-
 // StorageAccount returns an Azure storage account client.
 func (f azureFactory) StorageAccount() (StorageAccount, error) {
 	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(f.auth)

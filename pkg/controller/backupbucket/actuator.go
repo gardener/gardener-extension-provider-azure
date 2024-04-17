@@ -20,8 +20,6 @@ import (
 )
 
 var (
-	// DefaultClientFactoryFunc is the default function to get an azure client. Can be overridden for tests.
-	DefaultClientFactoryFunc = azureclient.NewAzureClientFactory
 	// DefaultBlobStorageClient is the default function to get a backupbucket client. Can be overridden for tests.
 	DefaultBlobStorageClient = azureclient.NewBlobStorageClient
 )
@@ -78,7 +76,7 @@ func (a *actuator) Reconcile(ctx context.Context, _ logr.Logger, backupBucket *e
 		}
 	}
 
-	storageClient, err := DefaultBlobStorageClient(ctx, a.client, *backupBucket.Status.GeneratedSecretRef, backupConfig.CloudConfiguration)
+	storageClient, err := azureclient.NewBlobStorageClient(ctx, a.client, *backupBucket.Status.GeneratedSecretRef, backupConfig.CloudConfiguration)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}
@@ -113,7 +111,7 @@ func (a *actuator) delete(ctx context.Context, _ logr.Logger, backupBucket *exte
 
 	if secret != nil {
 		// Get a storage account client to delete the backup container in the storage account.
-		storageClient, err := DefaultBlobStorageClient(ctx, a.client, *backupBucket.Status.GeneratedSecretRef, cloudConfiguration)
+		storageClient, err := azureclient.NewBlobStorageClient(ctx, a.client, *backupBucket.Status.GeneratedSecretRef, cloudConfiguration)
 		if err != nil {
 			return err
 		}

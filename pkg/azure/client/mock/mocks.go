@@ -18,7 +18,6 @@ import (
 	armresources "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	msi "github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
 	client "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
-	internal "github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -214,20 +213,6 @@ func NewMockFactory(ctrl *gomock.Controller) *MockFactory {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockFactory) EXPECT() *MockFactoryMockRecorder {
 	return m.recorder
-}
-
-// Auth mocks base method.
-func (m *MockFactory) Auth() *internal.ClientAuth {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Auth")
-	ret0, _ := ret[0].(*internal.ClientAuth)
-	return ret0
-}
-
-// Auth indicates an expected call of Auth.
-func (mr *MockFactoryMockRecorder) Auth() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Auth", reflect.TypeOf((*MockFactory)(nil).Auth))
 }
 
 // AvailabilitySet mocks base method.
