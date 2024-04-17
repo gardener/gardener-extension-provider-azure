@@ -14,13 +14,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
 
 var (
-	// DefaultClientFactoryFunc is the default function to get an azure client. Can be overridden for tests.
-	DefaultClientFactoryFunc = azureclient.NewAzureClientFactory
 	// DefaultBlobStorageClient is the default function to get a backupbucket client. Can be overridden for tests.
 	DefaultBlobStorageClient = azureclient.NewBlobStorageClient
 )
@@ -37,7 +36,29 @@ func newActuator(mgr manager.Manager) backupbucket.Actuator {
 }
 
 func (a *actuator) Reconcile(ctx context.Context, _ logr.Logger, backupBucket *extensionsv1alpha1.BackupBucket) error {
-	factory, err := DefaultClientFactoryFunc(ctx, a.client, backupBucket.Spec.SecretRef)
+
+	backupConfig, err := helper.BackupConfigFromBackupBucket(backupBucket)
+	if err != nil {
+		return err
+	}
+
+	var cloudConfiguration *azure.CloudConfiguration
+	if backupBucket != nil {
+		cloudConfiguration = backupConfig.CloudConfiguration
+	}
+
+	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(cloudConfiguration)
+	if err != nil {
+		return err
+	}
+
+	factory, err := azureclient.NewAzureClientFactoryFromSecret(
+		ctx,
+		a.client,
+		backupBucket.Spec.SecretRef,
+		false,
+		azureclient.WithCloudConfiguration(azCloudConfiguration),
+	)
 	if err != nil {
 		return err
 	}
@@ -55,7 +76,7 @@ func (a *actuator) Reconcile(ctx context.Context, _ logr.Logger, backupBucket *e
 		}
 	}
 
-	storageClient, err := DefaultBlobStorageClient(ctx, a.client, *backupBucket.Status.GeneratedSecretRef)
+	storageClient, err := azureclient.NewBlobStorageClient(ctx, a.client, *backupBucket.Status.GeneratedSecretRef, backupConfig.CloudConfiguration)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}
@@ -77,9 +98,20 @@ func (a *actuator) delete(ctx context.Context, _ logr.Logger, backupBucket *exte
 	if err != nil {
 		return err
 	}
+
+	backupBucketConfig, err := helper.BackupConfigFromBackupBucket(backupBucket)
+	if err != nil {
+		return err
+	}
+
+	var cloudConfiguration *azure.CloudConfiguration
+	if backupBucket != nil {
+		cloudConfiguration = backupBucketConfig.CloudConfiguration
+	}
+
 	if secret != nil {
 		// Get a storage account client to delete the backup container in the storage account.
-		storageClient, err := DefaultBlobStorageClient(ctx, a.client, *backupBucket.Status.GeneratedSecretRef)
+		storageClient, err := azureclient.NewBlobStorageClient(ctx, a.client, *backupBucket.Status.GeneratedSecretRef, cloudConfiguration)
 		if err != nil {
 			return err
 		}
@@ -88,7 +120,19 @@ func (a *actuator) delete(ctx context.Context, _ logr.Logger, backupBucket *exte
 		}
 	}
 
-	factory, err := DefaultClientFactoryFunc(ctx, a.client, backupBucket.Spec.SecretRef)
+	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(cloudConfiguration)
+	if err != nil {
+		return err
+	}
+
+	factory, err := azureclient.NewAzureClientFactoryFromSecret(
+		ctx,
+		a.client,
+		backupBucket.Spec.SecretRef,
+		false,
+		azureclient.WithCloudConfiguration(azCloudConfiguration),
+	)
+
 	if err != nil {
 		return err
 	}

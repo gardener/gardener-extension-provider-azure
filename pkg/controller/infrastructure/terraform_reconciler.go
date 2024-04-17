@@ -15,6 +15,7 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
@@ -33,6 +34,9 @@ func NewTerraformReconciler(a *actuator, logger logr.Logger, restConfig *rest.Co
 }
 
 var _ Reconciler = &TerraformReconciler{}
+
+// DefaultAzureClientFactoryFunc is a hook to monkeypatch factory ctor during tests
+var DefaultAzureClientFactoryFunc = azureclient.NewAzureClientFactoryFromSecret
 
 // TerraformReconciler can reconcile infrastructure objects using Terraform.
 type TerraformReconciler struct {
@@ -141,7 +145,28 @@ func (r *TerraformReconciler) Delete(ctx context.Context, infra *extensionsv1alp
 		return err
 	}
 
-	azureClientFactory, err := NewAzureClientFactory(ctx, r.Client, infra.Spec.SecretRef)
+	cloudProfile, err := helper.CloudProfileConfigFromCluster(cluster)
+	if err != nil {
+		return err
+	}
+
+	var cloudConfiguration *azure.CloudConfiguration
+	if cloudProfile != nil {
+		cloudConfiguration = cloudProfile.CloudConfiguration
+	}
+
+	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(cloudConfiguration)
+	if err != nil {
+		return err
+	}
+
+	clientFactory, err := DefaultAzureClientFactoryFunc(
+		ctx,
+		r.Client,
+		infra.Spec.SecretRef,
+		false,
+		azureclient.WithCloudConfiguration(azCloudConfiguration),
+	)
 	if err != nil {
 		return err
 	}
@@ -151,7 +176,7 @@ func (r *TerraformReconciler) Delete(ctx context.Context, infra *extensionsv1alp
 		return err
 	}
 
-	resourceGroupExists, err := infrastructure.IsShootResourceGroupAvailable(ctx, azureClientFactory, infra, cfg)
+	resourceGroupExists, err := infrastructure.IsShootResourceGroupAvailable(ctx, clientFactory, infra, cfg)
 	if err != nil {
 		if azureclient.IsAzureAPIUnauthorized(err) {
 			r.Logger.Error(err, "Failed to check resource group availability due to invalid credentials")
@@ -162,7 +187,7 @@ func (r *TerraformReconciler) Delete(ctx context.Context, infra *extensionsv1alp
 
 	if !resourceGroupExists {
 		if !azureclient.IsAzureAPIUnauthorized(err) {
-			if err := infrastructure.DeleteNodeSubnetIfExists(ctx, azureClientFactory, infra, cfg); err != nil {
+			if err := infrastructure.DeleteNodeSubnetIfExists(ctx, clientFactory, infra, cfg); err != nil {
 				return err
 			}
 		}

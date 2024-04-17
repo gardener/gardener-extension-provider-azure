@@ -6,14 +6,19 @@ package client
 
 import (
 	"crypto/tls"
+	"fmt"
 	"math"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 )
 
 const (
@@ -66,7 +71,47 @@ func getAzureClientOpts() *arm.ClientOptions {
 			Transport: &http.Client{
 				Transport: getTransport(),
 			},
+			Cloud: cloud.AzurePublic,
 		},
+	}
+}
+
+// AzureCloudConfigurationFromCloudConfiguration returns the cloud.Configuration corresponding to the given cloud configuration name (as part of our CloudConfiguration)
+func AzureCloudConfigurationFromCloudConfiguration(cloudConfiguration *azure.CloudConfiguration) (cloud.Configuration, error) {
+	if cloudConfiguration == nil {
+		return cloud.AzurePublic, nil
+	}
+
+	cloudConfigurationName := cloudConfiguration.Name
+	switch {
+	case strings.EqualFold(cloudConfigurationName, "AzurePublic"):
+		return cloud.AzurePublic, nil
+	case strings.EqualFold(cloudConfigurationName, "AzureGovernment"):
+		return cloud.AzureGovernment, nil
+	case strings.EqualFold(cloudConfigurationName, "AzureChina"):
+		return cloud.AzureChina, nil
+
+	default:
+		return cloud.Configuration{}, fmt.Errorf("unknown cloud configuration name '%s'", cloudConfigurationName)
+	}
+}
+
+// CloudEnvVarNameFromCloudConfiguration returns the names of env-vars used by the upstream-controllers corresponding to the given cloud configuration name (as part of our CloudConfiguration)
+func CloudEnvVarNameFromCloudConfiguration(cloudConfiguration *azure.CloudConfiguration) (string, error) {
+	if cloudConfiguration == nil {
+		return "AZUREPUBLICCLOUD", nil
+	}
+
+	cloudConfigurationName := cloudConfiguration.Name
+	switch {
+	case strings.EqualFold(cloudConfigurationName, "AzurePublic"):
+		return "AZUREPUBLICCLOUD", nil
+	case strings.EqualFold(cloudConfigurationName, "AzureGovernment"):
+		return "AZUREUSGOVERNMENT", nil
+	case strings.EqualFold(cloudConfigurationName, "AzureChina"):
+		return "AZURECHINACLOUD", nil
+	default:
+		return "", fmt.Errorf("unknown cloud configuration name '%s'", cloudConfigurationName)
 	}
 }
 

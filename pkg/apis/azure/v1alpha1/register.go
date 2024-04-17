@@ -36,6 +36,7 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&ControlPlaneConfig{},
 		&WorkerConfig{},
 		&WorkerStatus{},
+		&BackupConfig{},
 	)
 	return nil
 }

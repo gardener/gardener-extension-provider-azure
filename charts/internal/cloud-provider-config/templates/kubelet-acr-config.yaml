@@ -6,7 +6,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
 data:
   acr.conf: |
-    cloud: AZUREPUBLICCLOUD
+    cloud: "{{ .Values.cloud }}"
     tenantId: "{{ .Values.tenantId }}"
     subscriptionId: "{{ .Values.subscriptionId }}"
     aadClientId: "msi"
@@ -14,4 +14,4 @@ data:
     useManagedIdentityExtension: true
     userAssignedIdentityID: "{{ .Values.acrIdentityClientId }}"
     useInstanceMetadata: true
-{{- end}} 
+{{- end}}

@@ -14,7 +14,9 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
+	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 	infrainternal "github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
@@ -61,7 +63,28 @@ func (f *FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha
 		return err
 	}
 
-	factory, err := NewAzureClientFactory(ctx, f.client, infra.Spec.SecretRef)
+	cloudProfile, err := helper.CloudProfileConfigFromCluster(cluster)
+	if err != nil {
+		return err
+	}
+
+	var cloudConfiguration *azure.CloudConfiguration
+	if cloudProfile != nil {
+		cloudConfiguration = cloudProfile.CloudConfiguration
+	}
+
+	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(cloudConfiguration)
+	if err != nil {
+		return err
+	}
+
+	factory, err := azureclient.NewAzureClientFactoryFromSecret(
+		ctx,
+		f.client,
+		infra.Spec.SecretRef,
+		false,
+		azureclient.WithCloudConfiguration(azCloudConfiguration),
+	)
 	if err != nil {
 		return err
 	}
@@ -89,7 +112,28 @@ func (f *FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha
 
 // Delete deletes the infrastructure resource using the flow reconciler.
 func (f *FlowReconciler) Delete(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
-	factory, err := NewAzureClientFactory(ctx, f.client, infra.Spec.SecretRef)
+	cloudProfile, err := helper.CloudProfileConfigFromCluster(cluster)
+	if err != nil {
+		return err
+	}
+
+	var cloudConfiguration *azure.CloudConfiguration
+	if cloudProfile != nil {
+		cloudConfiguration = cloudProfile.CloudConfiguration
+	}
+
+	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(cloudConfiguration)
+	if err != nil {
+		return err
+	}
+
+	clientFactory, err := azureclient.NewAzureClientFactoryFromSecret(
+		ctx,
+		f.client,
+		infra.Spec.SecretRef,
+		false,
+		azureclient.WithCloudConfiguration(azCloudConfiguration),
+	)
 	if err != nil {
 		return err
 	}
@@ -99,7 +143,7 @@ func (f *FlowReconciler) Delete(ctx context.Context, infra *extensionsv1alpha1.I
 		return err
 	}
 
-	fctx, err := infraflow.NewFlowContext(factory, nil, f.log, infra, cluster, infraState, nil)
+	fctx, err := infraflow.NewFlowContext(clientFactory, nil, f.log, infra, cluster, infraState, nil)
 	if err != nil {
 		return err
 	}
