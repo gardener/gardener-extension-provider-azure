@@ -649,11 +649,11 @@ func (f *FlowContext) EnsureManagedIdentity(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
-	if res.ID == nil || res.ClientID == nil {
+	if res.ID == nil || res.Properties.ClientID == nil {
 		return nil
 	}
 
-	f.whiteboard.Set(KeyManagedIdentityClientId, res.ClientID.String())
+	f.whiteboard.Set(KeyManagedIdentityClientId, *res.Properties.ClientID)
 	f.whiteboard.Set(KeyManagedIdentityId, *res.ID)
 	return err
 }

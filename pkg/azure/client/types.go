@@ -8,9 +8,9 @@ import (
 	"context"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
-	"github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
 )
 
 // Factory represents a factory to produce clients for various Azure services.
@@ -66,7 +66,7 @@ type RouteTables interface {
 
 // ManagedUserIdentity is a k8sClient for the Azure Managed User Identity service.
 type ManagedUserIdentity interface {
-	GetFunc[msi.Identity]
+	GetFunc[armmsi.UserAssignedIdentitiesClientGetResponse]
 }
 
 // Vmss represents an Azure virtual machine scale set k8sClient.

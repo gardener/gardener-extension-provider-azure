@@ -149,7 +149,7 @@ func (f azureFactory) AvailabilitySet() (AvailabilitySet, error) {
 
 // ManagedUserIdentity returns a ManagedUserIdentity client.
 func (f azureFactory) ManagedUserIdentity() (ManagedUserIdentity, error) {
-	return NewManagedUserIdentityClient(*f.auth, f.clientOpts)
+	return NewManagedUserIdentityClient(f.auth, f.tokenCredential, f.clientOpts)
 }
 
 // VirtualMachineImages returns a VirtualMachineImages client.
