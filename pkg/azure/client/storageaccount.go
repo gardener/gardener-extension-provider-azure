@@ -11,8 +11,9 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 	"k8s.io/utils/ptr"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
 var _ StorageAccount = &StorageAccountClient{}

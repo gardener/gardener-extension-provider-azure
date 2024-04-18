@@ -14,9 +14,9 @@ import (
 	reflect "reflect"
 
 	armcompute "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
+	armmsi "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi"
 	armnetwork "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
 	armresources "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
-	msi "github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
 	client "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -1008,10 +1008,10 @@ func (m *MockManagedUserIdentity) EXPECT() *MockManagedUserIdentityMockRecorder 
 }
 
 // Get mocks base method.
-func (m *MockManagedUserIdentity) Get(arg0 context.Context, arg1, arg2 string) (*msi.Identity, error) {
+func (m *MockManagedUserIdentity) Get(arg0 context.Context, arg1, arg2 string) (*armmsi.UserAssignedIdentitiesClientGetResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*msi.Identity)
+	ret0, _ := ret[0].(*armmsi.UserAssignedIdentitiesClientGetResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
