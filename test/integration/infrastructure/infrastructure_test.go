@@ -14,10 +14,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
-	"github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
-	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/adal"
 	azureRest "github.com/Azure/go-autorest/autorest/azure"
@@ -76,39 +77,76 @@ var (
 )
 
 type azureClientSet struct {
-	groups           resources.GroupsClient
-	vnet             network.VirtualNetworksClient
-	subnets          network.SubnetsClient
-	interfaces       network.InterfacesClient
-	securityGroups   network.SecurityGroupsClient
-	availabilitySets compute.AvailabilitySetsClient
-	routeTable       network.RouteTablesClient
-	nat              network.NatGatewaysClient
-	pubIp            network.PublicIPAddressesClient
-	msi              msi.UserAssignedIdentitiesClient
+	groups           *armresources.ResourceGroupsClient
+	vnet             *armnetwork.VirtualNetworksClient
+	subnets          *armnetwork.SubnetsClient
+	interfaces       *armnetwork.InterfacesClient
+	securityGroups   *armnetwork.SecurityGroupsClient
+	availabilitySets *armcompute.AvailabilitySetsClient
+	routeTable       *armnetwork.RouteTablesClient
+	nat              *armnetwork.NatGatewaysClient
+	pubIp            *armnetwork.PublicIPAddressesClient
+	msi              *armmsi.UserAssignedIdentitiesClient
 }
 
-func newAzureClientSet(subscriptionId string, authorizer autorest.Authorizer) *azureClientSet {
-	groupsClient := resources.NewGroupsClient(subscriptionId)
-	groupsClient.Authorizer = authorizer
-	vnetClient := network.NewVirtualNetworksClient(subscriptionId)
-	vnetClient.Authorizer = authorizer
-	subnetClient := network.NewSubnetsClient(subscriptionId)
-	subnetClient.Authorizer = authorizer
-	interfacesClient := network.NewInterfacesClient(subscriptionId)
-	interfacesClient.Authorizer = authorizer
-	securityGroupsClient := network.NewSecurityGroupsClient(subscriptionId)
-	securityGroupsClient.Authorizer = authorizer
-	availabilitySetsClient := compute.NewAvailabilitySetsClient(subscriptionId)
-	availabilitySetsClient.Authorizer = authorizer
-	tablesClient := network.NewRouteTablesClient(subscriptionId)
-	tablesClient.Authorizer = authorizer
-	natClient := network.NewNatGatewaysClient(subscriptionId)
-	natClient.Authorizer = authorizer
-	pubIpClient := network.NewPublicIPAddressesClient(subscriptionId)
-	pubIpClient.Authorizer = authorizer
-	msiClient := msi.NewUserAssignedIdentitiesClient(subscriptionId)
-	msiClient.Authorizer = authorizer
+type pubIpRef struct {
+	Name          string
+	ResourceGroup string
+}
+
+func newAzureClientSet(subscriptionId, tenantId, clientId, clientSecret string) (*azureClientSet, error) {
+	credential, err := azidentity.NewClientSecretCredential(tenantId, clientId, clientSecret, nil)
+	if err != nil {
+		return nil, err
+	}
+	groupsClient, err := armresources.NewResourceGroupsClient(subscriptionId, credential, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	vnetClient, err := armnetwork.NewVirtualNetworksClient(subscriptionId, credential, nil)
+	if err != nil {
+		return nil, err
+	}
+	subnetClient, err := armnetwork.NewSubnetsClient(subscriptionId, credential, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	interfacesClient, err := armnetwork.NewInterfacesClient(subscriptionId, credential, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	securityGroupsClient, err := armnetwork.NewSecurityGroupsClient(subscriptionId, credential, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	availabilitySetsClient, err := armcompute.NewAvailabilitySetsClient(subscriptionId, credential, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	tablesClient, err := armnetwork.NewRouteTablesClient(subscriptionId, credential, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	natClient, err := armnetwork.NewNatGatewaysClient(subscriptionId, credential, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	pubIpClient, err := armnetwork.NewPublicIPAddressesClient(subscriptionId, credential, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	msiClient, err := armmsi.NewUserAssignedIdentitiesClient(subscriptionId, credential, nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return &azureClientSet{
 		groups:           groupsClient,
@@ -121,7 +159,7 @@ func newAzureClientSet(subscriptionId string, authorizer autorest.Authorizer) *a
 		nat:              natClient,
 		pubIp:            pubIpClient,
 		msi:              msiClient,
-	}
+	}, nil
 }
 
 func getAuthorizer(tenantId, clientId, clientSecret string) (autorest.Authorizer, error) {
@@ -220,9 +258,8 @@ var _ = BeforeSuite(func() {
 	Expect(c).ToNot(BeNil())
 	decoder = serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder()
 
-	authorizer, err := getAuthorizer(*tenantId, *clientId, *clientSecret)
+	clientSet, err = newAzureClientSet(*subscriptionId, *tenantId, *clientId, *clientSecret)
 	Expect(err).ToNot(HaveOccurred())
-	clientSet = newAzureClientSet(*subscriptionId, authorizer)
 
 	priorityClass := &schedulingv1.PriorityClass{
 		ObjectMeta: metav1.ObjectMeta{
@@ -707,10 +744,8 @@ func runTest(
 	if _, _, err := decoder.Decode(infra.Status.ProviderStatus.Raw, nil, providerStatus); err != nil {
 		return err
 	}
-
 	By("verify infrastructure creation")
 	identifier = verifyCreation(ctx, az, infra, providerConfig, providerStatus)
-
 	return nil
 }
 
@@ -867,68 +902,66 @@ func newInfrastructure(namespace string, providerConfig *azurev1alpha1.Infrastru
 
 func prepareNewResourceGroup(ctx context.Context, log logr.Logger, az *azureClientSet, groupName, location string) error {
 	log.Info("generating new ResourceGroups", "groupName", groupName)
-	_, err := az.groups.CreateOrUpdate(ctx, groupName, resources.Group{
+	_, err := az.groups.CreateOrUpdate(ctx, groupName, armresources.ResourceGroup{
 		Location: ptr.To(location),
-	})
+	}, nil)
 	return err
 }
 
 func prepareNewVNet(ctx context.Context, log logr.Logger, az *azureClientSet, groupName, vNetName, location, cidr string) error {
 	log.Info("generating new VNet", "groupName", groupName, "vNetName", vNetName)
-	vNetFuture, err := az.vnet.CreateOrUpdate(ctx, groupName, vNetName, network.VirtualNetwork{
-		VirtualNetworkPropertiesFormat: &network.VirtualNetworkPropertiesFormat{
-			AddressSpace: &network.AddressSpace{
-				AddressPrefixes: &[]string{
-					cidr,
+	poller, err := az.vnet.BeginCreateOrUpdate(ctx, groupName, vNetName, armnetwork.VirtualNetwork{
+		Properties: &armnetwork.VirtualNetworkPropertiesFormat{
+			AddressSpace: &armnetwork.AddressSpace{
+				AddressPrefixes: []*string{
+					ptr.To(cidr),
 				},
 			},
 		},
 		Name:     ptr.To(vNetName),
 		Location: ptr.To(location),
-	})
-	if err != nil {
-		return err
-	}
-	if err = vNetFuture.WaitForCompletionRef(ctx, az.vnet.Client); err != nil {
-		return err
-	}
+	}, nil)
+	Expect(err).ShouldNot(HaveOccurred())
 
-	_, err = vNetFuture.Result(az.vnet)
-	return err
+	_, err = poller.PollUntilDone(ctx, nil)
+	Expect(err).ShouldNot(HaveOccurred())
+
+	return nil
 }
 
 func prepareNewIdentity(ctx context.Context, log logr.Logger, az *azureClientSet, groupName, idName, location string) error {
 	log.Info("generating new Identity", "groupName", groupName, "idName", idName)
-	_, err := az.msi.CreateOrUpdate(ctx, groupName, idName, msi.Identity{
+	_, err := az.msi.CreateOrUpdate(ctx, groupName, idName, armmsi.Identity{
 		Location: ptr.To(location),
-	})
+	}, nil)
 	return err
 }
 
 func prepareNewNatIp(ctx context.Context, log logr.Logger, az *azureClientSet, groupName, pubIpName, location, zone string) error {
 	log.Info("generating new nat ip", "groupName", groupName, "pubIpName", pubIpName)
-	_, err := az.pubIp.CreateOrUpdate(ctx, groupName, pubIpName, network.PublicIPAddress{
+	_, err := az.pubIp.BeginCreateOrUpdate(ctx, groupName, pubIpName, armnetwork.PublicIPAddress{
 		Name: ptr.To(pubIpName),
-		Sku: &network.PublicIPAddressSku{
-			Name: network.PublicIPAddressSkuNameStandard,
+		SKU: &armnetwork.PublicIPAddressSKU{
+			Name: ptr.To(armnetwork.PublicIPAddressSKUNameStandard),
 		},
-		Zones:    &[]string{zone},
+		Zones:    []*string{ptr.To(zone)},
 		Location: &location,
-		PublicIPAddressPropertiesFormat: &network.PublicIPAddressPropertiesFormat{
-			PublicIPAllocationMethod: network.Static,
-			PublicIPAddressVersion:   network.IPv4,
+		Properties: &armnetwork.PublicIPAddressPropertiesFormat{
+			PublicIPAllocationMethod: ptr.To(armnetwork.IPAllocationMethodStatic),
+			PublicIPAddressVersion:   ptr.To(armnetwork.IPVersionIPv4),
 		},
-	})
+	}, nil)
 	return err
 }
 
 func teardownResourceGroup(ctx context.Context, az *azureClientSet, groupName string) error {
-	future, err := az.groups.Delete(ctx, groupName)
-	if err != nil {
-		return err
-	}
+	poller, err := az.groups.BeginDelete(ctx, groupName, nil)
+	Expect(err).ShouldNot(HaveOccurred())
 
-	return future.WaitForCompletionRef(ctx, az.groups.Client)
+	_, err = poller.PollUntilDone(ctx, nil)
+	Expect(err).ShouldNot(HaveOccurred())
+
+	return nil
 }
 
 func hasForeignVNet(config *azurev1alpha1.InfrastructureConfig) bool {
@@ -948,8 +981,8 @@ func verifyCreation(
 ) azureIdentifier {
 	var (
 		vnetResourceGroupName string
-		vnet                  network.VirtualNetwork
-		ng                    network.NatGateway
+		vnet                  armnetwork.VirtualNetwork
+		ng                    armnetwork.NatGateway
 		err                   error
 		result                = azureIdentifier{}
 	)
@@ -961,7 +994,7 @@ func verifyCreation(
 		Expect(infra.Namespace).To(Equal(status.ResourceGroup.Name))
 	}
 
-	group, err := az.groups.Get(ctx, status.ResourceGroup.Name)
+	group, err := az.groups.Get(ctx, status.ResourceGroup.Name, nil)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(group.Location).To(PointTo(Equal(*region)))
 	Expect(group.Tags).To(BeEmpty())
@@ -974,8 +1007,9 @@ func verifyCreation(
 		Expect(status.Networks.VNet.Name).To(Equal(*config.Networks.VNet.Name))
 
 		vnetResourceGroupName = *status.Networks.VNet.ResourceGroup
-		vnet, err = az.vnet.Get(ctx, vnetResourceGroupName, status.Networks.VNet.Name, "")
+		response, err := az.vnet.Get(ctx, vnetResourceGroupName, status.Networks.VNet.Name, nil)
 		Expect(err).ToNot(HaveOccurred())
+		vnet = response.VirtualNetwork
 
 		result.vnetResourceGroup = ptr.To(vnetResourceGroupName)
 		result.vnet = ptr.To(status.Networks.VNet.Name)
@@ -983,89 +1017,34 @@ func verifyCreation(
 		Expect(status.Networks.VNet.ResourceGroup).To(BeNil())
 
 		vnetResourceGroupName = status.ResourceGroup.Name
-		vnet, err = az.vnet.Get(ctx, vnetResourceGroupName, status.Networks.VNet.Name, "")
+		response, err := az.vnet.Get(ctx, vnetResourceGroupName, status.Networks.VNet.Name, nil)
 		Expect(err).ToNot(HaveOccurred())
+		vnet = response.VirtualNetwork
 
-		Expect(vnet.VirtualNetworkPropertiesFormat.AddressSpace).ToNot(BeNil())
-		Expect(vnet.VirtualNetworkPropertiesFormat.AddressSpace.AddressPrefixes).To(PointTo(ConsistOf([]string{VNetCIDR})))
+		Expect(vnet.Properties.AddressSpace).ToNot(BeNil())
+		Expect(vnet.Properties.AddressSpace.AddressPrefixes).To(Equal([]*string{ptr.To(VNetCIDR)}))
 		Expect(vnet.Location).To(PointTo(Equal(*region)))
 	}
 	Expect(vnet.Tags).To(BeEmpty())
 
 	// security groups
 	securityGroupName := infra.Namespace + "-workers"
-	secgroup, err := az.securityGroups.Get(ctx, status.ResourceGroup.Name, securityGroupName, "")
+	secgroup, err := az.securityGroups.Get(ctx, status.ResourceGroup.Name, securityGroupName, nil)
 	Expect(err).ToNot(HaveOccurred())
-	Expect(secgroup.SecurityRules).To(Or(BeNil(), PointTo(BeEmpty())))
+	Expect(secgroup.Properties.SecurityRules).To(BeEmpty())
 	Expect(secgroup.Location).To(PointTo(Equal(*region)))
 
 	// route tables
 	routeTableName := "worker_route_table"
-	rt, err := az.routeTable.Get(ctx, status.ResourceGroup.Name, routeTableName, "")
+	rt, err := az.routeTable.Get(ctx, status.ResourceGroup.Name, routeTableName, nil)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(rt.Location).To(PointTo(Equal(*region)))
-	Expect(rt.Routes).To(Or(BeNil(), PointTo(BeEmpty())))
-
-	verifySubnet := func(cidr string, serviceEndpoints []string, natID *string, subnetName string) {
-		// subnetName := indexedName(infra.Namespace+"-nodes", index)
-		Expect(vnet.VirtualNetworkPropertiesFormat.Subnets).To(PointTo(ContainElement(MatchFields(IgnoreExtras, Fields{
-			"Name": PointTo(Equal(subnetName)),
-		}))))
-		result.subnets = append(result.subnets, subnetName)
-
-		// subnets
-		subnet, err := az.subnets.Get(ctx, vnetResourceGroupName, status.Networks.VNet.Name, subnetName, "")
-		Expect(err).ToNot(HaveOccurred())
-		Expect(subnet.AddressPrefix).To(PointTo(Equal(cidr)))
-		Expect(subnet.RouteTable).To(HaveEqualID(*rt.ID))
-		Expect(subnet.NetworkSecurityGroup).To(HaveEqualID(*secgroup.ID))
-		Expect(subnet.ServiceEndpoints).To(PointTo(HaveLen(len(serviceEndpoints))))
-		for _, se := range serviceEndpoints {
-			Expect(subnet.ServiceEndpoints).To(PointTo(ContainElement(MatchFields(IgnoreExtras, Fields{
-				"Service": PointTo(Equal(se)),
-			}))))
-		}
-		if natID != nil {
-			Expect(subnet.NatGateway).To(HaveEqualID(*ng.ID))
-		}
-	}
-
-	type pubIpRef struct {
-		Name          string
-		ResourceGroup string
-	}
-
-	verifyNAT := func(zone, timeout *int32, ngName string, ipNames []pubIpRef) *string {
-		ng, err = az.nat.Get(ctx, status.ResourceGroup.Name, ngName, "")
-		Expect(err).ToNot(HaveOccurred())
-		Expect(ng.Location).To(PointTo(Equal(*region)))
-		Expect(ng.Sku.Name).To(Equal(network.NatGatewaySkuNameStandard))
-
-		// public IP
-		for _, ipName := range ipNames {
-			pip, err := az.pubIp.Get(ctx, ipName.ResourceGroup, ipName.Name, "")
-			Expect(err).ToNot(HaveOccurred())
-			Expect(pip.Location).To(PointTo(Equal(*region)))
-			Expect(pip.PublicIPAllocationMethod).To(Equal(network.Static))
-			Expect(pip.Sku.Name).To(Equal(network.PublicIPAddressSkuNameStandard))
-			Expect(pip.PublicIPAddressVersion).To(Equal(network.IPv4))
-			Expect(ng.PublicIPAddresses).To(PointTo(ContainElement(HaveEqualID(*pip.ID))))
-		}
-		if timeout != nil {
-			Expect(ng.NatGatewayPropertiesFormat.IdleTimeoutInMinutes).To(PointTo(Equal(*timeout)))
-		}
-		if zone != nil {
-			Expect(ng.Zones).To(PointTo(ContainElement(Equal(fmt.Sprintf("%d", *zone)))))
-		}
-
-		return ng.ID
-	}
+	Expect(rt.Properties.Routes).To(BeEmpty())
 
 	ngBaseName := infra.Namespace + "-nat-gateway"
 	subnetBaseName := infra.Namespace + "-nodes"
 	if !hasDedicatedSubnets(config) {
 		nat := config.Networks.NatGateway
-
 		var natID *string
 		if nat != nil && nat.Enabled {
 			ngName := indexedName(ngBaseName, 0)
@@ -1084,14 +1063,26 @@ func verifyCreation(
 					ResourceGroup: status.ResourceGroup.Name,
 				}}
 			}
-
-			natID = verifyNAT(nat.Zone, nat.IdleConnectionTimeoutMinutes, ngName, ipNames)
+			ng = verifyNAT(az, nat.Zone, nat.IdleConnectionTimeoutMinutes, ngName, ipNames, status)
+			natID = ng.ID
 		}
-		verifySubnet(*config.Networks.Workers, config.Networks.ServiceEndpoints, natID, subnetBaseName)
+		verifySubnet(
+			az,
+			vnet,
+			config.Networks.ServiceEndpoints,
+			natID,
+			*config.Networks.Workers,
+			*rt.ID,
+			*secgroup.ID,
+			subnetBaseName,
+			vnetResourceGroupName,
+			status.Networks.VNet.Name,
+		)
+		result.subnets = append(result.subnets, subnetBaseName)
+
 	} else {
 		for _, zone := range config.Networks.Zones {
 			By(fmt.Sprintf("verifying for %d", zone.Name))
-
 			nat := zone.NatGateway
 
 			var natID *string
@@ -1113,41 +1104,119 @@ func verifyCreation(
 					}}
 				}
 
-				natID = verifyNAT(&zone.Name, nat.IdleConnectionTimeoutMinutes, ngName, ipNames)
+				ng = verifyNAT(az, &zone.Name, nat.IdleConnectionTimeoutMinutes, ngName, ipNames, status)
+				natID = ng.ID
 			}
 			subnetName := indexedName(subnetBaseName, zone.Name)
-			verifySubnet(zone.CIDR, zone.ServiceEndpoints, natID, subnetName)
+			verifySubnet(
+				az,
+				vnet,
+				zone.ServiceEndpoints,
+				natID,
+				zone.CIDR,
+				*rt.ID,
+				*secgroup.ID,
+				subnetName,
+				vnetResourceGroupName,
+				status.Networks.VNet.Name,
+			)
+			result.subnets = append(result.subnets, subnetName)
 		}
 	}
 
 	// availabilitySets
 	if len(status.AvailabilitySets) != 0 {
 		for _, avset := range status.AvailabilitySets {
-			as, err := az.availabilitySets.Get(ctx, status.ResourceGroup.Name, avset.Name)
+			as, err := az.availabilitySets.Get(ctx, status.ResourceGroup.Name, avset.Name, nil)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(as.Location).To(PointTo(Equal(*region)))
-			Expect(as.PlatformFaultDomainCount).To(PointTo(Equal(int32(CountDomain))))
-			Expect(as.PlatformUpdateDomainCount).To(PointTo(Equal(int32(CountDomain))))
+			Expect(as.Properties.PlatformFaultDomainCount).To(PointTo(Equal(int32(CountDomain))))
+			Expect(as.Properties.PlatformUpdateDomainCount).To(PointTo(Equal(int32(CountDomain))))
 		}
 	}
 
 	// identity
 	if config.Identity != nil {
-		id, err := az.msi.Get(ctx, config.Identity.ResourceGroup, config.Identity.Name)
+		id, err := az.msi.Get(ctx, config.Identity.ResourceGroup, config.Identity.Name, nil)
 		Expect(err).ToNot(HaveOccurred())
 
 		Expect(id.Name).To(PointTo(Equal(config.Identity.Name)))
 		Expect(status.Identity).ToNot(BeNil())
-		Expect(id.ClientID).ToNot(BeNil())
-		Expect(status.Identity.ClientID).To(Equal(id.ClientID.String()))
+		Expect(id.Properties.ClientID).ToNot(BeNil())
+		Expect(status.Identity.ClientID).To(Equal(*(id.Properties.ClientID)))
 		Expect(id.ID).ToNot(BeNil())
 		// This is a case-insensitive check to determine if the resouce IDs match. In some cases Azure would respond with
 		// different cases in certain parts of the ID string (e.g. resourceGroups vs resourcegroups). IDs in Azure however seem to not take
 		// case into account, hence we can safely check with EqualFold.
 		Expect(strings.EqualFold(status.Identity.ID, *id.ID)).To(BeTrue())
 	}
-
+	Expect(result.resourceGroup).ToNot(BeEmpty())
 	return result
+}
+
+func verifySubnet(
+	az *azureClientSet,
+	vnet armnetwork.VirtualNetwork,
+	serviceEndpoints []string,
+	natGatewayId *string,
+	cidr,
+	routeTableId,
+	securityGroupId,
+	subnetName,
+	resourceGroupName,
+	vnetName string,
+) {
+	var subnetNames []string
+	for _, subnet := range vnet.Properties.Subnets {
+		subnetNames = append(subnetNames, *subnet.Name)
+	}
+	Expect(subnetNames).To(ContainElement(subnetName))
+
+	// subnets
+	response, err := az.subnets.Get(ctx, resourceGroupName, vnetName, subnetName, nil)
+	Expect(err).ToNot(HaveOccurred())
+	subnet := response.Subnet
+	Expect(subnet.Properties.AddressPrefix).To(PointTo(Equal(cidr)))
+	Expect(subnet.Properties.RouteTable.ID).To(PointTo(Equal(routeTableId)))
+	Expect(subnet.Properties.NetworkSecurityGroup.ID).To(PointTo(Equal(securityGroupId)))
+	Expect(subnet.Properties.ServiceEndpoints).To(HaveLen(len(serviceEndpoints)))
+	for _, se := range subnet.Properties.ServiceEndpoints {
+		Expect(serviceEndpoints).To(ContainElement(*se.Service))
+	}
+	if natGatewayId != nil {
+		Expect(subnet.Properties.NatGateway).To(HaveEqualID(*natGatewayId))
+	}
+}
+
+func verifyNAT(az *azureClientSet, zone, timeout *int32, ngName string, ipNames []pubIpRef, status *azurev1alpha1.InfrastructureStatus) armnetwork.NatGateway {
+	response, err := az.nat.Get(ctx, status.ResourceGroup.Name, ngName, nil)
+	Expect(err).ToNot(HaveOccurred())
+
+	natGateway := response.NatGateway
+	Expect(natGateway.Location).To(PointTo(Equal(*region)))
+	Expect(*natGateway.SKU.Name).To(Equal(armnetwork.NatGatewaySKUNameStandard))
+
+	// public IP
+	for _, ipName := range ipNames {
+		pip, err := az.pubIp.Get(ctx, ipName.ResourceGroup, ipName.Name, nil)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(pip.Location).To(PointTo(Equal(*region)))
+		Expect(pip.Properties.PublicIPAllocationMethod).To(PointTo(Equal(armnetwork.IPAllocationMethodStatic)))
+		Expect(pip.SKU.Name).To(PointTo(Equal(armnetwork.PublicIPAddressSKUNameStandard)))
+		Expect(pip.Properties.PublicIPAddressVersion).To(PointTo(Equal(armnetwork.IPVersionIPv4)))
+		Expect(natGateway.Properties.PublicIPAddresses).To(ContainElement(HaveEqualID(*pip.ID)))
+	}
+	if timeout != nil {
+		Expect(natGateway.Properties.IdleTimeoutInMinutes).To(PointTo(Equal(*timeout)))
+	}
+	if zone != nil {
+		var zones []string
+		for _, zone := range natGateway.Zones {
+			zones = append(zones, *zone)
+		}
+		Expect(zones).To(ContainElement(Equal(fmt.Sprintf("%d", *zone))))
+	}
+	return natGateway
 }
 
 func verifyDeletion(
@@ -1155,13 +1224,14 @@ func verifyDeletion(
 	az *azureClientSet,
 	identifier azureIdentifier,
 ) {
-	_, err := az.groups.Get(ctx, identifier.resourceGroup)
+	Expect(identifier.resourceGroup).ToNot(BeEmpty())
+	_, err := az.groups.Get(ctx, identifier.resourceGroup, nil)
 	Expect(err).To(HaveOccurred())
 	Expect(err).To(BeNotFoundError())
 
 	if identifier.vnetResourceGroup != nil && identifier.vnet != nil {
 		for _, subnet := range identifier.subnets {
-			_, err := az.subnets.Get(ctx, *identifier.vnetResourceGroup, *identifier.vnet, subnet, "")
+			_, err := az.subnets.Get(ctx, *identifier.vnetResourceGroup, *identifier.vnet, subnet, nil)
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(BeNotFoundError())
 		}

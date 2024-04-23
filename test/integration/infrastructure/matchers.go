@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"reflect"
 
-	"github.com/Azure/go-autorest/autorest"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/onsi/gomega/format"
 	"github.com/onsi/gomega/types"
 )
@@ -33,18 +33,18 @@ func (a *azureNotFoundErrorMatcher) Match(actual interface{}) (success bool, err
 	return false, nil
 }
 
-// IsNotFound returns true if the given error is a autorest.DetailedError with status code http.StatusNotFound.
+// IsNotFound returns true if the given error is an azcore.ResponseError with status code http.StatusNotFound.
 func IsNotFound(err error) bool {
 	if err == nil {
 		return false
 	}
 
-	actual, ok := err.(autorest.DetailedError)
+	actual, ok := err.(*azcore.ResponseError)
 	if !ok {
 		return false
 	}
 
-	if code, ok := actual.StatusCode.(int); !ok || code != http.StatusNotFound {
+	if actual.StatusCode != http.StatusNotFound {
 		return false
 	}
 
