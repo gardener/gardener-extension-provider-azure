@@ -7,7 +7,7 @@ package bastion
 import (
 	"net/http"
 
-	"github.com/Azure/go-autorest/autorest"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 )
 
 // IsNotFound ignore Azure Not Found Error
@@ -16,12 +16,12 @@ func IsNotFound(err error) bool {
 		return false
 	}
 
-	actual, ok := err.(autorest.DetailedError)
+	actual, ok := err.(*azcore.ResponseError)
 	if !ok {
 		return false
 	}
 
-	if code, ok := actual.StatusCode.(int); !ok || code != http.StatusNotFound {
+	if actual.StatusCode != http.StatusNotFound {
 		return false
 	}
 

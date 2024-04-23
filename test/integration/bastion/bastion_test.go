@@ -16,9 +16,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2021-03-01/compute"
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2020-05-01/network"
-	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/adal"
 	azureRest "github.com/Azure/go-autorest/autorest/azure"
@@ -86,32 +87,55 @@ func validateFlags() {
 }
 
 type azureClientSet struct {
-	groups         resources.GroupsClient
-	vm             compute.VirtualMachinesClient
-	vnet           network.VirtualNetworksClient
-	disk           compute.DisksClient
-	interfaces     network.InterfacesClient
-	securityGroups network.SecurityGroupsClient
-	pubIp          network.PublicIPAddressesClient
+	groups         *armresources.ResourceGroupsClient
+	vm             *armcompute.VirtualMachinesClient
+	vnet           *armnetwork.VirtualNetworksClient
+	disk           *armcompute.DisksClient
+	interfaces     *armnetwork.InterfacesClient
+	securityGroups *armnetwork.SecurityGroupsClient
+	pubIp          *armnetwork.PublicIPAddressesClient
 }
 
-func newAzureClientSet(subscriptionId string, authorizer autorest.Authorizer) *azureClientSet {
-	groupsClient := resources.NewGroupsClient(subscriptionId)
-	groupsClient.Authorizer = authorizer
-	vmClient := compute.NewVirtualMachinesClient(subscriptionId)
-	vmClient.Authorizer = authorizer
-	vnetClient := network.NewVirtualNetworksClient(subscriptionId)
-	vnetClient.Authorizer = authorizer
-	interfacesClient := network.NewInterfacesClient(subscriptionId)
-	interfacesClient.Authorizer = authorizer
-	securityGroupsClient := network.NewSecurityGroupsClient(subscriptionId)
-	securityGroupsClient.Authorizer = authorizer
-	pubIpClient := network.NewPublicIPAddressesClient(subscriptionId)
-	pubIpClient.Authorizer = authorizer
-	securityRulesClient := network.NewSecurityRulesClient(subscriptionId)
-	securityRulesClient.Authorizer = authorizer
-	diskClient := compute.NewDisksClient(subscriptionId)
-	diskClient.Authorizer = authorizer
+func newAzureClientSet(subscriptionId, tenantId, clientId, clientSecret string) (*azureClientSet, error) {
+	credential, err := azidentity.NewClientSecretCredential(tenantId, clientId, clientSecret, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	groupsClient, err := armresources.NewResourceGroupsClient(subscriptionId, credential, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	vmClient, err := armcompute.NewVirtualMachinesClient(subscriptionId, credential, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	vnetClient, err := armnetwork.NewVirtualNetworksClient(subscriptionId, credential, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	interfacesClient, err := armnetwork.NewInterfacesClient(subscriptionId, credential, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	securityGroupsClient, err := armnetwork.NewSecurityGroupsClient(subscriptionId, credential, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	pubIpClient, err := armnetwork.NewPublicIPAddressesClient(subscriptionId, credential, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	diskClient, err := armcompute.NewDisksClient(subscriptionId, credential, nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return &azureClientSet{
 		groups:         groupsClient,
@@ -121,7 +145,7 @@ func newAzureClientSet(subscriptionId string, authorizer autorest.Authorizer) *a
 		interfaces:     interfacesClient,
 		securityGroups: securityGroupsClient,
 		pubIp:          pubIpClient,
-	}
+	}, nil
 }
 
 func getAuthorizer(tenantId, clientId, clientSecret string) (autorest.Authorizer, error) {
@@ -217,9 +241,8 @@ var _ = BeforeSuite(func() {
 	c = mgr.GetClient()
 	Expect(c).ToNot(BeNil())
 
-	authorizer, err := getAuthorizer(*tenantId, *clientId, *clientSecret)
+	clientSet, err = newAzureClientSet(*subscriptionId, *tenantId, *clientId, *clientSecret)
 	Expect(err).ToNot(HaveOccurred())
-	clientSet = newAzureClientSet(*subscriptionId, authorizer)
 
 	extensionscluster, controllercluster = createClusters(name)
 	bastion, options = createBastion(controllercluster, name)
@@ -391,38 +414,38 @@ func verifyPort42IsClosed(ctx context.Context, c client.Client, bastion *extensi
 
 func prepareNewResourceGroup(ctx context.Context, log logr.Logger, az *azureClientSet, groupName, location string) error {
 	log.Info("generating new ResourceGroups", "groupName", groupName)
-	_, err := az.groups.CreateOrUpdate(ctx, groupName, resources.Group{
+	_, err := az.groups.CreateOrUpdate(ctx, groupName, armresources.ResourceGroup{
 		Location: to.StringPtr(location),
-	})
+	}, nil)
 	return err
 }
 
-func prepareSecurityGroup(ctx context.Context, log logr.Logger, resourceGroupName string, securityGroupName string, az *azureClientSet, location string) (network.SecurityGroup, error) {
+func prepareSecurityGroup(ctx context.Context, log logr.Logger, resourceGroupName string, securityGroupName string, az *azureClientSet, location string) (armnetwork.SecurityGroup, error) {
 	log.Info("generating new SecurityGroups", "securityGroupName", securityGroupName)
-	future, err := az.securityGroups.CreateOrUpdate(ctx, resourceGroupName, securityGroupName, network.SecurityGroup{
+	poller, err := az.securityGroups.BeginCreateOrUpdate(ctx, resourceGroupName, securityGroupName, armnetwork.SecurityGroup{
 		Location: to.StringPtr(location),
-	})
+	}, nil)
 	Expect(err).ShouldNot(HaveOccurred())
 
-	err = future.WaitForCompletionRef(ctx, az.securityGroups.Client)
+	result, err := poller.PollUntilDone(ctx, nil)
 	Expect(err).ShouldNot(HaveOccurred())
 
-	return future.Result(az.securityGroups)
+	return result.SecurityGroup, nil
 }
 
-func prepareNewVNet(ctx context.Context, log logr.Logger, az *azureClientSet, resourceGroupName, vNetName, subnetName, location, cidr string, nsg network.SecurityGroup) error {
+func prepareNewVNet(ctx context.Context, log logr.Logger, az *azureClientSet, resourceGroupName, vNetName, subnetName, location, cidr string, nsg armnetwork.SecurityGroup) error {
 	log.Info("generating new resource Group/VNet/subnetName", "resourceGroupName", resourceGroupName, " vNetName", vNetName, "subnetName", subnetName)
-	vNetFuture, err := az.vnet.CreateOrUpdate(ctx, resourceGroupName, vNetName, network.VirtualNetwork{
-		VirtualNetworkPropertiesFormat: &network.VirtualNetworkPropertiesFormat{
-			AddressSpace: &network.AddressSpace{
-				AddressPrefixes: &[]string{
-					cidr,
+	poller, err := az.vnet.BeginCreateOrUpdate(ctx, resourceGroupName, vNetName, armnetwork.VirtualNetwork{
+		Properties: &armnetwork.VirtualNetworkPropertiesFormat{
+			AddressSpace: &armnetwork.AddressSpace{
+				AddressPrefixes: []*string{
+					ptr.To(cidr),
 				},
 			},
-			Subnets: &[]network.Subnet{
+			Subnets: []*armnetwork.Subnet{
 				{
 					Name: to.StringPtr(subnetName),
-					SubnetPropertiesFormat: &network.SubnetPropertiesFormat{
+					Properties: &armnetwork.SubnetPropertiesFormat{
 						AddressPrefix:        to.StringPtr(cidr),
 						NetworkSecurityGroup: &nsg,
 					},
@@ -431,31 +454,24 @@ func prepareNewVNet(ctx context.Context, log logr.Logger, az *azureClientSet, re
 		},
 		Name:     to.StringPtr(vNetName),
 		Location: to.StringPtr(location),
-	})
+	}, nil)
 
-	if err != nil {
-		return err
-	}
-
-	err = vNetFuture.WaitForCompletionRef(ctx, az.vnet.Client)
 	Expect(err).ShouldNot(HaveOccurred())
 
-	_, err = vNetFuture.Result(az.vnet)
-	return err
+	_, err = poller.PollUntilDone(ctx, nil)
+	Expect(err).ShouldNot(HaveOccurred())
+
+	return nil
 }
 
 func teardownResourceGroup(ctx context.Context, az *azureClientSet, groupName string) error {
-	future, err := az.groups.Delete(ctx, groupName)
-	if err != nil {
-		return err
-	}
+	poller, err := az.groups.BeginDelete(ctx, groupName, nil)
+	Expect(err).ShouldNot(HaveOccurred())
 
-	if err := future.WaitForCompletionRef(ctx, az.groups.Client); err != nil {
-		return err
-	}
+	_, err = poller.PollUntilDone(ctx, nil)
+	Expect(err).ShouldNot(HaveOccurred())
 
-	_, err = future.Result(az.groups)
-	return err
+	return nil
 }
 
 func ignoreAzureNotFoundError(err error) error {
@@ -647,11 +663,11 @@ func teardownBastion(ctx context.Context, log logr.Logger, c client.Client, bast
 
 func verifyDeletion(ctx context.Context, az *azureClientSet, options *bastionctrl.Options) {
 	// bastion public ip should be gone
-	_, err := az.pubIp.Get(ctx, options.ResourceGroupName, options.BastionPublicIPName, "")
+	_, err := az.pubIp.Get(ctx, options.ResourceGroupName, options.BastionPublicIPName, nil)
 	Expect(ignoreAzureNotFoundError(err)).To(Succeed())
 
 	// bastion network interface should be gone
-	_, err = az.interfaces.Get(ctx, options.ResourceGroupName, options.NicName, "")
+	_, err = az.interfaces.Get(ctx, options.ResourceGroupName, options.NicName, nil)
 	Expect(ignoreAzureNotFoundError(err)).To(Succeed())
 
 	// bastion network security group rules should be gone
@@ -661,34 +677,34 @@ func verifyDeletion(ctx context.Context, az *azureClientSet, options *bastionctr
 	checkSecurityRuleDoesNotExist(ctx, az, options, bastionctrl.NSGEgressAllowOnlyResourceName(options.BastionInstanceName))
 
 	// bastion instance should be terminated and not found
-	_, err = az.vm.Get(ctx, options.ResourceGroupName, options.BastionInstanceName, "")
+	_, err = az.vm.Get(ctx, options.ResourceGroupName, options.BastionInstanceName, nil)
 	Expect(ignoreAzureNotFoundError(err)).To(Succeed())
 
 	// bastion instance disk should be terminated and not found
-	_, err = az.disk.Get(ctx, options.ResourceGroupName, options.DiskName)
+	_, err = az.disk.Get(ctx, options.ResourceGroupName, options.DiskName, nil)
 	Expect(ignoreAzureNotFoundError(err)).To(Succeed())
 }
 
 func checkSecurityRuleDoesNotExist(ctx context.Context, az *azureClientSet, options *bastionctrl.Options, securityRuleName string) {
 	// does not have authorization to performsecurityRules get due to global rule. use security group to check it.
-	sg, err := az.securityGroups.Get(ctx, options.ResourceGroupName, securityRuleName, "")
+	sg, err := az.securityGroups.Get(ctx, options.ResourceGroupName, securityRuleName, nil)
 	if IsNotFound(err) {
 		return
 	}
 
 	Expect(ignoreAzureNotFoundError(err)).To(Succeed())
-	if sg.SecurityGroupPropertiesFormat != nil && sg.SecurityGroupPropertiesFormat.SecurityRules != nil {
-		Expect(len(*sg.SecurityGroupPropertiesFormat.SecurityRules)).To(Equal(0))
+	if sg.Properties != nil && sg.Properties.SecurityRules != nil {
+		Expect(len(sg.Properties.SecurityRules)).To(Equal(0))
 	}
 }
 
 // ruleExist is similar to bastionctrl.RuleExist but for the old network client
-func ruleExist(ruleName *string, rules *[]network.SecurityRule) bool {
+func ruleExist(ruleName *string, rules []*armnetwork.SecurityRule) bool {
 	if ruleName == nil {
 		return false
 	}
 
-	for _, rule := range *rules {
+	for _, rule := range rules {
 		if rule.Name != nil && *rule.Name == *ruleName {
 			return true
 		}
@@ -699,40 +715,43 @@ func ruleExist(ruleName *string, rules *[]network.SecurityRule) bool {
 func verifyCreation(ctx context.Context, az *azureClientSet, options *bastionctrl.Options) {
 	By("RuleExist")
 	// does not have authorization to performsecurityRules get due to global rule. use security group to check it.
-	sg, err := az.securityGroups.Get(ctx, options.ResourceGroupName, options.SecurityGroupName, "")
+	sg, err := az.securityGroups.Get(ctx, options.ResourceGroupName, options.SecurityGroupName, nil)
 	Expect(err).NotTo(HaveOccurred())
 
 	// bastion NSG - Check Ingress / Egress firewalls created
-	ruleExist(ptr.To(bastionctrl.NSGIngressAllowSSHResourceNameIPv4(options.BastionInstanceName)), sg.SecurityRules)
-	ruleExist(ptr.To(bastionctrl.NSGEgressDenyAllResourceName(options.BastionInstanceName)), sg.SecurityRules)
-	ruleExist(ptr.To(bastionctrl.NSGEgressAllowOnlyResourceName(options.BastionInstanceName)), sg.SecurityRules)
+	ruleExist(ptr.To(bastionctrl.NSGIngressAllowSSHResourceNameIPv4(options.BastionInstanceName)), sg.Properties.SecurityRules)
+	ruleExist(ptr.To(bastionctrl.NSGEgressDenyAllResourceName(options.BastionInstanceName)), sg.Properties.SecurityRules)
+	ruleExist(ptr.To(bastionctrl.NSGEgressAllowOnlyResourceName(options.BastionInstanceName)), sg.Properties.SecurityRules)
 
 	By("checking bastion instance")
 	// bastion instance
-	vm, err := az.vm.Get(ctx, options.ResourceGroupName, options.BastionInstanceName, compute.InstanceViewTypesUserData)
+	// compute.InstanceViewTypesUserData
+	vm, err := az.vm.Get(ctx, options.ResourceGroupName, options.BastionInstanceName, &armcompute.VirtualMachinesClientGetOptions{
+		Expand: ptr.To(armcompute.InstanceViewTypesUserData),
+	})
 	Expect(err).NotTo(HaveOccurred())
 	Expect(*vm.Name).To(Equal(options.BastionInstanceName))
 
 	By("checking bastion ingress IpConfigs exist")
 	// bastion ingress IpConfigs exist
-	nic, err := az.interfaces.Get(ctx, options.ResourceGroupName, options.NicName, "")
+	nic, err := az.interfaces.Get(ctx, options.ResourceGroupName, options.NicName, nil)
 	Expect(err).NotTo(HaveOccurred())
-	internalIP := *(*(*nic.InterfacePropertiesFormat).IPConfigurations)[0].PrivateIPAddress
+	internalIP := *(nic.Properties.IPConfigurations[0]).Properties.PrivateIPAddress
 
-	publicIp, err := az.pubIp.Get(ctx, options.ResourceGroupName, options.BastionPublicIPName, "")
+	publicIp, err := az.pubIp.Get(ctx, options.ResourceGroupName, options.BastionPublicIPName, nil)
 	Expect(err).NotTo(HaveOccurred())
-	externalIP := *publicIp.IPAddress
+	externalIP := publicIp.PublicIPAddress
 
 	Expect(internalIP).NotTo(BeNil())
 	Expect(externalIP).NotTo(BeNil())
 
 	By("checking bastion disks exists")
 	// bastion Disk exists
-	disk, err := az.disk.Get(ctx, options.ResourceGroupName, options.DiskName)
+	disk, err := az.disk.Get(ctx, options.ResourceGroupName, options.DiskName, nil)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(*disk.Name).To(Equal(bastionctrl.DiskResourceName(options.BastionInstanceName)))
 
 	By("checking userData matches the constant")
 	// userdata ssh-public-key validation
-	Expect(*vm.UserData).To(Equal(base64.StdEncoding.EncodeToString([]byte(userDataConst))))
+	Expect(*vm.Properties.UserData).To(Equal(base64.StdEncoding.EncodeToString([]byte(userDataConst))))
 }

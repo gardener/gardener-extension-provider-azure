@@ -12,8 +12,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
-	azuredns "github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-05-01/dns"
-	azurestorage "github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-04-01/storage"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -76,47 +74,17 @@ func NewAzureClientFactory(authCredentials *internal.ClientAuth, options ...Azur
 
 // StorageAccount returns an Azure storage account client.
 func (f azureFactory) StorageAccount() (StorageAccount, error) {
-	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(f.auth)
-	if err != nil {
-		return nil, err
-	}
-	endpointUrl := f.clientOpts.Cloud.Services[cloud.ResourceManager].Endpoint
-	storageAccountClient := azurestorage.NewAccountsClientWithBaseURI(endpointUrl, subscriptionID)
-	storageAccountClient.Authorizer = authorizer
-
-	return &StorageAccountClient{
-		client: storageAccountClient,
-	}, nil
+	return NewStorageAccountClient(f.auth, f.tokenCredential, f.clientOpts)
 }
 
 // DNSZone returns an Azure DNS zone client.
 func (f azureFactory) DNSZone() (DNSZone, error) {
-	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(f.auth)
-	if err != nil {
-		return nil, err
-	}
-	endpointUrl := f.clientOpts.Cloud.Services[cloud.ResourceManager].Endpoint
-	zonesClient := azuredns.NewZonesClientWithBaseURI(endpointUrl, subscriptionID)
-	zonesClient.Authorizer = authorizer
-
-	return &DNSZoneClient{
-		client: zonesClient,
-	}, nil
+	return NewDnsZoneClient(f.auth, f.tokenCredential, f.clientOpts)
 }
 
 // DNSRecordSet returns an Azure DNS record set client.
 func (f azureFactory) DNSRecordSet() (DNSRecordSet, error) {
-	authorizer, subscriptionID, err := internal.GetAuthorizerAndSubscriptionID(f.auth)
-	if err != nil {
-		return nil, err
-	}
-	endpointUrl := f.clientOpts.Cloud.Services[cloud.ResourceManager].Endpoint
-	recordSetsClient := azuredns.NewRecordSetsClientWithBaseURI(endpointUrl, subscriptionID)
-	recordSetsClient.Authorizer = authorizer
-
-	return &DNSRecordSetClient{
-		client: recordSetsClient,
-	}, nil
+	return NewDnsRecordSetClient(f.auth, f.tokenCredential, f.clientOpts)
 }
 
 // Group returns an Azure resource group client.
@@ -181,12 +149,12 @@ func (f azureFactory) AvailabilitySet() (AvailabilitySet, error) {
 
 // ManagedUserIdentity returns a ManagedUserIdentity client.
 func (f azureFactory) ManagedUserIdentity() (ManagedUserIdentity, error) {
-	return NewManagedUserIdentityClient(*f.auth, f.clientOpts)
+	return NewManagedUserIdentityClient(f.auth, f.tokenCredential, f.clientOpts)
 }
 
 // VirtualMachineImages returns a VirtualMachineImages client.
 func (f azureFactory) VirtualMachineImages() (VirtualMachineImages, error) {
-	return NewVirtualMachineImagesClient(*f.auth, f.clientOpts)
+	return NewVirtualMachineImagesClient(f.auth, f.tokenCredential, f.clientOpts)
 }
 
 // NewBlobStorageClient reads the secret from the passed reference and return an Azure (blob) storage client.

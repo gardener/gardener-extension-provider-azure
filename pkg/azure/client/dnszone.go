@@ -10,8 +10,11 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-05-01/dns"
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/dns/armdns"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
 var _ DNSZone = &DNSZoneClient{}
@@ -19,26 +22,32 @@ var resourceGroupRegex = regexp.MustCompile("/resourceGroups/([^/]+)/")
 
 // DNSZoneClient is an implementation of DNSZone for a DNS zone k8sClient.
 type DNSZoneClient struct {
-	client dns.ZonesClient
+	client *armdns.ZonesClient
+}
+
+// NewDnsZoneClient creates a new DnsZoneClient
+func NewDnsZoneClient(auth *internal.ClientAuth, tc azcore.TokenCredential, opts *policy.ClientOptions) (*DNSZoneClient, error) {
+	client, err := armdns.NewZonesClient(auth.SubscriptionID, tc, opts)
+	return &DNSZoneClient{client}, err
 }
 
 // List returns a map of all zone names mapped to their IDs.
 func (c *DNSZoneClient) List(ctx context.Context) (map[string]string, error) {
 	zones := make(map[string]string)
 
-	results, err := c.client.ListComplete(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	for results.NotDone() {
-		zone := results.Value()
-		resourceGroupName, err := getResourceGroupName(to.String(zone.ID))
+	results := c.client.NewListPager(nil)
+	for results.More() {
+		nextResult, err := results.NextPage(ctx)
 		if err != nil {
 			return nil, err
 		}
-		zones[to.String(zone.Name)] = zoneID(resourceGroupName, to.String(zone.Name))
-		if err := results.NextWithContext(ctx); err != nil {
-			return nil, err
+		for _, zone := range nextResult.Value {
+			resourceGroupName, err := getResourceGroupName(*zone.ID)
+			if err != nil {
+				return nil, err
+			}
+			zoneName := *zone.Name
+			zones[zoneName] = zoneID(resourceGroupName, zoneName)
 		}
 	}
 
