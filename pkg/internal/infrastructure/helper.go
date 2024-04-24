@@ -115,6 +115,7 @@ func DeleteNodeSubnetIfExists(ctx context.Context, factory azureclient.Factory, 
 
 // DeleteShootResourceGroupIfExists will delete the shoot's resource group if it exists.
 func DeleteShootResourceGroupIfExists(ctx context.Context, factory azureclient.Factory, infra *extensionsv1alpha1.Infrastructure, cfg *api.InfrastructureConfig, status *api.InfrastructureStatus) error {
+	// skip if using user resource group.
 	if cfg.ResourceGroup != nil {
 		return nil
 	}
@@ -124,10 +125,18 @@ func DeleteShootResourceGroupIfExists(ctx context.Context, factory azureclient.F
 		return err
 	}
 
-	name := infra.Namespace
-	if status != nil && len(status.ResourceGroup.Name) > 0 {
-		name = status.ResourceGroup.Name
+	return groupClient.Delete(ctx, ShootResourceGroupName(infra, cfg, status))
+}
+
+// ShootResourceGroupName returns the expected name of the resource group.
+func ShootResourceGroupName(infra *extensionsv1alpha1.Infrastructure, cfg *api.InfrastructureConfig, status *api.InfrastructureStatus) string {
+	if cfg.ResourceGroup != nil {
+		return cfg.ResourceGroup.Name
 	}
 
-	return groupClient.Delete(ctx, name)
+	if status != nil && len(status.ResourceGroup.Name) > 0 {
+		return status.ResourceGroup.Name
+	}
+
+	return infra.Namespace
 }
