@@ -150,6 +150,13 @@ func (r *TerraformReconciler) Delete(ctx context.Context, infra *extensionsv1alp
 	if err != nil {
 		return err
 	}
+	status := &azure.InfrastructureStatus{}
+	if infra.Status.ProviderStatus != nil {
+		status, err = helper.InfrastructureStatusFromRaw(infra.Status.ProviderStatus)
+		if err != nil {
+			return err
+		}
+	}
 
 	resourceGroupExists, err := infrastructure.IsShootResourceGroupAvailable(ctx, azureClientFactory, infra, cfg)
 	if err != nil {
@@ -195,7 +202,7 @@ func (r *TerraformReconciler) Delete(ctx context.Context, infra *extensionsv1alp
 	}
 
 	// make sure the resource group for the shoot is properly cleaned up even if it is missing from terraform state.
-	return infrastructure.DeleteShootResourceGroupIfExists(ctx, clientFactory, infra, cfg)
+	return infrastructure.DeleteShootResourceGroupIfExists(ctx, clientFactory, infra, cfg, status)
 }
 
 // NoOpStateInitializer is a no-op StateConfigMapInitializerFunc.
