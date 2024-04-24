@@ -15,6 +15,7 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
@@ -141,7 +142,7 @@ func (r *TerraformReconciler) Delete(ctx context.Context, infra *extensionsv1alp
 		return err
 	}
 
-	azureClientFactory, err := NewAzureClientFactory(ctx, r.Client, infra.Spec.SecretRef)
+	clientFactory, err := NewAzureClientFactory(ctx, r.Client, infra.Spec.SecretRef)
 	if err != nil {
 		return err
 	}
@@ -158,7 +159,7 @@ func (r *TerraformReconciler) Delete(ctx context.Context, infra *extensionsv1alp
 		}
 	}
 
-	resourceGroupExists, err := infrastructure.IsShootResourceGroupAvailable(ctx, azureClientFactory, infra, cfg)
+	resourceGroupExists, err := infrastructure.IsShootResourceGroupAvailable(ctx, clientFactory, infra, cfg)
 	if err != nil {
 		if azureclient.IsAzureAPIUnauthorized(err) {
 			r.Logger.Error(err, "Failed to check resource group availability due to invalid credentials")
@@ -169,7 +170,7 @@ func (r *TerraformReconciler) Delete(ctx context.Context, infra *extensionsv1alp
 
 	if !resourceGroupExists {
 		if !azureclient.IsAzureAPIUnauthorized(err) {
-			if err := infrastructure.DeleteNodeSubnetIfExists(ctx, azureClientFactory, infra, cfg); err != nil {
+			if err := infrastructure.DeleteNodeSubnetIfExists(ctx, clientFactory, infra, cfg); err != nil {
 				return err
 			}
 		}
