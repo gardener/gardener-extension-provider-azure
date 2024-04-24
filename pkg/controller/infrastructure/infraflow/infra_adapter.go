@@ -26,6 +26,7 @@ import (
 type InfrastructureAdapter struct {
 	infra          *extensionsv1alpha1.Infrastructure
 	config         *azure.InfrastructureConfig
+	status         *azure.InfrastructureStatus
 	profile        *azure.CloudProfileConfig
 	cluster        *extensionscontroller.Cluster
 	subscriptionID string
@@ -40,6 +41,7 @@ type InfrastructureAdapter struct {
 func NewInfrastructureAdapter(
 	infra *extensionsv1alpha1.Infrastructure,
 	config *azure.InfrastructureConfig,
+	status *azure.InfrastructureStatus,
 	profile *azure.CloudProfileConfig,
 	cluster *extensionscontroller.Cluster,
 ) (*InfrastructureAdapter, error) {
@@ -62,7 +64,7 @@ func NewInfrastructureAdapter(
 
 // TechnicalName the cluster's "base" name. Used as a name or as a prefix by other resources.
 func (ia *InfrastructureAdapter) TechnicalName() string {
-	return ia.infra.Namespace
+	return infrastructure.ShootResourceGroupName(ia.infra, ia.config, ia.status)
 }
 
 // ResourceGroupConfig contains the configuration for a resource group.

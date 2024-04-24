@@ -92,6 +92,11 @@ func (f azureFactory) Group() (ResourceGroup, error) {
 	return NewResourceGroupsClient(f.auth, f.tokenCredential, f.clientOpts)
 }
 
+// Resource returns an Azure resource client.
+func (f azureFactory) Resource() (Resource, error) {
+	return NewResourceClient(f.auth, f.tokenCredential, f.clientOpts)
+}
+
 // Vmss returns an Azure virtual machine scale set client.
 func (f azureFactory) Vmss() (Vmss, error) {
 	return NewVmssClient(*f.auth, f.tokenCredential, f.clientOpts)

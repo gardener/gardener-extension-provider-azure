@@ -8,6 +8,8 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
 	"github.com/gardener/gardener/extensions/pkg/util"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	errorutil "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -85,6 +87,10 @@ func (r *TerraformReconciler) reconcile(ctx context.Context, infra *extensionsv1
 		return err
 	}
 
+	if err := r.cleanResourceGroupIfNeeded(ctx, infra, cluster, cfg); err != nil {
+		return err
+	}
+
 	tf, err := internal.NewTerraformerWithAuth(r.Logger, r.RestConfig, infrastructure.TerraformerPurpose, infra, r.disableProjectedTokenMount)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
@@ -145,28 +151,7 @@ func (r *TerraformReconciler) Delete(ctx context.Context, infra *extensionsv1alp
 		return err
 	}
 
-	cloudProfile, err := helper.CloudProfileConfigFromCluster(cluster)
-	if err != nil {
-		return err
-	}
-
-	var cloudConfiguration *azure.CloudConfiguration
-	if cloudProfile != nil {
-		cloudConfiguration = cloudProfile.CloudConfiguration
-	}
-
-	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(cloudConfiguration)
-	if err != nil {
-		return err
-	}
-
-	clientFactory, err := DefaultAzureClientFactoryFunc(
-		ctx,
-		r.Client,
-		infra.Spec.SecretRef,
-		false,
-		azureclient.WithCloudConfiguration(azCloudConfiguration),
-	)
+	clientFactory, err := r.getClientFactory(ctx, infra, cluster)
 	if err != nil {
 		return err
 	}
@@ -233,4 +218,82 @@ func (r *TerraformReconciler) Delete(ctx context.Context, infra *extensionsv1alp
 // NoOpStateInitializer is a no-op StateConfigMapInitializerFunc.
 func NoOpStateInitializer(_ context.Context, _ client.Client, _, _ string, _ *metav1.OwnerReference) error {
 	return nil
+}
+
+func (r *TerraformReconciler) getClientFactory(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) (azureclient.Factory, error) {
+	cloudProfile, err := helper.CloudProfileConfigFromCluster(cluster)
+	if err != nil {
+		return nil, err
+	}
+
+	var cloudConfiguration *azure.CloudConfiguration
+	if cloudProfile != nil {
+		cloudConfiguration = cloudProfile.CloudConfiguration
+	}
+
+	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(cloudConfiguration)
+	if err != nil {
+		return nil, err
+	}
+
+	return DefaultAzureClientFactoryFunc(
+		ctx,
+		r.Client,
+		infra.Spec.SecretRef,
+		false,
+		azureclient.WithCloudConfiguration(azCloudConfiguration),
+	)
+}
+
+func (r *TerraformReconciler) cleanResourceGroupIfNeeded(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster, cfg *azure.InfrastructureConfig) error {
+	var err error
+	// skip operations on user resource groups
+	if cfg.ResourceGroup != nil {
+		return nil
+	}
+	// skip operations if we are not creating the resource group for the first time.
+	if infra.Status.LastOperation.Type != gardencorev1beta1.LastOperationTypeCreate {
+		return nil
+	}
+
+	status := &azure.InfrastructureStatus{}
+	if infra.Status.ProviderStatus != nil {
+		status, err = helper.InfrastructureStatusFromRaw(infra.Status.ProviderStatus)
+		if err != nil {
+			return err
+		}
+	}
+	rgName := infrastructure.ShootResourceGroupName(infra, cfg, status)
+
+	clientFactory, err := r.getClientFactory(ctx, infra, cluster)
+	if err != nil {
+		return err
+	}
+
+	resourceGroupClient, err := clientFactory.Group()
+	if err != nil {
+		return err
+	}
+	if ok, err := resourceGroupClient.CheckExistence(ctx, rgName); err != nil {
+		return err
+	} else if !ok {
+		return nil
+	}
+
+	resourceClient, err := clientFactory.Resource()
+	if err != nil {
+		return err
+	}
+	res, err := resourceClient.ListByResourceGroup(ctx, rgName)
+	if client.IgnoreNotFound(err) != nil {
+		return err
+	} else if len(res) > 0 {
+		err := errorutil.NewErrorWithCodes(fmt.Errorf("non-empty resource group detected on operation of type Create"), gardencorev1beta1.ErrorInfraDependencies)
+		r.Logger.Error(err, "WARNING - user input may be required", "resourceGroup", rgName)
+		// returning preemptively with a non-retryable error.
+		return err
+	}
+
+	r.Logger.Info("empty resource group detected on operation of type Create. Attempting to delete resource group", "resourceGroup", rgName)
+	return resourceGroupClient.Delete(ctx, rgName)
 }
