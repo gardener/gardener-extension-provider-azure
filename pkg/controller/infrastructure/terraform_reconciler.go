@@ -212,10 +212,15 @@ func (r *TerraformReconciler) Delete(ctx context.Context, infra *extensionsv1alp
 		return err
 	}
 
-	return tf.
+	if err = tf.
 		InitializeWith(ctx, terraformer.DefaultInitializer(r.Client, terraformFiles.Main, terraformFiles.Variables, terraformFiles.TFVars, terraformer.StateConfigMapInitializerFunc(NoOpStateInitializer))).
 		SetEnvVars(internal.TerraformerEnvVars(infra.Spec.SecretRef)...).
-		Destroy(ctx)
+		Destroy(ctx); err != nil {
+		return err
+	}
+
+	// make sure the
+	return infrastructure.DeleteShootResourceGroupIfExists(ctx, clientFactory, infra, cfg)
 }
 
 // NoOpStateInitializer is a no-op StateConfigMapInitializerFunc.
