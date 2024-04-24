@@ -194,7 +194,7 @@ func (r *TerraformReconciler) Delete(ctx context.Context, infra *extensionsv1alp
 		return err
 	}
 
-	// make sure the
+	// make sure the resource group for the shoot is properly cleaned up even if it is missing from terraform state.
 	return infrastructure.DeleteShootResourceGroupIfExists(ctx, clientFactory, infra, cfg)
 }
 
