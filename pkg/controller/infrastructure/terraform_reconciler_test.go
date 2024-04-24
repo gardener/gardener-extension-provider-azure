@@ -226,8 +226,9 @@ var _ = Describe("Actuator", func() {
 		})
 
 		It("should delete the Infrastructure", func() {
-			azureClientFactory.EXPECT().Group().Return(azureGroupClient, nil)
+			azureClientFactory.EXPECT().Group().Return(azureGroupClient, nil).Times(2)
 			azureGroupClient.EXPECT().Get(ctx, infra.Namespace).Return(&armresources.ResourceGroup{Name: &resourceGroupName}, nil)
+			azureGroupClient.EXPECT().Delete(ctx, infra.Namespace).Return(nil)
 
 			tf.EXPECT().EnsureCleanedUp(ctx)
 			tf.EXPECT().IsStateEmpty(ctx).Return(false)
@@ -238,6 +239,7 @@ var _ = Describe("Actuator", func() {
 			tf.EXPECT().Destroy(ctx)
 			err := a.Delete(ctx, log, infra, cluster)
 			Expect(err).NotTo(HaveOccurred())
+
 		})
 
 		It("should delete the Infrastructure with invalid credentials", func() {
