@@ -39,6 +39,9 @@ func NewTerraformReconciler(a *actuator, logger logr.Logger, restConfig *rest.Co
 
 var _ Reconciler = &TerraformReconciler{}
 
+// DefaultAzureClientFactoryFunc is a hook to override factory ctor during tests
+var DefaultAzureClientFactoryFunc = azureclient.NewAzureClientFactory
+
 // TerraformReconciler can reconcile infrastructure objects using Terraform.
 type TerraformReconciler struct {
 	Client                     client.Client
@@ -235,28 +238,11 @@ func NoOpStateInitializer(_ context.Context, _ client.Client, _, _ string, _ *me
 	return nil
 }
 
-func (r *TerraformReconciler) getClientFactory(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) (azureclient.Factory, error) {
-	cloudProfile, err := helper.CloudProfileConfigFromCluster(cluster)
-	if err != nil {
-		return nil, err
-	}
-
-	var cloudConfiguration *azure.CloudConfiguration
-	if cloudProfile != nil {
-		cloudConfiguration = cloudProfile.CloudConfiguration
-	}
-
-	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(cloudConfiguration)
-	if err != nil {
-		return nil, err
-	}
-
+func (r *TerraformReconciler) getClientFactory(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, _ *controller.Cluster) (azureclient.Factory, error) {
 	return DefaultAzureClientFactoryFunc(
 		ctx,
 		r.Client,
 		infra.Spec.SecretRef,
-		false,
-		azureclient.WithCloudConfiguration(azCloudConfiguration),
 	)
 }
 
