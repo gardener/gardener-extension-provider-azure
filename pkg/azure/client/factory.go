@@ -103,7 +103,12 @@ func (f azureFactory) Group() (ResourceGroup, error) {
 	return NewResourceGroupsClient(f.auth, f.tokenCredential, DefaultAzureClientOpts())
 }
 
-// Vmss reads the secret from the passed reference and return an Azure virtual machine scale set client.
+// Resource returns an Azure resource client.
+func (f azureFactory) Resource() (Resource, error) {
+	return NewResourceClient(f.auth, f.tokenCredential, DefaultAzureClientOpts())
+}
+
+// Vmss returns an Azure virtual machine scale set client.
 func (f azureFactory) Vmss() (Vmss, error) {
 	return NewVmssClient(*f.auth, f.tokenCredential, DefaultAzureClientOpts())
 }

@@ -5,14 +5,18 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
 	"github.com/gardener/gardener/extensions/pkg/util"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
@@ -34,6 +38,9 @@ func NewTerraformReconciler(a *actuator, logger logr.Logger, restConfig *rest.Co
 }
 
 var _ Reconciler = &TerraformReconciler{}
+
+// DefaultAzureClientFactoryFunc is a hook to override factory ctor during tests
+var DefaultAzureClientFactoryFunc = azureclient.NewAzureClientFactory
 
 // TerraformReconciler can reconcile infrastructure objects using Terraform.
 type TerraformReconciler struct {
@@ -91,6 +98,29 @@ func (r *TerraformReconciler) reconcile(ctx context.Context, infra *extensionsv1
 		InitializeWith(ctx, terraformer.DefaultInitializer(r.Client, terraformFiles.Main, terraformFiles.Variables, terraformFiles.TFVars, initializer)).
 		Apply(ctx); err != nil {
 
+		codes := util.DetermineErrorCodes(err, helper.KnownCodes)
+		isDependenciesError := false
+		for _, code := range codes {
+			if code == gardencorev1beta1.ErrorInfraDependencies {
+				isDependenciesError = true
+			}
+		}
+		if !isDependenciesError {
+			return err
+		}
+		r.Logger.Info(
+			"Terraform application failed with infrastructure dependencies error. Will attempt to cleanup the resource group if it is empty",
+			"error", err)
+
+		ok, inErr := r.cleanResourceGroupIfNeeded(ctx, infra, cluster, cfg)
+		if inErr == nil && ok {
+			// we return a retryable error for the controller to retry instead of locking the user to a non-retryable error.
+			return gardencorev1beta1helper.NewErrorWithCodes(fmt.Errorf("retry after resource group cleanup"), gardencorev1beta1.ErrorRetryableInfraDependencies)
+		}
+		if inErr != nil {
+			r.Logger.Error(inErr, "Checking and cleaning up the resource group after an unsuccessful terraform apply failed")
+		}
+
 		return fmt.Errorf("failed to apply the terraform config: %w", err)
 	}
 
@@ -142,7 +172,7 @@ func (r *TerraformReconciler) Delete(ctx context.Context, infra *extensionsv1alp
 		return err
 	}
 
-	clientFactory, err := NewAzureClientFactory(ctx, r.Client, infra.Spec.SecretRef)
+	clientFactory, err := r.getClientFactory(ctx, infra, cluster)
 	if err != nil {
 		return err
 	}
@@ -151,12 +181,9 @@ func (r *TerraformReconciler) Delete(ctx context.Context, infra *extensionsv1alp
 	if err != nil {
 		return err
 	}
-	status := &azure.InfrastructureStatus{}
-	if infra.Status.ProviderStatus != nil {
-		status, err = helper.InfrastructureStatusFromRaw(infra.Status.ProviderStatus)
-		if err != nil {
-			return err
-		}
+	status, err := helper.InfrastructureStatusFromInfrastructure(infra)
+	if err != nil {
+		return err
 	}
 
 	resourceGroupExists, err := infrastructure.IsShootResourceGroupAvailable(ctx, clientFactory, infra, cfg)
@@ -209,4 +236,62 @@ func (r *TerraformReconciler) Delete(ctx context.Context, infra *extensionsv1alp
 // NoOpStateInitializer is a no-op StateConfigMapInitializerFunc.
 func NoOpStateInitializer(_ context.Context, _ client.Client, _, _ string, _ *metav1.OwnerReference) error {
 	return nil
+}
+
+func (r *TerraformReconciler) getClientFactory(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, _ *controller.Cluster) (azureclient.Factory, error) {
+	return DefaultAzureClientFactoryFunc(
+		ctx,
+		r.Client,
+		infra.Spec.SecretRef,
+	)
+}
+
+func (r *TerraformReconciler) cleanResourceGroupIfNeeded(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster, cfg *azure.InfrastructureConfig) (bool, error) {
+	var err error
+	// skip operations on user resource groups
+	if cfg.ResourceGroup != nil {
+		return false, nil
+	}
+	// skip operations if we are not creating the resource group for the first time.
+	if lastOp := infra.Status.LastOperation; lastOp == nil || lastOp.Type != gardencorev1beta1.LastOperationTypeCreate {
+		return false, nil
+	}
+
+	status, err := helper.InfrastructureStatusFromInfrastructure(infra)
+	if err != nil {
+		return false, err
+	}
+
+	rgName := infrastructure.ShootResourceGroupName(infra, cfg, status)
+
+	clientFactory, err := r.getClientFactory(ctx, infra, cluster)
+	if err != nil {
+		return false, err
+	}
+
+	resourceGroupClient, err := clientFactory.Group()
+	if err != nil {
+		return false, err
+	}
+	if ok, err := resourceGroupClient.CheckExistence(ctx, rgName); err != nil {
+		return false, err
+	} else if !ok {
+		return false, nil
+	}
+
+	resourceClient, err := clientFactory.Resource()
+	if err != nil {
+		return false, err
+	}
+	res, err := resourceClient.ListByResourceGroup(ctx, rgName, &armresources.ClientListByResourceGroupOptions{
+		Top: ptr.To(int32(1)),
+	})
+	if err != nil {
+		return false, err
+	} else if len(res) > 0 {
+		return false, nil
+	}
+
+	r.Logger.Info("empty resource group detected on operation of type Create. Attempting to delete resource group", "resourceGroup", rgName)
+	return true, resourceGroupClient.Delete(ctx, rgName)
 }

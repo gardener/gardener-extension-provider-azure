@@ -68,6 +68,11 @@ func NewFlowContext(factory client.Factory,
 		return nil, err
 	}
 
+	status, err := helper.InfrastructureStatusFromInfrastructure(infra)
+	if err != nil {
+		return nil, err
+	}
+
 	profile, err := helper.CloudProfileConfigFromCluster(cluster)
 	if err != nil {
 		return nil, err
@@ -83,6 +88,7 @@ func NewFlowContext(factory client.Factory,
 	adapter, err := NewInfrastructureAdapter(
 		infra,
 		cfg,
+		status,
 		profile,
 		cluster,
 	)

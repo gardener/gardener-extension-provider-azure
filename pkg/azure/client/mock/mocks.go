@@ -375,6 +375,21 @@ func (mr *MockFactoryMockRecorder) PublicIP() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PublicIP", reflect.TypeOf((*MockFactory)(nil).PublicIP))
 }
 
+// Resource mocks base method.
+func (m *MockFactory) Resource() (client.Resource, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Resource")
+	ret0, _ := ret[0].(client.Resource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Resource indicates an expected call of Resource.
+func (mr *MockFactoryMockRecorder) Resource() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Resource", reflect.TypeOf((*MockFactory)(nil).Resource))
+}
+
 // RouteTables mocks base method.
 func (m *MockFactory) RouteTables() (client.RouteTables, error) {
 	m.ctrl.T.Helper()
