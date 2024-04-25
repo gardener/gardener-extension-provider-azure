@@ -70,6 +70,9 @@ var _ = Describe("Actuator", func() {
 		tfState            *terraformer.RawState
 		revert             func()
 
+		azureClientFactory *azureclientmocks.MockFactory
+		azureGroupClient   *azureclientmocks.MockResourceGroup
+
 		err error
 	)
 
@@ -87,6 +90,9 @@ var _ = Describe("Actuator", func() {
 
 		ctx = context.TODO()
 		log = logf.Log.WithName("test")
+
+		azureClientFactory = azureclientmocks.NewMockFactory(ctrl)
+		azureGroupClient = azureclientmocks.NewMockResourceGroup(ctrl)
 
 		a = NewActuator(mgr, disableProjectedTokenMount)
 
@@ -144,6 +150,11 @@ var _ = Describe("Actuator", func() {
 			Zoned: true,
 		}
 
+		NewAzureClientFactory = func(context.Context, client.Client, v1.SecretReference) (azureclient.Factory, error) {
+			return azureClientFactory, nil
+		}
+		DefaultAzureClientFactoryFunc = NewAzureClientFactory
+
 		revert = test.WithVars(
 			&internal.NewTerraformer, func(_ logr.Logger, _ *rest.Config, _ string, _ *extensionsv1alpha1.Infrastructure, _ bool) (terraformer.Terraformer, error) {
 				return tf, nil
@@ -160,6 +171,11 @@ var _ = Describe("Actuator", func() {
 	})
 
 	Describe("#Reconcile", func() {
+		BeforeEach(func() {
+			azureClientFactory.EXPECT().Group().Return(azureGroupClient, nil).AnyTimes()
+			// azureGroupClient.EXPECT().CheckExistence(ctx, infra.Namespace).Return(false, nil)
+		})
+
 		It("should reconcile the Infrastructure", func() {
 			tf.EXPECT().InitializeWith(ctx, gomock.Any()).Return(tf)
 			tf.EXPECT().Apply(ctx)
@@ -210,14 +226,10 @@ var _ = Describe("Actuator", func() {
 
 	Describe("#Delete", func() {
 		var (
-			azureClientFactory *azureclientmocks.MockFactory
-			azureGroupClient   *azureclientmocks.MockResourceGroup
-			resourceGroupName  string
+			resourceGroupName string
 		)
 
 		BeforeEach(func() {
-			azureClientFactory = azureclientmocks.NewMockFactory(ctrl)
-			azureGroupClient = azureclientmocks.NewMockResourceGroup(ctrl)
 			resourceGroupName = infra.Namespace
 
 			NewAzureClientFactory = func(context.Context, client.Client, v1.SecretReference) (azureclient.Factory, error) {
