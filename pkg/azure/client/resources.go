@@ -28,9 +28,9 @@ func NewResourceClient(auth *internal.ClientAuth, tc azcore.TokenCredential, opt
 }
 
 // ListByResourceGroup fetches all resources of a resource group.
-func (c *ResourceClient) ListByResourceGroup(ctx context.Context, resourceGroupName string) ([]*armresources.GenericResourceExpanded, error) {
+func (c *ResourceClient) ListByResourceGroup(ctx context.Context, resourceGroupName string, options *armresources.ClientListByResourceGroupOptions) ([]*armresources.GenericResourceExpanded, error) {
 	var res []*armresources.GenericResourceExpanded
-	pager := c.client.NewListByResourceGroupPager(resourceGroupName, &armresources.ClientListByResourceGroupOptions{})
+	pager := c.client.NewListByResourceGroupPager(resourceGroupName, options)
 	for pager.More() {
 		nextResult, err := pager.NextPage(ctx)
 		if err != nil {

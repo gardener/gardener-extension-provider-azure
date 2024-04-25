@@ -160,5 +160,5 @@ type Storage interface {
 
 // Resource is an Azure resources client.
 type Resource interface {
-	ListByResourceGroup(ctx context.Context, resourceGroupName string) ([]*armresources.GenericResourceExpanded, error)
+	ListByResourceGroup(ctx context.Context, resourceGroupName string, options *armresources.ClientListByResourceGroupOptions) ([]*armresources.GenericResourceExpanded, error)
 }

@@ -131,9 +131,7 @@ func InfrastructureStateFromRaw(raw *runtime.RawExtension) (*api.InfrastructureS
 func InfrastructureStatusFromInfrastructure(infra *extensionsv1alpha1.Infrastructure) (*api.InfrastructureStatus, error) {
 	status := &api.InfrastructureStatus{}
 	if infra.Status.ProviderStatus != nil && infra.Status.ProviderStatus.Raw != nil {
-		if _, _, err := lenientDecoder.Decode(infra.Status.ProviderStatus.Raw, nil, status); err != nil {
-			return nil, err
-		}
+		return InfrastructureStatusFromRaw(infra.Status.ProviderStatus)
 	}
 	return status, nil
 }

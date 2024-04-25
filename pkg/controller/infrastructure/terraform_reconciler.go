@@ -5,16 +5,18 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
 	"github.com/gardener/gardener/extensions/pkg/util"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	errorutil "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
+	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
@@ -87,10 +89,6 @@ func (r *TerraformReconciler) reconcile(ctx context.Context, infra *extensionsv1
 		return err
 	}
 
-	if err := r.cleanResourceGroupIfNeeded(ctx, infra, cluster, cfg); err != nil {
-		return err
-	}
-
 	tf, err := internal.NewTerraformerWithAuth(r.Logger, r.RestConfig, infrastructure.TerraformerPurpose, infra, r.disableProjectedTokenMount)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
@@ -99,6 +97,29 @@ func (r *TerraformReconciler) reconcile(ctx context.Context, infra *extensionsv1
 	if err := tf.
 		InitializeWith(ctx, terraformer.DefaultInitializer(r.Client, terraformFiles.Main, terraformFiles.Variables, terraformFiles.TFVars, initializer)).
 		Apply(ctx); err != nil {
+
+		codes := util.DetermineErrorCodes(err, helper.KnownCodes)
+		isDependenciesError := false
+		for _, code := range codes {
+			if code == gardencorev1beta1.ErrorInfraDependencies {
+				isDependenciesError = true
+			}
+		}
+		if !isDependenciesError {
+			return err
+		}
+		r.Logger.Info(
+			"terraform application failed with infrastructure dependencies error. Will attempt to cleanup the resource group if empty",
+			"error", err)
+
+		ok, inErr := r.cleanResourceGroupIfNeeded(ctx, infra, cluster, cfg)
+		if inErr == nil && ok {
+			// we return a retryable error for the controller to retry instead of locking the user to a non-retryable error.
+			return gardencorev1beta1helper.NewErrorWithCodes(fmt.Errorf("retry after resource group cleanup"), gardencorev1beta1.ErrorRetryableInfraDependencies)
+		}
+		if inErr != nil {
+			r.Logger.Error(inErr, "checking and cleaning up the resource group after a failed TF apply failed")
+		}
 
 		return fmt.Errorf("failed to apply the terraform config: %w", err)
 	}
@@ -242,53 +263,52 @@ func (r *TerraformReconciler) getClientFactory(ctx context.Context, infra *exten
 	)
 }
 
-func (r *TerraformReconciler) cleanResourceGroupIfNeeded(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster, cfg *azure.InfrastructureConfig) error {
+func (r *TerraformReconciler) cleanResourceGroupIfNeeded(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster, cfg *azure.InfrastructureConfig) (bool, error) {
 	var err error
 	// skip operations on user resource groups
 	if cfg.ResourceGroup != nil {
-		return nil
+		return false, nil
 	}
 	// skip operations if we are not creating the resource group for the first time.
 	if lastOp := infra.Status.LastOperation; lastOp == nil || lastOp.Type != gardencorev1beta1.LastOperationTypeCreate {
-		return nil
+		return false, nil
 	}
 
 	status, err := helper.InfrastructureStatusFromInfrastructure(infra)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	rgName := infrastructure.ShootResourceGroupName(infra, cfg, status)
 
 	clientFactory, err := r.getClientFactory(ctx, infra, cluster)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	resourceGroupClient, err := clientFactory.Group()
 	if err != nil {
-		return err
+		return false, err
 	}
 	if ok, err := resourceGroupClient.CheckExistence(ctx, rgName); err != nil {
-		return err
+		return false, err
 	} else if !ok {
-		return nil
+		return false, nil
 	}
 
 	resourceClient, err := clientFactory.Resource()
 	if err != nil {
-		return err
+		return false, err
 	}
-	res, err := resourceClient.ListByResourceGroup(ctx, rgName)
-	if client.IgnoreNotFound(err) != nil {
-		return err
+	res, err := resourceClient.ListByResourceGroup(ctx, rgName, &armresources.ClientListByResourceGroupOptions{
+		Top: ptr.To(int32(1)),
+	})
+	if err != nil {
+		return false, err
 	} else if len(res) > 0 {
-		err := errorutil.NewErrorWithCodes(fmt.Errorf("non-empty resource group detected on operation of type Create"), gardencorev1beta1.ErrorInfraDependencies)
-		r.Logger.Error(err, "WARNING - user input may be required", "resourceGroup", rgName)
-		// returning preemptively with a non-retryable error.
-		return err
+		return false, nil
 	}
 
 	r.Logger.Info("empty resource group detected on operation of type Create. Attempting to delete resource group", "resourceGroup", rgName)
-	return resourceGroupClient.Delete(ctx, rgName)
+	return true, resourceGroupClient.Delete(ctx, rgName)
 }
