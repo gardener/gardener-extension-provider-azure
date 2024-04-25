@@ -109,7 +109,7 @@ func (r *TerraformReconciler) reconcile(ctx context.Context, infra *extensionsv1
 			return err
 		}
 		r.Logger.Info(
-			"terraform application failed with infrastructure dependencies error. Will attempt to cleanup the resource group if empty",
+			"Terraform application failed with infrastructure dependencies error. Will attempt to cleanup the resource group if it is empty",
 			"error", err)
 
 		ok, inErr := r.cleanResourceGroupIfNeeded(ctx, infra, cluster, cfg)
@@ -118,7 +118,7 @@ func (r *TerraformReconciler) reconcile(ctx context.Context, infra *extensionsv1
 			return gardencorev1beta1helper.NewErrorWithCodes(fmt.Errorf("retry after resource group cleanup"), gardencorev1beta1.ErrorRetryableInfraDependencies)
 		}
 		if inErr != nil {
-			r.Logger.Error(inErr, "checking and cleaning up the resource group after a failed TF apply failed")
+			r.Logger.Error(inErr, "Checking and cleaning up the resource group after an unsuccessful terraform apply failed")
 		}
 
 		return fmt.Errorf("failed to apply the terraform config: %w", err)
