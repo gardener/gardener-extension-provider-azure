@@ -36,9 +36,7 @@ func (c *ResourceClient) ListByResourceGroup(ctx context.Context, resourceGroupN
 		if err != nil {
 			return nil, err
 		}
-		for _, v := range nextResult.Value {
-			res = append(res, v)
-		}
+		res = append(res, nextResult.Value...)
 	}
 	return res, nil
 }

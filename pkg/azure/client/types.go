@@ -158,6 +158,7 @@ type Storage interface {
 	DeleteContainerIfExists(context.Context, string) error
 }
 
+// Resource is an Azure resources client.
 type Resource interface {
 	ListByResourceGroup(ctx context.Context, resourceGroupName string) ([]*armresources.GenericResourceExpanded, error)
 }

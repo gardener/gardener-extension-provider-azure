@@ -160,12 +160,9 @@ func (r *TerraformReconciler) Delete(ctx context.Context, infra *extensionsv1alp
 	if err != nil {
 		return err
 	}
-	status := &azure.InfrastructureStatus{}
-	if infra.Status.ProviderStatus != nil {
-		status, err = helper.InfrastructureStatusFromRaw(infra.Status.ProviderStatus)
-		if err != nil {
-			return err
-		}
+	status, err := helper.InfrastructureStatusFromInfrastructure(infra)
+	if err != nil {
+		return err
 	}
 
 	resourceGroupExists, err := infrastructure.IsShootResourceGroupAvailable(ctx, clientFactory, infra, cfg)
@@ -252,17 +249,15 @@ func (r *TerraformReconciler) cleanResourceGroupIfNeeded(ctx context.Context, in
 		return nil
 	}
 	// skip operations if we are not creating the resource group for the first time.
-	if infra.Status.LastOperation.Type != gardencorev1beta1.LastOperationTypeCreate {
+	if lastOp := infra.Status.LastOperation; lastOp == nil || lastOp.Type != gardencorev1beta1.LastOperationTypeCreate {
 		return nil
 	}
 
-	status := &azure.InfrastructureStatus{}
-	if infra.Status.ProviderStatus != nil {
-		status, err = helper.InfrastructureStatusFromRaw(infra.Status.ProviderStatus)
-		if err != nil {
-			return err
-		}
+	status, err := helper.InfrastructureStatusFromInfrastructure(infra)
+	if err != nil {
+		return err
 	}
+
 	rgName := infrastructure.ShootResourceGroupName(infra, cfg, status)
 
 	clientFactory, err := r.getClientFactory(ctx, infra, cluster)

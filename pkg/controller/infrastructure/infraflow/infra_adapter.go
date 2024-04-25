@@ -50,6 +50,7 @@ func NewInfrastructureAdapter(
 		config:  config,
 		profile: profile,
 		cluster: cluster,
+		status:  status,
 	}
 	ia.vnetConfig = ia.virtualNetworkConfig()
 	avset, err := ia.availabilitySetConfig()

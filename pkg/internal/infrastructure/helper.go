@@ -128,6 +128,7 @@ func DeleteShootResourceGroupIfExists(ctx context.Context, factory azureclient.F
 	return groupClient.Delete(ctx, ShootResourceGroupName(infra, cfg, status))
 }
 
+// ShootResourceGroupName returns the expected name of the resource group.
 func ShootResourceGroupName(infra *extensionsv1alpha1.Infrastructure, cfg *api.InfrastructureConfig, status *api.InfrastructureStatus) string {
 	if cfg.ResourceGroup != nil {
 		return cfg.ResourceGroup.Name
