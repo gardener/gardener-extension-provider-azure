@@ -23,6 +23,7 @@ type Factory interface {
 	NetworkInterface() (NetworkInterface, error)
 	Disk() (Disk, error)
 	Group() (ResourceGroup, error)
+	Resource() (Resource, error)
 	NetworkSecurityGroup() (NetworkSecurityGroup, error)
 	Subnet() (Subnet, error)
 	PublicIP() (PublicIP, error)
@@ -155,4 +156,9 @@ type Storage interface {
 	DeleteObjectsWithPrefix(context.Context, string, string) error
 	CreateContainerIfNotExists(context.Context, string) error
 	DeleteContainerIfExists(context.Context, string) error
+}
+
+// Resource is an Azure resources client.
+type Resource interface {
+	ListByResourceGroup(ctx context.Context, resourceGroupName string, options *armresources.ClientListByResourceGroupOptions) ([]*armresources.GenericResourceExpanded, error)
 }
