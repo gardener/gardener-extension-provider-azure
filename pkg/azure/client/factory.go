@@ -158,12 +158,15 @@ func (f azureFactory) VirtualMachineImages() (VirtualMachineImages, error) {
 }
 
 // NewBlobStorageClient reads the secret from the passed reference and return an Azure (blob) storage client.
-func NewBlobStorageClient(ctx context.Context, c client.Client, secretRef corev1.SecretReference, cloudConfiguration *azure.CloudConfiguration) (Storage, error) {
+func NewBlobStorageClient(ctx context.Context, c client.Client, secretRef corev1.SecretReference, cloudConfiguration *azure.CloudConfiguration) (BlobStorage, error) {
 	var storageDomain string
 
 	// Unfortunately the valid values for storage domains run by Microsoft do not seem to be part of any sdk module. They might be queryable from the cloud configuration,
 	// but I also haven't been able to find a documented list of proper ServiceName values.
-	// Long story short we have to do it ourselves. Fortunately, this can be removed once we have switched to the newer go clients.
+	// Furthermore, it seems there is still no unified way of specifying the cloud instance to connect to as the domain remains part of the storage account URL while
+	// the new options _also_ allow configuring the cloud instance.
+	// For the time being (until further testing can be done) I assume that the instance that is pointed at by the URL wins so let's keep the old logic for building the
+	// service URL.
 	if cloudConfiguration == nil {
 		storageDomain = "blob.core.windows.net"
 	} else {
@@ -184,12 +187,10 @@ func NewBlobStorageClient(ctx context.Context, c client.Client, secretRef corev1
 		}
 	}
 
-	serviceURL, err := newStorageClient(ctx, c, &secretRef, storageDomain)
+	blobStorageClient, err := newStorageClient(ctx, c, &secretRef, storageDomain)
 	if err != nil {
 		return nil, err
 	}
 
-	return &StorageClient{
-		serviceURL: serviceURL,
-	}, nil
+	return blobStorageClient, nil
 }
