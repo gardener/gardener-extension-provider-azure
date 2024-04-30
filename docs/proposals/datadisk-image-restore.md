@@ -73,7 +73,7 @@ See [az image create](https://learn.microsoft.com/en-us/cli/azure/image?view=azu
 An optional `resourceGroup` can be specified if the image is associated with a non-default Azure resource group.
 
 The [MCM Azure Provider](https://github.com/gardener/machine-controller-manager-provider-azure) will ensure that the data 
-disk is created with the _image reference_ set to the provided `imgName`. See [az disk create](https://learn.microsoft.com/en-us/cli/azure/disk?view=azure-cli-latest#az-disk-create). 
+disk is created with the _image reference_ set to the provided `imgRef`. See [az disk create](https://learn.microsoft.com/en-us/cli/azure/disk?view=azure-cli-latest#az-disk-create). 
 The mechanics of this is left to MCM Azure provider.
 
 
