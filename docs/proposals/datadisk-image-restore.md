@@ -59,7 +59,7 @@ providerConfig:
   kind: WorkerConfig
   dataVolumes: # <-- NEW SUB_SECTION
   - name: vsmp1
-    imageName: imgName
+    imageReference: imgRef # ID or URN (publisher:offer:sku:version) of the image from which to create a disk
     resourceGroup: # (optional) Name of resource group. Will take default if omitted
   nodeTemplate: # (to be specified only if the node capacity would be different from cloudprofile info during runtime)
    capacity:
@@ -68,7 +68,7 @@ providerConfig:
      memory: 50Gi
 ```
 
-In the above `imgName` represents the image name created by an external process/tool.
+In the above `imgRef` specified via `providerConfig.dataVolumes.imageReference` represents the image ID or URN of the image from which to create a disk. This image should already exist.
 See [az image create](https://learn.microsoft.com/en-us/cli/azure/image?view=azure-cli-latest#az-image-create).
 An optional `resourceGroup` can be specified if the image is associated with a non-default Azure resource group.
 
