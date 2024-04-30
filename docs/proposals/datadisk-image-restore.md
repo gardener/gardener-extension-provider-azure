@@ -28,11 +28,12 @@ Currently, we have no support either in the shoot spec or in the [MCM Azure](htt
 ## Motivation
 The primary motivation is to support [Integration of vSMP MemeoryOne in Azure #](https://github.com/gardener/gardener-extension-provider-azure/issues/788). 
 We implemented support for this in AWS via [Support for data volume snapshot ID ](https://github.com/gardener/gardener-extension-provider-aws/pull/112).
-In Azure we have the option to restore data disk from an image which is more convenient and flexible. 
+In Azure we have the option to restore data disk from a custom image which is more convenient and flexible. 
 
 ### Goals
 
-1. Extend the provider specific [WorkerConfig](https://github.com/gardener/gardener-extension-provider-azure/blob/master/docs/usage/usage.md#workerconfig) section in the shoot YAML and support provider configuration for data-disks to support data-disk creation based from a snapshot id.
+1. Extend the provider specific [WorkerConfig](https://github.com/gardener/gardener-extension-provider-azure/blob/master/docs/usage/usage.md#workerconfig) section in the shoot YAML 
+ and support provider configuration for data-disks to support data-disk creation based on an existing image.
  
 
 ## Proposal
@@ -58,7 +59,8 @@ providerConfig:
   kind: WorkerConfig
   dataVolumes: # <-- NEW SUB_SECTION
   - name: vsmp1
-    snapshotName: snap-1234
+    imageName: imgName
+    resourceGroup: # (optional) Name of resource group. Will take default if omitted
   nodeTemplate: # (to be specified only if the node capacity would be different from cloudprofile info during runtime)
    capacity:
      cpu: 2
@@ -66,14 +68,12 @@ providerConfig:
      memory: 50Gi
 ```
 
-In the above `snap-1234` represents the snapshot name created by an external process/tool.
-See [az-snapshot-create](https://learn.microsoft.com/en-us/cli/azure/snapshot?view=azure-cli-latest#az-snapshot-create).
+In the above `imgName` represents the image name created by an external process/tool.
+See [az image create](https://learn.microsoft.com/en-us/cli/azure/image?view=azure-cli-latest#az-image-create).
+An optional `resourceGroup` can be specified if the image is associated with a non-default Azure resource group.
 
-The Azure disk `snapshotName` is distinct from the azure `snapshotID`. The azure disk `snapshotID` is a full qualified hierarchical
-identifier that includes the `snapshotName`, Azure subscription ID and resource group name: 
-like `/subscriptions/<AzureSubscriptionID>/resourceGroups/<resourceGroupName>/providers/Microsoft.Compute/disks/<snapshotName>`
-
-It would be painful and errorprone to specify this in the shoot `WorkerConfig` section, so it is best that the MCM Azure provider take care
-of forming the fully qualified azure disk `snapshotID` and forming the `MachineClass` for azure which is then operated on by MCM Azure Provider.
+The [MCM Azure Provider](https://github.com/gardener/machine-controller-manager-provider-azure) will ensure that the data 
+disk is created with the _image reference_ set to the provided `imgName`. See [az disk create](https://learn.microsoft.com/en-us/cli/azure/disk?view=azure-cli-latest#az-disk-create). 
+The mechanics of this is left to MCM Azure provider.
 
 
