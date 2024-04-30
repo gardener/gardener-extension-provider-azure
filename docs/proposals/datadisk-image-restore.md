@@ -1,5 +1,5 @@
 ---
-title: Data Disk Restore From Snapshot
+title: Data Disk Restore From Image
 creation-date: 2025-04-05
 status: implementable
 authors:
@@ -10,7 +10,7 @@ reviewers:
 - "@kon-angelo "
 ---
 
-# Data Disk Restore From Snapshot
+# Data Disk Restore From Image
 
 ## Table of Contents
 
@@ -23,12 +23,12 @@ reviewers:
 
 ## Summary
 
-Currently, we have no support either in the shoot spec or in the [MCM Azure](https://github.com/gardener/machine-controller-manager-provider-azure) for restoring Azure Data Disks from snapshots
+Currently, we have no support either in the shoot spec or in the [MCM Azure](https://github.com/gardener/machine-controller-manager-provider-azure) for restoring Azure Data Disks from a user created image.
 
 ## Motivation
 The primary motivation is to support [Integration of vSMP MemeoryOne in Azure #](https://github.com/gardener/gardener-extension-provider-azure/issues/788). 
-Since we already implemented this for AWS via [Support for data volume snapshot ID ](https://github.com/gardener/gardener-extension-provider-aws/pull/112), we should introduce this enhancement
-in Azure as well.
+We implemented support for this in AWS via [Support for data volume snapshot ID ](https://github.com/gardener/gardener-extension-provider-aws/pull/112).
+In Azure we have the option to restore data disk from an image which is more convenient and flexible. 
 
 ### Goals
 
