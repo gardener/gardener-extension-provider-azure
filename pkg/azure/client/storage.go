@@ -9,29 +9,32 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/Azure/azure-storage-blob-go/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/bloberror"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
-var _ Storage = &StorageClient{}
+var _ BlobStorage = &BlobStorageClient{}
 
-// StorageClient is an implementation of Storage for a (blob) storage k8sClient.
-type StorageClient struct {
-	serviceURL *azblob.ServiceURL
+// BlobStorageClient is an implementation of Storage for a blob storage k8sClient.
+type BlobStorageClient struct {
+	// serviceURL *azblob.ServiceURL
+	client *azblob.Client
 }
 
 // newStorageClient creates a client for an Azure Blob storage by reading auth information from secret reference. Requires passing the storage domain (formerly
 // blobstorage host name) to determine the endpoint to build the service url for.
-func newStorageClient(ctx context.Context, client client.Client, secretRef *corev1.SecretReference, storageDomain string) (*azblob.ServiceURL, error) {
+func newStorageClient(ctx context.Context, client client.Client, secretRef *corev1.SecretReference, storageDomain string) (*BlobStorageClient, error) {
 	secret, err := extensionscontroller.GetSecretByReference(ctx, client, secretRef)
 	if err != nil {
 		return nil, err
 	}
-
 	storageAccountName, ok := secret.Data[azure.StorageAccount]
 	if !ok {
 		return nil, fmt.Errorf("secret %s/%s doesn't have a storage account", secret.Namespace, secret.Name)
@@ -47,43 +50,27 @@ func newStorageClient(ctx context.Context, client client.Client, secretRef *core
 		return nil, fmt.Errorf("failed to create shared key credentials: %v", err)
 	}
 
-	pipeline := azblob.NewPipeline(credentials, azblob.PipelineOptions{
-		Retry: azblob.RetryOptions{
-			Policy: azblob.RetryPolicyExponential,
-		},
-	})
-
 	storageAccountURL, err := url.Parse(fmt.Sprintf("https://%s.%s", storageAccountName, storageDomain))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse service url: %v", err)
 	}
 
-	serviceURL := azblob.NewServiceURL(*storageAccountURL, pipeline)
-	return &serviceURL, nil
+	blobclient, err := azblob.NewClientWithSharedKeyCredential(storageAccountURL.String(), credentials, nil)
+	return &BlobStorageClient{blobclient}, err
+
 }
 
 // DeleteObjectsWithPrefix deletes the blob objects with the specific <prefix> from <container>.
 // If it does not exist, no error is returned.
-func (c *StorageClient) DeleteObjectsWithPrefix(ctx context.Context, container, prefix string) error {
-	var containerURL = c.serviceURL.NewContainerURL(container)
-	opts := azblob.ListBlobsSegmentOptions{
-		Details: azblob.BlobListingDetails{
-			Deleted: true,
-		},
-		Prefix: prefix,
-	}
-
-	for marker := (azblob.Marker{}); marker.NotDone(); {
-		// Get a result segment starting with the blob indicated by the current Marker.
-		listBlob, err := containerURL.ListBlobsFlatSegment(ctx, marker, opts)
+func (c *BlobStorageClient) DeleteObjectsWithPrefix(ctx context.Context, container, prefix string) error {
+	pager := c.client.NewListBlobsFlatPager(container, &azblob.ListBlobsFlatOptions{Prefix: ptr.To(prefix)})
+	for pager.More() {
+		page, err := pager.NextPage(ctx)
 		if err != nil {
-			return fmt.Errorf("failed to list the blobs, error: %v", err)
+			return err
 		}
-		marker = listBlob.NextMarker
-
-		// Process the blobs returned in this result segment
-		for _, blob := range listBlob.Segment.BlobItems {
-			if err := c.deleteBlobIfExists(ctx, container, blob.Name); err != nil {
+		for _, blob := range page.Segment.BlobItems {
+			if err := c.deleteBlobIfExists(ctx, container, *blob.Name); err != nil {
 				return err
 			}
 		}
@@ -93,50 +80,32 @@ func (c *StorageClient) DeleteObjectsWithPrefix(ctx context.Context, container, 
 
 // deleteBlobIfExists deletes the azure blob with name <blobName> from <container>.
 // If it does not exist,no error is returned.
-func (c *StorageClient) deleteBlobIfExists(ctx context.Context, container, blobName string) error {
-	blockBlobURL := c.serviceURL.NewContainerURL(container).NewBlockBlobURL(blobName)
-	if _, err := blockBlobURL.Delete(ctx, azblob.DeleteSnapshotsOptionInclude, azblob.BlobAccessConditions{}); err != nil {
-		if stgErr, ok := err.(azblob.StorageError); ok {
-			switch stgErr.ServiceCode() {
-			case azblob.ServiceCodeBlobNotFound:
-				return nil
-			}
-		}
-		return err
+func (c *BlobStorageClient) deleteBlobIfExists(ctx context.Context, container, blobName string) error {
+	_, err := c.client.DeleteBlob(ctx, container, blobName, &blob.DeleteOptions{
+		DeleteSnapshots: ptr.To(azblob.DeleteSnapshotsOptionTypeInclude),
+	})
+	if err == nil || bloberror.HasCode(err, bloberror.BlobNotFound) {
+		return nil
 	}
-	return nil
+	return err
 }
 
 // CreateContainerIfNotExists creates the azure blob container with name <container>.
 // If it already exist,no error is returned.
-func (c *StorageClient) CreateContainerIfNotExists(ctx context.Context, container string) error {
-	containerURL := c.serviceURL.NewContainerURL(container)
-	if _, err := containerURL.Create(ctx, nil, azblob.PublicAccessNone); err != nil {
-		if stgErr, ok := err.(azblob.StorageError); ok {
-			switch stgErr.ServiceCode() {
-			case azblob.ServiceCodeContainerAlreadyExists:
-				return nil
-			}
-		}
-		return err
+func (c *BlobStorageClient) CreateContainerIfNotExists(ctx context.Context, container string) error {
+	_, err := c.client.CreateContainer(ctx, container, nil)
+	if err == nil || bloberror.HasCode(err, bloberror.ContainerAlreadyExists) {
+		return nil
 	}
-	return nil
+	return err
 }
 
 // DeleteContainerIfExists deletes the azure blob container with name <container>.
 // If it does not exist, no error is returned.
-func (c *StorageClient) DeleteContainerIfExists(ctx context.Context, container string) error {
-	containerURL := c.serviceURL.NewContainerURL(container)
-	if _, err := containerURL.Delete(ctx, azblob.ContainerAccessConditions{}); err != nil {
-		if stgErr, ok := err.(azblob.StorageError); ok {
-			switch stgErr.ServiceCode() {
-			case azblob.ServiceCodeContainerNotFound:
-				return nil
-			case azblob.ServiceCodeContainerBeingDeleted:
-				return nil
-			}
-		}
-		return err
+func (c *BlobStorageClient) DeleteContainerIfExists(ctx context.Context, container string) error {
+	_, err := c.client.DeleteContainer(ctx, container, nil)
+	if err == nil || bloberror.HasCode(err, bloberror.ContainerBeingDeleted, bloberror.ContainerNotFound) {
+		return nil
 	}
-	return nil
+	return err
 }

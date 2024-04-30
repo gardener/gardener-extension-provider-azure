@@ -151,8 +151,8 @@ type VirtualMachineImages interface {
 	ListSkus(ctx context.Context, location string, publisherName string, offer string) (*armcompute.VirtualMachineImagesClientListSKUsResponse, error)
 }
 
-// Storage represents an Azure (blob) storage k8sClient.
-type Storage interface {
+// BlobStorage represents an Azure blob storage k8sClient.
+type BlobStorage interface {
 	DeleteObjectsWithPrefix(context.Context, string, string) error
 	CreateContainerIfNotExists(context.Context, string) error
 	DeleteContainerIfExists(context.Context, string) error
