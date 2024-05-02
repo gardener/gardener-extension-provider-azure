@@ -84,10 +84,14 @@ func CloudProfileConfigFromCluster(cluster *controller.Cluster) (*api.CloudProfi
 
 // BackupConfigFromBackupBucket decodes the provider specific config from a given BackupBucket object.
 func BackupConfigFromBackupBucket(backupBucket *extensionsv1alpha1.BackupBucket) (*api.BackupConfig, error) {
-	var backupConfig *api.BackupConfig
-	if backupBucket != nil && backupBucket.Spec.DefaultSpec.ProviderConfig != nil {
-		backupConfig = &api.BackupConfig{}
-		if _, _, err := decoder.Decode(backupBucket.Spec.ProviderConfig.Raw, nil, backupConfig); err != nil {
+	backupConfig := &api.BackupConfig{}
+	if backupBucket != nil && backupBucket.Spec.ProviderConfig != nil {
+		bucketJson, err := backupBucket.Spec.ProviderConfig.MarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+
+		if _, _, err := decoder.Decode(bucketJson, nil, backupConfig); err != nil {
 			return nil, err
 		}
 	}
@@ -96,10 +100,14 @@ func BackupConfigFromBackupBucket(backupBucket *extensionsv1alpha1.BackupBucket)
 
 // BackupConfigFromBackupEntry  decodes the provider specific config from a given BackupEntry object.
 func BackupConfigFromBackupEntry(backupEntry *extensionsv1alpha1.BackupEntry) (*api.BackupConfig, error) {
-	var backupConfig *api.BackupConfig
+	backupConfig := &api.BackupConfig{}
 	if backupEntry != nil && backupEntry.Spec.DefaultSpec.ProviderConfig != nil {
-		backupConfig = &api.BackupConfig{}
-		if _, _, err := decoder.Decode(backupEntry.Spec.ProviderConfig.Raw, nil, backupConfig); err != nil {
+		entryJson, err := backupEntry.Spec.DefaultSpec.ProviderConfig.MarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+
+		if _, _, err := decoder.Decode(entryJson, nil, backupConfig); err != nil {
 			return nil, err
 		}
 	}

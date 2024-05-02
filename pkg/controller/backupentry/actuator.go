@@ -17,7 +17,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
@@ -47,12 +46,7 @@ func (a *actuator) Delete(ctx context.Context, _ logr.Logger, backupEntry *exten
 		return err
 	}
 
-	var cloudConfiguration *azure.CloudConfiguration
-	if backupConfig != nil {
-		cloudConfiguration = backupConfig.CloudConfiguration
-	}
-
-	storageClient, err := DefaultBlobStorageClient(ctx, a.client, backupEntry.Spec.SecretRef, cloudConfiguration)
+	storageClient, err := DefaultBlobStorageClient(ctx, a.client, backupEntry.Spec.SecretRef, backupConfig.CloudConfiguration)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}
