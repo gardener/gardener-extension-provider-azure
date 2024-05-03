@@ -38,6 +38,11 @@ const (
 )
 
 const (
+	// KeyPublicIPAddresses is the key used to store public IP addresses in the FlowContext's whiteboard.
+	KeyPublicIPAddresses = "PublicIpAddresses"
+)
+
+const (
 	// TemplateAvailabilitySet the template for the ID of an availability set.
 	TemplateAvailabilitySet = "/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Compute/availabilitySets/%s"
 	// TemplateNatGateway the template for the id of a NAT Gateway.
