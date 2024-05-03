@@ -141,10 +141,19 @@ const (
 	SeedAnnotationKeyUseFlow = AnnotationKeyUseFlow
 	// SeedAnnotationUseFlowValueNew is the value to restrict flow reconciliation to new shoot clusters
 	SeedAnnotationUseFlowValueNew = "new"
+
+	// BetaSkipMarketPlaceAgreementAnnotation when present will instruct the worker controller to create machine classes that skip the marketplace agreement by MCM.
+	BetaSkipMarketPlaceAgreementAnnotation = "beta.azure.provider.extensions.gardener.cloud/skip-marketplace-agreement"
 )
 
 // UsernamePrefix is a constant for the username prefix of components deployed by Azure.
 var (
 	UsernamePrefix       = extensionsv1alpha1.SchemeGroupVersion.Group + ":" + Name + ":"
 	ValidFlowAnnotations = []string{AnnotationKeyUseFlow, GlobalAnnotationKeyUseFlow}
+
+	// ConfidentialVMFamilyPrefixes is a list of known families that are used for confidential VMs.
+	ConfidentialVMFamilyPrefixes = []string{
+		"standard_ec",
+		"standard_dc",
+	}
 )

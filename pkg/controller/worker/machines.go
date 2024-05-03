@@ -28,6 +28,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/charts"
 	azureapi "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	azureapihelper "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 const azureCSIDiskDriverTopologyKey = "topology.disk.csi.azure.com/zone"
@@ -105,7 +106,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		return err
 	}
 
-	if v, ok := w.cluster.Shoot.GetAnnotations()["azure.provider.extensions.gardener.cloud/skip-marketplace-agreement"]; ok {
+	if v, ok := w.cluster.Shoot.GetAnnotations()[azure.BetaSkipMarketPlaceAgreementAnnotation]; ok {
 		for _, p := range strings.Split(v, ",") {
 			skipAgreementPools.Insert(p)
 		}
@@ -145,8 +146,10 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		} else {
 			image["id"] = *id
 		}
+
+		machineClassAnnotations := map[string]string{}
 		if skipAgreementPools.Has(pool.Name) {
-			image["privatePlan"] = true
+			machineClassAnnotations[azure.BetaSkipMarketPlaceAgreementMCMAnnotation] = "true"
 		}
 
 		disks, err := computeDisks(pool)
@@ -180,6 +183,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				}
 
 				machineClassSpec = utils.MergeMaps(map[string]interface{}{
+					"annotations":   machineClassAnnotations,
 					"region":        w.worker.Spec.Region,
 					"resourceGroup": infrastructureStatus.ResourceGroup.Name,
 					"tags":          w.getVMTags(pool),
@@ -491,10 +495,12 @@ func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPo
 	return workerPoolHash, nil
 }
 
-// TODO(AK): Remove when we have support for VM Capabilities
+// TODO: Remove when we have support for VM Capabilities
 func (w *workerDelegate) isConfidentialVM(family string) bool {
-	if strings.HasPrefix(strings.ToLower(family), "standard_ec") || strings.HasPrefix(strings.ToLower(family), "standard_dc") {
-		return true
+	for _, v := range azure.ConfidentialVMFamilyPrefixes {
+		if strings.HasPrefix(strings.ToLower(family), strings.ToLower(v)) {
+			return true
+		}
 	}
 	return false
 }

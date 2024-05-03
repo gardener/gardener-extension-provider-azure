@@ -18,6 +18,10 @@ kind: MachineClass
 metadata:
   name: {{ $machineClass.name }}
   namespace: {{ $.Release.Namespace }}
+  annotations:
+    {{- if $machineClass.annotations }}
+{{ toYaml $machineClass.annotations | indent 4 }}
+    {{- end }}
   labels:
     {{- if $machineClass.operatingSystem }}
 {{ toYaml $machineClass.operatingSystem | indent 4 }}
