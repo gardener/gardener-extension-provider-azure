@@ -427,6 +427,7 @@ var _ = Describe("Machines", func() {
 					}
 
 					defaultMachineClass := map[string]interface{}{
+						"annotations":   map[string]string{},
 						"region":        region,
 						"resourceGroup": resourceGroupName,
 						"network": map[string]interface{}{
