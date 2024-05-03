@@ -437,8 +437,7 @@ func (fctx *FlowContext) ensurePublicIps(ctx context.Context) error {
 
 // EnsureNatGateways reconciles all the NAT Gateways for the shoot.
 func (fctx *FlowContext) EnsureNatGateways(ctx context.Context) error {
-	err := fctx.ensureNatGateways(ctx)
-	return err
+	return fctx.ensureNatGateways(ctx)
 }
 
 // EnsureNatGateways creates or updates NAT Gateways. It also deletes old NATGateways.
@@ -500,9 +499,6 @@ func (fctx *FlowContext) ensureNatGateways(ctx context.Context) error {
 			toDelete[name] = *current.ID
 			continue
 		}
-	}
-	if joinError != nil {
-		return joinError
 	}
 
 	for natName, nat := range toDelete {
