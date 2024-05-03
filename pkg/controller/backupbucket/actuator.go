@@ -36,18 +36,12 @@ func newActuator(mgr manager.Manager) backupbucket.Actuator {
 }
 
 func (a *actuator) Reconcile(ctx context.Context, _ logr.Logger, backupBucket *extensionsv1alpha1.BackupBucket) error {
-
 	backupConfig, err := helper.BackupConfigFromBackupBucket(backupBucket)
 	if err != nil {
 		return err
 	}
 
-	var cloudConfiguration *azure.CloudConfiguration
-	if backupBucket != nil {
-		cloudConfiguration = backupConfig.CloudConfiguration
-	}
-
-	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(cloudConfiguration)
+	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(backupConfig.CloudConfiguration)
 	if err != nil {
 		return err
 	}
