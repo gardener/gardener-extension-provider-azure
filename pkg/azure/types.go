@@ -98,8 +98,6 @@ const (
 	CSIControllerDiskName = "csi-driver-controller-disk"
 	// CSIControllerFileName is a constant for the name of the File CSI controller deployment in the seed.
 	CSIControllerFileName = "csi-driver-controller-file"
-	// CSIControllerObservabilityConfigName is a constant for the name of the ConfigMap containing monitoring and logging stack configurations for csi-driver.
-	CSIControllerObservabilityConfigName = "csi-driver-controller-observability-config"
 	// CSINodeName is a constant for the chart name for a CSI node deployment in the shoot.
 	CSINodeName = "csi-driver-node"
 	// CSINodeDiskName is a constant for the name of the Disk CSI node deployment in the shoot.

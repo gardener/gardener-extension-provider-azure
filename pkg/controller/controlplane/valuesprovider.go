@@ -24,7 +24,6 @@ import (
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -153,7 +152,6 @@ var (
 					// csi-driver-controllers
 					{Type: &appsv1.Deployment{}, Name: azure.CSIControllerDiskName},
 					{Type: &appsv1.Deployment{}, Name: azure.CSIControllerFileName},
-					{Type: &corev1.ConfigMap{}, Name: azure.CSIControllerObservabilityConfigName},
 					{Type: &autoscalingv1.VerticalPodAutoscaler{}, Name: azure.CSIControllerDiskName + "-vpa"},
 					{Type: &autoscalingv1.VerticalPodAutoscaler{}, Name: azure.CSIControllerFileName + "-vpa"},
 					// csi-snapshot-controller
@@ -375,9 +373,9 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 		}
 	}
 
-	// TODO(oliver-goetz): Delete this in a future release.
-	if err := kutil.DeleteObject(ctx, vp.client, &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: "allow-kube-apiserver-to-csi-snapshot-validation", Namespace: cp.Namespace}}); err != nil {
-		return nil, fmt.Errorf("failed deleting legacy csi-snapshot-validation network policy: %w", err)
+	// TODO(rfranzke): Delete this in a future release.
+	if err := kutil.DeleteObject(ctx, vp.client, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "csi-driver-controller-observability-config", Namespace: cp.Namespace}}); err != nil {
+		return nil, fmt.Errorf("failed deleting legacy csi-driver-controller-observability-config ConfigMap: %w", err)
 	}
 
 	return getControlPlaneChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown, infraStatus)
