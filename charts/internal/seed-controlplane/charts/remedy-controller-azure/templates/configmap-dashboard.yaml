@@ -1,0 +1,12 @@
+{{- if .Values.gep19Monitoring }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: remedy-controller-azure-dashboard
+  namespace: {{ .Release.Namespace }}
+  labels:
+    dashboard.monitoring.gardener.cloud/shoot: "true"
+data:
+  remedy-controller-azure-dashboard.json: |-
+{{- .Files.Get "rc-monitoring-dashboard.json" | nindent 4 }}
+{{- end }}

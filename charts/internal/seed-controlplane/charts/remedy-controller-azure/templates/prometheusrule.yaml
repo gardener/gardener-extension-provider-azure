@@ -1,0 +1,35 @@
+{{- if .Values.gep19Monitoring }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: shoot-remedy-controller-azure
+  namespace: {{ .Release.Namespace }}
+  labels:
+    prometheus: shoot
+spec:
+  groups:
+  - name: remedy-controller-azure.rules
+    rules:
+    - alert: RemedyControllerDown
+      expr: absent(up{job="remedy-controller-azure"} == 1)
+      for: 15m
+      labels:
+        service: remedy-controller-azure
+        severity: warning
+        type: seed
+        visibility: all
+      annotations:
+        description: Remedies for certain infrastructure issues cannot be applied.
+        summary: Remedy controller is down.
+    - alert: AzureVMFailed
+      expr: azure_virtual_machine_states == 2
+      for: 5m
+      labels:
+        service: remedy-controller-azure
+        severity: critical
+        type: shoot
+        visibility: all
+      annotations:
+        description: An Azure virtual machine is in a Failed state and could not be fixed by the remedy controller.
+        summary: An Azure VM is in a Failed state.
+{{- end }}

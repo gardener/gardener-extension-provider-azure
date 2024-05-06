@@ -21,6 +21,7 @@ import (
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	secretutils "github.com/gardener/gardener/pkg/utils/secrets"
 	secretsmanager "github.com/gardener/gardener/pkg/utils/secrets/manager"
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -132,6 +133,8 @@ var (
 					{Type: &corev1.Service{}, Name: azure.CloudControllerManagerName},
 					{Type: &appsv1.Deployment{}, Name: azure.CloudControllerManagerName},
 					{Type: &corev1.ConfigMap{}, Name: azure.CloudControllerManagerName + "-observability-config"},
+					{Type: &monitoringv1.ServiceMonitor{}, Name: "shoot-cloud-controller-manager"},
+					{Type: &monitoringv1.PrometheusRule{}, Name: "shoot-cloud-controller-manager"},
 					{Type: &autoscalingv1.VerticalPodAutoscaler{}, Name: azure.CloudControllerManagerName + "-vpa"},
 				},
 			},
@@ -378,7 +381,18 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 		return nil, fmt.Errorf("failed deleting legacy csi-driver-controller-observability-config ConfigMap: %w", err)
 	}
 
-	return getControlPlaneChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown, infraStatus)
+	// TODO(rfranzke): Delete this after August 2024.
+	gep19Monitoring := vp.client.Get(ctx, client.ObjectKey{Name: "prometheus-shoot", Namespace: cp.Namespace}, &appsv1.StatefulSet{}) == nil
+	if gep19Monitoring {
+		if err := kutil.DeleteObject(ctx, vp.client, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "cloud-controller-manager-observability-config", Namespace: cp.Namespace}}); err != nil {
+			return nil, fmt.Errorf("failed deleting cloud-controller-manager-observability-config ConfigMap: %w", err)
+		}
+		if err := kutil.DeleteObject(ctx, vp.client, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "remedy-controller-azure-monitoring-config", Namespace: cp.Namespace}}); err != nil {
+			return nil, fmt.Errorf("failed deleting remedy-controller-azure-monitoring-config ConfigMap: %w", err)
+		}
+	}
+
+	return getControlPlaneChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown, infraStatus, gep19Monitoring)
 }
 
 // GetControlPlaneShootChartValues returns the values for the control plane shoot chart applied by the generic actuator.
@@ -530,11 +544,12 @@ func getControlPlaneChartValues(
 	checksums map[string]string,
 	scaledDown bool,
 	infraStatus *apisazure.InfrastructureStatus,
+	gep19Monitoring bool,
 ) (
 	map[string]interface{},
 	error,
 ) {
-	ccm, err := getCCMChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown)
+	ccm, err := getCCMChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown, gep19Monitoring)
 	if err != nil {
 		return nil, err
 	}
@@ -544,7 +559,7 @@ func getControlPlaneChartValues(
 		return nil, err
 	}
 
-	remedy, err := getRemedyControllerChartValues(cluster, checksums, scaledDown)
+	remedy, err := getRemedyControllerChartValues(cluster, checksums, scaledDown, gep19Monitoring)
 	if err != nil {
 		return nil, err
 	}
@@ -567,6 +582,7 @@ func getCCMChartValues(
 	secretsReader secretsmanager.Reader,
 	checksums map[string]string,
 	scaledDown bool,
+	gep19Monitoring bool,
 ) (map[string]interface{}, error) {
 	serverSecret, found := secretsReader.Get(cloudControllerManagerServerName)
 	if !found {
@@ -590,6 +606,7 @@ func getCCMChartValues(
 		"secrets": map[string]interface{}{
 			"server": serverSecret.Name,
 		},
+		"gep19Monitoring": gep19Monitoring,
 	}
 
 	if cpConfig.CloudControllerManager != nil {
@@ -644,6 +661,7 @@ func getRemedyControllerChartValues(
 	cluster *extensionscontroller.Cluster,
 	checksums map[string]string,
 	scaledDown bool,
+	gep19Monitoring bool,
 ) (map[string]interface{}, error) {
 	disableRemedyController :=
 		cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] == "true" ||
@@ -658,6 +676,7 @@ func getRemedyControllerChartValues(
 		"podAnnotations": map[string]interface{}{
 			"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
 		},
+		"gep19Monitoring": gep19Monitoring,
 	}, nil
 }
 

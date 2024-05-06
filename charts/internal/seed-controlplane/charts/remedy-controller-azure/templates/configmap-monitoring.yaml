@@ -1,3 +1,4 @@
+{{- if not .Values.gep19Monitoring }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -60,3 +61,4 @@ data:
   dashboard_operators: |
     remedy-controller-azure-dashboard.json: |-
 {{- .Files.Get "rc-monitoring-dashboard.json" | nindent 6 }}
+{{- end }}
