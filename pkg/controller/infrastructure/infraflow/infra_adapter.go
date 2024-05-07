@@ -183,32 +183,6 @@ func (ia *InfrastructureAdapter) availabilitySetConfig() (*AvailabilitySetConfig
 		},
 	}
 
-	// if ia.status != nil {
-	// 	nodesAVSet, err := helper.FindAvailabilitySetByPurpose(ia.status.AvailabilitySets, azure.PurposeNodes)
-	// 	if err != nil {
-	// 		return nil, fmt.Errorf("error obtaining update and fault domain counts from infrastructure status: %v", err)
-	// 	}
-	// 	asc.CountFaultDomains = nodesAVSet.CountFaultDomains
-	// 	asc.CountUpdateDomains = nodesAVSet.CountUpdateDomains
-	// }
-	//
-	// if ia.state != nil {
-	// 	if asc.CountFaultDomains == nil {
-	// 		if v, ok := ia.state.Data[CountFaultDomainsKey]; ok {
-	// 			if v, err := strconv.Atoi(v); err != nil {
-	// 				asc.CountFaultDomains = to.Ptr(int32(v))
-	// 			}
-	// 		}
-	// 	}
-	// 	if asc.CountUpdateDomains == nil {
-	// 		if v, ok := ia.state.Data[CountUpdateDomainsKey]; ok {
-	// 			if v, err := strconv.Atoi(v); err != nil {
-	// 				asc.CountUpdateDomains = to.Ptr(int32(v))
-	// 			}
-	// 		}
-	// 	}
-	// }
-
 	if asc.CountFaultDomains == nil {
 		count, err := helper.FindDomainCountByRegion(ia.profile.CountFaultDomains, ia.Region())
 		if err != nil {
@@ -512,7 +486,7 @@ func (ia *InfrastructureAdapter) HasShootPrefix(name *string) bool {
 	return strings.HasPrefix(*name, ia.TechnicalName())
 }
 
-// ToProvider translates the config into the actual provider object.
+// ToProvider translates the config into the actual providerAccess object.
 func (ip *PublicIPConfig) ToProvider(base *armnetwork.PublicIPAddress) *armnetwork.PublicIPAddress {
 	target := &armnetwork.PublicIPAddress{
 		Location: to.Ptr(ip.Location),
@@ -539,7 +513,7 @@ func (ip *PublicIPConfig) ToProvider(base *armnetwork.PublicIPAddress) *armnetwo
 	return target
 }
 
-// ToProvider translates the config into the actual provider object.
+// ToProvider translates the config into the actual providerAccess object.
 func (nat *NatGatewayConfig) ToProvider(base *armnetwork.NatGateway) *armnetwork.NatGateway {
 	target := &armnetwork.NatGateway{
 		ID:       nil,
@@ -564,7 +538,7 @@ func (nat *NatGatewayConfig) ToProvider(base *armnetwork.NatGateway) *armnetwork
 	return target
 }
 
-// ToProvider translates the config into the actual provider object.
+// ToProvider translates the config into the actual providerAccess object.
 func (s *SubnetConfig) ToProvider(base *armnetwork.Subnet) *armnetwork.Subnet {
 	target := &armnetwork.Subnet{
 		Name: to.Ptr(s.Name),
@@ -575,6 +549,7 @@ func (s *SubnetConfig) ToProvider(base *armnetwork.Subnet) *armnetwork.Subnet {
 			NetworkSecurityGroup: nil,
 			RouteTable:           nil,
 		},
+		Etag: nil,
 	}
 	for _, endpoint := range s.serviceEndpoint {
 		target.Properties.ServiceEndpoints = append(target.Properties.ServiceEndpoints, &armnetwork.ServiceEndpointPropertiesFormat{
@@ -596,7 +571,7 @@ func (s *SubnetConfig) ToProvider(base *armnetwork.Subnet) *armnetwork.Subnet {
 	return target
 }
 
-// ToProvider translates the config into the actual provider object.
+// ToProvider translates the config into the actual providerAccess object.
 func (v *VirtualNetworkConfig) ToProvider(base *armnetwork.VirtualNetwork) *armnetwork.VirtualNetwork {
 	desired := &armnetwork.VirtualNetwork{
 		Location:   to.Ptr(v.Location),
@@ -626,7 +601,7 @@ func (v *VirtualNetworkConfig) ToProvider(base *armnetwork.VirtualNetwork) *armn
 	return desired
 }
 
-// ToProvider translates the config into the actual provider object.
+// ToProvider translates the config into the actual providerAccess object.
 func (r *SecurityGroupConfig) ToProvider(base *armnetwork.SecurityGroup) *armnetwork.SecurityGroup {
 	desired := &armnetwork.SecurityGroup{
 		Location:   to.Ptr(r.Location),
@@ -641,7 +616,7 @@ func (r *SecurityGroupConfig) ToProvider(base *armnetwork.SecurityGroup) *armnet
 	return desired
 }
 
-// ToProvider translates the config into the actual provider object.
+// ToProvider translates the config into the actual providerAccess object.
 func (r *RouteTableConfig) ToProvider(base *armnetwork.RouteTable) *armnetwork.RouteTable {
 	desired := &armnetwork.RouteTable{
 		Location:   to.Ptr(r.Location),

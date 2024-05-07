@@ -133,7 +133,7 @@ func (r *TerraformReconciler) reconcile(ctx context.Context, infra *extensionsv1
 		return err
 	}
 
-	return patchProviderStatusAndState(ctx, r.Client, infra, status, state)
+	return infrastructure.PatchProviderStatusAndState(ctx, r.Client, infra, status, state)
 }
 
 // getState calculates the State resource after each reconciliation.

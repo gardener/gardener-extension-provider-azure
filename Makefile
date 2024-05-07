@@ -69,6 +69,7 @@ start:
 		--heartbeat-renew-interval-seconds=30 \
 		--metrics-bind-address=:8080 \
 		--health-bind-address=:8081 \
+		--log-level=debug \
 		$(WEBHOOK_PARAM)
 
 .PHONY: start-admission

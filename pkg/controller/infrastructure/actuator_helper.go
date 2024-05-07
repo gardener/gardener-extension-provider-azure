@@ -12,30 +12,13 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"k8s.io/utils/ptr"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	azuretypes "github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
-
-func patchProviderStatusAndState(
-	ctx context.Context,
-	runtimeClient client.Client,
-	infra *extensionsv1alpha1.Infrastructure,
-	status *v1alpha1.InfrastructureStatus,
-	state *runtime.RawExtension,
-) error {
-	modded := infra.DeepCopy()
-	if status != nil {
-		modded.Status.ProviderStatus = &runtime.RawExtension{Object: status}
-	}
-	if state != nil {
-		modded.Status.State = state
-	}
-
-	return runtimeClient.Status().Patch(ctx, modded, client.MergeFrom(infra))
-}
 
 // CleanupTerraformerResources deletes terraformer artifacts (config, state, secrets).
 func CleanupTerraformerResources(ctx context.Context, tf terraformer.Terraformer) error {
@@ -72,17 +55,26 @@ func hasFlowState(status extensionsv1alpha1.InfrastructureStatus) (bool, error) 
 
 // HasFlowAnnotation returns true if the new flow reconciler should be used for the reconciliation.
 func HasFlowAnnotation(infrastructure *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) bool {
-	if hasShootAnnotation(infrastructure, cluster, azuretypes.AnnotationKeyUseTF) {
-		return false
+	if ok := hasBoolAnnotation(infrastructure, azuretypes.GlobalAnnotationKeyUseFlow, azuretypes.AnnotationKeyUseFlow); ok != nil {
+		return *ok
+	}
+	if shoot := cluster.Shoot; shoot != nil {
+		if ok := hasBoolAnnotation(shoot, azuretypes.GlobalAnnotationKeyUseFlow, azuretypes.AnnotationKeyUseFlow); ok != nil {
+			return *ok
+		}
 	}
 
-	if hasShootAnnotation(infrastructure, cluster, azuretypes.AnnotationKeyUseFlow) {
-		return true
-	}
-
-	return cluster.Seed != nil && cluster.Seed.Annotations != nil && strings.EqualFold(cluster.Seed.Annotations[azuretypes.AnnotationKeyUseFlow], "true")
+	return false
 }
 
-func hasShootAnnotation(infrastructure *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster, key string) bool {
-	return (infrastructure.Annotations != nil && strings.EqualFold(infrastructure.Annotations[key], "true")) || (cluster.Shoot != nil && cluster.Shoot.Annotations != nil && strings.EqualFold(cluster.Shoot.Annotations[key], "true"))
+func hasBoolAnnotation(o v1.Object, keys ...string) *bool {
+	if annotations := o.GetAnnotations(); annotations != nil {
+		for _, k := range keys {
+			if v, ok := annotations[k]; ok {
+				return ptr.To(strings.EqualFold(v, "true"))
+			}
+		}
+	}
+
+	return nil
 }

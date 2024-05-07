@@ -13,14 +13,14 @@ import (
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils/flow"
 	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/runtime"
+	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow/shared"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
+	infrainternal "github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 )
 
 const (
@@ -28,167 +28,164 @@ const (
 	defaultLongTimeout = 4 * time.Minute
 )
 
-// PersistStateFunc is a callback function that is used to persist the state during the reconciliation.
-type PersistStateFunc func(ctx context.Context, state *runtime.RawExtension) error
-
 // FlowContext is the reconciler for all managed resources
 type FlowContext struct {
-	*shared.BasicFlowContext
-	logger logr.Logger
+	log            logr.Logger
+	client         k8sclient.Client
+	cfg            *azure.InfrastructureConfig
+	factory        client.Factory
+	auth           *internal.ClientAuth
+	infra          *extensionsv1alpha1.Infrastructure
+	state          *azure.InfrastructureState
+	cluster        *controller.Cluster
+	whiteboard     shared.Whiteboard
+	adapter        *InfrastructureAdapter
+	providerAccess Access
+	inventory      *Inventory
 
-	persistFunc PersistStateFunc
-	cfg         *azure.InfrastructureConfig
-	factory     client.Factory
-	auth        *internal.ClientAuth
-	infra       *extensionsv1alpha1.Infrastructure
-	state       *azure.InfrastructureState
-	cluster     *controller.Cluster
-	whiteboard  shared.Whiteboard
-	adapter     *InfrastructureAdapter
-	provider    Access
-	inventory   *Inventory
+	*shared.BasicFlowContext
+}
+
+// Opts contains the options to initialize a FlowContext.
+type Opts struct {
+	Client  k8sclient.Client
+	Factory client.Factory
+	Auth    *internal.ClientAuth
+	Logger  logr.Logger
+	Infra   *extensionsv1alpha1.Infrastructure
+	Cluster *controller.Cluster
+	State   *azure.InfrastructureState
 }
 
 // NewFlowContext creates a new FlowContext.
-func NewFlowContext(factory client.Factory,
-	auth *internal.ClientAuth,
-	logger logr.Logger,
-	infra *extensionsv1alpha1.Infrastructure,
-	cluster *controller.Cluster,
-	state *azure.InfrastructureState,
-	persistFunc PersistStateFunc,
-) (*FlowContext, error) {
+func NewFlowContext(opts Opts) (*FlowContext, error) {
 	wb := shared.NewWhiteboard()
-	for k, v := range state.Data {
-		wb.Set(k, v)
-	}
+	wb.ImportFromFlatMap(opts.State.Data)
 
-	cfg, err := helper.InfrastructureConfigFromInfrastructure(infra)
+	cfg, err := helper.InfrastructureConfigFromInfrastructure(opts.Infra)
 	if err != nil {
 		return nil, err
 	}
 
-	status, err := helper.InfrastructureStatusFromInfrastructure(infra)
+	status, err := helper.InfrastructureStatusFromInfrastructure(opts.Infra)
 	if err != nil {
 		return nil, err
 	}
 
-	profile, err := helper.CloudProfileConfigFromCluster(cluster)
+	cloudProfileCfg, err := helper.CloudProfileConfigFromCluster(opts.Cluster)
 	if err != nil {
 		return nil, err
 	}
 
 	inv := NewSimpleInventory(wb)
-	for _, r := range state.ManagedItems {
+	for _, r := range opts.State.ManagedItems {
 		if err := inv.Insert(r.ID); err != nil {
 			return nil, err
 		}
 	}
 
 	adapter, err := NewInfrastructureAdapter(
-		infra,
+		opts.Infra,
 		cfg,
 		status,
-		profile,
-		cluster,
+		cloudProfileCfg,
+		opts.Cluster,
 	)
 	if err != nil {
 		return nil, err
 	}
 
 	fc := &FlowContext{
-		BasicFlowContext: shared.NewBasicFlowContext(logger, wb, nil),
-		factory:          factory,
-		auth:             auth,
-		logger:           logger,
-		infra:            infra,
-		state:            state,
-		cluster:          cluster,
-		cfg:              cfg,
-		whiteboard:       wb,
-		provider: &access{
-			factory,
+		factory:    opts.Factory,
+		client:     opts.Client,
+		auth:       opts.Auth,
+		log:        opts.Logger,
+		infra:      opts.Infra,
+		state:      opts.State,
+		cluster:    opts.Cluster,
+		cfg:        cfg,
+		whiteboard: wb,
+		providerAccess: &access{
+			opts.Factory,
 		},
 		adapter:   adapter,
 		inventory: inv,
 	}
 
-	if persistFunc != nil {
-		fc.persistFunc = persistFunc
-		fc.BasicFlowContext = shared.NewBasicFlowContext(logger, wb, fc.persist)
-	}
 	return fc, nil
 }
 
 // Reconcile reconciles target infrastructure.
-func (f *FlowContext) Reconcile(ctx context.Context) (*v1alpha1.InfrastructureStatus, *runtime.RawExtension, error) {
-	graph := f.buildReconcileGraph()
+func (fctx *FlowContext) Reconcile(ctx context.Context) error {
+	graph := fctx.buildReconcileGraph()
 	fl := graph.Compile()
 	if err := fl.Run(ctx, flow.Opts{
-		Log:              f.Log,
-		ProgressReporter: nil,
-		ErrorCleaner:     nil,
-		ErrorContext:     nil,
+		Log: fctx.log,
 	}); err != nil {
 		// even if the run ends with an error we should still update our state.
 		err = flow.Causes(err)
-		f.forceGen()
-		errInternal := f.PersistState(ctx, true)
-		return nil, nil, errors.Join(err, errInternal)
+		fctx.log.Error(err, "flow reconciliation failed")
+		return errors.Join(err, fctx.persistState(ctx))
 	}
 
-	status, err := f.GetInfrastructureStatus(ctx)
-	state, err2 := f.GetInfrastructureState()
-	err = errors.Join(err, err2)
-	return status, state, err
+	status, err := fctx.GetInfrastructureStatus(ctx)
+	state := fctx.GetInfrastructureState()
+	if err != nil {
+		return err
+	}
+	return infrainternal.PatchProviderStatusAndState(ctx, fctx.client, fctx.infra, status, state)
 }
 
-func (f *FlowContext) buildReconcileGraph() *flow.Graph {
+func (fctx *FlowContext) buildReconcileGraph() *flow.Graph {
+	fctx.BasicFlowContext = shared.NewBasicFlowContext().WithSpan().WithLogger(fctx.log).WithPersist(fctx.persistState)
 	g := flow.NewGraph("Azure infrastructure reconciliation")
-	resourceGroup := f.AddTask(g, "ensure resource group",
-		f.EnsureResourceGroup, shared.Timeout(defaultTimeout))
 
-	vnet := f.AddTask(g, "ensure vnet",
-		f.EnsureVirtualNetwork, shared.Timeout(defaultTimeout), shared.Dependencies(resourceGroup))
+	resourceGroup := fctx.AddTask(g, "ensure resource group",
+		fctx.EnsureResourceGroup, shared.Timeout(defaultTimeout))
 
-	_ = f.AddTask(g, "ensure availability set",
-		f.EnsureAvailabilitySet, shared.DoIf(f.adapter.AvailabilitySetConfig() != nil),
+	vnet := fctx.AddTask(g, "ensure vnet",
+		fctx.EnsureVirtualNetwork, shared.Timeout(defaultTimeout), shared.Dependencies(resourceGroup))
+
+	_ = fctx.AddTask(g, "ensure availability set",
+		fctx.EnsureAvailabilitySet, shared.DoIf(fctx.adapter.AvailabilitySetConfig() != nil),
 		shared.Timeout(defaultTimeout), shared.Dependencies(resourceGroup))
 
-	_ = f.AddTask(g, "ensure managed identity",
-		f.EnsureManagedIdentity, shared.DoIf(f.cfg.Identity != nil))
+	_ = fctx.AddTask(g, "ensure managed identity",
+		fctx.EnsureManagedIdentity, shared.DoIf(fctx.cfg.Identity != nil))
 
-	routeTable := f.AddTask(g, "ensure route table",
-		f.EnsureRouteTable, shared.Timeout(defaultTimeout), shared.Dependencies(resourceGroup))
+	routeTable := fctx.AddTask(g, "ensure route table",
+		fctx.EnsureRouteTable, shared.Timeout(defaultTimeout), shared.Dependencies(resourceGroup))
 
-	securityGroup := f.AddTask(g, "ensure security group",
-		f.EnsureSecurityGroup, shared.Timeout(defaultTimeout), shared.Dependencies(resourceGroup))
+	securityGroup := fctx.AddTask(g, "ensure security group",
+		fctx.EnsureSecurityGroup, shared.Timeout(defaultTimeout), shared.Dependencies(resourceGroup))
 
-	ip := f.AddTask(g, "ensure public IPs",
-		f.EnsurePublicIps, shared.Timeout(defaultLongTimeout), shared.Dependencies(resourceGroup))
-	nat := f.AddTask(g, "ensure nats",
-		f.EnsureNatGateways, shared.Timeout(defaultLongTimeout), shared.Dependencies(resourceGroup, ip))
+	ip := fctx.AddTask(g, "ensure public IPs",
+		fctx.EnsurePublicIps, shared.Timeout(defaultLongTimeout), shared.Dependencies(resourceGroup))
+	nat := fctx.AddTask(g, "ensure nats",
+		fctx.EnsureNatGateways, shared.Timeout(defaultLongTimeout), shared.Dependencies(resourceGroup, ip))
 
-	_ = f.AddTask(g, "ensure subnets", f.EnsureSubnets,
+	_ = fctx.AddTask(g, "ensure subnets", fctx.EnsureSubnets,
 		shared.Timeout(defaultLongTimeout), shared.Dependencies(vnet, routeTable, securityGroup, nat))
 	return g
 }
 
 // Delete deletes all resources managed by the reconciler
-func (f *FlowContext) Delete(ctx context.Context) error {
-	if len(f.state.ManagedItems) == 0 {
+func (fctx *FlowContext) Delete(ctx context.Context) error {
+	if len(fctx.state.ManagedItems) == 0 {
 		// special case where the credentials were invalid from the beginning
-		if _, ok := f.state.Data[CreatedResourcesExistKey]; !ok {
+		if _, ok := fctx.state.Data[CreatedResourcesExistKey]; !ok {
+			fctx.log.Info("No created resources found. Skipping deletion.")
 			return nil
 		}
 	}
 
+	fctx.BasicFlowContext = shared.NewBasicFlowContext().WithSpan().WithLogger(fctx.log).WithPersist(fctx.persistState)
 	g := flow.NewGraph("Azure infrastructure deletion")
 
-	foreignSubnets := f.AddTask(g, "delete subnets in foreign resource group",
-		f.DeleteSubnetsInForeignGroup, shared.Timeout(defaultLongTimeout))
-	f.AddTask(g, "delete resource group",
-		f.DeleteResourceGroup, shared.Dependencies(foreignSubnets), shared.Timeout(defaultLongTimeout))
+	foreignSubnets := fctx.AddTask(g, "delete subnets in foreign resource group",
+		fctx.DeleteSubnetsInForeignGroup, shared.Timeout(defaultLongTimeout))
+	fctx.AddTask(g, "delete resource group",
+		fctx.DeleteResourceGroup, shared.Dependencies(foreignSubnets), shared.Timeout(defaultLongTimeout))
 
 	fl := g.Compile()
 	if err := fl.Run(ctx, flow.Opts{}); err != nil {
@@ -198,15 +195,6 @@ func (f *FlowContext) Delete(ctx context.Context) error {
 	return nil
 }
 
-// persist is an implementations of the BasicFlowContext's persistFunc.
-func (f *FlowContext) persist(ctx context.Context, _ shared.FlatMap) error {
-	state, err := f.GetInfrastructureState()
-	if err != nil {
-		return err
-	}
-	return f.persistFunc(ctx, state)
-}
-
-func (f *FlowContext) forceGen() {
-	f.whiteboard.Set("time", time.Now().String())
+func (fctx *FlowContext) persistState(ctx context.Context) error {
+	return infrainternal.PatchProviderStatusAndState(ctx, fctx.client, fctx.infra, nil, fctx.GetInfrastructureState())
 }

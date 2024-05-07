@@ -893,9 +893,6 @@ func newInfrastructure(namespace string, providerConfig *azurev1alpha1.Infrastru
 	if *reconciler == reconcilerUseFlow {
 		log.Info("creating infrastructure with flow annotation")
 		metav1.SetMetaDataAnnotation(&infra.ObjectMeta, azure.AnnotationKeyUseFlow, "true")
-	} else if *reconciler == reconcilerUseTF {
-		log.Info("creating infrastructure with terraform annotation")
-		metav1.SetMetaDataAnnotation(&infra.ObjectMeta, azure.AnnotationKeyUseTF, "true")
 	}
 	return infra, nil
 }
