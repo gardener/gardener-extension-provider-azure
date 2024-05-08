@@ -139,17 +139,15 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		image := map[string]interface{}{}
 		if urn != nil {
 			image["urn"] = *urn
+			if skipAgreementPools.Has(pool.Name) {
+				image["skipMarketplaceAgreement"] = true
+			}
 		} else if communityGalleryImageID != nil {
 			image["communityGalleryImageID"] = *communityGalleryImageID
 		} else if sharedGalleryImageID != nil {
 			image["sharedGalleryImageID"] = *sharedGalleryImageID
 		} else {
 			image["id"] = *id
-		}
-
-		machineClassAnnotations := map[string]string{}
-		if skipAgreementPools.Has(pool.Name) {
-			machineClassAnnotations[azure.BetaSkipMarketPlaceAgreementMCMAnnotation] = "true"
 		}
 
 		disks, err := computeDisks(pool)
@@ -183,7 +181,6 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				}
 
 				machineClassSpec = utils.MergeMaps(map[string]interface{}{
-					"annotations":   machineClassAnnotations,
 					"region":        w.worker.Spec.Region,
 					"resourceGroup": infrastructureStatus.ResourceGroup.Name,
 					"tags":          w.getVMTags(pool),
@@ -283,10 +280,13 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				}
 			}
 
-			// special processing of confidential VMs.
-			if w.isConfidentialVM(pool.MachineType) {
+			// special processing of CVMs.
+			if isConfidentialVM(pool) {
 				machineClassSpec["securityProfile"] = map[string]interface{}{
 					"securityType": string(armcompute.SecurityTypesConfidentialVM),
+					"uefiSettings": map[string]interface{}{
+						"vtpmEnabled": true,
+					},
 				}
 			}
 
@@ -412,6 +412,12 @@ func computeDisks(pool extensionsv1alpha1.WorkerPool) (map[string]interface{}, e
 		osDisk["type"] = *pool.Volume.Type
 	}
 
+	if isConfidentialVM(pool) {
+		osDisk["securityProfile"] = map[string]interface{}{
+			"securityEncryptionType": string(armcompute.SecurityEncryptionTypesVMGuestStateOnly),
+		}
+	}
+
 	disks := map[string]interface{}{
 		"osDisk": osDisk,
 	}
@@ -496,9 +502,9 @@ func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPo
 }
 
 // TODO: Remove when we have support for VM Capabilities
-func (w *workerDelegate) isConfidentialVM(family string) bool {
+func isConfidentialVM(pool extensionsv1alpha1.WorkerPool) bool {
 	for _, v := range azure.ConfidentialVMFamilyPrefixes {
-		if strings.HasPrefix(strings.ToLower(family), strings.ToLower(v)) {
+		if strings.HasPrefix(strings.ToLower(pool.MachineType), strings.ToLower(v)) {
 			return true
 		}
 	}
