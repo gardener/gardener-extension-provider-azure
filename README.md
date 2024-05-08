@@ -1,6 +1,6 @@
 # [Gardener Extension for Azure provider](https://gardener.cloud)
 [![REUSE status](https://api.reuse.software/badge/github.com/gardener/gardener-extension-provider-azure)](https://api.reuse.software/info/github.com/gardener/gardener-extension-provider-azure)
-[![CI Build status](https://concourse.ci.gardener.cloud/api/v1/teams/gardener-tests/pipelines/gardener-extension-provider-azure-master/jobs/master-head-update-job/badge)](https://concourse.ci.gardener.cloud/teams/gardener-tests/pipelines/gardener-extension-provider-azure-master/jobs/master-head-update-job)
+[![CI Build status](https://concourse.ci.gardener.cloud/api/v1/teams/gardener/pipelines/gardener-extension-provider-azure-master/jobs/master-head-update-job/badge)](https://concourse.ci.gardener.cloud/teams/gardener/pipelines/gardener-extension-provider-azure-master/jobs/master-head-update-job)
 [![Go Report Card](https://goreportcard.com/badge/github.com/gardener/gardener-extension-provider-azure)](https://goreportcard.com/report/github.com/gardener/gardener-extension-provider-azure)
 
 Project Gardener implements the automated management and operation of [Kubernetes](https://kubernetes.io/) clusters as a service.
