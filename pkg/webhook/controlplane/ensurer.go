@@ -195,8 +195,10 @@ func ensureKubeAPIServerCommandLineArgs(c *corev1.Container, k8sVersion *semver.
 			"CSIMigrationAzureDisk=true", ",")
 	}
 
-	c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
-		"CSIMigrationAzureFile=true", ",")
+	if version.ConstraintK8sLess130.Check(k8sVersion) {
+		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
+			"CSIMigrationAzureFile=true", ",")
+	}
 
 	c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 		"InTreePluginAzureDiskUnregister=true", ",")
@@ -220,9 +222,10 @@ func ensureKubeControllerManagerCommandLineArgs(c *corev1.Container, k8sVersion 
 			"CSIMigrationAzureDisk=true", ",")
 	}
 
-	c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
-		"CSIMigrationAzureFile=true", ",")
-
+	if version.ConstraintK8sLess130.Check(k8sVersion) {
+		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
+			"CSIMigrationAzureFile=true", ",")
+	}
 	c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 		"InTreePluginAzureDiskUnregister=true", ",")
 	c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
@@ -239,9 +242,10 @@ func ensureKubeSchedulerCommandLineArgs(c *corev1.Container, k8sVersion *semver.
 			"CSIMigrationAzureDisk=true", ",")
 	}
 
-	c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
-		"CSIMigrationAzureFile=true", ",")
-
+	if version.ConstraintK8sLess130.Check(k8sVersion) {
+		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
+			"CSIMigrationAzureFile=true", ",")
+	}
 	c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 		"InTreePluginAzureDiskUnregister=true", ",")
 	c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
@@ -256,9 +260,10 @@ func ensureClusterAutoscalerCommandLineArgs(c *corev1.Container, k8sVersion *sem
 			"CSIMigrationAzureDisk=true", ",")
 	}
 
-	c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
-		"CSIMigrationAzureFile=true", ",")
-
+	if version.ConstraintK8sLess130.Check(k8sVersion) {
+		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
+			"CSIMigrationAzureFile=true", ",")
+	}
 	c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 		"InTreePluginAzureDiskUnregister=true", ",")
 	c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
@@ -380,7 +385,9 @@ func (e *ensurer) EnsureKubeletConfiguration(_ context.Context, _ gcontext.Garde
 		new.FeatureGates["CSIMigrationAzureDisk"] = true
 	}
 
-	new.FeatureGates["CSIMigrationAzureFile"] = true
+	if version.ConstraintK8sLess130.Check(kubeletVersion) {
+		new.FeatureGates["CSIMigrationAzureFile"] = true
+	}
 	// kubelets of new worker nodes can directly be started with the `InTreePluginAzure<*>Unregister` feature gates
 	new.FeatureGates["InTreePluginAzureDiskUnregister"] = true
 	new.FeatureGates["InTreePluginAzureFileUnregister"] = true
