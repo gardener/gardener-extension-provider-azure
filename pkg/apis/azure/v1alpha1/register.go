@@ -37,6 +37,7 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&WorkerConfig{},
 		&WorkerStatus{},
 		&BackupConfig{},
+		&DNSRecordConfig{},
 	)
 	return nil
 }

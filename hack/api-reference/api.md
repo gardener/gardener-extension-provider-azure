@@ -16,6 +16,8 @@ Resource Types:
 </li><li>
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.ControlPlaneConfig">ControlPlaneConfig</a>
 </li><li>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.DNSRecordConfig">DNSRecordConfig</a>
+</li><li>
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.InfrastructureConfig">InfrastructureConfig</a>
 </li><li>
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig</a>
@@ -224,6 +226,52 @@ Storage
 </td>
 <td>
 <p>Storage contains configuration for storage in the cluster.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.DNSRecordConfig">DNSRecordConfig
+</h3>
+<p>
+<p>DNSRecordConfig is the provider-specific configuration for DNSRecords.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code></br>
+string</td>
+<td>
+<code>
+azure.provider.extensions.gardener.cloud/v1alpha1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code></br>
+string
+</td>
+<td><code>DNSRecordConfig</code></td>
+</tr>
+<tr>
+<td>
+<code>cloudConfiguration</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.CloudConfiguration">
+CloudConfiguration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CloudConfiguration contains config that controls which cloud to connect to.</p>
 </td>
 </tr>
 </tbody>
@@ -545,7 +593,8 @@ string
 <p>
 (<em>Appears on:</em>
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.BackupConfig">BackupConfig</a>, 
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.CloudProfileConfig">CloudProfileConfig</a>)
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.CloudProfileConfig">CloudProfileConfig</a>, 
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.DNSRecordConfig">DNSRecordConfig</a>)
 </p>
 <p>
 <p>CloudConfiguration contains detailed config for the cloud to connect to. Currently we only support selection of well-
