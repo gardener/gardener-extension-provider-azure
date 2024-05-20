@@ -59,12 +59,12 @@ spec:
   providerConfig:
     apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
     kind: ControlPlaneConfig
-    cloudControllerManager:
-      featureGates:
-        RotateKubeletServerCertificate: true
-#    storage:
-#      managedDefaultVolumeSnapshotClass: true
-#      managedDefaultStorageClass: true
+  # cloudControllerManager:
+  #   featureGates:
+  #     SomeKubernetesFeature: true
+  # storage:
+  #   managedDefaultVolumeSnapshotClass: true
+  #   managedDefaultStorageClass: true
   infrastructureProviderStatus:
     apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
     kind: InfrastructureStatus

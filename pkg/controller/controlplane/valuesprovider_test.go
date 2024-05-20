@@ -102,7 +102,7 @@ var _ = Describe("ValuesProvider", func() {
 			},
 			CloudControllerManager: &v1alpha1.CloudControllerManagerConfig{
 				FeatureGates: map[string]bool{
-					"RotateKubeletServerCertificate": true,
+					"SomeKubernetesFeature": true,
 				},
 			},
 		}
@@ -313,7 +313,7 @@ var _ = Describe("ValuesProvider", func() {
 					"maintenance.gardener.cloud/restart": "true",
 				},
 				"featureGates": map[string]bool{
-					"RotateKubeletServerCertificate": true,
+					"SomeKubernetesFeature": true,
 				},
 				"tlsCipherSuites": []string{
 					"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
