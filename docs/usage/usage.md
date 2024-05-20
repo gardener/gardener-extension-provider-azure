@@ -305,8 +305,8 @@ An example `ControlPlaneConfig` for the Azure extension looks as follows:
 apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
 kind: ControlPlaneConfig
 cloudControllerManager:
-  featureGates:
-    RotateKubeletServerCertificate: true
+# featureGates:
+#   SomeKubernetesFeature: true
 ```
 
 The `cloudControllerManager.featureGates` contains a map of explicitly enabled or disabled feature gates.
