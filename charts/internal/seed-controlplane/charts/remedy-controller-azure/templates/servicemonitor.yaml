@@ -1,0 +1,24 @@
+{{- if .Values.gep19Monitoring }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: shoot-remedy-controller-azure
+  namespace: {{ .Release.Namespace }}
+  labels:
+    prometheus: shoot
+spec:
+  selector:
+    matchLabels:
+      app: remedy-controller-azure
+  endpoints:
+  - port: metrics
+    relabelings:
+    - action: labelmap
+      regex: __meta_kubernetes_service_label_(.+)
+    metricRelabelings:
+    - sourceLabels:
+      - __name__
+      action: keep
+      regex: ^(azure_read_requests_total|azure_write_requests_total|cleaned_azure_public_ips_total|reapplied_azure_virtual_machines_total|azure_virtual_machine_states|rest_client_requests_total|controller_runtime_reconcile_total|workqueue_adds_total|workqueue_depth|workqueue_longest_running_processor_seconds|workqueue_queue_duration_seconds_bucket|workqueue_queue_duration_seconds_sum|workqueue_queue_duration_seconds_count|workqueue_retries_total|workqueue_unfinished_work_seconds|workqueue_work_duration_seconds_bucket|workqueue_work_duration_seconds_sum|workqueue_work_duration_seconds_count|process_max_fds|process_open_fds)$
+  honorLabels: false
+{{- end }}
