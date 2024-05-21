@@ -17,10 +17,12 @@ import (
 	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	azclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	mockazureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client/mock"
@@ -109,6 +111,35 @@ var _ = Describe("Actuator", func() {
 
 	Describe("#Reconcile", func() {
 		It("should reconcile the DNSRecord", func() {
+			azureClientFactory.EXPECT().DNSZone().Return(azureDNSZoneClient, nil)
+			azureClientFactory.EXPECT().DNSRecordSet().Return(azureDNSRecordSetClient, nil)
+			azureDNSZoneClient.EXPECT().List(ctx).Return(zones, nil)
+			azureDNSRecordSetClient.EXPECT().CreateOrUpdate(ctx, zone, domainName, string(extensionsv1alpha1.DNSRecordTypeA), []string{address}, int64(120)).Return(nil)
+			sw.EXPECT().Patch(ctx, gomock.AssignableToTypeOf(&extensionsv1alpha1.DNSRecord{}), gomock.Any()).DoAndReturn(
+				func(_ context.Context, obj *extensionsv1alpha1.DNSRecord, _ client.Patch, _ ...client.PatchOption) error {
+					Expect(obj.Status).To(Equal(extensionsv1alpha1.DNSRecordStatus{
+						Zone: ptr.To(zone),
+					}))
+					return nil
+				},
+			)
+
+			err := a.Reconcile(ctx, logger, dns, nil)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should reconcile the DNSRecord for other cloud configuration", func() {
+			dns.Spec.ProviderConfig = &runtime.RawExtension{
+				Object: &v1alpha1.DNSRecordConfig{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "DNSRecordConfig",
+						APIVersion: v1alpha1.SchemeGroupVersion.String(),
+					},
+					CloudConfiguration: &v1alpha1.CloudConfiguration{
+						Name: "AzureChina",
+					},
+				},
+			}
 			azureClientFactory.EXPECT().DNSZone().Return(azureDNSZoneClient, nil)
 			azureClientFactory.EXPECT().DNSRecordSet().Return(azureDNSRecordSetClient, nil)
 			azureDNSZoneClient.EXPECT().List(ctx).Return(zones, nil)

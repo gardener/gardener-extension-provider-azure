@@ -114,6 +114,22 @@ func BackupConfigFromBackupEntry(backupEntry *extensionsv1alpha1.BackupEntry) (a
 	return backupConfig, nil
 }
 
+// DNSRecordConfigFromDNSRecord decodes the provider specific config from a given DNSRecord object.
+func DNSRecordConfigFromDNSRecord(dnsRecord *extensionsv1alpha1.DNSRecord) (api.DNSRecordConfig, error) {
+	dnsRecordConfig := api.DNSRecordConfig{}
+	if dnsRecord != nil && dnsRecord.Spec.ProviderConfig != nil {
+		dnsJson, err := dnsRecord.Spec.ProviderConfig.MarshalJSON()
+		if err != nil {
+			return dnsRecordConfig, err
+		}
+
+		if _, _, err := decoder.Decode(dnsJson, nil, &dnsRecordConfig); err != nil {
+			return dnsRecordConfig, err
+		}
+	}
+	return dnsRecordConfig, nil
+}
+
 // InfrastructureStateFromRaw extracts the state from the Infrastructure. If no state was available, it returns a "zero" value InfrastructureState object.
 func InfrastructureStateFromRaw(raw *runtime.RawExtension) (*api.InfrastructureState, error) {
 	state := &api.InfrastructureState{}

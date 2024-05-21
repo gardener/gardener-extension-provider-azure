@@ -47,18 +47,13 @@ func NewActuator(mgr manager.Manager) dnsrecord.Actuator {
 }
 
 // Reconcile reconciles the DNSRecord.
-func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, cluster *extensionscontroller.Cluster) error {
-	cloudProfile, err := helper.CloudProfileConfigFromCluster(cluster)
+func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, _ *extensionscontroller.Cluster) error {
+	dnsRecordConfig, err := helper.DNSRecordConfigFromDNSRecord(dns)
 	if err != nil {
 		return err
 	}
 
-	var cloudConfiguration *azure.CloudConfiguration
-	if cloudProfile != nil {
-		cloudConfiguration = cloudProfile.CloudConfiguration
-	}
-
-	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(cloudConfiguration)
+	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(dnsRecordConfig.CloudConfiguration)
 	if err != nil {
 		return err
 	}
