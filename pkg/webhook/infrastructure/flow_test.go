@@ -6,7 +6,6 @@ package infrastructure
 
 import (
 	"context"
-	"testing"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
@@ -30,11 +29,6 @@ import (
 const (
 	shootNamespace = "shoot--foo--bar"
 )
-
-func TestController(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Infrastructure Webhook Suite")
-}
 
 var _ = Describe("Mutate", func() {
 	var (
