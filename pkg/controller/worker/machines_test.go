@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-azure/charts"
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
@@ -39,12 +40,13 @@ import (
 
 var _ = Describe("Machines", func() {
 	var (
+		ctx = context.Background()
+
 		ctrl         *gomock.Controller
 		c            *mockclient.MockClient
 		statusWriter *mockclient.MockStatusWriter
 		chartApplier *mockkubernetes.MockChartApplier
 
-		ctx               context.Context
 		namespace, region string
 	)
 
@@ -58,7 +60,6 @@ var _ = Describe("Machines", func() {
 		// Let the seed client always the mocked status writer when Status() is called.
 		c.EXPECT().Status().AnyTimes().Return(statusWriter)
 
-		ctx = context.TODO()
 		namespace = "shoot--foobar--azure"
 		region = "westeurope"
 	})
@@ -90,6 +91,8 @@ var _ = Describe("Machines", func() {
 				identityID            string
 				machineType           string
 				userData              []byte
+				userDataSecretName    string
+				userDataSecretDataKey string
 				sshKey                string
 
 				volumeSize      int
@@ -168,6 +171,8 @@ var _ = Describe("Machines", func() {
 				availabilitySetID = "av-1234"
 				machineType = "large"
 				userData = []byte("some-user-data")
+				userDataSecretName = "userdata-secret-name"
+				userDataSecretDataKey = "userdata-secret-key"
 				sshKey = "public-key"
 				identityID = "identity-id"
 
@@ -287,7 +292,10 @@ var _ = Describe("Machines", func() {
 						Name:    machineImageName,
 						Version: machineImageVersion,
 					},
-					UserData: userData,
+					UserDataSecretRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: userDataSecretName},
+						Key:                  userDataSecretDataKey,
+					},
 					Volume: &extensionsv1alpha1.Volume{
 						Size: fmt.Sprintf("%dGi", volumeSize),
 					},
@@ -319,6 +327,8 @@ var _ = Describe("Machines", func() {
 						Name:    machineImageName,
 						Version: machineImageVersionID,
 					},
+					// TODO: Use UserDataSecretRef like in first pool once this field got removed from the
+					//  API.
 					UserData: userData,
 					Volume: &extensionsv1alpha1.Volume{
 						Size: fmt.Sprintf("%dGi", volumeSize),
@@ -341,6 +351,8 @@ var _ = Describe("Machines", func() {
 						Name:    machineImageName,
 						Version: machineImageVersionCommunityID,
 					},
+					// TODO: Use UserDataSecretRef like in first pool once this field got removed from the
+					//  API.
 					UserData: userData,
 					Volume: &extensionsv1alpha1.Volume{
 						Size: fmt.Sprintf("%dGi", volumeSize),
@@ -363,6 +375,8 @@ var _ = Describe("Machines", func() {
 						Name:    machineImageName,
 						Version: machineImageVersionSharedID,
 					},
+					// TODO: Use UserDataSecretRef like in first pool once this field got removed from the
+					//  API.
 					UserData: userData,
 					Volume: &extensionsv1alpha1.Volume{
 						Size: fmt.Sprintf("%dGi", volumeSize),
@@ -375,6 +389,15 @@ var _ = Describe("Machines", func() {
 				infrastructureStatus = makeInfrastructureStatus(resourceGroupName, vnetName, subnetName, false, &vnetResourceGroupName, &availabilitySetID, &identityID)
 				w = makeWorker(namespace, region, &sshKey, infrastructureStatus, pool1, pool2, pool3, pool4)
 			})
+
+			expectedUserDataSecretRefRead := func() {
+				c.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: userDataSecretName}, gomock.AssignableToTypeOf(&corev1.Secret{})).DoAndReturn(
+					func(_ context.Context, _ client.ObjectKey, secret *corev1.Secret, _ ...client.GetOption) error {
+						secret.Data = map[string][]byte{userDataSecretDataKey: userData}
+						return nil
+					},
+				)
+			}
 
 			Describe("machine images", func() {
 				var (
@@ -582,6 +605,8 @@ var _ = Describe("Machines", func() {
 				It("should return the expected machine deployments for profile image types", func() {
 					workerDelegate := wrapNewWorkerDelegate(c, chartApplier, w, cluster, nil)
 
+					expectedUserDataSecretRefRead()
+
 					chartApplier.
 						EXPECT().
 						ApplyFromEmbeddedFS(
@@ -657,9 +682,12 @@ var _ = Describe("Machines", func() {
 							Volume: &extensionsv1alpha1.Volume{
 								Size: fmt.Sprintf("%dGi", volumeSize),
 							},
-							UserData: userData,
-							Labels:   labels,
-							Zones:    []string{zone1, zone2},
+							UserDataSecretRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: userDataSecretName},
+								Key:                  userDataSecretDataKey,
+							},
+							Labels: labels,
+							Zones:  []string{zone1, zone2},
 						}
 
 						w = makeWorker(namespace, region, &sshKey, infrastructureStatus, poolZones)
@@ -704,6 +732,8 @@ var _ = Describe("Machines", func() {
 					It("should return the correct machine deployments for zonal setup", func() {
 						workerDelegate := wrapNewWorkerDelegate(c, chartApplier, w, cluster, nil)
 
+						expectedUserDataSecretRefRead()
+
 						// Test workerDelegate.GenerateMachineDeployments()
 						result, err := workerDelegate.GenerateMachineDeployments(ctx)
 						Expect(err).NotTo(HaveOccurred())
@@ -723,6 +753,8 @@ var _ = Describe("Machines", func() {
 						w.Spec.Pools[1].Zones = []string{zone1, zone2}
 
 						workerDelegate := wrapNewWorkerDelegate(c, chartApplier, w, cluster, nil)
+
+						expectedUserDataSecretRefRead()
 
 						result, err := workerDelegate.GenerateMachineDeployments(ctx)
 
@@ -805,6 +837,8 @@ var _ = Describe("Machines", func() {
 				}
 				workerDelegate := wrapNewWorkerDelegate(c, chartApplier, w, cluster, nil)
 
+				expectedUserDataSecretRefRead()
+
 				result, err := workerDelegate.GenerateMachineDeployments(ctx)
 				Expect(err).To(HaveOccurred())
 				Expect(result).To(BeNil())
@@ -844,6 +878,8 @@ var _ = Describe("Machines", func() {
 					NodeConditions:         testNodeConditions,
 				}
 				workerDelegate := wrapNewWorkerDelegate(c, chartApplier, w, cluster, nil)
+
+				expectedUserDataSecretRefRead()
 
 				result, err := workerDelegate.GenerateMachineDeployments(ctx)
 				resultSettings := result[0].MachineConfiguration

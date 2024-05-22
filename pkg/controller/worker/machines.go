@@ -149,6 +149,11 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			}
 		}
 
+		userData, err := worker.FetchUserData(ctx, w.client, w.worker.Namespace, pool)
+		if err != nil {
+			return err
+		}
+
 		generateMachineClassAndDeployment := func(zone *zoneInfo, machineSet *machineSetInfo, subnetName, workerPoolHash string, workerConfig *azureapi.WorkerConfig) (worker.MachineDeployment, map[string]interface{}) {
 			var (
 				machineDeployment = worker.MachineDeployment{
@@ -167,7 +172,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 					"resourceGroup": infrastructureStatus.ResourceGroup.Name,
 					"tags":          w.getVMTags(pool),
 					"secret": map[string]interface{}{
-						"cloudConfig": string(pool.UserData),
+						"cloudConfig": string(userData),
 					},
 					"credentialsSecretRef": map[string]interface{}{
 						"name":      w.worker.Spec.SecretRef.Name,
