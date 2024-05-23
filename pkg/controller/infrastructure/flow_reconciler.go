@@ -170,8 +170,6 @@ func (f *FlowReconciler) migrateFromTerraform(ctx context.Context, infra *extens
 			Data: map[string]string{},
 		}
 	)
-	// we want to prevent allowing the deletion of infrastructure if there may be still resources in the cloudprovider. We will initialize the data
-	// with a specific "marker" so that the deletion
 	tf, err := internal.NewTerraformer(f.log, f.restConfig, infrainternal.TerraformerPurpose, infra, f.disableProjectedTokenMount)
 	if err != nil {
 		return nil, err
@@ -182,8 +180,8 @@ func (f *FlowReconciler) migrateFromTerraform(ctx context.Context, infra *extens
 		return state, nil
 	}
 
-	// this is a special case when migrating from Terraform. If TF had created any resources (meaning there is an actual tf.state written)
-	// we mark that there are infra resources created.
+	// this is a special case when migrating from Terraform. If TF had created any resources (meaning there is an actual content in tf.state written)
+	// we will use a specific "marker" to make the reconciler aware of existing resources. This will prevent the reconciler from skipping the deletion flow.
 	state.Data[infraflow.CreatedResourcesExistKey] = "true"
 
 	return state, infrainternal.PatchProviderStatusAndState(ctx, f.client, infra, nil, &runtime.RawExtension{Object: state})

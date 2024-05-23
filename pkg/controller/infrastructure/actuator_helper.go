@@ -7,14 +7,12 @@ package infrastructure
 import (
 	"context"
 	"encoding/json"
-	"strings"
+	"strconv"
 
-	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/ptr"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	azuretypes "github.com/gardener/gardener-extension-provider-azure/pkg/azure"
@@ -53,28 +51,19 @@ func hasFlowState(status extensionsv1alpha1.InfrastructureStatus) (bool, error) 
 	return false, nil
 }
 
-// HasFlowAnnotation returns true if the new flow reconciler should be used for the reconciliation.
-func HasFlowAnnotation(infrastructure *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) bool {
-	if ok := hasBoolAnnotation(infrastructure, azuretypes.GlobalAnnotationKeyUseFlow, azuretypes.AnnotationKeyUseFlow); ok != nil {
-		return *ok
-	}
-	if shoot := cluster.Shoot; shoot != nil {
-		if ok := hasBoolAnnotation(shoot, azuretypes.GlobalAnnotationKeyUseFlow, azuretypes.AnnotationKeyUseFlow); ok != nil {
-			return *ok
-		}
-	}
-
-	return false
-}
-
-func hasBoolAnnotation(o v1.Object, keys ...string) *bool {
+// GetFlowAnnotationValue returns the boolean value of the expected flow annotation. Returns false if the annotation was not found, if it couldn't be converted to bool,
+// or had a "false" value.
+func GetFlowAnnotationValue(o v1.Object) bool {
 	if annotations := o.GetAnnotations(); annotations != nil {
-		for _, k := range keys {
-			if v, ok := annotations[k]; ok {
-				return ptr.To(strings.EqualFold(v, "true"))
+		for _, k := range azuretypes.ValidFlowAnnotations {
+			if str, ok := annotations[k]; ok {
+				if v, err := strconv.ParseBool(str); err != nil {
+					return false
+				} else {
+					return v
+				}
 			}
 		}
 	}
-
-	return nil
+	return false
 }

@@ -55,12 +55,12 @@ func (f ReconcilerFactoryImpl) Build(useFlow bool) (Reconciler, error) {
 type SelectorFunc func(*extensionsv1alpha1.Infrastructure, *extensions.Cluster) (bool, error)
 
 // OnReconcile returns true if the operation should use the Flow for the given cluster.
-func OnReconcile(infra *extensionsv1alpha1.Infrastructure, cluster *extensions.Cluster) (bool, error) {
+func OnReconcile(infra *extensionsv1alpha1.Infrastructure, _ *extensions.Cluster) (bool, error) {
 	hasState, err := hasFlowState(infra.Status)
 	if err != nil {
 		return false, err
 	}
-	return hasState || HasFlowAnnotation(infra, cluster), nil
+	return hasState || GetFlowAnnotationValue(infra), nil
 }
 
 // OnDelete returns true if the operation should use the Flow deletion for the given cluster.

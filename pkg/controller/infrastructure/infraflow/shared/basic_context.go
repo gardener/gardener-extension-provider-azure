@@ -81,7 +81,7 @@ func NewBasicFlowContext() *BasicFlowContext {
 	return flowContext
 }
 
-// WithLogger is the logger that gets injected into the context for each node.
+// WithLogger injects the given logger into the context.
 func (c *BasicFlowContext) WithLogger(log logr.Logger) *BasicFlowContext {
 	c.log = log
 	return c
@@ -93,8 +93,7 @@ func (c *BasicFlowContext) WithSpan() *BasicFlowContext {
 	return c
 }
 
-// WithPersist is Task that will be called after each successful node directly after the node execution.
-// It's used to store information in the state.
+// WithPersist is the Task that will be called after each successful node directly after the node execution.
 func (c *BasicFlowContext) WithPersist(task flow.TaskFn) *BasicFlowContext {
 	c.persistFn = task
 	return c

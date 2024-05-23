@@ -34,8 +34,8 @@ func NewFlowMutator(mgr manager.Manager, logger logr.Logger) extensionswebhook.M
 	}
 }
 
-// Mutate mutates the given object on creation and adds the annotation `aws.provider.extensions.gardener.cloud/use-flow=true`
-// if the seed has the label `aws.provider.extensions.gardener.cloud/use-flow` == `new`.
+// Mutate mutates the given object on creation and adds the annotation `azure.provider.extensions.gardener.cloud/use-flow=true`
+// if the seed has the label `azure.provider.extensions.gardener.cloud/use-flow` == `new`.
 func (m *flowMutator) Mutate(ctx context.Context, new, old client.Object) error {
 	if new.GetDeletionTimestamp() != nil {
 		return nil

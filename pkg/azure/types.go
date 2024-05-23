@@ -144,4 +144,7 @@ const (
 )
 
 // UsernamePrefix is a constant for the username prefix of components deployed by Azure.
-var UsernamePrefix = extensionsv1alpha1.SchemeGroupVersion.Group + ":" + Name + ":"
+var (
+	UsernamePrefix       = extensionsv1alpha1.SchemeGroupVersion.Group + ":" + Name + ":"
+	ValidFlowAnnotations = []string{AnnotationKeyUseFlow, GlobalAnnotationKeyUseFlow}
+)
