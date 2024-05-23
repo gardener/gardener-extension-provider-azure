@@ -685,14 +685,6 @@ func runTest(
 		return err
 	}
 
-	// if *reconciler == reconcilerUseFlow {
-	// 	log.Info("creating infrastructure with flow annotation")
-	// 	metav1.SetMetaDataAnnotation(&infra.ObjectMeta, azure.AnnotationKeyUseFlow, "true")
-	// } else if *reconciler == reconcilerUseTF {
-	// 	log.Info("creating infrastructure with terraform annotation")
-	// 	metav1.SetMetaDataAnnotation(&infra.ObjectMeta, azure.AnnotationKeyUseTF, "true")
-	// }
-
 	if err := c.Create(ctx, infra); err != nil {
 		return err
 	}
