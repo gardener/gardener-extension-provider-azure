@@ -7,7 +7,6 @@ package infrastructure_test
 import (
 	"encoding/json"
 
-	"github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -19,37 +18,19 @@ import (
 	azuretypes "github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure"
 	internalinfra "github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
-	"github.com/gardener/gardener-extension-provider-azure/test/utils"
 )
 
 var _ = Describe("ShouldUseFlow", func() {
 	Context("without any flow annotation", func() {
 		It("should not use FlowContext", func() {
-			cluster := utils.MakeCluster("11.0.0.0/16", "12.0.0.0/16", "europe", 1, 1)
-			Expect(infrastructure.HasFlowAnnotation(&extensionsv1alpha1.Infrastructure{}, cluster)).To(BeFalse())
+			Expect(infrastructure.GetFlowAnnotationValue(&extensionsv1alpha1.Infrastructure{})).To(BeFalse())
 		})
 	})
 	Context("with flow annotation in infrastruture", func() {
 		infra := &extensionsv1alpha1.Infrastructure{}
-		cluster := utils.MakeCluster("11.0.0.0/16", "12.0.0.0/16", "europe", 1, 1)
 		metav1.SetMetaDataAnnotation(&infra.ObjectMeta, azuretypes.AnnotationKeyUseFlow, "true")
 		It("should use the FlowContext", func() {
-			Expect(infrastructure.HasFlowAnnotation(infra, cluster)).To(BeTrue())
-		})
-	})
-	Context("with flow annotation in shoot", func() {
-		cluster := utils.MakeCluster("11.0.0.0/16", "12.0.0.0/16", "europe", 1, 1)
-		metav1.SetMetaDataAnnotation(&cluster.Shoot.ObjectMeta, azuretypes.AnnotationKeyUseFlow, "true")
-		It("should use the FlowContext", func() {
-			Expect(infrastructure.HasFlowAnnotation(&extensionsv1alpha1.Infrastructure{}, cluster)).To(BeTrue())
-		})
-	})
-	Context("with flow annotation in seed", func() {
-		cluster := utils.MakeCluster("11.0.0.0/16", "12.0.0.0/16", "europe", 1, 1)
-		cluster.Seed = &v1beta1.Seed{}
-		metav1.SetMetaDataAnnotation(&cluster.Seed.ObjectMeta, azuretypes.AnnotationKeyUseFlow, "true")
-		It("should use the FlowContext", func() {
-			Expect(infrastructure.HasFlowAnnotation(&extensionsv1alpha1.Infrastructure{}, cluster)).To(BeTrue())
+			Expect(infrastructure.GetFlowAnnotationValue(infra)).To(BeTrue())
 		})
 	})
 })
@@ -61,7 +42,7 @@ var _ = Describe("ReconcilationStrategy", func() {
 		metav1.SetMetaDataAnnotation(&infra.ObjectMeta, azuretypes.AnnotationKeyUseFlow, "true")
 
 		sut := infrastructure.SelectorFunc(infrastructure.OnReconcile)
-		useFlow, err := sut.Select(infra, cluster)
+		useFlow, err := sut(infra, cluster)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(useFlow).To(BeTrue())
 	})
@@ -71,7 +52,7 @@ var _ = Describe("ReconcilationStrategy", func() {
 		infra.Status.State = &runtime.RawExtension{Object: state}
 
 		sut := infrastructure.SelectorFunc(infrastructure.OnReconcile)
-		useFlow, err := sut.Select(infra, cluster)
+		useFlow, err := sut(infra, cluster)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(useFlow).To(BeTrue())
 	})
@@ -81,7 +62,7 @@ var _ = Describe("ReconcilationStrategy", func() {
 		infra.Status.State = &runtime.RawExtension{Raw: getRawTerraformState(`{"provider": "terraform"}`)}
 
 		sut := infrastructure.SelectorFunc(infrastructure.OnReconcile)
-		useFlow, err := sut.Select(infra, cluster)
+		useFlow, err := sut(infra, cluster)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(useFlow).To(BeFalse())
 	})
@@ -90,7 +71,7 @@ var _ = Describe("ReconcilationStrategy", func() {
 		infra := &extensionsv1alpha1.Infrastructure{}
 		infra.Status.State = &runtime.RawExtension{Raw: getRawTerraformState(`{"provider": "terraform"}`)}
 		sut := infrastructure.SelectorFunc(infrastructure.OnDelete)
-		useFlow, err := sut.Select(infra, cluster)
+		useFlow, err := sut(infra, cluster)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(useFlow).To(BeFalse())
 	})
@@ -100,7 +81,7 @@ var _ = Describe("ReconcilationStrategy", func() {
 		infra.Status.State = &runtime.RawExtension{Object: state}
 
 		sut := infrastructure.SelectorFunc(infrastructure.OnDelete)
-		useFlow, err := sut.Select(infra, cluster)
+		useFlow, err := sut(infra, cluster)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(useFlow).To(BeTrue())
 	})

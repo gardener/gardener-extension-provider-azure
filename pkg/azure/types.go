@@ -132,16 +132,19 @@ const (
 	// that hold service principal information to a corresponding AD tenant.
 	ExtensionPurposeServicePrincipalSecret = "tenant-service-principal-secret"
 
+	// GlobalAnnotationKeyUseFlow is the annotation key used to enable reconciliation with flow.
+	GlobalAnnotationKeyUseFlow = "provider.extensions.gardener.cloud/use-flow"
 	// AnnotationKeyUseFlow is the annotation key used to enable reconciliation with flow.
 	AnnotationKeyUseFlow = "azure.provider.extensions.gardener.cloud/use-flow"
-	// AnnotationKeyUseTF is the annotation key used to enable reconciliation terraformer.
-	AnnotationKeyUseTF = "azure.provider.extensions.gardener.cloud/use-tf"
-	// SeedLabelKeyUseFlow is the label for seeds to enable flow reconciliation for all of its shoots if value is `true`
+	// SeedAnnotationKeyUseFlow is the label for seeds to enable flow reconciliation for all of its shoots if value is `true`
 	// or for new shoots only with value `new`
-	SeedLabelKeyUseFlow = AnnotationKeyUseFlow
-	// SeedLabelUseFlowValueNew is the value to restrict flow reconciliation to new shoot clusters
-	SeedLabelUseFlowValueNew = "new"
+	SeedAnnotationKeyUseFlow = AnnotationKeyUseFlow
+	// SeedAnnotationUseFlowValueNew is the value to restrict flow reconciliation to new shoot clusters
+	SeedAnnotationUseFlowValueNew = "new"
 )
 
 // UsernamePrefix is a constant for the username prefix of components deployed by Azure.
-var UsernamePrefix = extensionsv1alpha1.SchemeGroupVersion.Group + ":" + Name + ":"
+var (
+	UsernamePrefix       = extensionsv1alpha1.SchemeGroupVersion.Group + ":" + Name + ":"
+	ValidFlowAnnotations = []string{AnnotationKeyUseFlow, GlobalAnnotationKeyUseFlow}
+)

@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package infrastructure_test
+package apply_flow_test
 
 import (
 	"testing"
@@ -11,7 +11,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestInfrastructure(t *testing.T) {
+func TestShootMaintain(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Infrastructure Suite")
+	RunSpecs(t, "ShootMaintain Suite")
 }

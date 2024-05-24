@@ -20,38 +20,33 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow/shared"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 )
 
 // EnsureResourceGroup creates or updates the shoot's resource group.
-func (f *FlowContext) EnsureResourceGroup(ctx context.Context) error {
-	log := f.LogFromContext(ctx)
-	rg, err := f.ensureResourceGroup(ctx)
+func (fctx *FlowContext) EnsureResourceGroup(ctx context.Context) error {
+	rg, err := fctx.ensureResourceGroup(ctx)
 	if err != nil {
 		return err
 	}
 
-	if err := f.inventory.Insert(*rg.ID); err != nil {
+	if err := fctx.inventory.Insert(*rg.ID); err != nil {
 		return err
 	}
 
-	f.whiteboard.GetChild(ChildKeyIDs).Set(KindResourceGroup.String(), *rg.ID)
-
-	// force persist to add at least one item to the inventory list.
-	if perr := f.PersistState(ctx, true); perr != nil {
-		log.Info("persisting state failed", "error", perr)
-	}
+	fctx.whiteboard.GetChild(ChildKeyIDs).Set(KindResourceGroup.String(), *rg.ID)
 	return nil
 }
 
-func (f *FlowContext) ensureResourceGroup(ctx context.Context) (*armresources.ResourceGroup, error) {
-	log := f.LogFromContext(ctx)
-	rgClient, err := f.factory.Group()
+func (fctx *FlowContext) ensureResourceGroup(ctx context.Context) (*armresources.ResourceGroup, error) {
+	log := shared.LogFromContext(ctx)
+	rgClient, err := fctx.factory.Group()
 	if err != nil {
 		return nil, err
 	}
 
-	rgCfg := f.adapter.ResourceGroup()
+	rgCfg := fctx.adapter.ResourceGroup()
 	rg, err := rgClient.Get(ctx, rgCfg.Name)
 	if err != nil {
 		return nil, err
@@ -69,12 +64,12 @@ func (f *FlowContext) ensureResourceGroup(ctx context.Context) (*armresources.Re
 	}
 
 	rg = &armresources.ResourceGroup{
-		Location: to.Ptr(f.adapter.Region()),
+		Location: to.Ptr(fctx.adapter.Region()),
 	}
 
-	log.V(2).Info("creating resource group", "name", f.adapter.ResourceGroupName())
-	log.V(5).Info("creating resource group with the following spec", "spec", *rg)
-	if rg, err = rgClient.CreateOrUpdate(ctx, f.adapter.ResourceGroupName(), *rg); err != nil {
+	log.Info("creating resource group", "name", fctx.adapter.ResourceGroupName())
+	log.V(1).Info("creating resource group with the following spec", "spec", *rg)
+	if rg, err = rgClient.CreateOrUpdate(ctx, fctx.adapter.ResourceGroupName(), *rg); err != nil {
 		return nil, err
 	}
 	return rg, nil
@@ -82,35 +77,35 @@ func (f *FlowContext) ensureResourceGroup(ctx context.Context) (*armresources.Re
 
 // EnsureVirtualNetwork reconciles the shoot's virtual network. At the end of the step the VNet should be
 // created or in the case of user-provided vnet verify that it exists.
-func (f *FlowContext) EnsureVirtualNetwork(ctx context.Context) error {
+func (fctx *FlowContext) EnsureVirtualNetwork(ctx context.Context) error {
 	var vnet *armnetwork.VirtualNetwork
 	var err error
-	if f.adapter.VirtualNetworkConfig().Managed {
-		vnet, err = f.ensureManagedVirtualNetwork(ctx)
+	if fctx.adapter.VirtualNetworkConfig().Managed {
+		vnet, err = fctx.ensureManagedVirtualNetwork(ctx)
 		if err != nil {
 			return err
 		}
 
-		if err := f.inventory.Insert(*vnet.ID); err != nil {
+		if err := fctx.inventory.Insert(*vnet.ID); err != nil {
 			return err
 		}
 	}
 
-	vnet, err = f.ensureUserVirtualNetwork(ctx)
+	vnet, err = fctx.ensureUserVirtualNetwork(ctx)
 	if err != nil {
 		return err
 	}
 
-	f.whiteboard.GetChild(ChildKeyIDs).Set(KindVirtualNetwork.String(), *vnet.ID)
+	fctx.whiteboard.GetChild(ChildKeyIDs).Set(KindVirtualNetwork.String(), *vnet.ID)
 	return nil
 }
 
 // EnsureVirtualNetwork creates or updates a Vnet
-func (f *FlowContext) ensureManagedVirtualNetwork(ctx context.Context) (*armnetwork.VirtualNetwork, error) {
-	log := f.LogFromContext(ctx)
-	vnetCfg := f.adapter.VirtualNetworkConfig()
+func (fctx *FlowContext) ensureManagedVirtualNetwork(ctx context.Context) (*armnetwork.VirtualNetwork, error) {
+	log := shared.LogFromContext(ctx)
+	vnetCfg := fctx.adapter.VirtualNetworkConfig()
 
-	c, err := f.factory.Vnet()
+	c, err := fctx.factory.Vnet()
 	if err != nil {
 		return nil, err
 	}
@@ -121,20 +116,20 @@ func (f *FlowContext) ensureManagedVirtualNetwork(ctx context.Context) (*armnetw
 	}
 
 	if vnet != nil {
-		if location := ptr.Deref(vnet.Location, ""); location != f.adapter.Region() {
-			log.Error(NewSpecMismatchError(vnetCfg.AzureResourceMetadata, "location", f.adapter.Region(), location, nil), "vnet can't be reconciled and has to be deleted")
+		if location := ptr.Deref(vnet.Location, ""); location != fctx.adapter.Region() {
+			log.Error(NewSpecMismatchError(vnetCfg.AzureResourceMetadata, "location", fctx.adapter.Region(), location, nil), "vnet can't be reconciled and has to be deleted")
 			err = c.Delete(ctx, vnetCfg.ResourceGroup, vnetCfg.Name)
 			if err != nil {
 				return nil, err
 			}
-			f.inventory.Delete(*vnet.ID)
+			fctx.inventory.Delete(*vnet.ID)
 			vnet = nil
 		}
 	}
 
 	vnet = vnetCfg.ToProvider(vnet)
-	log.V(2).Info("reconciling virtual network", "name", vnetCfg.Name)
-	log.V(5).Info("creating virtual network with spec", "spec", *vnet)
+	log.Info("reconciling virtual network", "name", vnetCfg.Name)
+	log.V(1).Info("creating virtual network with spec", "spec", *vnet)
 	vnet, err = c.CreateOrUpdate(ctx, vnetCfg.ResourceGroup, vnetCfg.Name, *vnet)
 	if err != nil {
 		return nil, err
@@ -143,11 +138,11 @@ func (f *FlowContext) ensureManagedVirtualNetwork(ctx context.Context) (*armnetw
 	return vnet, nil
 }
 
-func (f *FlowContext) ensureUserVirtualNetwork(ctx context.Context) (*armnetwork.VirtualNetwork, error) {
-	log := f.LogFromContext(ctx)
-	vnetCfg := f.adapter.VirtualNetworkConfig()
+func (fctx *FlowContext) ensureUserVirtualNetwork(ctx context.Context) (*armnetwork.VirtualNetwork, error) {
+	log := shared.LogFromContext(ctx)
+	vnetCfg := fctx.adapter.VirtualNetworkConfig()
 
-	c, err := f.factory.Vnet()
+	c, err := fctx.factory.Vnet()
 	if err != nil {
 		return nil, err
 	}
@@ -161,35 +156,35 @@ func (f *FlowContext) ensureUserVirtualNetwork(ctx context.Context) (*armnetwork
 		return nil, NewTerminalConditionError(vnetCfg.AzureResourceMetadata, fmt.Errorf("user vnet not found"))
 	}
 
-	log.V(5).Info("found user virtual network", "name", vnetCfg.Name)
+	log.Info("found user virtual network", "name", vnetCfg.Name)
 	return vnet, nil
 }
 
 // EnsureAvailabilitySet creates or updates an KindAvailabilitySet
-func (f *FlowContext) EnsureAvailabilitySet(ctx context.Context) error {
-	log := f.LogFromContext(ctx)
-	avsetCfg := f.adapter.AvailabilitySetConfig()
+func (fctx *FlowContext) EnsureAvailabilitySet(ctx context.Context) error {
+	log := shared.LogFromContext(ctx)
+	avsetCfg := fctx.adapter.AvailabilitySetConfig()
 	if avsetCfg == nil {
 		// should not reach here
 		log.Info("skipping ensuring availability set")
 		return nil
 	}
 
-	avset, err := f.ensureAvailabilitySet(ctx, log, *avsetCfg)
+	avset, err := fctx.ensureAvailabilitySet(ctx, log, *avsetCfg)
 	if err != nil {
 		return err
 	}
 
-	err = f.inventory.Insert(*avset.ID)
+	err = fctx.inventory.Insert(*avset.ID)
 	if err != nil {
 		return err
 	}
-	f.whiteboard.GetChild(ChildKeyIDs).Set(KindAvailabilitySet.String(), *avset.ID)
+	fctx.whiteboard.GetChild(ChildKeyIDs).Set(KindAvailabilitySet.String(), *avset.ID)
 	return nil
 }
 
-func (f *FlowContext) ensureAvailabilitySet(ctx context.Context, log logr.Logger, avsetCfg AvailabilitySetConfig) (*armcompute.AvailabilitySet, error) {
-	asClient, err := f.factory.AvailabilitySet()
+func (fctx *FlowContext) ensureAvailabilitySet(ctx context.Context, log logr.Logger, avsetCfg AvailabilitySetConfig) (*armcompute.AvailabilitySet, error) {
+	asClient, err := fctx.factory.AvailabilitySet()
 	if err != nil {
 		return nil, err
 	}
@@ -200,8 +195,8 @@ func (f *FlowContext) ensureAvailabilitySet(ctx context.Context, log logr.Logger
 	}
 
 	if avset != nil {
-		if location := ptr.Deref(avset.Location, ""); location != f.adapter.Region() {
-			log.Error(NewSpecMismatchError(avsetCfg.AzureResourceMetadata, "location", f.adapter.Region(), location, nil), "will attempt to delete availability set due to irreconcilable error")
+		if location := ptr.Deref(avset.Location, ""); location != fctx.adapter.Region() {
+			log.Error(NewSpecMismatchError(avsetCfg.AzureResourceMetadata, "location", fctx.adapter.Region(), location, nil), "will attempt to delete availability set due to irreconcilable error")
 			err = asClient.Delete(ctx, avsetCfg.ResourceGroup, avsetCfg.Name)
 			if err != nil {
 				return nil, err
@@ -213,7 +208,7 @@ func (f *FlowContext) ensureAvailabilitySet(ctx context.Context, log logr.Logger
 	}
 
 	avset = &armcompute.AvailabilitySet{
-		Location: to.Ptr(f.adapter.Region()),
+		Location: to.Ptr(fctx.adapter.Region()),
 		// the DomainCounts are computed from the current InfrastructureStatus. They cannot be updated after shoot creation.
 		Properties: &armcompute.AvailabilitySetProperties{
 			PlatformFaultDomainCount:  avsetCfg.CountFaultDomains,
@@ -221,42 +216,42 @@ func (f *FlowContext) ensureAvailabilitySet(ctx context.Context, log logr.Logger
 		},
 		SKU: &armcompute.SKU{Name: to.Ptr(string(armcompute.AvailabilitySetSKUTypesAligned))}, // equal to managed = True in tf
 	}
-	log.V(2).Info("reconciling availability set", "name", avset.Name)
-	log.V(5).Info("reconciling availability set", "spec", *avset)
-	return asClient.CreateOrUpdate(ctx, f.adapter.ResourceGroupName(), avsetCfg.Name, *avset)
+	log.Info("reconciling availability set", "name", avset.Name)
+	log.V(1).Info("reconciling availability set", "spec", *avset)
+	return asClient.CreateOrUpdate(ctx, fctx.adapter.ResourceGroupName(), avsetCfg.Name, *avset)
 }
 
 // EnsureRouteTable creates or updates the route table
-func (f *FlowContext) EnsureRouteTable(ctx context.Context) error {
-	rt, err := f.ensureRouteTable(ctx)
+func (fctx *FlowContext) EnsureRouteTable(ctx context.Context) error {
+	rt, err := fctx.ensureRouteTable(ctx)
 	if err != nil {
 		return err
 	}
 
-	err = f.inventory.Insert(*rt.ID)
+	err = fctx.inventory.Insert(*rt.ID)
 	if err != nil {
 		return nil
 	}
-	f.whiteboard.GetChild(ChildKeyIDs).Set(KindRouteTable.String(), *rt.ID)
+	fctx.whiteboard.GetChild(ChildKeyIDs).Set(KindRouteTable.String(), *rt.ID)
 	return nil
 }
 
-func (f *FlowContext) ensureRouteTable(ctx context.Context) (*armnetwork.RouteTable, error) {
-	log := f.LogFromContext(ctx)
-	c, err := f.factory.RouteTables()
+func (fctx *FlowContext) ensureRouteTable(ctx context.Context) (*armnetwork.RouteTable, error) {
+	log := shared.LogFromContext(ctx)
+	c, err := fctx.factory.RouteTables()
 	if err != nil {
 		return nil, err
 	}
 
-	rtCfg := f.adapter.RouteTableConfig()
+	rtCfg := fctx.adapter.RouteTableConfig()
 	rt, err := c.Get(ctx, rtCfg.ResourceGroup, rtCfg.Name)
 	if err != nil {
 		return nil, err
 	}
 
 	if rt != nil {
-		if location := ptr.Deref(rt.Location, ""); location != f.adapter.Region() {
-			log.Error(NewSpecMismatchError(rtCfg.AzureResourceMetadata, "location", f.adapter.Region(), location, nil), "will attempt to delete route table due to irreconcilable error")
+		if location := ptr.Deref(rt.Location, ""); location != fctx.adapter.Region() {
+			log.Error(NewSpecMismatchError(rtCfg.AzureResourceMetadata, "location", fctx.adapter.Region(), location, nil), "will attempt to delete route table due to irreconcilable error")
 			err = c.Delete(ctx, rtCfg.ResourceGroup, rtCfg.Name)
 			if err != nil {
 				return nil, err
@@ -266,33 +261,33 @@ func (f *FlowContext) ensureRouteTable(ctx context.Context) (*armnetwork.RouteTa
 	}
 
 	rt = rtCfg.ToProvider(rt)
-	log.V(2).Info("reconciling route table", "name", rtCfg.Name)
-	log.V(5).Info("reconciling route table with spec", "spec", *rt)
+	log.Info("reconciling route table", "name", rtCfg.Name)
+	log.V(1).Info("reconciling route table with spec", "spec", *rt)
 	return c.CreateOrUpdate(ctx, rtCfg.ResourceGroup, rtCfg.Name, *rt)
 }
 
 // EnsureSecurityGroup creates or updates a KindSecurityGroup
-func (f *FlowContext) EnsureSecurityGroup(ctx context.Context) error {
-	log := f.LogFromContext(ctx)
-	sg, err := f.ensureSecurityGroup(ctx)
+func (fctx *FlowContext) EnsureSecurityGroup(ctx context.Context) error {
+	log := shared.LogFromContext(ctx)
+	sg, err := fctx.ensureSecurityGroup(ctx)
 	if err != nil {
 		return err
 	}
 
-	log.V(5).Info("adding to inventory", *sg.ID)
-	err = f.inventory.Insert(*sg.ID)
+	log.V(1).Info("adding to inventory", *sg.ID)
+	err = fctx.inventory.Insert(*sg.ID)
 	if err != nil {
 		return err
 	}
-	f.whiteboard.GetChild(ChildKeyIDs).Set(KindSecurityGroup.String(), *sg.ID)
+	fctx.whiteboard.GetChild(ChildKeyIDs).Set(KindSecurityGroup.String(), *sg.ID)
 	return nil
 }
 
-func (f *FlowContext) ensureSecurityGroup(ctx context.Context) (*armnetwork.SecurityGroup, error) {
-	log := f.LogFromContext(ctx)
-	sgCfg := f.adapter.SecurityGroupConfig()
+func (fctx *FlowContext) ensureSecurityGroup(ctx context.Context) (*armnetwork.SecurityGroup, error) {
+	log := shared.LogFromContext(ctx)
+	sgCfg := fctx.adapter.SecurityGroupConfig()
 
-	c, err := f.factory.NetworkSecurityGroup()
+	c, err := fctx.factory.NetworkSecurityGroup()
 	if err != nil {
 		return nil, err
 	}
@@ -303,8 +298,8 @@ func (f *FlowContext) ensureSecurityGroup(ctx context.Context) (*armnetwork.Secu
 	}
 
 	if sg != nil {
-		if location := ptr.Deref(sg.Location, ""); location != f.adapter.Region() {
-			log.Error(NewSpecMismatchError(sgCfg.AzureResourceMetadata, "location", f.adapter.Region(), location, nil), "will attempt to delete security group due to irreconcilable error")
+		if location := ptr.Deref(sg.Location, ""); location != fctx.adapter.Region() {
+			log.Error(NewSpecMismatchError(sgCfg.AzureResourceMetadata, "location", fctx.adapter.Region(), location, nil), "will attempt to delete security group due to irreconcilable error")
 			err = c.Delete(ctx, sgCfg.ResourceGroup, sgCfg.Name)
 			if err != nil {
 				return nil, err
@@ -314,8 +309,8 @@ func (f *FlowContext) ensureSecurityGroup(ctx context.Context) (*armnetwork.Secu
 	}
 
 	sg = sgCfg.ToProvider(sg)
-	log.V(2).Info("reconciling security group", "name", sgCfg.Name)
-	log.V(5).Info("reconciling security group with spec", "spec", *sg)
+	log.Info("reconciling security group", "name", sgCfg.Name)
+	log.V(1).Info("reconciling security group with spec", "spec", *sg)
 	sg, err = c.CreateOrUpdate(ctx, sgCfg.ResourceGroup, sgCfg.Name, *sg)
 	if err != nil {
 		return nil, err
@@ -325,26 +320,26 @@ func (f *FlowContext) ensureSecurityGroup(ctx context.Context) (*armnetwork.Secu
 }
 
 // EnsurePublicIps reconciles the public IPs for the shoot.
-func (f *FlowContext) EnsurePublicIps(ctx context.Context) error {
-	return errors.Join(f.ensurePublicIps(ctx), f.ensureUserPublicIps(ctx))
+func (fctx *FlowContext) EnsurePublicIps(ctx context.Context) error {
+	return errors.Join(fctx.ensurePublicIps(ctx), fctx.ensureUserPublicIps(ctx))
 }
 
-func (f *FlowContext) ensureUserPublicIps(ctx context.Context) error {
-	c, err := f.factory.PublicIP()
+func (fctx *FlowContext) ensureUserPublicIps(ctx context.Context) error {
+	c, err := fctx.factory.PublicIP()
 	if err != nil {
 		return err
 	}
 
-	for _, ipFromConfig := range f.adapter.IpConfigs() {
+	for _, ipFromConfig := range fctx.adapter.IpConfigs() {
 		if !ipFromConfig.Managed {
 			continue
 		}
-		err = errors.Join(err, f.ensureUserPublicIp(ctx, c, ipFromConfig))
+		err = errors.Join(err, fctx.ensureUserPublicIp(ctx, c, ipFromConfig))
 	}
 	return err
 }
 
-func (f *FlowContext) ensureUserPublicIp(ctx context.Context, c client.PublicIP, ipCfg PublicIPConfig) error {
+func (fctx *FlowContext) ensureUserPublicIp(ctx context.Context, c client.PublicIP, ipCfg PublicIPConfig) error {
 	userIP, err := c.Get(ctx, ipCfg.ResourceGroup, ipCfg.Name, nil)
 	if err != nil {
 		return err
@@ -352,72 +347,72 @@ func (f *FlowContext) ensureUserPublicIp(ctx context.Context, c client.PublicIP,
 		return fmt.Errorf(fmt.Sprintf("failed to locate user public IP: %s, %s", ipCfg.ResourceGroup, ipCfg.Name))
 	}
 
-	f.whiteboard.GetChild(ChildKeyIDs).GetChild(ipCfg.ResourceGroup).GetChild(KindPublicIP.String()).Set(ipCfg.Name, *userIP.ID)
+	fctx.whiteboard.GetChild(ChildKeyIDs).GetChild(ipCfg.ResourceGroup).GetChild(KindPublicIP.String()).Set(ipCfg.Name, *userIP.ID)
 	return nil
 }
 
-func (f *FlowContext) ensurePublicIps(ctx context.Context) error {
+func (fctx *FlowContext) ensurePublicIps(ctx context.Context) error {
 	var (
-		log         = f.LogFromContext(ctx)
+		log         = shared.LogFromContext(ctx)
 		toDelete    = map[string]string{}
 		toReconcile = map[string]*armnetwork.PublicIPAddress{}
 		joinError   error
 	)
 
-	c, err := f.factory.PublicIP()
+	c, err := fctx.factory.PublicIP()
 	if err != nil {
 		return err
 	}
 
-	currentIPs, err := c.List(ctx, f.adapter.ResourceGroupName())
+	currentIPs, err := c.List(ctx, fctx.adapter.ResourceGroupName())
 	if err != nil {
 		return err
 	}
 	currentIPs = Filter(currentIPs, func(address *armnetwork.PublicIPAddress) bool {
 		// filter only these IpConfigs prefixed by the cluster name and that do not contain the CCM tags.
-		return f.adapter.HasShootPrefix(address.Name) && address.Tags["k8s-azure-service"] == nil
+		return fctx.adapter.HasShootPrefix(address.Name) && address.Tags["k8s-azure-service"] == nil
 	})
 	// obtain an indexed list of current IPs
 	nameToCurrentIps := ToMap(currentIPs, func(t *armnetwork.PublicIPAddress) string {
 		return *t.Name
 	})
 
-	desiredConfiguration := f.adapter.ManagedIpConfigs()
+	desiredConfiguration := fctx.adapter.ManagedIpConfigs()
 	for name, ip := range desiredConfiguration {
 		toReconcile[name] = ip.ToProvider(nameToCurrentIps[name])
 	}
-	for _, inv := range f.inventory.ByKind(KindPublicIP) {
+	for _, inv := range fctx.inventory.ByKind(KindPublicIP) {
 		if ip, ok := nameToCurrentIps[inv]; !ok {
-			f.inventory.Delete(*ip.ID)
+			fctx.inventory.Delete(*ip.ID)
 		}
 	}
 
 	for name, current := range nameToCurrentIps {
-		if err := f.inventory.Insert(*current.ID); err != nil {
+		if err := fctx.inventory.Insert(*current.ID); err != nil {
 			return err
 		}
 		// delete all the resources that are not in the list of target resources
 		pipCfg, ok := desiredConfiguration[name]
 		if !ok {
-			log.Info("will delete public IP because it is not needed", "Resource Group", f.adapter.ResourceGroupName(), "Name", name)
+			log.Info("will delete public IP because it is not needed", "Resource Group", fctx.adapter.ResourceGroupName(), "Name", name)
 			toDelete[name] = *current.ID
 			continue
 		}
 
 		// delete all resources whose spec cannot be updated to match target spec.
 		if ok, offender, v := ForceNewIp(current, toReconcile[pipCfg.Name]); ok {
-			log.Info("will delete public IP because it can't be reconciled", "Resource Group", f.adapter.ResourceGroupName(), "Name", name, "Field", offender, "Value", v)
+			log.Info("will delete public IP because it can't be reconciled", "Resource Group", fctx.adapter.ResourceGroupName(), "Name", name, "Field", offender, "Value", v)
 			toDelete[name] = *current.ID
 			continue
 		}
 	}
 
 	for ipName, ip := range toDelete {
-		err := f.provider.DeletePublicIP(ctx, f.adapter.ResourceGroupName(), ipName)
+		err := fctx.providerAccess.DeletePublicIP(ctx, fctx.adapter.ResourceGroupName(), ipName)
 		if err != nil {
 			joinError = errors.Join(joinError, err)
 		}
-		f.inventory.Delete(ip)
+		fctx.inventory.Delete(ip)
 	}
 
 	if joinError != nil {
@@ -425,49 +420,48 @@ func (f *FlowContext) ensurePublicIps(ctx context.Context) error {
 	}
 
 	for ipName, ip := range toReconcile {
-		ip, err = c.CreateOrUpdate(ctx, f.adapter.ResourceGroupName(), ipName, *ip)
+		ip, err = c.CreateOrUpdate(ctx, fctx.adapter.ResourceGroupName(), ipName, *ip)
 		if err != nil {
 			joinError = errors.Join(joinError, err)
 			continue
 		}
 
-		if err := f.inventory.Insert(*ip.ID); err != nil {
+		if err := fctx.inventory.Insert(*ip.ID); err != nil {
 			return err
 		}
-		f.whiteboard.GetChild(KindPublicIP.String()).GetChild(f.adapter.ResourceGroupName()).Set(ipName, *ip.ID)
+		fctx.whiteboard.GetChild(KindPublicIP.String()).GetChild(fctx.adapter.ResourceGroupName()).Set(ipName, *ip.ID)
 	}
 
 	return joinError
 }
 
 // EnsureNatGateways reconciles all the NAT Gateways for the shoot.
-func (f *FlowContext) EnsureNatGateways(ctx context.Context) error {
-	err := f.ensureNatGateways(ctx)
+func (fctx *FlowContext) EnsureNatGateways(ctx context.Context) error {
+	err := fctx.ensureNatGateways(ctx)
 	return err
 }
 
 // EnsureNatGateways creates or updates NAT Gateways. It also deletes old NATGateways.
-func (f *FlowContext) ensureNatGateways(ctx context.Context) error {
-	// func (f *FlowContext) ensureNatGateways(ctx context.Context, ipMapping map[AzureResourceMetadata]string) error {
+func (fctx *FlowContext) ensureNatGateways(ctx context.Context) error {
 	var (
-		log         = f.LogFromContext(ctx)
 		joinError   error
+		log         = shared.LogFromContext(ctx)
 		toDelete    = map[string]string{}
 		toReconcile = map[string]*armnetwork.NatGateway{}
 	)
 
-	c, err := f.factory.NatGateway()
+	c, err := fctx.factory.NatGateway()
 	if err != nil {
 		return err
 	}
 
-	currentNats, err := c.List(ctx, f.adapter.ResourceGroupName())
+	currentNats, err := c.List(ctx, fctx.adapter.ResourceGroupName())
 	if err != nil {
 		return err
 	}
 	// filter only thos prefixed by the cluster name.
 	currentNats = Filter(currentNats, func(address *armnetwork.NatGateway) bool {
-		return f.adapter.HasShootPrefix(address.Name)
+		return fctx.adapter.HasShootPrefix(address.Name)
 	})
 
 	// obtain an indexed list of current IPs
@@ -475,34 +469,34 @@ func (f *FlowContext) ensureNatGateways(ctx context.Context) error {
 		return *t.Name
 	})
 
-	natsCfg := f.adapter.NatGatewayConfigs()
+	natsCfg := fctx.adapter.NatGatewayConfigs()
 	for name, cfg := range natsCfg {
 		target := cfg.ToProvider(nameToCurrentNats[name])
 		for _, ip := range cfg.PublicIPList {
-			target.Properties.PublicIPAddresses = append(target.Properties.PublicIPAddresses, &armnetwork.SubResource{ID: to.Ptr(GetIdFromTemplate(TemplatePublicIP, f.auth.SubscriptionID, ip.ResourceGroup, ip.Name))})
+			target.Properties.PublicIPAddresses = append(target.Properties.PublicIPAddresses, &armnetwork.SubResource{ID: to.Ptr(GetIdFromTemplate(TemplatePublicIP, fctx.auth.SubscriptionID, ip.ResourceGroup, ip.Name))})
 		}
 		toReconcile[name] = target
 	}
 
-	for _, inv := range f.inventory.ByKind(KindNatGateway) {
+	for _, inv := range fctx.inventory.ByKind(KindNatGateway) {
 		if nat, ok := nameToCurrentNats[inv]; !ok {
-			f.inventory.Delete(*nat.ID)
+			fctx.inventory.Delete(*nat.ID)
 		}
 	}
 
 	for name, current := range nameToCurrentNats {
-		if err := f.inventory.Insert(*current.ID); err != nil {
+		if err := fctx.inventory.Insert(*current.ID); err != nil {
 			return err
 		}
 
 		targetNat, ok := toReconcile[name]
 		if !ok {
-			log.Info("will delete NAT Gateway because it is not needed", "Resource Group", f.adapter.ResourceGroupName(), "Name", *current.Name)
+			log.Info("will delete NAT Gateway because it is not needed", "Resource Group", fctx.adapter.ResourceGroupName(), "Name", *current.Name)
 			toDelete[name] = *current.ID
 			continue
 		}
 		if ok, offender, v := ForceNewNat(current, targetNat); ok {
-			log.Info("will delete NAT Gateway because it cannot be reconciled", "Resource Group", f.adapter.ResourceGroupName(), "Name", *current.Name, "Field", offender, "Value", v)
+			log.Info("will delete NAT Gateway because it cannot be reconciled", "Resource Group", fctx.adapter.ResourceGroupName(), "Name", *current.Name, "Field", offender, "Value", v)
 			toDelete[name] = *current.ID
 			continue
 		}
@@ -512,48 +506,48 @@ func (f *FlowContext) ensureNatGateways(ctx context.Context) error {
 	}
 
 	for natName, nat := range toDelete {
-		err := f.provider.DeleteNatGateway(ctx, f.adapter.ResourceGroupName(), natName)
+		err := fctx.providerAccess.DeleteNatGateway(ctx, fctx.adapter.ResourceGroupName(), natName)
 		if err != nil {
 			joinError = errors.Join(joinError, err)
 		}
-		f.inventory.Delete(nat)
+		fctx.inventory.Delete(nat)
 	}
 	if joinError != nil {
 		return joinError
 	}
 
 	for name, nat := range toReconcile {
-		nat, err := c.CreateOrUpdate(ctx, f.adapter.ResourceGroupName(), name, *nat)
+		nat, err := c.CreateOrUpdate(ctx, fctx.adapter.ResourceGroupName(), name, *nat)
 		if err != nil {
 			joinError = errors.Join(joinError, err)
 			continue
 		}
-		if err := f.inventory.Insert(*nat.ID); err != nil {
+		if err := fctx.inventory.Insert(*nat.ID); err != nil {
 			joinError = errors.Join(joinError, err)
 			continue
 		}
-		f.whiteboard.GetChild(KindNatGateway.String()).Set(name, *nat.ID)
+		fctx.whiteboard.GetChild(KindNatGateway.String()).Set(name, *nat.ID)
 	}
 
 	return joinError
 }
 
 // EnsureSubnets creates or updates subnets.
-func (f *FlowContext) EnsureSubnets(ctx context.Context) error {
-	return f.ensureSubnets(ctx)
+func (fctx *FlowContext) EnsureSubnets(ctx context.Context) error {
+	return fctx.ensureSubnets(ctx)
 }
 
-func (f *FlowContext) ensureSubnets(ctx context.Context) (err error) {
+func (fctx *FlowContext) ensureSubnets(ctx context.Context) (err error) {
 	var (
-		log         = f.LogFromContext(ctx)
-		vnetRgroup  = f.adapter.VirtualNetworkConfig().ResourceGroup
-		vnetName    = f.adapter.VirtualNetworkConfig().Name
+		log         = shared.LogFromContext(ctx)
+		vnetRgroup  = fctx.adapter.VirtualNetworkConfig().ResourceGroup
+		vnetName    = fctx.adapter.VirtualNetworkConfig().Name
 		toDelete    = map[string]*armnetwork.Subnet{}
 		toReconcile = map[string]*armnetwork.Subnet{}
 		joinErr     error
 	)
 
-	c, err := f.factory.Subnet()
+	c, err := fctx.factory.Subnet()
 	if err != nil {
 		return err
 	}
@@ -564,33 +558,33 @@ func (f *FlowContext) ensureSubnets(ctx context.Context) (err error) {
 	}
 
 	filteredSubnets := Filter(currentSubnets, func(s *armnetwork.Subnet) bool {
-		return f.adapter.HasShootPrefix(s.Name)
+		return fctx.adapter.HasShootPrefix(s.Name)
 	})
 	mappedSubnets := ToMap(filteredSubnets, func(s *armnetwork.Subnet) string {
 		return *s.Name
 	})
 
-	for _, name := range f.inventory.ByKind(KindSubnet) {
+	for _, name := range fctx.inventory.ByKind(KindSubnet) {
 		if subnet, ok := mappedSubnets[name]; !ok {
-			f.inventory.Delete(*subnet.ID)
+			fctx.inventory.Delete(*subnet.ID)
 		}
 	}
 
-	zones := f.adapter.Zones()
+	zones := fctx.adapter.Zones()
 	for _, z := range zones {
 		actual := z.Subnet.ToProvider(mappedSubnets[z.Subnet.Name])
-		rtCfg := f.adapter.RouteTableConfig()
-		sgCfg := f.adapter.SecurityGroupConfig()
-		actual.Properties.RouteTable = &armnetwork.RouteTable{ID: to.Ptr(GetIdFromTemplate(TemplateRouteTable, f.auth.SubscriptionID, rtCfg.ResourceGroup, rtCfg.Name))}
-		actual.Properties.NetworkSecurityGroup = &armnetwork.SecurityGroup{ID: to.Ptr(GetIdFromTemplate(TemplateSecurityGroup, f.auth.SubscriptionID, sgCfg.ResourceGroup, sgCfg.Name))}
+		rtCfg := fctx.adapter.RouteTableConfig()
+		sgCfg := fctx.adapter.SecurityGroupConfig()
+		actual.Properties.RouteTable = &armnetwork.RouteTable{ID: to.Ptr(GetIdFromTemplate(TemplateRouteTable, fctx.auth.SubscriptionID, rtCfg.ResourceGroup, rtCfg.Name))}
+		actual.Properties.NetworkSecurityGroup = &armnetwork.SecurityGroup{ID: to.Ptr(GetIdFromTemplate(TemplateSecurityGroup, fctx.auth.SubscriptionID, sgCfg.ResourceGroup, sgCfg.Name))}
 		if z.NatGateway != nil {
-			actual.Properties.NatGateway = &armnetwork.SubResource{ID: to.Ptr(GetIdFromTemplate(TemplateNatGateway, f.auth.SubscriptionID, z.NatGateway.ResourceGroup, z.NatGateway.Name))}
+			actual.Properties.NatGateway = &armnetwork.SubResource{ID: to.Ptr(GetIdFromTemplate(TemplateNatGateway, fctx.auth.SubscriptionID, z.NatGateway.ResourceGroup, z.NatGateway.Name))}
 		}
 		toReconcile[z.Subnet.Name] = actual
 	}
 
 	for name, current := range mappedSubnets {
-		if err := f.inventory.Insert(*current.ID); err != nil {
+		if err := fctx.inventory.Insert(*current.ID); err != nil {
 			return err
 		}
 
@@ -612,8 +606,8 @@ func (f *FlowContext) ensureSubnets(ctx context.Context) (err error) {
 		if err != nil {
 			joinErr = errors.Join(joinErr, err)
 		}
-		f.inventory.Delete(*subnet.ID)
-		f.whiteboard.GetChild(KindNatGateway.String()).Set(name, *subnet.ID)
+		fctx.inventory.Delete(*subnet.ID)
+		fctx.whiteboard.GetChild(KindNatGateway.String()).Set(name, *subnet.ID)
 	}
 	if joinErr != nil {
 		return joinErr
@@ -625,27 +619,27 @@ func (f *FlowContext) ensureSubnets(ctx context.Context) (err error) {
 			joinErr = errors.Join(joinErr, err)
 			continue
 		}
-		if err := f.inventory.Insert(*subnet.ID); err != nil {
+		if err := fctx.inventory.Insert(*subnet.ID); err != nil {
 			joinErr = errors.Join(joinErr, err)
 			continue
 		}
-		f.whiteboard.GetChild(KindSubnet.String()).Set(name, *subnet.ID)
+		fctx.whiteboard.GetChild(KindSubnet.String()).Set(name, *subnet.ID)
 	}
 
 	return joinErr
 }
 
 // EnsureManagedIdentity reconciles the managed identity specificed in the config.
-func (f *FlowContext) EnsureManagedIdentity(ctx context.Context) (err error) {
-	if f.cfg.Identity == nil {
+func (fctx *FlowContext) EnsureManagedIdentity(ctx context.Context) (err error) {
+	if fctx.cfg.Identity == nil {
 		return nil
 	}
 
-	c, err := f.factory.ManagedUserIdentity()
+	c, err := fctx.factory.ManagedUserIdentity()
 	if err != nil {
 		return err
 	}
-	res, err := c.Get(ctx, f.cfg.Identity.ResourceGroup, f.cfg.Identity.Name)
+	res, err := c.Get(ctx, fctx.cfg.Identity.ResourceGroup, fctx.cfg.Identity.Name)
 	if err != nil {
 		return err
 	}
@@ -653,48 +647,48 @@ func (f *FlowContext) EnsureManagedIdentity(ctx context.Context) (err error) {
 		return nil
 	}
 
-	f.whiteboard.Set(KeyManagedIdentityClientId, *res.Properties.ClientID)
-	f.whiteboard.Set(KeyManagedIdentityId, *res.ID)
+	fctx.whiteboard.Set(KeyManagedIdentityClientId, *res.Properties.ClientID)
+	fctx.whiteboard.Set(KeyManagedIdentityId, *res.ID)
 	return err
 }
 
 // GetInfrastructureStatus returns the infrastructure status.
-func (f *FlowContext) GetInfrastructureStatus(_ context.Context) (*v1alpha1.InfrastructureStatus, error) {
+func (fctx *FlowContext) GetInfrastructureStatus(_ context.Context) (*v1alpha1.InfrastructureStatus, error) {
 	status := &v1alpha1.InfrastructureStatus{
 		TypeMeta: infrastructure.StatusTypeMeta,
 		Networks: v1alpha1.NetworkStatus{
 			VNet: v1alpha1.VNetStatus{
-				Name: f.adapter.VirtualNetworkConfig().Name,
+				Name: fctx.adapter.VirtualNetworkConfig().Name,
 			},
 			Layout: v1alpha1.NetworkLayoutSingleSubnet,
 		},
 		ResourceGroup: v1alpha1.ResourceGroup{
-			Name: f.adapter.ResourceGroupName(),
+			Name: fctx.adapter.ResourceGroupName(),
 		},
 		RouteTables: []v1alpha1.RouteTable{
 			{
 				Purpose: v1alpha1.PurposeNodes,
-				Name:    f.adapter.RouteTableConfig().Name,
+				Name:    fctx.adapter.RouteTableConfig().Name,
 			},
 		},
 		SecurityGroups: []v1alpha1.SecurityGroup{
 			{
 				Purpose: v1alpha1.PurposeNodes,
-				Name:    f.adapter.SecurityGroupConfig().Name,
+				Name:    fctx.adapter.SecurityGroupConfig().Name,
 			},
 		},
-		Zoned: f.cfg.Zoned,
+		Zoned: fctx.cfg.Zoned,
 	}
 
-	if f.cfg.Networks.VNet.ResourceGroup != nil {
-		status.Networks.VNet.ResourceGroup = to.Ptr(f.adapter.VirtualNetworkConfig().ResourceGroup)
+	if fctx.cfg.Networks.VNet.ResourceGroup != nil {
+		status.Networks.VNet.ResourceGroup = to.Ptr(fctx.adapter.VirtualNetworkConfig().ResourceGroup)
 	}
 
-	if len(f.cfg.Networks.Zones) > 0 {
+	if len(fctx.cfg.Networks.Zones) > 0 {
 		status.Networks.Layout = v1alpha1.NetworkLayoutMultipleSubnet
 	}
 
-	zones := f.adapter.Zones()
+	zones := fctx.adapter.Zones()
 	for _, z := range zones {
 		status.Networks.Subnets = append(status.Networks.Subnets, v1alpha1.Subnet{
 			Name:     z.Subnet.Name,
@@ -704,11 +698,11 @@ func (f *FlowContext) GetInfrastructureStatus(_ context.Context) (*v1alpha1.Infr
 		})
 	}
 
-	if cfg := f.adapter.AvailabilitySetConfig(); cfg != nil {
+	if cfg := fctx.adapter.AvailabilitySetConfig(); cfg != nil {
 		status.AvailabilitySets = []v1alpha1.AvailabilitySet{
 			{
 				Purpose:            v1alpha1.PurposeNodes,
-				ID:                 GetIdFromTemplate(TemplateAvailabilitySet, f.auth.SubscriptionID, cfg.ResourceGroup, cfg.Name),
+				ID:                 GetIdFromTemplate(TemplateAvailabilitySet, fctx.auth.SubscriptionID, cfg.ResourceGroup, cfg.Name),
 				Name:               cfg.Name,
 				CountFaultDomains:  cfg.CountFaultDomains,
 				CountUpdateDomains: cfg.CountUpdateDomains,
@@ -716,10 +710,10 @@ func (f *FlowContext) GetInfrastructureStatus(_ context.Context) (*v1alpha1.Infr
 		}
 	}
 
-	if identity := f.cfg.Identity; identity != nil {
+	if identity := fctx.cfg.Identity; identity != nil {
 		status.Identity = &v1alpha1.IdentityStatus{
-			ID:        *f.whiteboard.Get(KeyManagedIdentityId),
-			ClientID:  *f.whiteboard.Get(KeyManagedIdentityClientId),
+			ID:        *fctx.whiteboard.Get(KeyManagedIdentityId),
+			ClientID:  *fctx.whiteboard.Get(KeyManagedIdentityClientId),
 			ACRAccess: identity.ACRAccess != nil && *identity.ACRAccess,
 		}
 	}
@@ -728,22 +722,22 @@ func (f *FlowContext) GetInfrastructureStatus(_ context.Context) (*v1alpha1.Infr
 }
 
 // GetInfrastructureState returns tha shoot's infrastructure state.
-func (f *FlowContext) GetInfrastructureState() (*runtime.RawExtension, error) {
+func (fctx *FlowContext) GetInfrastructureState() *runtime.RawExtension {
 	state := &v1alpha1.InfrastructureState{
 		TypeMeta:     helper.InfrastructureStateTypeMeta,
-		ManagedItems: f.inventory.ToList(),
+		ManagedItems: fctx.inventory.ToList(),
 	}
 
 	return &runtime.RawExtension{
 		Object: state,
-	}, nil
+	}
 }
 
-func (f *FlowContext) enrichStatusWithIdentity(_ context.Context, status *v1alpha1.InfrastructureStatus) error {
-	if identity := f.cfg.Identity; identity != nil {
+func (fctx *FlowContext) enrichStatusWithIdentity(_ context.Context, status *v1alpha1.InfrastructureStatus) error {
+	if identity := fctx.cfg.Identity; identity != nil {
 		status.Identity = &v1alpha1.IdentityStatus{
-			ID:        *f.whiteboard.Get(KeyManagedIdentityId),
-			ClientID:  *f.whiteboard.Get(KeyManagedIdentityClientId),
+			ID:        *fctx.whiteboard.Get(KeyManagedIdentityId),
+			ClientID:  *fctx.whiteboard.Get(KeyManagedIdentityClientId),
 			ACRAccess: identity.ACRAccess != nil && *identity.ACRAccess,
 		}
 	}
@@ -751,17 +745,17 @@ func (f *FlowContext) enrichStatusWithIdentity(_ context.Context, status *v1alph
 }
 
 // DeleteResourceGroup deletes the shoot's resource group.
-func (f *FlowContext) DeleteResourceGroup(ctx context.Context) error {
-	c, err := f.factory.Group()
+func (fctx *FlowContext) DeleteResourceGroup(ctx context.Context) error {
+	c, err := fctx.factory.Group()
 	if err != nil {
 		return err
 	}
-	return c.Delete(ctx, f.adapter.ResourceGroupName())
+	return c.Delete(ctx, fctx.adapter.ResourceGroupName())
 }
 
 // DeleteSubnetsInForeignGroup deletes all managed subnets in a foreign resource group
-func (f *FlowContext) DeleteSubnetsInForeignGroup(ctx context.Context) error {
-	vnetCfg := f.adapter.VirtualNetworkConfig()
+func (fctx *FlowContext) DeleteSubnetsInForeignGroup(ctx context.Context) error {
+	vnetCfg := fctx.adapter.VirtualNetworkConfig()
 	if vnetCfg.Managed {
 		return nil
 	}
@@ -769,7 +763,7 @@ func (f *FlowContext) DeleteSubnetsInForeignGroup(ctx context.Context) error {
 	vnetRgroup := vnetCfg.ResourceGroup
 	vnetName := vnetCfg.Name
 
-	c, err := f.factory.Subnet()
+	c, err := fctx.factory.Subnet()
 	if err != nil {
 		return err
 	}
@@ -780,7 +774,7 @@ func (f *FlowContext) DeleteSubnetsInForeignGroup(ctx context.Context) error {
 	}
 
 	filteredSubnets := Filter(currentSubnets, func(s *armnetwork.Subnet) bool {
-		return f.adapter.HasShootPrefix(s.Name)
+		return fctx.adapter.HasShootPrefix(s.Name)
 	})
 
 	var joinErr error

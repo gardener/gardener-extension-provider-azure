@@ -1,3 +1,7 @@
+//  SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and Gardener contributors
+//
+//  SPDX-License-Identifier: Apache-2.0
+
 package infrastructure
 
 import (
@@ -51,29 +55,16 @@ func (f ReconcilerFactoryImpl) Build(useFlow bool) (Reconciler, error) {
 	return reconciler, nil
 }
 
-// StrategySelector decides the reconciler used.
-type StrategySelector interface {
-	Select(infrastructure *extensionsv1alpha1.Infrastructure, cluster *extensions.Cluster) (bool, error)
-}
-
 // SelectorFunc decides the reconciler used.
 type SelectorFunc func(*extensionsv1alpha1.Infrastructure, *extensions.Cluster) (bool, error)
 
-// Select selects the reconciler implementation.
-func (s SelectorFunc) Select(infrastructure *extensionsv1alpha1.Infrastructure, cluster *extensions.Cluster) (bool, error) {
-	return s(infrastructure, cluster)
-}
-
 // OnReconcile returns true if the operation should use the Flow for the given cluster.
-func OnReconcile(infra *extensionsv1alpha1.Infrastructure, cluster *extensions.Cluster) (bool, error) {
+func OnReconcile(infra *extensionsv1alpha1.Infrastructure, _ *extensions.Cluster) (bool, error) {
 	hasState, err := hasFlowState(infra.Status)
 	if err != nil {
 		return false, err
 	}
-	if hasState {
-		return true, nil
-	}
-	return hasState || HasFlowAnnotation(infra, cluster), nil
+	return hasState || GetFlowAnnotationValue(infra), nil
 }
 
 // OnDelete returns true if the operation should use the Flow deletion for the given cluster.

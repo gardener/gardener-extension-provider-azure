@@ -42,20 +42,26 @@ func NewFlowReconciler(a *actuator, log logr.Logger, projToken bool) (Reconciler
 
 // Reconcile reconciles the infrastructure and returns the status (state of the world), the state (input for the next loops) and any errors that occurred.
 func (f *FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
-	infraState, err := helper.InfrastructureStateFromRaw(infra.Status.State)
+	var (
+		infraState *azure.InfrastructureState
+		err        error
+	)
+	fsOk, err := hasFlowState(infra.Status)
 	if err != nil {
 		return err
 	}
 
-	tf, err := internal.NewTerraformer(f.log, f.restConfig, infrainternal.TerraformerPurpose, infra, f.disableProjectedTokenMount)
-	if err != nil {
-		return err
-	}
-
-	if !tf.IsStateEmpty(ctx) {
-		// this is a special case when migrating from Terraform. If TF had created any resources (meaning there is an actual tf.state written)
-		// we mark that there are infra resources created.
-		infraState.Data[infraflow.CreatedResourcesExistKey] = "true"
+	if fsOk {
+		infraState, err = helper.InfrastructureStateFromRaw(infra.Status.State)
+		if err != nil {
+			return err
+		}
+	} else {
+		// otherwise migrate it from the terraform state if needed.
+		infraState, err = f.migrateFromTerraform(ctx, infra)
+		if err != nil {
+			return err
+		}
 	}
 
 	auth, err := internal.GetClientAuthData(ctx, f.client, infra.Spec.SecretRef, false)
@@ -68,12 +74,7 @@ func (f *FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha
 		return err
 	}
 
-	var cloudConfiguration *azure.CloudConfiguration
-	if cloudProfile != nil {
-		cloudConfiguration = cloudProfile.CloudConfiguration
-	}
-
-	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(cloudConfiguration)
+	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(cloudProfile.CloudConfiguration)
 	if err != nil {
 		return err
 	}
@@ -89,25 +90,20 @@ func (f *FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha
 		return err
 	}
 
-	persistFunc := func(ctx context.Context, state *runtime.RawExtension) error {
-		return patchProviderStatusAndState(ctx, f.client, infra, nil, state)
-	}
-
-	fctx, err := infraflow.NewFlowContext(factory, auth, f.log, infra, cluster, infraState, persistFunc)
+	fctx, err := infraflow.NewFlowContext(infraflow.Opts{
+		Client:  f.client,
+		Factory: factory,
+		Auth:    auth,
+		Logger:  f.log,
+		Infra:   infra,
+		Cluster: cluster,
+		State:   infraState,
+	})
 	if err != nil {
 		return err
 	}
 
-	status, state, err := fctx.Reconcile(ctx)
-	if err != nil {
-		return err
-	}
-
-	if err := patchProviderStatusAndState(ctx, f.client, infra, status, state); err != nil {
-		return err
-	}
-
-	return CleanupTerraformerResources(ctx, tf)
+	return fctx.Reconcile(ctx)
 }
 
 // Delete deletes the infrastructure resource using the flow reconciler.
@@ -117,17 +113,12 @@ func (f *FlowReconciler) Delete(ctx context.Context, infra *extensionsv1alpha1.I
 		return err
 	}
 
-	var cloudConfiguration *azure.CloudConfiguration
-	if cloudProfile != nil {
-		cloudConfiguration = cloudProfile.CloudConfiguration
-	}
-
-	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(cloudConfiguration)
+	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(cloudProfile.CloudConfiguration)
 	if err != nil {
 		return err
 	}
 
-	clientFactory, err := azureclient.NewAzureClientFactoryFromSecret(
+	factory, err := azureclient.NewAzureClientFactoryFromSecret(
 		ctx,
 		f.client,
 		infra.Spec.SecretRef,
@@ -143,7 +134,15 @@ func (f *FlowReconciler) Delete(ctx context.Context, infra *extensionsv1alpha1.I
 		return err
 	}
 
-	fctx, err := infraflow.NewFlowContext(clientFactory, nil, f.log, infra, cluster, infraState, nil)
+	fctx, err := infraflow.NewFlowContext(infraflow.Opts{
+		Client:  f.client,
+		Factory: factory,
+		Auth:    nil,
+		Logger:  f.log,
+		Infra:   infra,
+		Cluster: cluster,
+		State:   infraState,
+	})
 	if err != nil {
 		return err
 	}
@@ -163,4 +162,27 @@ func (f *FlowReconciler) Delete(ctx context.Context, infra *extensionsv1alpha1.I
 // Restore implements the restoration of an infrastructure resource during the control plane migration.
 func (f *FlowReconciler) Restore(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
 	return f.Reconcile(ctx, infra, cluster)
+}
+
+func (f *FlowReconciler) migrateFromTerraform(ctx context.Context, infra *extensionsv1alpha1.Infrastructure) (*azure.InfrastructureState, error) {
+	var (
+		state = &azure.InfrastructureState{
+			Data: map[string]string{},
+		}
+	)
+	tf, err := internal.NewTerraformer(f.log, f.restConfig, infrainternal.TerraformerPurpose, infra, f.disableProjectedTokenMount)
+	if err != nil {
+		return nil, err
+	}
+
+	// nothing to do if state is empty
+	if tf.IsStateEmpty(ctx) {
+		return state, nil
+	}
+
+	// this is a special case when migrating from Terraform. If TF had created any resources (meaning there is an actual content in tf.state written)
+	// we will use a specific "marker" to make the reconciler aware of existing resources. This will prevent the reconciler from skipping the deletion flow.
+	state.Data[infraflow.CreatedResourcesExistKey] = "true"
+
+	return state, infrainternal.PatchProviderStatusAndState(ctx, f.client, infra, nil, &runtime.RawExtension{Object: state})
 }

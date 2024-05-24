@@ -15,6 +15,7 @@ import (
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
@@ -139,4 +140,23 @@ func ShootResourceGroupName(infra *extensionsv1alpha1.Infrastructure, cfg *api.I
 	}
 
 	return infra.Namespace
+}
+
+// PatchProviderStatusAndState patches the infrastructure resource with the given provider status and state.
+func PatchProviderStatusAndState(
+	ctx context.Context,
+	runtimeClient client.Client,
+	infra *extensionsv1alpha1.Infrastructure,
+	status *apiv1alpha1.InfrastructureStatus,
+	state *runtime.RawExtension,
+) error {
+	patch := client.MergeFrom(infra.DeepCopy())
+	if status != nil {
+		infra.Status.ProviderStatus = &runtime.RawExtension{Object: status}
+	}
+	if state != nil {
+		infra.Status.State = state
+	}
+
+	return runtimeClient.Status().Patch(ctx, infra, patch)
 }
