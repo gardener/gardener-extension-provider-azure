@@ -23,7 +23,6 @@ require (
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/gardener/etcd-druid v0.22.0
 	github.com/gardener/gardener v1.95.1
-	github.com/gardener/gardener-extension-provider-gcp v1.35.0
 	github.com/gardener/machine-controller-manager v0.53.0
 	github.com/gardener/remedy-controller v0.6.0
 	github.com/go-logr/logr v1.4.1
