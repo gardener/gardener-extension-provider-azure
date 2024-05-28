@@ -21,7 +21,6 @@ import (
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	"github.com/gardener/gardener/pkg/utils"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -88,7 +87,6 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		machineDeployments        = worker.MachineDeployments{}
 		machineClasses            []map[string]interface{}
 		machineImages             []azureapi.MachineImage
-		skipAgreementPools        = sets.New[string]()
 	)
 
 	infrastructureStatus, err := w.decodeAzureInfrastructureStatus()
@@ -106,12 +104,6 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		return err
 	}
 
-	if v, ok := w.cluster.Shoot.GetAnnotations()[azure.BetaSkipMarketPlaceAgreementAnnotation]; ok {
-		for _, p := range strings.Split(v, ",") {
-			skipAgreementPools.Insert(p)
-		}
-	}
-
 	for _, pool := range w.worker.Spec.Pools {
 		// Get the vmo dependency from the worker status if exists.
 		vmoDependency, err := w.determineWorkerPoolVmoDependency(ctx, infrastructureStatus, workerStatus, pool.Name)
@@ -121,33 +113,34 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 
 		arch := ptr.Deref(pool.Architecture, v1beta1constants.ArchitectureAMD64)
 
-		urn, id, communityGalleryImageID, sharedGalleryImageID, imageSupportAcceleratedNetworking, err := w.findMachineImage(pool.MachineImage.Name, pool.MachineImage.Version, &arch)
+		machineImage, err := w.findMachineImage(pool.MachineImage.Name, pool.MachineImage.Version, &arch)
 		if err != nil {
 			return err
 		}
 		machineImages = appendMachineImage(machineImages, azureapi.MachineImage{
-			Name:                    pool.MachineImage.Name,
-			Version:                 pool.MachineImage.Version,
-			URN:                     urn,
-			ID:                      id,
-			CommunityGalleryImageID: communityGalleryImageID,
-			SharedGalleryImageID:    sharedGalleryImageID,
-			AcceleratedNetworking:   imageSupportAcceleratedNetworking,
-			Architecture:            &arch,
+			Name:                     pool.MachineImage.Name,
+			Version:                  pool.MachineImage.Version,
+			URN:                      machineImage.URN,
+			ID:                       machineImage.ID,
+			CommunityGalleryImageID:  machineImage.CommunityGalleryImageID,
+			SharedGalleryImageID:     machineImage.SharedGalleryImageID,
+			AcceleratedNetworking:    machineImage.AcceleratedNetworking,
+			Architecture:             &arch,
+			SkipMarketplaceAgreement: machineImage.SkipMarketplaceAgreement,
 		})
 
 		image := map[string]interface{}{}
-		if urn != nil {
-			image["urn"] = *urn
-			if skipAgreementPools.Has(pool.Name) {
-				image["skipMarketplaceAgreement"] = true
+		if machineImage.URN != nil {
+			image["urn"] = *machineImage.URN
+			if ok := ptr.Deref(machineImage.SkipMarketplaceAgreement, false); ok {
+				image["skipMarketplaceAgreement"] = ok
 			}
-		} else if communityGalleryImageID != nil {
-			image["communityGalleryImageID"] = *communityGalleryImageID
-		} else if sharedGalleryImageID != nil {
-			image["sharedGalleryImageID"] = *sharedGalleryImageID
+		} else if machineImage.CommunityGalleryImageID != nil {
+			image["communityGalleryImageID"] = *machineImage.CommunityGalleryImageID
+		} else if machineImage.SharedGalleryImageID != nil {
+			image["sharedGalleryImageID"] = *machineImage.SharedGalleryImageID
 		} else {
-			image["id"] = *id
+			image["id"] = *machineImage.ID
 		}
 
 		disks, err := computeDisks(pool)
@@ -204,7 +197,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			if infrastructureStatus.Networks.VNet.ResourceGroup != nil {
 				networkConfig["vnetResourceGroup"] = *infrastructureStatus.Networks.VNet.ResourceGroup
 			}
-			if imageSupportAcceleratedNetworking != nil && *imageSupportAcceleratedNetworking && w.isMachineTypeSupportingAcceleratedNetworking(pool.MachineType) && acceleratedNetworkAllowed {
+			if ptr.Deref(machineImage.AcceleratedNetworking, false) && w.isMachineTypeSupportingAcceleratedNetworking(pool.MachineType) && acceleratedNetworkAllowed {
 				networkConfig["acceleratedNetworking"] = true
 			}
 			machineClassSpec["network"] = networkConfig

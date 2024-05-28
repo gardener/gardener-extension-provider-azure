@@ -1056,6 +1056,18 @@ string
 <p>Architecture is the CPU architecture of the machine image.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>skipMarketplaceAgreement</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SkipMarketplaceAgreement skips the marketplace agreement check when enabled.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.MachineImageVersion">MachineImageVersion
@@ -1096,6 +1108,18 @@ string
 <td>
 <em>(Optional)</em>
 <p>URN is the uniform resource name of the image, it has the format &lsquo;publisher:offer:sku:version&rsquo;.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>skipMarketplaceAgreement</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SkipMarketplaceAgreement skips the marketplace agreement check when enabled.</p>
 </td>
 </tr>
 <tr>

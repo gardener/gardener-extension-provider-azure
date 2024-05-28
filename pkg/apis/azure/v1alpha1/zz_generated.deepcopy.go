@@ -452,6 +452,11 @@ func (in *MachineImage) DeepCopyInto(out *MachineImage) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.SkipMarketplaceAgreement != nil {
+		in, out := &in.SkipMarketplaceAgreement, &out.SkipMarketplaceAgreement
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
@@ -471,6 +476,11 @@ func (in *MachineImageVersion) DeepCopyInto(out *MachineImageVersion) {
 	if in.URN != nil {
 		in, out := &in.URN, &out.URN
 		*out = new(string)
+		**out = **in
+	}
+	if in.SkipMarketplaceAgreement != nil {
+		in, out := &in.SkipMarketplaceAgreement, &out.SkipMarketplaceAgreement
+		*out = new(bool)
 		**out = **in
 	}
 	if in.ID != nil {

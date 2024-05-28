@@ -729,6 +729,7 @@ func autoConvert_v1alpha1_MachineImage_To_azure_MachineImage(in *MachineImage, o
 	out.SharedGalleryImageID = (*string)(unsafe.Pointer(in.SharedGalleryImageID))
 	out.AcceleratedNetworking = (*bool)(unsafe.Pointer(in.AcceleratedNetworking))
 	out.Architecture = (*string)(unsafe.Pointer(in.Architecture))
+	out.SkipMarketplaceAgreement = (*bool)(unsafe.Pointer(in.SkipMarketplaceAgreement))
 	return nil
 }
 
@@ -746,6 +747,7 @@ func autoConvert_azure_MachineImage_To_v1alpha1_MachineImage(in *azure.MachineIm
 	out.SharedGalleryImageID = (*string)(unsafe.Pointer(in.SharedGalleryImageID))
 	out.AcceleratedNetworking = (*bool)(unsafe.Pointer(in.AcceleratedNetworking))
 	out.Architecture = (*string)(unsafe.Pointer(in.Architecture))
+	out.SkipMarketplaceAgreement = (*bool)(unsafe.Pointer(in.SkipMarketplaceAgreement))
 	return nil
 }
 
@@ -757,6 +759,7 @@ func Convert_azure_MachineImage_To_v1alpha1_MachineImage(in *azure.MachineImage,
 func autoConvert_v1alpha1_MachineImageVersion_To_azure_MachineImageVersion(in *MachineImageVersion, out *azure.MachineImageVersion, s conversion.Scope) error {
 	out.Version = in.Version
 	out.URN = (*string)(unsafe.Pointer(in.URN))
+	out.SkipMarketplaceAgreement = (*bool)(unsafe.Pointer(in.SkipMarketplaceAgreement))
 	out.ID = (*string)(unsafe.Pointer(in.ID))
 	out.CommunityGalleryImageID = (*string)(unsafe.Pointer(in.CommunityGalleryImageID))
 	out.SharedGalleryImageID = (*string)(unsafe.Pointer(in.SharedGalleryImageID))
@@ -773,6 +776,7 @@ func Convert_v1alpha1_MachineImageVersion_To_azure_MachineImageVersion(in *Machi
 func autoConvert_azure_MachineImageVersion_To_v1alpha1_MachineImageVersion(in *azure.MachineImageVersion, out *MachineImageVersion, s conversion.Scope) error {
 	out.Version = in.Version
 	out.URN = (*string)(unsafe.Pointer(in.URN))
+	out.SkipMarketplaceAgreement = (*bool)(unsafe.Pointer(in.SkipMarketplaceAgreement))
 	out.ID = (*string)(unsafe.Pointer(in.ID))
 	out.CommunityGalleryImageID = (*string)(unsafe.Pointer(in.CommunityGalleryImageID))
 	out.SharedGalleryImageID = (*string)(unsafe.Pointer(in.SharedGalleryImageID))

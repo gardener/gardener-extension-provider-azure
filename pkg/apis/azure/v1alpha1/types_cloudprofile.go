@@ -60,6 +60,9 @@ type MachineImageVersion struct {
 	// URN is the uniform resource name of the image, it has the format 'publisher:offer:sku:version'.
 	// +optional
 	URN *string `json:"urn,omitempty"`
+	// SkipMarketplaceAgreement skips the marketplace agreement check when enabled.
+	// +optional
+	SkipMarketplaceAgreement *bool `json:"skipMarketplaceAgreement,omitempty"`
 	// ID is the Shared Image Gallery image id.
 	// +optional
 	ID *string `json:"id,omitempty"`
