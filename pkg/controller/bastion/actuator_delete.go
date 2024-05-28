@@ -44,6 +44,10 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensi
 		cloudConfiguration = cloudProfile.CloudConfiguration
 	}
 
+	if cloudConfiguration == nil {
+		cloudConfiguration = &azure.CloudConfiguration{Name: helper.CloudInstanceNameFromRegion(cluster.Shoot.Spec.Region)}
+	}
+
 	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(cloudConfiguration)
 	if err != nil {
 		return err

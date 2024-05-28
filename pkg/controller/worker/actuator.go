@@ -82,6 +82,10 @@ func (d *delegateFactory) WorkerDelegate(ctx context.Context, worker *extensions
 		cloudConfiguration = cloudProfile.CloudConfiguration
 	}
 
+	if cloudConfiguration == nil {
+		cloudConfiguration = &azure.CloudConfiguration{Name: helper.CloudInstanceNameFromRegion(cluster.Shoot.Spec.Region)}
+	}
+
 	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(cloudConfiguration)
 	if err != nil {
 		return nil, err
