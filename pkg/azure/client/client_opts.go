@@ -84,11 +84,11 @@ func AzureCloudConfigurationFromCloudConfiguration(cloudConfiguration *azure.Clo
 
 	cloudConfigurationName := cloudConfiguration.Name
 	switch {
-	case strings.EqualFold(cloudConfigurationName, "AzurePublic"):
+	case strings.EqualFold(cloudConfigurationName, azure.AzurePublicCloudName):
 		return cloud.AzurePublic, nil
-	case strings.EqualFold(cloudConfigurationName, "AzureGovernment"):
+	case strings.EqualFold(cloudConfigurationName, azure.AzureGovCloudName):
 		return cloud.AzureGovernment, nil
-	case strings.EqualFold(cloudConfigurationName, "AzureChina"):
+	case strings.EqualFold(cloudConfigurationName, azure.AzureChinaCloudName):
 		return cloud.AzureChina, nil
 
 	default:
