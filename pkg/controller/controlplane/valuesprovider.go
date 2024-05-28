@@ -471,6 +471,9 @@ func getConfigChartValues(infraStatus *apisazure.InfrastructureStatus, cp *exten
 	if cloudProfile != nil {
 		cloudConfiguration = cloudProfile.CloudConfiguration
 	}
+	if cloudConfiguration == nil {
+		cloudConfiguration = &apisazure.CloudConfiguration{Name: helper.CloudInstanceNameFromRegion(cluster.Shoot.Spec.Region)}
+	}
 
 	azureCloudEnvVarName, err := azureclient.CloudEnvVarNameFromCloudConfiguration(cloudConfiguration)
 	if err != nil {

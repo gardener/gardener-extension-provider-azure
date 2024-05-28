@@ -20,6 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
@@ -52,7 +53,12 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, dns *extensio
 		return err
 	}
 
-	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(dnsRecordConfig.CloudConfiguration)
+	cloudConfiguration := dnsRecordConfig.CloudConfiguration
+	if cloudConfiguration == nil {
+		cloudConfiguration = &azure.CloudConfiguration{Name: helper.CloudInstanceNameFromRegion(*dns.Spec.Region)}
+	}
+
+	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(cloudConfiguration)
 	if err != nil {
 		return err
 	}
@@ -106,7 +112,12 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, dns *extensionsv
 		return err
 	}
 
-	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(dnsRecordConfig.CloudConfiguration)
+	cloudConfiguration := dnsRecordConfig.CloudConfiguration
+	if cloudConfiguration == nil {
+		cloudConfiguration = &azure.CloudConfiguration{Name: helper.CloudInstanceNameFromRegion(*dns.Spec.Region)}
+	}
+
+	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(cloudConfiguration)
 	if err != nil {
 		return err
 	}

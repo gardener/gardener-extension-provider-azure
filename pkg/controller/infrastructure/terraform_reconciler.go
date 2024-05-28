@@ -257,6 +257,10 @@ func (r *TerraformReconciler) getClientFactory(ctx context.Context, infra *exten
 		cloudConfiguration = cloudProfile.CloudConfiguration
 	}
 
+	if cloudConfiguration == nil {
+		cloudConfiguration = &azure.CloudConfiguration{Name: helper.CloudInstanceNameFromRegion(cluster.Shoot.Spec.Region)}
+	}
+
 	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(cloudConfiguration)
 	if err != nil {
 		return nil, err
