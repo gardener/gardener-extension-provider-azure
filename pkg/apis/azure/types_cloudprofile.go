@@ -86,7 +86,6 @@ const (
 )
 
 // The known prefixes in of region names for the various instances.
-// TODO doublecheck
 var (
 	AzureGovRegionPrefixes   = []string{"usgov-", "dod-"}
 	AzureChinaRegionPrefixes = []string{"cn-"}

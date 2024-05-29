@@ -6,7 +6,6 @@ package helper
 
 import (
 	"fmt"
-	"strings"
 
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"k8s.io/utils/ptr"
@@ -146,25 +145,4 @@ func InfrastructureZoneToString(zone int32) string {
 // IsUsingSingleSubnetLayout returns true if the infrastructure configuration is using a network setup with a single subnet.
 func IsUsingSingleSubnetLayout(config *api.InfrastructureConfig) bool {
 	return len(config.Networks.Zones) == 0
-}
-
-// CloudInstanceNameFromRegion returns the canonical cloud instance name for the instance the region is hosted in.
-func CloudInstanceNameFromRegion(region string) string {
-	if hasAnyPrefix(region, api.AzureGovRegionPrefixes...) {
-		return api.AzureGovCloudName
-	} else if hasAnyPrefix(region, api.AzureChinaRegionPrefixes...) {
-		return api.AzureChinaCloudName
-	} else {
-		return api.AzurePublicCloudName
-	}
-}
-
-func hasAnyPrefix(s string, prefixes ...string) bool {
-	lString := strings.ToLower(s)
-	for _, p := range prefixes {
-		if strings.HasPrefix(lString, strings.ToLower(p)) {
-			return true
-		}
-	}
-	return false
 }

@@ -467,15 +467,17 @@ func getConfigChartValues(infraStatus *apisazure.InfrastructureStatus, cp *exten
 		return nil, err
 	}
 
+	var region *string
+	if cluster != nil && cluster.Shoot != nil {
+		region = &cluster.Shoot.Spec.Region
+	}
+
 	var cloudConfiguration *apisazure.CloudConfiguration
 	if cloudProfile != nil {
 		cloudConfiguration = cloudProfile.CloudConfiguration
 	}
-	if cloudConfiguration == nil {
-		cloudConfiguration = &apisazure.CloudConfiguration{Name: helper.CloudInstanceNameFromRegion(cluster.Shoot.Spec.Region)}
-	}
 
-	azureCloudEnvVarName, err := azureclient.CloudEnvVarNameFromCloudConfiguration(cloudConfiguration)
+	azureCloudEnvVarName, err := azureclient.AzureCloudEnvVarName(cloudConfiguration, region)
 	if err != nil {
 		return nil, err
 	}

@@ -774,6 +774,7 @@ func generateCluster(cidr, k8sVersion string, vpaEnabled bool, shootAnnotations 
 					},
 				},
 			},
+			Region: "eu-west-1a",
 			Networking: &gardencorev1beta1.Networking{
 				Pods: &cidr,
 			},
