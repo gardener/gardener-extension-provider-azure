@@ -66,16 +66,7 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 		return err
 	}
 
-	var cloudConfiguration *azure.CloudConfiguration
-	if cloudProfile != nil {
-		cloudConfiguration = cloudProfile.CloudConfiguration
-	}
-
-	if cloudConfiguration == nil {
-		cloudConfiguration = &azure.CloudConfiguration{Name: helper.CloudInstanceNameFromRegion(cluster.Shoot.Spec.Region)}
-	}
-
-	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(cloudConfiguration)
+	azCloudConfiguration, err := azureclient.AzureCloudConfiguration(cloudProfile.CloudConfiguration, &cluster.Shoot.Spec.Region)
 	if err != nil {
 		return err
 	}
