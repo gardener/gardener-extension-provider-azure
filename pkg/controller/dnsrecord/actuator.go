@@ -20,7 +20,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
@@ -101,18 +100,13 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, dns *extensio
 }
 
 // Delete deletes the DNSRecord.
-func (a *actuator) Delete(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, cluster *extensionscontroller.Cluster) error {
-	cloudProfile, err := helper.CloudProfileConfigFromCluster(cluster)
+func (a *actuator) Delete(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, _ *extensionscontroller.Cluster) error {
+	dnsRecordConfig, err := helper.DNSRecordConfigFromDNSRecord(dns)
 	if err != nil {
 		return err
 	}
 
-	var cloudConfiguration *azure.CloudConfiguration
-	if cloudProfile != nil {
-		cloudConfiguration = cloudProfile.CloudConfiguration
-	}
-
-	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(cloudConfiguration)
+	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(dnsRecordConfig.CloudConfiguration)
 	if err != nil {
 		return err
 	}
