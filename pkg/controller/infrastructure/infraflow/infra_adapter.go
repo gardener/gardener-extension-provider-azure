@@ -135,8 +135,8 @@ func (ia *InfrastructureAdapter) virtualNetworkConfig() VirtualNetworkConfig {
 	if cidr := ia.config.Networks.VNet.CIDR; cidr != nil {
 		// copy string
 		vnc.CIDR = to.Ptr(*cidr)
-	} else {
-		vnc.CIDR = to.Ptr(*ia.config.Networks.Workers)
+	} else if cidr = ia.config.Networks.Workers; cidr != nil {
+		vnc.CIDR = to.Ptr(*cidr)
 	}
 
 	return vnc
