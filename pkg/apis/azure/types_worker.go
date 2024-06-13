@@ -16,8 +16,12 @@ type WorkerConfig struct {
 	metav1.TypeMeta
 	// NodeTemplate contains resource information of the machine which is used by Cluster Autoscaler to generate nodeTemplate during scaling a nodeGroup from zero.
 	NodeTemplate *extensionsv1alpha1.NodeTemplate
+
 	// DiagnosticsProfile specifies boot diagnostic options
 	DiagnosticsProfile *DiagnosticsProfile
+
+	// DataVolumes contains configuration for the additional disks attached to VMs.
+	DataVolumes []DataVolume
 }
 
 // +genclient
@@ -44,6 +48,18 @@ type MachineImage struct {
 	Name string
 	// Version is the logical version of the machine image.
 	Version string
+	// AcceleratedNetworking is an indicator if the image supports Azure accelerated networking.
+	AcceleratedNetworking *bool
+	// Architecture is the CPU architecture of the machine image.
+	Architecture *string
+	// SkipMarketplaceAgreement skips the marketplace agreement check when enabled.
+	SkipMarketplaceAgreement *bool
+	// Image identifies the azure image
+	Image
+}
+
+// Image identifies the azure image
+type Image struct {
 	// URN is the uniform resource name of the image, it has the format 'publisher:offer:sku:version'.
 	URN *string
 	// ID is the VM image ID
@@ -52,12 +68,6 @@ type MachineImage struct {
 	CommunityGalleryImageID *string
 	// SharedGalleryImageID is the Shared Image Gallery image id.
 	SharedGalleryImageID *string
-	// AcceleratedNetworking is an indicator if the image supports Azure accelerated networking.
-	AcceleratedNetworking *bool
-	// Architecture is the CPU architecture of the machine image.
-	Architecture *string
-	// SkipMarketplaceAgreement skips the marketplace agreement check when enabled.
-	SkipMarketplaceAgreement *bool
 }
 
 // VmoDependency is dependency reference for a workerpool to a VirtualMachineScaleSet Orchestration Mode VM (VMO).
@@ -77,4 +87,12 @@ type DiagnosticsProfile struct {
 	// StorageURI is the URI of the storage account to use for storing console output and screenshot.
 	// If not specified azure managed storage will be used.
 	StorageURI *string
+}
+
+// DataVolume contains configuration for data volumes attached to VMs.
+type DataVolume struct {
+	// Name is the name of the data volume this configuration applies to.
+	Name string
+	// ImageRef defines the dataVolume source image
+	ImageRef *Image
 }
