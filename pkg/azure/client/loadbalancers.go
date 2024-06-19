@@ -14,8 +14,6 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
-var _ Subnet = &SubnetsClient{}
-
 // LoadBalancersClient implements the interface for the LoadBalancers client.
 type LoadBalancersClient struct {
 	client *armnetwork.LoadBalancersClient
