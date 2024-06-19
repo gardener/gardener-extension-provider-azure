@@ -180,10 +180,15 @@ func (fctx *FlowContext) Delete(ctx context.Context) error {
 	}
 
 	fctx.BasicFlowContext = shared.NewBasicFlowContext().WithSpan().WithLogger(fctx.log).WithPersist(fctx.persistState)
+	managedVnet := fctx.adapter.VirtualNetworkConfig().Managed
 	g := flow.NewGraph("Azure infrastructure deletion")
 
+	loadBalancers := fctx.AddTask(g, "delete load balancers",
+		fctx.DeleteLoadBalancers, shared.Timeout(defaultLongTimeout), shared.DoIf(!managedVnet))
 	foreignSubnets := fctx.AddTask(g, "delete subnets in foreign resource group",
-		fctx.DeleteSubnetsInForeignGroup, shared.Timeout(defaultLongTimeout))
+		fctx.DeleteSubnetsInForeignGroup, shared.Timeout(defaultLongTimeout),
+		shared.Dependencies(loadBalancers), shared.DoIf(!managedVnet))
+
 	fctx.AddTask(g, "delete resource group",
 		fctx.DeleteResourceGroup, shared.Dependencies(foreignSubnets), shared.Timeout(defaultLongTimeout))
 
