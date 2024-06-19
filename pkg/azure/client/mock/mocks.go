@@ -290,6 +290,21 @@ func (mr *MockFactoryMockRecorder) Group() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Group", reflect.TypeOf((*MockFactory)(nil).Group))
 }
 
+// LoadBalancer mocks base method.
+func (m *MockFactory) LoadBalancer() (client.LoadBalancer, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LoadBalancer")
+	ret0, _ := ret[0].(client.LoadBalancer)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LoadBalancer indicates an expected call of LoadBalancer.
+func (mr *MockFactoryMockRecorder) LoadBalancer() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadBalancer", reflect.TypeOf((*MockFactory)(nil).LoadBalancer))
+}
+
 // ManagedUserIdentity mocks base method.
 func (m *MockFactory) ManagedUserIdentity() (client.ManagedUserIdentity, error) {
 	m.ctrl.T.Helper()
