@@ -756,10 +756,6 @@ func (fctx *FlowContext) DeleteResourceGroup(ctx context.Context) error {
 // DeleteSubnetsInForeignGroup deletes all managed subnets in a foreign resource group
 func (fctx *FlowContext) DeleteSubnetsInForeignGroup(ctx context.Context) error {
 	vnetCfg := fctx.adapter.VirtualNetworkConfig()
-	if vnetCfg.Managed {
-		return nil
-	}
-
 	vnetRgroup := vnetCfg.ResourceGroup
 	vnetName := vnetCfg.Name
 
@@ -782,7 +778,34 @@ func (fctx *FlowContext) DeleteSubnetsInForeignGroup(ctx context.Context) error 
 		err := c.Delete(ctx, vnetRgroup, vnetName, *s.Name)
 		if err != nil {
 			joinErr = errors.Join(joinErr, err)
-			continue
+		}
+	}
+	return joinErr
+}
+
+// DeleteLoadBalancers deletes all load balancers in shoots resource group
+// This is a prerequisite for the deletion of the subnets in foreign resource group because
+// internal load balancers might have a Frontend IP configuration referencing the
+// foreign subnet which therefore can not be deleted. Since the Frontend IP configuration
+// by its own can not be deleted, we remove the whole (all) load balancers.
+func (fctx *FlowContext) DeleteLoadBalancers(ctx context.Context) error {
+	c, err := fctx.factory.LoadBalancer()
+	if err != nil {
+		return err
+	}
+
+	resourceGroup := fctx.adapter.ResourceGroupName()
+
+	loadBalancers, err := c.List(ctx, resourceGroup)
+	if err != nil {
+		return err
+	}
+
+	var joinErr error
+	for _, lb := range loadBalancers {
+		err := c.Delete(ctx, resourceGroup, *lb.Name)
+		if err != nil {
+			joinErr = errors.Join(joinErr, err)
 		}
 	}
 	return joinErr

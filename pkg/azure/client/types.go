@@ -26,6 +26,7 @@ type Factory interface {
 	Resource() (Resource, error)
 	NetworkSecurityGroup() (NetworkSecurityGroup, error)
 	Subnet() (Subnet, error)
+	LoadBalancer() (LoadBalancer, error)
 	PublicIP() (PublicIP, error)
 	Vnet() (VirtualNetwork, error)
 	RouteTables() (RouteTables, error)
@@ -120,6 +121,12 @@ type Subnet interface {
 	SubResourceGetWithExpandFunc[armnetwork.Subnet, *string]
 	SubResourceListFunc[armnetwork.Subnet]
 	SubResourceDeleteFunc[armnetwork.Subnet]
+}
+
+// LoadBalancer represents an Azure LoadBalancer k8sClient.
+type LoadBalancer interface {
+	ListFunc[armnetwork.LoadBalancer]
+	DeleteFunc[armnetwork.LoadBalancer]
 }
 
 // VirtualNetwork represents an Azure Virtual Network k8sClient.

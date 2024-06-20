@@ -137,6 +137,11 @@ func (f azureFactory) Subnet() (Subnet, error) {
 	return NewSubnetsClient(*f.auth, f.tokenCredential, f.clientOpts)
 }
 
+// LoadBalancer returns an Azure LoadBalancer client.
+func (f azureFactory) LoadBalancer() (LoadBalancer, error) {
+	return NewLoadBalancersClient(*f.auth, f.tokenCredential, f.clientOpts)
+}
+
 // RouteTables returns an Azure RouteTables client.
 func (f azureFactory) RouteTables() (RouteTables, error) {
 	return NewRouteTablesClient(*f.auth, f.tokenCredential, f.clientOpts)
