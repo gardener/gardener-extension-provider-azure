@@ -233,7 +233,7 @@ var _ = Describe("Machines", func() {
 
 				diagnosticProfile = apiv1alpha1.DiagnosticsProfile{
 					Enabled:    true,
-					StorageURI: pointer.String("azure-storage-uri"),
+					StorageURI: ptr.To("azure-storage-uri"),
 				}
 
 				workerConfig = apiv1alpha1.WorkerConfig{
