@@ -28,6 +28,7 @@ import (
 	azureapi "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	azureapihelper "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
 
 const azureCSIDiskDriverTopologyKey = "topology.disk.csi.azure.com/zone"
@@ -194,6 +195,14 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				"vnet":   infrastructureStatus.Networks.VNet.Name,
 				"subnet": subnetName,
 			}
+
+			cloudConfiguration, err := azureclient.CloudConfiguration(nil, &w.worker.Spec.Region)
+			if err == nil {
+				machineClassSpec["cloudConfiguration"] = map[string]interface{}{
+					"name": cloudConfiguration.Name,
+				}
+			}
+
 			if infrastructureStatus.Networks.VNet.ResourceGroup != nil {
 				networkConfig["vnetResourceGroup"] = *infrastructureStatus.Networks.VNet.ResourceGroup
 			}
