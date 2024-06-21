@@ -7,7 +7,6 @@ package internal_test
 import (
 	"context"
 
-	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -86,7 +85,7 @@ var _ = Describe("Azure Auth", func() {
 		Context("DNS keys are not allowed", func() {
 			It("should retrieve the client auth data if non-DNS keys ar used", func() {
 				var c = mockclient.NewMockClient(ctrl)
-				c.EXPECT().Get(ctx, kutil.Key(namespace, name), gomock.AssignableToTypeOf(&corev1.Secret{})).
+				c.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).
 					DoAndReturn(func(_ context.Context, _ client.ObjectKey, actual *corev1.Secret, _ ...client.GetOption) error {
 						*actual = *secret
 						return nil
@@ -100,7 +99,7 @@ var _ = Describe("Azure Auth", func() {
 
 			It("should fail if DNS keys ar used", func() {
 				var c = mockclient.NewMockClient(ctrl)
-				c.EXPECT().Get(ctx, kutil.Key(namespace, name), gomock.AssignableToTypeOf(&corev1.Secret{})).
+				c.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).
 					DoAndReturn(func(_ context.Context, _ client.ObjectKey, actual *corev1.Secret, _ ...client.GetOption) error {
 						*actual = *dnsSecret
 						return nil
@@ -116,7 +115,7 @@ var _ = Describe("Azure Auth", func() {
 		Context("DNS keys are allowed", func() {
 			It("should retrieve the client auth data if non-DNS keys ar used", func() {
 				var c = mockclient.NewMockClient(ctrl)
-				c.EXPECT().Get(ctx, kutil.Key(namespace, name), gomock.AssignableToTypeOf(&corev1.Secret{})).
+				c.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).
 					DoAndReturn(func(_ context.Context, _ client.ObjectKey, actual *corev1.Secret, _ ...client.GetOption) error {
 						*actual = *secret
 						return nil
@@ -130,7 +129,7 @@ var _ = Describe("Azure Auth", func() {
 
 			It("should retrieve the client auth data if DNS keys ar used", func() {
 				var c = mockclient.NewMockClient(ctrl)
-				c.EXPECT().Get(ctx, kutil.Key(namespace, name), gomock.AssignableToTypeOf(&corev1.Secret{})).
+				c.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).
 					DoAndReturn(func(_ context.Context, _ client.ObjectKey, actual *corev1.Secret, _ ...client.GetOption) error {
 						*actual = *dnsSecret
 						return nil
@@ -147,7 +146,7 @@ var _ = Describe("Azure Auth", func() {
 	Describe("#GetAuthorizerAndSubscriptionID", func() {
 		It("should retrieve Azure autorizer and subscription id", func() {
 			var c = mockclient.NewMockClient(ctrl)
-			c.EXPECT().Get(ctx, kutil.Key(namespace, name), gomock.AssignableToTypeOf(&corev1.Secret{})).
+			c.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).
 				DoAndReturn(func(_ context.Context, _ client.ObjectKey, actual *corev1.Secret, _ ...client.GetOption) error {
 					*actual = *secret
 					return nil
