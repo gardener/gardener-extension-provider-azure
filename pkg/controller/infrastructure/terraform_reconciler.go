@@ -132,20 +132,24 @@ func (r *TerraformReconciler) reconcile(ctx context.Context, infra *extensionsv1
 	if err != nil {
 		return err
 	}
-	state, err := r.getState(ctx, tf, status)
+	terraformState, err := tf.GetRawState(ctx)
+	if err != nil {
+		return err
+	}
+	state, err := r.getState(terraformState, status)
+	if err != nil {
+		return err
+	}
+	egressCidrs, err := infrastructure.EgressCidrs(terraformState)
 	if err != nil {
 		return err
 	}
 
-	return infrastructure.PatchProviderStatusAndState(ctx, r.Client, infra, status, state)
+	return infrastructure.PatchProviderStatusAndState(ctx, r.Client, infra, status, state, egressCidrs)
 }
 
 // getState calculates the State resource after each reconciliation.
-func (r *TerraformReconciler) getState(ctx context.Context, tf terraformer.Terraformer, status *v1alpha1.InfrastructureStatus) (*runtime.RawExtension, error) {
-	terraformState, err := tf.GetRawState(ctx)
-	if err != nil {
-		return nil, err
-	}
+func (r *TerraformReconciler) getState(terraformState *terraformer.RawState, status *v1alpha1.InfrastructureStatus) (*runtime.RawExtension, error) {
 
 	stateByte, err := terraformState.Marshal()
 	if err != nil {

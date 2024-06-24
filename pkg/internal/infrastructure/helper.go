@@ -149,10 +149,14 @@ func PatchProviderStatusAndState(
 	infra *extensionsv1alpha1.Infrastructure,
 	status *apiv1alpha1.InfrastructureStatus,
 	state *runtime.RawExtension,
+	egressCidrs []string,
 ) error {
 	patch := client.MergeFrom(infra.DeepCopy())
 	if status != nil {
 		infra.Status.ProviderStatus = &runtime.RawExtension{Object: status}
+		if egressCidrs != nil {
+			infra.Status.EgressCIDRs = egressCidrs
+		}
 	}
 	if state != nil {
 		infra.Status.State = state

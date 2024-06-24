@@ -37,6 +37,36 @@ type TFOutput struct {
 	Type  string `json:"type"`
 }
 
+// UnmarshalJSON is a custom unmarshal function to be able to handle all actually possible values for the value of a TFOutput.
+func (t *TFOutput) UnmarshalJSON(data []byte) error {
+	var (
+		v        map[string]interface{}
+		valueKey = "value"
+		typeKey  = "type"
+	)
+	if err := json.Unmarshal(data, &v); err != nil {
+		return err
+	}
+
+	rawValue := v[valueKey]
+	if value, ok := rawValue.(string); ok {
+		t.Value = value
+	} else if value, ok := rawValue.(int); ok {
+		t.Value = fmt.Sprint(value)
+	} else if value, ok := rawValue.(float64); ok {
+		t.Value = fmt.Sprint(int(value))
+	} else {
+		return fmt.Errorf("unable to parse value of field '%v' as string, float, or integer: %v", valueKey, v[valueKey])
+	}
+
+	if typeValue, ok := v[typeKey].(string); ok {
+		t.Type = typeValue
+	} else {
+		return fmt.Errorf("unable to parse value of field '%v' as string", typeKey)
+	}
+	return nil
+}
+
 // TFResource holds the attributes of a terraformer state resource.
 type TFResource struct {
 	Mode      string `json:"mode"`

@@ -184,5 +184,5 @@ func (f *FlowReconciler) migrateFromTerraform(ctx context.Context, infra *extens
 	// we will use a specific "marker" to make the reconciler aware of existing resources. This will prevent the reconciler from skipping the deletion flow.
 	state.Data[infraflow.CreatedResourcesExistKey] = "true"
 
-	return state, infrainternal.PatchProviderStatusAndState(ctx, f.client, infra, nil, &runtime.RawExtension{Object: state})
+	return state, infrainternal.PatchProviderStatusAndState(ctx, f.client, infra, nil, &runtime.RawExtension{Object: state}, nil)
 }

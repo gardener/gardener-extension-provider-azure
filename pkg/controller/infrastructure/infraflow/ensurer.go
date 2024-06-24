@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
@@ -437,8 +438,7 @@ func (fctx *FlowContext) ensurePublicIps(ctx context.Context) error {
 
 // EnsureNatGateways reconciles all the NAT Gateways for the shoot.
 func (fctx *FlowContext) EnsureNatGateways(ctx context.Context) error {
-	err := fctx.ensureNatGateways(ctx)
-	return err
+	return fctx.ensureNatGateways(ctx)
 }
 
 // EnsureNatGateways creates or updates NAT Gateways. It also deletes old NATGateways.
@@ -501,9 +501,6 @@ func (fctx *FlowContext) ensureNatGateways(ctx context.Context) error {
 			continue
 		}
 	}
-	if joinError != nil {
-		return joinError
-	}
 
 	for natName, nat := range toDelete {
 		err := fctx.providerAccess.DeleteNatGateway(ctx, fctx.adapter.ResourceGroupName(), natName)
@@ -516,6 +513,9 @@ func (fctx *FlowContext) ensureNatGateways(ctx context.Context) error {
 		return joinError
 	}
 
+	ipClient, _ := fctx.factory.PublicIP()
+	ipAddresses := []string{}
+
 	for name, nat := range toReconcile {
 		nat, err := c.CreateOrUpdate(ctx, fctx.adapter.ResourceGroupName(), name, *nat)
 		if err != nil {
@@ -527,7 +527,28 @@ func (fctx *FlowContext) ensureNatGateways(ctx context.Context) error {
 			continue
 		}
 		fctx.whiteboard.GetChild(KindNatGateway.String()).Set(name, *nat.ID)
+
+		for _, ip := range nat.Properties.PublicIPAddresses {
+			resourceId, err := arm.ParseResourceID(*ip.ID)
+			if err != nil {
+				joinError = errors.Join(joinError, err)
+				continue
+			}
+			ipObj, err := ipClient.Get(ctx, fctx.adapter.ResourceGroupName(), resourceId.Name, nil)
+			if err != nil {
+				joinError = errors.Join(joinError, err)
+				continue
+			}
+			if ipObj == nil {
+				continue
+			}
+			if ipObj.Properties.IPAddress != nil {
+				ipAddresses = append(ipAddresses, *ipObj.Properties.IPAddress)
+			}
+		}
 	}
+
+	fctx.whiteboard.GetChild(KindNatGateway.String()).SetObject(KeyPublicIPAddresses, ipAddresses)
 
 	return joinError
 }
@@ -731,6 +752,22 @@ func (fctx *FlowContext) GetInfrastructureState() *runtime.RawExtension {
 	return &runtime.RawExtension{
 		Object: state,
 	}
+}
+
+// GetEgressIpCidrs retrieves the CIDRs of the IP ranges used for egress from the FlowContext
+func (fctx *FlowContext) GetEgressIpCidrs() []string {
+	if fctx.whiteboard.HasChild(KindNatGateway.String()) && fctx.whiteboard.GetChild(KindNatGateway.String()).HasObject(KeyPublicIPAddresses) {
+		ipAddresses, ok := fctx.whiteboard.GetChild(KindNatGateway.String()).GetObject(KeyPublicIPAddresses).([]string)
+		if !ok {
+			return nil
+		}
+		cidrs := []string{}
+		for _, address := range ipAddresses {
+			cidrs = append(cidrs, address+"/32")
+		}
+		return cidrs
+	}
+	return nil
 }
 
 func (fctx *FlowContext) enrichStatusWithIdentity(_ context.Context, status *v1alpha1.InfrastructureStatus) error {

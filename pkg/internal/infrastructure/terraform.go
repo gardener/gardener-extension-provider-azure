@@ -22,6 +22,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow/shared"
 )
 
 const (
@@ -430,6 +431,28 @@ func ExtractTerraformState(ctx context.Context, tf terraformer.Terraformer, infr
 
 	tfState.Subnets = computeInfrastructureSubnets(infra, vars)
 	return &tfState, nil
+}
+
+// EgressCidrs retrieves the Egress CIDRs from the Terraform state and returns them.
+func EgressCidrs(terraformState *terraformer.RawState) ([]string, error) {
+	tfState, err := shared.UnmarshalTerraformStateFromTerraformer(terraformState)
+	if err != nil {
+		return nil, err
+	}
+	resources := tfState.FindManagedResourcesByType("azurerm_public_ip")
+
+	egressCidrs := []string{}
+	for _, resource := range resources {
+		for _, instance := range resource.Instances {
+			rawIpAddress := instance.Attributes["ip_address"]
+			ipAddress, ok := rawIpAddress.(string)
+			if !ok {
+				return nil, fmt.Errorf("error parsing '%v' as IP-address from Terraform state", rawIpAddress)
+			}
+			egressCidrs = append(egressCidrs, ipAddress+"/32")
+		}
+	}
+	return egressCidrs, nil
 }
 
 // StatusFromTerraformState computes an InfrastructureStatus from the given

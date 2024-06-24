@@ -130,10 +130,11 @@ func (fctx *FlowContext) Reconcile(ctx context.Context) error {
 
 	status, err := fctx.GetInfrastructureStatus(ctx)
 	state := fctx.GetInfrastructureState()
+	egressCidrs := fctx.GetEgressIpCidrs()
 	if err != nil {
 		return err
 	}
-	return infrainternal.PatchProviderStatusAndState(ctx, fctx.client, fctx.infra, status, state)
+	return infrainternal.PatchProviderStatusAndState(ctx, fctx.client, fctx.infra, status, state, egressCidrs)
 }
 
 func (fctx *FlowContext) buildReconcileGraph() *flow.Graph {
@@ -201,5 +202,5 @@ func (fctx *FlowContext) Delete(ctx context.Context) error {
 }
 
 func (fctx *FlowContext) persistState(ctx context.Context) error {
-	return infrainternal.PatchProviderStatusAndState(ctx, fctx.client, fctx.infra, nil, fctx.GetInfrastructureState())
+	return infrainternal.PatchProviderStatusAndState(ctx, fctx.client, fctx.infra, nil, fctx.GetInfrastructureState(), fctx.GetEgressIpCidrs())
 }
