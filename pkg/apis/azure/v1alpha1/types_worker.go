@@ -19,6 +19,8 @@ type WorkerConfig struct {
 	// NodeTemplate contains resource information of the machine which is used by Cluster Autoscaler to generate nodeTemplate during scaling a nodeGroup from zero.
 	// +optional
 	NodeTemplate *extensionsv1alpha1.NodeTemplate `json:"nodeTemplate,omitempty"`
+	// DiagnosticsProfile specifies boot diagnostic options
+	DiagnosticsProfile *DiagnosticsProfile `json:"diagnosticsProfile,omitempty"`
 }
 
 // +genclient
@@ -78,4 +80,13 @@ type VmoDependency struct {
 	ID string `json:"id"`
 	// Name is the name of the VMO resource on Azure.
 	Name string `json:"name"`
+}
+
+// DiagnosticsProfile specifies boot diagnostic options
+type DiagnosticsProfile struct {
+	// Enabled configures boot diagnostics to be stored or not
+	Enabled bool `json:"enabled,omitempty"`
+	// StorageURI is the URI of the storage account to use for storing console output and screenshot.
+	// If not specified azure managed storage will be used.
+	StorageURI *string `json:"storageURI,omitempty"`
 }

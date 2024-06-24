@@ -61,6 +61,13 @@ providerSpec:
     networkProfile:
       acceleratedNetworking: {{ $machineClass.network.acceleratedNetworking }}
     {{- end }}
+    {{- if hasKey $machineClass "diagnosticsProfile" }}
+    diagnosticsProfile:
+      enabled: {{ $machineClass.diagnosticsProfile.enabled }}
+      {{- if hasKey $machineClass.diagnosticsProfile "storageURI" }}
+      storageURI: {{ $machineClass.diagnosticsProfile.storageURI }}
+      {{- end }}
+    {{- end }}
     hardwareProfile:
       vmSize: {{ $machineClass.machineType }}
     osProfile:

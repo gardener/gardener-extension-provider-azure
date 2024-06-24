@@ -403,6 +403,19 @@ github.com/gardener/gardener/pkg/apis/extensions/v1alpha1.NodeTemplate
 <p>NodeTemplate contains resource information of the machine which is used by Cluster Autoscaler to generate nodeTemplate during scaling a nodeGroup from zero.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>diagnosticsProfile</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.DiagnosticsProfile">
+DiagnosticsProfile
+</a>
+</em>
+</td>
+<td>
+<p>DiagnosticsProfile specifies boot diagnostic options</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.WorkerStatus">WorkerStatus
@@ -648,6 +661,48 @@ map[string]bool
 <td>
 <em>(Optional)</em>
 <p>FeatureGates contains information about enabled feature gates.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.DiagnosticsProfile">DiagnosticsProfile
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig</a>)
+</p>
+<p>
+<p>DiagnosticsProfile specifies boot diagnostic options</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>enabled</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Enabled configures boot diagnostics to be stored or not</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageURI</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>StorageURI is the URI of the storage account to use for storing console output and screenshot.
+If not specified azure managed storage will be used.</p>
 </td>
 </tr>
 </tbody>
