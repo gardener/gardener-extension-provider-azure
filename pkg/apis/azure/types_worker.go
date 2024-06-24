@@ -54,6 +54,8 @@ type MachineImage struct {
 	AcceleratedNetworking *bool
 	// Architecture is the CPU architecture of the machine image.
 	Architecture *string
+	// SkipMarketplaceAgreement skips the marketplace agreement check when enabled.
+	SkipMarketplaceAgreement *bool
 }
 
 // VmoDependency is dependency reference for a workerpool to a VirtualMachineScaleSet Orchestration Mode VM (VMO).

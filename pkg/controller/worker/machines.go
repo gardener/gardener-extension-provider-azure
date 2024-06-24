@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
 	genericworkeractuator "github.com/gardener/gardener/extensions/pkg/controller/worker/genericactuator"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
@@ -26,6 +27,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/charts"
 	azureapi "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	azureapihelper "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 const azureCSIDiskDriverTopologyKey = "topology.disk.csi.azure.com/zone"
@@ -111,30 +113,34 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 
 		arch := ptr.Deref(pool.Architecture, v1beta1constants.ArchitectureAMD64)
 
-		urn, id, communityGalleryImageID, sharedGalleryImageID, imageSupportAcceleratedNetworking, err := w.findMachineImage(pool.MachineImage.Name, pool.MachineImage.Version, &arch)
+		machineImage, err := w.findMachineImage(pool.MachineImage.Name, pool.MachineImage.Version, &arch)
 		if err != nil {
 			return err
 		}
 		machineImages = appendMachineImage(machineImages, azureapi.MachineImage{
-			Name:                    pool.MachineImage.Name,
-			Version:                 pool.MachineImage.Version,
-			URN:                     urn,
-			ID:                      id,
-			CommunityGalleryImageID: communityGalleryImageID,
-			SharedGalleryImageID:    sharedGalleryImageID,
-			AcceleratedNetworking:   imageSupportAcceleratedNetworking,
-			Architecture:            &arch,
+			Name:                     pool.MachineImage.Name,
+			Version:                  pool.MachineImage.Version,
+			URN:                      machineImage.URN,
+			ID:                       machineImage.ID,
+			CommunityGalleryImageID:  machineImage.CommunityGalleryImageID,
+			SharedGalleryImageID:     machineImage.SharedGalleryImageID,
+			AcceleratedNetworking:    machineImage.AcceleratedNetworking,
+			Architecture:             &arch,
+			SkipMarketplaceAgreement: machineImage.SkipMarketplaceAgreement,
 		})
 
 		image := map[string]interface{}{}
-		if urn != nil {
-			image["urn"] = *urn
-		} else if communityGalleryImageID != nil {
-			image["communityGalleryImageID"] = *communityGalleryImageID
-		} else if sharedGalleryImageID != nil {
-			image["sharedGalleryImageID"] = *sharedGalleryImageID
+		if machineImage.URN != nil {
+			image["urn"] = *machineImage.URN
+			if ok := ptr.Deref(machineImage.SkipMarketplaceAgreement, false); ok {
+				image["skipMarketplaceAgreement"] = ok
+			}
+		} else if machineImage.CommunityGalleryImageID != nil {
+			image["communityGalleryImageID"] = *machineImage.CommunityGalleryImageID
+		} else if machineImage.SharedGalleryImageID != nil {
+			image["sharedGalleryImageID"] = *machineImage.SharedGalleryImageID
 		} else {
-			image["id"] = *id
+			image["id"] = *machineImage.ID
 		}
 
 		disks, err := computeDisks(pool)
@@ -191,7 +197,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			if infrastructureStatus.Networks.VNet.ResourceGroup != nil {
 				networkConfig["vnetResourceGroup"] = *infrastructureStatus.Networks.VNet.ResourceGroup
 			}
-			if imageSupportAcceleratedNetworking != nil && *imageSupportAcceleratedNetworking && w.isMachineTypeSupportingAcceleratedNetworking(pool.MachineType) && acceleratedNetworkAllowed {
+			if ptr.Deref(machineImage.AcceleratedNetworking, false) && w.isMachineTypeSupportingAcceleratedNetworking(pool.MachineType) && acceleratedNetworkAllowed {
 				networkConfig["acceleratedNetworking"] = true
 			}
 			machineClassSpec["network"] = networkConfig
@@ -264,6 +270,16 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				machineClassSpec["operatingSystem"] = map[string]interface{}{
 					"operatingSystemName":    pool.MachineImage.Name,
 					"operatingSystemVersion": pool.MachineImage.Version,
+				}
+			}
+
+			// special processing of CVMs.
+			if isConfidentialVM(pool) {
+				machineClassSpec["securityProfile"] = map[string]interface{}{
+					"securityType": string(armcompute.SecurityTypesConfidentialVM),
+					"uefiSettings": map[string]interface{}{
+						"vtpmEnabled": true,
+					},
 				}
 			}
 
@@ -389,6 +405,12 @@ func computeDisks(pool extensionsv1alpha1.WorkerPool) (map[string]interface{}, e
 		osDisk["type"] = *pool.Volume.Type
 	}
 
+	if isConfidentialVM(pool) {
+		osDisk["securityProfile"] = map[string]interface{}{
+			"securityEncryptionType": string(armcompute.SecurityEncryptionTypesVMGuestStateOnly),
+		}
+	}
+
 	disks := map[string]interface{}{
 		"osDisk": osDisk,
 	}
@@ -470,4 +492,14 @@ func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPo
 		return "", err
 	}
 	return workerPoolHash, nil
+}
+
+// TODO: Remove when we have support for VM Capabilities
+func isConfidentialVM(pool extensionsv1alpha1.WorkerPool) bool {
+	for _, v := range azure.ConfidentialVMFamilyPrefixes {
+		if strings.HasPrefix(strings.ToLower(pool.MachineType), strings.ToLower(v)) {
+			return true
+		}
+	}
+	return false
 }

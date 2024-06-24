@@ -147,4 +147,10 @@ const (
 var (
 	UsernamePrefix       = extensionsv1alpha1.SchemeGroupVersion.Group + ":" + Name + ":"
 	ValidFlowAnnotations = []string{AnnotationKeyUseFlow, GlobalAnnotationKeyUseFlow}
+
+	// ConfidentialVMFamilyPrefixes is a list of known families that are used for confidential VMs.
+	ConfidentialVMFamilyPrefixes = []string{
+		"standard_ec",
+		"standard_dc",
+	}
 )

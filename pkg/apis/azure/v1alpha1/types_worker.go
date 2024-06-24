@@ -65,6 +65,9 @@ type MachineImage struct {
 	// Architecture is the CPU architecture of the machine image.
 	// +optional
 	Architecture *string `json:"architecture,omitempty"`
+	// SkipMarketplaceAgreement skips the marketplace agreement check when enabled.
+	// +optional
+	SkipMarketplaceAgreement *bool `json:"skipMarketplaceAgreement,omitempty"`
 }
 
 // VmoDependency is dependency reference for a workerpool to a VirtualMachineScaleSet Orchestration Mode VM (VMO).

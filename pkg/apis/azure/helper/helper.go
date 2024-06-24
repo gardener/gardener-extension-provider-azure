@@ -105,14 +105,15 @@ func FindImageFromCloudProfile(cloudProfileConfig *api.CloudProfileConfig, image
 			for _, version := range machineImage.Versions {
 				if imageVersion == version.Version && ptr.Equal(architecture, version.Architecture) {
 					return &api.MachineImage{
-						Name:                    imageName,
-						Version:                 version.Version,
-						URN:                     version.URN,
-						ID:                      version.ID,
-						SharedGalleryImageID:    version.SharedGalleryImageID,
-						CommunityGalleryImageID: version.CommunityGalleryImageID,
-						AcceleratedNetworking:   version.AcceleratedNetworking,
-						Architecture:            version.Architecture,
+						Name:                     imageName,
+						Version:                  version.Version,
+						URN:                      version.URN,
+						ID:                       version.ID,
+						SharedGalleryImageID:     version.SharedGalleryImageID,
+						CommunityGalleryImageID:  version.CommunityGalleryImageID,
+						AcceleratedNetworking:    version.AcceleratedNetworking,
+						Architecture:             version.Architecture,
+						SkipMarketplaceAgreement: version.SkipMarketplaceAgreement,
 					}, nil
 				}
 			}

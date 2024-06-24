@@ -36,6 +36,16 @@ nodeTemplate:
 providerSpec:
   location: {{ $machineClass.region }}
   properties:
+    {{- if $machineClass.securityProfile }}
+    securityProfile:
+      {{- if hasKey $machineClass.securityProfile "securityType" }}
+      securityType: {{ $machineClass.securityProfile.securityType }}
+      {{- end }}
+      {{- if hasKey $machineClass.securityProfile "uefiSettings" }}
+      uefiSettings:
+{{ toYaml $machineClass.securityProfile.uefiSettings | indent 8 }}
+      {{- end }}
+    {{- end }}
     {{- if hasKey $machineClass "zone" }}
     zone: {{ $machineClass.zone }}
     {{- end }}
@@ -71,13 +81,20 @@ providerSpec:
         sharedGalleryImageID: {{ $machineClass.image.sharedGalleryImageID }}
 {{- else }}
         urn: {{ $machineClass.image.urn }}
+        {{- if $machineClass.image.skipMarketplaceAgreement}}
+        skipMarketPlaceAgreement: true
+        {{- end }}
 {{- end }}
       osDisk:
         caching: None
         diskSizeGB: {{ $machineClass.osDisk.size }}
-        {{- if hasKey $machineClass.osDisk "type" }}
         managedDisk:
+        {{- if hasKey $machineClass.osDisk "type" }}
           storageAccountType: {{ $machineClass.osDisk.type }}
+        {{- end }}
+        {{- if hasKey $machineClass.osDisk "securityProfile" }}
+          securityProfile:
+            securityEncryptionType: {{ $machineClass.osDisk.securityProfile.securityEncryptionType }}
         {{- end }}
         createOption: FromImage
 {{- if $machineClass.dataDisks }}
