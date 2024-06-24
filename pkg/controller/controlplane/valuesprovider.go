@@ -34,6 +34,7 @@ import (
 	autoscalingv1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/gardener/gardener-extension-provider-azure/charts"
@@ -360,7 +361,7 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 	}
 
 	cpConfigSecret := &corev1.Secret{}
-	if err := vp.client.Get(ctx, kutil.Key(cp.Namespace, azure.CloudProviderConfigName), cpConfigSecret); err != nil {
+	if err := vp.client.Get(ctx, client.ObjectKey{Namespace: cp.Namespace, Name: azure.CloudProviderConfigName}, cpConfigSecret); err != nil {
 		return nil, err
 	}
 	checksums[azure.CloudProviderConfigName] = utils.ComputeChecksum(cpConfigSecret.Data)
@@ -705,7 +706,7 @@ func getControlPlaneShootChartValues(
 	}
 
 	secret := &corev1.Secret{}
-	if err := client.Get(ctx, kutil.Key(cp.Namespace, azure.CloudProviderDiskConfigName), secret); err != nil {
+	if err := client.Get(ctx, k8sclient.ObjectKey{Namespace: cp.Namespace, Name: azure.CloudProviderDiskConfigName}, secret); err != nil {
 		return nil, err
 	}
 

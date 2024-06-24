@@ -13,7 +13,6 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	mockkubernetes "github.com/gardener/gardener/pkg/client/kubernetes/mock"
-	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
 	. "github.com/onsi/gomega"
 	"go.uber.org/mock/gomock"
@@ -57,7 +56,7 @@ func expectWorkerProviderStatusUpdateToSucceed(ctx context.Context, statusWriter
 }
 
 func expectGetSecretCallToWork(c *mockclient.MockClient, w *extensionsv1alpha1.Worker) {
-	c.EXPECT().Get(context.TODO(), kutil.Key(w.Spec.SecretRef.Namespace, w.Spec.SecretRef.Name), &corev1.Secret{}).DoAndReturn(
+	c.EXPECT().Get(context.TODO(), client.ObjectKey{Namespace: w.Spec.SecretRef.Namespace, Name: w.Spec.SecretRef.Name}, &corev1.Secret{}).DoAndReturn(
 		func(_ context.Context, _ client.ObjectKey, secret *corev1.Secret, _ ...client.GetOption) error {
 			secret.Data = map[string][]byte{
 				azure.ClientIDKey:       []byte("seedClient-id"),

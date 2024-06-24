@@ -13,7 +13,6 @@ import (
 	"github.com/gardener/gardener/pkg/apis/core"
 	gardencorehelper "github.com/gardener/gardener/pkg/apis/core/helper"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
-	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -64,7 +63,7 @@ func (s *shoot) Validate(ctx context.Context, newObj, oldObj client.Object) erro
 	}
 
 	cloudProfile := &gardencorev1beta1.CloudProfile{}
-	if err := s.client.Get(ctx, kutil.Key(shoot.Spec.CloudProfileName), cloudProfile); err != nil {
+	if err := s.client.Get(ctx, client.ObjectKey{Name: shoot.Spec.CloudProfileName}, cloudProfile); err != nil {
 		return err
 	}
 

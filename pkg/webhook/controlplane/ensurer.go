@@ -19,7 +19,6 @@ import (
 	oscutils "github.com/gardener/gardener/pkg/component/extensions/operatingsystemconfig/utils"
 	"github.com/gardener/gardener/pkg/component/nodemanagement/machinecontrollermanager"
 	gutil "github.com/gardener/gardener/pkg/utils/gardener"
-	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	"github.com/gardener/gardener/pkg/utils/version"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -405,7 +404,7 @@ func (e *ensurer) ShouldProvisionKubeletCloudProviderConfig(_ context.Context, _
 // EnsureKubeletCloudProviderConfig ensures that the cloud provider config file conforms to the provider requirements.
 func (e *ensurer) EnsureKubeletCloudProviderConfig(ctx context.Context, _ gcontext.GardenContext, _ *semver.Version, data *string, namespace string) error {
 	secret := &corev1.Secret{}
-	if err := e.client.Get(ctx, kutil.Key(namespace, azure.CloudProviderDiskConfigName), secret); err != nil {
+	if err := e.client.Get(ctx, client.ObjectKey{Namespace: namespace, Name: azure.CloudProviderDiskConfigName}, secret); err != nil {
 		if apierrors.IsNotFound(err) {
 			e.logger.Info("secret not found", "name", azure.CloudProviderDiskConfigName, "namespace", namespace)
 			return nil
@@ -476,7 +475,7 @@ func (e *ensurer) getAcrConfigMap(ctx context.Context, cluster *extensionscontro
 	}
 
 	cm := &corev1.ConfigMap{}
-	if err := e.client.Get(ctx, kutil.Key(cluster.Shoot.Status.TechnicalID, azure.CloudProviderAcrConfigName), cm); err != nil {
+	if err := e.client.Get(ctx, client.ObjectKey{Namespace: cluster.Shoot.Status.TechnicalID, Name: azure.CloudProviderAcrConfigName}, cm); err != nil {
 		if apierrors.IsNotFound(err) {
 			return nil, nil
 		}
