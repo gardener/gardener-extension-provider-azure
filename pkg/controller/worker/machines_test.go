@@ -155,7 +155,7 @@ var _ = Describe("Machines", func() {
 
 			BeforeEach(func() {
 				machineImageName = "my-os"
-				machineImageVersion = "1"
+				machineImageVersion = "123.4.5-foo+bar"
 				machineImageVersionID = "2"
 				machineImageVersionCommunityID = "3"
 				machineImageVersionSharedID = "4"
@@ -532,19 +532,19 @@ var _ = Describe("Machines", func() {
 
 					machineClassPool1["operatingSystem"] = map[string]interface{}{
 						"operatingSystemName":    machineImageName,
-						"operatingSystemVersion": machineImageVersion,
+						"operatingSystemVersion": strings.Replace(machineImageVersion, "+", "_", -1),
 					}
 					machineClassPool2["operatingSystem"] = map[string]interface{}{
 						"operatingSystemName":    machineImageName,
-						"operatingSystemVersion": machineImageVersionID,
+						"operatingSystemVersion": strings.Replace(machineImageVersionID, "+", "_", -1),
 					}
 					machineClassPool3["operatingSystem"] = map[string]interface{}{
 						"operatingSystemName":    machineImageName,
-						"operatingSystemVersion": machineImageVersionCommunityID,
+						"operatingSystemVersion": strings.Replace(machineImageVersionCommunityID, "+", "_", -1),
 					}
 					machineClassPool4["operatingSystem"] = map[string]interface{}{
 						"operatingSystemName":    machineImageName,
-						"operatingSystemVersion": machineImageVersionSharedID,
+						"operatingSystemVersion": strings.Replace(machineImageVersionSharedID, "+", "_", -1),
 					}
 
 					machineClasses = map[string]interface{}{"machineClasses": []map[string]interface{}{
