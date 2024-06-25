@@ -514,7 +514,7 @@ var _ = Describe("Ensurer", func() {
 			Expect(deployment.Spec.Template.Spec.Containers).To(BeEmpty())
 			Expect(ensurer.EnsureMachineControllerManagerDeployment(context.TODO(), nil, deployment, nil)).To(BeNil())
 			expectedContainer := machinecontrollermanager.ProviderSidecarContainer(deployment.Namespace, "provider-azure", "foo:bar")
-			expectedContainer.Command = append(expectedContainer.Command, "--machine-pv-reattach-timeout=150s")
+			expectedContainer.Args = append(expectedContainer.Args, "--machine-pv-reattach-timeout=150s")
 			Expect(deployment.Spec.Template.Spec.Containers).To(ConsistOf(expectedContainer))
 		})
 	})

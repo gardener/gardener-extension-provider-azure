@@ -65,7 +65,7 @@ func (e *ensurer) EnsureMachineControllerManagerDeployment(_ context.Context, _ 
 	}
 
 	sidecarContainer := machinecontrollermanager.ProviderSidecarContainer(newObj.Namespace, azure.Name, image.String())
-	sidecarContainer.Command = append(sidecarContainer.Command, "--machine-pv-reattach-timeout=150s")
+	sidecarContainer.Args = append(sidecarContainer.Args, "--machine-pv-reattach-timeout=150s")
 
 	newObj.Spec.Template.Spec.Containers = extensionswebhook.EnsureContainerWithName(newObj.Spec.Template.Spec.Containers, sidecarContainer)
 	return nil
