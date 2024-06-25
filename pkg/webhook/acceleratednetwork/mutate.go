@@ -13,16 +13,13 @@ import (
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 const (
-	// daemonSetName is the name of the calico daemon set to mutate.
-	daemonSetName = "calico-node"
 	// containerName is the name of the calico container to mutate.
-	containerName = daemonSetName
+	containerName = "calico-node"
 	// bpfEnvVariableName is the name of the environment variable indicating whether calico's ebpf dataplane is active or not.
 	bpfEnvVariableName = "FELIX_BPFENABLED"
 	// bpfDataIfacePatternEnvVariableName is the name of the environment variable to be set during the mutation.
@@ -62,19 +59,14 @@ func (m *mutator) Mutate(_ context.Context, new, old client.Object) error {
 
 	newDaemonSet, ok = new.(*appsv1.DaemonSet)
 	if !ok {
-		return fmt.Errorf("could not mutate, object is not of type \"DaemonSet\"")
+		return fmt.Errorf("wrong object type %T", new)
 	}
 
 	if old != nil {
 		oldDaemonSet, ok = old.(*appsv1.DaemonSet)
 		if !ok {
-			return fmt.Errorf("could not cast old object to appsv1.DaemonSet")
+			return fmt.Errorf("wrong object type %T", old)
 		}
-	}
-
-	// Only mutate calico-node daemon set in kube-system namespace
-	if newDaemonSet.Namespace != metav1.NamespaceSystem || newDaemonSet.Name != daemonSetName {
-		return nil
 	}
 
 	// Only mutate if calico-node's ebpf mode is active
