@@ -1,7 +1,7 @@
 apiVersion: testmachinery.sapcloud.io
 kind: TestDefinition
 metadata:
-  name: apply-flow-az
+  name: apply-flow-azure
 spec:
   owner: gardener-oq@listserv.sap.com
   description: Adds the use-flow annotation and triggers shoot maintenance to apply the changes.
