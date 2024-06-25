@@ -8,6 +8,7 @@ import (
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	"github.com/gardener/gardener/extensions/pkg/webhook/shoot"
 	appsv1 "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
@@ -27,5 +28,10 @@ func AddToManager(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 			{Obj: &appsv1.DaemonSet{}},
 		},
 		Mutator: NewMutator(mgr, logger),
+		ObjectSelector: &metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				"k8s-app": "calico-node",
+			},
+		},
 	})
 }
