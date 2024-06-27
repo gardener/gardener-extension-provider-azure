@@ -934,17 +934,6 @@ func (fctx *FlowContext) GetEgressIpCidrs() []string {
 	return nil
 }
 
-func (fctx *FlowContext) enrichStatusWithIdentity(_ context.Context, status *v1alpha1.InfrastructureStatus) error {
-	if identity := fctx.cfg.Identity; identity != nil {
-		status.Identity = &v1alpha1.IdentityStatus{
-			ID:        *fctx.whiteboard.Get(KeyManagedIdentityId),
-			ClientID:  *fctx.whiteboard.Get(KeyManagedIdentityClientId),
-			ACRAccess: identity.ACRAccess != nil && *identity.ACRAccess,
-		}
-	}
-	return nil
-}
-
 // DeleteResourceGroup deletes the shoot's resource group.
 func (fctx *FlowContext) DeleteResourceGroup(ctx context.Context) error {
 	c, err := fctx.factory.Group()
