@@ -355,7 +355,7 @@ nodeTemplate: # (to be specified only if the node capacity would be different fr
     memory: 50Gi
 diagnosticsProfile:
   enabled: true
-  # storageURI: <string>
+  # storageURI: https://<storage-account-name>.blob.core.windows.net/
 ```
 
 The `.nodeTemplate` is used to specify resource information of the machine during runtime. This then helps in Scale-from-Zero. 

@@ -118,3 +118,4 @@ spec:
   #   kind: WorkerConfig
   #   diagnosticsProfile:
   #     enabled: false
+  #     storageURI: https://<storage-account-name>.blob.core.windows.net/
