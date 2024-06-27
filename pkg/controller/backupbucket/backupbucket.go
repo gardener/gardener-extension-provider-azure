@@ -18,7 +18,7 @@ import (
 
 func ensureBackupBucket(ctx context.Context, factory azureclient.Factory, backupBucket *extensionsv1alpha1.BackupBucket) (string, string, error) {
 	var (
-		backupBucketNameSha = utils.ComputeSHA1Hex([]byte(backupBucket.Name))
+		backupBucketNameSha = utils.ComputeSHA256Hex([]byte(backupBucket.Name))
 		storageAccountName  = fmt.Sprintf("bkp%s", backupBucketNameSha[:15])
 	)
 
