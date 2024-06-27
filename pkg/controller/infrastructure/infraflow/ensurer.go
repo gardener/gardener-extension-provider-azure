@@ -20,6 +20,7 @@ import (
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
+	azuretypes "github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow/shared"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
@@ -747,6 +748,13 @@ func (fctx *FlowContext) GetInfrastructureState() *runtime.RawExtension {
 	state := &v1alpha1.InfrastructureState{
 		TypeMeta:     helper.InfrastructureStateTypeMeta,
 		ManagedItems: fctx.inventory.ToList(),
+	}
+
+	if migratedZone, ok := fctx.infra.Annotations[azuretypes.NetworkLayoutZoneMigrationAnnotation]; ok {
+		if state.Data == nil {
+			state.Data = make(map[string]string)
+		}
+		state.Data[azuretypes.NetworkLayoutZoneMigrationAnnotation] = migratedZone
 	}
 
 	return &runtime.RawExtension{
