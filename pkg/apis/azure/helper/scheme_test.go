@@ -5,11 +5,11 @@
 package helper_test
 
 import (
+	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	. "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
-	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 )
 
 var _ = Describe("Scheme", func() {
