@@ -46,7 +46,7 @@ func (f *FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha
 		infraState *azure.InfrastructureState
 		err        error
 	)
-	fsOk, err := hasFlowState(infra.Status)
+	fsOk, err := helper.HasFlowState(infra.Status)
 	if err != nil {
 		return err
 	}

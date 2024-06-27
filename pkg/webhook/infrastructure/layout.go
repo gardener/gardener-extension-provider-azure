@@ -6,9 +6,11 @@ package infrastructure
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
+	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/go-logr/logr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -16,6 +18,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azuretypes "github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 )
 
 type layoutMutator struct {
@@ -104,6 +107,11 @@ func mutate(_ context.Context, logger logr.Logger, newInfra, oldInfra *extension
 		return nil
 	}
 
+	// If the current operation is restore, then mutation might be necessary as the zone migration annotation is not preserved during control plane migration.
+	if operation, ok := newInfra.Annotations[v1beta1constants.GardenerOperation]; ok && operation == v1beta1constants.GardenerOperationRestore {
+		return addMigratedZoneAnnotationDuringRestore(newInfra)
+	}
+
 	// if the old configuration is not using zones or if it is already using a multi-subnet layout, no mutation is necessary.
 	if !oldProviderCfg.Zoned || len(oldProviderCfg.Networks.Zones) > 0 {
 		return nil
@@ -135,5 +143,47 @@ func mutate(_ context.Context, logger logr.Logger, newInfra, oldInfra *extension
 		}
 	}
 
+	return nil
+}
+
+func addMigratedZoneAnnotationDuringRestore(infra *extensionsv1alpha1.Infrastructure) error {
+	if infra.Status.State == nil || infra.Status.State.Raw == nil {
+		return nil
+	}
+
+	fsOk, err := helper.HasFlowState(infra.Status)
+	if err != nil {
+		return err
+	}
+
+	if fsOk {
+		infraState, err := helper.InfrastructureStateFromRaw(infra.Status.State)
+		if err != nil {
+			return err
+		}
+
+		if migratedZone, ok := infraState.Data[azuretypes.NetworkLayoutZoneMigrationAnnotation]; ok {
+			infra.Annotations[azuretypes.NetworkLayoutZoneMigrationAnnotation] = migratedZone
+		}
+
+		return nil
+	}
+
+	infraState := &infrastructure.InfrastructureState{}
+	if err := json.Unmarshal(infra.Status.State.Raw, infraState); err != nil {
+		return err
+	}
+
+	infrastructureStatus, err := helper.InfrastructureStatusFromRaw(infraState.SavedProviderStatus)
+	if err != nil {
+		return err
+	}
+
+	for _, subnet := range infrastructureStatus.Networks.Subnets {
+		if subnet.Migrated && subnet.Zone != nil {
+			infra.Annotations[azuretypes.NetworkLayoutZoneMigrationAnnotation] = *subnet.Zone
+			break
+		}
+	}
 	return nil
 }

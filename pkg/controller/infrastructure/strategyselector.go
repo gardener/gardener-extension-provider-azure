@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/extensions"
@@ -60,7 +61,7 @@ type SelectorFunc func(*extensionsv1alpha1.Infrastructure, *extensions.Cluster) 
 
 // OnReconcile returns true if the operation should use the Flow for the given cluster.
 func OnReconcile(infra *extensionsv1alpha1.Infrastructure, _ *extensions.Cluster) (bool, error) {
-	hasState, err := hasFlowState(infra.Status)
+	hasState, err := helper.HasFlowState(infra.Status)
 	if err != nil {
 		return false, err
 	}
@@ -69,7 +70,7 @@ func OnReconcile(infra *extensionsv1alpha1.Infrastructure, _ *extensions.Cluster
 
 // OnDelete returns true if the operation should use the Flow deletion for the given cluster.
 func OnDelete(infra *extensionsv1alpha1.Infrastructure, _ *extensions.Cluster) (bool, error) {
-	return hasFlowState(infra.Status)
+	return helper.HasFlowState(infra.Status)
 }
 
 // OnRestore decides the reconciler used on migration.

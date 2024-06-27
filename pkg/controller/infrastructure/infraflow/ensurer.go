@@ -906,6 +906,13 @@ func (fctx *FlowContext) GetInfrastructureState() *runtime.RawExtension {
 		Data:         fctx.whiteboard.ExportAsFlatMap(),
 	}
 
+	if migratedZone, ok := fctx.infra.Annotations[azure.NetworkLayoutZoneMigrationAnnotation]; ok {
+		if state.Data == nil {
+			state.Data = make(map[string]string)
+		}
+		state.Data[azure.NetworkLayoutZoneMigrationAnnotation] = migratedZone
+	}
+
 	return &runtime.RawExtension{
 		Object: state,
 	}
