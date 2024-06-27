@@ -174,3 +174,5 @@ require (
 )
 
 replace k8s.io/client-go => k8s.io/client-go v0.29.3
+
+replace github.com/gardener/gardener => github.com/ialidzhikov/gardener v1.64.1-0.20240624132950-575ab37a4733
