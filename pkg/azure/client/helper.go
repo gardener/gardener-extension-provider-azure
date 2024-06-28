@@ -121,38 +121,6 @@ func AzureCloudConfigurationFromCloudConfiguration(cloudConfiguration *azure.Clo
 	}
 }
 
-// AzureCloudEnvVarName is a convenience function to get the correct env-var name to use in terraform for the given input,
-// preferring the cloudConfiguration if both values are not nil.
-func AzureCloudEnvVarName(cloudConfiguration *azure.CloudConfiguration, region *string) (string, error) {
-	if cloudConfiguration != nil {
-		return cloudEnvVarNameFromCloudConfiguration(cloudConfiguration)
-	} else if region != nil {
-		cloudConfiguration := cloudConfigurationFromRegion(*region)
-		return cloudEnvVarNameFromCloudConfiguration(cloudConfiguration)
-	}
-
-	return "", fmt.Errorf("either CloudConfiguration or region must not be nil to determine correct env var name")
-}
-
-// CloudEnvVarNameFromCloudConfiguration returns the names of env-vars used by the upstream-controllers corresponding to the given cloud configuration name (as part of our CloudConfiguration).
-func cloudEnvVarNameFromCloudConfiguration(cloudConfiguration *azure.CloudConfiguration) (string, error) {
-	if cloudConfiguration == nil {
-		return "AZUREPUBLICCLOUD", nil
-	}
-
-	cloudConfigurationName := cloudConfiguration.Name
-	switch {
-	case strings.EqualFold(cloudConfigurationName, "AzurePublic"):
-		return "AZUREPUBLICCLOUD", nil
-	case strings.EqualFold(cloudConfigurationName, "AzureGovernment"):
-		return "AZUREUSGOVERNMENT", nil
-	case strings.EqualFold(cloudConfigurationName, "AzureChina"):
-		return "AZURECHINACLOUD", nil
-	default:
-		return "", fmt.Errorf("unknown cloud configuration name '%s'", cloudConfigurationName)
-	}
-}
-
 func hasAnyPrefix(s string, prefixes ...string) bool {
 	lString := strings.ToLower(s)
 	for _, p := range prefixes {

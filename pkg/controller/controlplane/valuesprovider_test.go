@@ -155,7 +155,6 @@ var _ = Describe("ValuesProvider", func() {
 		cluster = generateCluster(cidr, k8sVersion, false, nil, nil, nil)
 
 		ControlPlaneChartValues = map[string]interface{}{
-			"cloud":             "AZUREPUBLICCLOUD",
 			"tenantId":          "TenantID",
 			"subscriptionId":    "SubscriptionID",
 			"aadClientId":       "ClientID",
