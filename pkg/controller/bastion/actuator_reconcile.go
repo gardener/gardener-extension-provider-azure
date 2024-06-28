@@ -66,7 +66,12 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 		return err
 	}
 
-	azCloudConfiguration, err := azureclient.AzureCloudConfiguration(cloudProfile.CloudConfiguration, &cluster.Shoot.Spec.Region)
+	var cloudConfiguration *azure.CloudConfiguration
+	if cloudProfile != nil {
+		cloudConfiguration = cloudProfile.CloudConfiguration
+	}
+
+	azCloudConfiguration, err := azureclient.AzureCloudConfiguration(cloudConfiguration, &opt.Location)
 	if err != nil {
 		return err
 	}
@@ -146,7 +151,7 @@ func getInfrastructureStatus(ctx context.Context, a *actuator, cluster *extensio
 		return nil, err
 	}
 
-	if worker == nil || worker.Spec.InfrastructureProviderStatus == nil {
+	if worker.Spec.InfrastructureProviderStatus == nil {
 		return nil, errors.New("infrastructure provider status must be not empty for worker")
 	}
 

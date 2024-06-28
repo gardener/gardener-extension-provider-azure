@@ -17,6 +17,7 @@ import (
 	ctrlerror "github.com/gardener/gardener/pkg/controllerutils/reconciler"
 	"github.com/go-logr/logr"
 
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
@@ -38,7 +39,12 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensi
 		return err
 	}
 
-	azCloudConfiguration, err := azureclient.AzureCloudConfiguration(cloudProfile.CloudConfiguration, &cluster.Shoot.Spec.Region)
+	var cloudConfiguration *azure.CloudConfiguration
+	if cloudProfile != nil {
+		cloudConfiguration = cloudProfile.CloudConfiguration
+	}
+
+	azCloudConfiguration, err := azureclient.AzureCloudConfiguration(cloudConfiguration, &cluster.Shoot.Spec.Region)
 
 	if err != nil {
 		return err
