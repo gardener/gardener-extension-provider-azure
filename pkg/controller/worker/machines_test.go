@@ -34,6 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-azure/charts"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	. "github.com/gardener/gardener-extension-provider-azure/pkg/controller/worker"
@@ -473,6 +474,9 @@ var _ = Describe("Machines", func() {
 						},
 						"sshPublicKey": sshKey,
 						"identityID":   identityID,
+						"cloudConfiguration": map[string]interface{}{
+							"name": azure.AzurePublicCloudName,
+						},
 					}
 
 					urnMachineClass = copyMachineClass(defaultMachineClass)

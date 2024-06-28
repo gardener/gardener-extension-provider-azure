@@ -41,7 +41,7 @@ func (a *actuator) Reconcile(ctx context.Context, _ logr.Logger, backupBucket *e
 		return err
 	}
 
-	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(backupConfig.CloudConfiguration)
+	azCloudConfiguration, err := azureclient.AzureCloudConfiguration(backupConfig.CloudConfiguration, &backupBucket.Spec.Region)
 	if err != nil {
 		return err
 	}
@@ -98,9 +98,19 @@ func (a *actuator) delete(ctx context.Context, _ logr.Logger, backupBucket *exte
 		return err
 	}
 
-	var cloudConfiguration *azure.CloudConfiguration
+	var (
+		cloudConfiguration *azure.CloudConfiguration
+		region             *string
+	)
+
 	if backupBucket != nil {
 		cloudConfiguration = backupBucketConfig.CloudConfiguration
+		region = &backupBucket.Spec.Region
+	}
+
+	cloudConfiguration, err = azureclient.CloudConfiguration(cloudConfiguration, region)
+	if err != nil {
+		return err
 	}
 
 	if secret != nil {

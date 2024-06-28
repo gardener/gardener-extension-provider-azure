@@ -77,3 +77,16 @@ type MachineType struct {
 	// AcceleratedNetworking is an indicator if the machine type supports Azure accelerated networking.
 	AcceleratedNetworking *bool
 }
+
+// The (currently) supported values for the names of clouds to use in the CloudConfiguration.
+const (
+	AzureChinaCloudName  string = "AzureChina"
+	AzureGovCloudName    string = "AzureGovernment"
+	AzurePublicCloudName string = "AzurePublic"
+)
+
+// The known prefixes in of region names for the various instances.
+var (
+	AzureGovRegionPrefixes   = []string{"usgov", "usdod", "ussec"}
+	AzureChinaRegionPrefixes = []string{"china"}
+)

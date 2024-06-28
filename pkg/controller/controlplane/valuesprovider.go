@@ -39,10 +39,8 @@ import (
 
 	"github.com/gardener/gardener-extension-provider-azure/charts"
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azureapihelper "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/features"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
@@ -462,24 +460,8 @@ func getConfigChartValues(infraStatus *apisazure.InfrastructureStatus, cp *exten
 		maxNodes = maxNodes + worker.Maximum
 	}
 
-	cloudProfile, err := helper.CloudProfileConfigFromCluster(cluster)
-	if err != nil {
-		return nil, err
-	}
-
-	var cloudConfiguration *apisazure.CloudConfiguration
-	if cloudProfile != nil {
-		cloudConfiguration = cloudProfile.CloudConfiguration
-	}
-
-	azureCloudEnvVarName, err := azureclient.CloudEnvVarNameFromCloudConfiguration(cloudConfiguration)
-	if err != nil {
-		return nil, err
-	}
-
 	// Collect config chart values.
 	values := map[string]interface{}{
-		"cloud":             azureCloudEnvVarName,
 		"tenantId":          ca.TenantID,
 		"subscriptionId":    ca.SubscriptionID,
 		"aadClientId":       ca.ClientID,

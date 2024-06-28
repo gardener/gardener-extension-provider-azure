@@ -94,6 +94,7 @@ var _ = Describe("Actuator", func() {
 				Name:       domainName,
 				RecordType: extensionsv1alpha1.DNSRecordTypeA,
 				Values:     []string{address},
+				Region:     ptr.To("Foobar"),
 			},
 		}
 

@@ -82,7 +82,7 @@ func (d *delegateFactory) WorkerDelegate(ctx context.Context, worker *extensions
 		cloudConfiguration = cloudProfile.CloudConfiguration
 	}
 
-	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(cloudConfiguration)
+	azCloudConfiguration, err := azureclient.AzureCloudConfiguration(cloudConfiguration, &cluster.Shoot.Spec.Region)
 	if err != nil {
 		return nil, err
 	}

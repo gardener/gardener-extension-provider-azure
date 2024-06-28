@@ -74,7 +74,12 @@ func (f *FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha
 		return err
 	}
 
-	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(cloudProfile.CloudConfiguration)
+	var cloudConfiguration *azure.CloudConfiguration
+	if cloudProfile != nil {
+		cloudConfiguration = cloudProfile.CloudConfiguration
+	}
+
+	azCloudConfiguration, err := azureclient.AzureCloudConfiguration(cloudConfiguration, &cluster.Shoot.Spec.Region)
 	if err != nil {
 		return err
 	}
@@ -113,7 +118,12 @@ func (f *FlowReconciler) Delete(ctx context.Context, infra *extensionsv1alpha1.I
 		return err
 	}
 
-	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(cloudProfile.CloudConfiguration)
+	var cloudConfiguration *azure.CloudConfiguration
+	if cloudProfile != nil {
+		cloudConfiguration = cloudProfile.CloudConfiguration
+	}
+
+	azCloudConfiguration, err := azureclient.AzureCloudConfiguration(cloudConfiguration, &cluster.Shoot.Spec.Region)
 	if err != nil {
 		return err
 	}
