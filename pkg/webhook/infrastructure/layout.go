@@ -22,8 +22,8 @@ type layoutMutator struct {
 	logger logr.Logger
 }
 
-// NewLayoutMutator returns a new Infrastructure layoutMutator
-func NewLayoutMutator(logger logr.Logger) extensionswebhook.Mutator {
+// newLayoutMutator returns a new Infrastructure layoutMutator
+func newLayoutMutator(logger logr.Logger) extensionswebhook.Mutator {
 	return &layoutMutator{
 		logger: logger,
 	}
