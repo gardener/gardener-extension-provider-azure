@@ -22,7 +22,7 @@ type layoutMutator struct {
 	logger logr.Logger
 }
 
-// NewLayoutMutator returns a new Infrastructure layoutMutator that uses mutateFunc to perform the mutation.
+// NewLayoutMutator returns a new Infrastructure layoutMutator
 func NewLayoutMutator(logger logr.Logger) extensionswebhook.Mutator {
 	return &layoutMutator{
 		logger: logger,
