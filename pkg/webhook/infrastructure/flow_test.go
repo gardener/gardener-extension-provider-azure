@@ -56,7 +56,7 @@ var _ = Describe("Mutate", func() {
 		)
 
 		BeforeEach(func() {
-			mutator = NewFlowMutator(mgr, logger)
+			mutator = newFlowMutator(mgr, logger)
 			ctx = context.TODO()
 
 			c.EXPECT().Get(ctx, client.ObjectKey{Name: shootNamespace}, gomock.AssignableToTypeOf(&extensionsv1alpha1.Cluster{})).

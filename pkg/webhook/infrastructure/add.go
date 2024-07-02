@@ -32,9 +32,13 @@ func AddToManager(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 		{Obj: &extensionsv1alpha1.Infrastructure{}},
 	}
 
+	// WithMutator can only add one mutator for the same type, so
+	// we created a general infraMutator that just calls all Mutate funcs
 	handler, err := extensionswebhook.NewBuilder(mgr, logger).
-		WithMutator(NewLayoutMutator(logger, NetworkLayoutMigrationMutate), types...).
-		WithMutator(NewFlowMutator(mgr, logger), types...).
+		WithMutator(NewInfraMutator([]extensionswebhook.Mutator{
+			newLayoutMutator(logger),
+			newFlowMutator(mgr, logger),
+		}), types...).
 		Build()
 	if err != nil {
 		return nil, err

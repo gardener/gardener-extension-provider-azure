@@ -27,7 +27,7 @@ type flowMutator struct {
 }
 
 // NewFlowMutator returns a new Infrastructure flowMutator that uses mutateFunc to perform the mutation.
-func NewFlowMutator(mgr manager.Manager, logger logr.Logger) extensionswebhook.Mutator {
+func newFlowMutator(mgr manager.Manager, logger logr.Logger) extensionswebhook.Mutator {
 	return &flowMutator{
 		client: mgr.GetClient(),
 		logger: logger,

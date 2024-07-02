@@ -18,19 +18,14 @@ import (
 	azuretypes "github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
-// MutateFunc is a function that can perform a mutation on Infrastructure objects.
-type MutateFunc func(ctx context.Context, logger logr.Logger, new, old *extensionsv1alpha1.Infrastructure) error
-
 type layoutMutator struct {
-	logger     logr.Logger
-	mutateFunc MutateFunc
+	logger logr.Logger
 }
 
-// NewLayoutMutator returns a new Infrastructure layoutMutator that uses mutateFunc to perform the mutation.
-func NewLayoutMutator(logger logr.Logger, mutateFunc MutateFunc) extensionswebhook.Mutator {
+// newLayoutMutator returns a new Infrastructure layoutMutator
+func newLayoutMutator(logger logr.Logger) extensionswebhook.Mutator {
 	return &layoutMutator{
-		logger:     logger,
-		mutateFunc: mutateFunc,
+		logger: logger,
 	}
 }
 
@@ -58,11 +53,11 @@ func (m *layoutMutator) Mutate(ctx context.Context, new, old client.Object) erro
 		return fmt.Errorf("could not mutate: object is not of type Infrastructure")
 	}
 
-	return m.mutateFunc(ctx, m.logger, newInfra, oldInfra)
+	return mutate(ctx, m.logger, newInfra, oldInfra)
 }
 
-// NetworkLayoutMigrationMutate annotates the infrastructure object with additonal information that are necessary during the reconciliation when migrating to a new network layout.
-func NetworkLayoutMigrationMutate(_ context.Context, logger logr.Logger, newInfra, oldInfra *extensionsv1alpha1.Infrastructure) error {
+// mutate annotates the infrastructure object with additional information that are necessary during the reconciliation when migrating to a new network layout.
+func mutate(_ context.Context, logger logr.Logger, newInfra, oldInfra *extensionsv1alpha1.Infrastructure) error {
 	var (
 		newProviderCfg, oldProviderCfg *azure.InfrastructureConfig
 		oldProviderStatus              *azure.InfrastructureStatus
@@ -78,8 +73,8 @@ func NetworkLayoutMigrationMutate(_ context.Context, logger logr.Logger, newInfr
 		return fmt.Errorf("could not mutate object: %v", err)
 	}
 
-	// if newInfra already contains the zone migration annotation, check if it is still necessary. Otherwise, remove the
-	// the annotation.
+	// if newInfra already contains the zone migration annotation, check if it is still necessary.
+	// Otherwise, remove the annotation.
 	if z, ok := newInfra.Annotations[azuretypes.NetworkLayoutZoneMigrationAnnotation]; ok {
 		findMatchingZone := false
 		for _, zone := range newProviderCfg.Networks.Zones {
