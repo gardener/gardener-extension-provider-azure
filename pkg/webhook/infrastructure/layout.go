@@ -73,8 +73,8 @@ func mutate(_ context.Context, logger logr.Logger, newInfra, oldInfra *extension
 		return fmt.Errorf("could not mutate object: %v", err)
 	}
 
-	// if newInfra already contains the zone migration annotation, check if it is still necessary. Otherwise, remove the
-	// the annotation.
+	// if newInfra already contains the zone migration annotation, check if it is still necessary.
+	// Otherwise, remove the annotation.
 	if z, ok := newInfra.Annotations[azuretypes.NetworkLayoutZoneMigrationAnnotation]; ok {
 		findMatchingZone := false
 		for _, zone := range newProviderCfg.Networks.Zones {
