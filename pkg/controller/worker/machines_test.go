@@ -515,10 +515,13 @@ var _ = Describe("Machines", func() {
 						"sharedGalleryImageID": machineImageSharedID,
 					}
 
-					workerPoolHash1, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster, fmt.Sprintf("%dGi", dataVolume2Size), dataVolume2Type, fmt.Sprintf("%dGi", dataVolume1Size), identityID)
-					workerPoolHash2, _ = worker.WorkerPoolHash(w.Spec.Pools[1], cluster, identityID)
-					workerPoolHash3, _ = worker.WorkerPoolHash(w.Spec.Pools[2], cluster, identityID)
-					workerPoolHash4, _ = worker.WorkerPoolHash(w.Spec.Pools[3], cluster, identityID)
+					workerPoolHash1AdditionalData := []string{fmt.Sprintf("%dGi", dataVolume2Size), dataVolume2Type, fmt.Sprintf("%dGi", dataVolume1Size), identityID}
+					additionalData := []string{identityID}
+
+					workerPoolHash1, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster, workerPoolHash1AdditionalData, workerPoolHash1AdditionalData)
+					workerPoolHash2, _ = worker.WorkerPoolHash(w.Spec.Pools[1], cluster, additionalData, additionalData)
+					workerPoolHash3, _ = worker.WorkerPoolHash(w.Spec.Pools[2], cluster, additionalData, additionalData)
+					workerPoolHash4, _ = worker.WorkerPoolHash(w.Spec.Pools[3], cluster, additionalData, additionalData)
 
 					var (
 						machineClassPool1 = copyMachineClass(urnMachineClass)
@@ -742,8 +745,10 @@ var _ = Describe("Machines", func() {
 
 						w = makeWorker(namespace, region, &sshKey, infrastructureStatus, poolZones)
 
-						workerPoolHashZ1, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster, identityID)
-						workerPoolHashZ2, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster, identityID, subnet2)
+						additionalHashDataZ1 := []string{identityID}
+						additionalHashDataZ2 := []string{identityID, subnet2}
+						workerPoolHashZ1, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster, additionalHashDataZ1, additionalHashDataZ1)
+						workerPoolHashZ2, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster, additionalHashDataZ2, additionalHashDataZ2)
 
 						basename := fmt.Sprintf("%s-%s", namespace, namePoolZones)
 						machineClassNamePool1 = fmt.Sprintf("%s-z%s", basename, zone1)

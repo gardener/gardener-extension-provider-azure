@@ -508,7 +508,7 @@ func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPo
 	}
 
 	// Generate the worker pool hash.
-	workerPoolHash, err := worker.WorkerPoolHash(pool, w.cluster, additionalHashData...)
+	workerPoolHash, err := worker.WorkerPoolHash(pool, w.cluster, additionalHashData, additionalHashData)
 	if err != nil {
 		return "", err
 	}
