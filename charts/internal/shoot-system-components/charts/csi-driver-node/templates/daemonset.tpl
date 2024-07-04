@@ -124,13 +124,6 @@ spec:
         - --csi-address=$(ADDRESS)
         - --kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)
         - --v=5
-        lifecycle:
-          preStop:
-            exec:
-              command:
-              - /bin/sh
-              - -c
-              - "rm -rf /registration/{{ include (print "csi-driver-node.provisioner-" .role) . }}-reg.sock {{ .Values.socketPath }}"
         env:
         - name: ADDRESS
           value: {{ .Values.socketPath }}
