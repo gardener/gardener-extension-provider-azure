@@ -41,7 +41,7 @@ var _ = Describe("Mutate", func() {
 		var mutator extensionswebhook.Mutator
 
 		BeforeEach(func() {
-			mutator = NewLayoutMutator(logger, NetworkLayoutMigrationMutate)
+			mutator = newLayoutMutator(logger)
 		})
 
 		Context("add migration annotation", func() {
