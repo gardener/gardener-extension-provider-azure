@@ -34,6 +34,10 @@ nodeTemplate:
   zone: {{ $machineClass.nodeTemplate.zone }}
 {{- end }}
 providerSpec:
+  {{- if hasKey $machineClass "cloudConfiguration" }}
+  cloudConfiguration:
+{{ toYaml $machineClass.cloudConfiguration | indent 4 }}
+  {{- end }}
   location: {{ $machineClass.region }}
   properties:
     {{- if $machineClass.securityProfile }}

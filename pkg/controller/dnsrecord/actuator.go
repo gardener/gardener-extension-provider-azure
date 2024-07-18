@@ -52,7 +52,7 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, dns *extensio
 		return err
 	}
 
-	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(dnsRecordConfig.CloudConfiguration)
+	azCloudConfiguration, err := azureclient.AzureCloudConfiguration(dnsRecordConfig.CloudConfiguration, dns.Spec.Region)
 	if err != nil {
 		return err
 	}
@@ -106,7 +106,8 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, dns *extensionsv
 		return err
 	}
 
-	azCloudConfiguration, err := azureclient.AzureCloudConfigurationFromCloudConfiguration(dnsRecordConfig.CloudConfiguration)
+	azCloudConfiguration, err := azureclient.AzureCloudConfiguration(dnsRecordConfig.CloudConfiguration, dns.Spec.Region)
+
 	if err != nil {
 		return err
 	}
