@@ -1,4 +1,25 @@
 gardener-extension-provider-azure:
+  templates: 
+    helmcharts:
+    - &provider-azure
+      name: provider-azure
+      dir: charts/gardener-extension-provider-azure
+      registry: europe-docker.pkg.dev/gardener-project/snapshots/charts/gardener/extensions
+      mappings:
+      - ref: ocm-resource:gardener-extension-provider-azure.repository
+        attribute: image.repository
+      - ref: ocm-resource:gardener-extension-provider-azure.tag
+        attribute: image.tag
+    - &admission-azure
+      name: admission-azure
+      dir: charts/gardener-extension-admission-azure
+      registry: europe-docker.pkg.dev/gardener-project/snapshots/charts/gardener/extensions
+      mappings:
+      - ref: ocm-resource:gardener-extension-admission-azure.repository
+        attribute: global.image.repository
+      - ref: ocm-resource:gardener-extension-admission-azure.tag
+        attribute: global.image.tag
+
   base_definition:
     traits:
       version:
@@ -49,6 +70,10 @@ gardener-extension-provider-azure:
         draft_release: ~
         options:
           public_build_logs: true
+        publish:
+          helmcharts:
+          - *provider-azure
+          - *admission-azure
     pull-request:
       traits:
         pull-request: ~
@@ -57,6 +82,10 @@ gardener-extension-provider-azure:
             - repository: europe-docker.pkg.dev/gardener-project/releases
         options:
           public_build_logs: true
+        publish:
+          helmcharts:
+          - *provider-azure
+          - *admission-azure
     release:
       steps:
         test-integration:
@@ -89,3 +118,8 @@ gardener-extension-provider-azure:
             gardener-extension-admission-azure:
               image: europe-docker.pkg.dev/gardener-project/releases/gardener/extensions/admission-azure
               tag_as_latest: true
+          helmcharts:
+          - <<: *provider-azure
+            registry: europe-docker.pkg.dev/gardener-project/releases/charts/gardener/extensions
+          - <<: *admission-azure
+            registry: europe-docker.pkg.dev/gardener-project/releases/charts/gardener/extensions
