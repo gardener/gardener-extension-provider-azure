@@ -25,14 +25,14 @@ const (
 )
 
 // ValidateInfrastructureConfigAgainstCloudProfile validates the InfrastructureConfig against the CloudProfile.
-func ValidateInfrastructureConfigAgainstCloudProfile(oldInfra, infra *apisazure.InfrastructureConfig, shootRegion string, cloudProfile *gardencorev1beta1.CloudProfile, fld *field.Path) field.ErrorList {
+func ValidateInfrastructureConfigAgainstCloudProfile(oldInfra, infra *apisazure.InfrastructureConfig, shootRegion string, cloudProfileSpec *gardencorev1beta1.CloudProfileSpec, fld *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if helper.IsUsingSingleSubnetLayout(infra) {
 		return allErrs
 	}
 
-	for _, region := range cloudProfile.Spec.Regions {
+	for _, region := range cloudProfileSpec.Regions {
 		if region.Name == shootRegion {
 			allErrs = append(allErrs, validateInfrastructureConfigZones(oldInfra, infra, region.Zones, fld.Child("networks").Child("zones"))...)
 			break

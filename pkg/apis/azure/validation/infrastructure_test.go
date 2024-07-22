@@ -659,7 +659,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 
 		It("should deny zones not present in cloudprofile", func() {
 			infrastructureConfig.Networks.Zones[0].Name = 5
-			errorList := ValidateInfrastructureConfigAgainstCloudProfile(nil, infrastructureConfig, region, cp, providerPath)
+			errorList := ValidateInfrastructureConfigAgainstCloudProfile(nil, infrastructureConfig, region, &cp.Spec, providerPath)
 			Expect(errorList).NotTo(BeEmpty())
 			Expect(errorList).To(HaveLen(1))
 			Expect(errorList).To(ConsistOfFields(Fields{
@@ -669,7 +669,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 		})
 		It("should allow zones removed from cloudprofile", func() {
 			cp.Spec.Regions[0].Zones = cp.Spec.Regions[0].Zones[1:]
-			errorList := ValidateInfrastructureConfigAgainstCloudProfile(infrastructureConfig, infrastructureConfig, region, cp, providerPath)
+			errorList := ValidateInfrastructureConfigAgainstCloudProfile(infrastructureConfig, infrastructureConfig, region, &cp.Spec, providerPath)
 			Expect(errorList).To(BeEmpty())
 		})
 	})
