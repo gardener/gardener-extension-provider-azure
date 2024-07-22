@@ -6,27 +6,19 @@ package backupbucket
 
 import (
 	"context"
-	"crypto/sha1"
-	"encoding/hex"
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"github.com/gardener/gardener/pkg/utils"
 
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
 
-// toSHA1 takes a byte slice and returns the sha1-hashed byte slice.
-func toSHA1(in []byte) []byte {
-	s := sha1.New()
-	_, _ = s.Write(in)
-	return s.Sum(nil)
-}
-
 func ensureBackupBucket(ctx context.Context, factory azureclient.Factory, backupBucket *extensionsv1alpha1.BackupBucket) (string, string, error) {
 	var (
-		backupBucketNameSha = hex.EncodeToString(toSHA1([]byte(backupBucket.Name)))
+		backupBucketNameSha = utils.ComputeSHA256Hex([]byte(backupBucket.Name))
 		storageAccountName  = fmt.Sprintf("bkp%s", backupBucketNameSha[:15])
 	)
 
