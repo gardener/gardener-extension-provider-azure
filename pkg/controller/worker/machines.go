@@ -20,11 +20,13 @@ import (
 	extensionsv1alpha1helper "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1/helper"
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	"github.com/gardener/gardener/pkg/utils"
+	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-azure/charts"
+	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	azureapi "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	azureapihelper "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
@@ -482,6 +484,7 @@ func addTopologyLabel(labels map[string]string, region string, zone *zoneInfo) m
 
 func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPool, infrastructureStatus *azureapi.InfrastructureStatus, vmoDependency *azureapi.VmoDependency, subnetName *string) (string, error) {
 	additionalHashData := []string{}
+	var additionalHashDataV2 []string
 
 	// Integrate data disks/volumes in the hash.
 	for _, dv := range pool.DataVolumes {
@@ -507,8 +510,38 @@ func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPo
 		additionalHashData = append(additionalHashData, *subnetName)
 	}
 
+	additionalHashDataV2 = make([]string, len(additionalHashData))
+	copy(additionalHashData, additionalHashDataV2)
+
+	if providerStatus := w.worker.Status.ProviderStatus; providerStatus != nil {
+		workerStatus := &api.WorkerStatus{}
+
+		if _, _, err := w.decoder.Decode(providerStatus.Raw, nil, workerStatus); err != nil {
+			return "", fmt.Errorf("could not decode worker status of worker '%s': %w", kutil.ObjectName(w.worker), err)
+		}
+		vmoDependencies := workerStatus.VmoDependencies
+
+		sort.SliceStable(vmoDependencies, func(i, j int) bool { return vmoDependencies[i].ID < vmoDependencies[j].ID })
+		for _, vmoDependency := range vmoDependencies {
+			additionalHashDataV2 = append(additionalHashDataV2, vmoDependency.ID+vmoDependency.PoolName)
+		}
+
+	}
+
+	if pool.ProviderConfig != nil && pool.ProviderConfig.Raw != nil {
+		workerConfig := &api.WorkerConfig{}
+		if _, _, err := w.decoder.Decode(pool.ProviderConfig.Raw, nil, workerConfig); err != nil {
+			return "", fmt.Errorf("could not decode provider config: %+v", err)
+		}
+
+		if workerConfig.DiagnosticsProfile != nil {
+			additionalHashDataV2 = append(additionalHashDataV2, *workerConfig.DiagnosticsProfile.StorageURI)
+		}
+
+	}
+
 	// Generate the worker pool hash.
-	workerPoolHash, err := worker.WorkerPoolHash(pool, w.cluster, additionalHashData, additionalHashData)
+	workerPoolHash, err := worker.WorkerPoolHash(pool, w.cluster, additionalHashData, additionalHashDataV2)
 	if err != nil {
 		return "", err
 	}
