@@ -22,7 +22,7 @@ require (
 	github.com/ahmetb/gen-crd-api-reference-docs v0.3.0
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/gardener/etcd-druid v0.22.3
-	github.com/gardener/gardener v1.98.0
+	github.com/gardener/gardener v1.99.1
 	github.com/gardener/machine-controller-manager v0.53.1
 	github.com/gardener/remedy-controller v0.6.0
 	github.com/go-logr/logr v1.4.2
@@ -35,7 +35,7 @@ require (
 	go.uber.org/atomic v1.11.0
 	go.uber.org/mock v0.4.0
 	golang.org/x/crypto v0.25.0
-	golang.org/x/exp v0.0.0-20240613232115-7f521ea00fb8
+	golang.org/x/exp v0.0.0-20240707233637-46b078467d37
 	golang.org/x/tools v0.23.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.29.7
@@ -73,7 +73,7 @@ require (
 	github.com/evanphx/json-patch v5.7.0+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.9.0 // indirect
 	github.com/fatih/color v1.16.0 // indirect
-	github.com/fluent/fluent-operator/v2 v2.8.0 // indirect
+	github.com/fluent/fluent-operator/v2 v2.9.0 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/gardener/cert-management v0.15.0 // indirect
 	github.com/gardener/hvpa-controller/api v0.15.0 // indirect
@@ -157,7 +157,7 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	helm.sh/helm/v3 v3.14.4 // indirect
-	istio.io/api v1.22.1 // indirect
+	istio.io/api v1.22.2 // indirect
 	istio.io/client-go v1.22.0 // indirect
 	k8s.io/apiserver v0.29.7 // indirect
 	k8s.io/cluster-bootstrap v0.29.6 // indirect
