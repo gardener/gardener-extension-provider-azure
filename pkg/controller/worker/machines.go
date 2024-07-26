@@ -7,12 +7,12 @@ package worker
 import (
 	"context"
 	"fmt"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
 	genericworkeractuator "github.com/gardener/gardener/extensions/pkg/controller/worker/genericactuator"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
@@ -246,6 +246,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 						InstanceType: pool.MachineType,
 						Region:       w.worker.Spec.Region,
 						Zone:         zoneName,
+						Architecture: &arch,
 					}
 				} else if pool.NodeTemplate != nil {
 					machineClassSpec["nodeTemplate"] = machinev1alpha1.NodeTemplate{
@@ -253,6 +254,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 						InstanceType: pool.MachineType,
 						Region:       w.worker.Spec.Region,
 						Zone:         zoneName,
+						Architecture: &arch,
 					}
 				}
 			}

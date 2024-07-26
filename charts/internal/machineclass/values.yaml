@@ -25,6 +25,7 @@ machineClasses:
     namespace: shoot-namespace
   machineType: Standard_DS1_V2
   nodeTemplate:
+    architecture: amd64
     capacity:
       cpu: 1
       gpu: 0
