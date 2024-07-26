@@ -804,9 +804,7 @@ func (fctx *FlowContext) DeleteSubnetsInForeignGroup(ctx context.Context) error 
 	currentSubnets, err := c.List(ctx, vnetRgroup, vnetName)
 
 	// In case we cannot list any subnets at all, assume that the deletion succeeded at an earlier point in time.
-	err = client.FilterNotFoundError(err)
-
-	if err != nil {
+	if client.FilterNotFoundError(err) != nil {
 		return err
 	}
 
@@ -841,9 +839,7 @@ func (fctx *FlowContext) DeleteLoadBalancers(ctx context.Context) error {
 
 	// If we do not find any loadbalancers, assume the resource group was successfully deleted and we
 	// are done.
-	err = client.FilterNotFoundError(err)
-
-	if err != nil {
+	if client.FilterNotFoundError(err) != nil {
 		return err
 	}
 
