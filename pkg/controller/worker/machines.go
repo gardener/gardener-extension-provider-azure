@@ -20,7 +20,6 @@ import (
 	extensionsv1alpha1helper "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1/helper"
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	"github.com/gardener/gardener/pkg/utils"
-	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -311,7 +310,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			return machineDeployment, machineClassSpec
 		}
 
-		workerPoolHash, err := w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, nil)
+		workerPoolHash, err := w.generateWorkerPoolHash(pool, *workerConfig, infrastructureStatus, vmoDependency, nil)
 		if err != nil {
 			return err
 		}
@@ -357,12 +356,12 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				}
 
 				if nodesSubnet.Migrated {
-					workerPoolHash, err = w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, nil)
+					workerPoolHash, err = w.generateWorkerPoolHash(pool, *workerConfig, infrastructureStatus, vmoDependency, nil)
 					if err != nil {
 						return err
 					}
 				} else {
-					workerPoolHash, err = w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, &nodesSubnet.Name)
+					workerPoolHash, err = w.generateWorkerPoolHash(pool, *workerConfig, infrastructureStatus, vmoDependency, &nodesSubnet.Name)
 					if err != nil {
 						return err
 					}
@@ -482,7 +481,7 @@ func addTopologyLabel(labels map[string]string, region string, zone *zoneInfo) m
 	return labels
 }
 
-func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPool, infrastructureStatus *azureapi.InfrastructureStatus, vmoDependency *azureapi.VmoDependency, subnetName *string) (string, error) {
+func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPool, workerConfig api.WorkerConfig, infrastructureStatus *azureapi.InfrastructureStatus, vmoDependency *azureapi.VmoDependency, subnetName *string) (string, error) {
 	additionalHashData := []string{}
 
 	// Integrate data disks/volumes in the hash.
@@ -511,49 +510,23 @@ func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPo
 
 	// Include additional data for new worker-pool hash generation.
 	// See https://github.com/gardener/gardener/issues/9699 for more details
-	additionalHashDataV2, err := w.workerPoolHashDataV2(pool, additionalHashData)
+	additionalHashDataV2, err := w.workerPoolHashDataV2(workerConfig, additionalHashData)
 	if err != nil {
 		return "", err
 	}
 
-	// Generate the worker pool hash.
-	workerPoolHash, err := worker.WorkerPoolHash(pool, w.cluster, additionalHashData, additionalHashDataV2)
-	if err != nil {
-		return "", err
-	}
-	return workerPoolHash, nil
+	return worker.WorkerPoolHash(pool, w.cluster, additionalHashData, additionalHashDataV2)
 }
 
 // workerPoolHashDataV2 adds additional provider-specific datapoints to consider to the given data.
-func (w workerDelegate) workerPoolHashDataV2(pool extensionsv1alpha1.WorkerPool, additionalData []string) ([]string, error) {
+func (w workerDelegate) workerPoolHashDataV2(workerConfig api.WorkerConfig, additionalData []string) ([]string, error) {
 	hashData := make([]string, len(additionalData))
 	copy(hashData, additionalData)
 
-	if providerStatus := w.worker.Status.ProviderStatus; providerStatus != nil {
-		workerStatus := &api.WorkerStatus{}
-
-		if _, _, err := w.decoder.Decode(providerStatus.Raw, nil, workerStatus); err != nil {
-			return nil, fmt.Errorf("could not decode worker status of worker '%s': %w", kutil.ObjectName(w.worker), err)
-		}
-		vmoDependencies := workerStatus.VmoDependencies
-
-		sort.SliceStable(vmoDependencies, func(i, j int) bool { return vmoDependencies[i].ID < vmoDependencies[j].ID })
-		for _, vmoDependency := range vmoDependencies {
-			hashData = append(hashData, vmoDependency.ID+vmoDependency.PoolName)
-		}
-
+	if workerConfig.DiagnosticsProfile != nil {
+		hashData = append(hashData, *workerConfig.DiagnosticsProfile.StorageURI)
 	}
 
-	if pool.ProviderConfig != nil && pool.ProviderConfig.Raw != nil {
-		workerConfig := &api.WorkerConfig{}
-		if _, _, err := w.decoder.Decode(pool.ProviderConfig.Raw, nil, workerConfig); err != nil {
-			return nil, fmt.Errorf("could not decode provider config: %+v", err)
-		}
-
-		if workerConfig.DiagnosticsProfile != nil {
-			hashData = append(hashData, *workerConfig.DiagnosticsProfile.StorageURI)
-		}
-	}
 	return hashData, nil
 }
 
