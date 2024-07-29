@@ -143,6 +143,9 @@ var _ = Describe("Machines", func() {
 				nodeTemplateZone3 machinev1alpha1.NodeTemplate
 				nodeTemplateZone4 machinev1alpha1.NodeTemplate
 
+				archAMD string
+				archARM string
+
 				diagnosticProfile apiv1alpha1.DiagnosticsProfile
 				providerConfig    *runtime.RawExtension
 				workerConfig      apiv1alpha1.WorkerConfig
@@ -204,11 +207,15 @@ var _ = Describe("Machines", func() {
 					"memory": resource.MustParse("128Gi"),
 				}
 
+				archAMD = "amd64"
+				archARM = "arm64"
+
 				nodeTemplateZone1 = machinev1alpha1.NodeTemplate{
 					Capacity:     nodeCapacity,
 					InstanceType: machineType,
 					Region:       region,
 					Zone:         "no-zone",
+					Architecture: ptr.To(archAMD),
 				}
 
 				nodeTemplateZone2 = machinev1alpha1.NodeTemplate{
@@ -216,6 +223,7 @@ var _ = Describe("Machines", func() {
 					InstanceType: machineType,
 					Region:       region,
 					Zone:         "no-zone",
+					Architecture: ptr.To(archAMD),
 				}
 
 				nodeTemplateZone3 = machinev1alpha1.NodeTemplate{
@@ -223,6 +231,7 @@ var _ = Describe("Machines", func() {
 					InstanceType: machineType,
 					Region:       region,
 					Zone:         "no-zone",
+					Architecture: ptr.To(archARM),
 				}
 
 				nodeTemplateZone4 = machinev1alpha1.NodeTemplate{
@@ -230,6 +239,7 @@ var _ = Describe("Machines", func() {
 					InstanceType: machineType,
 					Region:       region,
 					Zone:         "no-zone",
+					Architecture: ptr.To(archARM),
 				}
 
 				diagnosticProfile = apiv1alpha1.DiagnosticsProfile{
@@ -288,10 +298,12 @@ var _ = Describe("Machines", func() {
 							{
 								Version:                 machineImageVersionCommunityID,
 								CommunityGalleryImageID: &machineImageCommunityID,
+								Architecture:            ptr.To(archARM),
 							},
 							{
 								Version:              machineImageVersionSharedID,
 								SharedGalleryImageID: &machineImageSharedID,
+								Architecture:         ptr.To(archARM),
 							},
 						},
 					},
@@ -309,6 +321,7 @@ var _ = Describe("Machines", func() {
 					Maximum:        maxPool1,
 					MaxSurge:       maxSurgePool1,
 					MaxUnavailable: maxUnavailablePool1,
+					Architecture:   ptr.To(archAMD),
 					MachineType:    machineType,
 					NodeTemplate: &extensionsv1alpha1.NodeTemplate{
 						Capacity: nodeCapacity,
@@ -344,6 +357,7 @@ var _ = Describe("Machines", func() {
 					Minimum:        minPool2,
 					Maximum:        maxPool2,
 					MaxSurge:       maxSurgePool2,
+					Architecture:   ptr.To(archAMD),
 					MaxUnavailable: maxUnavailablePool2,
 					MachineType:    machineType,
 					NodeTemplate: &extensionsv1alpha1.NodeTemplate{
@@ -368,6 +382,7 @@ var _ = Describe("Machines", func() {
 					Minimum:        minPool3,
 					Maximum:        maxPool3,
 					MaxSurge:       maxSurgePool3,
+					Architecture:   ptr.To(archARM),
 					MaxUnavailable: maxUnavailablePool3,
 					MachineType:    machineType,
 					NodeTemplate: &extensionsv1alpha1.NodeTemplate{
@@ -392,6 +407,7 @@ var _ = Describe("Machines", func() {
 					Minimum:        minPool4,
 					Maximum:        maxPool4,
 					MaxSurge:       maxSurgePool4,
+					Architecture:   ptr.To(archARM),
 					MaxUnavailable: maxUnavailablePool4,
 					MachineType:    machineType,
 					NodeTemplate: &extensionsv1alpha1.NodeTemplate{
