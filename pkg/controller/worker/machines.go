@@ -25,6 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-azure/charts"
+	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	azureapi "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	azureapihelper "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
@@ -309,7 +310,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			return machineDeployment, machineClassSpec
 		}
 
-		workerPoolHash, err := w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, nil)
+		workerPoolHash, err := w.generateWorkerPoolHash(pool, *workerConfig, infrastructureStatus, vmoDependency, nil)
 		if err != nil {
 			return err
 		}
@@ -355,12 +356,12 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				}
 
 				if nodesSubnet.Migrated {
-					workerPoolHash, err = w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, nil)
+					workerPoolHash, err = w.generateWorkerPoolHash(pool, *workerConfig, infrastructureStatus, vmoDependency, nil)
 					if err != nil {
 						return err
 					}
 				} else {
-					workerPoolHash, err = w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, &nodesSubnet.Name)
+					workerPoolHash, err = w.generateWorkerPoolHash(pool, *workerConfig, infrastructureStatus, vmoDependency, &nodesSubnet.Name)
 					if err != nil {
 						return err
 					}
@@ -480,7 +481,7 @@ func addTopologyLabel(labels map[string]string, region string, zone *zoneInfo) m
 	return labels
 }
 
-func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPool, infrastructureStatus *azureapi.InfrastructureStatus, vmoDependency *azureapi.VmoDependency, subnetName *string) (string, error) {
+func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPool, workerConfig api.WorkerConfig, infrastructureStatus *azureapi.InfrastructureStatus, vmoDependency *azureapi.VmoDependency, subnetName *string) (string, error) {
 	additionalHashData := []string{}
 
 	// Integrate data disks/volumes in the hash.
@@ -507,12 +508,26 @@ func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPo
 		additionalHashData = append(additionalHashData, *subnetName)
 	}
 
-	// Generate the worker pool hash.
-	workerPoolHash, err := worker.WorkerPoolHash(pool, w.cluster, additionalHashData...)
+	// Include additional data for new worker-pool hash generation.
+	// See https://github.com/gardener/gardener/issues/9699 for more details
+	additionalHashDataV2, err := w.workerPoolHashDataV2(workerConfig, additionalHashData)
 	if err != nil {
 		return "", err
 	}
-	return workerPoolHash, nil
+
+	return worker.WorkerPoolHash(pool, w.cluster, additionalHashData, additionalHashDataV2)
+}
+
+// workerPoolHashDataV2 adds additional provider-specific datapoints to consider to the given data.
+func (w workerDelegate) workerPoolHashDataV2(workerConfig api.WorkerConfig, additionalData []string) ([]string, error) {
+	hashData := make([]string, len(additionalData))
+	copy(hashData, additionalData)
+
+	if workerConfig.DiagnosticsProfile != nil {
+		hashData = append(hashData, *workerConfig.DiagnosticsProfile.StorageURI)
+	}
+
+	return hashData, nil
 }
 
 // TODO: Remove when we have support for VM Capabilities

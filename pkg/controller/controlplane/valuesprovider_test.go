@@ -304,7 +304,7 @@ var _ = Describe("ValuesProvider", func() {
 				"replicas":          1,
 				"clusterName":       namespace,
 				"kubernetesVersion": k8sVersion,
-				"podNetwork":        cidr,
+				"podNetwork":        []string{cidr},
 				"podAnnotations": map[string]interface{}{
 					"checksum/secret-cloudprovider":         "8bafb35ff1ac60275d62e1cbd495aceb511fb354f74a20f7d06ecb48b3a68432",
 					"checksum/secret-cloud-provider-config": "77627eb2343b9f2dc2fca3cce35f2f9eec55783aa5f7dac21c473019e5825de2",
