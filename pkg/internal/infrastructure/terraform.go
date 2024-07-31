@@ -560,7 +560,7 @@ func findDomainCounts(cluster *controller.Cluster, infra *extensionsv1alpha1.Inf
 		}
 
 		// Take values from the availability set status.
-		// Domain counts can still be nil, esp. if the status was written by an earlier version of this provider extension.
+		// StorageDomain counts can still be nil, esp. if the status was written by an earlier version of this provider extension.
 		if nodesAvailabilitySet != nil {
 			faultDomainCount = nodesAvailabilitySet.CountFaultDomains
 			updateDomainCount = nodesAvailabilitySet.CountUpdateDomains
