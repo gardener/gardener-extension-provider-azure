@@ -23,7 +23,7 @@ import (
 
 var (
 	// DefaultBlobStorageClient is the default function to get a backupbucket client. Can be overridden for tests.
-	DefaultBlobStorageClient = azureclient.NewStorageClientFromSecretRef
+	DefaultBlobStorageClient = azureclient.NewBlobStorageClientFromSecretRef
 )
 
 type actuator struct {

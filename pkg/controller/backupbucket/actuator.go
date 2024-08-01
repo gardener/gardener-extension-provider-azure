@@ -22,7 +22,7 @@ import (
 
 var (
 	// DefaultBlobStorageClient is the default function to get a backupbucket client. Can be overridden for tests.
-	DefaultBlobStorageClient = azureclient.NewStorageClientFromSecretRef
+	DefaultBlobStorageClient = azureclient.NewBlobStorageClientFromSecretRef
 )
 
 type actuator struct {
@@ -76,11 +76,11 @@ func (a *actuator) Reconcile(ctx context.Context, _ logr.Logger, backupBucket *e
 		}
 	}
 
-	storageClient, err := DefaultBlobStorageClient(ctx, a.client, backupBucket.Status.GeneratedSecretRef)
+	blobStorageClient, err := DefaultBlobStorageClient(ctx, a.client, backupBucket.Status.GeneratedSecretRef)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}
-	return util.DetermineError(storageClient.CreateContainerIfNotExists(ctx, backupBucket.Name), helper.KnownCodes)
+	return util.DetermineError(blobStorageClient.CreateContainerIfNotExists(ctx, backupBucket.Name), helper.KnownCodes)
 }
 
 func (a *actuator) Delete(ctx context.Context, logger logr.Logger, backupBucket *extensionsv1alpha1.BackupBucket) error {

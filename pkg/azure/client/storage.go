@@ -37,23 +37,21 @@ func BlobStorageDomainFromCloudConfiguration(cloudConfiguration *azureapi.CloudC
 	// Furthermore, it seems there is still no unified way of specifying the cloud instance to connect to as the domain remains part of the storage account URL while
 	// the new options _also_ allow configuring the cloud instance.
 	switch {
-	case cloudConfiguration == nil:
-		return "blob.core.windows.net", nil
-	case strings.EqualFold(cloudConfiguration.Name, "AzurePublic"):
-		return "blob.core.windows.net", nil
+	case cloudConfiguration == nil || strings.EqualFold(cloudConfiguration.Name, "AzurePublic"):
+		return azure.AzureBlobStorageDomain, nil
 	case strings.EqualFold(cloudConfiguration.Name, "AzureGovernment"):
 		// Note: This differs from the one mentioned in the docs ("blob.core.govcloudapi.net") but should be the right one.
 		// ref.: https://github.com/google/go-cloud/blob/be1b4aee38955e1b8cd1c46f8f47fb6f9d820a9b/blob/azureblob/azureblob.go#L162
-		return "blob.core.usgovcloudapi.net", nil
+		return azure.AzureUSGovBlobStorageDomain, nil
 	case strings.EqualFold(cloudConfiguration.Name, "AzureChina"):
 		// source: https://learn.microsoft.com/en-us/azure/china/resources-developer-guide#check-endpoints-in-azure
-		return "blob.core.chinacloudapi.cn", nil
+		return azure.AzureChinaBlobStorageDomain, nil
 	}
 	return "", fmt.Errorf("unknown cloud configuration name '%s'", cloudConfiguration.Name)
 }
 
-// NewStorageClient creates a blob storage client.
-func NewStorageClient(_ context.Context, storageAccountName, storageAccountKey, storageDomain string) (*BlobStorageClient, error) {
+// NewBlobStorageClient creates a blob storage client.
+func NewBlobStorageClient(_ context.Context, storageAccountName, storageAccountKey, storageDomain string) (*BlobStorageClient, error) {
 	credentials, err := azblob.NewSharedKeyCredential(storageAccountName, storageAccountKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create shared key credentials: %v", err)
@@ -67,9 +65,9 @@ func NewStorageClient(_ context.Context, storageAccountName, storageAccountKey, 
 	return &BlobStorageClient{blobclient}, err
 }
 
-// NewStorageClientFromSecretRef creates a client for an Azure Blob storage by reading auth information from secret reference. Requires passing the storage domain (formerly
+// NewBlobStorageClientFromSecretRef creates a client for an Azure Blob storage by reading auth information from secret reference. Requires passing the storage domain (formerly
 // blobstorage host name) to determine the endpoint to build the service url for.
-func NewStorageClientFromSecretRef(ctx context.Context, client client.Client, secretRef *corev1.SecretReference) (*BlobStorageClient, error) {
+func NewBlobStorageClientFromSecretRef(ctx context.Context, client client.Client, secretRef *corev1.SecretReference) (*BlobStorageClient, error) {
 	secret, err := extensionscontroller.GetSecretByReference(ctx, client, secretRef)
 	if err != nil {
 		return nil, err
@@ -84,12 +82,12 @@ func NewStorageClientFromSecretRef(ctx context.Context, client client.Client, se
 		return nil, fmt.Errorf("secret %s/%s doesn't have a storage key", secret.Namespace, secret.Name)
 	}
 
-	storageDomain := azure.AzureBlobStorageHostName
+	storageDomain := azure.AzureBlobStorageDomain
 	if v, ok := secret.Data[azure.StorageDomain]; ok {
 		storageDomain = string(v)
 	}
 
-	return NewStorageClient(ctx, string(storageAccountName), string(storageAccountKey), storageDomain)
+	return NewBlobStorageClient(ctx, string(storageAccountName), string(storageAccountKey), storageDomain)
 }
 
 // DeleteObjectsWithPrefix deletes the blob objects with the specific <prefix> from <container>.
