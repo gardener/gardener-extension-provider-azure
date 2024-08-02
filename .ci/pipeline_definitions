@@ -10,9 +10,18 @@ gardener-extension-provider-azure:
         attribute: image.repository
       - ref: ocm-resource:gardener-extension-provider-azure.tag
         attribute: image.tag
-    - &admission-azure
-      name: admission-azure
-      dir: charts/gardener-extension-admission-azure
+    - &admission-azure-application
+      name: admission-azure-application
+      dir: charts/gardener-extension-admission-azure/charts/application
+      registry: europe-docker.pkg.dev/gardener-project/snapshots/charts/gardener/extensions
+      mappings:
+      - ref: ocm-resource:gardener-extension-admission-azure.repository
+        attribute: global.image.repository
+      - ref: ocm-resource:gardener-extension-admission-azure.tag
+        attribute: global.image.tag
+    - &admission-azure-runtime
+      name: admission-azure-runtime
+      dir: charts/gardener-extension-admission-azure/charts/runtime
       registry: europe-docker.pkg.dev/gardener-project/snapshots/charts/gardener/extensions
       mappings:
       - ref: ocm-resource:gardener-extension-admission-azure.repository
@@ -73,7 +82,8 @@ gardener-extension-provider-azure:
         publish:
           helmcharts:
           - *provider-azure
-          - *admission-azure
+          - *admission-azure-application
+          - *admission-azure-runtime
     pull-request:
       traits:
         pull-request: ~
@@ -85,7 +95,8 @@ gardener-extension-provider-azure:
         publish:
           helmcharts:
           - *provider-azure
-          - *admission-azure
+          - *admission-azure-application
+          - *admission-azure-runtime
     release:
       steps:
         test-integration:
@@ -121,5 +132,7 @@ gardener-extension-provider-azure:
           helmcharts:
           - <<: *provider-azure
             registry: europe-docker.pkg.dev/gardener-project/releases/charts/gardener/extensions
-          - <<: *admission-azure
+          - <<: *admission-azure-application
+            registry: europe-docker.pkg.dev/gardener-project/releases/charts/gardener/extensions
+          - <<: *admission-azure-runtime
             registry: europe-docker.pkg.dev/gardener-project/releases/charts/gardener/extensions
