@@ -1,6 +1,7 @@
 module github.com/gardener/gardener-extension-provider-azure
 
 go 1.22.0
+toolchain go1.22.5
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.12.0
@@ -22,7 +23,7 @@ require (
 	github.com/ahmetb/gen-crd-api-reference-docs v0.3.0
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/gardener/etcd-druid v0.22.3
-	github.com/gardener/gardener v1.99.1
+	github.com/gardener/gardener v1.100.0
 	github.com/gardener/machine-controller-manager v0.53.1
 	github.com/gardener/remedy-controller v0.6.0
 	github.com/go-logr/logr v1.4.2
@@ -35,7 +36,7 @@ require (
 	go.uber.org/atomic v1.11.0
 	go.uber.org/mock v0.4.0
 	golang.org/x/crypto v0.25.0
-	golang.org/x/exp v0.0.0-20240707233637-46b078467d37
+	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
 	golang.org/x/tools v0.23.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.29.7
@@ -46,7 +47,7 @@ require (
 	k8s.io/code-generator v0.29.7
 	k8s.io/component-base v0.29.7
 	k8s.io/kubelet v0.29.7
-	k8s.io/utils v0.0.0-20240502163921-fe8a2dddb1d0
+	k8s.io/utils v0.0.0-20240711033017-18e509b52bc8
 	sigs.k8s.io/controller-runtime v0.17.5
 	sigs.k8s.io/controller-tools v0.14.0
 )
@@ -157,17 +158,17 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	helm.sh/helm/v3 v3.14.4 // indirect
-	istio.io/api v1.22.2 // indirect
+	istio.io/api v1.22.3 // indirect
 	istio.io/client-go v1.22.0 // indirect
 	k8s.io/apiserver v0.29.7 // indirect
-	k8s.io/cluster-bootstrap v0.29.6 // indirect
-	k8s.io/component-helpers v0.29.6 // indirect
+	k8s.io/cluster-bootstrap v0.29.7 // indirect
+	k8s.io/component-helpers v0.29.7 // indirect
 	k8s.io/gengo v0.0.0-20230829151522-9cce18d56c01 // indirect
 	k8s.io/klog v1.0.0 // indirect
 	k8s.io/klog/v2 v2.120.1 // indirect
-	k8s.io/kube-aggregator v0.29.6 // indirect
+	k8s.io/kube-aggregator v0.29.7 // indirect
 	k8s.io/kube-openapi v0.0.0-20231010175941-2dd684a91f00 // indirect
-	k8s.io/metrics v0.29.6 // indirect
+	k8s.io/metrics v0.29.7 // indirect
 	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20231015215740-bf15e44028f9 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
