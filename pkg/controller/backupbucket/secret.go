@@ -18,7 +18,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
-func (a *actuator) createBackupBucketGeneratedSecret(ctx context.Context, backupBucket *extensionsv1alpha1.BackupBucket, storageAccountName, storageKey string) error {
+func (a *actuator) createBackupBucketGeneratedSecret(ctx context.Context, backupBucket *extensionsv1alpha1.BackupBucket, storageAccountName, storageKey, storageDomain string) error {
 	var generatedSecret = &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("generated-bucket-%s", backupBucket.Name),
@@ -30,6 +30,7 @@ func (a *actuator) createBackupBucketGeneratedSecret(ctx context.Context, backup
 		generatedSecret.Data = map[string][]byte{
 			azure.StorageAccount: []byte(storageAccountName),
 			azure.StorageKey:     []byte(storageKey),
+			azure.StorageDomain:  []byte(storageDomain),
 		}
 		return nil
 	}); err != nil {

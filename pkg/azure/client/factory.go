@@ -6,8 +6,6 @@ package client
 
 import (
 	"context"
-	"fmt"
-	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
@@ -15,7 +13,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
@@ -165,42 +162,4 @@ func (f azureFactory) ManagedUserIdentity() (ManagedUserIdentity, error) {
 // VirtualMachineImages returns a VirtualMachineImages client.
 func (f azureFactory) VirtualMachineImages() (VirtualMachineImages, error) {
 	return NewVirtualMachineImagesClient(f.auth, f.tokenCredential, f.clientOpts)
-}
-
-// NewBlobStorageClient reads the secret from the passed reference and return an Azure (blob) storage client.
-func NewBlobStorageClient(ctx context.Context, c client.Client, secretRef corev1.SecretReference, cloudConfiguration *azure.CloudConfiguration) (BlobStorage, error) {
-	var storageDomain string
-
-	// Unfortunately the valid values for storage domains run by Microsoft do not seem to be part of any sdk module. They might be queryable from the cloud configuration,
-	// but I also haven't been able to find a documented list of proper ServiceName values.
-	// Furthermore, it seems there is still no unified way of specifying the cloud instance to connect to as the domain remains part of the storage account URL while
-	// the new options _also_ allow configuring the cloud instance.
-	// For the time being (until further testing can be done) I assume that the instance that is pointed at by the URL wins so let's keep the old logic for building the
-	// service URL.
-	if cloudConfiguration == nil {
-		storageDomain = "blob.core.windows.net"
-	} else {
-		cloudConfigurationName := cloudConfiguration.Name
-		switch {
-		case strings.EqualFold(cloudConfigurationName, "AzurePublic"):
-			storageDomain = "blob.core.windows.net"
-		case strings.EqualFold(cloudConfigurationName, "AzureGovernment"):
-			// Note: This differs from the one mentioned in the docs ("blob.core.govcloudapi.net") but should be the right one.
-			// ref.: https://github.com/google/go-cloud/blob/be1b4aee38955e1b8cd1c46f8f47fb6f9d820a9b/blob/azureblob/azureblob.go#L162
-			storageDomain = "blob.core.usgovcloudapi.net"
-		case strings.EqualFold(cloudConfigurationName, "AzureChina"):
-			// This is an educated guess
-			storageDomain = "blob.core.chinacloudapi.cn"
-
-		default:
-			return nil, fmt.Errorf("unknown cloud configuration name '%s'", cloudConfigurationName)
-		}
-	}
-
-	blobStorageClient, err := newStorageClient(ctx, c, &secretRef, storageDomain)
-	if err != nil {
-		return nil, err
-	}
-
-	return blobStorageClient, nil
 }

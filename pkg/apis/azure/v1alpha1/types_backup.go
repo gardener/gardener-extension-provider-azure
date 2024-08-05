@@ -11,8 +11,8 @@ import (
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// BackupConfig is the provider-specific configuration for backup buckets/entries
-type BackupConfig struct {
+// BackupBucketConfig is the provider-specific configuration for backup buckets/entries
+type BackupBucketConfig struct {
 	metav1.TypeMeta `json:",inline"`
 	// CloudConfiguration contains config that controls which cloud to connect to.
 	// +optional
