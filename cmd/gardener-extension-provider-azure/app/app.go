@@ -121,8 +121,9 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			Namespace: os.Getenv("WEBHOOK_CONFIG_NAMESPACE"),
 		}
 
+		gardenerVersion    = new(string)
 		controllerSwitches = azurecmd.ControllerSwitchOptions()
-		webhookSwitches    = azurecmd.WebhookSwitchOptions()
+		webhookSwitches    = azurecmd.WebhookSwitchOptions(gardenerVersion)
 		webhookOptions     = webhookcmd.NewAddToManagerOptions(
 			azure.Name,
 			genericactuator.ShootWebhooksResourceName,
@@ -214,6 +215,7 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			}
 
 			log.Info("Adding controllers to manager")
+			*gardenerVersion = generalOpts.Completed().GardenerVersion
 
 			configFileOpts.Completed().ApplyETCDStorage(&azurecontrolplaneexposure.DefaultAddOptions.ETCDStorage)
 			configFileOpts.Completed().ApplyHealthCheckConfig(&healthcheck.DefaultAddOptions.HealthCheckConfig)
