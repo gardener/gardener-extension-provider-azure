@@ -13,6 +13,8 @@ import (
 	"github.com/gardener/gardener/pkg/apis/core"
 	gardencorehelper "github.com/gardener/gardener/pkg/apis/core/helper"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	"github.com/gardener/gardener/pkg/utils/gardener"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -37,6 +39,7 @@ var (
 // shoot validates shoots
 type shoot struct {
 	client         client.Client
+	scheme         *runtime.Scheme
 	decoder        runtime.Decoder
 	lenientDecoder runtime.Decoder
 }
@@ -45,6 +48,7 @@ type shoot struct {
 func NewShootValidator(mgr manager.Manager) extensionswebhook.Validator {
 	return &shoot{
 		client:         mgr.GetClient(),
+		scheme:         mgr.GetScheme(),
 		decoder:        serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder(),
 		lenientDecoder: serializer.NewCodecFactory(mgr.GetScheme()).UniversalDecoder(),
 	}
@@ -62,9 +66,22 @@ func (s *shoot) Validate(ctx context.Context, newObj, oldObj client.Object) erro
 		return nil
 	}
 
-	cloudProfile := &gardencorev1beta1.CloudProfile{}
-	if err := s.client.Get(ctx, client.ObjectKey{Name: shoot.Spec.CloudProfileName}, cloudProfile); err != nil {
+	shootV1Beta1 := &gardencorev1beta1.Shoot{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: gardencorev1beta1.SchemeGroupVersion.String(),
+			Kind:       "Shoot",
+		},
+	}
+	err := s.scheme.Convert(shoot, shootV1Beta1, ctx)
+	if err != nil {
 		return err
+	}
+	cloudProfile, err := gardener.GetCloudProfile(ctx, s.client, shootV1Beta1)
+	if err != nil {
+		return err
+	}
+	if cloudProfile == nil {
+		return fmt.Errorf("cloudprofile could not be found")
 	}
 
 	if oldObj != nil {
