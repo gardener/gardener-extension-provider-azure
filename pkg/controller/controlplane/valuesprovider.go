@@ -42,6 +42,7 @@ import (
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	azureapihelper "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/features"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
@@ -476,6 +477,13 @@ func getConfigChartValues(infraStatus *apisazure.InfrastructureStatus, cp *exten
 		"maxNodes":          maxNodes,
 	}
 
+	cloudConfiguration, err := azureclient.CloudConfiguration(nil, &cluster.Shoot.Spec.Region)
+	if err != nil {
+		return nil, err
+	}
+
+	values["cloud"] = cloudInstanceName(*cloudConfiguration)
+
 	if infraStatus.Networks.VNet.ResourceGroup != nil {
 		values["vnetResourceGroup"] = *infraStatus.Networks.VNet.ResourceGroup
 	}
@@ -485,6 +493,17 @@ func getConfigChartValues(infraStatus *apisazure.InfrastructureStatus, cp *exten
 	}
 
 	return appendMachineSetValues(values, infraStatus), nil
+}
+
+func cloudInstanceName(cloudConfiguration apisazure.CloudConfiguration) string {
+	switch {
+	case cloudConfiguration.Name == apisazure.AzureChinaCloudName:
+		return "AZURECHINACLOUD"
+	case cloudConfiguration.Name == apisazure.AzureGovCloudName:
+		return "AZUREUSGOVERNMENT"
+	default:
+		return "AZUREPUBLICCLOUD"
+	}
 }
 
 func appendMachineSetValues(values map[string]interface{}, infraStatus *apisazure.InfrastructureStatus) map[string]interface{} {
