@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/dnsrecord"
 	"github.com/gardener/gardener/extensions/pkg/util"
@@ -52,9 +53,16 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, dns *extensio
 		return err
 	}
 
-	azCloudConfiguration, err := azureclient.AzureCloudConfiguration(dnsRecordConfig.CloudConfiguration, dns.Spec.Region)
-	if err != nil {
-		return err
+	var azCloudConfiguration cloud.Configuration
+	// Unlike for the other actuators, both of the values used to determine the cloud instance might be nil - usually the region would not be.
+	// Default to the public cloud in this case.
+	if dnsRecordConfig.CloudConfiguration != nil || dns.Spec.Region != nil {
+		azCloudConfiguration, err = azureclient.AzureCloudConfiguration(dnsRecordConfig.CloudConfiguration, dns.Spec.Region)
+		if err != nil {
+			return err
+		}
+	} else {
+		azCloudConfiguration = cloud.AzurePublic
 	}
 
 	clientFactory, err := DefaultAzureClientFactoryFunc(
@@ -106,10 +114,16 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, dns *extensionsv
 		return err
 	}
 
-	azCloudConfiguration, err := azureclient.AzureCloudConfiguration(dnsRecordConfig.CloudConfiguration, dns.Spec.Region)
-
-	if err != nil {
-		return err
+	var azCloudConfiguration cloud.Configuration
+	// Unlike for the other actuators, both of the values used to determine the cloud instance might be nil - usually the region would not be.
+	// Default to the public cloud in this case.
+	if dnsRecordConfig.CloudConfiguration != nil || dns.Spec.Region != nil {
+		azCloudConfiguration, err = azureclient.AzureCloudConfiguration(dnsRecordConfig.CloudConfiguration, dns.Spec.Region)
+		if err != nil {
+			return err
+		}
+	} else {
+		azCloudConfiguration = cloud.AzurePublic
 	}
 
 	clientFactory, err := DefaultAzureClientFactoryFunc(
