@@ -71,9 +71,15 @@ const (
 	StorageAccount = "storageAccount"
 	// StorageKey is a constant for the key in a cloud provider secret and backup secret that holds the Azure secret storage access key.
 	StorageKey = "storageKey"
+	// StorageDomain is a constant for the key in a backup secret that holds the domain for the Azure blob storage service.
+	StorageDomain = "domain"
 
-	// AzureBlobStorageHostName is the host name for azure blob storage service.
-	AzureBlobStorageHostName = "blob.core.windows.net"
+	// AzureBlobStorageDomain is the host name for azure blob storage service.
+	AzureBlobStorageDomain = "blob.core.windows.net"
+	// AzureChinaBlobStorageDomain is the host name for azure blob storage service for the Chinese regions.
+	AzureChinaBlobStorageDomain = "blob.core.chinacloudapi.cn"
+	// AzureUSGovBlobStorageDomain is the host name for azure blob storage service for the US Government regions.
+	AzureUSGovBlobStorageDomain = "blob.core.usgovcloudapi.net"
 
 	// MachineSetTagKey is the name of the infrastructure resource tag for machine sets.
 	MachineSetTagKey = "machineset.azure.extensions.gardener.cloud"

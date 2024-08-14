@@ -10,7 +10,7 @@
 </p>
 Resource Types:
 <ul><li>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.BackupConfig">BackupConfig</a>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.BackupBucketConfig">BackupBucketConfig</a>
 </li><li>
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.CloudProfileConfig">CloudProfileConfig</a>
 </li><li>
@@ -24,10 +24,10 @@ Resource Types:
 </li><li>
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.WorkerStatus">WorkerStatus</a>
 </li></ul>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.BackupConfig">BackupConfig
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.BackupBucketConfig">BackupBucketConfig
 </h3>
 <p>
-<p>BackupConfig is the provider-specific configuration for backup buckets/entries</p>
+<p>BackupBucketConfig is the provider-specific configuration for backup buckets/entries</p>
 </p>
 <table>
 <thead>
@@ -52,7 +52,7 @@ azure.provider.extensions.gardener.cloud/v1alpha1
 <code>kind</code></br>
 string
 </td>
-<td><code>BackupConfig</code></td>
+<td><code>BackupBucketConfig</code></td>
 </tr>
 <tr>
 <td>
@@ -605,7 +605,7 @@ string
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.BackupConfig">BackupConfig</a>, 
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.BackupBucketConfig">BackupBucketConfig</a>, 
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.CloudProfileConfig">CloudProfileConfig</a>, 
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.DNSRecordConfig">DNSRecordConfig</a>)
 </p>

@@ -6,6 +6,7 @@ package backupbucket
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/gardener/gardener/extensions/pkg/controller/backupbucket"
 	"github.com/gardener/gardener/extensions/pkg/util"
@@ -21,7 +22,7 @@ import (
 
 var (
 	// DefaultBlobStorageClient is the default function to get a backupbucket client. Can be overridden for tests.
-	DefaultBlobStorageClient = azureclient.NewBlobStorageClient
+	DefaultBlobStorageClient = azureclient.NewBlobStorageClientFromSecretRef
 )
 
 type actuator struct {
@@ -64,17 +65,22 @@ func (a *actuator) Reconcile(ctx context.Context, _ logr.Logger, backupBucket *e
 		if err != nil {
 			return util.DetermineError(err, helper.KnownCodes)
 		}
+
+		storageDomain, err := azureclient.BlobStorageDomainFromCloudConfiguration(backupConfig.CloudConfiguration)
+		if err != nil {
+			return fmt.Errorf("failed to determine blob storage service domain: %w", err)
+		}
 		// Create the generated backupbucket secret.
-		if err := a.createBackupBucketGeneratedSecret(ctx, backupBucket, storageAccountName, storageAccountKey); err != nil {
+		if err := a.createBackupBucketGeneratedSecret(ctx, backupBucket, storageAccountName, storageAccountKey, storageDomain); err != nil {
 			return util.DetermineError(err, helper.KnownCodes)
 		}
 	}
 
-	storageClient, err := azureclient.NewBlobStorageClient(ctx, a.client, *backupBucket.Status.GeneratedSecretRef, backupConfig.CloudConfiguration)
+	blobStorageClient, err := DefaultBlobStorageClient(ctx, a.client, backupBucket.Status.GeneratedSecretRef)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}
-	return util.DetermineError(storageClient.CreateContainerIfNotExists(ctx, backupBucket.Name), helper.KnownCodes)
+	return util.DetermineError(blobStorageClient.CreateContainerIfNotExists(ctx, backupBucket.Name), helper.KnownCodes)
 }
 
 func (a *actuator) Delete(ctx context.Context, logger logr.Logger, backupBucket *extensionsv1alpha1.BackupBucket) error {
@@ -115,7 +121,7 @@ func (a *actuator) delete(ctx context.Context, _ logr.Logger, backupBucket *exte
 
 	if secret != nil {
 		// Get a storage account client to delete the backup container in the storage account.
-		storageClient, err := azureclient.NewBlobStorageClient(ctx, a.client, *backupBucket.Status.GeneratedSecretRef, cloudConfiguration)
+		storageClient, err := DefaultBlobStorageClient(ctx, a.client, backupBucket.Status.GeneratedSecretRef)
 		if err != nil {
 			return err
 		}
