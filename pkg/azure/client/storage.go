@@ -65,8 +65,7 @@ func NewBlobStorageClient(_ context.Context, storageAccountName, storageAccountK
 	return &BlobStorageClient{blobclient}, err
 }
 
-// NewBlobStorageClientFromSecretRef creates a client for an Azure Blob storage by reading auth information from secret reference. Requires passing the storage domain (formerly
-// blobstorage host name) to determine the endpoint to build the service url for.
+// NewBlobStorageClientFromSecretRef creates a client for an Azure Blob storage by reading auth information from secret reference.
 func NewBlobStorageClientFromSecretRef(ctx context.Context, client client.Client, secretRef *corev1.SecretReference) (*BlobStorageClient, error) {
 	secret, err := extensionscontroller.GetSecretByReference(ctx, client, secretRef)
 	if err != nil {
