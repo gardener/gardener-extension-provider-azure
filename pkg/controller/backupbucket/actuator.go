@@ -66,7 +66,12 @@ func (a *actuator) Reconcile(ctx context.Context, _ logr.Logger, backupBucket *e
 			return util.DetermineError(err, helper.KnownCodes)
 		}
 
-		storageDomain, err := azureclient.BlobStorageDomainFromCloudConfiguration(backupConfig.CloudConfiguration)
+		bucketCloudConfiguration, err := azureclient.CloudConfiguration(backupConfig.CloudConfiguration, &backupBucket.Spec.Region)
+		if err != nil {
+			return err
+		}
+
+		storageDomain, err := azureclient.BlobStorageDomainFromCloudConfiguration(bucketCloudConfiguration)
 		if err != nil {
 			return fmt.Errorf("failed to determine blob storage service domain: %w", err)
 		}
