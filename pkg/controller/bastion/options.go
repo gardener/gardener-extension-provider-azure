@@ -8,8 +8,13 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"net"
+	"slices"
+	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
 	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -39,6 +44,8 @@ type Options struct {
 	WorkersCIDR         []string
 	CIDRs               []string
 	Tags                map[string]*string
+	MachineType         string
+	ImageRef            *armcompute.ImageReference
 }
 
 // DetermineOptions determines the information that are required to reconcile a Bastion on Azure. This
@@ -70,6 +77,21 @@ func DetermineOptions(bastion *extensionsv1alpha1.Bastion, cluster *controller.C
 		"Type": to.StringPtr("gardenctl"),
 	}
 
+	vmDetails, err := DetermineVmDetails(cluster.CloudProfile.Spec)
+	if err != nil {
+		return nil, fmt.Errorf("failed to determine VM details for bastion host: %w", err)
+	}
+
+	cloudProfileConfig, err := helper.CloudProfileConfigFromCluster(cluster)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract cloud provider config from cluster: %w", err)
+	}
+
+	imageRef, err := getProviderSpecificImage(cloudProfileConfig.MachineImages, vmDetails)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract image from provider config: %w", err)
+	}
+
 	return &Options{
 		BastionInstanceName: baseResourceName,
 		BastionPublicIPName: publicIPResourceName(baseResourceName),
@@ -82,6 +104,8 @@ func DetermineOptions(bastion *extensionsv1alpha1.Bastion, cluster *controller.C
 		NicName:             NicResourceName(baseResourceName),
 		Tags:                tags,
 		SecurityGroupName:   NSGName(clusterName),
+		MachineType:         vmDetails.MachineName,
+		ImageRef:            imageRef,
 	}, nil
 }
 
@@ -125,6 +149,52 @@ func ingressPermissions(bastion *extensionsv1alpha1.Bastion) ([]string, error) {
 	}
 
 	return cidrs, nil
+}
+
+// getProviderSpecificImage returns the provider specific MachineImageVersion that matches with the given VmDetails
+func getProviderSpecificImage(images []azure.MachineImages, vm VmDetails) (*armcompute.ImageReference, error) {
+	imageIndex := slices.IndexFunc(images, func(image azure.MachineImages) bool {
+		return image.Name == vm.ImageBaseName
+	})
+
+	if imageIndex == -1 {
+		return nil, fmt.Errorf("machine image with name %s not found in cloudProfileConfig", vm.ImageBaseName)
+	}
+
+	versions := images[imageIndex].Versions
+	versionIndex := slices.IndexFunc(versions, func(version azure.MachineImageVersion) bool {
+		return version.Version == vm.ImageVersion
+	})
+
+	if versionIndex == -1 {
+		return nil, fmt.Errorf("version %s for arch %s of image %s not found in cloudProfileConfig",
+			vm.ImageVersion, vm.Architecture, vm.ImageBaseName)
+	}
+
+	image := versions[versionIndex]
+
+	var (
+		publisher *string
+		offer     *string
+		sku       *string
+	)
+	if image.URN != nil {
+		urnSplit := strings.Split(*image.URN, ":")
+		if len(urnSplit) == 4 {
+			publisher = &urnSplit[0]
+			offer = &urnSplit[1]
+			sku = &urnSplit[2]
+		}
+	}
+
+	return &armcompute.ImageReference{
+		CommunityGalleryImageID: image.CommunityGalleryImageID,
+		ID:                      image.ID,
+		Publisher:               publisher,
+		Offer:                   offer,
+		SKU:                     sku,
+		SharedGalleryImageID:    image.SharedGalleryImageID,
+	}, nil
 }
 
 func nodesResourceName(baseName string) string {

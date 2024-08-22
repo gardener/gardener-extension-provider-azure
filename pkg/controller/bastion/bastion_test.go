@@ -7,6 +7,7 @@ package bastion
 import (
 	"encoding/json"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/gardener/gardener/extensions/pkg/controller"
@@ -19,6 +20,7 @@ import (
 	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
@@ -50,6 +52,7 @@ var _ = Describe("Bastion test", func() {
 
 		ctrl                 *gomock.Controller
 		maxLengthForResource int
+		providerImages       []api.MachineImages
 	)
 	BeforeEach(func() {
 		vNetCIDR := api.VNet{
@@ -59,7 +62,6 @@ var _ = Describe("Bastion test", func() {
 		bastion = createTestBastion()
 		ctrl = gomock.NewController(GinkgoT())
 		maxLengthForResource = 63
-
 	})
 	AfterEach(func() {
 		ctrl.Finish()
@@ -167,6 +169,8 @@ var _ = Describe("Bastion test", func() {
 				"Type": to.StringPtr("gardenctl"),
 			}))
 			Expect(options.SecurityGroupName).To(Equal("cluster1-workers"))
+			Expect(options.MachineType).To(Equal("machineName"))
+			Expect(*options.ImageRef.CommunityGalleryImageID).To(Equal("/CommunityGalleries/gardenlinux-1.2.3"))
 		})
 	})
 
@@ -314,6 +318,47 @@ var _ = Describe("Bastion test", func() {
 			Expect(err).To(Not(HaveOccurred()))
 		})
 	})
+
+	Describe("#getProviderSpecificImage", func() {
+		var desiredVM = VmDetails{
+			MachineName:   "machineName",
+			Architecture:  "amd64",
+			ImageBaseName: "gardenlinux",
+			ImageVersion:  "1.2.3",
+		}
+
+		It("should succeed for existing communityGallery image", func() {
+			providerImages = createTestProviderConfig(armcompute.ImageReference{
+				CommunityGalleryImageID: ptr.To("CommunityGalleries/gardenlinux-1.2.3"),
+			}).MachineImages
+			machineImage, err := getProviderSpecificImage(providerImages, desiredVM)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(machineImage.CommunityGalleryImageID).To(Equal("CommunityGalleries/gardenlinux-1.2.3"))
+		})
+
+		// TODO
+		//It("should succeed for existing urn", func() {
+		//	if imageRef.Offer != nil && imageRef.Publisher != nil && imageRef.SKU != nil && imageRef.Version != nil {
+		//	providerImages = createTestProviderConfig(armcompute.ImageReference{
+		//		Offer: ptr.To(),
+		//	}).MachineImages
+		//	machineImage, err := getProviderSpecificImage(providerImages, desiredVM)
+		//	Expect(err).ToNot(HaveOccurred())
+		//	Expect(machineImage.CommunityGalleryImageID).To(Equal("CommunityGalleries/gardenlinux-1.2.3"))
+		//})
+
+		It("fail if image name does not exist", func() {
+			desiredVM.ImageBaseName = "unknown"
+			_, err := getProviderSpecificImage(providerImages, desiredVM)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("fail if image version does not exist", func() {
+			desiredVM.ImageVersion = "6.6.6"
+			_, err := getProviderSpecificImage(providerImages, desiredVM)
+			Expect(err).To(HaveOccurred())
+		})
+	})
 })
 
 func createShootTestStruct(vNet api.VNet) *gardencorev1beta1.Shoot {
@@ -351,9 +396,54 @@ func createAzureTestCluster(vNet api.VNet) *extensions.Cluster {
 				Regions: []gardencorev1beta1.Region{
 					{Name: "westeurope"},
 				},
+				MachineImages: createTestMachineImages(),
+				MachineTypes:  createTestMachineTypes(),
+				ProviderConfig: &runtime.RawExtension{
+					Raw: mustEncode(createTestProviderConfig(armcompute.ImageReference{
+						CommunityGalleryImageID: ptr.To("/CommunityGalleries/gardenlinux-1.2.3"),
+					})),
+				},
 			},
 		},
 	}
+}
+
+func createTestMachineImages() []gardencorev1beta1.MachineImage {
+	return []gardencorev1beta1.MachineImage{{
+		Name: "gardenlinux",
+		Versions: []gardencorev1beta1.MachineImageVersion{{
+			ExpirableVersion: gardencorev1beta1.ExpirableVersion{
+				Version:        "1.2.3",
+				Classification: ptr.To(gardencorev1beta1.ClassificationSupported),
+			},
+			Architectures: []string{"amd64"},
+		}},
+	}}
+}
+
+func createTestProviderConfig(imageRef armcompute.ImageReference) *api.CloudProfileConfig {
+	var urn *string
+	if imageRef.Offer != nil && imageRef.Publisher != nil && imageRef.SKU != nil && imageRef.Version != nil {
+		urn = ptr.To(*imageRef.Offer + ":" + *imageRef.Publisher + ":" + *imageRef.SKU + ":" + *imageRef.Version)
+	}
+	return &api.CloudProfileConfig{MachineImages: []api.MachineImages{{
+		Name: "gardenlinux",
+		Versions: []api.MachineImageVersion{{
+			Version:                 "1.2.3",
+			CommunityGalleryImageID: imageRef.CommunityGalleryImageID,
+			SharedGalleryImageID:    imageRef.SharedGalleryImageID,
+			ID:                      imageRef.ID,
+			URN:                     urn,
+		}},
+	}}}
+}
+
+func createTestMachineTypes() []gardencorev1beta1.MachineType {
+	return []gardencorev1beta1.MachineType{{
+		CPU:          resource.MustParse("4"),
+		Name:         "machineName",
+		Architecture: ptr.To("amd64"),
+	}}
 }
 
 func createTestBastion() *extensionsv1alpha1.Bastion {
@@ -371,4 +461,10 @@ func createTestBastion() *extensionsv1alpha1.Bastion {
 			},
 		},
 	}
+}
+
+func mustEncode(object any) []byte {
+	data, err := json.Marshal(object)
+	Expect(err).To(Not(HaveOccurred()))
+	return data
 }
