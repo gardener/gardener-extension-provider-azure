@@ -9,11 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"regexp"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/util"
@@ -27,13 +24,6 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
-)
-
-const (
-	// IMAGE_PUBLISHER a const for the image published used in bastion.
-	IMAGE_PUBLISHER = "Canonical"
-	// IMAGE_OFFER a const for the image offer used in bastion.
-	IMAGE_OFFER = "0001-com-ubuntu-server-jammy"
 )
 
 // bastionEndpoints holds the endpoints the bastion host provides
@@ -311,12 +301,7 @@ func ensureComputeInstance(ctx context.Context, log logr.Logger, bastion *extens
 		return err
 	}
 
-	sku, err := getLatestSku(ctx, opt, factory)
-	if err != nil {
-		return err
-	}
-
-	parameters := computeInstanceDefine(opt, sku, bastion, publickey)
+	parameters := computeInstanceDefine(opt, bastion, publickey)
 
 	_, err = createBastionInstance(ctx, factory, opt, parameters)
 	if err != nil {
@@ -491,36 +476,4 @@ func findNextFreeNumber(set map[int32]bool, baseValue int32) *int32 {
 	}
 	set[baseValue] = true
 	return &baseValue
-}
-
-func getLatestSku(ctx context.Context, opt *Options, factory azureclient.Factory) (*armcompute.ImageReference, error) {
-	vmImageclient, err := factory.VirtualMachineImages()
-	if err != nil {
-		return nil, err
-	}
-
-	result, err := vmImageclient.ListSkus(ctx, opt.Location, IMAGE_PUBLISHER, IMAGE_OFFER)
-	if err != nil {
-		return nil, err
-	}
-
-	re := regexp.MustCompile(`^\d+_\d+-(?:lts|LTS)$`)
-	var sku string
-	for _, v := range result.VirtualMachineImageResourceArray {
-		if re.MatchString(*v.Name) {
-			// images are sorted by the api and we only need to keep the latest image
-			sku = *v.Name
-		}
-	}
-
-	if sku == "" {
-		return nil, errors.New("sku not found")
-	}
-
-	return &armcompute.ImageReference{
-		Publisher: to.Ptr(IMAGE_PUBLISHER),
-		Offer:     to.Ptr(IMAGE_OFFER),
-		SKU:       to.Ptr(sku),
-		Version:   to.Ptr("latest"),
-	}, nil
 }

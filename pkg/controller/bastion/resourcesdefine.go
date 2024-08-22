@@ -11,6 +11,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"k8s.io/utils/ptr"
 )
 
 func nicDefine(opt *Options, publicIP *armnetwork.PublicIPAddress, subnet *armnetwork.Subnet) *armnetwork.Interface {
@@ -50,15 +51,15 @@ func publicIPAddressDefine(opt *Options) *armnetwork.PublicIPAddress {
 	}
 }
 
-func computeInstanceDefine(opt *Options, sku *armcompute.ImageReference, bastion *extensionsv1alpha1.Bastion, publickey string) armcompute.VirtualMachine {
+func computeInstanceDefine(opt *Options, bastion *extensionsv1alpha1.Bastion, publickey string) armcompute.VirtualMachine {
 	return armcompute.VirtualMachine{
 		Location: &opt.Location,
 		Properties: &armcompute.VirtualMachineProperties{
 			HardwareProfile: &armcompute.HardwareProfile{
-				VMSize: to.Ptr(armcompute.VirtualMachineSizeTypesStandardB1S),
+				VMSize: ptr.To(armcompute.VirtualMachineSizeTypes(opt.MachineType)),
 			},
 			StorageProfile: &armcompute.StorageProfile{
-				ImageReference: sku,
+				ImageReference: opt.ImageRef,
 				OSDisk: &armcompute.OSDisk{
 					CreateOption: to.Ptr(armcompute.DiskCreateOptionTypesFromImage),
 					DiskSizeGB:   to.Ptr(int32(32)),
