@@ -154,7 +154,7 @@ func ingressPermissions(bastion *extensionsv1alpha1.Bastion) ([]string, error) {
 // getProviderSpecificImage returns the provider specific MachineImageVersion that matches with the given VmDetails
 func getProviderSpecificImage(images []azure.MachineImages, vm VmDetails) (*armcompute.ImageReference, error) {
 	imageIndex := slices.IndexFunc(images, func(image azure.MachineImages) bool {
-		return image.Name == vm.ImageBaseName
+		return strings.EqualFold(image.Name, vm.ImageBaseName)
 	})
 
 	if imageIndex == -1 {
