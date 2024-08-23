@@ -162,9 +162,7 @@ func getProviderSpecificImage(images []azure.MachineImages, vm VmDetails) (*armc
 	}
 
 	versions := images[imageIndex].Versions
-	versionIndex := slices.IndexFunc(versions, func(version azure.MachineImageVersion) bool {
-		return version.Version == vm.ImageVersion
-	})
+	versionIndex := slices.Index(versions, vm.ImageVersion)
 
 	if versionIndex == -1 {
 		return nil, fmt.Errorf("version %s for arch %s of image %s not found in cloudProfileConfig",
