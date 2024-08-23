@@ -424,7 +424,7 @@ func createTestMachineImages() []gardencorev1beta1.MachineImage {
 func createTestProviderConfig(imageRef armcompute.ImageReference) *api.CloudProfileConfig {
 	var urn *string
 	if imageRef.Offer != nil && imageRef.Publisher != nil && imageRef.SKU != nil && imageRef.Version != nil {
-		urn = ptr.To(*imageRef.Offer + ":" + *imageRef.Publisher + ":" + *imageRef.SKU + ":" + *imageRef.Version)
+		urn = ptr.To(fmt.Sprintf("%s:%s:%s:%s, *imageRef.Offer, *imageRef.Publisher, *imageRef.SKU, *imageRef.Version))
 	}
 	return &api.CloudProfileConfig{MachineImages: []api.MachineImages{{
 		Name: "gardenlinux",
