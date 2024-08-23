@@ -175,6 +175,7 @@ func getProviderSpecificImage(images []azure.MachineImages, vm VmDetails) (*armc
 		publisher *string
 		offer     *string
 		sku       *string
+		version   *string
 	)
 	if image.URN != nil {
 		urnSplit := strings.Split(*image.URN, ":")
@@ -182,6 +183,7 @@ func getProviderSpecificImage(images []azure.MachineImages, vm VmDetails) (*armc
 			publisher = &urnSplit[0]
 			offer = &urnSplit[1]
 			sku = &urnSplit[2]
+			version = &urnSplit[3]
 		}
 	}
 
@@ -191,6 +193,7 @@ func getProviderSpecificImage(images []azure.MachineImages, vm VmDetails) (*armc
 		Publisher:               publisher,
 		Offer:                   offer,
 		SKU:                     sku,
+		Version:                 version,
 		SharedGalleryImageID:    image.SharedGalleryImageID,
 	}, nil
 }
