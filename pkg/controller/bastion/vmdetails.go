@@ -84,9 +84,9 @@ func getMachine(bastion *core.Bastion, machineTypes []core.MachineType, possible
 func getArchitectures(bastion *core.Bastion, images []core.MachineImage) ([]string, error) {
 	archs := make(map[string]bool)
 
-	findSupportedArchs := func(versions []core.MachineImageVersion, specVersion *string) {
+	findSupportedArchs := func(versions []core.MachineImageVersion, bastionVersion *string) {
 		for _, version := range versions {
-			if specVersion != nil && version.Version == *bastion.MachineImage.Version {
+			if bastionVersion != nil && version.Version == *bastionVersion {
 				archs = make(map[string]bool)
 				for _, arch := range version.Architectures {
 					archs[arch] = true
