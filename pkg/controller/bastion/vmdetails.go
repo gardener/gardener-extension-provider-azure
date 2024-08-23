@@ -2,12 +2,12 @@ package bastion
 
 import (
 	"fmt"
-	"math"
 	"slices"
 
 	"github.com/Masterminds/semver/v3"
 	core "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"golang.org/x/exp/maps"
+	"k8s.io/utils/ptr"
 )
 
 // This file should be exactly identical for all providers
@@ -56,7 +56,7 @@ func getMachine(bastion *core.Bastion, machineTypes []core.MachineType, possible
 	}
 
 	// find the machine in cloud profile with the lowest amount of cpus
-	var minCpu int64 = math.MaxInt64
+	var minCpu *int64
 
 	for _, machine := range machineTypes {
 		if machine.Architecture == nil {
@@ -64,14 +64,15 @@ func getMachine(bastion *core.Bastion, machineTypes []core.MachineType, possible
 		}
 
 		arch := *machine.Architecture
-		if machine.CPU.Value() < minCpu && (possibleArchs == nil || slices.Contains(possibleArchs, arch)) {
-			minCpu = machine.CPU.Value()
+		if minCpu == nil || machine.CPU.Value() < *minCpu &&
+			(possibleArchs == nil || slices.Contains(possibleArchs, arch)) {
+			minCpu = ptr.To(machine.CPU.Value())
 			machineName = machine.Name
 			machineArch = arch
 		}
 	}
 
-	if minCpu == math.MaxInt64 {
+	if minCpu == nil {
 		return "", "", fmt.Errorf("no suitable machine found")
 	}
 
