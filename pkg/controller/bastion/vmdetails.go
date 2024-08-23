@@ -19,7 +19,8 @@ type VmDetails struct {
 	ImageVersion  string
 }
 
-// DetermineVmDetails calculates the
+// DetermineVmDetails searches for optimal vm parameters in the cloud profile
+// if no bastionImage is given take the greatest supported version
 func DetermineVmDetails(spec core.CloudProfileSpec) (vm VmDetails, err error) {
 	imageArchs, err := getArchitectures(spec.Bastion, spec.MachineImages)
 	if err != nil {
