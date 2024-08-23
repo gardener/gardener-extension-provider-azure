@@ -183,7 +183,7 @@ func getImageVersion(imageName, machineArch string, bastion *core.Bastion, image
 		return *bastion.MachineImage.Version, nil
 	}
 
-	var newest *semver.Version
+	var greatest *semver.Version
 	for _, version := range versions {
 		if version.Classification == nil || *version.Classification != core.ClassificationSupported {
 			continue
@@ -198,13 +198,13 @@ func getImageVersion(imageName, machineArch string, bastion *core.Bastion, image
 			return "", err
 		}
 
-		if newest == nil || v.GreaterThan(newest) {
-			newest = v
+		if greatest == nil || v.GreaterThan(greatest) {
+			greatest = v
 		}
 	}
 
-	if newest == nil {
+	if greatest == nil {
 		return "", fmt.Errorf("could not find any supported image version for %s and arch %s", imageName, machineArch)
 	}
-	return newest.String(), nil
+	return greatest.String(), nil
 }
