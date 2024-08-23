@@ -1,13 +1,14 @@
 package bastion_test
 
 import (
+	"slices"
+
 	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/bastion"
 	"github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	core "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	. "github.com/gardener/gardener/pkg/utils/test/matchers"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"golang.org/x/exp/slices"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/utils/ptr"
 )
@@ -122,12 +123,25 @@ var _ = Describe("Bastion VM Details", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("should find newest supported version", func() {
+		It("should find greatest supported version", func() {
 			addImageToCloudProfile(desired.ImageBaseName, "1.2.4", core.ClassificationSupported, []string{"amd64"})
 			desired.ImageVersion = "1.2.4"
 			details, err := bastion.DetermineVmDetails(spec)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(details).To(DeepEqual(desired))
+		})
+
+		It("should find smallest machine", func() {
+			spec.Bastion.MachineType = nil
+			spec.MachineTypes = append(spec.MachineTypes, v1beta1.MachineType{
+				CPU:          resource.MustParse("1"),
+				GPU:          resource.MustParse("1"),
+				Name:         "smallerMachine",
+				Architecture: ptr.To(desired.Architecture),
+			})
+			details, err := bastion.DetermineVmDetails(spec)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(details.MachineName).To(DeepEqual("smallerMachine"))
 		})
 
 		It("should only use supported version", func() {
