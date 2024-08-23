@@ -328,24 +328,37 @@ var _ = Describe("Bastion test", func() {
 		}
 
 		It("should succeed for existing communityGallery image", func() {
-			providerImages = createTestProviderConfig(armcompute.ImageReference{
-				CommunityGalleryImageID: ptr.To("CommunityGalleries/gardenlinux-1.2.3"),
+			providerImages = createTestProviderConfig(api.MachineImageVersion{
+				CommunityGalleryImageID: ptr.To("/CommunityGalleries/gardenlinux-1.2.3"),
 			}).MachineImages
-			machineImage, err := getProviderSpecificImage(providerImages, desiredVM)
+			imageRef, err := getProviderSpecificImage(providerImages, desiredVM)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(machineImage.CommunityGalleryImageID).To(Equal("CommunityGalleries/gardenlinux-1.2.3"))
+			Expect(*imageRef.CommunityGalleryImageID).To(Equal("/CommunityGalleries/gardenlinux-1.2.3"))
 		})
 
-		// TODO
-		//It("should succeed for existing urn", func() {
-		//	if imageRef.Offer != nil && imageRef.Publisher != nil && imageRef.SKU != nil && imageRef.Version != nil {
-		//	providerImages = createTestProviderConfig(armcompute.ImageReference{
-		//		Offer: ptr.To(),
-		//	}).MachineImages
-		//	machineImage, err := getProviderSpecificImage(providerImages, desiredVM)
-		//	Expect(err).ToNot(HaveOccurred())
-		//	Expect(machineImage.CommunityGalleryImageID).To(Equal("CommunityGalleries/gardenlinux-1.2.3"))
-		//})
+		It("should succeed for existing sharedGallery image", func() {
+			providerImages = createTestProviderConfig(api.MachineImageVersion{
+				SharedGalleryImageID: ptr.To("/SharedGalleryImageID/gardenlinux-1.2.3"),
+			}).MachineImages
+			imageRef, err := getProviderSpecificImage(providerImages, desiredVM)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(*imageRef.SharedGalleryImageID).To(Equal("/SharedGalleryImageID/gardenlinux-1.2.3"))
+		})
+
+		It("should succeed for existing urn", func() {
+			desiredImageRef := armcompute.ImageReference{
+				Publisher: ptr.To("publisher"),
+				Offer:     ptr.To("offer"),
+				SKU:       ptr.To("sku"),
+				Version:   ptr.To("1.2.3"),
+			}
+			providerImages = createTestProviderConfig(api.MachineImageVersion{
+				URN: ptr.To("publisher:offer:sku:1.2.3"),
+			}).MachineImages
+			imageRefRes, err := getProviderSpecificImage(providerImages, desiredVM)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(*imageRefRes).To(Equal(desiredImageRef))
+		})
 
 		It("fail if image name does not exist", func() {
 			desiredVM.ImageBaseName = "unknown"
@@ -399,7 +412,7 @@ func createAzureTestCluster(vNet api.VNet) *extensions.Cluster {
 				MachineImages: createTestMachineImages(),
 				MachineTypes:  createTestMachineTypes(),
 				ProviderConfig: &runtime.RawExtension{
-					Raw: mustEncode(createTestProviderConfig(armcompute.ImageReference{
+					Raw: mustEncode(createTestProviderConfig(api.MachineImageVersion{
 						CommunityGalleryImageID: ptr.To("/CommunityGalleries/gardenlinux-1.2.3"),
 					})),
 				},
@@ -421,20 +434,11 @@ func createTestMachineImages() []gardencorev1beta1.MachineImage {
 	}}
 }
 
-func createTestProviderConfig(imageRef armcompute.ImageReference) *api.CloudProfileConfig {
-	var urn *string
-	if imageRef.Offer != nil && imageRef.Publisher != nil && imageRef.SKU != nil && imageRef.Version != nil {
-		urn = ptr.To(fmt.Sprintf("%s:%s:%s:%s, *imageRef.Offer, *imageRef.Publisher, *imageRef.SKU, *imageRef.Version))
-	}
+func createTestProviderConfig(imageVersion api.MachineImageVersion) *api.CloudProfileConfig {
+	imageVersion.Version = "1.2.3"
 	return &api.CloudProfileConfig{MachineImages: []api.MachineImages{{
-		Name: "gardenlinux",
-		Versions: []api.MachineImageVersion{{
-			Version:                 "1.2.3",
-			CommunityGalleryImageID: imageRef.CommunityGalleryImageID,
-			SharedGalleryImageID:    imageRef.SharedGalleryImageID,
-			ID:                      imageRef.ID,
-			URN:                     urn,
-		}},
+		Name:     "gardenlinux",
+		Versions: []api.MachineImageVersion{imageVersion},
 	}}}
 }
 
