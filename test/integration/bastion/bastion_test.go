@@ -55,7 +55,7 @@ import (
 
 const (
 	CommunityGalleryImageID = "/CommunityGalleries/gardenlinux-13e998fe-534d-4b0a-8a27-f16a73aef620/Images/gardenlinux/Versions/1443.10.0"
-	machineType             = "Standard_B1ls"
+	machineType             = "Standard_B1s"
 	VNetCIDR                = "10.250.0.0/16"
 	workersSubnetCIDR       = "10.250.0.0/16"
 	userData                = "#!/bin/bash\n\nsystemctl start ssh"
