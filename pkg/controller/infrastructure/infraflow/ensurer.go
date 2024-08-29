@@ -579,7 +579,7 @@ func (fctx *FlowContext) ensureSubnets(ctx context.Context) (err error) {
 	}
 
 	filteredSubnets := Filter(currentSubnets, func(s *armnetwork.Subnet) bool {
-		return fctx.adapter.HasShootPrefix(s.Name)
+		return fctx.adapter.IsOwnSubnetName(s.Name)
 	})
 	mappedSubnets := ToMap(filteredSubnets, func(s *armnetwork.Subnet) string {
 		return *s.Name

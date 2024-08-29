@@ -281,12 +281,34 @@ func (ia *InfrastructureAdapter) natGatewayNameForZone(zone int32, migrated bool
 	return fmt.Sprintf("%s-z%d", ia.natGatewayName(), zone)
 }
 
+func (ia *InfrastructureAdapter) shootSubnetNamePrefix() string {
+	return fmt.Sprintf("%s-nodes", ia.TechnicalName())
+}
+
 func (ia *InfrastructureAdapter) subnetName(zone *int32) string {
-	n := fmt.Sprintf("%s-nodes", ia.TechnicalName())
+	n := ia.shootSubnetNamePrefix()
 	if zone != nil {
 		n = fmt.Sprintf("%s-z%d", n, *zone)
 	}
 	return n
+}
+
+// IsOwnSubnetName returns a bool indicating whether the subnet with the given name was created by the
+// reconciliation of the current shoot.
+//
+// This is needed to distinguish between subnets by unfortunately named shoots (i.e. the current shoot's name
+// is a prefix to another's) that deploy in the same vnet.
+func (ia *InfrastructureAdapter) IsOwnSubnetName(name *string) bool {
+	if name == nil {
+		return false
+	}
+	expected_prefix := ia.shootSubnetNamePrefix()
+	if _, found := strings.CutPrefix(*name, expected_prefix); found {
+		return true
+		// No need to check further. The important thing to check is that there is nothing
+		// between the technical name and the next expected part.
+	}
+	return false
 }
 
 func (ia *InfrastructureAdapter) publicIPName(natName string) string {
