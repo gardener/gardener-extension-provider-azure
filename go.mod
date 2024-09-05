@@ -1,6 +1,6 @@
 module github.com/gardener/gardener-extension-provider-azure
 
-go 1.22.0
+go 1.23.0
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.12.0
