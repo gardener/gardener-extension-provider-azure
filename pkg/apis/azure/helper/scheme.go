@@ -98,22 +98,6 @@ func BackupConfigFromBackupBucket(backupBucket *extensionsv1alpha1.BackupBucket)
 	return backupConfig, nil
 }
 
-// BackupConfigFromBackupEntry  decodes the provider specific config from a given BackupEntry object.
-func BackupConfigFromBackupEntry(backupEntry *extensionsv1alpha1.BackupEntry) (api.BackupBucketConfig, error) {
-	backupConfig := api.BackupBucketConfig{}
-	if backupEntry != nil && backupEntry.Spec.DefaultSpec.ProviderConfig != nil {
-		entryJson, err := backupEntry.Spec.ProviderConfig.MarshalJSON()
-		if err != nil {
-			return backupConfig, err
-		}
-
-		if _, _, err := decoder.Decode(entryJson, nil, &backupConfig); err != nil {
-			return backupConfig, err
-		}
-	}
-	return backupConfig, nil
-}
-
 // DNSRecordConfigFromDNSRecord decodes the provider specific config from a given DNSRecord object.
 func DNSRecordConfigFromDNSRecord(dnsRecord *extensionsv1alpha1.DNSRecord) (api.DNSRecordConfig, error) {
 	dnsRecordConfig := api.DNSRecordConfig{}
