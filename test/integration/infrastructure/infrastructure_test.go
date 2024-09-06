@@ -1097,8 +1097,13 @@ func verifyCreation(
 			status.Networks.VNet.Name,
 		)
 		result.subnets = append(result.subnets, subnetBaseName)
-
+		if config.Networks.NatGateway != nil && config.Networks.NatGateway.Enabled {
+			Expect(status.Networks.OutboundAccessType).To(Equal(azurev1alpha1.OutboundAccessTypeNatGateway))
+		} else {
+			Expect(status.Networks.OutboundAccessType).To(Equal(azurev1alpha1.OutboundAccessTypeLoadBalancer))
+		}
 	} else {
+		allZonesHaveNATGateway := true
 		for _, zone := range config.Networks.Zones {
 			By(fmt.Sprintf("verifying for %d", zone.Name))
 			nat := zone.NatGateway
@@ -1124,6 +1129,8 @@ func verifyCreation(
 
 				ng = verifyNAT(az, &zone.Name, nat.IdleConnectionTimeoutMinutes, ngName, ipNames, status)
 				natID = ng.ID
+			} else {
+				allZonesHaveNATGateway = false
 			}
 			subnetName := indexedName(subnetBaseName, zone.Name)
 			verifySubnet(
@@ -1139,6 +1146,11 @@ func verifyCreation(
 				status.Networks.VNet.Name,
 			)
 			result.subnets = append(result.subnets, subnetName)
+		}
+		if allZonesHaveNATGateway {
+			Expect(status.Networks.OutboundAccessType).To(Equal(azurev1alpha1.OutboundAccessTypeNatGateway))
+		} else {
+			Expect(status.Networks.OutboundAccessType).To(Equal(azurev1alpha1.OutboundAccessTypeLoadBalancer))
 		}
 	}
 

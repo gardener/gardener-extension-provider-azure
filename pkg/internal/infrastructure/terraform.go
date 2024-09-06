@@ -535,6 +535,17 @@ func ComputeTerraformStatus(ctx context.Context, tf terraformer.Terraformer, inf
 		status.Identity.ACRAccess = true
 	}
 
+	status.Networks.OutboundAccessType = apiv1alpha1.OutboundAccessTypeNatGateway
+	if len(config.Networks.Zones) > 0 {
+		for _, z := range config.Networks.Zones {
+			if z.NatGateway == nil || !z.NatGateway.Enabled {
+				status.Networks.OutboundAccessType = apiv1alpha1.OutboundAccessTypeLoadBalancer
+			}
+		}
+	} else if config.Networks.NatGateway == nil || !config.Networks.NatGateway.Enabled {
+		status.Networks.OutboundAccessType = apiv1alpha1.OutboundAccessTypeLoadBalancer
+	}
+
 	return status, nil
 }
 

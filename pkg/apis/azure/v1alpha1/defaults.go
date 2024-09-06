@@ -30,3 +30,10 @@ func SetDefaults_Storage(obj *Storage) {
 		obj.ManagedDefaultVolumeSnapshotClass = ptr.To(true)
 	}
 }
+
+// SetDefaults_NetworkStatus set the default networks status options.
+func SetDefaults_NetworkStatus(obj *NetworkStatus) {
+	if obj.OutboundAccessType == "" {
+		obj.OutboundAccessType = OutboundAccessTypeLoadBalancer
+	}
+}

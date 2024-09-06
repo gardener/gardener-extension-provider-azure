@@ -142,6 +142,9 @@ type NetworkStatus struct {
 
 	// Layout describes the network layout of the cluster.
 	Layout NetworkLayout `json:"layout"`
+
+	// OutboundAccessType is the type of outbound access configured for the shoot. It indicates how egress traffic flows outside the shoot.
+	OutboundAccessType OutboundAccessType `json:"outboundAccessType"`
 }
 
 // Purpose is a purpose of a subnet.
@@ -165,6 +168,17 @@ const (
 	NetworkLayoutMultipleSubnet NetworkLayout = "MultipleSubnet"
 )
 
+// OutboundAccessType is the type of outbound access configured for the shoot. It indicates how egress traffic flows outside the shoot.
+// See https://learn.microsoft.com/en-us/azure/load-balancer/load-balancer-outbound-connections#scenarios
+type OutboundAccessType string
+
+const (
+	// OutboundAccessTypeNatGateway indicates that the outbound access happens through a NATGateway.
+	OutboundAccessTypeNatGateway OutboundAccessType = "NATGateway"
+	// OutboundAccessTypeLoadBalancer indicates that the outbound access happens through configured FrontendIPs of a LoadBalancer.
+	OutboundAccessTypeLoadBalancer OutboundAccessType = "LoadBalancer"
+)
+
 // Subnet is a subnet that was created.
 type Subnet struct {
 	// Name is the name of the subnet.
@@ -177,6 +191,9 @@ type Subnet struct {
 	// Migrated is set when the network layout is migrated from NetworkLayoutSingleSubnet to NetworkLayoutMultipleSubnet.
 	// Only the subnet that was used prior to the migration should have this attribute set.
 	Migrated bool `json:"migrated,omitempty"`
+	// NatGatewayName is the name of the NATGateway associated with the subnet.
+	// +optional
+	NatGatewayName *string `json:"natGatewayName,omitempty"`
 }
 
 // AvailabilitySet contains information about the azure availability set

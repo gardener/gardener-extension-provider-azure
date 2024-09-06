@@ -732,14 +732,24 @@ func (fctx *FlowContext) GetInfrastructureStatus(_ context.Context) (*v1alpha1.I
 	}
 
 	zones := fctx.adapter.Zones()
+	outboundAccessType := v1alpha1.OutboundAccessTypeNatGateway
 	for _, z := range zones {
-		status.Networks.Subnets = append(status.Networks.Subnets, v1alpha1.Subnet{
+		subnet := v1alpha1.Subnet{
 			Name:     z.Subnet.Name,
 			Purpose:  v1alpha1.PurposeNodes,
 			Zone:     z.Subnet.zone,
 			Migrated: z.Migrated,
-		})
+		}
+		if z.NatGateway != nil {
+			subnet.NatGatewayName = ptr.To(z.NatGateway.Name)
+		}
+		status.Networks.Subnets = append(status.Networks.Subnets, subnet)
+		// if at least one of the "zones" does not have NATGateway enabled, mark the outbound access as OutboundAccessTypeLoadBalancer.
+		if z.NatGateway == nil {
+			outboundAccessType = v1alpha1.OutboundAccessTypeLoadBalancer
+		}
 	}
+	status.Networks.OutboundAccessType = outboundAccessType
 
 	if cfg := fctx.adapter.AvailabilitySetConfig(); cfg != nil {
 		status.AvailabilitySets = []v1alpha1.AvailabilitySet{
