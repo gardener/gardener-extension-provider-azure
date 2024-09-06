@@ -345,7 +345,7 @@ func (fctx *FlowContext) ensureUserPublicIp(ctx context.Context, c client.Public
 	if err != nil {
 		return err
 	} else if userIP == nil {
-		return fmt.Errorf(fmt.Sprintf("failed to locate user public IP: %s, %s", ipCfg.ResourceGroup, ipCfg.Name))
+		return fmt.Errorf("failed to locate user public IP: %s, %s", ipCfg.ResourceGroup, ipCfg.Name)
 	}
 
 	fctx.whiteboard.GetChild(ChildKeyIDs).GetChild(ipCfg.ResourceGroup).GetChild(KindPublicIP.String()).Set(ipCfg.Name, *userIP.ID)

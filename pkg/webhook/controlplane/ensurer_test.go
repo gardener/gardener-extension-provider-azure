@@ -505,7 +505,7 @@ var _ = Describe("Ensurer", func() {
 			ensurer = NewEnsurer(mgr, logger)
 			DeferCleanup(testutils.WithVar(&ImageVector, imagevector.ImageVector{{
 				Name:       "machine-controller-manager-provider-azure",
-				Repository: "foo",
+				Repository: ptr.To("foo"),
 				Tag:        ptr.To("bar"),
 			}}))
 		})
@@ -538,7 +538,7 @@ var _ = Describe("Ensurer", func() {
 			Expect(vpa.Spec.ResourcePolicy).To(BeNil())
 			Expect(ensurer.EnsureMachineControllerManagerVPA(context.TODO(), nil, vpa, nil)).To(BeNil())
 
-			ccv := vpaautoscalingv1.ContainerControlledValuesRequestsOnly
+			ccv := vpaautoscalingv1. ContainerControlledValuesRequestsOnly
 			Expect(vpa.Spec.ResourcePolicy.ContainerPolicies).To(ConsistOf(vpaautoscalingv1.ContainerResourcePolicy{
 				ContainerName:    "machine-controller-manager-provider-azure",
 				ControlledValues: &ccv,
