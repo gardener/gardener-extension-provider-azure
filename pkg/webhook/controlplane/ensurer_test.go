@@ -505,7 +505,7 @@ var _ = Describe("Ensurer", func() {
 			ensurer = NewEnsurer(mgr, logger)
 			DeferCleanup(testutils.WithVar(&ImageVector, imagevector.ImageVector{{
 				Name:       "machine-controller-manager-provider-azure",
-				Repository: "foo",
+				Repository: ptr.To("foo"),
 				Tag:        ptr.To("bar"),
 			}}))
 		})

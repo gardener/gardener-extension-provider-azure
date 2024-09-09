@@ -9,11 +9,11 @@ import (
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/install"
@@ -76,7 +76,7 @@ func CloudProfileConfigFromCluster(cluster *controller.Cluster) (*api.CloudProfi
 	if cluster != nil && cluster.CloudProfile != nil && cluster.CloudProfile.Spec.ProviderConfig != nil && cluster.CloudProfile.Spec.ProviderConfig.Raw != nil {
 		cloudProfileConfig = &api.CloudProfileConfig{}
 		if _, _, err := decoder.Decode(cluster.CloudProfile.Spec.ProviderConfig.Raw, nil, cloudProfileConfig); err != nil {
-			return nil, fmt.Errorf("could not decode providerConfig of cloudProfile for '%s': %w", kutil.ObjectName(cluster.CloudProfile), err)
+			return nil, fmt.Errorf("could not decode providerConfig of cloudProfile for '%s': %w", k8sclient.ObjectKeyFromObject(cluster.CloudProfile), err)
 		}
 	}
 	return cloudProfileConfig, nil
@@ -92,22 +92,6 @@ func BackupConfigFromBackupBucket(backupBucket *extensionsv1alpha1.BackupBucket)
 		}
 
 		if _, _, err := decoder.Decode(bucketJson, nil, &backupConfig); err != nil {
-			return backupConfig, err
-		}
-	}
-	return backupConfig, nil
-}
-
-// BackupConfigFromBackupEntry  decodes the provider specific config from a given BackupEntry object.
-func BackupConfigFromBackupEntry(backupEntry *extensionsv1alpha1.BackupEntry) (api.BackupBucketConfig, error) {
-	backupConfig := api.BackupBucketConfig{}
-	if backupEntry != nil && backupEntry.Spec.DefaultSpec.ProviderConfig != nil {
-		entryJson, err := backupEntry.Spec.ProviderConfig.MarshalJSON()
-		if err != nil {
-			return backupConfig, err
-		}
-
-		if _, _, err := decoder.Decode(entryJson, nil, &backupConfig); err != nil {
 			return backupConfig, err
 		}
 	}

@@ -12,6 +12,7 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
 	"github.com/gardener/gardener/extensions/pkg/util"
+	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
@@ -34,6 +35,8 @@ type AddOptions struct {
 	WebhookServerNamespace string
 	// ShootWebhookConfig specifies the desired Shoot MutatingWebhooksConfiguration.
 	ShootWebhookConfig *atomic.Value
+	// ExtensionClass defines the extension class this extension is responsible for.
+	ExtensionClass extensionsv1alpha1.ExtensionClass
 }
 
 // AddToManagerWithOptions adds a controller with the given Options to the given manager.
@@ -52,6 +55,7 @@ func AddToManagerWithOptions(ctx context.Context, mgr manager.Manager, opts AddO
 		ControllerOptions: opts.Controller,
 		Predicates:        controlplane.DefaultPredicates(ctx, mgr, opts.IgnoreOperationAnnotation),
 		Type:              azure.Type,
+		ExtensionClass:    opts.ExtensionClass,
 	})
 }
 

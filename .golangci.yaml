@@ -27,3 +27,4 @@ issues:
     # typecheck:
     - "undeclared name: `.*`"
     - "\".*\" imported but not used"
+    - "printf: non-constant format string in call to fmt.Errorf"

@@ -29,7 +29,7 @@ func FindSubnetByPurposeAndZone(subnets []api.Subnet, purpose api.Purpose, zone 
 	if zone != nil {
 		errMsg += fmt.Sprintf(" and zone %q", *zone)
 	}
-	return 0, nil, fmt.Errorf(errMsg)
+	return 0, nil, fmt.Errorf("%s", errMsg)
 }
 
 // FindSecurityGroupByPurpose takes a list of security groups and tries to find the first entry

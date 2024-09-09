@@ -62,8 +62,12 @@ func (s *shoot) Validate(ctx context.Context, newObj, oldObj client.Object) erro
 		return nil
 	}
 
+	if shoot.Spec.CloudProfile == nil {
+		return fmt.Errorf("shoot.spec.cloudprofile must not be nil <nil>")
+	}
+
 	cloudProfile := &gardencorev1beta1.CloudProfile{}
-	if err := s.client.Get(ctx, client.ObjectKey{Name: shoot.Spec.CloudProfileName}, cloudProfile); err != nil {
+	if err := s.client.Get(ctx, client.ObjectKey{Name: shoot.Spec.CloudProfile.Name}, cloudProfile); err != nil {
 		return err
 	}
 

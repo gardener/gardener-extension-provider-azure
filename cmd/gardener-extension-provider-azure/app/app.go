@@ -227,10 +227,10 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			controlPlaneCtrlOpts.Completed().Apply(&azurecontrolplane.DefaultAddOptions.Controller)
 			dnsRecordCtrlOpts.Completed().Apply(&azurednsrecord.DefaultAddOptions.Controller)
 			infraCtrlOpts.Completed().Apply(&azureinfrastructure.DefaultAddOptions.Controller)
-			reconcileOpts.Completed().Apply(&azureinfrastructure.DefaultAddOptions.IgnoreOperationAnnotation)
-			reconcileOpts.Completed().Apply(&azurecontrolplane.DefaultAddOptions.IgnoreOperationAnnotation)
-			reconcileOpts.Completed().Apply(&azureworker.DefaultAddOptions.IgnoreOperationAnnotation)
-			reconcileOpts.Completed().Apply(&azurebastion.DefaultAddOptions.IgnoreOperationAnnotation)
+			reconcileOpts.Completed().Apply(&azureinfrastructure.DefaultAddOptions.IgnoreOperationAnnotation, &azureinfrastructure.DefaultAddOptions.ExtensionClass)
+			reconcileOpts.Completed().Apply(&azurecontrolplane.DefaultAddOptions.IgnoreOperationAnnotation, &azurecontrolplane.DefaultAddOptions.ExtensionClass)
+			reconcileOpts.Completed().Apply(&azureworker.DefaultAddOptions.IgnoreOperationAnnotation, &azureworker.DefaultAddOptions.ExtensionClass)
+			reconcileOpts.Completed().Apply(&azurebastion.DefaultAddOptions.IgnoreOperationAnnotation, &azurebastion.DefaultAddOptions.ExtensionClass)
 			workerCtrlOpts.Completed().Apply(&azureworker.DefaultAddOptions.Controller)
 			azureworker.DefaultAddOptions.GardenCluster = gardenCluster
 

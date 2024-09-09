@@ -9,7 +9,7 @@ import (
 	"fmt"
 
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
-	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
+	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
@@ -47,7 +47,7 @@ func (w *workerDelegate) findMachineImage(name, version string, architecture *st
 	if providerStatus := w.worker.Status.ProviderStatus; providerStatus != nil {
 		workerStatus := &api.WorkerStatus{}
 		if _, _, err := w.decoder.Decode(providerStatus.Raw, nil, workerStatus); err != nil {
-			return nil, fmt.Errorf("could not decode worker status of worker '%s': %w", kutil.ObjectName(w.worker), err)
+			return nil, fmt.Errorf("could not decode worker status of worker '%s': %w", k8sclient.ObjectKeyFromObject(w.worker), err)
 		}
 
 		machineImage, err := helper.FindMachineImage(workerStatus.MachineImages, name, version, architecture)
