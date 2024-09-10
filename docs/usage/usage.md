@@ -89,7 +89,7 @@ zoned: false
 #  acrAccess: true
 ```
 
-Currently, it's not yet possible to deploy into existing resource groups, but in the future it will.
+Currently, it's not yet possible to deploy into existing resource groups.
 The `.resourceGroup.name` field will allow specifying the name of an already existing resource group that the shoot cluster and all infrastructure resources will be deployed to.
 
 Via the `.zoned` boolean you can tell whether you want to use Azure availability zones or not.
