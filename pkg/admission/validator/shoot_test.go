@@ -44,7 +44,7 @@ var _ = Describe("Shoot validator", func() {
 			namespacedCloudProfile *gardencorev1beta1.NamespacedCloudProfile
 			shoot                  *core.Shoot
 
-			ctx                       = context.TODO()
+			ctx                       = context.Background()
 			cloudProfileKey           = client.ObjectKey{Name: "azure"}
 			namespacedCloudProfileKey = client.ObjectKey{Name: "azure-nscpfl", Namespace: namespace}
 
@@ -65,7 +65,7 @@ var _ = Describe("Shoot validator", func() {
 			c = mockclient.NewMockClient(ctrl)
 			mgr = mockmanager.NewMockManager(ctrl)
 
-			mgr.EXPECT().GetScheme().Return(scheme).Times(3)
+			mgr.EXPECT().GetScheme().Return(scheme).Times(2)
 			mgr.EXPECT().GetClient().Return(c)
 
 			shootValidator = validator.NewShootValidator(mgr)
