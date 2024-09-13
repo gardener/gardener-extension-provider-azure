@@ -312,7 +312,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			return machineDeployment, machineClassSpec
 		}
 
-		workerPoolHash, err := w.generateWorkerPoolHash(pool, *workerConfig, infrastructureStatus, vmoDependency, nil)
+		workerPoolHash, err := w.generateWorkerPoolHash(pool, workerConfig, infrastructureStatus, vmoDependency, nil)
 		if err != nil {
 			return err
 		}
@@ -358,12 +358,12 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				}
 
 				if nodesSubnet.Migrated {
-					workerPoolHash, err = w.generateWorkerPoolHash(pool, *workerConfig, infrastructureStatus, vmoDependency, nil)
+					workerPoolHash, err = w.generateWorkerPoolHash(pool, workerConfig, infrastructureStatus, vmoDependency, nil)
 					if err != nil {
 						return err
 					}
 				} else {
-					workerPoolHash, err = w.generateWorkerPoolHash(pool, *workerConfig, infrastructureStatus, vmoDependency, &nodesSubnet.Name)
+					workerPoolHash, err = w.generateWorkerPoolHash(pool, workerConfig, infrastructureStatus, vmoDependency, &nodesSubnet.Name)
 					if err != nil {
 						return err
 					}
