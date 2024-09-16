@@ -543,7 +543,7 @@ func (w workerDelegate) workerPoolHashDataV2(workerConfig api.WorkerConfig, addi
 	hashData := make([]string, len(additionalData))
 	copy(hashData, additionalData)
 
-	if workerConfig.DiagnosticsProfile != nil {
+	if workerConfig.DiagnosticsProfile != nil && workerConfig.DiagnosticsProfile.StorageURI != nil {
 		hashData = append(hashData, *workerConfig.DiagnosticsProfile.StorageURI)
 	}
 
