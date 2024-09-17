@@ -12,6 +12,7 @@ import (
 
 // This file should be exactly identical for all providers
 
+// VmDetails define all bastion vm details derived from the CloudProfile
 type VmDetails struct {
 	MachineName   string
 	Architecture  string
