@@ -3,7 +3,6 @@ package bastion_test
 import (
 	"slices"
 
-	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/bastion"
 	"github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	core "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	. "github.com/gardener/gardener/pkg/utils/test/matchers"
@@ -11,6 +10,8 @@ import (
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/utils/ptr"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/bastion"
 )
 
 var _ = Describe("Bastion VM Details", func() {
