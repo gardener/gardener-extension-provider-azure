@@ -129,7 +129,7 @@ func (s *shoot) validateShoot(shoot *core.Shoot, oldInfraConfig, infraConfig *ap
 		if err != nil {
 			allErrs = append(allErrs, field.Invalid(workerFldPath.Child("providerConfig"), err, "invalid providerConfig"))
 		} else {
-			allErrs = append(allErrs, azurevalidation.ValidateWorkerConfig(workerConfig, workerFldPath.Child("providerConfig"))...)
+			allErrs = append(allErrs, azurevalidation.ValidateWorkerConfig(workerConfig, worker.DataVolumes, workerFldPath.Child("providerConfig"))...)
 		}
 	}
 
