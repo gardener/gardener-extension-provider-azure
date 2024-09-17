@@ -169,6 +169,10 @@ func getImageVersion(imageName, machineArch string, bastion *core.Bastion, image
 			return "", fmt.Errorf("image version %s not found not found in cloudProfile", *bastion.MachineImage.Version)
 		}
 
+		if image.Versions[versionIndex].Classification != nil && *image.Versions[versionIndex].Classification != core.ClassificationSupported {
+			return "", fmt.Errorf("specified image %s in version %s is not classified supported", imageName, *bastion.MachineImage.Version)
+		}
+
 		return *bastion.MachineImage.Version, nil
 	}
 
