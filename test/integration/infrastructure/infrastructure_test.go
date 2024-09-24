@@ -37,10 +37,16 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	schedulingv1 "k8s.io/api/scheduling/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/apimachinery/pkg/util/uuid"
+	schemev1 "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -74,6 +80,8 @@ var (
 	region         = flag.String("region", "", "Azure region")
 	secretYamlPath = flag.String("secret-path", "", "Yaml file with secret including Azure credentials")
 	reconciler     = flag.String("reconciler", reconcilerUseTF, "Set annotation to use flow for reconciliation")
+
+	testId = string(uuid.NewUUID())
 )
 
 type azureClientSet struct {
@@ -227,15 +235,33 @@ var _ = BeforeSuite(func() {
 		},
 	}
 
-	cfg, err := testEnv.Start()
+	restConfig, err := testEnv.Start()
 	Expect(err).ToNot(HaveOccurred())
-	mgr, err := manager.New(cfg, manager.Options{
+
+	httpClient, err := rest.HTTPClientFor(restConfig)
+	Expect(err).NotTo(HaveOccurred())
+	mapper, err := apiutil.NewDynamicRESTMapper(restConfig, httpClient)
+	Expect(err).NotTo(HaveOccurred())
+
+	scheme := runtime.NewScheme()
+	Expect(extensionsv1alpha1.AddToScheme(scheme)).To(Succeed())
+	mgr, err := manager.New(restConfig, manager.Options{
+		Scheme: scheme,
 		Metrics: server.Options{
 			BindAddress: "0",
+		},
+		Cache: cache.Options{
+			Mapper: mapper,
+			ByObject: map[client.Object]cache.ByObject{
+				&extensionsv1alpha1.Infrastructure{}: {
+					Label: labels.SelectorFromSet(labels.Set{"test-id": testId}),
+				},
+			},
 		},
 	})
 	Expect(err).ToNot(HaveOccurred())
 
+	Expect(schemev1.AddToScheme(mgr.GetScheme())).To(Succeed())
 	Expect(extensionsv1alpha1.AddToScheme(mgr.GetScheme())).To(Succeed())
 	Expect(azureinstall.AddToScheme(mgr.GetScheme())).To(Succeed())
 
@@ -865,6 +891,9 @@ func newInfrastructure(namespace string, providerConfig *azurev1alpha1.Infrastru
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "infrastructure",
 			Namespace: namespace,
+			Labels: map[string]string{
+				"test-id": testId,
+			},
 		},
 		Spec: extensionsv1alpha1.InfrastructureSpec{
 			DefaultSpec: extensionsv1alpha1.DefaultSpec{
