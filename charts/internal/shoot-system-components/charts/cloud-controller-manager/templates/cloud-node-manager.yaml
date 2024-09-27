@@ -110,8 +110,6 @@ spec:
     containerPolicies:
     - containerName: cloud-node-manager
       controlledValues: RequestsOnly
-      minAllowed:
-        memory: 25Mi
   targetRef:
     apiVersion: apps/v1
     kind: DaemonSet
