@@ -5,7 +5,6 @@
 package validation
 
 import (
-	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener/pkg/apis/core"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
@@ -15,6 +14,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/ptr"
+
+	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 )
 
 var _ = Describe("ValidateWorkerConfig", func() {
