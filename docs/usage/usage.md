@@ -379,7 +379,8 @@ metadata:
   name: johndoe-azure
   namespace: garden-dev
 spec:
-  cloudProfileName: azure
+  cloudProfile:
+    name: azure
   region: westeurope
   secretBindingName: core-azure
   provider:
@@ -441,7 +442,8 @@ metadata:
   name: johndoe-azure
   namespace: garden-dev
 spec:
-  cloudProfileName: azure
+  cloudProfile:
+    name: azure
   region: westeurope
   secretBindingName: core-azure
   provider:
@@ -498,7 +500,8 @@ metadata:
   name: johndoe-azure
   namespace: garden-dev
 spec:
-  cloudProfileName: azure
+  cloudProfile:
+    name: azure
   region: westeurope
   secretBindingName: core-azure
   provider:
