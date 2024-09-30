@@ -413,7 +413,7 @@ DiagnosticsProfile
 </em>
 </td>
 <td>
-<p>DiagnosticsProfile specifies boot diagnostic options</p>
+<p>DiagnosticsProfile specifies boot diagnostic options.</p>
 </td>
 </tr>
 <tr>
@@ -718,7 +718,7 @@ Image
 </td>
 <td>
 <em>(Optional)</em>
-<p>ImageRef defines the dataVolume source image</p>
+<p>ImageRef defines the dataVolume source image.</p>
 </td>
 </tr>
 </tbody>
@@ -730,7 +730,7 @@ Image
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig</a>)
 </p>
 <p>
-<p>DiagnosticsProfile specifies boot diagnostic options</p>
+<p>DiagnosticsProfile specifies boot diagnostic options.</p>
 </p>
 <table>
 <thead>
@@ -748,7 +748,7 @@ bool
 </em>
 </td>
 <td>
-<p>Enabled configures boot diagnostics to be stored or not</p>
+<p>Enabled configures boot diagnostics to be stored or not.</p>
 </td>
 </tr>
 <tr>
@@ -919,7 +919,7 @@ bool
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.MachineImage">MachineImage</a>)
 </p>
 <p>
-<p>Image identifies the azure image</p>
+<p>Image identifies the azure image.</p>
 </p>
 <table>
 <thead>
@@ -950,7 +950,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>ID is the VM image ID</p>
+<p>ID is the VM image ID.</p>
 </td>
 </tr>
 <tr>
@@ -1211,7 +1211,7 @@ Image
 </em>
 </td>
 <td>
-<p>Image identifies the azure image</p>
+<p>Image identifies the azure image.</p>
 </td>
 </tr>
 </tbody>

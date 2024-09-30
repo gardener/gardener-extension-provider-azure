@@ -20,7 +20,7 @@ type WorkerConfig struct {
 	// +optional
 	NodeTemplate *extensionsv1alpha1.NodeTemplate `json:"nodeTemplate,omitempty"`
 
-	// DiagnosticsProfile specifies boot diagnostic options
+	// DiagnosticsProfile specifies boot diagnostic options.
 	DiagnosticsProfile *DiagnosticsProfile `json:"diagnosticsProfile,omitempty"`
 
 	// DataVolumes contains configuration for the additional disks attached to VMs.
@@ -63,16 +63,16 @@ type MachineImage struct {
 	// SkipMarketplaceAgreement skips the marketplace agreement check when enabled.
 	// +optional
 	SkipMarketplaceAgreement *bool `json:"skipMarketplaceAgreement,omitempty"`
-	// Image identifies the azure image
+	// Image identifies the azure image.
 	Image
 }
 
-// Image identifies the azure image
+// Image identifies the azure image.
 type Image struct {
 	// URN is the uniform resource name of the image, it has the format 'publisher:offer:sku:version'.
 	// +optional
 	URN *string `json:"urn,omitempty"`
-	// ID is the VM image ID
+	// ID is the VM image ID.
 	// +optional
 	ID *string `json:"id,omitempty"`
 	// CommunityGalleryImageID is the Community Image Gallery image id.
@@ -93,9 +93,9 @@ type VmoDependency struct {
 	Name string `json:"name"`
 }
 
-// DiagnosticsProfile specifies boot diagnostic options
+// DiagnosticsProfile specifies boot diagnostic options.
 type DiagnosticsProfile struct {
-	// Enabled configures boot diagnostics to be stored or not
+	// Enabled configures boot diagnostics to be stored or not.
 	Enabled bool `json:"enabled,omitempty"`
 	// StorageURI is the URI of the storage account to use for storing console output and screenshot.
 	// If not specified azure managed storage will be used.
@@ -106,7 +106,7 @@ type DiagnosticsProfile struct {
 type DataVolume struct {
 	// Name is the name of the data volume this configuration applies to.
 	Name string `json:"name"`
-	// ImageRef defines the dataVolume source image
+	// ImageRef defines the dataVolume source image.
 	// +optional
 	ImageRef *Image `json:"imageRef,omitempty"`
 }
