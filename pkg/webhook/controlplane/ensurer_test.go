@@ -644,8 +644,10 @@ func checkKubeAPIServerDeployment(dep *appsv1.Deployment, k8sVersion string) {
 
 	Expect(c.Command).NotTo(ContainElement("--cloud-provider=azure"))
 	Expect(c.Command).NotTo(ContainElement("--cloud-config=/etc/kubernetes/cloudprovider/cloudprovider.conf"))
-	Expect(c.Command).NotTo(test.ContainElementWithPrefixContaining("--enable-admission-plugins=", "PersistentVolumeLabel", ","))
-	Expect(c.Command).To(test.ContainElementWithPrefixContaining("--disable-admission-plugins=", "PersistentVolumeLabel", ","))
+	if !k8sVersionAtLeast131 {
+		Expect(c.Command).NotTo(test.ContainElementWithPrefixContaining("--enable-admission-plugins=", "PersistentVolumeLabel", ","))
+		Expect(c.Command).To(test.ContainElementWithPrefixContaining("--disable-admission-plugins=", "PersistentVolumeLabel", ","))
+	}
 	Expect(c.VolumeMounts).NotTo(ContainElement(cloudProviderConfigVolumeMount))
 	Expect(dep.Spec.Template.Spec.Volumes).NotTo(ContainElement(cloudProviderConfigVolume))
 	Expect(dep.Spec.Template.Annotations).To(BeNil())
