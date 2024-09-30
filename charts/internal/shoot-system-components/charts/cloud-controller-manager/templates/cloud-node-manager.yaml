@@ -95,8 +95,6 @@ spec:
           requests:
             cpu: 50m
             memory: 50Mi
-          limits:
-            cpu: 200m
 
 {{- if .Values.global.vpaEnabled }}
 ---
