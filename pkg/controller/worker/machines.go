@@ -418,14 +418,7 @@ func computeDisks(pool extensionsv1alpha1.WorkerPool, dataVolumesConfig []azurea
 	osDisk := map[string]interface{}{
 		"size": volumeSize,
 	}
-	// In the past the volume type information was not passed to the machineclass.
-	// In consequence the Machine controller manager has created machines always
-	// with the default volume type of the requested machine type. Existing clusters
-	// respectively their worker pools could have an invalid volume configuration
-	// which was not applied. To do not damage existing cluster we will set for
-	// now the volume type only if it's a valid Azure volume type.
-	// Otherwise, we will still use the default volume of the machine type.
-	if pool.Volume.Type != nil && (*pool.Volume.Type == "Standard_LRS" || *pool.Volume.Type == "StandardSSD_LRS" || *pool.Volume.Type == "Premium_LRS") {
+	if pool.Volume != nil && pool.Volume.Type != nil {
 		osDisk["type"] = *pool.Volume.Type
 	}
 
