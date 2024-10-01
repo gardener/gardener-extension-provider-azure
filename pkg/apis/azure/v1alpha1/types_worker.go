@@ -21,6 +21,7 @@ type WorkerConfig struct {
 	NodeTemplate *extensionsv1alpha1.NodeTemplate `json:"nodeTemplate,omitempty"`
 
 	// DiagnosticsProfile specifies boot diagnostic options.
+	// +optional
 	DiagnosticsProfile *DiagnosticsProfile `json:"diagnosticsProfile,omitempty"`
 
 	// DataVolumes contains configuration for the additional disks attached to VMs.
