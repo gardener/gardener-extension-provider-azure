@@ -610,14 +610,14 @@ func (fctx *FlowContext) ensureSubnets(ctx context.Context) (err error) {
 			if actual.ID != nil &&
 				actual.Properties != nil &&
 				actual.Properties.NatGateway != nil &&
-				&actual.Properties.NatGateway.ID != nil {
+				actual.Properties.NatGateway.ID != nil {
 				resourceId, err := arm.ParseResourceID(*actual.Properties.NatGateway.ID)
 				if err != nil {
 					joinErr = errors.Join(joinErr, err)
 					continue
 				}
 				// if this is a user-managed NAT gateway, do nothing. This is checked by looking at the resource group of the NGW.
-				// In case that the NGW belongs to our RG, but it should not exist (z.NatGAteway == nil), we remove the association.
+				// In case that the NGW belongs to our RG, but it should not exist (z.NatGateway == nil), we remove the association.
 				if resourceId.ResourceGroupName == fctx.adapter.ResourceGroupName() {
 					actual.Properties.NatGateway = nil
 				}
