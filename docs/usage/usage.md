@@ -89,7 +89,7 @@ zoned: false
 #  acrAccess: true
 ```
 
-Currently, it's not yet possible to deploy into existing resource groups, but in the future it will.
+Currently, it's not yet possible to deploy into existing resource groups.
 The `.resourceGroup.name` field will allow specifying the name of an already existing resource group that the shoot cluster and all infrastructure resources will be deployed to.
 
 Via the `.zoned` boolean you can tell whether you want to use Azure availability zones or not.
@@ -105,6 +105,7 @@ You can freely choose a private CIDR range.
 * The `networks.vnet.ddosProtectionPlanID` field can be used to specify the id of a ddos protection plan which should be assigned to the VNet. This will only work for a VNet managed by Gardener. For externally managed VNets the ddos protection plan must be assigned by other means.
 * If a vnet name is given and cilium shoot clusters are created without a network overlay within one vnet make sure that the pod CIDR specified in `shoot.spec.networking.pods` is not overlapping with any other pod CIDR used in that vnet.
 Overlapping pod CIDRs will lead to disfunctional shoot clusters.
+* It's possible to place multiple shoot cluster into the same vnet
 
 The `networks.workers` section describes the CIDR for a subnet that is used for all shoot worker nodes, i.e., VMs which later run your applications.
 The specified CIDR range must be contained in the VNet CIDR specified above, or the VNet CIDR of your already existing VNet.
