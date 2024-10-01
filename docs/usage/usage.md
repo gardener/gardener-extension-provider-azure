@@ -356,6 +356,13 @@ nodeTemplate: # (to be specified only if the node capacity would be different fr
 diagnosticsProfile:
   enabled: true
   # storageURI: https://<storage-account-name>.blob.core.windows.net/
+dataVolumes:
+  - name: test-image
+    imageRef:
+      communityGalleryImageID: /CommunityGalleries/gardenlinux-13e998fe-534d-4b0a-8a27-f16a73aef620/Images/gardenlinux/Versions/1443.10.0
+      # sharedGalleryImageID: /SharedGalleries/82fc46df-cc38-4306-9880-504e872cee18-VSMP_MEMORYONE_GALLERY/Images/vSMP_MemoryONE/Versions/1062800168.0.0
+      # id: /Subscriptions/2ebd38b6-270b-48a2-8e0b-2077106dc615/Providers/Microsoft.Compute/Locations/westeurope/Publishers/sap/ArtifactTypes/VMImage/Offers/gardenlinux/Skus/greatest/Versions/1443.10.0
+      # urn: sap:gardenlinux:greatest:1443.10.0
 ```
 
 The `.nodeTemplate` is used to specify resource information of the machine during runtime. This then helps in Scale-from-Zero. 
@@ -367,6 +374,12 @@ Some points to note for this field:
 The `.diagnosticsProfile` is used to enable [machine boot diagnostics](https://learn.microsoft.com/en-us/azure/virtual-machines/boot-diagnostics) (disabled per default).
 A storage account is used for storing vm's boot console output and screenshots.
 If `.diagnosticsProfile.StorageURI` is not specified azure managed storage will be used (recommended way).
+
+The `.dataVolumes` field is used to add provider specific configurations for dataVolumes.
+`.dataVolumes[].name` must match with one of the names in `workers.dataVolumes[].name`.
+To specify an image source for the dataVolume either use `communityGalleryImageID`, `sharedGalleryImageID`, `id` or `urn` as `imageRef`.
+However, users have to make sure that the image really exists, there's yet no check in place.
+If the image does not exist the machine will get stuck in creation.
 
 ## Example `Shoot` manifest (non-zoned)
 
