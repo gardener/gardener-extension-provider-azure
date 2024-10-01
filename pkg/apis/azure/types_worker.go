@@ -54,8 +54,8 @@ type MachineImage struct {
 	Architecture *string
 	// SkipMarketplaceAgreement skips the marketplace agreement check when enabled.
 	SkipMarketplaceAgreement *bool
-	// Image identifies the azure image.
-	Image
+	// ImageRef identifies the azure image.
+	ImageRef Image
 }
 
 // Image identifies the azure image.

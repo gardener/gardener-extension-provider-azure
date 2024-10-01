@@ -826,7 +826,7 @@ func autoConvert_v1alpha1_MachineImage_To_azure_MachineImage(in *MachineImage, o
 	out.AcceleratedNetworking = (*bool)(unsafe.Pointer(in.AcceleratedNetworking))
 	out.Architecture = (*string)(unsafe.Pointer(in.Architecture))
 	out.SkipMarketplaceAgreement = (*bool)(unsafe.Pointer(in.SkipMarketplaceAgreement))
-	if err := Convert_v1alpha1_Image_To_azure_Image(&in.Image, &out.Image, s); err != nil {
+	if err := Convert_v1alpha1_Image_To_azure_Image(&in.ImageRef, &out.ImageRef, s); err != nil {
 		return err
 	}
 	return nil
@@ -843,7 +843,7 @@ func autoConvert_azure_MachineImage_To_v1alpha1_MachineImage(in *azure.MachineIm
 	out.AcceleratedNetworking = (*bool)(unsafe.Pointer(in.AcceleratedNetworking))
 	out.Architecture = (*string)(unsafe.Pointer(in.Architecture))
 	out.SkipMarketplaceAgreement = (*bool)(unsafe.Pointer(in.SkipMarketplaceAgreement))
-	if err := Convert_azure_Image_To_v1alpha1_Image(&in.Image, &out.Image, s); err != nil {
+	if err := Convert_azure_Image_To_v1alpha1_Image(&in.ImageRef, &out.ImageRef, s); err != nil {
 		return err
 	}
 	return nil

@@ -64,8 +64,8 @@ type MachineImage struct {
 	// SkipMarketplaceAgreement skips the marketplace agreement check when enabled.
 	// +optional
 	SkipMarketplaceAgreement *bool `json:"skipMarketplaceAgreement,omitempty"`
-	// Image identifies the azure image.
-	Image
+	// ImageRef identifies the azure image.
+	ImageRef Image `json:",inline"`
 }
 
 // Image identifies the azure image.

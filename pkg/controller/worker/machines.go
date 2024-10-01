@@ -125,26 +125,26 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			AcceleratedNetworking:    machineImage.AcceleratedNetworking,
 			Architecture:             &arch,
 			SkipMarketplaceAgreement: machineImage.SkipMarketplaceAgreement,
-			Image: azureapi.Image{
-				URN:                     machineImage.URN,
-				ID:                      machineImage.ID,
-				CommunityGalleryImageID: machineImage.CommunityGalleryImageID,
-				SharedGalleryImageID:    machineImage.SharedGalleryImageID,
+			ImageRef: azureapi.Image{
+				URN:                     machineImage.ImageRef.URN,
+				ID:                      machineImage.ImageRef.ID,
+				CommunityGalleryImageID: machineImage.ImageRef.CommunityGalleryImageID,
+				SharedGalleryImageID:    machineImage.ImageRef.SharedGalleryImageID,
 			},
 		})
 
 		image := map[string]interface{}{}
-		if machineImage.URN != nil {
-			image["urn"] = *machineImage.URN
+		if machineImage.ImageRef.URN != nil {
+			image["urn"] = *machineImage.ImageRef.URN
 			if ok := ptr.Deref(machineImage.SkipMarketplaceAgreement, false); ok {
 				image["skipMarketplaceAgreement"] = ok
 			}
-		} else if machineImage.CommunityGalleryImageID != nil {
-			image["communityGalleryImageID"] = *machineImage.CommunityGalleryImageID
-		} else if machineImage.SharedGalleryImageID != nil {
-			image["sharedGalleryImageID"] = *machineImage.SharedGalleryImageID
+		} else if machineImage.ImageRef.CommunityGalleryImageID != nil {
+			image["communityGalleryImageID"] = *machineImage.ImageRef.CommunityGalleryImageID
+		} else if machineImage.ImageRef.SharedGalleryImageID != nil {
+			image["sharedGalleryImageID"] = *machineImage.ImageRef.SharedGalleryImageID
 		} else {
-			image["id"] = *machineImage.ID
+			image["id"] = *machineImage.ImageRef.ID
 		}
 
 		workerConfig := azureapi.WorkerConfig{}

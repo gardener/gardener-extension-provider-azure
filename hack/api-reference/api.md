@@ -413,6 +413,7 @@ DiagnosticsProfile
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>DiagnosticsProfile specifies boot diagnostic options.</p>
 </td>
 </tr>
@@ -1203,7 +1204,7 @@ bool
 </tr>
 <tr>
 <td>
-<code>Image</code></br>
+<code>ImageRef</code></br>
 <em>
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.Image">
 Image
@@ -1211,7 +1212,10 @@ Image
 </em>
 </td>
 <td>
-<p>Image identifies the azure image.</p>
+<p>
+(Members of <code>ImageRef</code> are embedded into this type.)
+</p>
+<p>ImageRef identifies the azure image.</p>
 </td>
 </tr>
 </tbody>

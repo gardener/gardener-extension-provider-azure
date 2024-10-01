@@ -515,7 +515,7 @@ func (in *MachineImage) DeepCopyInto(out *MachineImage) {
 		*out = new(bool)
 		**out = **in
 	}
-	in.Image.DeepCopyInto(&out.Image)
+	in.ImageRef.DeepCopyInto(&out.ImageRef)
 	return
 }
 
