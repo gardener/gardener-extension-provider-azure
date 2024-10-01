@@ -122,39 +122,41 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		machineImages = appendMachineImage(machineImages, azureapi.MachineImage{
 			Name:                     pool.MachineImage.Name,
 			Version:                  pool.MachineImage.Version,
-			URN:                      machineImage.URN,
-			ID:                       machineImage.ID,
-			CommunityGalleryImageID:  machineImage.CommunityGalleryImageID,
-			SharedGalleryImageID:     machineImage.SharedGalleryImageID,
 			AcceleratedNetworking:    machineImage.AcceleratedNetworking,
 			Architecture:             &arch,
 			SkipMarketplaceAgreement: machineImage.SkipMarketplaceAgreement,
+			ImageRef: azureapi.Image{
+				URN:                     machineImage.ImageRef.URN,
+				ID:                      machineImage.ImageRef.ID,
+				CommunityGalleryImageID: machineImage.ImageRef.CommunityGalleryImageID,
+				SharedGalleryImageID:    machineImage.ImageRef.SharedGalleryImageID,
+			},
 		})
 
 		image := map[string]interface{}{}
-		if machineImage.URN != nil {
-			image["urn"] = *machineImage.URN
+		if machineImage.ImageRef.URN != nil {
+			image["urn"] = *machineImage.ImageRef.URN
 			if ok := ptr.Deref(machineImage.SkipMarketplaceAgreement, false); ok {
 				image["skipMarketplaceAgreement"] = ok
 			}
-		} else if machineImage.CommunityGalleryImageID != nil {
-			image["communityGalleryImageID"] = *machineImage.CommunityGalleryImageID
-		} else if machineImage.SharedGalleryImageID != nil {
-			image["sharedGalleryImageID"] = *machineImage.SharedGalleryImageID
+		} else if machineImage.ImageRef.CommunityGalleryImageID != nil {
+			image["communityGalleryImageID"] = *machineImage.ImageRef.CommunityGalleryImageID
+		} else if machineImage.ImageRef.SharedGalleryImageID != nil {
+			image["sharedGalleryImageID"] = *machineImage.ImageRef.SharedGalleryImageID
 		} else {
-			image["id"] = *machineImage.ID
+			image["id"] = *machineImage.ImageRef.ID
 		}
 
-		disks, err := computeDisks(pool)
-		if err != nil {
-			return err
-		}
-
-		workerConfig := &azureapi.WorkerConfig{}
+		workerConfig := azureapi.WorkerConfig{}
 		if pool.ProviderConfig != nil && pool.ProviderConfig.Raw != nil {
-			if _, _, err := w.decoder.Decode(pool.ProviderConfig.Raw, nil, workerConfig); err != nil {
+			if _, _, err := w.decoder.Decode(pool.ProviderConfig.Raw, nil, &workerConfig); err != nil {
 				return fmt.Errorf("could not decode provider config: %+v", err)
 			}
+		}
+
+		disks, err := computeDisks(pool, workerConfig.DataVolumes)
+		if err != nil {
+			return err
 		}
 
 		userData, err := worker.FetchUserData(ctx, w.client, w.worker.Namespace, pool)
@@ -310,7 +312,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			return machineDeployment, machineClassSpec
 		}
 
-		workerPoolHash, err := w.generateWorkerPoolHash(pool, *workerConfig, infrastructureStatus, vmoDependency, nil)
+		workerPoolHash, err := w.generateWorkerPoolHash(pool, workerConfig, infrastructureStatus, vmoDependency, nil)
 		if err != nil {
 			return err
 		}
@@ -320,7 +322,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			machineDeployment, machineClassSpec := generateMachineClassAndDeployment(nil, &machineSetInfo{
 				id:   vmoDependency.ID,
 				kind: "vmo",
-			}, nodesSubnet.Name, workerPoolHash, workerConfig)
+			}, nodesSubnet.Name, workerPoolHash, &workerConfig)
 			machineDeployments = append(machineDeployments, machineDeployment)
 			machineClasses = append(machineClasses, machineClassSpec)
 			continue
@@ -340,7 +342,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			machineDeployment, machineClassSpec := generateMachineClassAndDeployment(nil, &machineSetInfo{
 				id:   nodesAvailabilitySet.ID,
 				kind: "availabilityset",
-			}, nodesSubnet.Name, workerPoolHash, workerConfig)
+			}, nodesSubnet.Name, workerPoolHash, &workerConfig)
 			machineDeployments = append(machineDeployments, machineDeployment)
 			machineClasses = append(machineClasses, machineClassSpec)
 			continue
@@ -356,12 +358,12 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				}
 
 				if nodesSubnet.Migrated {
-					workerPoolHash, err = w.generateWorkerPoolHash(pool, *workerConfig, infrastructureStatus, vmoDependency, nil)
+					workerPoolHash, err = w.generateWorkerPoolHash(pool, workerConfig, infrastructureStatus, vmoDependency, nil)
 					if err != nil {
 						return err
 					}
 				} else {
-					workerPoolHash, err = w.generateWorkerPoolHash(pool, *workerConfig, infrastructureStatus, vmoDependency, &nodesSubnet.Name)
+					workerPoolHash, err = w.generateWorkerPoolHash(pool, workerConfig, infrastructureStatus, vmoDependency, &nodesSubnet.Name)
 					if err != nil {
 						return err
 					}
@@ -371,7 +373,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				name:  zone,
 				index: int32(zoneIndex),
 				count: int32(zoneCount),
-			}, nil, nodesSubnet.Name, workerPoolHash, workerConfig)
+			}, nil, nodesSubnet.Name, workerPoolHash, &workerConfig)
 			machineDeployments = append(machineDeployments, machineDeployment)
 			machineClasses = append(machineClasses, machineClassSpec)
 		}
@@ -407,7 +409,7 @@ func (w *workerDelegate) getVMTags(pool extensionsv1alpha1.WorkerPool) map[strin
 	return vmTags
 }
 
-func computeDisks(pool extensionsv1alpha1.WorkerPool) (map[string]interface{}, error) {
+func computeDisks(pool extensionsv1alpha1.WorkerPool, dataVolumesConfig []azureapi.DataVolume) (map[string]interface{}, error) {
 	// handle root disk
 	volumeSize, err := worker.DiskSize(pool.Volume.Size)
 	if err != nil {
@@ -422,7 +424,7 @@ func computeDisks(pool extensionsv1alpha1.WorkerPool) (map[string]interface{}, e
 	// respectively their worker pools could have an invalid volume configuration
 	// which was not applied. To do not damage existing cluster we will set for
 	// now the volume type only if it's a valid Azure volume type.
-	// Otherwise we will still use the default volume of the machine type.
+	// Otherwise, we will still use the default volume of the machine type.
 	if pool.Volume.Type != nil && (*pool.Volume.Type == "Standard_LRS" || *pool.Volume.Type == "StandardSSD_LRS" || *pool.Volume.Type == "Premium_LRS") {
 		osDisk["type"] = *pool.Volume.Type
 	}
@@ -459,6 +461,7 @@ func computeDisks(pool extensionsv1alpha1.WorkerPool) (map[string]interface{}, e
 			if volume.Type != nil {
 				disk["storageAccountType"] = *volume.Type
 			}
+			applyWorkerConfig(volume.Name, disk, dataVolumesConfig)
 			dataDisks = append(dataDisks, disk)
 		}
 
@@ -466,6 +469,23 @@ func computeDisks(pool extensionsv1alpha1.WorkerPool) (map[string]interface{}, e
 	}
 
 	return disks, nil
+}
+
+func applyWorkerConfig(diskName string, dataDisk map[string]interface{}, dataVolumeConfigs []azureapi.DataVolume) {
+	for _, config := range dataVolumeConfigs {
+		imageRef := config.ImageRef
+		if imageRef != nil && config.Name == diskName {
+			if imageRef.URN != nil {
+				dataDisk["imageRef"] = map[string]interface{}{"urn": *imageRef.URN}
+			} else if imageRef.CommunityGalleryImageID != nil {
+				dataDisk["imageRef"] = map[string]interface{}{"communityGalleryImageID": *imageRef.CommunityGalleryImageID}
+			} else if imageRef.SharedGalleryImageID != nil {
+				dataDisk["imageRef"] = map[string]interface{}{"sharedGalleryImageID": *imageRef.SharedGalleryImageID}
+			} else if imageRef.ID != nil {
+				dataDisk["imageRef"] = map[string]interface{}{"id": imageRef.ID}
+			}
+		}
+	}
 }
 
 // SanitizeAzureVMTag will sanitize the tag base on the azure tag Restrictions

@@ -413,7 +413,22 @@ DiagnosticsProfile
 </em>
 </td>
 <td>
-<p>DiagnosticsProfile specifies boot diagnostic options</p>
+<em>(Optional)</em>
+<p>DiagnosticsProfile specifies boot diagnostic options.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dataVolumes</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.DataVolume">
+[]DataVolume
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DataVolumes contains configuration for the additional disks attached to VMs.</p>
 </td>
 </tr>
 </tbody>
@@ -665,6 +680,50 @@ map[string]bool
 </tr>
 </tbody>
 </table>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.DataVolume">DataVolume
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig</a>)
+</p>
+<p>
+<p>DataVolume contains configuration for data volumes attached to VMs.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name is the name of the data volume this configuration applies to.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>imageRef</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.Image">
+Image
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ImageRef defines the dataVolume source image.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.DiagnosticsProfile">DiagnosticsProfile
 </h3>
 <p>
@@ -672,7 +731,7 @@ map[string]bool
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig</a>)
 </p>
 <p>
-<p>DiagnosticsProfile specifies boot diagnostic options</p>
+<p>DiagnosticsProfile specifies boot diagnostic options.</p>
 </p>
 <table>
 <thead>
@@ -690,7 +749,7 @@ bool
 </em>
 </td>
 <td>
-<p>Enabled configures boot diagnostics to be stored or not</p>
+<p>Enabled configures boot diagnostics to be stored or not.</p>
 </td>
 </tr>
 <tr>
@@ -849,6 +908,74 @@ bool
 </td>
 <td>
 <p>ACRAccess specifies if the identity should be used by the Shoot worker nodes to pull from an Azure Container Registry.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.Image">Image
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.DataVolume">DataVolume</a>, 
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.MachineImage">MachineImage</a>)
+</p>
+<p>
+<p>Image identifies the azure image.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>urn</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>URN is the uniform resource name of the image, it has the format &lsquo;publisher:offer:sku:version&rsquo;.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>id</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ID is the VM image ID.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>communityGalleryImageID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CommunityGalleryImageID is the Community Image Gallery image id.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>sharedGalleryImageID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SharedGalleryImageID is the Shared Image Gallery image id.</p>
 </td>
 </tr>
 </tbody>
@@ -1041,54 +1168,6 @@ string
 </tr>
 <tr>
 <td>
-<code>urn</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>URN is the uniform resource name of the image, it has the format &lsquo;publisher:offer:sku:version&rsquo;.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>id</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>ID is the VM image ID</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>communityGalleryImageID</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>CommunityGalleryImageID is the Community Image Gallery image id.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>sharedGalleryImageID</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>SharedGalleryImageID is the Shared Image Gallery image id.</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>acceleratedNetworking</code></br>
 <em>
 bool
@@ -1121,6 +1200,22 @@ bool
 <td>
 <em>(Optional)</em>
 <p>SkipMarketplaceAgreement skips the marketplace agreement check when enabled.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ImageRef</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.Image">
+Image
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ImageRef</code> are embedded into this type.)
+</p>
+<p>ImageRef identifies the azure image.</p>
 </td>
 </tr>
 </tbody>

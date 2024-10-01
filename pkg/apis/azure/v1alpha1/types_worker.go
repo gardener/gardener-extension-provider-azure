@@ -19,8 +19,14 @@ type WorkerConfig struct {
 	// NodeTemplate contains resource information of the machine which is used by Cluster Autoscaler to generate nodeTemplate during scaling a nodeGroup from zero.
 	// +optional
 	NodeTemplate *extensionsv1alpha1.NodeTemplate `json:"nodeTemplate,omitempty"`
-	// DiagnosticsProfile specifies boot diagnostic options
+
+	// DiagnosticsProfile specifies boot diagnostic options.
+	// +optional
 	DiagnosticsProfile *DiagnosticsProfile `json:"diagnosticsProfile,omitempty"`
+
+	// DataVolumes contains configuration for the additional disks attached to VMs.
+	// +optional
+	DataVolumes []DataVolume `json:"dataVolumes,omitempty"`
 }
 
 // +genclient
@@ -49,18 +55,6 @@ type MachineImage struct {
 	Name string `json:"name"`
 	// Version is the logical version of the machine image.
 	Version string `json:"version"`
-	// URN is the uniform resource name of the image, it has the format 'publisher:offer:sku:version'.
-	// +optional
-	URN *string `json:"urn,omitempty"`
-	// ID is the VM image ID
-	// +optional
-	ID *string `json:"id,omitempty"`
-	// CommunityGalleryImageID is the Community Image Gallery image id.
-	// +optional
-	CommunityGalleryImageID *string `json:"communityGalleryImageID,omitempty"`
-	// SharedGalleryImageID is the Shared Image Gallery image id.
-	// +optional
-	SharedGalleryImageID *string `json:"sharedGalleryImageID,omitempty"`
 	// AcceleratedNetworking is an indicator if the image supports Azure accelerated networking.
 	// +optional
 	AcceleratedNetworking *bool `json:"acceleratedNetworking,omitempty"`
@@ -70,6 +64,24 @@ type MachineImage struct {
 	// SkipMarketplaceAgreement skips the marketplace agreement check when enabled.
 	// +optional
 	SkipMarketplaceAgreement *bool `json:"skipMarketplaceAgreement,omitempty"`
+	// ImageRef identifies the azure image.
+	ImageRef Image `json:",inline"`
+}
+
+// Image identifies the azure image.
+type Image struct {
+	// URN is the uniform resource name of the image, it has the format 'publisher:offer:sku:version'.
+	// +optional
+	URN *string `json:"urn,omitempty"`
+	// ID is the VM image ID.
+	// +optional
+	ID *string `json:"id,omitempty"`
+	// CommunityGalleryImageID is the Community Image Gallery image id.
+	// +optional
+	CommunityGalleryImageID *string `json:"communityGalleryImageID,omitempty"`
+	// SharedGalleryImageID is the Shared Image Gallery image id.
+	// +optional
+	SharedGalleryImageID *string `json:"sharedGalleryImageID,omitempty"`
 }
 
 // VmoDependency is dependency reference for a workerpool to a VirtualMachineScaleSet Orchestration Mode VM (VMO).
@@ -82,11 +94,20 @@ type VmoDependency struct {
 	Name string `json:"name"`
 }
 
-// DiagnosticsProfile specifies boot diagnostic options
+// DiagnosticsProfile specifies boot diagnostic options.
 type DiagnosticsProfile struct {
-	// Enabled configures boot diagnostics to be stored or not
+	// Enabled configures boot diagnostics to be stored or not.
 	Enabled bool `json:"enabled,omitempty"`
 	// StorageURI is the URI of the storage account to use for storing console output and screenshot.
 	// If not specified azure managed storage will be used.
 	StorageURI *string `json:"storageURI,omitempty"`
+}
+
+// DataVolume contains configuration for data volumes attached to VMs.
+type DataVolume struct {
+	// Name is the name of the data volume this configuration applies to.
+	Name string `json:"name"`
+	// ImageRef defines the dataVolume source image.
+	// +optional
+	ImageRef *Image `json:"imageRef,omitempty"`
 }
