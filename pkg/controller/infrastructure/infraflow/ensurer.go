@@ -578,13 +578,15 @@ func (fctx *FlowContext) ensureSubnets(ctx context.Context) (err error) {
 		return err
 	}
 
+	// filteredSubnets are the subnets of this shoot. In a shared VNet scenario, it is not guaranteed that all subnets in the VNet belong to a particular shoot.
 	filteredSubnets := Filter(currentSubnets, func(s *armnetwork.Subnet) bool {
 		return fctx.adapter.IsOwnSubnetName(s.Name)
 	})
+	// mappedSubnets maps the unique subnet name to the subnet object.
 	mappedSubnets := ToMap(filteredSubnets, func(s *armnetwork.Subnet) string {
 		return *s.Name
 	})
-
+	// clean the current inventory and rebuild it.
 	for _, name := range fctx.inventory.ByKind(KindSubnet) {
 		if subnet, ok := mappedSubnets[name]; !ok {
 			fctx.inventory.Delete(*subnet.ID)
@@ -594,12 +596,32 @@ func (fctx *FlowContext) ensureSubnets(ctx context.Context) (err error) {
 	zones := fctx.adapter.Zones()
 	for _, z := range zones {
 		actual := z.Subnet.ToProvider(mappedSubnets[z.Subnet.Name])
+
 		rtCfg := fctx.adapter.RouteTableConfig()
-		sgCfg := fctx.adapter.SecurityGroupConfig()
 		actual.Properties.RouteTable = &armnetwork.RouteTable{ID: to.Ptr(GetIdFromTemplate(TemplateRouteTable, fctx.auth.SubscriptionID, rtCfg.ResourceGroup, rtCfg.Name))}
+
+		sgCfg := fctx.adapter.SecurityGroupConfig()
 		actual.Properties.NetworkSecurityGroup = &armnetwork.SecurityGroup{ID: to.Ptr(GetIdFromTemplate(TemplateSecurityGroup, fctx.auth.SubscriptionID, sgCfg.ResourceGroup, sgCfg.Name))}
+
 		if z.NatGateway != nil {
 			actual.Properties.NatGateway = &armnetwork.SubResource{ID: to.Ptr(GetIdFromTemplate(TemplateNatGateway, fctx.auth.SubscriptionID, z.NatGateway.ResourceGroup, z.NatGateway.Name))}
+		} else {
+			// let's allow users to override the NAT Gateway config for a subnet, if that NGW is not managed by gardener.
+			if actual.ID != nil &&
+				actual.Properties != nil &&
+				actual.Properties.NatGateway != nil &&
+				actual.Properties.NatGateway.ID != nil {
+				resourceId, err := arm.ParseResourceID(*actual.Properties.NatGateway.ID)
+				if err != nil {
+					joinErr = errors.Join(joinErr, err)
+					continue
+				}
+				// if this is a user-managed NAT gateway, do nothing. This is checked by looking at the resource group of the NGW.
+				// In case that the NGW belongs to our RG, but it should not exist (z.NatGateway == nil), we remove the association.
+				if resourceId.ResourceGroupName == fctx.adapter.ResourceGroupName() {
+					actual.Properties.NatGateway = nil
+				}
+			}
 		}
 		toReconcile[z.Subnet.Name] = actual
 	}
