@@ -566,10 +566,6 @@ func (s *SubnetConfig) ToProvider(base *armnetwork.Subnet) *armnetwork.Subnet {
 		Name: to.Ptr(s.Name),
 		Properties: &armnetwork.SubnetPropertiesFormat{
 			AddressPrefix: to.Ptr(s.cidr),
-			// will be filled later
-			NatGateway:           nil,
-			NetworkSecurityGroup: nil,
-			RouteTable:           nil,
 		},
 		Etag: nil,
 	}
@@ -582,12 +578,19 @@ func (s *SubnetConfig) ToProvider(base *armnetwork.Subnet) *armnetwork.Subnet {
 	// inherited from base
 	if base != nil {
 		target.ID = base.ID
+
+		// For now, use whatever is already existing in the remote object. We will later overwrite them with what we consider appropriate.
+		target.Properties.NatGateway = base.Properties.NatGateway
+		target.Properties.NetworkSecurityGroup = base.Properties.NetworkSecurityGroup
+		target.Properties.RouteTable = base.Properties.RouteTable
+
 		target.Properties.ServiceEndpointPolicies = base.Properties.ServiceEndpointPolicies
 		target.Properties.PrivateLinkServiceNetworkPolicies = base.Properties.PrivateLinkServiceNetworkPolicies
 
 		target.Properties.PrivateEndpoints = base.Properties.PrivateEndpoints
 		target.Properties.PrivateEndpointNetworkPolicies = base.Properties.PrivateEndpointNetworkPolicies
 		target.Properties.Delegations = base.Properties.Delegations
+
 	}
 
 	return target
