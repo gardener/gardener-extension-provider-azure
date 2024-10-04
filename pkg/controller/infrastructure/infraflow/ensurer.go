@@ -607,6 +607,7 @@ func (fctx *FlowContext) ensureSubnets(ctx context.Context) (err error) {
 			actual.Properties.NatGateway = &armnetwork.SubResource{ID: to.Ptr(GetIdFromTemplate(TemplateNatGateway, fctx.auth.SubscriptionID, z.NatGateway.ResourceGroup, z.NatGateway.Name))}
 		} else {
 			// let's allow users to override the NAT Gateway config for a subnet, if that NGW is not managed by gardener.
+			// It should only apply for existing subnets, hence we also check if actual.ID is not nil.
 			if actual.ID != nil &&
 				actual.Properties != nil &&
 				actual.Properties.NatGateway != nil &&
@@ -667,6 +668,9 @@ func (fctx *FlowContext) ensureSubnets(ctx context.Context) (err error) {
 			continue
 		}
 		fctx.whiteboard.GetChild(KindSubnet.String()).Set(name, *subnet.ID)
+		if subnet.Properties.NatGateway != nil && subnet.Properties.NatGateway.ID != nil {
+			fctx.whiteboard.GetChild(KindSubnet.String()).GetChild(KindNatGateway.String()).Set("id", *subnet.Properties.NatGateway.ID)
+		}
 	}
 
 	return joinErr
@@ -740,14 +744,13 @@ func (fctx *FlowContext) GetInfrastructureStatus(_ context.Context) (*v1alpha1.I
 			Zone:     z.Subnet.zone,
 			Migrated: z.Migrated,
 		}
-		if z.NatGateway != nil {
-			subnet.NatGatewayName = ptr.To(z.NatGateway.Name)
-		}
-		status.Networks.Subnets = append(status.Networks.Subnets, subnet)
-		// if at least one of the "zones" does not have NATGateway enabled, mark the outbound access as OutboundAccessTypeLoadBalancer.
-		if z.NatGateway == nil {
+		subnet.NatGatewayID = fctx.whiteboard.GetChild(KindSubnet.String()).GetChild(KindNatGateway.String()).Get("id")
+		if subnet.NatGatewayID == nil {
+			// if at least one of the "zones" does not have NATGateway enabled, mark the outbound access as OutboundAccessTypeLoadBalancer.
 			outboundAccessType = v1alpha1.OutboundAccessTypeLoadBalancer
 		}
+
+		status.Networks.Subnets = append(status.Networks.Subnets, subnet)
 	}
 	status.Networks.OutboundAccessType = outboundAccessType
 

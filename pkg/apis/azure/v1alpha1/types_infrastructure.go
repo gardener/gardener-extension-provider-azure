@@ -1,4 +1,3 @@
-// SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and Gardener contributors
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -191,9 +190,9 @@ type Subnet struct {
 	// Migrated is set when the network layout is migrated from NetworkLayoutSingleSubnet to NetworkLayoutMultipleSubnet.
 	// Only the subnet that was used prior to the migration should have this attribute set.
 	Migrated bool `json:"migrated,omitempty"`
-	// NatGatewayName is the name of the NATGateway associated with the subnet.
+	// NatGatewayId is the name of the NATGateway associated with the subnet.
 	// +optional
-	NatGatewayName *string `json:"natGatewayName,omitempty"`
+	NatGatewayID *string `json:"natGatewayId,omitempty"`
 }
 
 // AvailabilitySet contains information about the azure availability set

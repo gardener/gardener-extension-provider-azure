@@ -173,7 +173,7 @@ type Subnet struct {
 	Migrated bool
 	// NatGatewayName is the name of the NATGateway associated with the subnet.
 	// +optional
-	NatGatewayName *string
+	NatGatewayID *string
 }
 
 // AvailabilitySet contains information about the azure availability set

@@ -816,8 +816,8 @@ func (in *Subnet) DeepCopyInto(out *Subnet) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.NatGatewayName != nil {
-		in, out := &in.NatGatewayName, &out.NatGatewayName
+	if in.NatGatewayID != nil {
+		in, out := &in.NatGatewayID, &out.NatGatewayID
 		*out = new(string)
 		**out = **in
 	}

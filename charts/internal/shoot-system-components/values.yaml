@@ -3,7 +3,7 @@ allow-egress:
 cloud-controller-manager:
   enabled: true
 csi-driver-node:
-  enabled: false
+  enabled: true
 remedy-controller-azure:
   enabled: true
 

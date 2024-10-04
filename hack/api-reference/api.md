@@ -1955,14 +1955,14 @@ Only the subnet that was used prior to the migration should have this attribute 
 </tr>
 <tr>
 <td>
-<code>natGatewayName</code></br>
+<code>natGatewayId</code></br>
 <em>
 string
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>NatGatewayName is the name of the NATGateway associated with the subnet.</p>
+<p>NatGatewayId is the name of the NATGateway associated with the subnet.</p>
 </td>
 </tr>
 </tbody>
