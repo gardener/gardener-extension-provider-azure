@@ -31,9 +31,9 @@ func SetDefaults_Storage(obj *Storage) {
 	}
 }
 
-// SetDefaults_NetworkStatus set the default networks status options.
-func SetDefaults_NetworkStatus(obj *NetworkStatus) {
-	if obj.OutboundAccessType == "" {
-		obj.OutboundAccessType = OutboundAccessTypeLoadBalancer
+func SetDefaults_OutboundAccessType(obj *OutboundAccessType) {
+	*obj = ptr.Deref(obj, OutboundAccessTypeLoadBalancer)
+	if *obj == "" {
+		*obj = OutboundAccessTypeLoadBalancer
 	}
 }

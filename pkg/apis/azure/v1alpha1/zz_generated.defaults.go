@@ -40,5 +40,5 @@ func SetObjectDefaults_ControlPlaneConfig(in *ControlPlaneConfig) {
 }
 
 func SetObjectDefaults_InfrastructureStatus(in *InfrastructureStatus) {
-	SetDefaults_NetworkStatus(&in.Networks)
+	SetDefaults_OutboundAccessType(&in.Networks.OutboundAccessType)
 }
