@@ -190,7 +190,7 @@ type Subnet struct {
 	// Migrated is set when the network layout is migrated from NetworkLayoutSingleSubnet to NetworkLayoutMultipleSubnet.
 	// Only the subnet that was used prior to the migration should have this attribute set.
 	Migrated bool `json:"migrated,omitempty"`
-	// NatGatewayId is the name of the NATGateway associated with the subnet.
+	// NatGatewayID is the ID of the NATGateway associated with the subnet.
 	// +optional
 	NatGatewayID *string `json:"natGatewayId,omitempty"`
 }

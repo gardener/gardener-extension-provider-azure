@@ -1962,7 +1962,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>NatGatewayId is the name of the NATGateway associated with the subnet.</p>
+<p>NatGatewayID is the ID of the NATGateway associated with the subnet.</p>
 </td>
 </tr>
 </tbody>
