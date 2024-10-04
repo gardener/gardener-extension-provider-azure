@@ -31,6 +31,7 @@ func SetDefaults_Storage(obj *Storage) {
 	}
 }
 
+// SetDefaults_OutboundAccessType sets the default outbound access type.
 func SetDefaults_OutboundAccessType(obj *OutboundAccessType) {
 	*obj = ptr.Deref(obj, OutboundAccessTypeLoadBalancer)
 	if *obj == "" {
