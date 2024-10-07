@@ -133,6 +133,7 @@ var _ = Describe("Actuator", func() {
 				VNet: apiv1alpha1.VNetStatus{
 					Name: "",
 				},
+				OutboundAccessType: apiv1alpha1.OutboundAccessTypeLoadBalancer,
 			},
 			AvailabilitySets: []apiv1alpha1.AvailabilitySet{},
 			RouteTables: []apiv1alpha1.RouteTable{

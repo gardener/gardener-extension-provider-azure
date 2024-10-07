@@ -60,34 +60,38 @@ var _ = Describe("ValuesProvider", func() {
 		_      = apisazure.AddToScheme(scheme)
 		_      = v1alpha1.AddToScheme(scheme)
 
-		infrastructureStatus *apisazure.InfrastructureStatus
+		infrastructureStatus *v1alpha1.InfrastructureStatus
 		controlPlaneConfig   *v1alpha1.ControlPlaneConfig
 		cluster              *extensionscontroller.Cluster
 
 		ControlPlaneChartValues map[string]interface{}
 
-		defaultInfrastructureStatus = &apisazure.InfrastructureStatus{
-			ResourceGroup: apisazure.ResourceGroup{
+		defaultInfrastructureStatus = &v1alpha1.InfrastructureStatus{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: v1alpha1.SchemeGroupVersion.String(),
+				Kind:       "InfrastructureStatus",
+			},
+			ResourceGroup: v1alpha1.ResourceGroup{
 				Name: "rg-abcd1234",
 			},
-			Networks: apisazure.NetworkStatus{
-				VNet: apisazure.VNetStatus{
+			Networks: v1alpha1.NetworkStatus{
+				VNet: v1alpha1.VNetStatus{
 					Name: "vnet-abcd1234",
 				},
-				Subnets: []apisazure.Subnet{
+				Subnets: []v1alpha1.Subnet{
 					{
 						Name:    "subnet-abcd1234-nodes",
 						Purpose: "nodes",
 					},
 				},
 			},
-			SecurityGroups: []apisazure.SecurityGroup{
+			SecurityGroups: []v1alpha1.SecurityGroup{
 				{
 					Purpose: "nodes",
 					Name:    "security-group-name-workers",
 				},
 			},
-			RouteTables: []apisazure.RouteTable{
+			RouteTables: []v1alpha1.RouteTable{
 				{
 					Purpose: "nodes",
 					Name:    "route-table-name",
@@ -125,7 +129,7 @@ var _ = Describe("ValuesProvider", func() {
 
 		// Primary AvailabilitySet
 		primaryAvailabilitySetName = "primary-availability-set"
-		primaryAvailabilitySet     = apisazure.AvailabilitySet{
+		primaryAvailabilitySet     = v1alpha1.AvailabilitySet{
 			Name:    primaryAvailabilitySetName,
 			Purpose: "nodes",
 			ID:      "/my/azure/id",
@@ -235,7 +239,7 @@ var _ = Describe("ValuesProvider", func() {
 				c.EXPECT().Delete(ctx, azureContainerRegistryConfigMap).Return(errorAzureContainerRegistryConfigMapNotFound)
 
 				infrastructureStatus.Zoned = false
-				infrastructureStatus.AvailabilitySets = []apisazure.AvailabilitySet{primaryAvailabilitySet}
+				infrastructureStatus.AvailabilitySets = []v1alpha1.AvailabilitySet{primaryAvailabilitySet}
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 
 				values, err := vp.GetConfigChartValues(ctx, cp, cluster)
@@ -276,7 +280,7 @@ var _ = Describe("ValuesProvider", func() {
 
 			It("should return correct control plane chart values with identity", func() {
 				identityName := "identity-client-id"
-				infrastructureStatus.Identity = &apisazure.IdentityStatus{
+				infrastructureStatus.Identity = &v1alpha1.IdentityStatus{
 					ClientID:  identityName,
 					ACRAccess: true,
 				}
@@ -586,7 +590,7 @@ var _ = Describe("ValuesProvider", func() {
 
 		It("should return correct control plane shoot chart values for cluster with primary availabilityset (non zoned)", func() {
 			infrastructureStatus.Zoned = false
-			infrastructureStatus.AvailabilitySets = []apisazure.AvailabilitySet{primaryAvailabilitySet}
+			infrastructureStatus.AvailabilitySets = []v1alpha1.AvailabilitySet{primaryAvailabilitySet}
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 			csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
 				"webhookConfig": map[string]interface{}{
@@ -608,7 +612,7 @@ var _ = Describe("ValuesProvider", func() {
 
 		It("should return correct control plane shoot chart values for cluster with vmss flex (vmo, non zoned)", func() {
 			infrastructureStatus.Zoned = false
-			infrastructureStatus.AvailabilitySets = []apisazure.AvailabilitySet{}
+			infrastructureStatus.AvailabilitySets = []v1alpha1.AvailabilitySet{}
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 			csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
 				"webhookConfig": map[string]interface{}{
@@ -658,7 +662,7 @@ var _ = Describe("ValuesProvider", func() {
 
 			It("should return correct control plane shoot chart values for a cluster with primary availabilityset (non zoned)", func() {
 				infrastructureStatus.Zoned = false
-				infrastructureStatus.AvailabilitySets = []apisazure.AvailabilitySet{primaryAvailabilitySet}
+				infrastructureStatus.AvailabilitySets = []v1alpha1.AvailabilitySet{primaryAvailabilitySet}
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 				csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
 					"webhookConfig": map[string]interface{}{
@@ -740,7 +744,7 @@ func clientGet(result runtime.Object) interface{} {
 	}
 }
 
-func generateControlPlane(controlPlaneConfig *v1alpha1.ControlPlaneConfig, infrastructureStatus *apisazure.InfrastructureStatus) *extensionsv1alpha1.ControlPlane {
+func generateControlPlane(controlPlaneConfig *v1alpha1.ControlPlaneConfig, infrastructureStatus *v1alpha1.InfrastructureStatus) *extensionsv1alpha1.ControlPlane {
 	return &extensionsv1alpha1.ControlPlane{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "control-plane",

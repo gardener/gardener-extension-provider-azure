@@ -1635,8 +1635,31 @@ NetworkLayout
 <p>Layout describes the network layout of the cluster.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>outboundAccessType</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.OutboundAccessType">
+OutboundAccessType
+</a>
+</em>
+</td>
+<td>
+<p>OutboundAccessType is the type of outbound access configured for the shoot. It indicates how egress traffic flows outside the shoot.</p>
+</td>
+</tr>
 </tbody>
 </table>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.OutboundAccessType">OutboundAccessType
+(<code>string</code> alias)</p></h3>
+<p>
+(<em>Appears on:</em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.NetworkStatus">NetworkStatus</a>)
+</p>
+<p>
+<p>OutboundAccessType is the type of outbound access configured for the shoot. It indicates how egress traffic flows outside the shoot.
+See <a href="https://learn.microsoft.com/en-us/azure/load-balancer/load-balancer-outbound-connections#scenarios">https://learn.microsoft.com/en-us/azure/load-balancer/load-balancer-outbound-connections#scenarios</a></p>
+</p>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.PublicIPReference">PublicIPReference
 </h3>
 <p>
@@ -1928,6 +1951,18 @@ bool
 <td>
 <p>Migrated is set when the network layout is migrated from NetworkLayoutSingleSubnet to NetworkLayoutMultipleSubnet.
 Only the subnet that was used prior to the migration should have this attribute set.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>natGatewayId</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>NatGatewayID is the ID of the NATGateway associated with the subnet.</p>
 </td>
 </tr>
 </tbody>

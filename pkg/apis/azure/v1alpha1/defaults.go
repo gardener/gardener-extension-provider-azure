@@ -30,3 +30,11 @@ func SetDefaults_Storage(obj *Storage) {
 		obj.ManagedDefaultVolumeSnapshotClass = ptr.To(true)
 	}
 }
+
+// SetDefaults_OutboundAccessType sets the default outbound access type.
+func SetDefaults_OutboundAccessType(obj *OutboundAccessType) {
+	*obj = ptr.Deref(obj, OutboundAccessTypeLoadBalancer)
+	if *obj == "" {
+		*obj = OutboundAccessTypeLoadBalancer
+	}
+}
