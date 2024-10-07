@@ -727,7 +727,7 @@ func getControlPlaneShootChartValues(
 		"global": map[string]interface{}{
 			"vpaEnabled": gardencorev1beta1helper.ShootWantsVerticalPodAutoscaler(cluster.Shoot),
 		},
-		// the allow-egress chart is enable in all cases **except**:
+		// the allow-egress chart is enabled in all cases **except**:
 		// - when the shoot is using AVSets due to using basic loadbalancers (see https://github.com/gardener/gardener-extension-provider-azure/issues/1).
 		// - when the outbound connectivity is done via a NATGateway (currently meaning that all worker subnets have a NATGateway attached).
 		azure.AllowEgressName: map[string]interface{}{
