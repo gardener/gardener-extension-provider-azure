@@ -110,7 +110,7 @@ func FindImageFromCloudProfile(cloudProfileConfig *api.CloudProfileConfig, image
 						AcceleratedNetworking:    version.AcceleratedNetworking,
 						Architecture:             version.Architecture,
 						SkipMarketplaceAgreement: version.SkipMarketplaceAgreement,
-						ImageRef: api.Image{
+						Image: api.Image{
 							URN:                     version.URN,
 							ID:                      version.ID,
 							SharedGalleryImageID:    version.SharedGalleryImageID,
