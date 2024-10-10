@@ -1204,7 +1204,7 @@ bool
 </tr>
 <tr>
 <td>
-<code>ImageRef</code></br>
+<code>Image</code></br>
 <em>
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.Image">
 Image
@@ -1213,9 +1213,9 @@ Image
 </td>
 <td>
 <p>
-(Members of <code>ImageRef</code> are embedded into this type.)
+(Members of <code>Image</code> are embedded into this type.)
 </p>
-<p>ImageRef identifies the azure image.</p>
+<p>Image identifies the azure image.</p>
 </td>
 </tr>
 </tbody>
