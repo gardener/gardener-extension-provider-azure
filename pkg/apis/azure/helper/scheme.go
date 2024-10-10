@@ -5,6 +5,7 @@
 package helper
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
@@ -118,11 +119,35 @@ func DNSRecordConfigFromDNSRecord(dnsRecord *extensionsv1alpha1.DNSRecord) (api.
 	return dnsRecordConfig, nil
 }
 
+// HasFlowState returns true if the group version of the State field in the provided
+// `extensionsv1alpha1.InfrastructureStatus` is azure.provider.extensions.gardener.cloud/v1alpha1.
+func HasFlowState(status extensionsv1alpha1.InfrastructureStatus) (bool, error) {
+	if status.State == nil {
+		return false, nil
+	}
+
+	flowState := runtime.TypeMeta{}
+	stateJson, err := status.State.MarshalJSON()
+	if err != nil {
+		return false, err
+	}
+
+	if err := json.Unmarshal(stateJson, &flowState); err != nil {
+		return false, err
+	}
+
+	if flowState.GroupVersionKind().GroupVersion() == apiv1alpha1.SchemeGroupVersion {
+		return true, nil
+	}
+
+	return false, nil
+}
+
 // InfrastructureStateFromRaw extracts the state from the Infrastructure. If no state was available, it returns a "zero" value InfrastructureState object.
 func InfrastructureStateFromRaw(raw *runtime.RawExtension) (*api.InfrastructureState, error) {
 	state := &api.InfrastructureState{}
 	if raw != nil && raw.Raw != nil {
-		if _, _, err := lenientDecoder.Decode(raw.Raw, nil, state); err != nil {
+		if _, _, err := decoder.Decode(raw.Raw, nil, state); err != nil {
 			return nil, err
 		}
 	}
