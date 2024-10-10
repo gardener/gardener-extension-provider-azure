@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/backupbucket"
 	"github.com/gardener/gardener/extensions/pkg/util"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -17,12 +18,13 @@ import (
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
+	azuretypes "github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
 
 var (
 	// DefaultBlobStorageClient is the default function to get a backupbucket client. Can be overridden for tests.
-	DefaultBlobStorageClient = azureclient.NewBlobStorageClientFromSecretRef
+	DefaultBlobStorageClient = azureclient.NewBlobStorageClientFromSecret
 )
 
 type actuator struct {
@@ -58,6 +60,16 @@ func (a *actuator) Reconcile(ctx context.Context, _ logr.Logger, backupBucket *e
 		return err
 	}
 
+	bucketCloudConfiguration, err := azureclient.CloudConfiguration(backupConfig.CloudConfiguration, &backupBucket.Spec.Region)
+	if err != nil {
+		return err
+	}
+
+	storageDomain, err := azureclient.BlobStorageDomainFromCloudConfiguration(bucketCloudConfiguration)
+	if err != nil {
+		return fmt.Errorf("failed to determine blob storage service domain: %w", err)
+	}
+
 	// If the generated secret in the backupbucket status not exists that means
 	// no backupbucket exists and it need to be created.
 	if backupBucket.Status.GeneratedSecretRef == nil {
@@ -65,26 +77,45 @@ func (a *actuator) Reconcile(ctx context.Context, _ logr.Logger, backupBucket *e
 		if err != nil {
 			return util.DetermineError(err, helper.KnownCodes)
 		}
-
-		bucketCloudConfiguration, err := azureclient.CloudConfiguration(backupConfig.CloudConfiguration, &backupBucket.Spec.Region)
-		if err != nil {
-			return err
-		}
-
-		storageDomain, err := azureclient.BlobStorageDomainFromCloudConfiguration(bucketCloudConfiguration)
-		if err != nil {
-			return fmt.Errorf("failed to determine blob storage service domain: %w", err)
-		}
 		// Create the generated backupbucket secret.
 		if err := a.createBackupBucketGeneratedSecret(ctx, backupBucket, storageAccountName, storageAccountKey, storageDomain); err != nil {
 			return util.DetermineError(err, helper.KnownCodes)
 		}
 	}
 
-	blobStorageClient, err := DefaultBlobStorageClient(ctx, a.client, backupBucket.Status.GeneratedSecretRef)
+	backupSecret, err := extensionscontroller.GetSecretByReference(ctx, a.client, backupBucket.Status.GeneratedSecretRef)
+	if err != nil {
+		return err
+	}
+
+	blobStorageClient, err := DefaultBlobStorageClient(ctx, a.client, backupSecret)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}
+
+	doRotation, err := shouldBeRotated(*backupSecret)
+	if err != nil {
+		return err
+	}
+
+	if doRotation {
+		newKey, err := rotateStorageAccountCredentials(ctx, factory, backupBucket, string(backupSecret.Data[azuretypes.StorageKey]))
+		if err != nil {
+			return err
+		}
+		oldSecretRef := backupBucket.Status.GeneratedSecretRef
+		// Generate new secret
+		if err := a.createBackupBucketGeneratedSecret(ctx, backupBucket, getStorageAccountName(backupBucket), newKey, storageDomain); err != nil {
+			return util.DetermineError(err, helper.KnownCodes)
+		}
+		// Clean up old secret
+		err = a.deleteBackupBucketGeneratedSecretByRef(ctx, oldSecretRef)
+		if err != nil {
+			// TODO: Is this worth erroring out? Warning might suffice, there is only one leftover soon-to-be-outdated secret
+			return err
+		}
+	}
+
 	return util.DetermineError(blobStorageClient.CreateContainerIfNotExists(ctx, backupBucket.Name), helper.KnownCodes)
 }
 
@@ -126,7 +157,7 @@ func (a *actuator) delete(ctx context.Context, _ logr.Logger, backupBucket *exte
 
 	if secret != nil {
 		// Get a storage account client to delete the backup container in the storage account.
-		storageClient, err := DefaultBlobStorageClient(ctx, a.client, backupBucket.Status.GeneratedSecretRef)
+		storageClient, err := DefaultBlobStorageClient(ctx, a.client, secret)
 		if err != nil {
 			return err
 		}
