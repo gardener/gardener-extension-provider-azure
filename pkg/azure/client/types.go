@@ -140,6 +140,7 @@ type VirtualNetwork interface {
 type StorageAccount interface {
 	CreateStorageAccount(context.Context, string, string, string) error
 	ListStorageAccountKey(context.Context, string, string) (string, error)
+	RotateKey(context.Context, string, string, string) (string, error)
 }
 
 // DNSZone represents an Azure DNS zone k8sClient.

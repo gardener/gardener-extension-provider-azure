@@ -7,8 +7,10 @@ package backupbucket
 import (
 	"context"
 	"fmt"
+	"time"
 
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"github.com/gardener/gardener/pkg/utils"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,9 +21,10 @@ import (
 )
 
 func (a *actuator) createBackupBucketGeneratedSecret(ctx context.Context, backupBucket *extensionsv1alpha1.BackupBucket, storageAccountName, storageKey, storageDomain string) error {
+	timestampHash := utils.ComputeSHA256Hex([]byte(time.Now().Format(time.RFC3339)))[:4]
 	var generatedSecret = &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("generated-bucket-%s", backupBucket.Name),
+			Name:      fmt.Sprintf("generated-bucket-%s-%s", backupBucket.Name, timestampHash),
 			Namespace: "garden",
 		},
 	}
@@ -50,7 +53,15 @@ func (a *actuator) deleteBackupBucketGeneratedSecret(ctx context.Context, backup
 	if backupBucket.Status.GeneratedSecretRef == nil {
 		return nil
 	}
-	return kutil.DeleteSecretByReference(ctx, a.client, backupBucket.Status.GeneratedSecretRef)
+	return a.deleteBackupBucketGeneratedSecretByRef(ctx, backupBucket.Status.GeneratedSecretRef)
+}
+
+// deleteBackupBucketGeneratedSecretByRef deletes generated the secret pointed to by the provided secretRef.
+func (a *actuator) deleteBackupBucketGeneratedSecretByRef(ctx context.Context, secretRef *corev1.SecretReference) error {
+	if secretRef == nil {
+		return fmt.Errorf("passed secret ref must not be nil")
+	}
+	return kutil.DeleteSecretByReference(ctx, a.client, secretRef)
 }
 
 // getBackupBucketGeneratedSecret get generated secret referred by core BackupBucket resource in garden.
@@ -63,4 +74,8 @@ func (a *actuator) getBackupBucketGeneratedSecret(ctx context.Context, backupBuc
 		return nil, client.IgnoreNotFound(err)
 	}
 	return secret, nil
+}
+
+func shouldBeRotated(secret corev1.Secret) (bool, error) {
+	return secret.CreationTimestamp.Time.Before(time.Now().AddDate(0, 0, -14)), nil
 }

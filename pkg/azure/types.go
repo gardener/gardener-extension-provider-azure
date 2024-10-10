@@ -147,6 +147,10 @@ const (
 	SeedAnnotationKeyUseFlow = AnnotationKeyUseFlow
 	// SeedAnnotationUseFlowValueNew is the value to restrict flow reconciliation to new shoot clusters
 	SeedAnnotationUseFlowValueNew = "new"
+
+	// AnnotationSecretPossiblyOutdated is an annotation we set on BackupBucket secrets before rotating them to signal
+	// that these secrets might be outdated (in case of an error during automated rotation/cleanup).
+	AnnotationSecretPossiblyOutdated = "azure.provider.extensions.gardener.cloud/possibly-outdated"
 )
 
 // UsernamePrefix is a constant for the username prefix of components deployed by Azure.
