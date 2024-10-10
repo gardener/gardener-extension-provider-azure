@@ -16,11 +16,12 @@ import (
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
 
+func getStorageAccountName(backupBucket *extensionsv1alpha1.BackupBucket) string {
+	return fmt.Sprintf("bkp%s", utils.ComputeSHA256Hex([]byte(backupBucket.Name))[:15])
+}
+
 func ensureBackupBucket(ctx context.Context, factory azureclient.Factory, backupBucket *extensionsv1alpha1.BackupBucket) (string, string, error) {
-	var (
-		backupBucketNameSha = utils.ComputeSHA256Hex([]byte(backupBucket.Name))
-		storageAccountName  = fmt.Sprintf("bkp%s", backupBucketNameSha[:15])
-	)
+	storageAccountName := getStorageAccountName(backupBucket)
 
 	// Get resource group client to ensure resource group to host backup storage account exists.
 	groupClient, err := factory.Group()
@@ -42,11 +43,29 @@ func ensureBackupBucket(ctx context.Context, factory azureclient.Factory, backup
 		return "", "", err
 	}
 
-	// Get the key of the storage account.
+	// Get a key of the storage account. We simply use the first one for new storage accounts (later rotations may change the "current" one).
 	storageAccountKey, err := storageAccountClient.ListStorageAccountKey(ctx, backupBucket.Name, storageAccountName)
 	if err != nil {
 		return "", "", err
 	}
 
 	return storageAccountName, storageAccountKey, nil
+}
+
+func rotateStorageAccountCredentials(
+	ctx context.Context,
+	factory azureclient.Factory,
+	backupBucket *extensionsv1alpha1.BackupBucket,
+	storageAccountKey string,
+) (string, error) {
+	var (
+		resourceGroupName   = backupBucket.Name
+		backupBucketNameSha = utils.ComputeSHA256Hex([]byte(backupBucket.Name))
+		storageAccountName  = fmt.Sprintf("bkp%s", backupBucketNameSha[:15])
+	)
+	storageAccountClient, err := factory.StorageAccount()
+	if err != nil {
+		return "", err
+	}
+	return storageAccountClient.RotateKey(ctx, resourceGroupName, storageAccountName, storageAccountKey)
 }
