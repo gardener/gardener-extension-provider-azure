@@ -187,15 +187,15 @@ infrastructureConfig:
     zones:
       - name: 3
         cidr: 10.250.0.0/19 # note the preservation of the 'workers' CIDR
-# optionally add other zones 
-    # - name: 2  
+# optionally add other zones
+    # - name: 2
     #   cidr: 10.250.32.0/19
     #   natGateway:
     #     enabled: true
   zoned: true
 ```
 
-Another more advanced example with user-provided public IP addresses for the NAT Gateway and how it can be migrated: 
+Another more advanced example with user-provided public IP addresses for the NAT Gateway and how it can be migrated:
 
 ```yaml
 infrastructureConfig:
@@ -240,8 +240,8 @@ infrastructureConfig:
             - name: pip2
               resourceGroup: group
               zone: 1
-# optionally add other zones 
-#     - name: 2  
+# optionally add other zones
+#     - name: 2
 #       cidr: 10.250.32.0/19
 #       natGateway:
 #         enabled: true
@@ -314,7 +314,7 @@ The `cloudControllerManager.featureGates` contains a map of explicitly enabled o
 For production usage it's not recommend to use this field at all as you can enable alpha features or disable beta/stable features, potentially impacting the cluster stability.
 If you don't want to configure anything for the `cloudControllerManager` simply omit the key in the YAML specification.
 
-`storage` contains options for storage-related control plane component. 
+`storage` contains options for storage-related control plane component.
 `storage.managedDefaultStorageClass` is enabled by default and will deploy a `storageClass` and mark it as a default (via the `storageclass.kubernetes.io/is-default-class` annotation)
 `storage.managedDefaultVolumeSnapshotClass` is enabled by default and will deploy a `volumeSnapshotClass` and mark it as a default (via the `snapshot.storage.kubernetes.io/is-default-classs` annotation)
 In case you want to manage your own default `storageClass` or `volumeSnapshotClass` you need to disable the respective options above, otherwise reconciliation of the controlplane may fail.
@@ -366,7 +366,7 @@ dataVolumes:
       # urn: sap:gardenlinux:greatest:1443.10.0
 ```
 
-The `.nodeTemplate` is used to specify resource information of the machine during runtime. This then helps in Scale-from-Zero. 
+The `.nodeTemplate` is used to specify resource information of the machine during runtime. This then helps in Scale-from-Zero.
 Some points to note for this field:
 - Currently only cpu, gpu and memory are configurable.
 - a change in the value lead to a rolling update of the machine in the worker pool
