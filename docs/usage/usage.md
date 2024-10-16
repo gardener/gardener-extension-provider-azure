@@ -597,6 +597,25 @@ The prerequisites are that the cluster must be zoned, and the used machine type 
 `Availability Set` based shoot clusters will not be enabled for accelerated networking even if the machine type and operating system support it, this is necessary because all machines from the availability set must be scheduled on special hardware, more daitls can be found [here](https://github.com/MicrosoftDocs/azure-docs/issues/10536).
 Supported machine types are listed in the CloudProfile in `.spec.providerConfig.machineTypes[].acceleratedNetworking` and the supported operating system image versions are defined in `.spec.providerConfig.machineImages[].versions[].acceleratedNetworking`.
 
+### Support for other Azure instances
+
+The provider extension can be configured to connect to Azure instances other than the public one by providing additional configuration in the CloudProfile:
+```yaml
+spec:
+  …
+  providerConfig:
+    apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+    kind: CloudProfileConfig
+    cloudConfiguration:
+      name: AzurePublic # AzurePublic | AzureGovernment | AzureChina
+    machineTypes:
+      …
+    …
+  …
+```
+If no configuration is specified the extension will default to the public instance.
+Azure instances other than `AzurePublic`, `AzureGovernment`, or `AzureChina` are not supported at this time.
+
 ### Preview: Shoot clusters with VMSS Flexible Orchestration (VMSS Flex/VMO)
 
 The machines of an Azure cluster can be created while being attached to an [Azure Virtual Machine ScaleSet with flexible orchestraion](https://docs.microsoft.com/en-us/azure/virtual-machine-scale-sets/virtual-machine-scale-sets-orchestration-modes#scale-sets-with-flexible-orchestration).
