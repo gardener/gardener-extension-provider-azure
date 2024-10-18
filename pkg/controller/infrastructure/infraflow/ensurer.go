@@ -20,6 +20,7 @@ import (
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
+	azuretypes "github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow/shared"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
@@ -784,6 +785,13 @@ func (fctx *FlowContext) GetInfrastructureState() *runtime.RawExtension {
 		ManagedItems: fctx.inventory.ToList(),
 	}
 
+	if migratedZone, ok := fctx.infra.Annotations[azuretypes.NetworkLayoutZoneMigrationAnnotation]; ok {
+		if state.Data == nil {
+			state.Data = make(map[string]string)
+		}
+		state.Data[azuretypes.NetworkLayoutZoneMigrationAnnotation] = migratedZone
+	}
+
 	return &runtime.RawExtension{
 		Object: state,
 	}
@@ -801,17 +809,6 @@ func (fctx *FlowContext) GetEgressIpCidrs() []string {
 			cidrs = append(cidrs, address+"/32")
 		}
 		return cidrs
-	}
-	return nil
-}
-
-func (fctx *FlowContext) enrichStatusWithIdentity(_ context.Context, status *v1alpha1.InfrastructureStatus) error {
-	if identity := fctx.cfg.Identity; identity != nil {
-		status.Identity = &v1alpha1.IdentityStatus{
-			ID:        *fctx.whiteboard.Get(KeyManagedIdentityId),
-			ClientID:  *fctx.whiteboard.Get(KeyManagedIdentityClientId),
-			ACRAccess: identity.ACRAccess != nil && *identity.ACRAccess,
-		}
 	}
 	return nil
 }
