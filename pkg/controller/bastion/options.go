@@ -13,6 +13,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
 	"github.com/Azure/go-autorest/autorest/to"
+	extensionsbastion "github.com/gardener/gardener/extensions/pkg/bastion"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -78,7 +79,7 @@ func DetermineOptions(bastion *extensionsv1alpha1.Bastion, cluster *controller.C
 		"Type": to.StringPtr("gardenctl"),
 	}
 
-	vmDetails, err := DetermineVmDetails(cluster.CloudProfile.Spec)
+	machineSpec, err := extensionsbastion.GetMachineSpecFromCloudProfile(cluster.CloudProfile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to determine VM details for bastion host: %w", err)
 	}
@@ -88,7 +89,7 @@ func DetermineOptions(bastion *extensionsv1alpha1.Bastion, cluster *controller.C
 		return nil, fmt.Errorf("failed to extract cloud provider config from cluster: %w", err)
 	}
 
-	imageRef, err := getProviderSpecificImage(cloudProfileConfig.MachineImages, vmDetails)
+	imageRef, err := getProviderSpecificImage(cloudProfileConfig.MachineImages, machineSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract image from provider config: %w", err)
 	}
@@ -105,7 +106,7 @@ func DetermineOptions(bastion *extensionsv1alpha1.Bastion, cluster *controller.C
 		NicName:             NicResourceName(baseResourceName),
 		Tags:                tags,
 		SecurityGroupName:   NSGName(clusterName),
-		MachineType:         vmDetails.MachineName,
+		MachineType:         machineSpec.MachineTypeName,
 		ImageRef:            imageRef,
 	}, nil
 }
@@ -152,8 +153,8 @@ func ingressPermissions(bastion *extensionsv1alpha1.Bastion) ([]string, error) {
 	return cidrs, nil
 }
 
-// getProviderSpecificImage returns the provider specific MachineImageVersion that matches with the given VmDetails
-func getProviderSpecificImage(images []azure.MachineImages, vm VmDetails) (*armcompute.ImageReference, error) {
+// getProviderSpecificImage returns the provider specific MachineImageVersion that matches with the given MachineSpec
+func getProviderSpecificImage(images []azure.MachineImages, vm extensionsbastion.MachineSpec) (*armcompute.ImageReference, error) {
 	imageIndex := slices.IndexFunc(images, func(image azure.MachineImages) bool {
 		return strings.EqualFold(image.Name, vm.ImageBaseName)
 	})

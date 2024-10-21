@@ -10,6 +10,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
 	"github.com/Azure/go-autorest/autorest/to"
+	extensionsbastion "github.com/gardener/gardener/extensions/pkg/bastion"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
@@ -320,11 +321,11 @@ var _ = Describe("Bastion test", func() {
 	})
 
 	Describe("#getProviderSpecificImage", func() {
-		var desiredVM = VmDetails{
-			MachineName:   "machineName",
-			Architecture:  "amd64",
-			ImageBaseName: "gardenlinux",
-			ImageVersion:  "1.2.3",
+		var desiredVM = extensionsbastion.MachineSpec{
+			MachineTypeName: "machineName",
+			Architecture:    "amd64",
+			ImageBaseName:   "gardenlinux",
+			ImageVersion:    "1.2.3",
 		}
 
 		It("should succeed for existing communityGallery image", func() {
