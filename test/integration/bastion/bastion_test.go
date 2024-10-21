@@ -20,9 +20,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
-	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/go-autorest/autorest/adal"
-	azureRest "github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -37,6 +34,7 @@ import (
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
@@ -55,10 +53,13 @@ import (
 	. "github.com/gardener/gardener-extension-provider-azure/test/integration/bastion"
 )
 
-var VNetCIDR = "10.250.0.0/16"
-var workersSubnetCIDR = "10.250.0.0/16"
-var userDataConst = "IyEvYmluL2Jhc2ggLWV1CmlkIGdhcmRlbmVyIHx8IHVzZXJhZGQgZ2FyZGVuZXIgLW1VCm1rZGlyIC1wIC9ob21lL2dhcmRlbmVyLy5zc2gKZWNobyAic3NoLXJzYSBBQUFBQjNOemFDMXljMkVBQUFBREFRQUJBQUFCQVFDazYyeDZrN2orc0lkWG9TN25ITzRrRmM3R0wzU0E2UmtMNEt4VmE5MUQ5RmxhcmtoRzFpeU85WGNNQzZqYnh4SzN3aWt0M3kwVTBkR2h0cFl6Vjh3YmV3Z3RLMWJBWnl1QXJMaUhqbnJnTFVTRDBQazNvWGh6RkpKN0MvRkxNY0tJZFN5bG4vMENKVkVscENIZlU5Y3dqQlVUeHdVQ2pnVXRSYjdZWHN6N1Y5dllIVkdJKzRLaURCd3JzOWtVaTc3QWMyRHQ1UzBJcit5dGN4b0p0bU5tMWgxTjNnNzdlbU8rWXhtWEo4MzFXOThoVFVTeFljTjNXRkhZejR5MWhrRDB2WHE1R1ZXUUtUQ3NzRE1wcnJtN0FjQTBCcVRsQ0xWdWl3dXVmTEJLWGhuRHZRUEQrQ2Jhbk03bUZXRXdLV0xXelZHME45Z1VVMXE1T3hhMzhvODUgbWVAbWFjIiA+IC9ob21lL2dhcmRlbmVyLy5zc2gvYXV0aG9yaXplZF9rZXlzCmNob3duIGdhcmRlbmVyOmdhcmRlbmVyIC9ob21lL2dhcmRlbmVyLy5zc2gvYXV0aG9yaXplZF9rZXlzCmVjaG8gImdhcmRlbmVyIEFMTD0oQUxMKSBOT1BBU1NXRDpBTEwiID4vZXRjL3N1ZG9lcnMuZC85OS1nYXJkZW5lci11c2VyCg=="
-var myPublicIP = ""
+const (
+	CommunityGalleryImageID = "/CommunityGalleries/gardenlinux-13e998fe-534d-4b0a-8a27-f16a73aef620/Images/gardenlinux/Versions/1443.10.0"
+	machineType             = "Standard_B1s"
+	VNetCIDR                = "10.250.0.0/16"
+	workersSubnetCIDR       = "10.250.0.0/16"
+	userData                = "#!/bin/bash\n\nsystemctl start ssh"
+)
 
 var (
 	clientId       = flag.String("client-id", "", "Azure client ID")
@@ -148,18 +149,6 @@ func newAzureClientSet(subscriptionId, tenantId, clientId, clientSecret string) 
 	}, nil
 }
 
-func getAuthorizer(tenantId, clientId, clientSecret string) (autorest.Authorizer, error) {
-	oauthConfig, err := adal.NewOAuthConfig(azureRest.PublicCloud.ActiveDirectoryEndpoint, tenantId)
-	if err != nil {
-		return nil, err
-	}
-	spToken, err := adal.NewServicePrincipalToken(*oauthConfig, clientId, clientSecret, azureRest.PublicCloud.ResourceManagerEndpoint)
-	if err != nil {
-		return nil, err
-	}
-	return autorest.NewBearerAuthorizer(spToken), nil
-}
-
 var (
 	ctx = context.Background()
 	log logr.Logger
@@ -178,6 +167,7 @@ var (
 	name       string
 	vNetName   string
 	subnetName string
+	myPublicIP = ""
 )
 
 var _ = BeforeSuite(func() {
@@ -519,7 +509,7 @@ func createBastion(cluster *controller.Cluster, name string) (*extensionsv1alpha
 			DefaultSpec: extensionsv1alpha1.DefaultSpec{
 				Type: azure.Type,
 			},
-			UserData: []byte(userDataConst),
+			UserData: []byte(userData),
 			Ingress: []extensionsv1alpha1.BastionIngressPolicy{
 				{IPBlock: networkingv1.IPBlock{
 					CIDR: myPublicIP,
@@ -578,7 +568,7 @@ func createInfrastructureConfig() *azurev1alpha1.InfrastructureConfig {
 			Kind:       "InfrastructureConfig",
 		},
 		Networks: azurev1alpha1.NetworkConfig{
-			Workers: &workersSubnetCIDR,
+			Workers: ptr.To(workersSubnetCIDR),
 		},
 	}
 }
@@ -605,10 +595,41 @@ func createShoot(infrastructureConfig []byte) *gardencorev1beta1.Shoot {
 }
 
 func createCloudProfile() *gardencorev1beta1.CloudProfile {
+	profileConfig := &apisazure.CloudProfileConfig{MachineImages: []apisazure.MachineImages{{
+		Name: "gardenlinux",
+		Versions: []apisazure.MachineImageVersion{{
+			Version:                 "1443.10.0",
+			CommunityGalleryImageID: ptr.To(CommunityGalleryImageID),
+			Architecture:            ptr.To("amd64"),
+		}},
+	}}}
+
+	profileConfigData, err := json.Marshal(profileConfig)
+	Expect(err).NotTo(HaveOccurred())
+
 	cloudProfile := &gardencorev1beta1.CloudProfile{
 		Spec: gardencorev1beta1.CloudProfileSpec{
 			Regions: []gardencorev1beta1.Region{
 				{Name: *region},
+			},
+			MachineTypes: []gardencorev1beta1.MachineType{{
+				CPU:          resource.MustParse("1"),
+				Name:         machineType,
+				Architecture: ptr.To("amd64"),
+			}},
+			MachineImages: []gardencorev1beta1.MachineImage{{
+				Name: "gardenlinux",
+				Versions: []gardencorev1beta1.MachineImageVersion{
+					{
+						ExpirableVersion: gardencorev1beta1.ExpirableVersion{
+							Version:        "1443.10.0",
+							Classification: ptr.To(gardencorev1beta1.ClassificationSupported),
+						},
+						Architectures: []string{"amd64", "arm64"},
+					}},
+			}},
+			ProviderConfig: &runtime.RawExtension{
+				Raw: profileConfigData,
 			},
 		},
 	}
@@ -753,5 +774,5 @@ func verifyCreation(ctx context.Context, az *azureClientSet, options *bastionctr
 
 	By("checking userData matches the constant")
 	// userdata ssh-public-key validation
-	Expect(*vm.Properties.UserData).To(Equal(base64.StdEncoding.EncodeToString([]byte(userDataConst))))
+	Expect(*vm.Properties.UserData).To(Equal(base64.StdEncoding.EncodeToString([]byte(userData))))
 }
