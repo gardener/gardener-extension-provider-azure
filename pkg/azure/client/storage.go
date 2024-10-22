@@ -65,12 +65,8 @@ func NewBlobStorageClient(_ context.Context, storageAccountName, storageAccountK
 	return &BlobStorageClient{blobclient}, err
 }
 
-// NewBlobStorageClientFromSecretRef creates a client for an Azure Blob storage by reading auth information from secret reference.
-func NewBlobStorageClientFromSecretRef(ctx context.Context, client client.Client, secretRef *corev1.SecretReference) (*BlobStorageClient, error) {
-	secret, err := extensionscontroller.GetSecretByReference(ctx, client, secretRef)
-	if err != nil {
-		return nil, err
-	}
+// NewBlobStorageClientFromSecret creates a client for an Azure Blob storage by reading auth information from a secret.
+func NewBlobStorageClientFromSecret(ctx context.Context, secret *corev1.Secret) (*BlobStorageClient, error) {
 	storageAccountName, ok := secret.Data[azure.StorageAccount]
 	if !ok {
 		return nil, fmt.Errorf("secret %s/%s doesn't have a storage account", secret.Namespace, secret.Name)
@@ -87,6 +83,15 @@ func NewBlobStorageClientFromSecretRef(ctx context.Context, client client.Client
 	}
 
 	return NewBlobStorageClient(ctx, string(storageAccountName), string(storageAccountKey), storageDomain)
+}
+
+// NewBlobStorageClientFromSecretRef creates a client for an Azure Blob storage by reading auth information from secret reference.
+func NewBlobStorageClientFromSecretRef(ctx context.Context, client client.Client, secretRef *corev1.SecretReference) (*BlobStorageClient, error) {
+	secret, err := extensionscontroller.GetSecretByReference(ctx, client, secretRef)
+	if err != nil {
+		return nil, err
+	}
+	return NewBlobStorageClientFromSecret(ctx, secret)
 }
 
 // DeleteObjectsWithPrefix deletes the blob objects with the specific <prefix> from <container>.
