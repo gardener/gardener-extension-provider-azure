@@ -117,6 +117,9 @@ spec:
         - --volume-name-prefix=pv-{{ .Release.Namespace }}
         - --default-fstype=ext4
         - --extra-create-metadata=true
+        {{- if ((.Values.csiProvisioner).featureGates) }}
+        - --feature-gates={{ range $feature, $enabled := .Values.csiProvisioner.featureGates }}{{ $feature }}={{ $enabled }},{{ end }}
+        {{- end }}
         - --v=5
         env:
         - name: ADDRESS
@@ -192,6 +195,9 @@ spec:
         - --leader-election-namespace=kube-system
         - --v=5
         - --handle-volume-inuse-error=false
+        {{- if ((.Values.csiResizer).featureGates) }}
+        - --feature-gates={{ range $feature, $enabled := .Values.csiResizer.featureGates }}{{ $feature }}={{ $enabled }},{{ end }}
+        {{- end }}
         env:
         - name: ADDRESS
           value: {{ .Values.socketPath }}/csi.sock
