@@ -182,6 +182,28 @@ var _ = Describe("Shoot validator", func() {
 				Expect(err).To(MatchError("wrong object type *v1.Pod"))
 			})
 
+			It("should return err when networking is configured to use dual-stack", func() {
+				c.EXPECT().Get(ctx, cloudProfileKey, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
+				shoot.Spec.Networking.IPFamilies = []core.IPFamily{core.IPFamilyIPv4, core.IPFamilyIPv6}
+
+				err := shootValidator.Validate(ctx, shoot, nil)
+				Expect(err).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeInvalid),
+					"Field": Equal("spec.networking.ipFamilies"),
+				}))))
+			})
+
+			It("should return err when networking is configured to use IPv6-only", func() {
+				c.EXPECT().Get(ctx, cloudProfileKey, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
+				shoot.Spec.Networking.IPFamilies = []core.IPFamily{core.IPFamilyIPv6}
+
+				err := shootValidator.Validate(ctx, shoot, nil)
+				Expect(err).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeInvalid),
+					"Field": Equal("spec.networking.ipFamilies"),
+				}))))
+			})
+
 			It("should return err when infrastructureConfig is nil", func() {
 				c.EXPECT().Get(ctx, cloudProfileKey, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
 				shoot.Spec.Provider.InfrastructureConfig = nil
