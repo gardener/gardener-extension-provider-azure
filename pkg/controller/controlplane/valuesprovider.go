@@ -23,6 +23,7 @@ import (
 	secretutils "github.com/gardener/gardener/pkg/utils/secrets"
 	secretsmanager "github.com/gardener/gardener/pkg/utils/secrets/manager"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	"golang.org/x/mod/semver"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -647,6 +648,21 @@ func getCSIControllerChartValues(
 			},
 			"topologyAwareRoutingEnabled": gardencorev1beta1helper.IsTopologyAwareRoutingForShootControlPlaneEnabled(cluster.Seed, cluster.Shoot),
 		},
+	}
+
+	if semver.Compare(cluster.Shoot.Spec.Kubernetes.Version, "1.30.0") >= 1 {
+		if _, ok := cluster.Shoot.Annotations[azure.AnnotationEnableVolumeAttributesClass]; ok {
+			values["csiResizer"] = map[string]interface{}{
+				"featureGates": map[string]string{
+					"VolumeAttributesClass": "true",
+				},
+			}
+			values["csiProvisioner"] = map[string]interface{}{
+				"featureGates": map[string]string{
+					"VolumeAttributesClass": "true",
+				},
+			}
+		}
 	}
 
 	if azureapihelper.IsVmoRequired(infraStatus) {
