@@ -30,8 +30,8 @@ const (
 )
 
 // TerraformerEnvVars computes the Terraformer environment variables from the given secret reference.
-func TerraformerEnvVars(secretRef corev1.SecretReference) []corev1.EnvVar {
-	return []corev1.EnvVar{{
+func TerraformerEnvVars(secretRef corev1.SecretReference, useWorkloadIdentity bool) []corev1.EnvVar {
+	envVars := []corev1.EnvVar{{
 		Name: TerraformVarSubscriptionID,
 		ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
 			LocalObjectReference: corev1.LocalObjectReference{
@@ -55,15 +55,24 @@ func TerraformerEnvVars(secretRef corev1.SecretReference) []corev1.EnvVar {
 			},
 			Key: azure.ClientIDKey,
 		}},
-	}, {
-		Name: TerraformVarClientSecret,
-		ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
-			LocalObjectReference: corev1.LocalObjectReference{
-				Name: secretRef.Name,
-			},
-			Key: azure.ClientSecretKey,
-		}},
 	}}
+
+	if !useWorkloadIdentity {
+		envVars = append(
+			envVars,
+			corev1.EnvVar{
+				Name: TerraformVarClientSecret,
+				ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: secretRef.Name,
+					},
+					Key: azure.ClientSecretKey,
+				}},
+			},
+		)
+	}
+
+	return envVars
 }
 
 var (
@@ -104,6 +113,7 @@ func defaultNewTerraformerWithAuth(
 	purpose string,
 	infra *extensionsv1alpha1.Infrastructure,
 	disableProjectedTokenMount bool,
+	useWorkloadIdentity bool,
 ) (
 	terraformer.Terraformer,
 	error,
@@ -113,5 +123,5 @@ func defaultNewTerraformerWithAuth(
 		return nil, err
 	}
 
-	return tf.SetEnvVars(TerraformerEnvVars(infra.Spec.SecretRef)...), nil
+	return tf.SetEnvVars(TerraformerEnvVars(infra.Spec.SecretRef, useWorkloadIdentity)...), nil
 }

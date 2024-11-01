@@ -137,18 +137,26 @@ var _ = Describe("Terraform", func() {
 			}
 
 			expectedValues = map[string]interface{}{
-				"azure":         expectedAzureValues,
-				"create":        expectedCreateValues,
-				"resourceGroup": expectedResourceGroupValues,
-				"identity":      expectedIdentityValues,
-				"clusterName":   infra.Namespace,
-				"networks":      expectedNetworksValues,
-				"outputKeys":    expectedOutputKeysValues,
+				"azure":               expectedAzureValues,
+				"create":              expectedCreateValues,
+				"resourceGroup":       expectedResourceGroupValues,
+				"identity":            expectedIdentityValues,
+				"clusterName":         infra.Namespace,
+				"networks":            expectedNetworksValues,
+				"outputKeys":          expectedOutputKeysValues,
+				"useWorkloadIdentity": false,
 			}
 		})
 
 		It("should correctly compute the terraformer chart values for a zoned cluster", func() {
-			values, err := ComputeTerraformerTemplateValues(infra, config, cluster)
+			values, err := ComputeTerraformerTemplateValues(infra, config, cluster, false)
+			Expect(err).To(Not(HaveOccurred()))
+			Expect(values).To(BeEquivalentTo(expectedValues))
+		})
+
+		It("should correctly compute the terraformer chart values for a zoned cluster when workload identity is enabled", func() {
+			expectedValues["useWorkloadIdentity"] = true
+			values, err := ComputeTerraformerTemplateValues(infra, config, cluster, true)
 			Expect(err).To(Not(HaveOccurred()))
 			Expect(values).To(BeEquivalentTo(expectedValues))
 		})
@@ -167,7 +175,7 @@ var _ = Describe("Terraform", func() {
 				expectedOutputKeysValues["countFaultDomains"] = TerraformerOutputKeyCountFaultDomains
 				expectedOutputKeysValues["countUpdateDomains"] = TerraformerOutputKeyCountUpdateDomains
 
-				values, err := ComputeTerraformerTemplateValues(infra, config, cluster)
+				values, err := ComputeTerraformerTemplateValues(infra, config, cluster, false)
 				Expect(err).To(Not(HaveOccurred()))
 				Expect(values).To(BeEquivalentTo(expectedValues))
 			})
@@ -204,7 +212,7 @@ var _ = Describe("Terraform", func() {
 					},
 				}
 
-				values, err := ComputeTerraformerTemplateValues(infra, config, cluster)
+				values, err := ComputeTerraformerTemplateValues(infra, config, cluster, false)
 				Expect(err).To(Not(HaveOccurred()))
 				Expect(values).To(BeEquivalentTo(expectedValues))
 			})
@@ -219,7 +227,7 @@ var _ = Describe("Terraform", func() {
 			})
 
 			It("should correctly compute the terraformer chart values", func() {
-				values, err := ComputeTerraformerTemplateValues(infra, config, cluster)
+				values, err := ComputeTerraformerTemplateValues(infra, config, cluster, false)
 				Expect(err).To(Not(HaveOccurred()))
 				Expect(values).To(BeEquivalentTo(expectedValues))
 			})
@@ -242,7 +250,7 @@ var _ = Describe("Terraform", func() {
 					},
 				}
 
-				values, err := ComputeTerraformerTemplateValues(infra, config, cluster)
+				values, err := ComputeTerraformerTemplateValues(infra, config, cluster, false)
 				Expect(err).To(Not(HaveOccurred()))
 				Expect(values).To(BeEquivalentTo(expectedValues))
 			})
@@ -272,7 +280,7 @@ var _ = Describe("Terraform", func() {
 					},
 				}
 
-				_, err = ComputeTerraformerTemplateValues(infra, config, cluster)
+				_, err = ComputeTerraformerTemplateValues(infra, config, cluster, false)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("cannot use vmss orchestration mode VM (VMO) as this cluster already used an availability set"))
 			})
@@ -296,7 +304,7 @@ var _ = Describe("Terraform", func() {
 			expectedOutputKeysValues["vnetName"] = TerraformerOutputKeyVNetName
 			expectedOutputKeysValues["vnetResourceGroup"] = TerraformerOutputKeyVNetResourceGroup
 
-			values, err := ComputeTerraformerTemplateValues(infra, config, cluster)
+			values, err := ComputeTerraformerTemplateValues(infra, config, cluster, false)
 			Expect(err).To(Not(HaveOccurred()))
 			Expect(values).To(BeEquivalentTo(expectedValues))
 		})
@@ -305,7 +313,7 @@ var _ = Describe("Terraform", func() {
 			serviceEndpointList := []string{testServiceEndpoint}
 			config.Networks.ServiceEndpoints = serviceEndpointList
 			expectedSubnetValues["serviceEndpoints"] = serviceEndpointList
-			values, err := ComputeTerraformerTemplateValues(infra, config, cluster)
+			values, err := ComputeTerraformerTemplateValues(infra, config, cluster, false)
 			Expect(err).To(Not(HaveOccurred()))
 			Expect(values).To(BeEquivalentTo(expectedValues))
 		})
@@ -328,7 +336,7 @@ var _ = Describe("Terraform", func() {
 			expectedOutputKeysValues["identityID"] = TerraformerOutputKeyIdentityID
 			expectedOutputKeysValues["identityClientID"] = TerraformerOutputKeyIdentityClientID
 
-			values, err := ComputeTerraformerTemplateValues(infra, config, cluster)
+			values, err := ComputeTerraformerTemplateValues(infra, config, cluster, false)
 			Expect(err).To(Not(HaveOccurred()))
 			Expect(values).To(BeEquivalentTo(expectedValues))
 		})
@@ -344,7 +352,7 @@ var _ = Describe("Terraform", func() {
 				"ddosProtectionPlanID": ddosProtectionPlanID,
 			}
 
-			values, err := ComputeTerraformerTemplateValues(infra, config, cluster)
+			values, err := ComputeTerraformerTemplateValues(infra, config, cluster, false)
 			Expect(err).To(Not(HaveOccurred()))
 			Expect(values).To(BeEquivalentTo(expectedValues))
 		})
@@ -355,7 +363,7 @@ var _ = Describe("Terraform", func() {
 					Enabled: true,
 				}
 				expectedNatGatewayValues["enabled"] = true
-				values, err := ComputeTerraformerTemplateValues(infra, config, cluster)
+				values, err := ComputeTerraformerTemplateValues(infra, config, cluster, false)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(BeEquivalentTo(expectedValues))
 			})
@@ -368,7 +376,7 @@ var _ = Describe("Terraform", func() {
 				}
 				expectedNatGatewayValues["enabled"] = true
 				expectedNatGatewayValues["idleConnectionTimeoutMinutes"] = timeout
-				values, err := ComputeTerraformerTemplateValues(infra, config, cluster)
+				values, err := ComputeTerraformerTemplateValues(infra, config, cluster, false)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(BeEquivalentTo(expectedValues))
 			})
@@ -380,7 +388,7 @@ var _ = Describe("Terraform", func() {
 				}
 				expectedNatGatewayValues["enabled"] = true
 				expectedNatGatewayValues["zone"] = int32(1)
-				values, err := ComputeTerraformerTemplateValues(infra, config, cluster)
+				values, err := ComputeTerraformerTemplateValues(infra, config, cluster, false)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(BeEquivalentTo(expectedValues))
 			})
@@ -407,7 +415,7 @@ var _ = Describe("Terraform", func() {
 					"resourceGroup": ipResourceGroup,
 				}}
 
-				values, err := ComputeTerraformerTemplateValues(infra, config, cluster)
+				values, err := ComputeTerraformerTemplateValues(infra, config, cluster, false)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(BeEquivalentTo(expectedValues))
 			})
@@ -459,7 +467,7 @@ var _ = Describe("Terraform", func() {
 				})
 
 				It("should correctly compute terraform chart with zones", func() {
-					values, err := ComputeTerraformerTemplateValues(infra, config, cluster)
+					values, err := ComputeTerraformerTemplateValues(infra, config, cluster, false)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(values).To(BeEquivalentTo(expectedValues))
 				})
@@ -506,7 +514,7 @@ var _ = Describe("Terraform", func() {
 						},
 					}
 
-					values, err := ComputeTerraformerTemplateValues(infra, config, cluster)
+					values, err := ComputeTerraformerTemplateValues(infra, config, cluster, false)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(values).To(BeEquivalentTo(expectedValues))
 				})
