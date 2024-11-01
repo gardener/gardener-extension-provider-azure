@@ -16,4 +16,5 @@ variable "CLIENT_ID" {
 variable "CLIENT_SECRET" {
   description = "Azure client secret of technical user"
   type        = string
+  default     = ""
 }

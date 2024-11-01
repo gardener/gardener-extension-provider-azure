@@ -235,7 +235,7 @@ var _ = Describe("Actuator", func() {
 			tf.EXPECT().IsStateEmpty(ctx).Return(false)
 			tf.EXPECT().InitializeWith(ctx, gomock.Any()).Return(tf)
 
-			envVars := internal.TerraformerEnvVars(infra.Spec.SecretRef)
+			envVars := internal.TerraformerEnvVars(infra.Spec.SecretRef, false)
 			tf.EXPECT().SetEnvVars(envVars).Return(tf)
 			tf.EXPECT().Destroy(ctx)
 			err := a.Delete(ctx, log, infra, cluster)
@@ -300,7 +300,7 @@ var _ = Describe("Actuator", func() {
 			tf.EXPECT().EnsureCleanedUp(ctx)
 			tf.EXPECT().IsStateEmpty(ctx).Return(false)
 			tf.EXPECT().InitializeWith(ctx, gomock.Any()).Return(tf)
-			envVars := internal.TerraformerEnvVars(infra.Spec.SecretRef)
+			envVars := internal.TerraformerEnvVars(infra.Spec.SecretRef, false)
 			tf.EXPECT().SetEnvVars(envVars).Return(tf)
 			tf.EXPECT().Destroy(ctx).Return(errors.New("could not destroy terraform"))
 			err := a.Delete(ctx, log, infra, cluster)
