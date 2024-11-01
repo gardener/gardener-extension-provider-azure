@@ -577,11 +577,64 @@ var _ = Describe("Ensurer", func() {
 		})
 
 		It("should inject the sidecar container", func() {
+			secret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "cloudprovider",
+					Namespace: deployment.Namespace,
+				},
+			}
+			c.EXPECT().Get(ctx, client.ObjectKeyFromObject(secret), secret).DoAndReturn(clientGet(secret))
 			Expect(deployment.Spec.Template.Spec.Containers).To(BeEmpty())
 			Expect(ensurer.EnsureMachineControllerManagerDeployment(context.TODO(), nil, deployment, nil)).To(BeNil())
 			expectedContainer := machinecontrollermanager.ProviderSidecarContainer(deployment.Namespace, "provider-azure", "foo:bar")
 			expectedContainer.Args = append(expectedContainer.Args, "--machine-pv-reattach-timeout=150s")
 			Expect(deployment.Spec.Template.Spec.Containers).To(ConsistOf(expectedContainer))
+		})
+
+		It("should inject the sidecar container and mount the workload identity token volume", func() {
+			secret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "cloudprovider",
+					Namespace: deployment.Namespace,
+				},
+			}
+			returnedSecret := secret.DeepCopy()
+			returnedSecret.Labels = map[string]string{
+				"security.gardener.cloud/purpose": "workload-identity-token-requestor",
+			}
+			c.EXPECT().Get(ctx, client.ObjectKeyFromObject(secret), secret).DoAndReturn(clientGet(returnedSecret))
+			Expect(deployment.Spec.Template.Spec.Containers).To(BeEmpty())
+			Expect(ensurer.EnsureMachineControllerManagerDeployment(context.TODO(), nil, deployment, nil)).To(BeNil())
+			expectedContainer := machinecontrollermanager.ProviderSidecarContainer(deployment.Namespace, "provider-azure", "foo:bar")
+			expectedContainer.VolumeMounts = append(expectedContainer.VolumeMounts, corev1.VolumeMount{
+				Name:      "workload-identity",
+				MountPath: "/var/run/secrets/gardener.cloud/workload-identity",
+			})
+
+			expectedContainer.Args = append(expectedContainer.Args, "--machine-pv-reattach-timeout=150s")
+			Expect(deployment.Spec.Template.Spec.Containers).To(ConsistOf(expectedContainer))
+			Expect(deployment.Spec.Template.Spec.Volumes).To(ConsistOf(corev1.Volume{
+				Name: "workload-identity",
+				VolumeSource: corev1.VolumeSource{
+					Projected: &corev1.ProjectedVolumeSource{
+						Sources: []corev1.VolumeProjection{
+							{
+								Secret: &corev1.SecretProjection{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: v1beta1constants.SecretNameCloudProvider,
+									},
+									Items: []corev1.KeyToPath{
+										{
+											Key:  "token",
+											Path: "token",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			}))
 		})
 	})
 
