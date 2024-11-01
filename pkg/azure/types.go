@@ -157,7 +157,7 @@ const (
 	// CCMLegacyServiceTagKey is the legacy service key applied for public IP tags.
 	CCMLegacyServiceTagKey = "service"
 
-	// WorkloadIdentityMountPath is the path where the workload identity token and GCP config file are usually mounted.
+	// WorkloadIdentityMountPath is the path where the workload identity token is usually mounted.
 	WorkloadIdentityMountPath = "/var/run/secrets/gardener.cloud/workload-identity"
 	// WorkloadIdentityTokenFileKey is the key indicating the full path to the workload identity token file.
 	WorkloadIdentityTokenFileKey = "workloadIdentityTokenFile"

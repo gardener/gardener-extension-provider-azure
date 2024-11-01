@@ -8,11 +8,11 @@ import (
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	apisgcp "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 )
 
 // ValidateWorkloadIdentityConfig checks whether the given workload identity configuration contains expected fields and values.
-func ValidateWorkloadIdentityConfig(config *apisgcp.WorkloadIdentityConfig, fldPath *field.Path) field.ErrorList {
+func ValidateWorkloadIdentityConfig(config *apisazure.WorkloadIdentityConfig, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if len(config.ClientID) == 0 {
@@ -41,7 +41,7 @@ func ValidateWorkloadIdentityConfig(config *apisgcp.WorkloadIdentityConfig, fldP
 }
 
 // ValidateWorkloadIdentityConfigUpdate validates updates on WorkloadIdentityConfig object.
-func ValidateWorkloadIdentityConfigUpdate(oldConfig, newConfig *apisgcp.WorkloadIdentityConfig, fldPath *field.Path) field.ErrorList {
+func ValidateWorkloadIdentityConfigUpdate(oldConfig, newConfig *apisazure.WorkloadIdentityConfig, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.SubscriptionID, oldConfig.SubscriptionID, fldPath.Child("subscriptionID"))...)
 	allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.TenantID, oldConfig.TenantID, fldPath.Child("tenantID"))...)
