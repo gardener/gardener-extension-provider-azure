@@ -66,7 +66,7 @@ func NewClientAuthDataFromSecret(secret *corev1.Secret, allowDNSKeys bool) (*Cli
 			SubscriptionID: string(secret.Data[azure.SubscriptionIDKey]),
 			TenantID:       string(secret.Data[azure.TenantIDKey]),
 			ClientID:       string(secret.Data[azure.ClientIDKey]),
-			TokenRetriever: func(ctx context.Context) (string, error) {
+			TokenRetriever: func(_ context.Context) (string, error) {
 				return string(secret.Data[securityv1alpha1constants.DataKeyToken]), nil
 			},
 		}, nil
