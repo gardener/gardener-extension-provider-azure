@@ -49,6 +49,52 @@ If no managed service principal can be assigned then the next operation on the S
 > [!WARNING]
 > The managed service principal need to be assigned to the users Azure subscription with proper permissions before using it.
 
+### Azure Workload Identity Federation
+
+Users can choose to trust Gardener's Workload Identity Issuer and eliminate the need for providing Azure credentials.
+
+As a first step a resource of type `WorkloadIdentity` should be created in the Garden cluster and configured with the required Azure information.
+This identity will be used by infrastructure components to authenticate against Azure APIs.
+A sample of such resource is shown below:
+
+```yaml
+apiVersion: security.gardener.cloud/v1alpha1
+kind: WorkloadIdentity
+metadata:
+  name: azure
+  namespace: garden-myproj
+spec:
+  audiences:
+  # This is the audience that you configure during the creation of a federated credential
+  - api://AzureADTokenExchange-my-application
+  targetSystem:
+    type: azure
+    providerConfig:
+      apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+      kind: WorkloadIdentityConfig
+      clientID: 00000000-0000-0000-0000-000000000001 # This is the id of the application (client)
+      tenantID: 00000000-0000-0000-0000-000000000002 # This is the id of the directory (tenant)
+      subscriptionID: 00000000-0000-0000-0000-000000000003 # This is the id of the Azure subscription
+```
+
+Once created the `WorkloadIdentity` will get its own id which will be used to form the subject of the said `WorkloadIdentity`.
+The subject can be obtained by running the following command:
+
+```bash
+kubectl -n garden-myproj get wi azure -o=jsonpath={.status.sub}
+```
+
+As a second step users should configure [Workload Identity Federation](https://learn.microsoft.com/en-us/entra/workload-id/workload-identity-federation-create-trust?pivots=identity-wif-apps-methods-azp#other-identity-providers) so that their application trusts Gardener's Workload Identity Issuer.
+In the shown example a `WorkloadIdentity` with name `azure` with id `00000000-0000-0000-0000-000000000000` from the `garden-myproj` namespace will be trusted by the Azure application.
+
+> [!IMPORTANT]
+> You should replace the subject indentifier in the example below with the subject that is populated in the status of the `WorkloadIdentity`, obtained in a previous step.
+
+![Federated Credential](images/federated_credential.png)
+
+Please ensure that the Azure application (spn) has the proper [IAM actions](azure-permissions.md) assigned.
+If no fine-grained permissions/actions required then simply assign the [Contributor](https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#contributor) role.
+
 ## `InfrastructureConfig`
 
 The infrastructure configuration mainly describes how the network layout looks like in order to create the shoot worker nodes in a later step, thus, prepares everything relevant to create VMs, load balancers, volumes, etc.
