@@ -9,8 +9,6 @@ import (
 	"errors"
 	"fmt"
 
-	azureapi "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	azureapiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"github.com/gardener/gardener/pkg/apis/security"
@@ -25,6 +23,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/admission/validator"
+	azureapi "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	azureapiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 

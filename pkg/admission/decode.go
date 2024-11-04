@@ -5,9 +5,10 @@
 package admission
 
 import (
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener/extensions/pkg/util"
 	"k8s.io/apimachinery/pkg/runtime"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 )
 
 // DecodeWorkloadIdentityConfig decodes the `WorkloadIdentityConfig` from the given `RawExtension`.
