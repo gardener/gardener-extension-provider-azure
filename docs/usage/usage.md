@@ -31,7 +31,8 @@ data:
   tenantID: base64(tenant-id)
 ```
 
-> [!WARNING] Depending on your API usage it can be problematic to reuse the same Service Principal for different Shoot clusters due to rate limits.
+> [!WARNING]
+> Depending on your API usage it can be problematic to reuse the same Service Principal for different Shoot clusters due to rate limits.
 > Please consider spreading your Shoots over Service Principals from different Azure subscriptions if you are hitting those limits.
 
 ### Managed Service Principals
@@ -292,7 +293,8 @@ $ cat new-infra.json
 kubectl patch --type="json" --patch-file new-infra.json shoot <my-shoot>
 ```
 
-> [!WARNING] The migration to shoots with dedicated subnets per zone is a one-way process. Reverting the shoot to the previous configuration is not supported.
+> [!WARNING]
+> The migration to shoots with dedicated subnets per zone is a one-way process. Reverting the shoot to the previous configuration is not supported.
 > During the migration a subset of the nodes will be rolled to the new subnets.
 
 ## `ControlPlaneConfig`
