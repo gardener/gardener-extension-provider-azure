@@ -31,8 +31,8 @@ data:
   tenantID: base64(tenant-id)
 ```
 
-⚠️ Depending on your API usage it can be problematic to reuse the same Service Principal for different Shoot clusters due to rate limits.
-Please consider spreading your Shoots over Service Principals from different Azure subscriptions if you are hitting those limits.
+> [!WARNING] Depending on your API usage it can be problematic to reuse the same Service Principal for different Shoot clusters due to rate limits.
+> Please consider spreading your Shoots over Service Principals from different Azure subscriptions if you are hitting those limits.
 
 ### Managed Service Principals
 
@@ -45,7 +45,8 @@ Removing those fields from the secret of an existing Shoot will also let it adop
 Based on the `tenantID` field, the Gardener extension will try to assign the managed service principal to the Shoot.
 If no managed service principal can be assigned then the next operation on the Shoot will fail.
 
-⚠️ The managed service principal need to be assigned to the users Azure subscription with proper permissions before using it.
+> [!WARNING]
+> The managed service principal need to be assigned to the users Azure subscription with proper permissions before using it.
 
 ## `InfrastructureConfig`
 
@@ -291,9 +292,8 @@ $ cat new-infra.json
 kubectl patch --type="json" --patch-file new-infra.json shoot <my-shoot>
 ```
 
-:warning: The migration to shoots with dedicated subnets per zone is a one-way process. Reverting the shoot to the previous configuration is not supported.
-
-:warning: During the migration a subset of the nodes will be rolled to the new subnets.
+> [!WARNING] The migration to shoots with dedicated subnets per zone is a one-way process. Reverting the shoot to the previous configuration is not supported.
+> During the migration a subset of the nodes will be rolled to the new subnets.
 
 ## `ControlPlaneConfig`
 
