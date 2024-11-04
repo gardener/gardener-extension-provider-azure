@@ -21,11 +21,6 @@ import (
 
 var _ = Describe("WorkloadIdentity validator", func() {
 	Describe("#Validate", func() {
-		const (
-			namespace = "garden-dev"
-			name      = "my-provider-account"
-		)
-
 		var (
 			workloadIdentityValidator extensionswebhook.Validator
 			workloadIdentity          *securityv1alpha1.WorkloadIdentity
@@ -56,6 +51,11 @@ subscriptionID: "33333c4e-db61-17fa-a141-ed39b34aa561"
 			Expect(azureapiv1alpha1.AddToScheme(scheme)).To(Succeed())
 
 			workloadIdentityValidator = validator.NewWorkloadIdentityValidator(serializer.NewCodecFactory(scheme, serializer.EnableStrict).UniversalDecoder())
+		})
+
+		It("should skip validation if workload identity is not of type 'gcp'", func() {
+			workloadIdentity.Spec.TargetSystem.Type = "foo"
+			Expect(workloadIdentityValidator.Validate(ctx, workloadIdentity, nil)).To(Succeed())
 		})
 
 		It("should successfully validate the creation of a workload identity", func() {
