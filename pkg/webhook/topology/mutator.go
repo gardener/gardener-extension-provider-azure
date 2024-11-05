@@ -24,14 +24,14 @@ type handler struct {
 	log      logr.Logger
 	region   string
 	provider string
-	decoder  *admission.Decoder
+	decoder  admission.Decoder
 }
 
 // New initializes a new topology handler that is responsible for adjusting the node affinity of pods.
 // The LabelTopologyZone label that Azure CCM adds to nodes does not contain only the zone as it appears in Azure API
 // calls but also the region like "$region-$zone". When only "$zone" is present for the LabelTopologyZone selector key
 // this handler will adapt it to match the format that is used by the CCM labels.
-func New(decoder *admission.Decoder, log logr.Logger, opts AddOptions) *handler {
+func New(decoder admission.Decoder, log logr.Logger, opts AddOptions) *handler {
 	return &handler{
 		decoder:  decoder,
 		log:      log,

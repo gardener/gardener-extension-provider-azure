@@ -10,6 +10,7 @@ import (
 	"github.com/gardener/gardener/pkg/apis/resources/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -61,7 +62,7 @@ func AddToManagerWithOpts(mgr manager.Manager, options AddOptions) (*extensionsw
 		Path:     webhookPath,
 		Target:   extensionswebhook.TargetSeed,
 		Types:    types,
-		Webhook:  &admission.Webhook{Handler: New(admission.NewDecoder(mgr.GetScheme()), logger, options), RecoverPanic: true},
+		Webhook:  &admission.Webhook{Handler: New(admission.NewDecoder(mgr.GetScheme()), logger, options), RecoverPanic: ptr.To(true)},
 		NamespaceSelector: &metav1.LabelSelector{
 			MatchExpressions: []metav1.LabelSelectorRequirement{
 				{

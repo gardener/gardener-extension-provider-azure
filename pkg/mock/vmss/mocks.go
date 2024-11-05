@@ -21,6 +21,7 @@ import (
 type MockVmss struct {
 	ctrl     *gomock.Controller
 	recorder *MockVmssMockRecorder
+	isgomock struct{}
 }
 
 // MockVmssMockRecorder is the mock recorder for MockVmss.
@@ -41,60 +42,60 @@ func (m *MockVmss) EXPECT() *MockVmssMockRecorder {
 }
 
 // CreateOrUpdate mocks base method.
-func (m *MockVmss) CreateOrUpdate(arg0 context.Context, arg1, arg2 string, arg3 armcompute.VirtualMachineScaleSet) (*armcompute.VirtualMachineScaleSet, error) {
+func (m *MockVmss) CreateOrUpdate(ctx context.Context, resourceGroupName, resourceName string, resourceParam armcompute.VirtualMachineScaleSet) (*armcompute.VirtualMachineScaleSet, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateOrUpdate", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "CreateOrUpdate", ctx, resourceGroupName, resourceName, resourceParam)
 	ret0, _ := ret[0].(*armcompute.VirtualMachineScaleSet)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateOrUpdate indicates an expected call of CreateOrUpdate.
-func (mr *MockVmssMockRecorder) CreateOrUpdate(arg0, arg1, arg2, arg3 any) *gomock.Call {
+func (mr *MockVmssMockRecorder) CreateOrUpdate(ctx, resourceGroupName, resourceName, resourceParam any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdate", reflect.TypeOf((*MockVmss)(nil).CreateOrUpdate), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdate", reflect.TypeOf((*MockVmss)(nil).CreateOrUpdate), ctx, resourceGroupName, resourceName, resourceParam)
 }
 
 // Delete mocks base method.
-func (m *MockVmss) Delete(arg0 context.Context, arg1, arg2 string, arg3 *bool) error {
+func (m *MockVmss) Delete(ctx context.Context, resourceGroupName, resourceName string, opts *bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Delete", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "Delete", ctx, resourceGroupName, resourceName, opts)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Delete indicates an expected call of Delete.
-func (mr *MockVmssMockRecorder) Delete(arg0, arg1, arg2, arg3 any) *gomock.Call {
+func (mr *MockVmssMockRecorder) Delete(ctx, resourceGroupName, resourceName, opts any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockVmss)(nil).Delete), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockVmss)(nil).Delete), ctx, resourceGroupName, resourceName, opts)
 }
 
 // Get mocks base method.
-func (m *MockVmss) Get(arg0 context.Context, arg1, arg2 string, arg3 *armcompute.ExpandTypesForGetVMScaleSets) (*armcompute.VirtualMachineScaleSet, error) {
+func (m *MockVmss) Get(ctx context.Context, resourceGroupName, resourceName string, expand *armcompute.ExpandTypesForGetVMScaleSets) (*armcompute.VirtualMachineScaleSet, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "Get", ctx, resourceGroupName, resourceName, expand)
 	ret0, _ := ret[0].(*armcompute.VirtualMachineScaleSet)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Get indicates an expected call of Get.
-func (mr *MockVmssMockRecorder) Get(arg0, arg1, arg2, arg3 any) *gomock.Call {
+func (mr *MockVmssMockRecorder) Get(ctx, resourceGroupName, resourceName, expand any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockVmss)(nil).Get), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockVmss)(nil).Get), ctx, resourceGroupName, resourceName, expand)
 }
 
 // List mocks base method.
-func (m *MockVmss) List(arg0 context.Context, arg1 string) ([]*armcompute.VirtualMachineScaleSet, error) {
+func (m *MockVmss) List(ctx context.Context, resourceGroupName string) ([]*armcompute.VirtualMachineScaleSet, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "List", arg0, arg1)
+	ret := m.ctrl.Call(m, "List", ctx, resourceGroupName)
 	ret0, _ := ret[0].([]*armcompute.VirtualMachineScaleSet)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // List indicates an expected call of List.
-func (mr *MockVmssMockRecorder) List(arg0, arg1 any) *gomock.Call {
+func (mr *MockVmssMockRecorder) List(ctx, resourceGroupName any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockVmss)(nil).List), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockVmss)(nil).List), ctx, resourceGroupName)
 }
