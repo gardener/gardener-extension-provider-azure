@@ -15,6 +15,7 @@ import (
 	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
@@ -39,7 +40,7 @@ var _ = Describe("Topology", func() {
 		ctrl = gomock.NewController(GinkgoT())
 		ctx = context.Background()
 
-		mutator = New(&admission.Decoder{}, logr.Discard(), AddOptions{
+		mutator = New(admission.NewDecoder(runtime.NewScheme()), logr.Discard(), AddOptions{
 			SeedRegion:   region,
 			SeedProvider: azure.Type,
 		})
