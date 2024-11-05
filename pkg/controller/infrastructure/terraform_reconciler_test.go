@@ -149,7 +149,7 @@ var _ = Describe("Actuator", func() {
 			&internal.NewTerraformer, func(_ logr.Logger, _ *rest.Config, _ string, _ *extensionsv1alpha1.Infrastructure, _ bool) (terraformer.Terraformer, error) {
 				return tf, nil
 			},
-			&internal.NewTerraformerWithAuth, func(_ logr.Logger, _ *rest.Config, _ string, _ *extensionsv1alpha1.Infrastructure, _ bool) (terraformer.Terraformer, error) {
+			&internal.NewTerraformerWithAuth, func(_ logr.Logger, _ *rest.Config, _ string, _ *extensionsv1alpha1.Infrastructure, _ bool, _ bool) (terraformer.Terraformer, error) {
 				return tf, nil
 			},
 		)
@@ -175,6 +175,8 @@ var _ = Describe("Actuator", func() {
 
 			test.EXPECTStatusPatch(ctx, sw, expectedInfra, infra.DeepCopy(), types.MergePatchType)
 
+			cloudProviderSecret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "cloudprovider", Namespace: infra.Namespace}}
+			c.EXPECT().Get(ctx, client.ObjectKeyFromObject(cloudProviderSecret), cloudProviderSecret).Return(nil)
 			err = a.Reconcile(ctx, log, infra, cluster)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -191,19 +193,23 @@ var _ = Describe("Actuator", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("should return an error if terraformer can not be created", func() {
+		It("should return an error if terraformer cannot be created", func() {
 			defer test.WithVars(
-				&internal.NewTerraformerWithAuth, func(_ logr.Logger, _ *rest.Config, _ string, _ *extensionsv1alpha1.Infrastructure, _ bool) (terraformer.Terraformer, error) {
+				&internal.NewTerraformerWithAuth, func(_ logr.Logger, _ *rest.Config, _ string, _ *extensionsv1alpha1.Infrastructure, _ bool, _ bool) (terraformer.Terraformer, error) {
 					return nil, errors.New("could not create terraform")
 				},
 			)()
+			cloudProviderSecret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "cloudprovider", Namespace: infra.Namespace}}
+			c.EXPECT().Get(ctx, client.ObjectKeyFromObject(cloudProviderSecret), cloudProviderSecret).Return(nil)
 			err := a.Reconcile(ctx, log, infra, cluster)
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("should return an error if terraform config can not be applied", func() {
+		It("should return an error if terraform config cannot be applied", func() {
 			tf.EXPECT().InitializeWith(ctx, gomock.Any()).Return(tf)
 			tf.EXPECT().Apply(ctx).Return(errors.New("could not apply terraform config"))
+			cloudProviderSecret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "cloudprovider", Namespace: infra.Namespace}}
+			c.EXPECT().Get(ctx, client.ObjectKeyFromObject(cloudProviderSecret), cloudProviderSecret).Return(nil)
 			err := a.Reconcile(ctx, log, infra, cluster)
 			Expect(err).To(HaveOccurred())
 		})
@@ -238,6 +244,8 @@ var _ = Describe("Actuator", func() {
 			envVars := internal.TerraformerEnvVars(infra.Spec.SecretRef, false)
 			tf.EXPECT().SetEnvVars(envVars).Return(tf)
 			tf.EXPECT().Destroy(ctx)
+			cloudProviderSecret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "cloudprovider", Namespace: infra.Namespace}}
+			c.EXPECT().Get(ctx, client.ObjectKeyFromObject(cloudProviderSecret), cloudProviderSecret).Return(nil)
 			err := a.Delete(ctx, log, infra, cluster)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -293,7 +301,7 @@ var _ = Describe("Actuator", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("should return an error if terraform can not be destroyed", func() {
+		It("should return an error if terraform cannot be destroyed", func() {
 			azureClientFactory.EXPECT().Group().Return(azureGroupClient, nil)
 			azureGroupClient.EXPECT().Get(ctx, infra.Namespace).Return(&armresources.ResourceGroup{Name: &resourceGroupName}, nil)
 
@@ -303,6 +311,8 @@ var _ = Describe("Actuator", func() {
 			envVars := internal.TerraformerEnvVars(infra.Spec.SecretRef, false)
 			tf.EXPECT().SetEnvVars(envVars).Return(tf)
 			tf.EXPECT().Destroy(ctx).Return(errors.New("could not destroy terraform"))
+			cloudProviderSecret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "cloudprovider", Namespace: infra.Namespace}}
+			c.EXPECT().Get(ctx, client.ObjectKeyFromObject(cloudProviderSecret), cloudProviderSecret).Return(nil)
 			err := a.Delete(ctx, log, infra, cluster)
 			Expect(err).To(HaveOccurred())
 		})
@@ -328,6 +338,8 @@ var _ = Describe("Actuator", func() {
 			expectedInfraAfterRestore := expectedInfra.DeepCopy()
 			expectedInfraAfterRestore.Status.ProviderStatus = &runtime.RawExtension{Object: providerStatus}
 			test.EXPECTStatusPatch(ctx, sw, expectedInfraAfterRestore, expectedInfra.DeepCopy(), types.MergePatchType)
+			cloudProviderSecret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "cloudprovider", Namespace: infra.Namespace}}
+			c.EXPECT().Get(ctx, client.ObjectKeyFromObject(cloudProviderSecret), cloudProviderSecret).Return(nil)
 			err = a.Restore(ctx, log, infra, cluster)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -377,13 +389,15 @@ var _ = Describe("Actuator", func() {
 			expectedInfraAfterRestore := expectedInfra.DeepCopy()
 			expectedInfraAfterRestore.Status.ProviderStatus = &runtime.RawExtension{Object: providerStatus}
 			test.EXPECTStatusPatch(ctx, sw, expectedInfraAfterRestore, expectedInfra.DeepCopy(), types.MergePatchType)
+			cloudProviderSecret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "cloudprovider", Namespace: infra.Namespace}}
+			c.EXPECT().Get(ctx, client.ObjectKeyFromObject(cloudProviderSecret), cloudProviderSecret).Return(nil)
 			err = a.Restore(ctx, log, infra, cluster)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("should return an error if terraformer can not be created", func() {
+		It("should return an error if terraformer cannot be created", func() {
 			defer test.WithVars(
-				&internal.NewTerraformerWithAuth, func(_ logr.Logger, _ *rest.Config, _ string, _ *extensionsv1alpha1.Infrastructure, _ bool) (terraformer.Terraformer, error) {
+				&internal.NewTerraformerWithAuth, func(_ logr.Logger, _ *rest.Config, _ string, _ *extensionsv1alpha1.Infrastructure, _ bool, _ bool) (terraformer.Terraformer, error) {
 					return nil, errors.New("could not create terraform")
 				},
 			)()
@@ -396,12 +410,14 @@ var _ = Describe("Actuator", func() {
 			Expect(err).NotTo(HaveOccurred())
 			expectedInfra.Status.ProviderStatus = &runtime.RawExtension{Raw: raw}
 			test.EXPECTStatusPatch(ctx, sw, expectedInfra, infra, types.MergePatchType)
+			cloudProviderSecret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "cloudprovider", Namespace: infra.Namespace}}
+			c.EXPECT().Get(ctx, client.ObjectKeyFromObject(cloudProviderSecret), cloudProviderSecret).Return(nil)
 
 			err = a.Restore(ctx, log, infra, cluster)
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("should return an error if terraform config can not be applied", func() {
+		It("should return an error if terraform config cannot be applied", func() {
 			state, err := createInfraState(providerStatus, tfState)
 			Expect(err).NotTo(HaveOccurred())
 			infra.Status.State = state
@@ -414,6 +430,8 @@ var _ = Describe("Actuator", func() {
 
 			tf.EXPECT().InitializeWith(ctx, gomock.Any()).Return(tf)
 			tf.EXPECT().Apply(ctx).Return(errors.New("could not apply terraform config"))
+			cloudProviderSecret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "cloudprovider", Namespace: infra.Namespace}}
+			c.EXPECT().Get(ctx, client.ObjectKeyFromObject(cloudProviderSecret), cloudProviderSecret).Return(nil)
 
 			err = a.Restore(ctx, log, infra, cluster)
 			Expect(err).To(HaveOccurred())
