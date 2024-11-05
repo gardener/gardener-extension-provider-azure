@@ -13,8 +13,8 @@ import (
 	context "context"
 	reflect "reflect"
 
+	controller "github.com/gardener/gardener/extensions/pkg/controller"
 	v1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	extensions "github.com/gardener/gardener/pkg/extensions"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -22,6 +22,7 @@ import (
 type MockReconciler struct {
 	ctrl     *gomock.Controller
 	recorder *MockReconcilerMockRecorder
+	isgomock struct{}
 }
 
 // MockReconcilerMockRecorder is the mock recorder for MockReconciler.
@@ -42,43 +43,43 @@ func (m *MockReconciler) EXPECT() *MockReconcilerMockRecorder {
 }
 
 // Delete mocks base method.
-func (m *MockReconciler) Delete(arg0 context.Context, arg1 *v1alpha1.Infrastructure, arg2 *extensions.Cluster) error {
+func (m *MockReconciler) Delete(ctx context.Context, infra *v1alpha1.Infrastructure, cluster *controller.Cluster) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Delete", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "Delete", ctx, infra, cluster)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Delete indicates an expected call of Delete.
-func (mr *MockReconcilerMockRecorder) Delete(arg0, arg1, arg2 any) *gomock.Call {
+func (mr *MockReconcilerMockRecorder) Delete(ctx, infra, cluster any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockReconciler)(nil).Delete), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockReconciler)(nil).Delete), ctx, infra, cluster)
 }
 
 // Reconcile mocks base method.
-func (m *MockReconciler) Reconcile(arg0 context.Context, arg1 *v1alpha1.Infrastructure, arg2 *extensions.Cluster) error {
+func (m *MockReconciler) Reconcile(ctx context.Context, infra *v1alpha1.Infrastructure, cluster *controller.Cluster) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Reconcile", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "Reconcile", ctx, infra, cluster)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Reconcile indicates an expected call of Reconcile.
-func (mr *MockReconcilerMockRecorder) Reconcile(arg0, arg1, arg2 any) *gomock.Call {
+func (mr *MockReconcilerMockRecorder) Reconcile(ctx, infra, cluster any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Reconcile", reflect.TypeOf((*MockReconciler)(nil).Reconcile), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Reconcile", reflect.TypeOf((*MockReconciler)(nil).Reconcile), ctx, infra, cluster)
 }
 
 // Restore mocks base method.
-func (m *MockReconciler) Restore(arg0 context.Context, arg1 *v1alpha1.Infrastructure, arg2 *extensions.Cluster) error {
+func (m *MockReconciler) Restore(ctx context.Context, infra *v1alpha1.Infrastructure, cluster *controller.Cluster) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Restore", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "Restore", ctx, infra, cluster)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Restore indicates an expected call of Restore.
-func (mr *MockReconcilerMockRecorder) Restore(arg0, arg1, arg2 any) *gomock.Call {
+func (mr *MockReconcilerMockRecorder) Restore(ctx, infra, cluster any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Restore", reflect.TypeOf((*MockReconciler)(nil).Restore), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Restore", reflect.TypeOf((*MockReconciler)(nil).Restore), ctx, infra, cluster)
 }
