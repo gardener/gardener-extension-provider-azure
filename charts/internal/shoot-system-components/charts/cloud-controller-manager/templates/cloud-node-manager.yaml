@@ -83,7 +83,7 @@ spec:
         - cloud-node-manager
         - --node-name=$(NODE_NAME)
         - --wait-routes=true   # only set to true when --configure-cloud-routes=true in cloud-controller-manager.
-        {{- if semverCompare ">= 1.26.0-0, < 1.30.0-0" .Capabilities.KubeVersion.Version }}
+        {{- if semverCompare ">= 1.27.0-0, < 1.30.0-0" .Capabilities.KubeVersion.Version }}
         - --enable-deprecated-beta-topology-labels=true
         {{- end }}
         env:
