@@ -7,6 +7,7 @@ package worker
 import (
 	"context"
 	"fmt"
+	"math"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -350,6 +351,9 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 
 		// Availability Zones
 		zoneCount := len(pool.Zones)
+		if zoneCount > math.MaxInt32 {
+			return fmt.Errorf("too many zones")
+		}
 		for zoneIndex, zone := range pool.Zones {
 			if infrastructureStatus.Networks.Layout == azureapi.NetworkLayoutMultipleSubnet {
 				_, nodesSubnet, err = azureapihelper.FindSubnetByPurposeAndZone(infrastructureStatus.Networks.Subnets, azureapi.PurposeNodes, &zone)
@@ -371,7 +375,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			}
 			machineDeployment, machineClassSpec := generateMachineClassAndDeployment(&zoneInfo{
 				name:  zone,
-				index: int32(zoneIndex),
+				index: int32(zoneIndex), // #nosec: G115 - We do check if zoneCount exceeds int 32
 				count: int32(zoneCount),
 			}, nil, nodesSubnet.Name, workerPoolHash, &workerConfig)
 			machineDeployments = append(machineDeployments, machineDeployment)
@@ -447,7 +451,7 @@ func computeDisks(pool extensionsv1alpha1.WorkerPool, dataVolumesConfig []azurea
 			}
 			disk := map[string]interface{}{
 				"name":       volume.Name,
-				"lun":        int32(i),
+				"lun":        int32(i), // #nosec: G115 - There is a disk validation for lun < 0 in mcm.
 				"diskSizeGB": volumeSize,
 				"caching":    "None",
 			}
