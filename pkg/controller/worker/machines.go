@@ -375,7 +375,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			}
 			machineDeployment, machineClassSpec := generateMachineClassAndDeployment(&zoneInfo{
 				name:  zone,
-				index: int32(zoneIndex), // #nosec: G115 - We do check if zoneCount exceeds max_int32
+				index: int32(zoneIndex), // #nosec: G115 - We do check if zoneCount exceeds max_int32.
 				count: int32(zoneCount),
 			}, nil, nodesSubnet.Name, workerPoolHash, &workerConfig)
 			machineDeployments = append(machineDeployments, machineDeployment)

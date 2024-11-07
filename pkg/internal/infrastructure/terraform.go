@@ -513,8 +513,8 @@ func StatusFromTerraformState(config *api.InfrastructureConfig, tfState *Terrafo
 		infraState.AvailabilitySets = append(infraState.AvailabilitySets, apiv1alpha1.AvailabilitySet{
 			Name:               tfState.AvailabilitySetName,
 			ID:                 tfState.AvailabilitySetID,
-			CountFaultDomains:  ptr.To(int32(tfState.CountFaultDomains)),  // #nosec: G115 - There's a validation for < 0 (overflow) in place
-			CountUpdateDomains: ptr.To(int32(tfState.CountUpdateDomains)), // #nosec: G115 - There's a validation for < 0 (overflow) in placeqq
+			CountFaultDomains:  ptr.To(int32(tfState.CountFaultDomains)),  // #nosec: G115 - There's a validation for < 0 (overflow) in place.
+			CountUpdateDomains: ptr.To(int32(tfState.CountUpdateDomains)), // #nosec: G115 - There's a validation for < 0 (overflow) in place.
 			Purpose:            apiv1alpha1.PurposeNodes,
 		})
 	}
