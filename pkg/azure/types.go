@@ -65,7 +65,7 @@ const (
 	// DNSClientIDKey is the key for the client ID in DNS secrets.
 	DNSClientIDKey = "AZURE_CLIENT_ID"
 	// DNSClientSecretKey is the key for the client secret in DNS secrets.
-	DNSClientSecretKey = "AZURE_CLIENT_SECRET"
+	DNSClientSecretKey = "AZURE_CLIENT_SECRET" // #nosec G101 -- No credential.
 
 	// StorageAccount is a constant for the key in a cloud provider secret and backup secret that holds the Azure account name.
 	StorageAccount = "storageAccount"

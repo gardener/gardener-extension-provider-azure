@@ -26,7 +26,7 @@ const (
 	// TerraformVarClientID is the name of the terraform client id environment variable.
 	TerraformVarClientID = "TF_VAR_CLIENT_ID"
 	// TerraformVarClientSecret is the name of the client secret environment variable.
-	TerraformVarClientSecret = "TF_VAR_CLIENT_SECRET"
+	TerraformVarClientSecret = "TF_VAR_CLIENT_SECRET" // #nosec G101 -- No credential.
 )
 
 // TerraformerEnvVars computes the Terraformer environment variables from the given secret reference.
