@@ -150,7 +150,7 @@ sast: $(GOSEC)
 
 .PHONY: sast-report
 sast-report: $(GOSEC)
-	@./hack/sast.sh --gosec-report true
+	@bash $(GARDENER_HACK_DIR)/sast.sh --gosec-report true
 
 .PHONY: test
 test:
