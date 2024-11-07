@@ -285,9 +285,9 @@ func (ia *InfrastructureAdapter) shootSubnetNamePrefix() string {
 	return fmt.Sprintf("%s-nodes", ia.TechnicalName())
 }
 
-func (ia *InfrastructureAdapter) subnetName(zone *int32) string {
+func (ia *InfrastructureAdapter) subnetName(zone *int32, migrated bool) string {
 	n := ia.shootSubnetNamePrefix()
-	if zone != nil {
+	if zone != nil && !migrated {
 		n = fmt.Sprintf("%s-z%d", n, *zone)
 	}
 	return n
@@ -302,8 +302,8 @@ func (ia *InfrastructureAdapter) IsOwnSubnetName(name *string) bool {
 	if name == nil {
 		return false
 	}
-	expected_prefix := ia.shootSubnetNamePrefix()
-	if _, found := strings.CutPrefix(*name, expected_prefix); found {
+	expectedPrefix := ia.shootSubnetNamePrefix()
+	if _, found := strings.CutPrefix(*name, expectedPrefix); found {
 		return true
 		// No need to check further. The important thing to check is that there is nothing
 		// between the technical name and the next expected part.
@@ -334,7 +334,7 @@ func (ia *InfrastructureAdapter) zonesConfig() []ZoneConfig {
 			Subnet: SubnetConfig{
 				AzureResourceMetadata: AzureResourceMetadata{
 					ResourceGroup: ia.vnetConfig.ResourceGroup,
-					Name:          ia.subnetName(&configZone.Name),
+					Name:          ia.subnetName(&configZone.Name, isMigratedZone),
 					Parent:        ia.vnetConfig.Name,
 					Kind:          KindSubnet,
 				},
@@ -397,7 +397,7 @@ func (ia *InfrastructureAdapter) defaultZone() []ZoneConfig {
 		Subnet: SubnetConfig{
 			AzureResourceMetadata: AzureResourceMetadata{
 				ResourceGroup: ia.vnetConfig.ResourceGroup,
-				Name:          ia.subnetName(nil),
+				Name:          ia.subnetName(nil, false),
 				Parent:        ia.vnetConfig.Name,
 				Kind:          KindSubnet,
 			},
