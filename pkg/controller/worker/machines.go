@@ -7,7 +7,6 @@ package worker
 import (
 	"context"
 	"fmt"
-	"math"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -351,9 +350,6 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 
 		// Availability Zones
 		zoneCount := len(pool.Zones)
-		if zoneCount > math.MaxInt32 {
-			return fmt.Errorf("too many zones")
-		}
 		for zoneIndex, zone := range pool.Zones {
 			if infrastructureStatus.Networks.Layout == azureapi.NetworkLayoutMultipleSubnet {
 				_, nodesSubnet, err = azureapihelper.FindSubnetByPurposeAndZone(infrastructureStatus.Networks.Subnets, azureapi.PurposeNodes, &zone)
