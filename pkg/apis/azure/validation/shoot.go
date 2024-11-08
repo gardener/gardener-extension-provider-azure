@@ -99,7 +99,7 @@ func ValidateWorkers(workers []core.Worker, infra *api.InfrastructureConfig, fld
 		}
 
 		if len(worker.Zones) > math.MaxInt32 {
-			allErrs = append(allErrs, field.Required(path.Child("zones"), "too many zones"))
+			allErrs = append(allErrs, field.Invalid(path.Child("zones"), len(worker.Zones), "too many zones"))
 			continue
 		}
 
