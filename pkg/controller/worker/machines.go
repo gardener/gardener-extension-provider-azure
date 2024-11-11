@@ -371,8 +371,8 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			}
 			machineDeployment, machineClassSpec := generateMachineClassAndDeployment(&zoneInfo{
 				name:  zone,
-				index: int32(zoneIndex),
-				count: int32(zoneCount),
+				index: int32(zoneIndex), // #nosec: G115 - We validate if pool zones exceeds max_int32.
+				count: int32(zoneCount), // #nosec: G115 - We validate if pool zones exceeds max_int32.
 			}, nil, nodesSubnet.Name, workerPoolHash, &workerConfig)
 			machineDeployments = append(machineDeployments, machineDeployment)
 			machineClasses = append(machineClasses, machineClassSpec)
@@ -447,7 +447,7 @@ func computeDisks(pool extensionsv1alpha1.WorkerPool, dataVolumesConfig []azurea
 			}
 			disk := map[string]interface{}{
 				"name":       volume.Name,
-				"lun":        int32(i),
+				"lun":        int32(i), // #nosec: G115 - There is a disk validation for lun < 0 in mcm.
 				"diskSizeGB": volumeSize,
 				"caching":    "None",
 			}

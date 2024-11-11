@@ -6,6 +6,7 @@ package validation
 
 import (
 	"encoding/json"
+	"math"
 
 	"github.com/gardener/gardener/pkg/apis/core"
 	validationutils "github.com/gardener/gardener/pkg/utils/validation"
@@ -94,6 +95,11 @@ func ValidateWorkers(workers []core.Worker, infra *api.InfrastructureConfig, fld
 
 		if !infra.Zoned && len(worker.Zones) > 0 {
 			allErrs = append(allErrs, field.Required(path.Child("zones"), "zones must not be specified for non zoned clusters"))
+			continue
+		}
+
+		if len(worker.Zones) > math.MaxInt32 {
+			allErrs = append(allErrs, field.Invalid(path.Child("zones"), len(worker.Zones), "too many zones"))
 			continue
 		}
 
