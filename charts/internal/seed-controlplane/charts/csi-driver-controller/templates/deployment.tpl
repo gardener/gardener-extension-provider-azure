@@ -116,6 +116,7 @@ spec:
         - --timeout=120s
         - --volume-name-prefix=pv-{{ .Release.Namespace }}
         - --default-fstype=ext4
+        - --extra-create-metadata=true
         - --v=5
         env:
         - name: ADDRESS
