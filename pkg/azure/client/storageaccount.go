@@ -54,19 +54,69 @@ func (c *StorageAccountClient) CreateStorageAccount(ctx context.Context, resourc
 
 // ListStorageAccountKey lists the first key of a storage account.
 func (c *StorageAccountClient) ListStorageAccountKey(ctx context.Context, resourceGroupName, storageAccountName string) (string, error) {
+	keys, err := c.listStorageAccountKeys(ctx, resourceGroupName, storageAccountName)
+	if err != nil {
+		return "", err
+	}
+	return *keys[0].Value, nil
+}
+
+// ListStorageAccountKeys lists the keys of a storage account.
+func (c *StorageAccountClient) listStorageAccountKeys(ctx context.Context, resourceGroupName, storageAccountName string) ([]*armstorage.AccountKey, error) {
 	response, err := c.client.ListKeys(ctx, resourceGroupName, storageAccountName, &armstorage.AccountsClientListKeysOptions{
 		// doc: "Specifies type of the key to be listed. Possible value is kerb.. Specifying any value will set the value to kerb."
 		Expand: ptr.To("kerb"),
 	})
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	if len(response.Keys) < 1 {
-		return "", fmt.Errorf("no key found in storage account %s", storageAccountName)
+		return nil, fmt.Errorf("no key found in storage account %s", storageAccountName)
 	}
 
-	firstKey := response.Keys[0]
-	return *firstKey.Value, nil
+	return response.Keys, nil
+}
+
+// RotateKey performs a partial key rotation for the given storage account, using the property of Azure storage accounts always having exactly two keys.
+// The existing storage keys are checked against the given one, and the one that does _not_ match it will be regenerated and its new value returned.
+// This ensures the given key still being valid (until the next rotation) which ensures that there is time for the updated value to propagate.
+func (c *StorageAccountClient) RotateKey(ctx context.Context, resourceGroupName, storageAccountName, storageAccountKey string) (string, error) {
+	keys, err := c.listStorageAccountKeys(ctx, resourceGroupName, storageAccountName)
+	if err != nil {
+		return "", err
+	}
+
+	var keyToRotate *string
+	switch {
+	case ptr.Deref(keys[0].Value, "") == storageAccountKey:
+		keyToRotate = keys[1].KeyName
+	case ptr.Deref(keys[1].Value, "") == storageAccountKey:
+		keyToRotate = keys[0].KeyName
+	default:
+		return "", fmt.Errorf("unable to find given key in storage account keys")
+	}
+
+	resp, err := c.client.RegenerateKey(
+		ctx,
+		resourceGroupName,
+		storageAccountName,
+		armstorage.AccountRegenerateKeyParameters{KeyName: keyToRotate},
+		nil,
+	)
+
+	if err != nil {
+		return "", err
+	}
+
+	// (re)Get index of regenerated key from response. This might be a bit paranoid.
+	for _, k := range resp.Keys {
+		if *k.KeyName == *keyToRotate {
+			return *k.Value, nil
+		}
+	}
+
+	return "", fmt.Errorf("error rotating storage account key '%v'", keyToRotate)
+
 }
