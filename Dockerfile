@@ -25,7 +25,7 @@ COPY --from=builder /go/bin/gardener-extension-provider-azure /gardener-extensio
 ENTRYPOINT ["/gardener-extension-provider-azure"]
 
 ############# gardener-extension-admission-azure
-FROM base as gardener-extension-admission-azure
+FROM base AS gardener-extension-admission-azure
 WORKDIR /
 
 COPY --from=builder /go/bin/gardener-extension-admission-azure /gardener-extension-admission-azure
