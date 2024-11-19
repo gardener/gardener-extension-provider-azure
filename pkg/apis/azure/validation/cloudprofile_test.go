@@ -5,6 +5,7 @@
 package validation_test
 
 import (
+	"github.com/gardener/gardener/pkg/apis/core"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
@@ -17,6 +18,7 @@ import (
 )
 
 var (
+	imageName               = "ubuntu"
 	urn                     = "Publisher:Offer:Sku:Version"
 	id                      = "/subscription/id/image/id"
 	communityGalleryImageID = "/CommunityGalleries/id/Images/myImageDefinition/versions/version"
@@ -26,11 +28,25 @@ var (
 var _ = Describe("CloudProfileConfig validation", func() {
 	Describe("#ValidateCloudProfileConfig", func() {
 		var (
-			cloudProfileConfig *apisazure.CloudProfileConfig
-			root               = field.NewPath("root")
+			cloudProfileMachineImages []core.MachineImage
+			cloudProfileConfig        *apisazure.CloudProfileConfig
+			root                      = field.NewPath("root")
 		)
 
 		BeforeEach(func() {
+			cloudProfileMachineImages = []core.MachineImage{
+				{
+					Name: imageName,
+					Versions: []core.MachineImageVersion{
+						{
+							ExpirableVersion: core.ExpirableVersion{
+								Version: "Version",
+							},
+							Architectures: []string{"amd64"},
+						},
+					},
+				},
+			}
 			cloudProfileConfig = &apisazure.CloudProfileConfig{
 				CountUpdateDomains: []apisazure.DomainCount{
 					{
@@ -46,7 +62,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 				},
 				MachineImages: []apisazure.MachineImages{
 					{
-						Name: "ubuntu",
+						Name: imageName,
 						Versions: []apisazure.MachineImageVersion{
 							{
 								Version:      "Version",
@@ -61,14 +77,14 @@ var _ = Describe("CloudProfileConfig validation", func() {
 
 		Context("machine image validation", func() {
 			It("should allow valid cloudProfileConfig", func() {
-				errorList := ValidateCloudProfileConfig(cloudProfileConfig, root)
+				errorList := ValidateCloudProfileConfig(cloudProfileConfig, cloudProfileMachineImages, root)
 				Expect(errorList).To(BeEmpty())
 			})
 
 			It("should enforce that at least one machine image has been defined", func() {
 				cloudProfileConfig.MachineImages = []apisazure.MachineImages{}
 
-				errorList := ValidateCloudProfileConfig(cloudProfileConfig, root)
+				errorList := ValidateCloudProfileConfig(cloudProfileConfig, cloudProfileMachineImages, root)
 
 				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
@@ -79,43 +95,29 @@ var _ = Describe("CloudProfileConfig validation", func() {
 			It("should forbid unsupported machine image values", func() {
 				cloudProfileConfig.MachineImages = []apisazure.MachineImages{{}}
 
-				errorList := ValidateCloudProfileConfig(cloudProfileConfig, root)
+				errorList := ValidateCloudProfileConfig(cloudProfileConfig, cloudProfileMachineImages, root)
 
 				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
-					"Field": Equal("root.machineImages[0].name"),
-				})), PointTo(MatchFields(IgnoreExtras, Fields{
-					"Type":  Equal(field.ErrorTypeRequired),
-					"Field": Equal("root.machineImages[0].versions"),
+					"Field": Equal("root.machineImages"),
 				}))))
 			})
 
 			It("should forbid unsupported machine image architecture", func() {
 				cloudProfileConfig.MachineImages[0].Versions[0].Architecture = ptr.To("foo")
 
-				errorList := ValidateCloudProfileConfig(cloudProfileConfig, root)
+				errorList := ValidateCloudProfileConfig(cloudProfileConfig, cloudProfileMachineImages, root)
 				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Type":  Equal(field.ErrorTypeNotSupported),
-					"Field": Equal("root.machineImages[0].versions[0].architecture"),
+					"Type":  Equal(field.ErrorTypeRequired),
+					"Field": Equal("root.machineImages[0].versions"),
 				}))))
 			})
 
 			DescribeTable("forbid unsupported machine image urn",
 				func(urn string, matcher gomegatypes.GomegaMatcher) {
-					cloudProfileConfig.MachineImages = []apisazure.MachineImages{
-						{
-							Name: "my-image",
-							Versions: []apisazure.MachineImageVersion{
-								{
-									Version:      "1.2.3",
-									URN:          &urn,
-									Architecture: ptr.To("amd64"),
-								},
-							},
-						},
-					}
+					cloudProfileConfig.MachineImages[0].Versions[0].URN = &urn
 
-					errorList := ValidateCloudProfileConfig(cloudProfileConfig, root)
+					errorList := ValidateCloudProfileConfig(cloudProfileConfig, cloudProfileMachineImages, root)
 
 					Expect(errorList).To(matcher)
 				},
@@ -129,20 +131,10 @@ var _ = Describe("CloudProfileConfig validation", func() {
 
 			DescribeTable("forbid unsupported machine image ID",
 				func(id string, matcher gomegatypes.GomegaMatcher) {
-					cloudProfileConfig.MachineImages = []apisazure.MachineImages{
-						{
-							Name: "my-image",
-							Versions: []apisazure.MachineImageVersion{
-								{
-									Version:      "1.2.3",
-									ID:           &id,
-									Architecture: ptr.To("amd64"),
-								},
-							},
-						},
-					}
+					cloudProfileConfig.MachineImages[0].Versions[0].URN = nil
+					cloudProfileConfig.MachineImages[0].Versions[0].ID = &id
 
-					errorList := ValidateCloudProfileConfig(cloudProfileConfig, root)
+					errorList := ValidateCloudProfileConfig(cloudProfileConfig, cloudProfileMachineImages, root)
 
 					Expect(errorList).To(matcher)
 				},
@@ -152,20 +144,10 @@ var _ = Describe("CloudProfileConfig validation", func() {
 
 			DescribeTable("forbid unsupported communityGalleryImageID",
 				func(communityGalleryImageID string, matcher gomegatypes.GomegaMatcher) {
-					cloudProfileConfig.MachineImages = []apisazure.MachineImages{
-						{
-							Name: "my-communiyImage",
-							Versions: []apisazure.MachineImageVersion{
-								{
-									Version:                 "1.2.3",
-									CommunityGalleryImageID: &communityGalleryImageID,
-									Architecture:            ptr.To("amd64"),
-								},
-							},
-						},
-					}
+					cloudProfileConfig.MachineImages[0].Versions[0].URN = nil
+					cloudProfileConfig.MachineImages[0].Versions[0].CommunityGalleryImageID = &communityGalleryImageID
 
-					errorList := ValidateCloudProfileConfig(cloudProfileConfig, root)
+					errorList := ValidateCloudProfileConfig(cloudProfileConfig, cloudProfileMachineImages, root)
 
 					Expect(errorList).To(matcher)
 				},
@@ -177,20 +159,10 @@ var _ = Describe("CloudProfileConfig validation", func() {
 
 			DescribeTable("forbid unsupported sharedGalleryImageID",
 				func(sharedGalleryImageID string, matcher gomegatypes.GomegaMatcher) {
-					cloudProfileConfig.MachineImages = []apisazure.MachineImages{
-						{
-							Name: "my-communiyImage",
-							Versions: []apisazure.MachineImageVersion{
-								{
-									Version:              "1.2.3",
-									SharedGalleryImageID: &sharedGalleryImageID,
-									Architecture:         ptr.To("amd64"),
-								},
-							},
-						},
-					}
+					cloudProfileConfig.MachineImages[0].Versions[0].URN = nil
+					cloudProfileConfig.MachineImages[0].Versions[0].SharedGalleryImageID = &sharedGalleryImageID
 
-					errorList := ValidateCloudProfileConfig(cloudProfileConfig, root)
+					errorList := ValidateCloudProfileConfig(cloudProfileConfig, cloudProfileMachineImages, root)
 
 					Expect(errorList).To(matcher)
 				},
@@ -202,23 +174,12 @@ var _ = Describe("CloudProfileConfig validation", func() {
 
 			DescribeTable("forbid invalid image reference configuration",
 				func(urn, id *string, communityGalleryImageID *string, sharedGalleryImageID *string, matcher gomegatypes.GomegaMatcher) {
-					cloudProfileConfig.MachineImages = []apisazure.MachineImages{
-						{
-							Name: "my-image",
-							Versions: []apisazure.MachineImageVersion{
-								{
-									Version:                 "1.2.3",
-									ID:                      id,
-									CommunityGalleryImageID: communityGalleryImageID,
-									SharedGalleryImageID:    sharedGalleryImageID,
-									URN:                     urn,
-									Architecture:            ptr.To("amd64"),
-								},
-							},
-						},
-					}
+					cloudProfileConfig.MachineImages[0].Versions[0].ID = id
+					cloudProfileConfig.MachineImages[0].Versions[0].URN = urn
+					cloudProfileConfig.MachineImages[0].Versions[0].SharedGalleryImageID = sharedGalleryImageID
+					cloudProfileConfig.MachineImages[0].Versions[0].CommunityGalleryImageID = communityGalleryImageID
 
-					errorList := ValidateCloudProfileConfig(cloudProfileConfig, root)
+					errorList := ValidateCloudProfileConfig(cloudProfileConfig, cloudProfileMachineImages, root)
 
 					Expect(errorList).To(matcher)
 				},
@@ -276,22 +237,14 @@ var _ = Describe("CloudProfileConfig validation", func() {
 					"Field": Equal("root.machineImages[0].versions[0].sharedGalleryImageID"),
 				})))))
 
-			It("should forbid unsupported machine image version configuration", func() {
-				cloudProfileConfig.MachineImages = []apisazure.MachineImages{
-					{
-						Name:     "abc",
-						Versions: []apisazure.MachineImageVersion{{Architecture: ptr.To("amd64")}},
-					},
-				}
+			It("should forbid missing architecture in cpConfigMachineImages", func() {
+				cloudProfileMachineImages[0].Versions[0].Architectures = []string{"amd64", "arm64"}
 
-				errorList := ValidateCloudProfileConfig(cloudProfileConfig, root)
+				errorList := ValidateCloudProfileConfig(cloudProfileConfig, cloudProfileMachineImages, root)
 
 				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
-					"Field": Equal("root.machineImages[0].versions[0].version"),
-				})), PointTo(MatchFields(IgnoreExtras, Fields{
-					"Type":  Equal(field.ErrorTypeRequired),
-					"Field": Equal("root.machineImages[0].versions[0]"),
+					"Field": Equal("root.machineImages[0].versions"),
 				}))))
 			})
 		})
@@ -300,7 +253,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 			It("should enforce that at least one fault domain count has been defined", func() {
 				cloudProfileConfig.CountFaultDomains = []apisazure.DomainCount{}
 
-				errorList := ValidateCloudProfileConfig(cloudProfileConfig, root)
+				errorList := ValidateCloudProfileConfig(cloudProfileConfig, cloudProfileMachineImages, root)
 
 				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
@@ -316,7 +269,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 					},
 				}
 
-				errorList := ValidateCloudProfileConfig(cloudProfileConfig, root)
+				errorList := ValidateCloudProfileConfig(cloudProfileConfig, cloudProfileMachineImages, root)
 
 				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
@@ -332,7 +285,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 			It("should enforce that at least one update domain count has been defined", func() {
 				cloudProfileConfig.CountUpdateDomains = []apisazure.DomainCount{}
 
-				errorList := ValidateCloudProfileConfig(cloudProfileConfig, root)
+				errorList := ValidateCloudProfileConfig(cloudProfileConfig, cloudProfileMachineImages, root)
 
 				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
@@ -348,7 +301,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 					},
 				}
 
-				errorList := ValidateCloudProfileConfig(cloudProfileConfig, root)
+				errorList := ValidateCloudProfileConfig(cloudProfileConfig, cloudProfileMachineImages, root)
 
 				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
