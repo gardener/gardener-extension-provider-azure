@@ -37,17 +37,17 @@ func (clientAuth ClientAuth) GetAzClientCredentials() (*azidentity.ClientSecretC
 }
 
 // GetClientAuthData retrieves the client auth data specified by the secret reference.
-func GetClientAuthData(ctx context.Context, c client.Client, secretRef corev1.SecretReference, allowDNSKeys bool) (*ClientAuth, error) {
+func GetClientAuthData(ctx context.Context, c client.Client, secretRef corev1.SecretReference, allowDNSKeys bool) (*ClientAuth, *corev1.Secret, error) {
 	secret, err := extensionscontroller.GetSecretByReference(ctx, c, &secretRef)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	return NewClientAuthDataFromSecret(secret, allowDNSKeys)
 }
 
 // NewClientAuthDataFromSecret reads the client auth details from the given secret.
-func NewClientAuthDataFromSecret(secret *corev1.Secret, allowDNSKeys bool) (*ClientAuth, error) {
+func NewClientAuthDataFromSecret(secret *corev1.Secret, allowDNSKeys bool) (*ClientAuth, *corev1.Secret, error) {
 	var altSubscriptionIDIDKey, altTenantIDKey, altClientIDKey, altClientSecretKey *string
 	if allowDNSKeys {
 		altSubscriptionIDIDKey = ptr.To(azure.DNSSubscriptionIDKey)
@@ -58,22 +58,22 @@ func NewClientAuthDataFromSecret(secret *corev1.Secret, allowDNSKeys bool) (*Cli
 
 	subscriptionID, ok := getSecretDataValue(secret, azure.SubscriptionIDKey, altSubscriptionIDIDKey)
 	if !ok {
-		return nil, fmt.Errorf("secret %s/%s doesn't have a subscription ID", secret.Namespace, secret.Name)
+		return nil, nil, fmt.Errorf("secret %s/%s doesn't have a subscription ID", secret.Namespace, secret.Name)
 	}
 
 	tenantID, ok := getSecretDataValue(secret, azure.TenantIDKey, altTenantIDKey)
 	if !ok {
-		return nil, fmt.Errorf("secret %s/%s doesn't have a tenant ID", secret.Namespace, secret.Name)
+		return nil, nil, fmt.Errorf("secret %s/%s doesn't have a tenant ID", secret.Namespace, secret.Name)
 	}
 
 	clientID, ok := getSecretDataValue(secret, azure.ClientIDKey, altClientIDKey)
 	if !ok {
-		return nil, fmt.Errorf("secret %s/%s doesn't have a client ID", secret.Namespace, secret.Name)
+		return nil, nil, fmt.Errorf("secret %s/%s doesn't have a client ID", secret.Namespace, secret.Name)
 	}
 
 	clientSecret, ok := getSecretDataValue(secret, azure.ClientSecretKey, altClientSecretKey)
 	if !ok {
-		return nil, fmt.Errorf("secret %s/%s doesn't have a client secret", secret.Namespace, secret.Name)
+		return nil, nil, fmt.Errorf("secret %s/%s doesn't have a client secret", secret.Namespace, secret.Name)
 	}
 
 	return &ClientAuth{
@@ -81,13 +81,13 @@ func NewClientAuthDataFromSecret(secret *corev1.Secret, allowDNSKeys bool) (*Cli
 		TenantID:       string(tenantID),
 		ClientID:       string(clientID),
 		ClientSecret:   string(clientSecret),
-	}, nil
+	}, secret, nil
 }
 
 // GetAuthorizerAndSubscriptionIDFromSecretRef retrieves the client auth data specified by the secret reference
 // to create and return an Azure Authorizer and a subscription id.
 func GetAuthorizerAndSubscriptionIDFromSecretRef(ctx context.Context, c client.Client, secretRef corev1.SecretReference, allowDNSKeys bool) (azureautorest.Authorizer, string, error) {
-	clientAuth, err := GetClientAuthData(ctx, c, secretRef, allowDNSKeys)
+	clientAuth, _, err := GetClientAuthData(ctx, c, secretRef, allowDNSKeys)
 	if err != nil {
 		return nil, "", err
 	}

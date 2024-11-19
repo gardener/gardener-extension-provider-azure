@@ -47,29 +47,11 @@ func NewActuator(mgr manager.Manager) dnsrecord.Actuator {
 
 // Reconcile reconciles the DNSRecord.
 func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, dns *extensionsv1alpha1.DNSRecord, _ *extensionscontroller.Cluster) error {
-	dnsRecordConfig, err := helper.DNSRecordConfigFromDNSRecord(dns)
-	if err != nil {
-		return err
-	}
-
-	var azCloudConfiguration cloud.Configuration
-	// Unlike for the other actuators, both of the values used to determine the cloud instance might be nil - usually the region would not be.
-	// Default to the public cloud in this case.
-	if dnsRecordConfig.CloudConfiguration != nil || dns.Spec.Region != nil {
-		azCloudConfiguration, err = azureclient.AzureCloudConfiguration(dnsRecordConfig.CloudConfiguration, dns.Spec.Region)
-		if err != nil {
-			return err
-		}
-	} else {
-		azCloudConfiguration = cloud.AzurePublic
-	}
-
 	clientFactory, err := DefaultAzureClientFactoryFunc(
 		ctx,
 		a.client,
 		dns.Spec.SecretRef,
 		true,
-		azureclient.WithCloudConfiguration(azCloudConfiguration),
 	)
 	if err != nil {
 		return err

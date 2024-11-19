@@ -6,6 +6,7 @@ package client
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
@@ -41,9 +42,17 @@ func NewAzureClientFactoryFromSecret(
 	isDNSSecret bool,
 	options ...AzureFactoryOption,
 ) (Factory, error) {
-	auth, err := internal.GetClientAuthData(ctx, client, secretRef, isDNSSecret)
+	auth, secret, err := internal.GetClientAuthData(ctx, client, secretRef, isDNSSecret)
 	if err != nil {
 		return nil, err
+	}
+	if isDNSSecret {
+		acc, err := cloudConfigurationFromSecret(secret)
+		if err != nil {
+			return nil, err
+		}
+		// prepend the cloud configuration from the secret in favor of the explicit ones that may be passed from options.
+		options = append([]AzureFactoryOption{WithCloudConfiguration(acc)}, options...)
 	}
 	return NewAzureClientFactory(auth, options...)
 }
@@ -65,6 +74,8 @@ func NewAzureClientFactory(authCredentials *internal.ClientAuth, options ...Azur
 	for _, option := range options {
 		option(factory)
 	}
+
+	fmt.Printf("AAAAAAAAAa %v", factory.clientOpts.Cloud)
 
 	return *factory, nil
 }

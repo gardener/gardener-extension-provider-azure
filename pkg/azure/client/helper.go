@@ -15,8 +15,10 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/go-autorest/autorest"
 	azerrors "github.com/AzureAD/microsoft-authentication-library-for-go/apps/errors"
+	corev1 "k8s.io/api/core/v1"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	azuretypes "github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 // FilterNotFoundError returns nil for NotFound errors.
@@ -90,6 +92,17 @@ func AzureCloudConfiguration(cloudConfiguration *azure.CloudConfiguration, regio
 }
 
 // cloudConfigurationFromRegion returns a matching cloudConfiguration corresponding to a well known cloud instance for the given region
+func cloudConfigurationFromSecret(secret *corev1.Secret) (cloud.Configuration, error) {
+	if v, ok := secret.Data[azuretypes.AzureCloud]; ok {
+		return AzureCloudConfigurationFromCloudConfiguration(&azure.CloudConfiguration{Name: string(v)})
+	}
+	if v, ok := secret.Data[azuretypes.DNSAzureCloud]; ok {
+		return AzureCloudConfigurationFromCloudConfiguration(&azure.CloudConfiguration{Name: string(v)})
+	}
+	return AzureCloudConfigurationFromCloudConfiguration(nil)
+}
+
+// cloudConfigurationFromRegion returns a matching cloudConfiguration corresponding to a well known cloud instance for the given region
 func cloudConfigurationFromRegion(region string) *azure.CloudConfiguration {
 	switch {
 	case hasAnyPrefix(region, azure.AzureGovRegionPrefixes...):
@@ -106,7 +119,6 @@ func AzureCloudConfigurationFromCloudConfiguration(cloudConfiguration *azure.Clo
 	if cloudConfiguration == nil {
 		return cloud.AzurePublic, nil
 	}
-
 	cloudConfigurationName := cloudConfiguration.Name
 	switch {
 	case strings.EqualFold(cloudConfigurationName, azure.AzurePublicCloudName):
