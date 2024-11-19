@@ -6,7 +6,6 @@ package client
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
@@ -74,8 +73,6 @@ func NewAzureClientFactory(authCredentials *internal.ClientAuth, options ...Azur
 	for _, option := range options {
 		option(factory)
 	}
-
-	fmt.Printf("AAAAAAAAAa %v", factory.clientOpts.Cloud)
 
 	return *factory, nil
 }
