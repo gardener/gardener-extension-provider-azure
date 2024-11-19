@@ -106,7 +106,7 @@ func (p *namespacedCloudProfile) validateMachineImages(providerConfig *api.Cloud
 	machineImagesPath := field.NewPath("spec.providerConfig.machineImages")
 	for i, machineImage := range providerConfig.MachineImages {
 		idxPath := machineImagesPath.Index(i)
-		allErrs = append(allErrs, validation.ValidateMachineImage(idxPath, machineImage)...)
+		allErrs = append(allErrs, validation.ValidateProviderMachineImage(idxPath, machineImage)...)
 	}
 
 	profileImages := util.NewCoreImagesContext(machineImages)
