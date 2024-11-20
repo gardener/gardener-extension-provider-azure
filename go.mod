@@ -1,5 +1,6 @@
 module github.com/gardener/gardener-extension-provider-azure
 
+// minimum version of Go required
 go 1.23.0
 
 require (
