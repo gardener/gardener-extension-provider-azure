@@ -28,60 +28,68 @@ func ValidateCloudProfileConfig(cloudProfile *apisazure.CloudProfileConfig, fldP
 	}
 	for i, machineImage := range cloudProfile.MachineImages {
 		idxPath := machineImagesPath.Index(i)
+		allErrs = append(allErrs, ValidateMachineImage(idxPath, machineImage)...)
+	}
 
-		if len(machineImage.Name) == 0 {
-			allErrs = append(allErrs, field.Required(idxPath.Child("name"), "must provide a name"))
+	return allErrs
+}
+
+// ValidateMachineImage validates a CloudProfileConfig MachineImages entry.
+func ValidateMachineImage(validationPath *field.Path, machineImage apisazure.MachineImages) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if len(machineImage.Name) == 0 {
+		allErrs = append(allErrs, field.Required(validationPath.Child("name"), "must provide a name"))
+	}
+
+	if len(machineImage.Versions) == 0 {
+		allErrs = append(allErrs, field.Required(validationPath.Child("versions"), fmt.Sprintf("must provide at least one version for machine image %q", machineImage.Name)))
+	}
+	for j, version := range machineImage.Versions {
+		jdxPath := validationPath.Child("versions").Index(j)
+
+		if len(version.Version) == 0 {
+			allErrs = append(allErrs, field.Required(jdxPath.Child("version"), "must provide a version"))
 		}
 
-		if len(machineImage.Versions) == 0 {
-			allErrs = append(allErrs, field.Required(idxPath.Child("versions"), fmt.Sprintf("must provide at least one version for machine image %q", machineImage.Name)))
+		allErrs = append(allErrs, validateProvidedImageIdCount(version, jdxPath)...)
+
+		if version.URN != nil {
+			if len(*version.URN) == 0 {
+				allErrs = append(allErrs, field.Required(jdxPath.Child("urn"), "urn cannot be empty when defined"))
+			} else if len(strings.Split(*version.URN, ":")) != 4 {
+				allErrs = append(allErrs, field.Invalid(jdxPath.Child("urn"), version.URN, "please use the format `Publisher:Offer:Sku:Version` for the urn"))
+			}
 		}
-		for j, version := range machineImage.Versions {
-			jdxPath := idxPath.Child("versions").Index(j)
+		if version.ID != nil && len(*version.ID) == 0 {
+			allErrs = append(allErrs, field.Required(jdxPath.Child("id"), "id cannot be empty when defined"))
+		}
+		if version.CommunityGalleryImageID != nil {
+			if len(*version.CommunityGalleryImageID) == 0 {
+				allErrs = append(allErrs, field.Required(jdxPath.Child("communityGalleryImageID"), "communityGalleryImageID cannot be empty when defined"))
+			} else if len(strings.Split(*version.CommunityGalleryImageID, "/")) != 7 {
+				allErrs = append(allErrs, field.Invalid(jdxPath.Child("communityGalleryImageID"),
+					version.CommunityGalleryImageID, "please use the format `/CommunityGalleries/<gallery id>/Images/<image id>/versions/<version id>` for the communityGalleryImageID"))
+			} else if !strings.EqualFold(strings.Split(*version.CommunityGalleryImageID, "/")[1], "CommunityGalleries") {
+				allErrs = append(allErrs, field.Invalid(jdxPath.Child("communityGalleryImageID"),
+					version.CommunityGalleryImageID, "communityGalleryImageID must start with '/CommunityGalleries/' prefix"))
+			}
+		}
 
-			if len(version.Version) == 0 {
-				allErrs = append(allErrs, field.Required(jdxPath.Child("version"), "must provide a version"))
+		if version.SharedGalleryImageID != nil {
+			if len(*version.SharedGalleryImageID) == 0 {
+				allErrs = append(allErrs, field.Required(jdxPath.Child("sharedGalleryImageID"), "SharedGalleryImageID cannot be empty when defined"))
+			} else if len(strings.Split(*version.SharedGalleryImageID, "/")) != 7 {
+				allErrs = append(allErrs, field.Invalid(jdxPath.Child("sharedGalleryImageID"),
+					version.SharedGalleryImageID, "please use the format `/SharedGalleries/<sharedGalleryName>/Images/<sharedGalleryImageName>/Versions/<sharedGalleryImageVersionName>` for the SharedGalleryImageID"))
+			} else if !strings.EqualFold(strings.Split(*version.SharedGalleryImageID, "/")[1], "SharedGalleries") {
+				allErrs = append(allErrs, field.Invalid(jdxPath.Child("sharedGalleryImageID"),
+					version.SharedGalleryImageID, "SharedGalleryImageID must start with '/SharedGalleries/' prefix"))
 			}
+		}
 
-			allErrs = append(allErrs, validateProvidedImageIdCount(version, jdxPath)...)
-
-			if version.URN != nil {
-				if len(*version.URN) == 0 {
-					allErrs = append(allErrs, field.Required(jdxPath.Child("urn"), "urn cannot be empty when defined"))
-				} else if len(strings.Split(*version.URN, ":")) != 4 {
-					allErrs = append(allErrs, field.Invalid(jdxPath.Child("urn"), version.URN, "please use the format `Publisher:Offer:Sku:Version` for the urn"))
-				}
-			}
-			if version.ID != nil && len(*version.ID) == 0 {
-				allErrs = append(allErrs, field.Required(jdxPath.Child("id"), "id cannot be empty when defined"))
-			}
-			if version.CommunityGalleryImageID != nil {
-				if len(*version.CommunityGalleryImageID) == 0 {
-					allErrs = append(allErrs, field.Required(jdxPath.Child("communityGalleryImageID"), "communityGalleryImageID cannot be empty when defined"))
-				} else if len(strings.Split(*version.CommunityGalleryImageID, "/")) != 7 {
-					allErrs = append(allErrs, field.Invalid(jdxPath.Child("communityGalleryImageID"),
-						version.CommunityGalleryImageID, "please use the format `/CommunityGalleries/<gallery id>/Images/<image id>/versions/<version id>` for the communityGalleryImageID"))
-				} else if !strings.EqualFold(strings.Split(*version.CommunityGalleryImageID, "/")[1], "CommunityGalleries") {
-					allErrs = append(allErrs, field.Invalid(jdxPath.Child("communityGalleryImageID"),
-						version.CommunityGalleryImageID, "communityGalleryImageID must start with '/CommunityGalleries/' prefix"))
-				}
-			}
-
-			if version.SharedGalleryImageID != nil {
-				if len(*version.SharedGalleryImageID) == 0 {
-					allErrs = append(allErrs, field.Required(jdxPath.Child("sharedGalleryImageID"), "SharedGalleryImageID cannot be empty when defined"))
-				} else if len(strings.Split(*version.SharedGalleryImageID, "/")) != 7 {
-					allErrs = append(allErrs, field.Invalid(jdxPath.Child("sharedGalleryImageID"),
-						version.SharedGalleryImageID, "please use the format `/SharedGalleries/<sharedGalleryName>/Images/<sharedGalleryImageName>/Versions/<sharedGalleryImageVersionName>` for the SharedGalleryImageID"))
-				} else if !strings.EqualFold(strings.Split(*version.SharedGalleryImageID, "/")[1], "SharedGalleries") {
-					allErrs = append(allErrs, field.Invalid(jdxPath.Child("sharedGalleryImageID"),
-						version.SharedGalleryImageID, "SharedGalleryImageID must start with '/SharedGalleries/' prefix"))
-				}
-			}
-
-			if !slices.Contains(v1beta1constants.ValidArchitectures, *version.Architecture) {
-				allErrs = append(allErrs, field.NotSupported(jdxPath.Child("architecture"), *version.Architecture, v1beta1constants.ValidArchitectures))
-			}
+		if !slices.Contains(v1beta1constants.ValidArchitectures, *version.Architecture) {
+			allErrs = append(allErrs, field.NotSupported(jdxPath.Child("architecture"), *version.Architecture, v1beta1constants.ValidArchitectures))
 		}
 	}
 
