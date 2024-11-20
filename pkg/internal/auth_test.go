@@ -75,7 +75,7 @@ var _ = Describe("Azure Auth", func() {
 
 	Describe("#NewClientAuthDataFromSecret", func() {
 		It("should read the client auth data from the secret", func() {
-			actual, err := NewClientAuthDataFromSecret(secret, false)
+			actual, _, err := NewClientAuthDataFromSecret(secret, false)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(actual).To(Equal(clientAuth))
 		})
@@ -91,7 +91,7 @@ var _ = Describe("Azure Auth", func() {
 						return nil
 					})
 
-				actual, err := GetClientAuthData(ctx, c, secretRef, false)
+				actual, _, err := GetClientAuthData(ctx, c, secretRef, false)
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(actual).To(Equal(clientAuth))
@@ -105,7 +105,7 @@ var _ = Describe("Azure Auth", func() {
 						return nil
 					})
 
-				actual, err := GetClientAuthData(ctx, c, secretRef, false)
+				actual, _, err := GetClientAuthData(ctx, c, secretRef, false)
 
 				Expect(err).To(HaveOccurred())
 				Expect(actual).To(BeNil())
@@ -121,7 +121,7 @@ var _ = Describe("Azure Auth", func() {
 						return nil
 					})
 
-				actual, err := GetClientAuthData(ctx, c, secretRef, true)
+				actual, _, err := GetClientAuthData(ctx, c, secretRef, true)
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(actual).To(Equal(clientAuth))
@@ -135,7 +135,7 @@ var _ = Describe("Azure Auth", func() {
 						return nil
 					})
 
-				actual, err := GetClientAuthData(ctx, c, secretRef, true)
+				actual, _, err := GetClientAuthData(ctx, c, secretRef, true)
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(actual).To(Equal(clientAuth))

@@ -64,7 +64,7 @@ func (f *FlowReconciler) Reconcile(ctx context.Context, infra *extensionsv1alpha
 		}
 	}
 
-	auth, err := internal.GetClientAuthData(ctx, f.client, infra.Spec.SecretRef, false)
+	auth, _, err := internal.GetClientAuthData(ctx, f.client, infra.Spec.SecretRef, false)
 	if err != nil {
 		return err
 	}
