@@ -4,21 +4,21 @@ module github.com/gardener/gardener-extension-provider-azure
 go 1.23.0
 
 require (
-	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.12.0
-	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.7.0
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.16.0
+	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.8.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5 v5.7.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/dns/armdns v1.2.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi v1.2.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4 v4.3.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources v1.2.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage v1.6.0
-	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.3.2
+	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.5.0
 	github.com/Azure/go-autorest/autorest v0.11.29
 	github.com/Azure/go-autorest/autorest/adal v0.9.24
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.13
 	github.com/Azure/go-autorest/autorest/to v0.4.0
-	github.com/AzureAD/microsoft-authentication-library-for-go v1.2.2
-	github.com/Masterminds/semver/v3 v3.3.0
+	github.com/AzureAD/microsoft-authentication-library-for-go v1.3.2
+	github.com/Masterminds/semver/v3 v3.3.1
 	github.com/Masterminds/sprig v2.22.0+incompatible
 	github.com/ahmetb/gen-crd-api-reference-docs v0.3.0
 	github.com/coreos/go-systemd/v22 v22.5.0
@@ -28,9 +28,9 @@ require (
 	github.com/gardener/remedy-controller v0.6.0
 	github.com/go-logr/logr v1.4.2
 	github.com/google/go-cmp v0.6.0
-	github.com/onsi/ginkgo/v2 v2.21.0
-	github.com/onsi/gomega v1.35.0
-	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.78.1
+	github.com/onsi/ginkgo/v2 v2.22.0
+	github.com/onsi/gomega v1.36.0
+	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.78.2
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
 	go.uber.org/atomic v1.11.0
@@ -39,22 +39,22 @@ require (
 	golang.org/x/exp v0.0.0-20241108190413-2d47ceb2692f
 	golang.org/x/tools v0.27.0
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.31.2
-	k8s.io/apiextensions-apiserver v0.31.2
-	k8s.io/apimachinery v0.31.2
+	k8s.io/api v0.31.3
+	k8s.io/apiextensions-apiserver v0.31.3
+	k8s.io/apimachinery v0.31.3
 	k8s.io/autoscaler/vertical-pod-autoscaler v1.2.1
 	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
-	k8s.io/code-generator v0.31.2
-	k8s.io/component-base v0.31.2
-	k8s.io/kubelet v0.31.2
+	k8s.io/code-generator v0.31.3
+	k8s.io/component-base v0.31.3
+	k8s.io/kubelet v0.31.3
 	k8s.io/utils v0.0.0-20241104163129-6fe5fd82f078
-	sigs.k8s.io/controller-runtime v0.19.1
+	sigs.k8s.io/controller-runtime v0.19.2
 	sigs.k8s.io/controller-tools v0.16.5
 )
 
 require (
 	dario.cat/mergo v1.0.1 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/internal v1.9.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/internal v1.10.0 // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
 	github.com/Azure/go-autorest/autorest/azure/cli v0.4.6 // indirect
 	github.com/Azure/go-autorest/autorest/date v0.3.0 // indirect
@@ -163,7 +163,7 @@ require (
 	helm.sh/helm/v3 v3.16.2 // indirect
 	istio.io/api v1.23.3 // indirect
 	istio.io/client-go v1.23.2 // indirect
-	k8s.io/apiserver v0.31.2 // indirect
+	k8s.io/apiserver v0.31.3 // indirect
 	k8s.io/cluster-bootstrap v0.31.2 // indirect
 	k8s.io/component-helpers v0.31.2 // indirect
 	k8s.io/gengo v0.0.0-20230829151522-9cce18d56c01 // indirect
