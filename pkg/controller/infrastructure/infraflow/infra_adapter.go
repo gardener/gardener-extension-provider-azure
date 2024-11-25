@@ -157,9 +157,23 @@ type AvailabilitySetConfig struct {
 	Location           string
 }
 
-// AvailabilitySetRequired returns true if gardener should create an availability set for the shoot.
-func (ia *InfrastructureAdapter) availabilitySetRequired() (bool, error) {
-	return infrastructure.IsPrimaryAvailabilitySetRequired(ia.infra, ia.config, ia.cluster)
+// IsAvailabilitySetReconciliationRequired returns true if gardener should create an availability set for the shoot.
+func (ia *InfrastructureAdapter) IsAvailabilitySetReconciliationRequired() bool {
+	if ia.config.Zoned {
+		return false
+	}
+	// If the infrastructureStatus already exists that mean the Infrastucture is already created.
+	if len(ia.status.AvailabilitySets) > 0 {
+		if _, err := helper.FindAvailabilitySetByPurpose(ia.status.AvailabilitySets, azure.PurposeNodes); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
+// IsVmoRequiredForInfrastructure determines if VMO is required.
+func (ia *InfrastructureAdapter) IsVmoRequiredForInfrastructure() bool {
+	return !ia.config.Zoned && (len(ia.status.AvailabilitySets) == 0 || helper.HasShootVmoMigrationAnnotation(ia.cluster.Shoot.GetAnnotations()))
 }
 
 // AvailabilitySetConfig returns the configuration for the shoot's availability set.
@@ -167,18 +181,17 @@ func (ia *InfrastructureAdapter) AvailabilitySetConfig() *AvailabilitySetConfig 
 	return ia.avSetConfig
 }
 
+// AvailabilitySetName is the name of the availability set of the shoot.
+func (ia *InfrastructureAdapter) AvailabilitySetName() string {
+	return fmt.Sprintf("%s-avset-workers", ia.TechnicalName())
+}
+
 // AvailabilitySetConfig returns the availability set's configuration.
 func (ia *InfrastructureAdapter) availabilitySetConfig() (*AvailabilitySetConfig, error) {
-	if ok, err := ia.availabilitySetRequired(); err != nil {
-		return nil, err
-	} else if !ok {
-		return nil, nil
-	}
-
 	asc := &AvailabilitySetConfig{
 		AzureResourceMetadata: AzureResourceMetadata{
 			ResourceGroup: ia.ResourceGroupName(),
-			Name:          fmt.Sprintf("%s-avset-workers", ia.TechnicalName()),
+			Name:          ia.AvailabilitySetName(),
 			Kind:          KindAvailabilitySet,
 		},
 	}

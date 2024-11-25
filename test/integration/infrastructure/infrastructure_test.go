@@ -299,54 +299,6 @@ var _ = BeforeSuite(func() {
 })
 
 var _ = Describe("Infrastructure tests", func() {
-	Context("AvailabilitySet cluster", func() {
-		AfterEach(func() {
-			framework.RunCleanupActions()
-		})
-
-		It("should successfully create and delete AvailabilitySet cluster creating new vNet", func() {
-			providerConfig := newInfrastructureConfig(nil, nil, nil, false)
-
-			namespace, err := generateName()
-			Expect(err).ToNot(HaveOccurred())
-
-			err = runTest(ctx, log, c, clientSet, namespace, providerConfig, false, decoder)
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("should successfully create and delete AvailabilitySet cluster using existing vNet and existing identity", func() {
-			foreignName, err := generateName()
-			Expect(err).ToNot(HaveOccurred())
-			foreignNameVnet := foreignName + "-vnet"
-			foreignNameId := foreignName + "-id"
-
-			var cleanupHandle framework.CleanupActionHandle
-			cleanupHandle = framework.AddCleanupAction(func() {
-				Expect(ignoreAzureNotFoundError(teardownResourceGroup(ctx, clientSet, foreignName))).To(Succeed())
-				framework.RemoveCleanupAction(cleanupHandle)
-			})
-
-			Expect(prepareNewResourceGroup(ctx, log, clientSet, foreignName, *region)).To(Succeed())
-			Expect(prepareNewVNet(ctx, log, clientSet, foreignName, foreignNameVnet, *region, VNetCIDR)).To(Succeed())
-			Expect(prepareNewIdentity(ctx, log, clientSet, foreignName, foreignNameId, *region)).To(Succeed())
-
-			vnetConfig := &azurev1alpha1.VNet{
-				Name:          ptr.To(foreignNameVnet),
-				ResourceGroup: ptr.To(foreignName),
-			}
-			identityConfig := &azurev1alpha1.IdentityConfig{
-				Name:          foreignNameId,
-				ResourceGroup: foreignName,
-			}
-			providerConfig := newInfrastructureConfig(vnetConfig, nil, identityConfig, false)
-
-			namespace, err := generateName()
-			Expect(err).ToNot(HaveOccurred())
-			err = runTest(ctx, log, c, clientSet, namespace, providerConfig, false, decoder)
-			Expect(err).ToNot(HaveOccurred())
-		})
-	})
-
 	Context("Zonal cluster", func() {
 		AfterEach(func() {
 			framework.RunCleanupActions()

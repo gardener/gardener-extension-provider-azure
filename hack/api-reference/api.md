@@ -1021,7 +1021,20 @@ ResourceGroup
 </em>
 </td>
 <td>
-<p>AvailabilitySets is a list of created availability sets</p>
+<p>AvailabilitySets is a list of created availability sets
+Deprecated: Will be removed in future versions.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>migratingToVMO</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>MigratingToVMO indicates whether the infrastructure controller has prepared the migration from Availability set.
+Deprecated: Will be removed in future versions.</p>
 </td>
 </tr>
 <tr>
@@ -1034,7 +1047,7 @@ ResourceGroup
 </em>
 </td>
 <td>
-<p>AvailabilitySets is a list of created route tables</p>
+<p>RouteTables is a list of created route tables</p>
 </td>
 </tr>
 <tr>

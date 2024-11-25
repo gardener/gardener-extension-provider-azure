@@ -758,6 +758,7 @@ func autoConvert_v1alpha1_InfrastructureStatus_To_azure_InfrastructureStatus(in 
 		return err
 	}
 	out.AvailabilitySets = *(*[]azure.AvailabilitySet)(unsafe.Pointer(&in.AvailabilitySets))
+	out.MigratingToVMO = in.MigratingToVMO
 	out.RouteTables = *(*[]azure.RouteTable)(unsafe.Pointer(&in.RouteTables))
 	out.SecurityGroups = *(*[]azure.SecurityGroup)(unsafe.Pointer(&in.SecurityGroups))
 	out.Identity = (*azure.IdentityStatus)(unsafe.Pointer(in.Identity))
@@ -778,6 +779,7 @@ func autoConvert_azure_InfrastructureStatus_To_v1alpha1_InfrastructureStatus(in 
 		return err
 	}
 	out.AvailabilitySets = *(*[]AvailabilitySet)(unsafe.Pointer(&in.AvailabilitySets))
+	out.MigratingToVMO = in.MigratingToVMO
 	out.RouteTables = *(*[]RouteTable)(unsafe.Pointer(&in.RouteTables))
 	out.SecurityGroups = *(*[]SecurityGroup)(unsafe.Pointer(&in.SecurityGroups))
 	out.Identity = (*IdentityStatus)(unsafe.Pointer(in.Identity))

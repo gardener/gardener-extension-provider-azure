@@ -125,6 +125,7 @@ type Subnet interface {
 
 // LoadBalancer represents an Azure LoadBalancer k8sClient.
 type LoadBalancer interface {
+	GetFunc[armnetwork.LoadBalancer]
 	ListFunc[armnetwork.LoadBalancer]
 	DeleteFunc[armnetwork.LoadBalancer]
 }
