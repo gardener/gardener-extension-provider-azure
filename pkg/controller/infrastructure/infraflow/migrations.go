@@ -35,9 +35,6 @@ func (fctx *FlowContext) BackupPIPsForBasicLBMigration(ctx context.Context) erro
 		len(lb.Properties.FrontendIPConfigurations) == 0 {
 		return nil
 	}
-	if lb.Properties == nil || len(lb.Properties.FrontendIPConfigurations) == 0 {
-		return nil
-	}
 	for _, fipc := range lb.Properties.FrontendIPConfigurations {
 		if fipc.Properties == nil {
 			continue

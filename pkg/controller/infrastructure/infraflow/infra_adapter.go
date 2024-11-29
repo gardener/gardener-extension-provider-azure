@@ -171,11 +171,6 @@ func (ia *InfrastructureAdapter) IsAvailabilitySetReconciliationRequired() bool 
 	return false
 }
 
-// IsVmoRequiredForInfrastructure determines if VMO is required.
-func (ia *InfrastructureAdapter) IsVmoRequiredForInfrastructure() bool {
-	return !ia.config.Zoned && (len(ia.status.AvailabilitySets) == 0 || helper.HasShootVmoMigrationAnnotation(ia.cluster.Shoot.GetAnnotations()))
-}
-
 // AvailabilitySetConfig returns the configuration for the shoot's availability set.
 func (ia *InfrastructureAdapter) AvailabilitySetConfig() *AvailabilitySetConfig {
 	return ia.avSetConfig

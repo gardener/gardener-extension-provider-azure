@@ -178,7 +178,7 @@ func (fctx *FlowContext) EnsureAvailabilitySet(ctx context.Context) error {
 	}
 
 	// complete AS migration.
-	if v := fctx.whiteboard.GetChild("migration").GetChild(KindAvailabilitySet.String()).Get("complete"); v != nil && *v == "true" {
+	if v := fctx.whiteboard.GetChild(ChildKeyMigration).GetChild(KindAvailabilitySet.String()).Get(ChildKeyComplete); v != nil && *v == "true" {
 		err := fctx.deleteAvailabilitySet(ctx, log)
 		if err != nil {
 			return err
@@ -750,7 +750,7 @@ func (fctx *FlowContext) MigrateAvailabilitySet(ctx context.Context) error {
 	)
 
 	// return early if the migration has already been complete
-	if v := fctx.whiteboard.GetChild("migration").GetChild(KindAvailabilitySet.String()).Get("complete"); v != nil && *v == "true" {
+	if v := fctx.whiteboard.GetChild(ChildKeyMigration).GetChild(KindAvailabilitySet.String()).Get(ChildKeyComplete); v != nil && *v == "true" {
 		return nil
 	}
 	// return early if the cluster does not have AS.
@@ -820,7 +820,7 @@ func (fctx *FlowContext) MigrateAvailabilitySet(ctx context.Context) error {
 	if err := fctx.UpdatePublicIPs(ctx); err != nil {
 		return err
 	}
-	fctx.whiteboard.GetChild("migration").GetChild(KindAvailabilitySet.String()).Set("complete", "true")
+	fctx.whiteboard.GetChild(ChildKeyMigration).GetChild(KindAvailabilitySet.String()).Set(ChildKeyComplete, "true")
 	return fctx.PersistState(ctx)
 }
 
@@ -890,7 +890,7 @@ func (fctx *FlowContext) GetInfrastructureStatus(_ context.Context) (*v1alpha1.I
 				CountUpdateDomains: cfg.CountUpdateDomains,
 			},
 		}
-		if v := fctx.whiteboard.GetChild("migration").GetChild(KindAvailabilitySet.String()).Get("complete"); v != nil && *v == "true" {
+		if v := fctx.whiteboard.GetChild(ChildKeyMigration).GetChild(KindAvailabilitySet.String()).Get(ChildKeyComplete); v != nil && *v == "true" {
 			status.MigratingToVMO = true
 		}
 	}
