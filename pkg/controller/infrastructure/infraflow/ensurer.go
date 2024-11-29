@@ -18,6 +18,7 @@ import (
 	"github.com/gardener/gardener/pkg/utils/flow"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -771,7 +772,7 @@ func (fctx *FlowContext) MigrateAvailabilitySet(ctx context.Context) error {
 			Name:      azure.CloudControllerManagerName,
 		}, deployment); k8sclient.IgnoreNotFound(err) != nil {
 			return err
-		} else if k8sclient.IgnoreNotFound(err) != nil {
+		} else if err != nil && apierrors.IsNotFound(err) {
 			return nil
 		}
 
