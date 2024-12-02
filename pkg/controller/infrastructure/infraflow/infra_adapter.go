@@ -162,7 +162,7 @@ func (ia *InfrastructureAdapter) IsAvailabilitySetReconciliationRequired() bool 
 	if ia.config.Zoned {
 		return false
 	}
-	// If the infrastructureStatus already exists that mean the Infrastucture is already created.
+	// If the infrastructureStatus already exists that means the Infrastructure is already created.
 	if len(ia.status.AvailabilitySets) > 0 {
 		if _, err := helper.FindAvailabilitySetByPurpose(ia.status.AvailabilitySets, azure.PurposeNodes); err == nil {
 			return true

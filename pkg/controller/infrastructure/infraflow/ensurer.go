@@ -808,12 +808,15 @@ func (fctx *FlowContext) MigrateAvailabilitySet(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	log.Info("Deleting load balancer", "Name", fctx.infra.Namespace)
-	if err := loadbalancerClient.Delete(ctx, fctx.adapter.ResourceGroupName(), fctx.adapter.TechnicalName()); err != nil {
+	loadbalancerName := fctx.adapter.TechnicalName()
+	log.Info("Deleting load balancer", "Name", loadbalancerName)
+	if err := loadbalancerClient.Delete(ctx, fctx.adapter.ResourceGroupName(), loadbalancerName); err != nil {
 		return err
 	}
-	log.Info("Deleting internal load balancer", "Name", fctx.infra.Namespace)
-	if err := loadbalancerClient.Delete(ctx, fctx.adapter.ResourceGroupName(), fmt.Sprintf("%s-internal", fctx.adapter.TechnicalName())); err != nil {
+
+	loadbalancerName = fmt.Sprintf("%s-internal", fctx.adapter.TechnicalName())
+	log.Info("Deleting internal load balancer", "Name", loadbalancerName)
+	if err := loadbalancerClient.Delete(ctx, fctx.adapter.ResourceGroupName(), loadbalancerName); err != nil {
 		return err
 	}
 
