@@ -8,34 +8,41 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gardener/gardener/pkg/apis/core"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/utils/ptr"
 	"k8s.io/utils/strings/slices"
 
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 )
 
 // ValidateCloudProfileConfig validates a CloudProfileConfig object.
-func ValidateCloudProfileConfig(cloudProfile *apisazure.CloudProfileConfig, fldPath *field.Path) field.ErrorList {
+func ValidateCloudProfileConfig(cpConfig *apisazure.CloudProfileConfig, machineImages []core.MachineImage, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	allErrs = append(allErrs, validateDomainCount(cloudProfile.CountFaultDomains, fldPath.Child("countFaultDomains"))...)
-	allErrs = append(allErrs, validateDomainCount(cloudProfile.CountUpdateDomains, fldPath.Child("countUpdateDomains"))...)
+	allErrs = append(allErrs, validateDomainCount(cpConfig.CountFaultDomains, fldPath.Child("countFaultDomains"))...)
+	allErrs = append(allErrs, validateDomainCount(cpConfig.CountUpdateDomains, fldPath.Child("countUpdateDomains"))...)
 
 	machineImagesPath := fldPath.Child("machineImages")
-	if len(cloudProfile.MachineImages) == 0 {
+	if len(cpConfig.MachineImages) == 0 {
 		allErrs = append(allErrs, field.Required(machineImagesPath, "must provide at least one machine image"))
+		return allErrs
 	}
-	for i, machineImage := range cloudProfile.MachineImages {
+
+	// validate all provider images fields
+	for i, machineImage := range cpConfig.MachineImages {
 		idxPath := machineImagesPath.Index(i)
-		allErrs = append(allErrs, ValidateMachineImage(idxPath, machineImage)...)
+		allErrs = append(allErrs, ValidateProviderMachineImage(idxPath, machineImage)...)
 	}
+
+	allErrs = append(allErrs, validateProviderImagesMapping(cpConfig, machineImages, machineImagesPath)...)
 
 	return allErrs
 }
 
-// ValidateMachineImage validates a CloudProfileConfig MachineImages entry.
-func ValidateMachineImage(validationPath *field.Path, machineImage apisazure.MachineImages) field.ErrorList {
+// ValidateProviderMachineImage validates a CloudProfileConfig MachineImages entry.
+func ValidateProviderMachineImage(validationPath *field.Path, machineImage apisazure.MachineImages) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if len(machineImage.Name) == 0 {
@@ -90,6 +97,52 @@ func ValidateMachineImage(validationPath *field.Path, machineImage apisazure.Mac
 
 		if !slices.Contains(v1beta1constants.ValidArchitectures, *version.Architecture) {
 			allErrs = append(allErrs, field.NotSupported(jdxPath.Child("architecture"), *version.Architecture, v1beta1constants.ValidArchitectures))
+		}
+	}
+
+	return allErrs
+}
+
+// verify that for each parent image a provider image exists
+func validateProviderImagesMapping(cpConfig *apisazure.CloudProfileConfig, machineImages []core.MachineImage, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	providerImageMap := make(map[string]int)
+	for i, providerImage := range cpConfig.MachineImages {
+		providerImageMap[providerImage.Name] = i
+	}
+
+	for _, image := range machineImages {
+		idx, found := providerImageMap[image.Name]
+		if found {
+			allErrs = append(allErrs, validateVersionsMapping(cpConfig.MachineImages[idx].Versions, image.Versions, fldPath.Index(idx).Child("versions"))...)
+		} else if len(image.Versions) > 0 {
+			allErrs = append(allErrs, field.Required(fldPath, fmt.Sprintf("must provide a provider image mapping for image %q", image.Name)))
+		}
+	}
+
+	return allErrs
+}
+
+// validate that for each image version and architecture a corresponding provider image exists
+func validateVersionsMapping(providerVersions []apisazure.MachineImageVersion, versions []core.MachineImageVersion, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	isVersionArchAvailable := func(version string, architecture string) bool {
+		for _, providerVersion := range providerVersions {
+			if architecture == ptr.Deref(providerVersion.Architecture, v1beta1constants.ArchitectureAMD64) && version == providerVersion.Version {
+				return true
+			}
+		}
+		return false
+	}
+
+	for _, version := range versions {
+		for _, architecture := range version.Architectures {
+			if !isVersionArchAvailable(version.Version, architecture) {
+				errorMessage := fmt.Sprintf("must provide an image mapping for version %q and architecture: %s", version.Version, architecture)
+				allErrs = append(allErrs, field.Required(fldPath, errorMessage))
+			}
 		}
 	}
 
