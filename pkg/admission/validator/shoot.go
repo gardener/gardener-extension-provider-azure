@@ -21,7 +21,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azurevalidation "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/validation"
 )
 
@@ -114,7 +113,7 @@ func (s *shoot) validateShoot(shoot *core.Shoot, oldInfraConfig, infraConfig *ap
 		// Cloudprofile validation
 		allErrs = append(allErrs, azurevalidation.ValidateInfrastructureConfigAgainstCloudProfile(oldInfraConfig, infraConfig, shoot.Spec.Region, cloudProfileSpec, infraConfigPath)...)
 		// Provider validation
-		allErrs = append(allErrs, azurevalidation.ValidateInfrastructureConfig(infraConfig, shoot.Spec.Networking, helper.HasShootVmoAlphaAnnotation(shoot.Annotations), infraConfigPath)...)
+		allErrs = append(allErrs, azurevalidation.ValidateInfrastructureConfig(infraConfig, shoot, infraConfigPath)...)
 	}
 	if cpConfig != nil {
 		allErrs = append(allErrs, azurevalidation.ValidateControlPlaneConfig(cpConfig, shoot.Spec.Kubernetes.Version, cpConfigPath)...)
@@ -169,7 +168,6 @@ func (s *shoot) validateUpdate(oldShoot, shoot *core.Shoot, cloudProfileSpec *ga
 		allErrs = append(allErrs, azurevalidation.ValidateInfrastructureConfigUpdate(oldInfraConfig, infraConfig, metaDataPath)...)
 	}
 
-	allErrs = append(allErrs, azurevalidation.ValidateVmoConfigUpdate(helper.HasShootVmoAlphaAnnotation(oldShoot.Annotations), helper.HasShootVmoAlphaAnnotation(shoot.Annotations), metaDataPath)...)
 	allErrs = append(allErrs, azurevalidation.ValidateWorkersUpdate(oldShoot.Spec.Provider.Workers, shoot.Spec.Provider.Workers, workersPath)...)
 
 	allErrs = append(allErrs, s.validateShoot(shoot, oldInfraConfig, infraConfig, cloudProfileSpec, cpConfig)...)

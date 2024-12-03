@@ -11,7 +11,6 @@ import (
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	. "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 var (
@@ -151,40 +150,30 @@ var _ = Describe("Helper", func() {
 			"ubuntu", "1", ptr.To("foo"), &api.MachineImage{Name: "ubuntu", Version: "1", Image: api.Image{SharedGalleryImageID: &profileSharedImageId}, Architecture: ptr.To("foo")}),
 	)
 
-	DescribeTable("#IsVmoRequired",
-		func(zoned bool, availabilitySet *api.AvailabilitySet, expectedVmoRequired bool) {
+	DescribeTable("#IsVmoRequiredForInfrastructure",
+		func(zoned bool, availabilitySet *api.AvailabilitySet, migrateToVMO bool, expectedVmoRequired bool) {
 			var infrastructureStatus = &api.InfrastructureStatus{
 				Zoned: zoned,
 			}
 			if availabilitySet != nil {
 				infrastructureStatus.AvailabilitySets = append(infrastructureStatus.AvailabilitySets, *availabilitySet)
 			}
+			infrastructureStatus.MigratingToVMO = migrateToVMO
 
 			Expect(IsVmoRequired(infrastructureStatus)).To(Equal(expectedVmoRequired))
 		},
-		Entry("should require a VMO", false, nil, true),
-		Entry("should not require VMO for zoned cluster", true, nil, false),
+		Entry("should require a VMO", false, nil, false, true),
+		Entry("should not require VMO for zoned cluster", true, nil, false, false),
 		Entry("should not require VMO for a cluster with primary availabilityset (non zoned)", false, &api.AvailabilitySet{
 			ID:      "/my/azure/availabilityset/id",
 			Name:    "my-availabilityset",
 			Purpose: api.PurposeNodes,
-		}, false),
-	)
-
-	DescribeTable("#HasShootVmoAlphaAnnotation",
-		func(hasVmoAnnotaion, hasCorrectVmoAnnotationValue, expectedResult bool) {
-			var annotations = map[string]string{}
-			if hasVmoAnnotaion {
-				annotations[azure.ShootVmoUsageAnnotation] = "some-arbitrary-value"
-			}
-			if hasCorrectVmoAnnotationValue {
-				annotations[azure.ShootVmoUsageAnnotation] = "true"
-			}
-			Expect(HasShootVmoAlphaAnnotation(annotations)).To(Equal(expectedResult))
-		},
-		Entry("should return true as shoot annotations contain vmo alpha annotation with value true", true, true, true),
-		Entry("should return false as shoot annotations contain vmo alpha annotation with wrong value", true, false, false),
-		Entry("should return false as shoot annotations do not contain vmo alpha annotation", false, false, false),
+		}, false, false),
+		Entry("should require VMO for a cluster with primary availabilityset with migration to VMO", false, &api.AvailabilitySet{
+			ID:      "/my/azure/availabilityset/id",
+			Name:    "my-availabilityset",
+			Purpose: api.PurposeNodes,
+		}, true, true),
 	)
 })
 

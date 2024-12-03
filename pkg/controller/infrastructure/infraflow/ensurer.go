@@ -8,18 +8,24 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	"github.com/gardener/gardener/pkg/utils/flow"
 	"github.com/go-logr/logr"
+	appsv1 "k8s.io/api/apps/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
+	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow/shared"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
@@ -171,7 +177,16 @@ func (fctx *FlowContext) EnsureAvailabilitySet(ctx context.Context) error {
 		return nil
 	}
 
-	avset, err := fctx.ensureAvailabilitySet(ctx, log, *avsetCfg)
+	// complete AS migration.
+	if v := fctx.whiteboard.GetChild(ChildKeyMigration).GetChild(KindAvailabilitySet.String()).Get(ChildKeyComplete); v != nil && *v == "true" {
+		err := fctx.deleteAvailabilitySet(ctx, log)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	avset, err := fctx.ensureAvailabilitySet(ctx, log)
 	if err != nil {
 		return err
 	}
@@ -183,13 +198,41 @@ func (fctx *FlowContext) EnsureAvailabilitySet(ctx context.Context) error {
 	fctx.whiteboard.GetChild(ChildKeyIDs).Set(KindAvailabilitySet.String(), *avset.ID)
 	return nil
 }
+func (fctx *FlowContext) deleteAvailabilitySet(ctx context.Context, log logr.Logger) error {
+	// try to delete the availability set. It can only  work if it does not contain any VMs.
+	asClient, err := fctx.factory.AvailabilitySet()
+	if err != nil {
+		return err
+	}
 
-func (fctx *FlowContext) ensureAvailabilitySet(ctx context.Context, log logr.Logger, avsetCfg AvailabilitySetConfig) (*armcompute.AvailabilitySet, error) {
+	av, err := asClient.Get(ctx, fctx.adapter.AvailabilitySetConfig().ResourceGroup, fctx.adapter.AvailabilitySetConfig().Name)
+	if err != nil {
+		return err
+	}
+	if av == nil {
+		return nil
+	}
+	// if the AS contains no VMs then we attempt to delete it and complete the migration
+	if len(av.Properties.VirtualMachines) == 0 {
+		log.Info("Deleting Availability Set", "Name", *av.Name)
+		if err := asClient.Delete(ctx, fctx.adapter.ResourceGroupName(), *av.Name); err != nil {
+			return err
+		}
+		fctx.whiteboard.GetChild(ChildKeyIDs).Delete(KindAvailabilitySet.String())
+		fctx.inventory.Delete(*av.ID)
+		return nil
+	}
+	log.Info("Skipping deleting Availability Set because it still contains VMs", "Name", *av.Name)
+	return nil
+}
+
+func (fctx *FlowContext) ensureAvailabilitySet(ctx context.Context, log logr.Logger) (*armcompute.AvailabilitySet, error) {
 	asClient, err := fctx.factory.AvailabilitySet()
 	if err != nil {
 		return nil, err
 	}
 
+	avsetCfg := fctx.adapter.AvailabilitySetConfig()
 	avset, err := asClient.Get(ctx, avsetCfg.ResourceGroup, avsetCfg.Name)
 	if err != nil {
 		return nil, err
@@ -699,6 +742,91 @@ func (fctx *FlowContext) EnsureManagedIdentity(ctx context.Context) (err error) 
 	return err
 }
 
+// MigrateAvailabilitySet prepares an AS-based shoot to be migrated to VMSS-Flex.
+func (fctx *FlowContext) MigrateAvailabilitySet(ctx context.Context) error {
+	var (
+		log = shared.LogFromContext(ctx)
+		c   = fctx.client
+	)
+
+	// return early if the migration has already been complete
+	if v := fctx.whiteboard.GetChild(ChildKeyMigration).GetChild(KindAvailabilitySet.String()).Get(ChildKeyComplete); v != nil && *v == "true" {
+		return nil
+	}
+	// return early if the cluster does not have AS.
+	if fctx.whiteboard.GetChild(ChildKeyIDs).Get(KindAvailabilitySet.String()) == nil {
+		return nil
+	}
+
+	// IF VMOs are not needed, or the migration is already done, return early.
+	if !helper.HasShootVmoMigrationAnnotation(fctx.cluster.Shoot.GetAnnotations()) {
+		return nil
+	}
+
+	log.Info("Preparing for the migration to VMOs")
+	scaleDownDeployment := func(ctx context.Context, key k8sclient.ObjectKey) error {
+		log.Info("Scaling deployment to 0 replicas", "Name", key.String())
+		deployment := &appsv1.Deployment{}
+		if err := fctx.client.Get(ctx, k8sclient.ObjectKey{
+			Namespace: fctx.infra.Namespace,
+			Name:      azure.CloudControllerManagerName,
+		}, deployment); k8sclient.IgnoreNotFound(err) != nil {
+			return err
+		} else if err != nil && apierrors.IsNotFound(err) {
+			return nil
+		}
+
+		if ptr.Deref(deployment.Spec.Replicas, 1) == 0 {
+			return nil
+		}
+		patch := k8sclient.MergeFrom(deployment.DeepCopy())
+		deployment.Spec.Replicas = ptr.To(int32(0))
+		// Apply the patch on the "scale" subresource
+		if err := c.SubResource("scale").Patch(ctx, deployment, patch); err != nil {
+			return fmt.Errorf("failed to patch deployment %s with replicas: %w", key.String(), err)
+		}
+		return nil
+	}
+
+	if err := flow.Parallel(func(ctx context.Context) error {
+		return scaleDownDeployment(ctx, k8sclient.ObjectKey{Namespace: fctx.infra.Namespace, Name: azure.CloudControllerManagerName})
+	}, func(ctx context.Context) error {
+		// we want to scale CA down to avoid VMs getting created as they may claim internal subnet IPs in the case of an existing internal loadbalancer.
+		return scaleDownDeployment(ctx, k8sclient.ObjectKey{Namespace: fctx.infra.Namespace, Name: "cluster-autoscaler"})
+	}).RetryUntilTimeout(5*time.Second, defaultTimeout)(ctx); err != nil {
+		return err
+	}
+
+	log.Info("Backing-up Public IPs to be migrated")
+	// we will first back up the PIPs that we want to migrate. In the simplest case, we would only migrate PIPs in the shoot's RG. But the loadbalancer may reference PIPs from other RGs.
+	// If we delete the LB we would have no way to recover the PIPs in other RGs, hence we will back it up.
+	if err := fctx.BackupPIPsForBasicLBMigration(ctx); err != nil {
+		return err
+	}
+
+	loadbalancerClient, err := fctx.factory.LoadBalancer()
+	if err != nil {
+		return err
+	}
+	loadbalancerName := fctx.adapter.TechnicalName()
+	log.Info("Deleting load balancer", "Name", loadbalancerName)
+	if err := loadbalancerClient.Delete(ctx, fctx.adapter.ResourceGroupName(), loadbalancerName); err != nil {
+		return err
+	}
+
+	loadbalancerName = fmt.Sprintf("%s-internal", fctx.adapter.TechnicalName())
+	log.Info("Deleting internal load balancer", "Name", loadbalancerName)
+	if err := loadbalancerClient.Delete(ctx, fctx.adapter.ResourceGroupName(), loadbalancerName); err != nil {
+		return err
+	}
+
+	if err := fctx.UpdatePublicIPs(ctx); err != nil {
+		return err
+	}
+	fctx.whiteboard.GetChild(ChildKeyMigration).GetChild(KindAvailabilitySet.String()).Set(ChildKeyComplete, "true")
+	return fctx.PersistState(ctx)
+}
+
 // GetInfrastructureStatus returns the infrastructure status.
 func (fctx *FlowContext) GetInfrastructureStatus(_ context.Context) (*v1alpha1.InfrastructureStatus, error) {
 	status := &v1alpha1.InfrastructureStatus{
@@ -754,7 +882,8 @@ func (fctx *FlowContext) GetInfrastructureStatus(_ context.Context) (*v1alpha1.I
 	}
 	status.Networks.OutboundAccessType = outboundAccessType
 
-	if cfg := fctx.adapter.AvailabilitySetConfig(); cfg != nil {
+	if fctx.whiteboard.GetChild(ChildKeyIDs).Get(KindAvailabilitySet.String()) != nil {
+		cfg := fctx.adapter.AvailabilitySetConfig()
 		status.AvailabilitySets = []v1alpha1.AvailabilitySet{
 			{
 				Purpose:            v1alpha1.PurposeNodes,
@@ -763,6 +892,9 @@ func (fctx *FlowContext) GetInfrastructureStatus(_ context.Context) (*v1alpha1.I
 				CountFaultDomains:  cfg.CountFaultDomains,
 				CountUpdateDomains: cfg.CountUpdateDomains,
 			},
+		}
+		if v := fctx.whiteboard.GetChild(ChildKeyMigration).GetChild(KindAvailabilitySet.String()).Get(ChildKeyComplete); v != nil && *v == "true" {
+			status.MigratingToVMO = true
 		}
 	}
 
@@ -782,6 +914,7 @@ func (fctx *FlowContext) GetInfrastructureState() *runtime.RawExtension {
 	state := &v1alpha1.InfrastructureState{
 		TypeMeta:     helper.InfrastructureStateTypeMeta,
 		ManagedItems: fctx.inventory.ToList(),
+		Data:         fctx.whiteboard.ExportAsFlatMap(),
 	}
 
 	return &runtime.RawExtension{

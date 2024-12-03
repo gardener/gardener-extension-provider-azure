@@ -7,6 +7,7 @@ package infraflow
 import (
 	"context"
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
@@ -28,6 +29,14 @@ const (
 	defaultLongTimeout = 4 * time.Minute
 )
 
+var setSeparator = sync.OnceFunc(func() {
+	shared.Separator = "|"
+})
+
+func init() {
+	setSeparator()
+}
+
 // FlowContext is the reconciler for all managed resources
 type FlowContext struct {
 	log            logr.Logger
@@ -37,6 +46,7 @@ type FlowContext struct {
 	auth           *internal.ClientAuth
 	infra          *extensionsv1alpha1.Infrastructure
 	state          *azure.InfrastructureState
+	status         *azure.InfrastructureStatus
 	cluster        *controller.Cluster
 	whiteboard     shared.Whiteboard
 	adapter        *InfrastructureAdapter
@@ -104,6 +114,7 @@ func NewFlowContext(opts Opts) (*FlowContext, error) {
 		state:      opts.State,
 		cluster:    opts.Cluster,
 		cfg:        cfg,
+		status:     status,
 		whiteboard: wb,
 		providerAccess: &access{
 			opts.Factory,
@@ -148,8 +159,8 @@ func (fctx *FlowContext) buildReconcileGraph() *flow.Graph {
 		fctx.EnsureVirtualNetwork, shared.Timeout(defaultTimeout), shared.Dependencies(resourceGroup))
 
 	_ = fctx.AddTask(g, "ensure availability set",
-		fctx.EnsureAvailabilitySet, shared.DoIf(fctx.adapter.AvailabilitySetConfig() != nil),
-		shared.Timeout(defaultTimeout), shared.Dependencies(resourceGroup))
+		fctx.EnsureAvailabilitySet,
+		shared.Timeout(defaultTimeout), shared.Dependencies(resourceGroup), shared.DoIf(fctx.adapter.IsAvailabilitySetReconciliationRequired()))
 
 	_ = fctx.AddTask(g, "ensure managed identity",
 		fctx.EnsureManagedIdentity, shared.DoIf(fctx.cfg.Identity != nil))
@@ -165,8 +176,15 @@ func (fctx *FlowContext) buildReconcileGraph() *flow.Graph {
 	nat := fctx.AddTask(g, "ensure nats",
 		fctx.EnsureNatGateways, shared.Timeout(defaultLongTimeout), shared.Dependencies(resourceGroup, ip))
 
-	_ = fctx.AddTask(g, "ensure subnets", fctx.EnsureSubnets,
+	subnet := fctx.AddTask(g, "ensure subnets", fctx.EnsureSubnets,
 		shared.Timeout(defaultLongTimeout), shared.Dependencies(vnet, routeTable, securityGroup, nat))
+
+	// a sync point for when the "normal" reconciliation is finished. Currently, it ends with the subnet reconciliation.
+	reconciliationFinishedPoint := flow.NewTaskIDs(subnet)
+
+	_ = fctx.AddTask(g, "availability set migration", fctx.MigrateAvailabilitySet,
+		shared.Timeout(defaultLongTimeout), shared.Dependencies(reconciliationFinishedPoint),
+		shared.DoIf(!fctx.cfg.Zoned))
 	return g
 }
 

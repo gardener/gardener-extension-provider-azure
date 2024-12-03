@@ -125,9 +125,19 @@ func FindImageFromCloudProfile(cloudProfileConfig *api.CloudProfileConfig, image
 	return nil, fmt.Errorf("no machine image found with name %q, architecture %q and version %q", imageName, *architecture, imageVersion)
 }
 
-// IsVmoRequired determines if VMO is required.
+// IsVmoRequired determines if VMO is required. It is different from the condition in the infrastructure as this one depends on whether the infra controller
+// has finished migrating the Availability sets.
 func IsVmoRequired(infrastructureStatus *api.InfrastructureStatus) bool {
-	return !infrastructureStatus.Zoned && len(infrastructureStatus.AvailabilitySets) == 0
+	return !infrastructureStatus.Zoned && (len(infrastructureStatus.AvailabilitySets) == 0 || infrastructureStatus.MigratingToVMO)
+}
+
+// HasShootVmoMigrationAnnotation determines if the passed Shoot annotations contain instruction to use VMO.
+func HasShootVmoMigrationAnnotation(shootAnnotations map[string]string) bool {
+	value, exists := shootAnnotations[azure.ShootVmoMigrationAnnotation]
+	if exists && value == "true" {
+		return true
+	}
+	return false
 }
 
 // HasShootVmoAlphaAnnotation determines if the passed Shoot annotations contain instruction to use VMO.

@@ -14,10 +14,13 @@ import (
 )
 
 const (
-	// Separator is used to on translating keys to/from flat maps
-	Separator = "/"
 	// deleted is a special value to mark a resource id as deleted
 	deleted = "<deleted>"
+)
+
+var (
+	// Separator is used to on translating keys to/from flat maps
+	Separator = "/"
 )
 
 // FlatMap is a semantic name for string map used for importing and exporting

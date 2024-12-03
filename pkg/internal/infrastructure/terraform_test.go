@@ -76,6 +76,7 @@ var _ = Describe("Terraform", func() {
 					},
 				},
 			},
+			Status: extensionsv1alpha1.InfrastructureStatus{},
 		}
 
 		cluster = MakeCluster("11.0.0.0/16", "12.0.0.0/16", infra.Spec.Region, countFaultDomain, countUpdateDomain)

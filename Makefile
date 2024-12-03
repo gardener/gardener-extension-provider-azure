@@ -79,6 +79,7 @@ start-admission:
 		./cmd/$(EXTENSION_PREFIX)-$(ADMISSION_NAME) \
 		--webhook-config-server-host=0.0.0.0 \
 		--webhook-config-server-port=$(WEBHOOK_CONFIG_PORT) \
+		--leader-election-namespace=garden \
         --webhook-config-mode=$(WEBHOOK_CONFIG_MODE) \
         $(WEBHOOK_PARAM)
 

@@ -105,8 +105,12 @@ type InfrastructureStatus struct {
 	// ResourceGroup is azure resource group
 	ResourceGroup ResourceGroup
 	// AvailabilitySets is a list of created availability sets
+	// Deprecated: Will be removed in future versions.
 	AvailabilitySets []AvailabilitySet
-	// AvailabilitySets is a list of created route tables
+	// MigratingToVMO indicates whether the infrastructure controller has prepared the migration from Availability set.
+	// Deprecated: Will be removed in future versions.
+	MigratingToVMO bool
+	// RouteTables is a list of created route tables
 	RouteTables []RouteTable
 	// SecurityGroups is a list of created security groups
 	SecurityGroups []SecurityGroup
