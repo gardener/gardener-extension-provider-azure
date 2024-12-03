@@ -1,8 +1,8 @@
 images:
 - name: terraformer
   sourceRepository: github.com/gardener/terraformer
-  repository: europe-docker.pkg.dev/gardener-project/releases/gardener/terraformer-azure
-  tag: "v2.26.0"
+  repository: europe-docker.pkg.dev/gardener-project/snapshots/gardener/terraformer-azure
+  tag: "v2.27.0-dev-beb48415080b05b55a966d78de39b83ce1ab1131" # TODO: fix this
   labels:
   - name: 'gardener.cloud/cve-categorisation'
     value:
@@ -224,8 +224,8 @@ images:
 
 - name: machine-controller-manager-provider-azure
   sourceRepository: github.com/gardener/machine-controller-manager-provider-azure
-  repository: europe-docker.pkg.dev/gardener-project/releases/gardener/machine-controller-manager-provider-azure
-  tag: "v0.14.0"
+  repository: europe-docker.pkg.dev/gardener-project/snapshots/gardener/machine-controller-manager-provider-azure
+  tag: "v0.15.0-dev-b217bd0e665d307e5eb98b9e762b1b62b7d000d6" # TODO: fix this
   labels:
   - name: 'gardener.cloud/cve-categorisation'
     value:
@@ -380,8 +380,8 @@ images:
   sourceRepository: github.com/gardener/remedy-controller
   resourceId:
     name: remedy-controller-image
-  repository: europe-docker.pkg.dev/gardener-project/releases/gardener/remedy-controller/remedy-controller-azure
-  tag: "v0.11.0"
+  repository: europe-docker.pkg.dev/gardener-project/snapshots/gardener/remedy-controller-azure
+  tag: "v-dev-123" # TODO: fix this
   labels:
   - name: 'gardener.cloud/cve-categorisation'
     value:

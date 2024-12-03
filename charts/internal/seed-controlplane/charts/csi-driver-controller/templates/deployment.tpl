@@ -101,6 +101,11 @@ spec:
           name: kubeconfig-csi-driver-controller-file
           readOnly: true
         {{- end }}
+        {{- if .Values.useWorkloadIdentity }}
+        - name: cloudprovider
+          mountPath: /var/run/secrets/gardener.cloud/workload-identity
+          readOnly: true
+        {{- end }}
         - name: cloud-provider-config
           mountPath: /etc/kubernetes/cloudprovider
 
@@ -230,6 +235,18 @@ spec:
       - name: cloud-provider-config
         secret:
           secretName: cloud-provider-config
+      {{- if .Values.useWorkloadIdentity }}
+      - name: cloudprovider
+        projected:
+          defaultMode: 420
+          sources:
+          - secret:
+              items:
+                - key: token
+                  path: token
+              name: cloudprovider
+              optional: false
+      {{- end }}
       - name: kubeconfig-csi-driver-controller-{{ .role }}
         projected:
           defaultMode: 420

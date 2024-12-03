@@ -155,6 +155,11 @@ const (
 	SeedAnnotationUseFlowValueNew = "new"
 	// AnnotationEnableVolumeAttributesClass is the annotation to use on shoots to enable VolumeAttributesClasses
 	AnnotationEnableVolumeAttributesClass = "azure.provider.extensions.gardener.cloud/enable-volume-attributes-class"
+
+	// WorkloadIdentityMountPath is the path where the workload identity token is usually mounted.
+	WorkloadIdentityMountPath = "/var/run/secrets/gardener.cloud/workload-identity"
+	// WorkloadIdentityTokenFileKey is the key indicating the full path to the workload identity token file.
+	WorkloadIdentityTokenFileKey = "workloadIdentityTokenFile"
 )
 
 // UsernamePrefix is a constant for the username prefix of components deployed by Azure.

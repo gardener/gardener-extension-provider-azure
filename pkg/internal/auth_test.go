@@ -29,9 +29,8 @@ var _ = Describe("Azure Auth", func() {
 		dnsSecret  *corev1.Secret
 		secretRef  corev1.SecretReference
 
-		name           string
-		namespace      string
-		subscriptionID string
+		name      string
+		namespace string
 	)
 
 	BeforeEach(func() {
@@ -75,9 +74,26 @@ var _ = Describe("Azure Auth", func() {
 
 	Describe("#NewClientAuthDataFromSecret", func() {
 		It("should read the client auth data from the secret", func() {
-			actual, _, err := NewClientAuthDataFromSecret(secret, false)
+			actual, err := NewClientAuthDataFromSecret(secret, false)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(actual).To(Equal(clientAuth))
+		})
+
+		It("should read the client auth data from the secret when workload identity is enabled", func() {
+			secret.Labels = map[string]string{
+				"security.gardener.cloud/purpose": "workload-identity-token-requestor",
+			}
+			secret.Data["token"] = []byte("foo")
+			actual, err := NewClientAuthDataFromSecret(secret, false)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(actual.SubscriptionID).To(Equal(clientAuth.SubscriptionID))
+			Expect(actual.TenantID).To(Equal(clientAuth.TenantID))
+			Expect(actual.ClientID).To(Equal(clientAuth.ClientID))
+			Expect(actual.ClientSecret).To(Equal(""))
+
+			token, err := actual.TokenRetriever(context.TODO())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(token).To(Equal("foo"))
 		})
 	})
 
@@ -140,23 +156,6 @@ var _ = Describe("Azure Auth", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(actual).To(Equal(clientAuth))
 			})
-		})
-	})
-
-	Describe("#GetAuthorizerAndSubscriptionID", func() {
-		It("should retrieve Azure autorizer and subscription id", func() {
-			var c = mockclient.NewMockClient(ctrl)
-			c.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).
-				DoAndReturn(func(_ context.Context, _ client.ObjectKey, actual *corev1.Secret, _ ...client.GetOption) error {
-					*actual = *secret
-					return nil
-				})
-
-			authorizer, subscription, err := GetAuthorizerAndSubscriptionIDFromSecretRef(ctx, c, secretRef, false)
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(subscription).To(ContainSubstring(subscriptionID))
-			Expect(authorizer).NotTo(BeNil())
 		})
 	})
 })

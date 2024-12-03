@@ -63,3 +63,5 @@ csiSnapshotValidationWebhook:
       cpu: 10m
       memory: 32Mi
   topologyAwareRoutingEnabled: false
+
+useWorkloadIdentity: false
