@@ -14,6 +14,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
@@ -371,7 +372,8 @@ func (fctx *FlowContext) ensurePublicIps(ctx context.Context) error {
 	}
 	currentIPs = Filter(currentIPs, func(address *armnetwork.PublicIPAddress) bool {
 		// filter only these IpConfigs prefixed by the cluster name and that do not contain the CCM tags.
-		return fctx.adapter.HasShootPrefix(address.Name) && address.Tags["k8s-azure-service"] == nil
+		return fctx.adapter.HasShootPrefix(address.Name) &&
+			(address.Tags[azure.CCMServiceTagKey] == nil && address.Tags[azure.CCMLegacyServiceTagKey] == nil)
 	})
 	// obtain an indexed list of current IPs
 	nameToCurrentIps := ToMap(currentIPs, func(t *armnetwork.PublicIPAddress) string {
@@ -412,8 +414,9 @@ func (fctx *FlowContext) ensurePublicIps(ctx context.Context) error {
 		err := fctx.providerAccess.DeletePublicIP(ctx, fctx.adapter.ResourceGroupName(), ipName)
 		if err != nil {
 			joinError = errors.Join(joinError, err)
+		} else {
+			fctx.inventory.Delete(ip)
 		}
-		fctx.inventory.Delete(ip)
 	}
 
 	if joinError != nil {

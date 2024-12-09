@@ -147,6 +147,11 @@ const (
 	SeedAnnotationKeyUseFlow = AnnotationKeyUseFlow
 	// SeedAnnotationUseFlowValueNew is the value to restrict flow reconciliation to new shoot clusters
 	SeedAnnotationUseFlowValueNew = "new"
+
+	// CCMServiceTagKey is the service key applied for public IP tags.
+	CCMServiceTagKey = "k8s-azure-service"
+	// CCMLegacyServiceTagKey is the legacy service key applied for public IP tags.
+	CCMLegacyServiceTagKey = "service"
 )
 
 // UsernamePrefix is a constant for the username prefix of components deployed by Azure.
