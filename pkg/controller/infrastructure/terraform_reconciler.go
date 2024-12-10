@@ -14,9 +14,12 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
 	"github.com/gardener/gardener/extensions/pkg/util"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	securityv1alpha1constants "github.com/gardener/gardener/pkg/apis/security/v1alpha1/constants"
 	"github.com/go-logr/logr"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
@@ -88,12 +91,24 @@ func (r *TerraformReconciler) reconcile(ctx context.Context, infra *extensionsv1
 	if err != nil {
 		return err
 	}
-	terraformFiles, err := infrastructure.RenderTerraformerTemplate(infra, cfg, cluster)
+
+	cloudProviderSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      v1beta1constants.SecretNameCloudProvider,
+			Namespace: infra.Namespace,
+		},
+	}
+	if err := r.Client.Get(ctx, client.ObjectKeyFromObject(cloudProviderSecret), cloudProviderSecret); err != nil {
+		return fmt.Errorf("failed getting cloudprovider secret: %w", err)
+	}
+	useWorkloadIdentity := cloudProviderSecret.Labels[securityv1alpha1constants.LabelPurpose] == securityv1alpha1constants.LabelPurposeWorkloadIdentityTokenRequestor
+
+	terraformFiles, err := infrastructure.RenderTerraformerTemplate(infra, cfg, cluster, useWorkloadIdentity)
 	if err != nil {
 		return err
 	}
 
-	tf, err := internal.NewTerraformerWithAuth(r.Logger, r.RestConfig, infrastructure.TerraformerPurpose, infra, r.disableProjectedTokenMount)
+	tf, err := internal.NewTerraformerWithAuth(r.Logger, r.RestConfig, infrastructure.TerraformerPurpose, infra, r.disableProjectedTokenMount, useWorkloadIdentity)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}
@@ -225,14 +240,25 @@ func (r *TerraformReconciler) Delete(ctx context.Context, infra *extensionsv1alp
 		return tf.CleanupConfiguration(ctx)
 	}
 
-	terraformFiles, err := infrastructure.RenderTerraformerTemplate(infra, cfg, cluster)
+	cloudProviderSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      v1beta1constants.SecretNameCloudProvider,
+			Namespace: infra.Namespace,
+		},
+	}
+	if err := r.Client.Get(ctx, client.ObjectKeyFromObject(cloudProviderSecret), cloudProviderSecret); err != nil {
+		return fmt.Errorf("failed getting cloudprovider secret: %w", err)
+	}
+	useWorkloadIdentity := cloudProviderSecret.Labels[securityv1alpha1constants.LabelPurpose] == securityv1alpha1constants.LabelPurposeWorkloadIdentityTokenRequestor
+
+	terraformFiles, err := infrastructure.RenderTerraformerTemplate(infra, cfg, cluster, useWorkloadIdentity)
 	if err != nil {
 		return err
 	}
 
 	if err = tf.
 		InitializeWith(ctx, terraformer.DefaultInitializer(r.Client, terraformFiles.Main, terraformFiles.Variables, terraformFiles.TFVars, terraformer.StateConfigMapInitializerFunc(NoOpStateInitializer))).
-		SetEnvVars(internal.TerraformerEnvVars(infra.Spec.SecretRef)...).
+		SetEnvVars(internal.TerraformerEnvVars(infra.Spec.SecretRef, useWorkloadIdentity)...).
 		Destroy(ctx); err != nil {
 		return err
 	}

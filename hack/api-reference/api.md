@@ -21,6 +21,8 @@ Resource Types:
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig</a>
 </li><li>
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.WorkerStatus">WorkerStatus</a>
+</li><li>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.WorkloadIdentityConfig">WorkloadIdentityConfig</a>
 </li></ul>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.BackupBucketConfig">BackupBucketConfig
 </h3>
@@ -445,6 +447,71 @@ reconciliation is possible.</p>
 <td>
 <em>(Optional)</em>
 <p>VmoDependencies is a list of external VirtualMachineScaleSet Orchestration Mode VM (VMO) dependencies.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.WorkloadIdentityConfig">WorkloadIdentityConfig
+</h3>
+<p>
+<p>WorkloadIdentityConfig contains configuration settings for workload identity.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code></br>
+string</td>
+<td>
+<code>
+azure.provider.extensions.gardener.cloud/v1alpha1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code></br>
+string
+</td>
+<td><code>WorkloadIdentityConfig</code></td>
+</tr>
+<tr>
+<td>
+<code>clientID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>ClientID is the ID of the Azure client.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tenantID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>TenantID is the ID of the Azure tenant.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>subscriptionID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>SubscriptionID is the ID of the subscription.</p>
 </td>
 </tr>
 </tbody>
