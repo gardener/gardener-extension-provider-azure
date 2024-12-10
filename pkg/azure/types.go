@@ -153,6 +153,11 @@ const (
 	SeedAnnotationUseFlowValueNew = "new"
 	// AnnotationEnableVolumeAttributesClass is the annotation to use on shoots to enable VolumeAttributesClasses
 	AnnotationEnableVolumeAttributesClass = "azure.provider.extensions.gardener.cloud/enable-volume-attributes-class"
+
+	// CCMServiceTagKey is the service key applied for public IP tags.
+	CCMServiceTagKey = "k8s-azure-service"
+	// CCMLegacyServiceTagKey is the legacy service key applied for public IP tags.
+	CCMLegacyServiceTagKey = "service"
 )
 
 // UsernamePrefix is a constant for the username prefix of components deployed by Azure.
