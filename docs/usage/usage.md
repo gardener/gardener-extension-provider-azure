@@ -628,7 +628,7 @@ The machines of an Azure cluster can be created while being attached to an [Azur
 The Virtual Machine ScaleSet with flexible orchestration feature is currently in preview and not yet general available on Azure.
 Subscriptions need to [join the preview](https://docs.microsoft.com/en-us/azure/virtual-machine-scale-sets/virtual-machine-scale-sets-orchestration-modes#register-for-flexible-orchestration-mode) to make use of the feature.
 
-Azure VMSS Flex is intended to replace Azure AvailabilitySet for non-zoned Azure Shoot clusters in the mid-term (once the feature goes GA) as VMSS Flex come with less disadvantages like no blocking machine operations or compability with `Standard` SKU loadbalancer etc.
+Azure VMSS Flex is intended to replace Azure AvailabilitySet for non-zoned Azure Shoot clusters in the mid-term (once the feature goes GA) as VMSS Flex come with less disadvantages like no blocking machine operations or compatibility with `Standard` SKU loadbalancer etc.
 
 To configure an Azure Shoot cluster which make use of VMSS Flex you need to do the following:
 - The `InfrastructureConfig` of the Shoot configuration need to contain `.zoned=false`
