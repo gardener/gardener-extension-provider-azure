@@ -19,9 +19,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
-	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/go-autorest/autorest/adal"
-	azureRest "github.com/Azure/go-autorest/autorest/azure"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
@@ -168,18 +165,6 @@ func newAzureClientSet(subscriptionId, tenantId, clientId, clientSecret string) 
 		pubIp:            pubIpClient,
 		msi:              msiClient,
 	}, nil
-}
-
-func getAuthorizer(tenantId, clientId, clientSecret string) (autorest.Authorizer, error) {
-	oauthConfig, err := adal.NewOAuthConfig(azureRest.PublicCloud.ActiveDirectoryEndpoint, tenantId)
-	if err != nil {
-		return nil, err
-	}
-	spToken, err := adal.NewServicePrincipalToken(*oauthConfig, clientId, clientSecret, azureRest.PublicCloud.ResourceManagerEndpoint)
-	if err != nil {
-		return nil, err
-	}
-	return autorest.NewBearerAuthorizer(spToken), nil
 }
 
 type azureIdentifier struct {
