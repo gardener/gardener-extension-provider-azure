@@ -37,12 +37,12 @@ func newFlowMutator(mgr manager.Manager, logger logr.Logger) extensionswebhook.M
 
 // Mutate mutates the given object on creation and adds the annotation `azure.provider.extensions.gardener.cloud/use-flow=true`
 // if the seed has the label `azure.provider.extensions.gardener.cloud/use-flow` == `new`.
-func (m *flowMutator) Mutate(ctx context.Context, new, old client.Object) error {
-	if new.GetDeletionTimestamp() != nil {
+func (m *flowMutator) Mutate(ctx context.Context, newObj, oldObj client.Object) error {
+	if newObj.GetDeletionTimestamp() != nil {
 		return nil
 	}
 
-	newInfra, ok := new.(*extensionsv1alpha1.Infrastructure)
+	newInfra, ok := newObj.(*extensionsv1alpha1.Infrastructure)
 	if !ok {
 		return fmt.Errorf("could not mutate: object is not of type Infrastructure")
 	}
@@ -51,7 +51,7 @@ func (m *flowMutator) Mutate(ctx context.Context, new, old client.Object) error 
 		return nil
 	}
 
-	gctx := extensionscontextwebhook.NewGardenContext(m.client, new)
+	gctx := extensionscontextwebhook.NewGardenContext(m.client, newObj)
 	cluster, err := gctx.GetCluster(ctx)
 	if err != nil {
 		return err
@@ -79,7 +79,7 @@ func (m *flowMutator) Mutate(ctx context.Context, new, old client.Object) error 
 	} else if v, ok := cluster.Shoot.Annotations[azure.AnnotationKeyUseFlow]; ok {
 		newInfra.Annotations[azure.AnnotationKeyUseFlow] = v
 		mutated = true
-	} else if old == nil && cluster.Seed.Annotations[azure.SeedAnnotationKeyUseFlow] == azure.SeedAnnotationUseFlowValueNew {
+	} else if oldObj == nil && cluster.Seed.Annotations[azure.SeedAnnotationKeyUseFlow] == azure.SeedAnnotationUseFlowValueNew {
 		newInfra.Annotations[azure.AnnotationKeyUseFlow] = "true"
 		mutated = true
 	} else if v := cluster.Seed.Annotations[azure.SeedAnnotationKeyUseFlow]; strings.EqualFold(v, "true") {

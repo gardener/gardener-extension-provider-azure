@@ -46,26 +46,26 @@ type mutator struct {
 }
 
 // Mutate validates and if needed mutates the given object.
-func (m *mutator) Mutate(_ context.Context, new, old client.Object) error {
+func (m *mutator) Mutate(_ context.Context, newObj, oldObj client.Object) error {
 	var (
 		newDaemonSet, oldDaemonSet *appsv1.DaemonSet
 		ok                         bool
 	)
 
 	// If the object does have a deletion timestamp then we don't want to mutate anything.
-	if new.GetDeletionTimestamp() != nil {
+	if newObj.GetDeletionTimestamp() != nil {
 		return nil
 	}
 
-	newDaemonSet, ok = new.(*appsv1.DaemonSet)
+	newDaemonSet, ok = newObj.(*appsv1.DaemonSet)
 	if !ok {
-		return fmt.Errorf("wrong object type %T", new)
+		return fmt.Errorf("wrong object type %T", newObj)
 	}
 
-	if old != nil {
-		oldDaemonSet, ok = old.(*appsv1.DaemonSet)
+	if oldObj != nil {
+		oldDaemonSet, ok = oldObj.(*appsv1.DaemonSet)
 		if !ok {
-			return fmt.Errorf("wrong object type %T", old)
+			return fmt.Errorf("wrong object type %T", oldObj)
 		}
 	}
 
