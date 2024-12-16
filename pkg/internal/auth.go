@@ -9,8 +9,6 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	azureautorest "github.com/Azure/go-autorest/autorest"
-	azureauth "github.com/Azure/go-autorest/autorest/azure/auth"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
@@ -82,27 +80,6 @@ func NewClientAuthDataFromSecret(secret *corev1.Secret, allowDNSKeys bool) (*Cli
 		ClientID:       string(clientID),
 		ClientSecret:   string(clientSecret),
 	}, secret, nil
-}
-
-// GetAuthorizerAndSubscriptionIDFromSecretRef retrieves the client auth data specified by the secret reference
-// to create and return an Azure Authorizer and a subscription id.
-func GetAuthorizerAndSubscriptionIDFromSecretRef(ctx context.Context, c client.Client, secretRef corev1.SecretReference, allowDNSKeys bool) (azureautorest.Authorizer, string, error) {
-	clientAuth, _, err := GetClientAuthData(ctx, c, secretRef, allowDNSKeys)
-	if err != nil {
-		return nil, "", err
-	}
-	return GetAuthorizerAndSubscriptionID(clientAuth)
-}
-
-// GetAuthorizerAndSubscriptionID creates and returns an Azure Authorizer and a subscription id
-func GetAuthorizerAndSubscriptionID(clientAuth *ClientAuth) (azureautorest.Authorizer, string, error) {
-	clientCredentialsConfig := azureauth.NewClientCredentialsConfig(clientAuth.ClientID, clientAuth.ClientSecret, clientAuth.TenantID)
-	authorizer, err := clientCredentialsConfig.Authorizer()
-	if err != nil {
-		return nil, "", err
-	}
-
-	return authorizer, clientAuth.SubscriptionID, nil
 }
 
 func getSecretDataValue(secret *corev1.Secret, key string, altKey *string) ([]byte, bool) {
