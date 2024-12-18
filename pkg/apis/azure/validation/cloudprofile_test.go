@@ -246,6 +246,28 @@ var _ = Describe("CloudProfileConfig validation", func() {
 					"Field": Equal("root.machineImages[0].versions[0].sharedGalleryImageID"),
 				})))))
 
+			It("should forbid unsupported machine image version configuration", func() {
+				cloudProfileConfig.MachineImages = []apisazure.MachineImages{
+					{
+						Name:     "abc",
+						Versions: []apisazure.MachineImageVersion{{Architecture: ptr.To("amd64")}},
+					},
+				}
+
+				errorList := ValidateCloudProfileConfig(cloudProfileConfig, cloudProfileMachineImages, root)
+
+				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeRequired),
+					"Field": Equal("root.machineImages[0].versions[0].version"),
+				})), PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeRequired),
+					"Field": Equal("root.machineImages[0].versions[0]"),
+				})), PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeRequired),
+					"Field": Equal("root.machineImages"),
+				}))))
+			})
+
 			It("should forbid missing architecture in cpConfigMachineImages", func() {
 				cloudProfileMachineImages[0].Versions[0].Architectures = []string{"amd64", "arm64"}
 

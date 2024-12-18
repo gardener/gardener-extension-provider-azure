@@ -10,6 +10,7 @@ import (
 
 	"github.com/gardener/gardener/pkg/apis/core"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	"github.com/gardener/gardener/pkg/utils"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/ptr"
 	"k8s.io/utils/strings/slices"
@@ -103,19 +104,15 @@ func ValidateProviderMachineImage(validationPath *field.Path, machineImage apisa
 	return allErrs
 }
 
-// verify that for each parent image a provider image exists
+// verify that for each cp image a provider image exists
 func validateProviderImagesMapping(cpConfig *apisazure.CloudProfileConfig, machineImages []core.MachineImage, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	providerImageMap := make(map[string]int)
-	for i, providerImage := range cpConfig.MachineImages {
-		providerImageMap[providerImage.Name] = i
-	}
-
-	for _, image := range machineImages {
-		idx, found := providerImageMap[image.Name]
+	providerImageMap := utils.CreateMapFromSlice(cpConfig.MachineImages, func(mi apisazure.MachineImages) string { return mi.Name })
+	for idx, image := range machineImages {
+		providerImage, found := providerImageMap[image.Name]
 		if found {
-			allErrs = append(allErrs, validateVersionsMapping(cpConfig.MachineImages[idx].Versions, image.Versions, fldPath.Index(idx).Child("versions"))...)
+			allErrs = append(allErrs, validateVersionsMapping(providerImage.Versions, image.Versions, fldPath.Index(idx).Child("versions"))...)
 		} else if len(image.Versions) > 0 {
 			allErrs = append(allErrs, field.Required(fldPath, fmt.Sprintf("must provide a provider image mapping for image %q", image.Name)))
 		}
