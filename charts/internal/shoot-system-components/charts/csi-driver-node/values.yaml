@@ -10,9 +10,6 @@ images:
 
 socketPath: /csi/csi.sock
 
-global:
-  vpaEnabled: false
-
 webhookConfig:
   url: https://service-name.service-namespace/volumesnapshot
   caBundle: |

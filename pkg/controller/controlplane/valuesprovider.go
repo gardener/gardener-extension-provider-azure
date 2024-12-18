@@ -225,8 +225,6 @@ var (
 					{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.CSIDriverName},
 					{Type: &rbacv1.ClusterRole{}, Name: azure.UsernamePrefix + azure.CSIControllerFileName},
 					{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.CSIControllerFileName},
-					{Type: extensionscontroller.GetVerticalPodAutoscalerObject(), Name: azure.CSINodeDiskName},
-					{Type: extensionscontroller.GetVerticalPodAutoscalerObject(), Name: azure.CSINodeFileName},
 					// csi-provisioner
 					{Type: &rbacv1.ClusterRole{}, Name: azure.UsernamePrefix + azure.CSIProvisionerName},
 					{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.CSIProvisionerName},
