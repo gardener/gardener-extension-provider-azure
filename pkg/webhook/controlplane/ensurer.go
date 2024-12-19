@@ -84,12 +84,15 @@ func (e *ensurer) EnsureMachineControllerManagerVPA(_ context.Context, _ gcontex
 }
 
 // EnsureKubeAPIServerDeployment ensures that the kube-apiserver deployment conforms to the provider requirements.
-func (e *ensurer) EnsureKubeAPIServerDeployment(ctx context.Context, gctx gcontext.GardenContext, new, _ *appsv1.Deployment) error {
-	template := &new.Spec.Template
+func (e *ensurer) EnsureKubeAPIServerDeployment(
+	ctx context.Context,
+	gctx gcontext.GardenContext,
+	newDeployment, _ *appsv1.Deployment) error {
+	template := &newDeployment.Spec.Template
 	ps := &template.Spec
 
 	// TODO: This label approach is deprecated and no longer needed in the future. Remove it as soon as gardener/gardener@v1.75 has been released.
-	metav1.SetMetaDataLabel(&new.Spec.Template.ObjectMeta, gutil.NetworkPolicyLabel(azure.CSISnapshotValidationName, 443), v1beta1constants.LabelNetworkPolicyAllowed)
+	metav1.SetMetaDataLabel(&newDeployment.Spec.Template.ObjectMeta, gutil.NetworkPolicyLabel(azure.CSISnapshotValidationName, 443), v1beta1constants.LabelNetworkPolicyAllowed)
 
 	cluster, err := gctx.GetCluster(ctx)
 	if err != nil {
@@ -105,12 +108,15 @@ func (e *ensurer) EnsureKubeAPIServerDeployment(ctx context.Context, gctx gconte
 		ensureKubeAPIServerCommandLineArgs(c, k8sVersion)
 	}
 
-	return e.ensureChecksumAnnotations(&new.Spec.Template)
+	return e.ensureChecksumAnnotations(&newDeployment.Spec.Template)
 }
 
 // EnsureKubeControllerManagerDeployment ensures that the kube-controller-manager deployment conforms to the provider requirements.
-func (e *ensurer) EnsureKubeControllerManagerDeployment(ctx context.Context, gctx gcontext.GardenContext, new, _ *appsv1.Deployment) error {
-	template := &new.Spec.Template
+func (e *ensurer) EnsureKubeControllerManagerDeployment(
+	ctx context.Context,
+	gctx gcontext.GardenContext,
+	newDeployment, _ *appsv1.Deployment) error {
+	template := &newDeployment.Spec.Template
 	ps := &template.Spec
 
 	cluster, err := gctx.GetCluster(ctx)
@@ -130,12 +136,15 @@ func (e *ensurer) EnsureKubeControllerManagerDeployment(ctx context.Context, gct
 
 	ensureKubeControllerManagerLabels(template)
 	ensureKubeControllerManagerVolumes(ps, cluster.Shoot.Spec.Kubernetes.Version)
-	return e.ensureChecksumAnnotations(&new.Spec.Template)
+	return e.ensureChecksumAnnotations(&newDeployment.Spec.Template)
 }
 
 // EnsureKubeSchedulerDeployment ensures that the kube-scheduler deployment conforms to the provider requirements.
-func (e *ensurer) EnsureKubeSchedulerDeployment(ctx context.Context, gctx gcontext.GardenContext, new, _ *appsv1.Deployment) error {
-	template := &new.Spec.Template
+func (e *ensurer) EnsureKubeSchedulerDeployment(
+	ctx context.Context,
+	gctx gcontext.GardenContext,
+	newDeployment, _ *appsv1.Deployment) error {
+	template := &newDeployment.Spec.Template
 	ps := &template.Spec
 
 	cluster, err := gctx.GetCluster(ctx)
@@ -155,8 +164,11 @@ func (e *ensurer) EnsureKubeSchedulerDeployment(ctx context.Context, gctx gconte
 }
 
 // EnsureClusterAutoscalerDeployment ensures that the cluster-autoscaler deployment conforms to the provider requirements.
-func (e *ensurer) EnsureClusterAutoscalerDeployment(ctx context.Context, gctx gcontext.GardenContext, new, _ *appsv1.Deployment) error {
-	template := &new.Spec.Template
+func (e *ensurer) EnsureClusterAutoscalerDeployment(
+	ctx context.Context,
+	gctx gcontext.GardenContext,
+	newDeployment, _ *appsv1.Deployment) error {
+	template := &newDeployment.Spec.Template
 	ps := &template.Spec
 
 	cluster, err := gctx.GetCluster(ctx)
@@ -337,13 +349,17 @@ func (e *ensurer) ensureChecksumAnnotations(template *corev1.PodTemplateSpec) er
 }
 
 // EnsureKubeletServiceUnitOptions ensures that the kubelet.service unit options conform to the provider requirements.
-func (e *ensurer) EnsureKubeletServiceUnitOptions(ctx context.Context, gctx gcontext.GardenContext, _ *semver.Version, new, _ []*unit.UnitOption) ([]*unit.UnitOption, error) {
+func (e *ensurer) EnsureKubeletServiceUnitOptions(
+	ctx context.Context,
+	gctx gcontext.GardenContext,
+	_ *semver.Version,
+	newUnitOption, _ []*unit.UnitOption) ([]*unit.UnitOption, error) {
 	cluster, err := gctx.GetCluster(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	if opt := extensionswebhook.UnitOptionWithSectionAndName(new, "Service", "ExecStart"); opt != nil {
+	if opt := extensionswebhook.UnitOptionWithSectionAndName(newUnitOption, "Service", "ExecStart"); opt != nil {
 		command := extensionswebhook.DeserializeCommandLine(opt.Value)
 		command, err := e.ensureKubeletCommandLineArgs(ctx, cluster, command)
 		if err != nil {
@@ -351,7 +367,7 @@ func (e *ensurer) EnsureKubeletServiceUnitOptions(ctx context.Context, gctx gcon
 		}
 		opt.Value = extensionswebhook.SerializeCommandLine(command, 1, " \\\n    ")
 	}
-	return new, nil
+	return newUnitOption, nil
 }
 
 func (e *ensurer) ensureKubeletCommandLineArgs(ctx context.Context, cluster *extensionscontroller.Cluster, command []string) ([]string, error) {
@@ -370,21 +386,25 @@ func (e *ensurer) ensureKubeletCommandLineArgs(ctx context.Context, cluster *ext
 }
 
 // EnsureKubeletConfiguration ensures that the kubelet configuration conforms to the provider requirements.
-func (e *ensurer) EnsureKubeletConfiguration(_ context.Context, _ gcontext.GardenContext, kubeletVersion *semver.Version, new, _ *kubeletconfigv1beta1.KubeletConfiguration) error {
+func (e *ensurer) EnsureKubeletConfiguration(
+	_ context.Context,
+	_ gcontext.GardenContext,
+	kubeletVersion *semver.Version,
+	newKubeletConfiguration, _ *kubeletconfigv1beta1.KubeletConfiguration) error {
 	if versionutils.ConstraintK8sLess127.Check(kubeletVersion) {
-		setKubeletConfigurationFeatureGate(new, "CSIMigration", true)
-		setKubeletConfigurationFeatureGate(new, "CSIMigrationAzureDisk", true)
+		setKubeletConfigurationFeatureGate(newKubeletConfiguration, "CSIMigration", true)
+		setKubeletConfigurationFeatureGate(newKubeletConfiguration, "CSIMigrationAzureDisk", true)
 	}
 
 	if versionutils.ConstraintK8sLess130.Check(kubeletVersion) {
-		setKubeletConfigurationFeatureGate(new, "CSIMigrationAzureFile", true)
+		setKubeletConfigurationFeatureGate(newKubeletConfiguration, "CSIMigrationAzureFile", true)
 	}
 	if versionutils.ConstraintK8sLess131.Check(kubeletVersion) {
-		setKubeletConfigurationFeatureGate(new, "InTreePluginAzureDiskUnregister", true)
-		setKubeletConfigurationFeatureGate(new, "InTreePluginAzureFileUnregister", true)
+		setKubeletConfigurationFeatureGate(newKubeletConfiguration, "InTreePluginAzureDiskUnregister", true)
+		setKubeletConfigurationFeatureGate(newKubeletConfiguration, "InTreePluginAzureFileUnregister", true)
 	}
 
-	new.EnableControllerAttachDetach = ptr.To(true)
+	newKubeletConfiguration.EnableControllerAttachDetach = ptr.To(true)
 
 	return nil
 }
@@ -425,8 +445,8 @@ func (e *ensurer) EnsureKubeletCloudProviderConfig(ctx context.Context, _ gconte
 }
 
 // EnsureAdditionalFiles ensures additional systemd files
-func (e *ensurer) EnsureAdditionalFiles(ctx context.Context, gctx gcontext.GardenContext, new, _ *[]extensionsv1alpha1.File) error {
-	return e.ensureAcrConfigFile(ctx, gctx, new)
+func (e *ensurer) EnsureAdditionalFiles(ctx context.Context, gctx gcontext.GardenContext, newFile, _ *[]extensionsv1alpha1.File) error {
+	return e.ensureAcrConfigFile(ctx, gctx, newFile)
 }
 
 func (e *ensurer) ensureAcrConfigFile(ctx context.Context, gctx gcontext.GardenContext, files *[]extensionsv1alpha1.File) error {

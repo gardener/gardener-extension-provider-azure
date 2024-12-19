@@ -30,25 +30,25 @@ func newLayoutMutator(logger logr.Logger) extensionswebhook.Mutator {
 }
 
 // Mutate mutates the given object using the mutateFunc
-func (m *layoutMutator) Mutate(ctx context.Context, new, old client.Object) error {
+func (m *layoutMutator) Mutate(ctx context.Context, newObj, oldObj client.Object) error {
 	var (
 		newInfra, oldInfra *extensionsv1alpha1.Infrastructure
 		ok                 bool
 	)
 
-	if new == nil || old == nil {
+	if newObj == nil || oldObj == nil {
 		return nil
 	}
 
-	if new.GetDeletionTimestamp() != nil {
+	if newObj.GetDeletionTimestamp() != nil {
 		return nil
 	}
 
-	oldInfra, ok = old.(*extensionsv1alpha1.Infrastructure)
+	oldInfra, ok = oldObj.(*extensionsv1alpha1.Infrastructure)
 	if !ok {
 		return fmt.Errorf("could not mutate: object is not of type Infrastructure")
 	}
-	newInfra, ok = new.(*extensionsv1alpha1.Infrastructure)
+	newInfra, ok = newObj.(*extensionsv1alpha1.Infrastructure)
 	if !ok {
 		return fmt.Errorf("could not mutate: object is not of type Infrastructure")
 	}

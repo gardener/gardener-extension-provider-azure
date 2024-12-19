@@ -34,23 +34,23 @@ type ensurer struct {
 // EnsureCloudProviderSecret ensures that cloudprovider secret contain
 // a service principal clientID and clientSecret (if not present) that match
 // to a corresponding tenantID.
-func (e *ensurer) EnsureCloudProviderSecret(ctx context.Context, _ gcontext.GardenContext, new, _ *corev1.Secret) error {
-	if !hasSecretKey(new, azure.TenantIDKey) {
+func (e *ensurer) EnsureCloudProviderSecret(ctx context.Context, _ gcontext.GardenContext, newSecret, _ *corev1.Secret) error {
+	if !hasSecretKey(newSecret, azure.TenantIDKey) {
 		return fmt.Errorf("could not mutate cloudprovider secret as %q field is missing", azure.TenantIDKey)
 	}
 
-	if hasSecretKey(new, azure.ClientIDKey) || hasSecretKey(new, azure.ClientSecretKey) {
+	if hasSecretKey(newSecret, azure.ClientIDKey) || hasSecretKey(newSecret, azure.ClientSecretKey) {
 		return nil
 	}
 
-	servicePrincipalSecret, err := e.fetchTenantServicePrincipalSecret(ctx, string(new.Data[azure.TenantIDKey]))
+	servicePrincipalSecret, err := e.fetchTenantServicePrincipalSecret(ctx, string(newSecret.Data[azure.TenantIDKey]))
 	if err != nil {
 		return err
 	}
 
-	e.logger.V(5).Info("mutate cloudprovider secret", "namespace", new.Namespace, "name", new.Name)
-	new.Data[azure.ClientIDKey] = servicePrincipalSecret.Data[azure.ClientIDKey]
-	new.Data[azure.ClientSecretKey] = servicePrincipalSecret.Data[azure.ClientSecretKey]
+	e.logger.V(5).Info("mutate cloudprovider secret", "namespace", newSecret.Namespace, "name", newSecret.Name)
+	newSecret.Data[azure.ClientIDKey] = servicePrincipalSecret.Data[azure.ClientIDKey]
+	newSecret.Data[azure.ClientSecretKey] = servicePrincipalSecret.Data[azure.ClientSecretKey]
 
 	return nil
 }

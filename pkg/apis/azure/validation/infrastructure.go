@@ -414,14 +414,14 @@ func validateVnetConfigUpdate(oldNeworkConfig, newNetworkConfig *apisazure.Netwo
 	return allErrs
 }
 
-func validateSingleSubnetToMultipleSubnetTransition(old, new *apisazure.InfrastructureConfig, fld *field.Path) field.ErrorList {
+func validateSingleSubnetToMultipleSubnetTransition(oldInfra, newInfra *apisazure.InfrastructureConfig, fld *field.Path) field.ErrorList {
 	var (
 		allErrs           = field.ErrorList{}
 		foundMatchingCIDR = false
 	)
 
-	for _, zone := range new.Networks.Zones {
-		if zone.CIDR == *old.Networks.Workers {
+	for _, zone := range newInfra.Networks.Zones {
+		if zone.CIDR == *oldInfra.Networks.Workers {
 			foundMatchingCIDR = true
 			break
 		}
@@ -434,11 +434,11 @@ func validateSingleSubnetToMultipleSubnetTransition(old, new *apisazure.Infrastr
 	return allErrs
 }
 
-func validateZonesUpdate(old, new *apisazure.InfrastructureConfig, fld *field.Path) field.ErrorList {
+func validateZonesUpdate(oldInfra, newInfra *apisazure.InfrastructureConfig, fld *field.Path) field.ErrorList {
 	var (
 		allErrs  = field.ErrorList{}
-		oldZones = old.Networks.Zones
-		newZones = new.Networks.Zones
+		oldZones = oldInfra.Networks.Zones
+		newZones = newInfra.Networks.Zones
 	)
 
 	if len(oldZones) > len(newZones) {
@@ -449,7 +449,7 @@ func validateZonesUpdate(old, new *apisazure.InfrastructureConfig, fld *field.Pa
 		for _, oldZone := range oldZones {
 			if newZone.Name == oldZone.Name {
 				idxPath := fld.Child("networks", "zones").Index(i)
-				allErrs = append(allErrs, apivalidation.ValidateImmutableField(new.Networks.Zones[i].CIDR, oldZone.CIDR, idxPath.Child("cidr"))...)
+				allErrs = append(allErrs, apivalidation.ValidateImmutableField(newInfra.Networks.Zones[i].CIDR, oldZone.CIDR, idxPath.Child("cidr"))...)
 			}
 		}
 	}

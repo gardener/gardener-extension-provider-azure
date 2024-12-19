@@ -98,13 +98,13 @@ func (h *handler) Handle(ctx context.Context, req admission.Request) admission.R
 	return admission.ValidationResponse(true, "")
 }
 
-func (h *handler) Mutate(_ context.Context, new, _ client.Object) error {
+func (h *handler) Mutate(_ context.Context, newObj, _ client.Object) error {
 	// do not try to mutate if deletion timestamp is present.
-	if new.GetDeletionTimestamp() != nil {
+	if newObj.GetDeletionTimestamp() != nil {
 		return nil
 	}
 
-	annotations := new.GetAnnotations()
+	annotations := newObj.GetAnnotations()
 	if v, ok := annotations[v1alpha1.HighAvailabilityConfigFailureToleranceType]; !ok || v != string(v1beta1.FailureToleranceTypeZone) {
 		return nil
 	}
@@ -122,7 +122,7 @@ func (h *handler) Mutate(_ context.Context, new, _ client.Object) error {
 	zoneSet := sets.New(zonesRaw...).UnsortedList()
 	sort.Strings(zoneSet)
 	annotations[v1alpha1.HighAvailabilityConfigZones] = strings.Join(zoneSet, ",")
-	new.SetAnnotations(annotations)
+	newObj.SetAnnotations(annotations)
 
 	return nil
 }

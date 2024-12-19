@@ -94,19 +94,19 @@ func (h *handler) Handle(ctx context.Context, req admission.Request) admission.R
 	return admission.ValidationResponse(true, "")
 }
 
-func (h *handler) Mutate(_ context.Context, new, old client.Object) error {
+func (h *handler) Mutate(_ context.Context, newObj, oldObj client.Object) error {
 	// do not try to mutate pods that are getting deleted
-	if new.GetDeletionTimestamp() != nil {
+	if newObj.GetDeletionTimestamp() != nil {
 		return nil
 	}
 
-	newPod, ok := new.(*corev1.Pod)
+	newPod, ok := newObj.(*corev1.Pod)
 	if !ok {
 		return fmt.Errorf("object is not of type Pod")
 	}
 
 	// do not mutate on update/delete operations
-	if old != nil {
+	if oldObj != nil {
 		return nil
 	}
 

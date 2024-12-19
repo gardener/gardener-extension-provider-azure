@@ -24,9 +24,9 @@ func NewInfraMutator(mutators []extensionswebhook.Mutator) extensionswebhook.Mut
 }
 
 // Mutate mutates the given object using the mutateFunc
-func (m *infraMutator) Mutate(ctx context.Context, new, old client.Object) error {
+func (m *infraMutator) Mutate(ctx context.Context, newObj, oldObj client.Object) error {
 	for _, mutator := range m.mutators {
-		err := mutator.Mutate(ctx, new, old)
+		err := mutator.Mutate(ctx, newObj, oldObj)
 		if err != nil {
 			return err
 		}
