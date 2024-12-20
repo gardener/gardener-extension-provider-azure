@@ -93,8 +93,8 @@ Currently, it's not yet possible to deploy into existing resource groups.
 The `.resourceGroup.name` field will allow specifying the name of an already existing resource group that the shoot cluster and all infrastructure resources will be deployed to.
 
 Via the `.zoned` boolean you can tell whether you want to use Azure availability zones or not.
-If you don't use zones then an availability set will be created and only basic load balancers will be used.
-Zoned clusters use standard load balancers.
+If you didn't use zones in the past then an availability set was created and only basic load balancers were used.
+Now VMSS-FLex (VMO) has become the default also for non-zonal clusters and only standard load balancers are used.
 
 The `networks.vnet` section describes whether you want to create the shoot cluster in an already existing VNet or whether to create a new one:
 
@@ -594,7 +594,7 @@ This extension supports `gardener/gardener`'s `ShootCARotation` and `ShootSARota
 
 All worker machines of the cluster will be automatically configured to use [Azure Accelerated Networking](https://docs.microsoft.com/en-us/azure/virtual-network/create-vm-accelerated-networking-cli) if the prerequisites are fulfilled.
 The prerequisites are that the cluster must be zoned, and the used machine type and operating system image version are compatible for Accelerated Networking.
-`Availability Set` based shoot clusters will not be enabled for accelerated networking even if the machine type and operating system support it, this is necessary because all machines from the availability set must be scheduled on special hardware, more daitls can be found [here](https://github.com/MicrosoftDocs/azure-docs/issues/10536).
+`Availability Set` based shoot clusters will not be enabled for accelerated networking even if the machine type and operating system support it, this is necessary because all machines from the availability set must be scheduled on special hardware, more details can be found [here](https://github.com/MicrosoftDocs/azure-docs/issues/10536).
 Supported machine types are listed in the CloudProfile in `.spec.providerConfig.machineTypes[].acceleratedNetworking` and the supported operating system image versions are defined in `.spec.providerConfig.machineImages[].versions[].acceleratedNetworking`.
 
 ### Support for other Azure instances
@@ -628,9 +628,10 @@ The machines of an Azure cluster can be created while being attached to an [Azur
 The Virtual Machine ScaleSet with flexible orchestration feature is currently in preview and not yet general available on Azure.
 Subscriptions need to [join the preview](https://docs.microsoft.com/en-us/azure/virtual-machine-scale-sets/virtual-machine-scale-sets-orchestration-modes#register-for-flexible-orchestration-mode) to make use of the feature.
 
-Azure VMSS Flex is intended to replace Azure AvailabilitySet for non-zoned Azure Shoot clusters in the mid-term (once the feature goes GA) as VMSS Flex come with less disadvantages like no blocking machine operations or compability with `Standard` SKU loadbalancer etc.
+Azure VMSS Flex is the replacement of Azure AvailabilitySet for non-zoned Azure Shoot clusters as VMSS Flex come with less disadvantages like no blocking machine operations or compatibility with `Standard` SKU loadbalancer etc.
 
-To configure an Azure Shoot cluster which make use of VMSS Flex you need to do the following:
+Now, Azure Shoot clusters are using VMSS Flex by default for non-zoned clusters.
+In the past you used to need to do the following:
 - The `InfrastructureConfig` of the Shoot configuration need to contain `.zoned=false`
 - Shoot resource need to have the following annotation assigned: `alpha.azure.provider.extensions.gardener.cloud/vmo=true`
 
