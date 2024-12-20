@@ -246,7 +246,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 					"Field": Equal("root.machineImages[0].versions[0].sharedGalleryImageID"),
 				})))))
 
-			It("should forbid unsupported machine image version configuration", func() {
+			It("should forbid unsupported cloud profile config image", func() {
 				cloudProfileConfig.MachineImages = []apisazure.MachineImages{
 					{
 						Name:     "abc",
@@ -263,6 +263,17 @@ var _ = Describe("CloudProfileConfig validation", func() {
 					"Type":  Equal(field.ErrorTypeRequired),
 					"Field": Equal("root.machineImages[0].versions[0]"),
 				})), PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeRequired),
+					"Field": Equal("root.machineImages"),
+				}))))
+			})
+
+			It("should forbid machineImage without mapping in cloud profile config", func() {
+				cloudProfileMachineImages[0].Name = "abc"
+
+				errorList := ValidateCloudProfileConfig(cloudProfileConfig, cloudProfileMachineImages, root)
+
+				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeRequired),
 					"Field": Equal("root.machineImages"),
 				}))))
