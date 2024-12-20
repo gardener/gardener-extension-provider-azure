@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gardener/gardener/extensions/pkg/util"
 	"github.com/gardener/gardener/pkg/apis/core"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"github.com/gardener/gardener/pkg/utils"
@@ -37,7 +38,7 @@ func ValidateCloudProfileConfig(cpConfig *apisazure.CloudProfileConfig, machineI
 		allErrs = append(allErrs, ValidateProviderMachineImage(idxPath, machineImage)...)
 	}
 
-	allErrs = append(allErrs, validateProviderImagesMapping(cpConfig, machineImages, machineImagesPath)...)
+	allErrs = append(allErrs, validateProviderImagesMapping(cpConfig.MachineImages, machineImages, machineImagesPath)...)
 
 	return allErrs
 }
@@ -105,40 +106,27 @@ func ValidateProviderMachineImage(validationPath *field.Path, machineImage apisa
 }
 
 // verify that for each cp image a provider image exists
-func validateProviderImagesMapping(cpConfig *apisazure.CloudProfileConfig, machineImages []core.MachineImage, fldPath *field.Path) field.ErrorList {
+func validateProviderImagesMapping(cpConfigImages []apisazure.MachineImages, machineImages []core.MachineImage, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	providerImageMap := utils.CreateMapFromSlice(cpConfig.MachineImages, func(mi apisazure.MachineImages) string { return mi.Name })
-	for idx, image := range machineImages {
-		providerImage, found := providerImageMap[image.Name]
-		if found {
-			allErrs = append(allErrs, validateVersionsMapping(providerImage.Versions, image.Versions, fldPath.Index(idx).Child("versions"))...)
-		} else if len(image.Versions) > 0 {
-			allErrs = append(allErrs, field.Required(fldPath, fmt.Sprintf("must provide a provider image mapping for image %q", image.Name)))
+	images := util.NewCoreImagesContext(machineImages)
+	providerImages := NewProviderImagesContext(cpConfigImages)
+
+	// for each image in the CloudProfile, check if it exists in the CloudProfileConfig
+	for _, machineImage := range images.Images {
+		if _, existsInParent := providerImages.GetImage(machineImage.Name); !existsInParent {
+			allErrs = append(allErrs, field.Required(fldPath, fmt.Sprintf("must provide a provider image mapping for image %q", machineImage.Name)))
+			continue
 		}
-	}
 
-	return allErrs
-}
-
-// validate that for each image version and architecture a corresponding provider image exists
-func validateVersionsMapping(providerVersions []apisazure.MachineImageVersion, versions []core.MachineImageVersion, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
-
-	isVersionArchAvailable := func(version string, architecture string) bool {
-		for _, providerVersion := range providerVersions {
-			if architecture == ptr.Deref(providerVersion.Architecture, v1beta1constants.ArchitectureAMD64) && version == providerVersion.Version {
-				return true
-			}
-		}
-		return false
-	}
-
-	for _, version := range versions {
-		for _, architecture := range version.Architectures {
-			if !isVersionArchAvailable(version.Version, architecture) {
-				errorMessage := fmt.Sprintf("must provide an image mapping for version %q and architecture: %s", version.Version, architecture)
-				allErrs = append(allErrs, field.Required(fldPath, errorMessage))
+		// validate that for each version and architecture of an image in the cloud profile a
+		// corresponding provider specific image in the cloud profile config exists
+		for _, version := range machineImage.Versions {
+			for _, expectedArchitecture := range version.Architectures {
+				if _, exists := providerImages.GetImageVersion(machineImage.Name, VersionArchitectureKey(version.Version, expectedArchitecture)); !exists {
+					allErrs = append(allErrs, field.Required(fldPath.Child("versions"),
+						fmt.Sprintf("must provide an image mapping for version %q and architecture: %s", version.Version, expectedArchitecture)))
+				}
 			}
 		}
 	}
@@ -195,4 +183,23 @@ func validateDomainCount(domainCount []apisazure.DomainCount, fldPath *field.Pat
 	}
 
 	return allErrs
+}
+
+func providerMachineImageKey(v apisazure.MachineImageVersion) string {
+	return VersionArchitectureKey(v.Version, ptr.Deref(v.Architecture, v1beta1constants.ArchitectureAMD64))
+}
+
+// VersionArchitectureKey returns a key for a version and architecture.
+func VersionArchitectureKey(version, architecture string) string {
+	return version + "-" + architecture
+}
+
+// NewProviderImagesContext creates a new images context for provider images.
+func NewProviderImagesContext(providerImages []apisazure.MachineImages) *util.ImagesContext[apisazure.MachineImages, apisazure.MachineImageVersion] {
+	return util.NewImagesContext(
+		utils.CreateMapFromSlice(providerImages, func(mi apisazure.MachineImages) string { return mi.Name }),
+		func(mi apisazure.MachineImages) map[string]apisazure.MachineImageVersion {
+			return utils.CreateMapFromSlice(mi.Versions, func(v apisazure.MachineImageVersion) string { return providerMachineImageKey(v) })
+		},
+	)
 }
