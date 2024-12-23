@@ -38,7 +38,7 @@ func ValidateCloudProfileConfig(cpConfig *apisazure.CloudProfileConfig, machineI
 		allErrs = append(allErrs, ValidateProviderMachineImage(idxPath, machineImage)...)
 	}
 
-	allErrs = append(allErrs, validateProviderImagesMapping(cpConfig.MachineImages, machineImages, machineImagesPath)...)
+	allErrs = append(allErrs, validateProviderImagesMapping(cpConfig.MachineImages, machineImages, field.NewPath("spec").Child("machineImages"))...)
 
 	return allErrs
 }
@@ -109,22 +109,23 @@ func ValidateProviderMachineImage(validationPath *field.Path, machineImage apisa
 func validateProviderImagesMapping(cpConfigImages []apisazure.MachineImages, machineImages []core.MachineImage, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	images := util.NewCoreImagesContext(machineImages)
 	providerImages := NewProviderImagesContext(cpConfigImages)
 
 	// for each image in the CloudProfile, check if it exists in the CloudProfileConfig
-	for _, machineImage := range images.Images {
+	for idxImage, machineImage := range machineImages {
+		machineImagePath := fldPath.Index(idxImage)
 		if _, existsInParent := providerImages.GetImage(machineImage.Name); !existsInParent {
-			allErrs = append(allErrs, field.Required(fldPath, fmt.Sprintf("must provide a provider image mapping for image %q", machineImage.Name)))
+			allErrs = append(allErrs, field.Required(machineImagePath, fmt.Sprintf("must provide a provider image mapping for image %q", machineImage.Name)))
 			continue
 		}
 
 		// validate that for each version and architecture of an image in the cloud profile a
 		// corresponding provider specific image in the cloud profile config exists
-		for _, version := range machineImage.Versions {
+		for versionIdx, version := range machineImage.Versions {
+			imageVersionPath := machineImagePath.Child("versions").Index(versionIdx)
 			for _, expectedArchitecture := range version.Architectures {
 				if _, exists := providerImages.GetImageVersion(machineImage.Name, VersionArchitectureKey(version.Version, expectedArchitecture)); !exists {
-					allErrs = append(allErrs, field.Required(fldPath.Child("versions"),
+					allErrs = append(allErrs, field.Required(imageVersionPath,
 						fmt.Sprintf("must provide an image mapping for version %q and architecture: %s", version.Version, expectedArchitecture)))
 				}
 			}
