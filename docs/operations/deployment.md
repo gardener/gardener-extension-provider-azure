@@ -12,30 +12,6 @@ There are several authentication possibilities depending on whether or not [the 
 **Automounted Service Account Token**
 The easiest way to deploy the `gardener-extension-admission-azure` component will be to not provide `kubeconfig` at all. This way in-cluster configuration and an automounted service account token will be used. The drawback of this approach is that the automounted token will not be automatically rotated.
 
-**Service Account Token Volume Projection**
-Another solution will be to use [Service Account Token Volume Projection](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#service-account-token-volume-projection) combined with a `kubeconfig` referencing a token file (see example below).
-```yaml
-apiVersion: v1
-kind: Config
-clusters:
-- cluster:
-    certificate-authority-data: <CA-DATA>
-    server: https://default.kubernetes.svc.cluster.local
-  name: garden
-contexts:
-- context:
-    cluster: garden
-    user: garden
-  name: garden
-current-context: garden
-users:
-- name: garden
-  user:
-    tokenFile: /var/run/secrets/projected/serviceaccount/token
-```
-
-This will allow for automatic rotation of the service account token by the `kubelet`. The configuration can be achieved by setting both `.Values.global.serviceAccountTokenVolumeProjection.enabled: true` and `.Values.global.kubeconfig` in the respective chart's `values.yaml` file.
-
 #### *Virtual Garden* is used, i.e., the `runtime` Garden cluster is different from the `target` Garden cluster.
 
 **Service Account**
@@ -52,33 +28,3 @@ Another solution will be to bind the roles in the `target` cluster to a `User` s
 2. Deploy the `application` part of the charts in the `target` cluster.
 3. Craft a `kubeconfig` using the already generated client certificate.
 4. Set the crafted `kubeconfig` and deploy the `runtime` part of the charts in the `runtime` cluster.
-
-**Projected Service Account Token**
-This approach requires an already deployed and configured [oidc-webhook-authenticator](https://github.com/gardener/oidc-webhook-authenticator) for the `target` cluster. Also the `runtime` cluster should be registered as a trusted identity provider in the `target` cluster. Then projected service accounts tokens from the `runtime` cluster can be used to authenticate against the `target` cluster. The needed steps are as follows:
-
-1. Deploy [OWA](https://github.com/gardener/oidc-webhook-authenticator) and establish the needed trust.
-2. Set `.Values.global.virtualGarden.enabled: true` and `.Values.global.virtualGarden.user.name`. **Note:** username value will depend on the trust configuration, e.g., `<prefix>:system:serviceaccount:<namespace>:<serviceaccount>`
-3. Set `.Values.global.serviceAccountTokenVolumeProjection.enabled: true` and `.Values.global.serviceAccountTokenVolumeProjection.audience`. **Note:** audience value will depend on the trust configuration, e.g., `<cliend-id-from-trust-config>`.
-4. Craft a kubeconfig (see example below).
-5. Deploy the `application` part of the charts in the `target` cluster.
-6. Deploy the `runtime` part of the charts in the `runtime` cluster.
-
-```yaml
-apiVersion: v1
-kind: Config
-clusters:
-- cluster:
-    certificate-authority-data: <CA-DATA>
-    server: https://virtual-garden.api
-  name: virtual-garden
-contexts:
-- context:
-    cluster: virtual-garden
-    user: virtual-garden
-  name: virtual-garden
-current-context: virtual-garden
-users:
-- name: virtual-garden
-  user:
-    tokenFile: /var/run/secrets/projected/serviceaccount/token
-```
