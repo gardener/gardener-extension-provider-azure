@@ -538,13 +538,15 @@ func (ip *PublicIPConfig) ToProvider(base *armnetwork.PublicIPAddress) *armnetwo
 
 	// inherited from base
 	if base != nil {
+		// TODO(hebelsan) remove in later release because we add the key when creating the object.
+		for key, value := range target.Tags {
+			if _, ok := base.Tags[key]; !ok {
+				base.Tags[key] = value
+			}
+		}
+
 		target.ID = base.ID
 		target.Tags = base.Tags
-	}
-
-	// TODO(hebelsan) remove in later release because we add the key when creating the object.
-	if _, ok := target.Tags[ManagedByGardenerTag]; !ok {
-		target.Tags[ManagedByGardenerTag] = to.Ptr("true")
 	}
 
 	return target
