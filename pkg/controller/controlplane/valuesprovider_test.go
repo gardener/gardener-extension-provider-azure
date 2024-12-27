@@ -525,12 +525,6 @@ var _ = Describe("ValuesProvider", func() {
 
 	Describe("#GetControlPlaneShootChartValues", func() {
 		var (
-			globalVpaDisabled = map[string]interface{}{
-				"vpaEnabled": false,
-			}
-			globalVpaEnabled = map[string]interface{}{
-				"vpaEnabled": true,
-			}
 			csiNodeEnabled = utils.MergeMaps(enabledTrue, map[string]interface{}{
 				"podAnnotations": map[string]interface{}{
 					"checksum/configmap-" + azure.CloudProviderDiskConfigName: checksums[azure.CloudProviderDiskConfigName],
@@ -539,7 +533,12 @@ var _ = Describe("ValuesProvider", func() {
 				"kubernetesVersion":   "1.28.2",
 			})
 			cloudControllerManager = map[string]interface{}{
-				"enabled": true,
+				"enabled":    true,
+				"vpaEnabled": true,
+			}
+			cloudControllerManagerWithVPADisabled = map[string]interface{}{
+				"enabled":    true,
+				"vpaEnabled": false,
 			}
 		)
 
@@ -580,7 +579,6 @@ var _ = Describe("ValuesProvider", func() {
 			values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
-				"global":                         globalVpaEnabled,
 				azure.AllowEgressName:            enabledTrue,
 				azure.CloudControllerManagerName: cloudControllerManager,
 				azure.CSINodeName:                csiNode,
@@ -602,7 +600,6 @@ var _ = Describe("ValuesProvider", func() {
 			values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
-				"global":                         globalVpaEnabled,
 				azure.AllowEgressName:            enabledFalse,
 				azure.CloudControllerManagerName: cloudControllerManager,
 				azure.CSINodeName:                csiNode,
@@ -624,7 +621,6 @@ var _ = Describe("ValuesProvider", func() {
 			values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(values).To(Equal(map[string]interface{}{
-				"global":                         globalVpaEnabled,
 				azure.AllowEgressName:            enabledTrue,
 				azure.CloudControllerManagerName: cloudControllerManager,
 				azure.CSINodeName:                csiNode,
@@ -652,9 +648,8 @@ var _ = Describe("ValuesProvider", func() {
 				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
-					"global":                         globalVpaDisabled,
 					azure.AllowEgressName:            enabledTrue,
-					azure.CloudControllerManagerName: cloudControllerManager,
+					azure.CloudControllerManagerName: cloudControllerManagerWithVPADisabled,
 					azure.CSINodeName:                csiNode,
 					azure.RemedyControllerName:       enabledFalse,
 				}))
@@ -674,9 +669,8 @@ var _ = Describe("ValuesProvider", func() {
 				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
-					"global":                         globalVpaDisabled,
 					azure.AllowEgressName:            enabledFalse,
-					azure.CloudControllerManagerName: cloudControllerManager,
+					azure.CloudControllerManagerName: cloudControllerManagerWithVPADisabled,
 					azure.CSINodeName:                csiNode,
 					azure.RemedyControllerName:       enabledFalse,
 				}))

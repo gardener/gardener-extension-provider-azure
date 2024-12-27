@@ -225,8 +225,6 @@ var (
 					{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.CSIDriverName},
 					{Type: &rbacv1.ClusterRole{}, Name: azure.UsernamePrefix + azure.CSIControllerFileName},
 					{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.CSIControllerFileName},
-					{Type: extensionscontroller.GetVerticalPodAutoscalerObject(), Name: azure.CSINodeDiskName},
-					{Type: extensionscontroller.GetVerticalPodAutoscalerObject(), Name: azure.CSINodeFileName},
 					// csi-provisioner
 					{Type: &rbacv1.ClusterRole{}, Name: azure.UsernamePrefix + azure.CSIProvisionerName},
 					{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.CSIProvisionerName},
@@ -745,9 +743,6 @@ func getControlPlaneShootChartValues(
 		features.ExtensionFeatureGate.Enabled(features.DisableRemedyController)
 
 	return map[string]interface{}{
-		"global": map[string]interface{}{
-			"vpaEnabled": gardencorev1beta1helper.ShootWantsVerticalPodAutoscaler(cluster.Shoot),
-		},
 		// the allow-egress chart is enabled in all cases **except**:
 		// - when the shoot is using AVSets due to using basic loadbalancers (see https://github.com/gardener/gardener-extension-provider-azure/issues/1).
 		// - when the outbound connectivity is done via a NATGateway (currently meaning that all worker subnets have a NATGateway attached).
@@ -755,7 +750,8 @@ func getControlPlaneShootChartValues(
 			"enabled": (infraStatus.Zoned || azureapihelper.IsVmoRequired(infraStatus)) && infraStatus.Networks.OutboundAccessType == apisazure.OutboundAccessTypeLoadBalancer,
 		},
 		azure.CloudControllerManagerName: map[string]interface{}{
-			"enabled": true,
+			"enabled":    true,
+			"vpaEnabled": gardencorev1beta1helper.ShootWantsVerticalPodAutoscaler(cluster.Shoot),
 		},
 		azure.CSINodeName: map[string]interface{}{
 			"enabled":           true,

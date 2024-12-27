@@ -1,1 +1,0 @@
-{{- include "csi-driver-node.vpa" (set $ "role" "file") }}
