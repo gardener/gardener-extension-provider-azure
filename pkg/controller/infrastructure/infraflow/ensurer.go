@@ -365,7 +365,38 @@ func (fctx *FlowContext) ensureSecurityGroup(ctx context.Context) (*armnetwork.S
 
 // EnsurePublicIps reconciles the public IPs for the shoot.
 func (fctx *FlowContext) EnsurePublicIps(ctx context.Context) error {
+	// as a workaround for problems encountered during the tf migration public user IPs are annotated
+	// with the IgnoredByGardenerTag because they are otherwise deleted by the flow reconciler.
+	err := fctx.tagUserIp(ctx)
+	if err != nil {
+		return err
+	}
 	return errors.Join(fctx.ensurePublicIps(ctx), fctx.ensureUserPublicIps(ctx))
+}
+
+// tagUserIp tags public IPs under the following conditions:
+// - the IP is customer managed
+// - the IP got migrated from terraform
+// - the IP resides in our RG and
+// - the IPs name has the shoot prefix.
+func (fctx *FlowContext) tagUserIp(ctx context.Context) error {
+	natGatewayCfg := fctx.cfg.Networks.NatGateway
+	if natGatewayCfg != nil && natGatewayCfg.Enabled {
+		for _, ipRef := range natGatewayCfg.IPAddresses {
+			if fctx.adapter.HasShootPrefix(&ipRef.Name) && fctx.adapter.ResourceGroupName() == ipRef.ResourceGroup {
+				c, err := fctx.factory.PublicIP()
+				if err != nil {
+					return err
+				}
+				updateTags := map[string]*string{IgnoredByGardenerTag: to.Ptr("true")}
+				err = c.UpdateTags(ctx, ipRef.ResourceGroup, ipRef.Name, updateTags)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func (fctx *FlowContext) ensureUserPublicIps(ctx context.Context) error {
@@ -415,7 +446,9 @@ func (fctx *FlowContext) ensurePublicIps(ctx context.Context) error {
 	currentIPs = Filter(currentIPs, func(address *armnetwork.PublicIPAddress) bool {
 		// filter only these IpConfigs prefixed by the cluster name and that do not contain the CCM tags.
 		return fctx.adapter.HasShootPrefix(address.Name) &&
-			(address.Tags[azure.CCMServiceTagKey] == nil && address.Tags[azure.CCMLegacyServiceTagKey] == nil)
+			address.Tags[azure.CCMServiceTagKey] == nil &&
+			address.Tags[azure.CCMLegacyServiceTagKey] == nil &&
+			address.Tags[IgnoredByGardenerTag] == nil
 	})
 	// obtain an indexed list of current IPs
 	nameToCurrentIps := ToMap(currentIPs, func(t *armnetwork.PublicIPAddress) string {

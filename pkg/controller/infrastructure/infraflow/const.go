@@ -21,4 +21,9 @@ const (
 	ChildKeyMigration = "migration"
 	// ChildKeyComplete is a key to indicate whether a task is complete.
 	ChildKeyComplete = "complete"
+
+	// IgnoredByGardenerTag is the tag used to mark resources managed by Gardener.
+	// It's used for an edge case where public IPs that are customer managed + migrated
+	// from terraform + reside in our RG + have the shoot prefix name.
+	IgnoredByGardenerTag = "managedByGardener"
 )

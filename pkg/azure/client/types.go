@@ -99,6 +99,7 @@ type PublicIP interface {
 	CreateOrUpdateFunc[armnetwork.PublicIPAddress]
 	DeleteFunc[armnetwork.PublicIPAddress]
 	ListFunc[armnetwork.PublicIPAddress]
+	UpdateTags
 }
 
 // NetworkInterface represents an Azure Network Interface k8sClient.

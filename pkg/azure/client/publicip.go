@@ -70,6 +70,15 @@ func (c *PublicIPClient) List(ctx context.Context, resourceGroupName string) ([]
 	return ips, nil
 }
 
+// UpdateTags will add tags to a network Public IP Address.
+func (c *PublicIPClient) UpdateTags(ctx context.Context, name, resourceGroupName string, tags map[string]*string) error {
+	_, err := c.client.UpdateTags(ctx, resourceGroupName, name, armnetwork.TagsObject{Tags: tags}, nil)
+	if err != nil {
+		return FilterNotFoundError(err)
+	}
+	return nil
+}
+
 // Delete will delete a network Public IP Address.
 func (c *PublicIPClient) Delete(ctx context.Context, resourceGroupName, name string) error {
 	future, err := c.client.BeginDelete(ctx, resourceGroupName, name, nil)

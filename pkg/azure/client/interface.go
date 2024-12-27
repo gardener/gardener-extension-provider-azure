@@ -82,3 +82,8 @@ type ContainerDeleteFunc[T any] interface {
 type ContainerCheckExistenceFunc[T any] interface {
 	CheckExistence(ctx context.Context, container string) (bool, error)
 }
+
+// UpdateTags updates the tags of a resource.
+type UpdateTags interface {
+	UpdateTags(ctx context.Context, name, resourceGroupName string, tags map[string]*string) error
+}

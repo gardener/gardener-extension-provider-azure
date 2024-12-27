@@ -889,6 +889,20 @@ func (mr *MockPublicIPMockRecorder) List(ctx, resourceGroupName any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockPublicIP)(nil).List), ctx, resourceGroupName)
 }
 
+// UpdateTags mocks base method.
+func (m *MockPublicIP) UpdateTags(ctx context.Context, name, resourceGroupName string, tags map[string]*string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateTags", ctx, name, resourceGroupName, tags)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateTags indicates an expected call of UpdateTags.
+func (mr *MockPublicIPMockRecorder) UpdateTags(ctx, name, resourceGroupName, tags any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateTags", reflect.TypeOf((*MockPublicIP)(nil).UpdateTags), ctx, name, resourceGroupName, tags)
+}
+
 // MockAvailabilitySet is a mock of AvailabilitySet interface.
 type MockAvailabilitySet struct {
 	ctrl     *gomock.Controller
