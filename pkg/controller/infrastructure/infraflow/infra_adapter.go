@@ -529,6 +529,7 @@ func (ip *PublicIPConfig) ToProvider(base *armnetwork.PublicIPAddress) *armnetwo
 			Tier: to.Ptr(armnetwork.PublicIPAddressSKUTierRegional),
 		},
 		Name: to.Ptr(ip.Name),
+		Tags: map[string]*string{ManagedByGardenerTag: to.Ptr("true")},
 	}
 	if len(ip.Zones) > 0 {
 		// if no zones selected, zones has to be nil, to match what the API returns - otherwise reflect.DeepEqual fails the check.
@@ -539,6 +540,11 @@ func (ip *PublicIPConfig) ToProvider(base *armnetwork.PublicIPAddress) *armnetwo
 	if base != nil {
 		target.ID = base.ID
 		target.Tags = base.Tags
+	}
+
+	// TODO(hebelsan) remove in later release because we add the key when creating the object.
+	if _, ok := target.Tags[ManagedByGardenerTag]; !ok {
+		target.Tags[ManagedByGardenerTag] = to.Ptr("true")
 	}
 
 	return target

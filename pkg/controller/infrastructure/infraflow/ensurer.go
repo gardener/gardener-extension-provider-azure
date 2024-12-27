@@ -397,9 +397,8 @@ func (fctx *FlowContext) ensurePublicIps(ctx context.Context) error {
 		return err
 	}
 	currentIPs = Filter(currentIPs, func(address *armnetwork.PublicIPAddress) bool {
-		// filter only these IpConfigs prefixed by the cluster name and that do not contain the CCM tags.
-		return fctx.adapter.HasShootPrefix(address.Name) &&
-			(address.Tags[azure.CCMServiceTagKey] == nil && address.Tags[azure.CCMLegacyServiceTagKey] == nil)
+		// filter only these IpConfigs that are managed by gardener
+		return fctx.adapter.HasShootPrefix(address.Name) && address.Tags[ManagedByGardenerTag] != nil
 	})
 	// obtain an indexed list of current IPs
 	nameToCurrentIps := ToMap(currentIPs, func(t *armnetwork.PublicIPAddress) string {
