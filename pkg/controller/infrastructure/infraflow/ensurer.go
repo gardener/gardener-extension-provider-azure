@@ -318,7 +318,7 @@ func (fctx *FlowContext) EnsureSecurityGroup(ctx context.Context) error {
 		return err
 	}
 
-	log.V(1).Info("adding to inventory", *sg.ID)
+	log.V(1).Info("adding to inventory", "id", *sg.ID)
 	err = fctx.inventory.Insert(*sg.ID)
 	if err != nil {
 		return err
@@ -427,8 +427,9 @@ func (fctx *FlowContext) ensurePublicIps(ctx context.Context) error {
 		toReconcile[name] = ip.ToProvider(nameToCurrentIps[name])
 	}
 	for _, inv := range fctx.inventory.ByKind(KindPublicIP) {
-		if ip, ok := nameToCurrentIps[inv]; !ok {
-			fctx.inventory.Delete(*ip.ID)
+		if _, ok := nameToCurrentIps[inv.Name]; !ok {
+			log.V(1).Info("removing public IP from inventory", "id", inv.String())
+			fctx.inventory.Delete(inv.String())
 		}
 	}
 
@@ -524,8 +525,9 @@ func (fctx *FlowContext) ensureNatGateways(ctx context.Context) error {
 	}
 
 	for _, inv := range fctx.inventory.ByKind(KindNatGateway) {
-		if nat, ok := nameToCurrentNats[inv]; !ok {
-			fctx.inventory.Delete(*nat.ID)
+		if _, ok := nameToCurrentNats[inv.Name]; !ok {
+			log.V(1).Info("removing nat gateway from inventory", "id", inv.String())
+			fctx.inventory.Delete(inv.String())
 		}
 	}
 
@@ -632,9 +634,10 @@ func (fctx *FlowContext) ensureSubnets(ctx context.Context) (err error) {
 		return *s.Name
 	})
 	// clean the current inventory and rebuild it.
-	for _, name := range fctx.inventory.ByKind(KindSubnet) {
-		if subnet, ok := mappedSubnets[name]; !ok {
-			fctx.inventory.Delete(*subnet.ID)
+	for _, resource := range fctx.inventory.ByKind(KindSubnet) {
+		if _, ok := mappedSubnets[resource.Name]; !ok {
+			log.V(1).Info("removing subnet from inventory", "id", resource.String())
+			fctx.inventory.Delete(resource.String())
 		}
 	}
 
