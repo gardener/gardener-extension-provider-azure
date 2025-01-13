@@ -318,7 +318,7 @@ func (fctx *FlowContext) EnsureSecurityGroup(ctx context.Context) error {
 		return err
 	}
 
-	log.V(1).Info("adding to inventory", *sg.ID)
+	log.V(1).Info("Adding to inventory", "id", *sg.ID)
 	err = fctx.inventory.Insert(*sg.ID)
 	if err != nil {
 		return err
@@ -426,9 +426,10 @@ func (fctx *FlowContext) ensurePublicIps(ctx context.Context) error {
 	for name, ip := range desiredConfiguration {
 		toReconcile[name] = ip.ToProvider(nameToCurrentIps[name])
 	}
-	for _, inv := range fctx.inventory.ByKind(KindPublicIP) {
-		if ip, ok := nameToCurrentIps[inv]; !ok {
-			fctx.inventory.Delete(*ip.ID)
+	for _, resource := range fctx.inventory.ByKind(KindPublicIP) {
+		if _, ok := nameToCurrentIps[resource.Name]; !ok {
+			log.Info("Removing public IP from inventory", "id", resource.String())
+			fctx.inventory.Delete(resource.String())
 		}
 	}
 
@@ -439,14 +440,14 @@ func (fctx *FlowContext) ensurePublicIps(ctx context.Context) error {
 		// delete all the resources that are not in the list of target resources
 		pipCfg, ok := desiredConfiguration[name]
 		if !ok {
-			log.Info("will delete public IP because it is not needed", "Resource Group", fctx.adapter.ResourceGroupName(), "Name", name)
+			log.Info("Will delete public IP because it is not needed", "Resource Group", fctx.adapter.ResourceGroupName(), "Name", name)
 			toDelete[name] = *current.ID
 			continue
 		}
 
 		// delete all resources whose spec cannot be updated to match target spec.
 		if ok, offender, v := ForceNewIp(current, toReconcile[pipCfg.Name]); ok {
-			log.Info("will delete public IP because it can't be reconciled", "Resource Group", fctx.adapter.ResourceGroupName(), "Name", name, "Field", offender, "Value", v)
+			log.Info("Will delete public IP because it can't be reconciled", "Resource Group", fctx.adapter.ResourceGroupName(), "Name", name, "Field", offender, "Value", v)
 			toDelete[name] = *current.ID
 			continue
 		}
@@ -523,9 +524,10 @@ func (fctx *FlowContext) ensureNatGateways(ctx context.Context) error {
 		toReconcile[name] = target
 	}
 
-	for _, inv := range fctx.inventory.ByKind(KindNatGateway) {
-		if nat, ok := nameToCurrentNats[inv]; !ok {
-			fctx.inventory.Delete(*nat.ID)
+	for _, resource := range fctx.inventory.ByKind(KindNatGateway) {
+		if _, ok := nameToCurrentNats[resource.Name]; !ok {
+			log.Info("Removing nat gateway from inventory", "id", resource.String())
+			fctx.inventory.Delete(resource.String())
 		}
 	}
 
@@ -536,12 +538,12 @@ func (fctx *FlowContext) ensureNatGateways(ctx context.Context) error {
 
 		targetNat, ok := toReconcile[name]
 		if !ok {
-			log.Info("will delete NAT Gateway because it is not needed", "Resource Group", fctx.adapter.ResourceGroupName(), "Name", *current.Name)
+			log.Info("Will delete NAT Gateway because it is not needed", "Resource Group", fctx.adapter.ResourceGroupName(), "Name", *current.Name)
 			toDelete[name] = *current.ID
 			continue
 		}
 		if ok, offender, v := ForceNewNat(current, targetNat); ok {
-			log.Info("will delete NAT Gateway because it cannot be reconciled", "Resource Group", fctx.adapter.ResourceGroupName(), "Name", *current.Name, "Field", offender, "Value", v)
+			log.Info("Will delete NAT Gateway because it cannot be reconciled", "Resource Group", fctx.adapter.ResourceGroupName(), "Name", *current.Name, "Field", offender, "Value", v)
 			toDelete[name] = *current.ID
 			continue
 		}
@@ -632,9 +634,10 @@ func (fctx *FlowContext) ensureSubnets(ctx context.Context) (err error) {
 		return *s.Name
 	})
 	// clean the current inventory and rebuild it.
-	for _, name := range fctx.inventory.ByKind(KindSubnet) {
-		if subnet, ok := mappedSubnets[name]; !ok {
-			fctx.inventory.Delete(*subnet.ID)
+	for _, resource := range fctx.inventory.ByKind(KindSubnet) {
+		if _, ok := mappedSubnets[resource.Name]; !ok {
+			log.Info("Removing subnet from inventory", "id", resource.String())
+			fctx.inventory.Delete(resource.String())
 		}
 	}
 
@@ -679,12 +682,12 @@ func (fctx *FlowContext) ensureSubnets(ctx context.Context) (err error) {
 
 		target, ok := toReconcile[name]
 		if !ok {
-			log.Info("will delete subnet because it is not needed", "Resource Group", vnetRgroup, "Name", *current.Name)
+			log.Info("Will delete subnet because it is not needed", "Resource Group", vnetRgroup, "Name", *current.Name)
 			toDelete[name] = current
 			continue
 		}
 		if ok, offender, v := ForceNewSubnet(current, target); ok {
-			log.Info("will delete subnet because it cannot be reconciled", "Resource Group", vnetRgroup, "Name", *current.Name, "Field", offender, "Value", v)
+			log.Info("Will delete subnet because it cannot be reconciled", "Resource Group", vnetRgroup, "Name", *current.Name, "Field", offender, "Value", v)
 			toDelete[name] = current
 			continue
 		}
