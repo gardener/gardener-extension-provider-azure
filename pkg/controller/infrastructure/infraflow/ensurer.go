@@ -428,7 +428,7 @@ func (fctx *FlowContext) ensurePublicIps(ctx context.Context) error {
 	}
 	for _, resource := range fctx.inventory.ByKind(KindPublicIP) {
 		if _, ok := nameToCurrentIps[resource.Name]; !ok {
-			log.Info("Removing public IP from inventory", "id", resource)
+			log.Info("Removing public IP from inventory", "id", resource.String())
 			fctx.inventory.Delete(resource.String())
 		}
 	}
@@ -526,7 +526,7 @@ func (fctx *FlowContext) ensureNatGateways(ctx context.Context) error {
 
 	for _, resource := range fctx.inventory.ByKind(KindNatGateway) {
 		if _, ok := nameToCurrentNats[resource.Name]; !ok {
-			log.Info("Removing nat gateway from inventory", "id", resource)
+			log.Info("Removing nat gateway from inventory", "id", resource.String())
 			fctx.inventory.Delete(resource.String())
 		}
 	}
@@ -636,7 +636,7 @@ func (fctx *FlowContext) ensureSubnets(ctx context.Context) (err error) {
 	// clean the current inventory and rebuild it.
 	for _, resource := range fctx.inventory.ByKind(KindSubnet) {
 		if _, ok := mappedSubnets[resource.Name]; !ok {
-			log.Info("Removing subnet from inventory", "id", resource)
+			log.Info("Removing subnet from inventory", "id", resource.String())
 			fctx.inventory.Delete(resource.String())
 		}
 	}
