@@ -409,6 +409,7 @@ func (fctx *FlowContext) ensurePublicIps(ctx context.Context) error {
 	for name, ip := range desiredConfiguration {
 		toReconcile[name] = ip.ToProvider(nameToCurrentIps[name])
 	}
+
 	for _, resource := range fctx.inventory.ByKind(KindPublicIP) {
 		if _, ok := nameToCurrentIps[resource.Name]; !ok {
 			log.Info("Removing public IP from inventory", "id", resource.String())
