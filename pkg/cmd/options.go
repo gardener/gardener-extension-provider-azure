@@ -31,10 +31,10 @@ import (
 	acceleratednetworkwebhook "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/acceleratednetwork"
 	cloudproviderwebhook "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/cloudprovider"
 	controlplanewebhook "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/controlplane"
-	controlplaneexposurewebhook "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/controlplaneexposure"
 	haNamespace "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/highavailability/namespace"
 	infrastructurewebhook "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/infrastructure"
 	networkwebhook "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/network"
+	seedproviderwebhook "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/seedprovider"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/webhook/topology"
 )
 
@@ -60,7 +60,7 @@ func WebhookSwitchOptions() *webhookcmd.SwitchOptions {
 		webhookcmd.Switch(acceleratednetworkwebhook.WebhookName, acceleratednetworkwebhook.AddToManager),
 		webhookcmd.Switch(infrastructurewebhook.WebhookName, infrastructurewebhook.AddToManager),
 		webhookcmd.Switch(extensionscontrolplanewebhook.WebhookName, controlplanewebhook.AddToManager),
-		webhookcmd.Switch(extensionscontrolplanewebhook.SeedProviderWebhookName, controlplaneexposurewebhook.AddToManager),
+		webhookcmd.Switch(extensionscontrolplanewebhook.SeedProviderWebhookName, seedproviderwebhook.AddToManager),
 		webhookcmd.Switch(extensionscloudproviderwebhook.WebhookName, cloudproviderwebhook.AddToManager),
 		webhookcmd.Switch(topology.WebhookName, topology.AddToManager),
 		webhookcmd.Switch(haNamespace.WebhookName, haNamespace.AddToManager),
