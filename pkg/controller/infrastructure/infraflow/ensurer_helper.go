@@ -109,13 +109,13 @@ func (i *Inventory) Delete(id string) {
 }
 
 // ByKind returns a list of all the IDs of stored objects of a particular kind.
-func (i *Inventory) ByKind(kind AzureResourceKind) []string {
-	res := make([]string, 0)
+func (i *Inventory) ByKind(kind AzureResourceKind) []arm.ResourceID {
+	res := make([]arm.ResourceID, 0)
 	for _, key := range i.GetChild(ChildKeyInventory).ObjectKeys() {
 		if i.GetChild(ChildKeyInventory).HasObject(key) {
 			resource := i.GetChild(ChildKeyInventory).GetObject(key).(*arm.ResourceID)
 			if resource.ResourceType.String() == kind.String() {
-				res = append(res, resource.Name)
+				res = append(res, *resource)
 			}
 		}
 	}
