@@ -8,34 +8,43 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gardener/gardener/extensions/pkg/util"
+	"github.com/gardener/gardener/pkg/apis/core"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	"github.com/gardener/gardener/pkg/utils"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/utils/ptr"
 	"k8s.io/utils/strings/slices"
 
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 )
 
 // ValidateCloudProfileConfig validates a CloudProfileConfig object.
-func ValidateCloudProfileConfig(cloudProfile *apisazure.CloudProfileConfig, fldPath *field.Path) field.ErrorList {
+func ValidateCloudProfileConfig(cpConfig *apisazure.CloudProfileConfig, machineImages []core.MachineImage, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	allErrs = append(allErrs, validateDomainCount(cloudProfile.CountFaultDomains, fldPath.Child("countFaultDomains"))...)
-	allErrs = append(allErrs, validateDomainCount(cloudProfile.CountUpdateDomains, fldPath.Child("countUpdateDomains"))...)
+	allErrs = append(allErrs, validateDomainCount(cpConfig.CountFaultDomains, fldPath.Child("countFaultDomains"))...)
+	allErrs = append(allErrs, validateDomainCount(cpConfig.CountUpdateDomains, fldPath.Child("countUpdateDomains"))...)
 
 	machineImagesPath := fldPath.Child("machineImages")
-	if len(cloudProfile.MachineImages) == 0 {
+	if len(cpConfig.MachineImages) == 0 {
 		allErrs = append(allErrs, field.Required(machineImagesPath, "must provide at least one machine image"))
+		return allErrs
 	}
-	for i, machineImage := range cloudProfile.MachineImages {
+
+	// validate all provider images fields
+	for i, machineImage := range cpConfig.MachineImages {
 		idxPath := machineImagesPath.Index(i)
-		allErrs = append(allErrs, ValidateMachineImage(idxPath, machineImage)...)
+		allErrs = append(allErrs, ValidateProviderMachineImage(idxPath, machineImage)...)
 	}
+
+	allErrs = append(allErrs, validateProviderImagesMapping(cpConfig.MachineImages, machineImages, field.NewPath("spec").Child("machineImages"))...)
 
 	return allErrs
 }
 
-// ValidateMachineImage validates a CloudProfileConfig MachineImages entry.
-func ValidateMachineImage(validationPath *field.Path, machineImage apisazure.MachineImages) field.ErrorList {
+// ValidateProviderMachineImage validates a CloudProfileConfig MachineImages entry.
+func ValidateProviderMachineImage(validationPath *field.Path, machineImage apisazure.MachineImages) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if len(machineImage.Name) == 0 {
@@ -96,6 +105,36 @@ func ValidateMachineImage(validationPath *field.Path, machineImage apisazure.Mac
 	return allErrs
 }
 
+// verify that for each cp image a provider image exists
+func validateProviderImagesMapping(cpConfigImages []apisazure.MachineImages, machineImages []core.MachineImage, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	providerImages := NewProviderImagesContext(cpConfigImages)
+
+	// for each image in the CloudProfile, check if it exists in the CloudProfileConfig
+	for idxImage, machineImage := range machineImages {
+		machineImagePath := fldPath.Index(idxImage)
+		if _, existsInParent := providerImages.GetImage(machineImage.Name); !existsInParent {
+			allErrs = append(allErrs, field.Required(machineImagePath, fmt.Sprintf("must provide a provider image mapping for image %q", machineImage.Name)))
+			continue
+		}
+
+		// validate that for each version and architecture of an image in the cloud profile a
+		// corresponding provider specific image in the cloud profile config exists
+		for versionIdx, version := range machineImage.Versions {
+			imageVersionPath := machineImagePath.Child("versions").Index(versionIdx)
+			for _, expectedArchitecture := range version.Architectures {
+				if _, exists := providerImages.GetImageVersion(machineImage.Name, VersionArchitectureKey(version.Version, expectedArchitecture)); !exists {
+					allErrs = append(allErrs, field.Required(imageVersionPath,
+						fmt.Sprintf("must provide an image mapping for version %q and architecture: %s", version.Version, expectedArchitecture)))
+				}
+			}
+		}
+	}
+
+	return allErrs
+}
+
 // validateProvidedImageIdCount validates that only one of urn/id/communityGalleryImageID/sharedGalleryImageID is provided
 func validateProvidedImageIdCount(version apisazure.MachineImageVersion, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
@@ -145,4 +184,23 @@ func validateDomainCount(domainCount []apisazure.DomainCount, fldPath *field.Pat
 	}
 
 	return allErrs
+}
+
+func providerMachineImageKey(v apisazure.MachineImageVersion) string {
+	return VersionArchitectureKey(v.Version, ptr.Deref(v.Architecture, v1beta1constants.ArchitectureAMD64))
+}
+
+// VersionArchitectureKey returns a key for a version and architecture.
+func VersionArchitectureKey(version, architecture string) string {
+	return version + "-" + architecture
+}
+
+// NewProviderImagesContext creates a new images context for provider images.
+func NewProviderImagesContext(providerImages []apisazure.MachineImages) *util.ImagesContext[apisazure.MachineImages, apisazure.MachineImageVersion] {
+	return util.NewImagesContext(
+		utils.CreateMapFromSlice(providerImages, func(mi apisazure.MachineImages) string { return mi.Name }),
+		func(mi apisazure.MachineImages) map[string]apisazure.MachineImageVersion {
+			return utils.CreateMapFromSlice(mi.Versions, func(v apisazure.MachineImageVersion) string { return providerMachineImageKey(v) })
+		},
+	)
 }

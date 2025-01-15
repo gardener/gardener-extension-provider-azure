@@ -106,12 +106,12 @@ func (p *namespacedCloudProfile) validateMachineImages(providerConfig *api.Cloud
 	machineImagesPath := field.NewPath("spec.providerConfig.machineImages")
 	for i, machineImage := range providerConfig.MachineImages {
 		idxPath := machineImagesPath.Index(i)
-		allErrs = append(allErrs, validation.ValidateMachineImage(idxPath, machineImage)...)
+		allErrs = append(allErrs, validation.ValidateProviderMachineImage(idxPath, machineImage)...)
 	}
 
 	profileImages := util.NewCoreImagesContext(machineImages)
 	parentImages := util.NewV1beta1ImagesContext(parentSpec.MachineImages)
-	providerImages := newProviderImagesContext(providerConfig.MachineImages)
+	providerImages := validation.NewProviderImagesContext(providerConfig.MachineImages)
 
 	for _, machineImage := range profileImages.Images {
 		// Check that for each new image version defined in the NamespacedCloudProfile, the image is also defined in the providerConfig.
@@ -126,7 +126,7 @@ func (p *namespacedCloudProfile) validateMachineImages(providerConfig *api.Cloud
 		for _, version := range machineImage.Versions {
 			_, existsInParent := parentImages.GetImageVersion(machineImage.Name, version.Version)
 			for _, expectedArchitecture := range version.Architectures {
-				if _, exists := providerImages.GetImageVersion(machineImage.Name, versionArchitectureKey(version.Version, expectedArchitecture)); !existsInParent && !exists {
+				if _, exists := providerImages.GetImageVersion(machineImage.Name, validation.VersionArchitectureKey(version.Version, expectedArchitecture)); !existsInParent && !exists {
 					allErrs = append(allErrs, field.Required(
 						field.NewPath("spec.providerConfig.machineImages"),
 						fmt.Sprintf("machine image version %s@%s is not defined in the NamespacedCloudProfile providerConfig", machineImage.Name, version.Version),
@@ -176,23 +176,6 @@ func (p *namespacedCloudProfile) validateMachineImages(providerConfig *api.Cloud
 	}
 
 	return allErrs
-}
-
-func providerMachineImageKey(v api.MachineImageVersion) string {
-	return versionArchitectureKey(v.Version, ptr.Deref(v.Architecture, constants.ArchitectureAMD64))
-}
-
-func versionArchitectureKey(version, architecture string) string {
-	return version + "-" + architecture
-}
-
-func newProviderImagesContext(providerImages []api.MachineImages) *util.ImagesContext[api.MachineImages, api.MachineImageVersion] {
-	return util.NewImagesContext(
-		utils.CreateMapFromSlice(providerImages, func(mi api.MachineImages) string { return mi.Name }),
-		func(mi api.MachineImages) map[string]api.MachineImageVersion {
-			return utils.CreateMapFromSlice(mi.Versions, func(v api.MachineImageVersion) string { return providerMachineImageKey(v) })
-		},
-	)
 }
 
 func (p *namespacedCloudProfile) validateMachineTypes(providerConfig *api.CloudProfileConfig, machineTypes []core.MachineType, parentSpec gardencorev1beta1.CloudProfileSpec) field.ErrorList {
