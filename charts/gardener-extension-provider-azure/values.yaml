@@ -101,3 +101,7 @@ gardener:
 # - tenantID: tenant-2
 #   clientID: spn-2
 #   clientSecret: secret-2
+
+  runtimeCluster:
+    enabled: false
+  # priorityClassName: gardener-garden-system-200
