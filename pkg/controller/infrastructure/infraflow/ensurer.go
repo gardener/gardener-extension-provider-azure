@@ -71,7 +71,7 @@ func (fctx *FlowContext) ensureResourceGroup(ctx context.Context) (*armresources
 	}
 
 	rg = &armresources.ResourceGroup{
-		Location: to.Ptr(fctx.adapter.Region()),
+		Location: to.Ptr(rgCfg.Location),
 	}
 
 	log.Info("creating resource group", "name", fctx.adapter.ResourceGroupName())
@@ -123,14 +123,9 @@ func (fctx *FlowContext) ensureManagedVirtualNetwork(ctx context.Context) (*armn
 	}
 
 	if vnet != nil {
-		if location := ptr.Deref(vnet.Location, ""); location != fctx.adapter.Region() {
-			log.Error(NewSpecMismatchError(vnetCfg.AzureResourceMetadata, "location", fctx.adapter.Region(), location, nil), "vnet can't be reconciled and has to be deleted")
-			err = c.Delete(ctx, vnetCfg.ResourceGroup, vnetCfg.Name)
-			if err != nil {
-				return nil, err
-			}
-			fctx.inventory.Delete(*vnet.ID)
-			vnet = nil
+		if location := ptr.Deref(vnet.Location, ""); location != vnetCfg.Location {
+			return nil, NewSpecMismatchError(vnetCfg.AzureResourceMetadata, "location", vnetCfg.Location, location,
+				to.Ptr("the location of the VNet does not match expected location"))
 		}
 	}
 
@@ -239,12 +234,9 @@ func (fctx *FlowContext) ensureAvailabilitySet(ctx context.Context, log logr.Log
 	}
 
 	if avset != nil {
-		if location := ptr.Deref(avset.Location, ""); location != fctx.adapter.Region() {
-			log.Error(NewSpecMismatchError(avsetCfg.AzureResourceMetadata, "location", fctx.adapter.Region(), location, nil), "will attempt to delete availability set due to irreconcilable error")
-			err = asClient.Delete(ctx, avsetCfg.ResourceGroup, avsetCfg.Name)
-			if err != nil {
-				return nil, err
-			}
+		if location := ptr.Deref(avset.Location, ""); location != avsetCfg.Location {
+			return nil, NewSpecMismatchError(avsetCfg.AzureResourceMetadata, "location", avsetCfg.Location, location,
+				to.Ptr("the location of the availability set does not match expected location"))
 		}
 
 		// domain counts are immutable, therefore we need live with whatever is currently present.
@@ -294,13 +286,9 @@ func (fctx *FlowContext) ensureRouteTable(ctx context.Context) (*armnetwork.Rout
 	}
 
 	if rt != nil {
-		if location := ptr.Deref(rt.Location, ""); location != fctx.adapter.Region() {
-			log.Error(NewSpecMismatchError(rtCfg.AzureResourceMetadata, "location", fctx.adapter.Region(), location, nil), "will attempt to delete route table due to irreconcilable error")
-			err = c.Delete(ctx, rtCfg.ResourceGroup, rtCfg.Name)
-			if err != nil {
-				return nil, err
-			}
-			rt = nil
+		if location := ptr.Deref(rt.Location, ""); location != rtCfg.Location {
+			return nil, NewSpecMismatchError(rtCfg.AzureResourceMetadata, "location", rtCfg.Location, location,
+				to.Ptr("the location of the route table does not match expected location"))
 		}
 	}
 
@@ -342,13 +330,9 @@ func (fctx *FlowContext) ensureSecurityGroup(ctx context.Context) (*armnetwork.S
 	}
 
 	if sg != nil {
-		if location := ptr.Deref(sg.Location, ""); location != fctx.adapter.Region() {
-			log.Error(NewSpecMismatchError(sgCfg.AzureResourceMetadata, "location", fctx.adapter.Region(), location, nil), "will attempt to delete security group due to irreconcilable error")
-			err = c.Delete(ctx, sgCfg.ResourceGroup, sgCfg.Name)
-			if err != nil {
-				return nil, err
-			}
-			sg = nil
+		if location := ptr.Deref(sg.Location, ""); location != sgCfg.Location {
+			return nil, NewSpecMismatchError(sgCfg.AzureResourceMetadata, "location", sgCfg.Location, location,
+				to.Ptr("the location of the security group does not match expected location"))
 		}
 	}
 

@@ -46,9 +46,9 @@ func NewInfrastructureAdapter(
 	cluster *extensionscontroller.Cluster,
 ) (*InfrastructureAdapter, error) {
 	ia := &InfrastructureAdapter{
-		infra:   infra,
-		config:  config,
-		profile: profile,
+		infra:   infra.DeepCopy(),
+		config:  config.DeepCopy(),
+		profile: profile.DeepCopy(),
 		cluster: cluster,
 		status:  status,
 	}
@@ -81,7 +81,7 @@ func (ia *InfrastructureAdapter) ResourceGroup() ResourceGroupConfig {
 			Name: ia.ResourceGroupName(),
 			Kind: KindResourceGroup,
 		},
-		Location: ia.infra.Spec.Region,
+		Location: ia.Region(),
 	}
 }
 
