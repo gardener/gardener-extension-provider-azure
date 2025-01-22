@@ -13,6 +13,7 @@ import (
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/go-logr/logr"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
@@ -109,6 +110,7 @@ func mutate(_ context.Context, logger logr.Logger, newInfra, oldInfra *extension
 
 	// If the current operation is restore, then mutation might be necessary as the zone migration annotation is not preserved during control plane migration.
 	if operation, ok := newInfra.Annotations[v1beta1constants.GardenerOperation]; ok && operation == v1beta1constants.GardenerOperationRestore {
+		extensionswebhook.LogMutation(logger, newInfra.Kind, newInfra.Namespace, newInfra.Name)
 		return addMigratedZoneAnnotationDuringRestore(newInfra)
 	}
 
@@ -163,7 +165,7 @@ func addMigratedZoneAnnotationDuringRestore(infra *extensionsv1alpha1.Infrastruc
 		}
 
 		if migratedZone, ok := infraState.Data[azuretypes.NetworkLayoutZoneMigrationAnnotation]; ok {
-			infra.Annotations[azuretypes.NetworkLayoutZoneMigrationAnnotation] = migratedZone
+			metav1.SetMetaDataAnnotation(&infra.ObjectMeta, azuretypes.NetworkLayoutZoneMigrationAnnotation, migratedZone)
 		}
 
 		return nil
@@ -181,7 +183,7 @@ func addMigratedZoneAnnotationDuringRestore(infra *extensionsv1alpha1.Infrastruc
 
 	for _, subnet := range infrastructureStatus.Networks.Subnets {
 		if subnet.Migrated && subnet.Zone != nil {
-			infra.Annotations[azuretypes.NetworkLayoutZoneMigrationAnnotation] = *subnet.Zone
+			metav1.SetMetaDataAnnotation(&infra.ObjectMeta, azuretypes.NetworkLayoutZoneMigrationAnnotation, *subnet.Zone)
 			break
 		}
 	}

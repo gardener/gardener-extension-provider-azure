@@ -141,7 +141,7 @@ var _ = Describe("Mutate", func() {
 				Expect(ok).To(BeTrue())
 				Expect(v).To(Equal("2"))
 			})
-			It("should mutate the resource if the current 'gardener.cloud/operation' annotation is restore and has terraform state", func() {
+			It("should mutate the resource if the current 'gardener.cloud/operation' annotation is 'restore' and has terraform state", func() {
 				newInfra := generateInfrastructureWithProviderConfig(zonesConfig, nil)
 				newInfra.Annotations = map[string]string{
 					"gardener.cloud/operation": "restore",
