@@ -906,6 +906,13 @@ func (fctx *FlowContext) GetInfrastructureState() *runtime.RawExtension {
 		Data:         fctx.whiteboard.ExportAsFlatMap(),
 	}
 
+	if migratedZone, ok := fctx.infra.Annotations[azure.NetworkLayoutZoneMigrationAnnotation]; ok {
+		if state.Data == nil {
+			state.Data = make(map[string]string)
+		}
+		state.Data[azure.NetworkLayoutZoneMigrationAnnotation] = migratedZone
+	}
+
 	return &runtime.RawExtension{
 		Object: state,
 	}
@@ -923,17 +930,6 @@ func (fctx *FlowContext) GetEgressIpCidrs() []string {
 			cidrs = append(cidrs, address+"/32")
 		}
 		return cidrs
-	}
-	return nil
-}
-
-func (fctx *FlowContext) enrichStatusWithIdentity(_ context.Context, status *v1alpha1.InfrastructureStatus) error {
-	if identity := fctx.cfg.Identity; identity != nil {
-		status.Identity = &v1alpha1.IdentityStatus{
-			ID:        *fctx.whiteboard.Get(KeyManagedIdentityId),
-			ClientID:  *fctx.whiteboard.Get(KeyManagedIdentityClientId),
-			ACRAccess: identity.ACRAccess != nil && *identity.ACRAccess,
-		}
 	}
 	return nil
 }

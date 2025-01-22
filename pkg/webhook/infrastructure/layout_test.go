@@ -18,8 +18,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
 
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azurev1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 )
 
 const (
@@ -116,6 +118,72 @@ var _ = Describe("Mutate", func() {
 				Expect(err).To(BeNil())
 				_, ok := getLayoutMigrationAnnotation(newInfra)
 				Expect(ok).To(BeFalse())
+			})
+			It("should mutate the resource if the current 'gardener.cloud/operation' annotation is 'restore' and has flow state", func() {
+				newInfra := generateInfrastructureWithProviderConfig(zonesConfig, nil)
+				newInfra.Annotations = map[string]string{
+					"gardener.cloud/operation": "restore",
+				}
+
+				state := &azurev1alpha1.InfrastructureState{
+					TypeMeta: helper.InfrastructureStateTypeMeta,
+					Data: map[string]string{
+						azure.NetworkLayoutZoneMigrationAnnotation: "2",
+					},
+				}
+				marshalled, err := json.Marshal(state)
+				Expect(err).To(BeNil())
+				newInfra.Status.State = &runtime.RawExtension{Raw: marshalled}
+
+				err = mutator.Mutate(context.TODO(), newInfra, newInfra)
+				Expect(err).To(BeNil())
+				v, ok := getLayoutMigrationAnnotation(newInfra)
+				Expect(ok).To(BeTrue())
+				Expect(v).To(Equal("2"))
+			})
+			It("should mutate the resource if the current 'gardener.cloud/operation' annotation is 'restore' and has terraform state", func() {
+				newInfra := generateInfrastructureWithProviderConfig(zonesConfig, nil)
+				newInfra.Annotations = map[string]string{
+					"gardener.cloud/operation": "restore",
+				}
+
+				status := &azurev1alpha1.InfrastructureStatus{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: azurev1alpha1.SchemeGroupVersion.String(),
+						Kind:       "InfrastructureStatus",
+					},
+					Networks: azurev1alpha1.NetworkStatus{
+						Subnets: []azurev1alpha1.Subnet{
+							{
+								Name:     "subnet-zone1",
+								Zone:     ptr.To("1"),
+								Migrated: false,
+							},
+							{
+								Name:     "subnet",
+								Zone:     ptr.To("2"),
+								Migrated: true,
+							},
+						},
+					},
+				}
+				marshalled, err := json.Marshal(status)
+				Expect(err).To(BeNil())
+
+				state := &infrastructure.InfrastructureState{
+					SavedProviderStatus: &runtime.RawExtension{
+						Raw: marshalled,
+					},
+				}
+				marshalledState, err := json.Marshal(state)
+				Expect(err).To(BeNil())
+				newInfra.Status.State = &runtime.RawExtension{Raw: marshalledState}
+
+				err = mutator.Mutate(context.TODO(), newInfra, newInfra)
+				Expect(err).To(BeNil())
+				v, ok := getLayoutMigrationAnnotation(newInfra)
+				Expect(ok).To(BeTrue())
+				Expect(v).To(Equal("2"))
 			})
 		})
 

@@ -5,6 +5,7 @@
 package helper
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
@@ -100,6 +101,30 @@ func BackupConfigFromBackupBucket(backupBucket *extensionsv1alpha1.BackupBucket)
 		}
 	}
 	return backupConfig, nil
+}
+
+// HasFlowState returns true if the group version of the State field in the provided
+// `extensionsv1alpha1.InfrastructureStatus` is azure.provider.extensions.gardener.cloud/v1alpha1.
+func HasFlowState(status extensionsv1alpha1.InfrastructureStatus) (bool, error) {
+	if status.State == nil {
+		return false, nil
+	}
+
+	flowState := runtime.TypeMeta{}
+	stateJson, err := status.State.MarshalJSON()
+	if err != nil {
+		return false, err
+	}
+
+	if err := json.Unmarshal(stateJson, &flowState); err != nil {
+		return false, err
+	}
+
+	if flowState.GroupVersionKind().GroupVersion() == apiv1alpha1.SchemeGroupVersion {
+		return true, nil
+	}
+
+	return false, nil
 }
 
 // InfrastructureStateFromRaw extracts the state from the Infrastructure. If no state was available, it returns a "zero" value InfrastructureState object.
