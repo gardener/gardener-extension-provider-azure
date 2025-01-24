@@ -23,7 +23,7 @@ require (
 	github.com/gardener/etcd-druid v0.26.1
 	github.com/gardener/gardener v1.110.4
 	github.com/gardener/machine-controller-manager v0.55.1
-	github.com/gardener/remedy-controller v0.6.0
+	github.com/gardener/remedy-controller v0.12.0
 	github.com/go-logr/logr v1.4.2
 	github.com/google/go-cmp v0.6.0
 	github.com/onsi/ginkgo/v2 v2.22.2
@@ -41,7 +41,7 @@ require (
 	k8s.io/apiextensions-apiserver v0.32.0
 	k8s.io/apimachinery v0.32.1
 	k8s.io/autoscaler/vertical-pod-autoscaler v1.2.2
-	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
+	k8s.io/client-go v0.32.1
 	k8s.io/code-generator v0.32.0
 	k8s.io/component-base v0.32.1
 	k8s.io/kubelet v0.32.1
@@ -86,7 +86,6 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.1 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
-	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/gnostic-models v0.6.9 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
@@ -175,5 +174,3 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.5.0 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
-
-replace k8s.io/client-go => k8s.io/client-go v0.31.2
