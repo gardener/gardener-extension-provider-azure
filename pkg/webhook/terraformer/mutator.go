@@ -40,12 +40,12 @@ func New(c client.Client, logger logr.Logger) extensionswebhook.Mutator {
 }
 
 // Mutate mutates the pod attaches the workload identity token to it.
-func (m *mutator) Mutate(ctx context.Context, new, old client.Object) error {
-	if old != nil || new.GetDeletionTimestamp() != nil {
+func (m *mutator) Mutate(ctx context.Context, newPod, oldPod client.Object) error {
+	if oldPod != nil || newPod.GetDeletionTimestamp() != nil {
 		return nil
 	}
 
-	pod, ok := new.(*corev1.Pod)
+	pod, ok := newPod.(*corev1.Pod)
 	if !ok {
 		return errors.New("object is not of type corev1.Pod")
 	}
