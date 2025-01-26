@@ -159,18 +159,19 @@ var _ = Describe("ValuesProvider", func() {
 		cluster = generateCluster(cidr, k8sVersion, false, nil, nil, nil)
 
 		ControlPlaneChartValues = map[string]interface{}{
-			"tenantId":          "TenantID",
-			"subscriptionId":    "SubscriptionID",
-			"aadClientId":       "ClientID",
-			"aadClientSecret":   "ClientSecret",
-			"resourceGroup":     "rg-abcd1234",
-			"vnetName":          "vnet-abcd1234",
-			"subnetName":        "subnet-abcd1234-nodes",
-			"region":            "eu-west-1a",
-			"routeTableName":    "route-table-name",
-			"securityGroupName": "security-group-name-workers",
-			"vmType":            "standard",
-			"cloud":             "AZUREPUBLICCLOUD",
+			"tenantId":            "TenantID",
+			"subscriptionId":      "SubscriptionID",
+			"aadClientId":         "ClientID",
+			"aadClientSecret":     "ClientSecret",
+			"resourceGroup":       "rg-abcd1234",
+			"vnetName":            "vnet-abcd1234",
+			"subnetName":          "subnet-abcd1234-nodes",
+			"region":              "eu-west-1a",
+			"routeTableName":      "route-table-name",
+			"securityGroupName":   "security-group-name-workers",
+			"vmType":              "standard",
+			"cloud":               "AZUREPUBLICCLOUD",
+			"useWorkloadIdentity": false,
 		}
 	})
 
@@ -347,6 +348,13 @@ var _ = Describe("ValuesProvider", func() {
 
 			c.EXPECT().Delete(context.TODO(), &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "csi-driver-controller-observability-config", Namespace: namespace}})
 			c.EXPECT().Get(context.TODO(), client.ObjectKey{Name: "prometheus-shoot", Namespace: namespace}, gomock.AssignableToTypeOf(&appsv1.StatefulSet{})).Return(apierrors.NewNotFound(schema.GroupResource{}, ""))
+			cloudProviderSecret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "cloudprovider",
+					Namespace: "test",
+				},
+			}
+			c.EXPECT().Get(ctx, client.ObjectKeyFromObject(cloudProviderSecret), cloudProviderSecret).Return(nil)
 		})
 
 		It("should return correct control plane chart values without zoned infrastructure", func() {
@@ -361,8 +369,9 @@ var _ = Describe("ValuesProvider", func() {
 					"genericTokenKubeconfigSecretName": genericTokenKubeconfigSecretName,
 				},
 				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
-					"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
-					"gep19Monitoring":   false,
+					"kubernetesVersion":   cluster.Shoot.Spec.Kubernetes.Version,
+					"gep19Monitoring":     false,
+					"useWorkloadIdentity": false,
 				}),
 				azure.CSIControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
 					"replicas": 1,
@@ -386,7 +395,8 @@ var _ = Describe("ValuesProvider", func() {
 					"podAnnotations": map[string]interface{}{
 						"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
 					},
-					"gep19Monitoring": false,
+					"gep19Monitoring":     false,
+					"useWorkloadIdentity": false,
 				}),
 			}))
 		})
@@ -403,8 +413,9 @@ var _ = Describe("ValuesProvider", func() {
 					"genericTokenKubeconfigSecretName": genericTokenKubeconfigSecretName,
 				},
 				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
-					"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
-					"gep19Monitoring":   false,
+					"kubernetesVersion":   cluster.Shoot.Spec.Kubernetes.Version,
+					"gep19Monitoring":     false,
+					"useWorkloadIdentity": false,
 				}),
 				azure.CSIControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
 					"replicas": 1,
@@ -428,7 +439,8 @@ var _ = Describe("ValuesProvider", func() {
 					"podAnnotations": map[string]interface{}{
 						"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
 					},
-					"gep19Monitoring": false,
+					"gep19Monitoring":     false,
+					"useWorkloadIdentity": false,
 				}),
 			}))
 		})
@@ -448,8 +460,9 @@ var _ = Describe("ValuesProvider", func() {
 					"genericTokenKubeconfigSecretName": genericTokenKubeconfigSecretName,
 				},
 				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
-					"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
-					"gep19Monitoring":   false,
+					"kubernetesVersion":   cluster.Shoot.Spec.Kubernetes.Version,
+					"gep19Monitoring":     false,
+					"useWorkloadIdentity": false,
 				}),
 				azure.CSIControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
 					"replicas": 1,

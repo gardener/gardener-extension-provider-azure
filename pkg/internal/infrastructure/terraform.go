@@ -68,11 +68,12 @@ func RenderTerraformerTemplate(
 	infra *extensionsv1alpha1.Infrastructure,
 	config *api.InfrastructureConfig,
 	cluster *controller.Cluster,
+	useWorkloadIdentity bool,
 ) (
 	*TerraformFiles,
 	error,
 ) {
-	values, err := ComputeTerraformerTemplateValues(infra, config, cluster)
+	values, err := ComputeTerraformerTemplateValues(infra, config, cluster, useWorkloadIdentity)
 	if err != nil {
 		return nil, err
 	}
@@ -95,6 +96,7 @@ func ComputeTerraformerTemplateValues(
 	infra *extensionsv1alpha1.Infrastructure,
 	config *api.InfrastructureConfig,
 	cluster *controller.Cluster,
+	useWorkloadIdentity bool,
 ) (
 	map[string]interface{},
 	error,
@@ -183,10 +185,11 @@ func ComputeTerraformerTemplateValues(
 			"name": resourceGroupName,
 			"vnet": vnetConfig,
 		},
-		"clusterName": infra.Namespace,
-		"networks":    networkConfig,
-		"identity":    identityConfig,
-		"outputKeys":  outputKeys,
+		"clusterName":         infra.Namespace,
+		"networks":            networkConfig,
+		"identity":            identityConfig,
+		"outputKeys":          outputKeys,
+		"useWorkloadIdentity": useWorkloadIdentity,
 	}
 	return result, nil
 }

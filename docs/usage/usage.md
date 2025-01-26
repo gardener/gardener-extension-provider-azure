@@ -31,8 +31,9 @@ data:
   tenantID: base64(tenant-id)
 ```
 
-⚠️ Depending on your API usage it can be problematic to reuse the same Service Principal for different Shoot clusters due to rate limits.
-Please consider spreading your Shoots over Service Principals from different Azure subscriptions if you are hitting those limits.
+> [!WARNING]
+> Depending on your API usage it can be problematic to reuse the same Service Principal for different Shoot clusters due to rate limits.
+> Please consider spreading your Shoots over Service Principals from different Azure subscriptions if you are hitting those limits.
 
 ### Managed Service Principals
 
@@ -45,7 +46,54 @@ Removing those fields from the secret of an existing Shoot will also let it adop
 Based on the `tenantID` field, the Gardener extension will try to assign the managed service principal to the Shoot.
 If no managed service principal can be assigned then the next operation on the Shoot will fail.
 
-⚠️ The managed service principal need to be assigned to the users Azure subscription with proper permissions before using it.
+> [!WARNING]
+> The managed service principal need to be assigned to the users Azure subscription with proper permissions before using it.
+
+### Azure Workload Identity Federation
+
+Users can choose to trust Gardener's Workload Identity Issuer and eliminate the need for providing Azure credentials.
+
+As a first step a resource of type `WorkloadIdentity` should be created in the Garden cluster and configured with the required Azure information.
+This identity will be used by infrastructure components to authenticate against Azure APIs.
+A sample of such resource is shown below:
+
+```yaml
+apiVersion: security.gardener.cloud/v1alpha1
+kind: WorkloadIdentity
+metadata:
+  name: azure
+  namespace: garden-myproj
+spec:
+  audiences:
+  # This is the audience that you configure during the creation of a federated credential
+  - api://AzureADTokenExchange-my-application
+  targetSystem:
+    type: azure
+    providerConfig:
+      apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+      kind: WorkloadIdentityConfig
+      clientID: 00000000-0000-0000-0000-000000000001 # This is the id of the application (client)
+      tenantID: 00000000-0000-0000-0000-000000000002 # This is the id of the directory (tenant)
+      subscriptionID: 00000000-0000-0000-0000-000000000003 # This is the id of the Azure subscription
+```
+
+Once created the `WorkloadIdentity` will get its own id which will be used to form the subject of the said `WorkloadIdentity`.
+The subject can be obtained by running the following command:
+
+```bash
+kubectl -n garden-myproj get wi azure -o=jsonpath={.status.sub}
+```
+
+As a second step users should configure [Workload Identity Federation](https://learn.microsoft.com/en-us/entra/workload-id/workload-identity-federation-create-trust?pivots=identity-wif-apps-methods-azp#other-identity-providers) so that their application trusts Gardener's Workload Identity Issuer.
+In the shown example a `WorkloadIdentity` with name `azure` with id `00000000-0000-0000-0000-000000000000` from the `garden-myproj` namespace will be trusted by the Azure application.
+
+> [!IMPORTANT]
+> You should replace the subject indentifier in the example below with the subject that is populated in the status of the `WorkloadIdentity`, obtained in a previous step.
+
+![Federated Credential](images/federated_credential.png)
+
+Please ensure that the Azure application (spn) has the proper [IAM actions](azure-permissions.md) assigned.
+If no fine-grained permissions/actions required then simply assign the [Contributor](https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#contributor) role.
 
 ## `InfrastructureConfig`
 
@@ -291,9 +339,9 @@ $ cat new-infra.json
 kubectl patch --type="json" --patch-file new-infra.json shoot <my-shoot>
 ```
 
-:warning: The migration to shoots with dedicated subnets per zone is a one-way process. Reverting the shoot to the previous configuration is not supported.
-
-:warning: During the migration a subset of the nodes will be rolled to the new subnets.
+> [!WARNING]
+> The migration to shoots with dedicated subnets per zone is a one-way process. Reverting the shoot to the previous configuration is not supported.
+> During the migration a subset of the nodes will be rolled to the new subnets.
 
 ## `ControlPlaneConfig`
 

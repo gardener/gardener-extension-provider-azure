@@ -17,6 +17,7 @@ import (
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	securityv1alpha1constants "github.com/gardener/gardener/pkg/apis/security/v1alpha1/constants"
 	"github.com/gardener/gardener/pkg/utils"
 	"github.com/gardener/gardener/pkg/utils/chart"
 	gutil "github.com/gardener/gardener/pkg/utils/gardener"
@@ -392,7 +393,16 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 		}
 	}
 
-	return getControlPlaneChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown, infraStatus, gep19Monitoring)
+	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: cp.Spec.SecretRef.Name, Namespace: cp.Spec.SecretRef.Namespace}}
+	if err := vp.client.Get(ctx, k8sclient.ObjectKeyFromObject(secret), secret); err != nil {
+		return nil, fmt.Errorf("failed getting controlplane secret: %w", err)
+	}
+	useWorkloadIdentity := false
+	if secret.ObjectMeta.Labels != nil && secret.ObjectMeta.Labels[securityv1alpha1constants.LabelPurpose] == securityv1alpha1constants.LabelPurposeWorkloadIdentityTokenRequestor {
+		useWorkloadIdentity = true
+	}
+
+	return getControlPlaneChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown, infraStatus, gep19Monitoring, useWorkloadIdentity)
 }
 
 // GetControlPlaneShootChartValues returns the values for the control plane shoot chart applied by the generic actuator.
@@ -461,19 +471,25 @@ func getConfigChartValues(infraStatus *apisazure.InfrastructureStatus, cp *exten
 		maxNodes = maxNodes + worker.Maximum
 	}
 
+	var useWorkloadIdentity = false
+	if ca.TokenRetriever != nil {
+		useWorkloadIdentity = true
+	}
+
 	// Collect config chart values.
 	values := map[string]interface{}{
-		"tenantId":          ca.TenantID,
-		"subscriptionId":    ca.SubscriptionID,
-		"aadClientId":       ca.ClientID,
-		"aadClientSecret":   ca.ClientSecret,
-		"resourceGroup":     infraStatus.ResourceGroup.Name,
-		"vnetName":          infraStatus.Networks.VNet.Name,
-		"subnetName":        subnetName,
-		"routeTableName":    routeTableName,
-		"securityGroupName": securityGroupName,
-		"region":            cp.Spec.Region,
-		"maxNodes":          maxNodes,
+		"tenantId":            ca.TenantID,
+		"subscriptionId":      ca.SubscriptionID,
+		"aadClientId":         ca.ClientID,
+		"aadClientSecret":     ca.ClientSecret,
+		"useWorkloadIdentity": useWorkloadIdentity,
+		"resourceGroup":       infraStatus.ResourceGroup.Name,
+		"vnetName":            infraStatus.Networks.VNet.Name,
+		"subnetName":          subnetName,
+		"routeTableName":      routeTableName,
+		"securityGroupName":   securityGroupName,
+		"region":              cp.Spec.Region,
+		"maxNodes":            maxNodes,
 	}
 
 	cloudConfiguration, err := azureclient.CloudConfiguration(nil, &cluster.Shoot.Spec.Region)
@@ -547,11 +563,12 @@ func getControlPlaneChartValues(
 	scaledDown bool,
 	infraStatus *apisazure.InfrastructureStatus,
 	gep19Monitoring bool,
+	useWorkloadIdentity bool,
 ) (
 	map[string]interface{},
 	error,
 ) {
-	ccm, err := getCCMChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown, gep19Monitoring)
+	ccm, err := getCCMChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown, gep19Monitoring, useWorkloadIdentity)
 	if err != nil {
 		return nil, err
 	}
@@ -561,7 +578,7 @@ func getControlPlaneChartValues(
 		return nil, err
 	}
 
-	remedy, err := getRemedyControllerChartValues(cluster, checksums, scaledDown, gep19Monitoring)
+	remedy, err := getRemedyControllerChartValues(cluster, checksums, scaledDown, gep19Monitoring, useWorkloadIdentity)
 	if err != nil {
 		return nil, err
 	}
@@ -585,6 +602,7 @@ func getCCMChartValues(
 	checksums map[string]string,
 	scaledDown bool,
 	gep19Monitoring bool,
+	useWorkloadIdentity bool,
 ) (map[string]interface{}, error) {
 	serverSecret, found := secretsReader.Get(cloudControllerManagerServerName)
 	if !found {
@@ -608,7 +626,8 @@ func getCCMChartValues(
 		"secrets": map[string]interface{}{
 			"server": serverSecret.Name,
 		},
-		"gep19Monitoring": gep19Monitoring,
+		"gep19Monitoring":     gep19Monitoring,
+		"useWorkloadIdentity": useWorkloadIdentity,
 	}
 
 	if cpConfig.CloudControllerManager != nil {
@@ -683,6 +702,7 @@ func getRemedyControllerChartValues(
 	checksums map[string]string,
 	scaledDown bool,
 	gep19Monitoring bool,
+	useWorkloadIdentity bool,
 ) (map[string]interface{}, error) {
 	disableRemedyController :=
 		cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] == "true" ||
@@ -697,7 +717,8 @@ func getRemedyControllerChartValues(
 		"podAnnotations": map[string]interface{}{
 			"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
 		},
-		"gep19Monitoring": gep19Monitoring,
+		"gep19Monitoring":     gep19Monitoring,
+		"useWorkloadIdentity": useWorkloadIdentity,
 	}, nil
 }
 

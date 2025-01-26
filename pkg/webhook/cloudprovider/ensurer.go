@@ -6,35 +6,59 @@ package cloudprovider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/gardener/gardener/extensions/pkg/util"
 	"github.com/gardener/gardener/extensions/pkg/webhook/cloudprovider"
 	gcontext "github.com/gardener/gardener/extensions/pkg/webhook/context"
+	securityv1alpha1constants "github.com/gardener/gardener/pkg/apis/security/v1alpha1/constants"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
+	apiazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 // NewEnsurer creates cloudprovider ensurer.
 func NewEnsurer(mgr manager.Manager, logger logr.Logger) cloudprovider.Ensurer {
 	return &ensurer{
-		client: mgr.GetClient(),
-		logger: logger,
+		client:  mgr.GetClient(),
+		logger:  logger,
+		decoder: serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder(),
 	}
 }
 
 type ensurer struct {
-	logger logr.Logger
-	client client.Client
+	logger  logr.Logger
+	client  client.Client
+	decoder runtime.Decoder
 }
 
 // EnsureCloudProviderSecret ensures that cloudprovider secret contain
 // a service principal clientID and clientSecret (if not present) that match
 // to a corresponding tenantID.
 func (e *ensurer) EnsureCloudProviderSecret(ctx context.Context, _ gcontext.GardenContext, newSecret, _ *corev1.Secret) error {
+	if newSecret.ObjectMeta.Labels != nil && newSecret.ObjectMeta.Labels[securityv1alpha1constants.LabelWorkloadIdentityProvider] == "azure" {
+		if _, ok := newSecret.Data[securityv1alpha1constants.DataKeyConfig]; !ok {
+			return errors.New("cloudprovider secret is missing a 'config' data key")
+		}
+		workloadIdentityConfig := &apiazure.WorkloadIdentityConfig{}
+		if err := util.Decode(e.decoder, newSecret.Data[securityv1alpha1constants.DataKeyConfig], workloadIdentityConfig); err != nil {
+			return fmt.Errorf("could not decode 'config' as WorkloadIdentityConfig: %w", err)
+		}
+
+		newSecret.Data[azure.ClientIDKey] = []byte(workloadIdentityConfig.ClientID)
+		newSecret.Data[azure.TenantIDKey] = []byte(workloadIdentityConfig.TenantID)
+		newSecret.Data[azure.SubscriptionIDKey] = []byte(workloadIdentityConfig.SubscriptionID)
+		newSecret.Data[azure.WorkloadIdentityTokenFileKey] = []byte(azure.WorkloadIdentityMountPath + "/token")
+		return nil
+	}
+
 	if !hasSecretKey(newSecret, azure.TenantIDKey) {
 		return fmt.Errorf("could not mutate cloudprovider secret as %q field is missing", azure.TenantIDKey)
 	}

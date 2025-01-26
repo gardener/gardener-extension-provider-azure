@@ -80,6 +80,11 @@ spec:
 {{ toYaml .Values.resources | indent 10 }}
         {{- end }}
         volumeMounts:
+        {{- if .Values.useWorkloadIdentity }}
+        - name: cloudprovider
+          mountPath: /var/run/secrets/gardener.cloud/workload-identity
+          readOnly: true
+        {{- end }}
         - mountPath: /var/run/secrets/gardener.cloud/shoot/generic-kubeconfig
           name: kubeconfig
           readOnly: true
@@ -142,3 +147,15 @@ spec:
         hostPath:
           path: /usr/share/ca-certificates
           type: "DirectoryOrCreate"
+      {{- if .Values.useWorkloadIdentity }}
+      - name: cloudprovider
+        projected:
+          defaultMode: 420
+          sources:
+          - secret:
+              items:
+                - key: token
+                  path: token
+              name: cloudprovider
+              optional: false
+      {{- end }}

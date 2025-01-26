@@ -3,6 +3,7 @@ tenantId: fooTenant
 subscriptionId: barSub
 aadClientId: fooClient
 aadClientSecret: barSecret
+useWorkloadIdentity: false
 resourceGroup: foobarGroup
 vnetName: name
 # vnetResourceGroup: vnetResourceGroup
