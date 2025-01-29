@@ -25,7 +25,6 @@ import (
 	secretsmanager "github.com/gardener/gardener/pkg/utils/secrets/manager"
 	versionutils "github.com/gardener/gardener/pkg/utils/version"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -53,7 +52,6 @@ import (
 const (
 	caNameControlPlane               = "ca-" + azure.Name + "-controlplane"
 	cloudControllerManagerServerName = azure.CloudControllerManagerName + "-server"
-	csiSnapshotValidationServerName  = azure.CSISnapshotValidationName + "-server"
 )
 
 func secretConfigsFunc(namespace string) []extensionssecretsmanager.SecretConfigWithOptions {
@@ -75,20 +73,7 @@ func secretConfigsFunc(namespace string) []extensionssecretsmanager.SecretConfig
 				SkipPublishingCACertificate: true,
 			},
 			Options: []secretsmanager.GenerateOption{secretsmanager.SignedByCA(caNameControlPlane)},
-		},
-		{
-			Config: &secretutils.CertificateSecretConfig{
-				Name:                        csiSnapshotValidationServerName,
-				CommonName:                  azure.UsernamePrefix + azure.CSISnapshotValidationName,
-				DNSNames:                    kutil.DNSNamesForService(azure.CSISnapshotValidationName, namespace),
-				CertType:                    secretutils.ServerCert,
-				SkipPublishingCACertificate: true,
-			},
-			// use current CA for signing server cert to prevent mismatches when dropping the old CA from the webhook
-			// config in phase Completing
-			Options: []secretsmanager.GenerateOption{secretsmanager.SignedByCA(caNameControlPlane, secretsmanager.UseCurrentCA)},
-		},
-	}
+		}}
 }
 
 func shootAccessSecretsFunc(namespace string) []*gutil.AccessSecret {
@@ -101,7 +86,6 @@ func shootAccessSecretsFunc(namespace string) []*gutil.AccessSecret {
 		gutil.NewShootAccessSecret(azure.CSISnapshotterName, namespace),
 		gutil.NewShootAccessSecret(azure.CSIResizerName, namespace),
 		gutil.NewShootAccessSecret(azure.CSISnapshotControllerName, namespace),
-		gutil.NewShootAccessSecret(azure.CSISnapshotValidationName, namespace),
 		gutil.NewShootAccessSecret(azure.RemedyControllerName, namespace),
 	}
 }
@@ -151,7 +135,6 @@ var (
 					azure.CSIResizerImageName,
 					azure.CSILivenessProbeImageName,
 					azure.CSISnapshotControllerImageName,
-					azure.CSISnapshotValidationWebhookImageName,
 				},
 				Objects: []*chart.Object{
 					// csi-driver-controllers
@@ -162,9 +145,6 @@ var (
 					// csi-snapshot-controller
 					{Type: &appsv1.Deployment{}, Name: azure.CSISnapshotControllerName},
 					{Type: &autoscalingv1.VerticalPodAutoscaler{}, Name: azure.CSISnapshotControllerName + "-vpa"},
-					// csi-snapshot-validation-webhook
-					{Type: &appsv1.Deployment{}, Name: azure.CSISnapshotValidationName},
-					{Type: &corev1.Service{}, Name: azure.CSISnapshotValidationName},
 				},
 			},
 			{
@@ -250,10 +230,6 @@ var (
 					{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.CSIResizerName},
 					{Type: &rbacv1.Role{}, Name: azure.UsernamePrefix + azure.CSIResizerName},
 					{Type: &rbacv1.RoleBinding{}, Name: azure.UsernamePrefix + azure.CSIResizerName},
-					// csi-snapshot-validation-webhook
-					{Type: &admissionregistrationv1.ValidatingWebhookConfiguration{}, Name: azure.CSISnapshotValidationName},
-					{Type: &rbacv1.ClusterRole{}, Name: azure.UsernamePrefix + azure.CSISnapshotValidationName},
-					{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.CSISnapshotValidationName},
 				},
 			},
 			{
@@ -400,10 +376,10 @@ func (vp *valuesProvider) GetControlPlaneShootChartValues(
 	ctx context.Context,
 	cp *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
-	secretsReader secretsmanager.Reader,
+	_ secretsmanager.Reader,
 	_ map[string]string,
 ) (map[string]interface{}, error) {
-	return getControlPlaneShootChartValues(ctx, cp, cluster, secretsReader, vp.client)
+	return getControlPlaneShootChartValues(ctx, cp, cluster, vp.client)
 }
 
 // GetControlPlaneShootCRDsChartValues returns the values for the control plane shoot CRDs chart applied by the generic actuator.
@@ -556,7 +532,7 @@ func getControlPlaneChartValues(
 		return nil, err
 	}
 
-	csi, err := getCSIControllerChartValues(cluster, secretsReader, scaledDown, infraStatus, checksums)
+	csi, err := getCSIControllerChartValues(cluster, scaledDown, infraStatus, checksums)
 	if err != nil {
 		return nil, err
 	}
@@ -621,16 +597,10 @@ func getCCMChartValues(
 // getCSIControllerChartValues collects and returns the CSIController chart values.
 func getCSIControllerChartValues(
 	cluster *extensionscontroller.Cluster,
-	secretsReader secretsmanager.Reader,
 	scaledDown bool,
 	infraStatus *apisazure.InfrastructureStatus,
 	checksums map[string]string,
 ) (map[string]interface{}, error) {
-	serverSecret, found := secretsReader.Get(csiSnapshotValidationServerName)
-	if !found {
-		return nil, fmt.Errorf("secret %q not found", csiSnapshotValidationServerName)
-	}
-
 	values := map[string]interface{}{
 		"enabled": true,
 		"podAnnotations": map[string]interface{}{
@@ -639,13 +609,6 @@ func getCSIControllerChartValues(
 		"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
 		"csiSnapshotController": map[string]interface{}{
 			"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
-		},
-		"csiSnapshotValidationWebhook": map[string]interface{}{
-			"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
-			"secrets": map[string]interface{}{
-				"server": serverSecret.Name,
-			},
-			"topologyAwareRoutingEnabled": gardencorev1beta1helper.IsTopologyAwareRoutingForShootControlPlaneEnabled(cluster.Seed, cluster.Shoot),
 		},
 	}
 
@@ -706,7 +669,6 @@ func getControlPlaneShootChartValues(
 	ctx context.Context,
 	cp *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
-	secretsReader secretsmanager.Reader,
 	client k8sclient.Client,
 ) (
 	map[string]interface{},
@@ -716,7 +678,6 @@ func getControlPlaneShootChartValues(
 		infraStatus                     = &apisazure.InfrastructureStatus{}
 		cloudProviderDiskConfig         string
 		cloudProviderDiskConfigChecksum string
-		caBundle                        string
 		err                             error
 	)
 	if cp.Spec.InfrastructureProviderStatus != nil {
@@ -732,12 +693,6 @@ func getControlPlaneShootChartValues(
 
 	cloudProviderDiskConfig = string(secret.Data[azure.CloudProviderConfigMapKey])
 	cloudProviderDiskConfigChecksum = utils.ComputeChecksum(secret.Data)
-
-	caSecret, found := secretsReader.Get(caNameControlPlane)
-	if !found {
-		return nil, fmt.Errorf("secret %q not found", caNameControlPlane)
-	}
-	caBundle = string(caSecret.Data[secretutils.DataKeyCertificateBundle])
 
 	disableRemedyController := cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] == "true" ||
 		features.ExtensionFeatureGate.Enabled(features.DisableRemedyController)
@@ -760,10 +715,6 @@ func getControlPlaneShootChartValues(
 				"checksum/configmap-" + azure.CloudProviderDiskConfigName: cloudProviderDiskConfigChecksum,
 			},
 			"cloudProviderConfig": cloudProviderDiskConfig,
-			"webhookConfig": map[string]interface{}{
-				"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
-				"caBundle": caBundle,
-			},
 		},
 		azure.RemedyControllerName: map[string]interface{}{
 			"enabled": !disableRemedyController,

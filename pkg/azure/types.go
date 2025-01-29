@@ -42,8 +42,6 @@ const (
 	CSINodeDriverRegistrarImageName = "csi-node-driver-registrar"
 	// CSILivenessProbeImageName is the name of the csi-liveness-probe image.
 	CSILivenessProbeImageName = "csi-liveness-probe"
-	// CSISnapshotValidationWebhookImageName is the name of the csi-snapshot-validation-webhook image.
-	CSISnapshotValidationWebhookImageName = "csi-snapshot-validation-webhook"
 	// MachineControllerManagerProviderAzureImageName is the name of the MachineController Azure image.
 	MachineControllerManagerProviderAzureImageName = "machine-controller-manager-provider-azure"
 	// TerraformerImageName is the name of the Terraformer image.
@@ -132,8 +130,6 @@ const (
 	CSINodeDriverRegistrarName = "csi-node-driver-registrar"
 	// CSILivenessProbeName is a constant for the name of the csi-liveness-probe component.
 	CSILivenessProbeName = "csi-liveness-probe"
-	// CSISnapshotValidationName is the constant for the name of the csi-snapshot-validation-webhook component.
-	CSISnapshotValidationName = "csi-snapshot-validation"
 	// RemedyControllerName is a constant for the name of the remedy-controller.
 	RemedyControllerName = "remedy-controller-azure"
 	// DisableRemedyControllerAnnotation disables the Azure remedy controller (enabled by default)

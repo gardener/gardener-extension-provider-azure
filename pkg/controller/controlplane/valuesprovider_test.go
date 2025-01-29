@@ -342,7 +342,6 @@ var _ = Describe("ValuesProvider", func() {
 
 			By("creating secrets managed outside of this package for whose secretsmanager.Get() will be called")
 			Expect(fakeClient.Create(context.TODO(), &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "ca-provider-azure-controlplane", Namespace: namespace}})).To(Succeed())
-			Expect(fakeClient.Create(context.TODO(), &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "csi-snapshot-validation-server", Namespace: namespace}})).To(Succeed())
 			Expect(fakeClient.Create(context.TODO(), &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "cloud-controller-manager-server", Namespace: namespace}})).To(Succeed())
 
 			c.EXPECT().Delete(context.TODO(), &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "csi-driver-controller-observability-config", Namespace: namespace}})
@@ -371,13 +370,6 @@ var _ = Describe("ValuesProvider", func() {
 					},
 					"csiSnapshotController": map[string]interface{}{
 						"replicas": 1,
-					},
-					"csiSnapshotValidationWebhook": map[string]interface{}{
-						"replicas": 1,
-						"secrets": map[string]interface{}{
-							"server": "csi-snapshot-validation-server",
-						},
-						"topologyAwareRoutingEnabled": false,
 					},
 					"vmType": "vmss",
 				}),
@@ -414,13 +406,6 @@ var _ = Describe("ValuesProvider", func() {
 					},
 					"csiSnapshotController": map[string]interface{}{
 						"replicas": 1,
-					},
-					"csiSnapshotValidationWebhook": map[string]interface{}{
-						"replicas": 1,
-						"secrets": map[string]interface{}{
-							"server": "csi-snapshot-validation-server",
-						},
-						"topologyAwareRoutingEnabled": false,
 					},
 				}),
 				azure.RemedyControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
@@ -460,20 +445,13 @@ var _ = Describe("ValuesProvider", func() {
 					"csiSnapshotController": map[string]interface{}{
 						"replicas": 1,
 					},
-					"csiSnapshotValidationWebhook": map[string]interface{}{
-						"replicas": 1,
-						"secrets": map[string]interface{}{
-							"server": "csi-snapshot-validation-server",
-						},
-						"topologyAwareRoutingEnabled": false,
-					},
 				}),
 				azure.RemedyControllerName: remedyDisabled,
 			}))
 		})
 
 		DescribeTable("topologyAwareRoutingEnabled value",
-			func(seedSettings *gardencorev1beta1.SeedSettings, shootControlPlane *gardencorev1beta1.ControlPlane, expected bool) {
+			func(seedSettings *gardencorev1beta1.SeedSettings, shootControlPlane *gardencorev1beta1.ControlPlane) {
 				seed := &gardencorev1beta1.Seed{
 					Spec: gardencorev1beta1.SeedSpec{
 						Settings: seedSettings,
@@ -487,38 +465,31 @@ var _ = Describe("ValuesProvider", func() {
 				values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, fakeSecretsManager, checksums, false)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(HaveKey(azure.CSIControllerName))
-				Expect(values[azure.CSIControllerName]).To(HaveKeyWithValue("csiSnapshotValidationWebhook", HaveKeyWithValue("topologyAwareRoutingEnabled", expected)))
 			},
 
 			Entry("seed setting is nil, shoot control plane is not HA",
 				nil,
 				&gardencorev1beta1.ControlPlane{HighAvailability: nil},
-				false,
 			),
 			Entry("seed setting is disabled, shoot control plane is not HA",
 				&gardencorev1beta1.SeedSettings{TopologyAwareRouting: &gardencorev1beta1.SeedSettingTopologyAwareRouting{Enabled: false}},
 				&gardencorev1beta1.ControlPlane{HighAvailability: nil},
-				false,
 			),
 			Entry("seed setting is enabled, shoot control plane is not HA",
 				&gardencorev1beta1.SeedSettings{TopologyAwareRouting: &gardencorev1beta1.SeedSettingTopologyAwareRouting{Enabled: true}},
 				&gardencorev1beta1.ControlPlane{HighAvailability: nil},
-				false,
 			),
 			Entry("seed setting is nil, shoot control plane is HA with failure tolerance type 'zone'",
 				nil,
 				&gardencorev1beta1.ControlPlane{HighAvailability: &gardencorev1beta1.HighAvailability{FailureTolerance: gardencorev1beta1.FailureTolerance{Type: gardencorev1beta1.FailureToleranceTypeZone}}},
-				false,
 			),
 			Entry("seed setting is disabled, shoot control plane is HA with failure tolerance type 'zone'",
 				&gardencorev1beta1.SeedSettings{TopologyAwareRouting: &gardencorev1beta1.SeedSettingTopologyAwareRouting{Enabled: false}},
 				&gardencorev1beta1.ControlPlane{HighAvailability: &gardencorev1beta1.HighAvailability{FailureTolerance: gardencorev1beta1.FailureTolerance{Type: gardencorev1beta1.FailureToleranceTypeZone}}},
-				false,
 			),
 			Entry("seed setting is enabled, shoot control plane is HA with failure tolerance type 'zone'",
 				&gardencorev1beta1.SeedSettings{TopologyAwareRouting: &gardencorev1beta1.SeedSettingTopologyAwareRouting{Enabled: true}},
 				&gardencorev1beta1.ControlPlane{HighAvailability: &gardencorev1beta1.HighAvailability{FailureTolerance: gardencorev1beta1.FailureTolerance{Type: gardencorev1beta1.FailureToleranceTypeZone}}},
-				true,
 			),
 		)
 	})
@@ -545,7 +516,6 @@ var _ = Describe("ValuesProvider", func() {
 		BeforeEach(func() {
 			By("creating secrets managed outside of this package for whose secretsmanager.Get() will be called")
 			Expect(fakeClient.Create(context.TODO(), &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "ca-provider-azure-controlplane", Namespace: namespace}})).To(Succeed())
-			Expect(fakeClient.Create(context.TODO(), &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "csi-snapshot-validation-server", Namespace: namespace}})).To(Succeed())
 			Expect(fakeClient.Create(context.TODO(), &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "cloud-controller-manager-server", Namespace: namespace}})).To(Succeed())
 		})
 
@@ -569,12 +539,7 @@ var _ = Describe("ValuesProvider", func() {
 
 		It("should return correct control plane shoot chart values for zoned cluster", func() {
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-			csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
-				"webhookConfig": map[string]interface{}{
-					"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
-					"caBundle": "",
-				},
-			})
+			csiNode := csiNodeEnabled
 
 			values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
 			Expect(err).NotTo(HaveOccurred())
@@ -590,12 +555,7 @@ var _ = Describe("ValuesProvider", func() {
 			infrastructureStatus.Zoned = false
 			infrastructureStatus.AvailabilitySets = []v1alpha1.AvailabilitySet{primaryAvailabilitySet}
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-			csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
-				"webhookConfig": map[string]interface{}{
-					"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
-					"caBundle": "",
-				},
-			})
+			csiNode := csiNodeEnabled
 
 			values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
 			Expect(err).NotTo(HaveOccurred())
@@ -611,12 +571,7 @@ var _ = Describe("ValuesProvider", func() {
 			infrastructureStatus.Zoned = false
 			infrastructureStatus.AvailabilitySets = []v1alpha1.AvailabilitySet{}
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-			csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
-				"webhookConfig": map[string]interface{}{
-					"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
-					"caBundle": "",
-				},
-			})
+			csiNode := csiNodeEnabled
 
 			values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
 			Expect(err).NotTo(HaveOccurred())
@@ -638,12 +593,7 @@ var _ = Describe("ValuesProvider", func() {
 
 			It("should return correct control plane shoot chart values for zoned cluster", func() {
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-				csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
-					"webhookConfig": map[string]interface{}{
-						"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
-						"caBundle": "",
-					},
-				})
+				csiNode := csiNodeEnabled
 
 				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
 				Expect(err).NotTo(HaveOccurred())
@@ -659,12 +609,7 @@ var _ = Describe("ValuesProvider", func() {
 				infrastructureStatus.Zoned = false
 				infrastructureStatus.AvailabilitySets = []v1alpha1.AvailabilitySet{primaryAvailabilitySet}
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-				csiNode := utils.MergeMaps(csiNodeEnabled, map[string]interface{}{
-					"webhookConfig": map[string]interface{}{
-						"url":      "https://" + azure.CSISnapshotValidationName + "." + cp.Namespace + "/volumesnapshot",
-						"caBundle": "",
-					},
-				})
+				csiNode := csiNodeEnabled
 
 				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
 				Expect(err).NotTo(HaveOccurred())
