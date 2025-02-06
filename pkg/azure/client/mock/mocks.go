@@ -234,6 +234,21 @@ func (mr *MockFactoryMockRecorder) AvailabilitySet() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AvailabilitySet", reflect.TypeOf((*MockFactory)(nil).AvailabilitySet))
 }
 
+// BlobContainers mocks base method.
+func (m *MockFactory) BlobContainers() (client.BlobContainers, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BlobContainers")
+	ret0, _ := ret[0].(client.BlobContainers)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// BlobContainers indicates an expected call of BlobContainers.
+func (mr *MockFactoryMockRecorder) BlobContainers() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BlobContainers", reflect.TypeOf((*MockFactory)(nil).BlobContainers))
+}
+
 // DNSRecordSet mocks base method.
 func (m *MockFactory) DNSRecordSet() (client.DNSRecordSet, error) {
 	m.ctrl.T.Helper()

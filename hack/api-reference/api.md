@@ -68,6 +68,20 @@ CloudConfiguration
 <p>CloudConfiguration contains config that controls which cloud to connect to.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>immutability</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.ImmutableConfig">
+ImmutableConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Immutability defines the immutability config for the backup bucket.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.CloudProfileConfig">CloudProfileConfig
@@ -994,6 +1008,63 @@ string
 <td>
 <em>(Optional)</em>
 <p>SharedGalleryImageID is the Shared Image Gallery image id.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.ImmutableConfig">ImmutableConfig
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.BackupBucketConfig">BackupBucketConfig</a>)
+</p>
+<p>
+<p>ImmutableConfig represents the immutability configuration for a backup bucket.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>retentionType</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>RetentionType specifies the type of retention for the backup bucket.
+Currently allowed values are:
+- &ldquo;bucket&rdquo;: The retention policy applies to the entire bucket.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>retentionPeriod</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.25/#duration-v1-meta">
+Kubernetes meta/v1.Duration
+</a>
+</em>
+</td>
+<td>
+<p>RetentionPeriod specifies the immutability retention period for the backup bucket.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>locked</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Locked indicates whether the immutable retention policy is locked for the backup bucket.
+If set to true, the retention policy cannot be removed or the retention period reduced, enforcing immutability.</p>
 </td>
 </tr>
 </tbody>
