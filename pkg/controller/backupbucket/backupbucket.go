@@ -16,7 +16,8 @@ import (
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
 
-func ensureBackupBucket(ctx context.Context, factory azureclient.Factory, backupBucket *extensionsv1alpha1.BackupBucket) (string, string, error) {
+// ensureResourceGroupAndStorageAccount ensures the existence of the necessary resourcegroup and storageacccount for the backupbucket
+func ensureResourceGroupAndStorageAccount(ctx context.Context, factory azureclient.Factory, backupBucket *extensionsv1alpha1.BackupBucket) (string, string, error) {
 	var (
 		backupBucketNameSha = utils.ComputeSHA256Hex([]byte(backupBucket.Name))
 		storageAccountName  = fmt.Sprintf("bkp%s", backupBucketNameSha[:15])
