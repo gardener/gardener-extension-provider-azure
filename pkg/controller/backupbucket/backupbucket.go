@@ -16,38 +16,40 @@ import (
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
 
+func getStorageAccountName(backupBucketName string) string {
+	backupBucketNameSHA := utils.ComputeSHA256Hex([]byte(backupBucketName))
+	return fmt.Sprintf("bkp%s", backupBucketNameSHA[:15])
+}
+
 // ensureResourceGroupAndStorageAccount ensures the existence of the necessary resourcegroup and storageacccount for the backupbucket
-func ensureResourceGroupAndStorageAccount(ctx context.Context, factory azureclient.Factory, backupBucket *extensionsv1alpha1.BackupBucket) (string, string, error) {
-	var (
-		backupBucketNameSha = utils.ComputeSHA256Hex([]byte(backupBucket.Name))
-		storageAccountName  = fmt.Sprintf("bkp%s", backupBucketNameSha[:15])
-	)
+func ensureResourceGroupAndStorageAccount(ctx context.Context, factory azureclient.Factory, backupBucket *extensionsv1alpha1.BackupBucket) (string, error) {
+	storageAccountName := getStorageAccountName(backupBucket.Name)
 
 	// Get resource group client to ensure resource group to host backup storage account exists.
 	groupClient, err := factory.Group()
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 	if _, err := groupClient.CreateOrUpdate(ctx, backupBucket.Name, armresources.ResourceGroup{
 		Location: to.Ptr(backupBucket.Spec.Region),
 	}); err != nil {
-		return "", "", err
+		return "", err
 	}
 
 	// Get storage account client to create the backup storage account.
 	storageAccountClient, err := factory.StorageAccount()
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 	if err := storageAccountClient.CreateStorageAccount(ctx, backupBucket.Name, storageAccountName, backupBucket.Spec.Region); err != nil {
-		return "", "", err
+		return "", err
 	}
 
 	// Get the key of the storage account.
 	storageAccountKey, err := storageAccountClient.ListStorageAccountKey(ctx, backupBucket.Name, storageAccountName)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
-	return storageAccountName, storageAccountKey, nil
+	return storageAccountKey, nil
 }

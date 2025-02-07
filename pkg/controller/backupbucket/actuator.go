@@ -12,7 +12,6 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/controller/backupbucket"
 	"github.com/gardener/gardener/extensions/pkg/util"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	"github.com/gardener/gardener/pkg/utils"
 	"github.com/go-logr/logr"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -22,11 +21,6 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
-
-// var (
-// 	// DefaultBlobStorageClient is the default function to get a backupbucket client. Can be overridden for tests.
-// 	DefaultBlobStorageClient = azureclient.NewBlobStorageClientFromSecretRef
-// )
 
 type actuator struct {
 	backupbucket.Actuator
@@ -40,7 +34,6 @@ func newActuator(mgr manager.Manager) backupbucket.Actuator {
 }
 
 func (a *actuator) Reconcile(ctx context.Context, logger logr.Logger, backupBucket *extensionsv1alpha1.BackupBucket) error {
-	logger.Info("Starting reconciliation for the backupbucket")
 	backupBucketConfig, err := helper.BackupConfigFromBackupBucket(backupBucket)
 	if err != nil {
 		logger.Error(err, "failed to decode the provider specific configuration from the backupbucket resource")
@@ -63,12 +56,14 @@ func (a *actuator) Reconcile(ctx context.Context, logger logr.Logger, backupBuck
 		return err
 	}
 
+	var (
+		resourceGroupName  = backupBucket.Name // current implementation uses the same name for resourceGroup and backupBucket
+		storageAccountName = getStorageAccountName(backupBucket.Name)
+	)
 	// If the generated secret in the backupbucket status does not exist
 	// it means no backupbucket exists and it needs to be created.
-	var storageAccountName string
 	if backupBucket.Status.GeneratedSecretRef == nil {
-		var storageAccountKey string
-		storageAccountName, storageAccountKey, err = ensureResourceGroupAndStorageAccount(ctx, factory, backupBucket)
+		storageAccountKey, err := ensureResourceGroupAndStorageAccount(ctx, factory, backupBucket)
 		if err != nil {
 			logger.Error(err, "Failed to ensure the resource group and storage account")
 			return util.DetermineError(err, helper.KnownCodes)
@@ -98,19 +93,19 @@ func (a *actuator) Reconcile(ctx context.Context, logger logr.Logger, backupBuck
 	}
 
 	// the resourcegroup is of the same name as the container
-	if _, err = blobContainersClient.GetContainer(ctx, backupBucket.Name, storageAccountName, backupBucket.Name); !azureclient.IsAzureAPINotFoundError(err) {
+	if _, err = blobContainersClient.GetContainer(ctx, resourceGroupName, storageAccountName, backupBucket.Name); err != nil && !azureclient.IsAzureAPINotFoundError(err) {
 		logger.Error(err, "Errored while fetching information", "container", backupBucket.Name)
 		return util.DetermineError(err, helper.KnownCodes)
 	}
 
-	// container does not exist, create the container
+	// create the container if it does not exist
 	if azureclient.IsAzureAPINotFoundError(err) {
 		logger.Info("Container does not exist; creating", "name", backupBucket.Name)
-		blobContainersClient.CreateContainer(ctx, backupBucket.Name, storageAccountName, backupBucket.Name)
+		blobContainersClient.CreateContainer(ctx, resourceGroupName, storageAccountName, backupBucket.Name)
 	}
 
 	// update the bucket if necessary
-	currentContainerImmutabilityDays, currentlyLocked, err := blobContainersClient.GetImmutabilityPolicy(ctx, backupBucket.Name, storageAccountName, backupBucket.Name)
+	currentContainerImmutabilityDays, currentlyLocked, err := blobContainersClient.GetImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucket.Name)
 	if err != nil {
 		logger.Error(err, "Errored while fetching immutability information", "container", backupBucket.Name)
 		return util.DetermineError(err, helper.KnownCodes)
@@ -118,7 +113,7 @@ func (a *actuator) Reconcile(ctx context.Context, logger logr.Logger, backupBuck
 	if err = updateBackupBucketIfNeeded(
 		ctx, logger,
 		blobContainersClient, backupBucketConfig,
-		storageAccountName, backupBucket.Name,
+		resourceGroupName, storageAccountName, backupBucket.Name,
 		currentContainerImmutabilityDays, currentlyLocked,
 	); err != nil {
 		logger.Error(err, "Errored while updating the container")
@@ -127,14 +122,13 @@ func (a *actuator) Reconcile(ctx context.Context, logger logr.Logger, backupBuck
 
 	// lock the policy if configured
 	if backupBucketConfig.Immutability != nil && !currentlyLocked && backupBucketConfig.Immutability.Locked {
-		err = blobContainersClient.LockImmutabilityPolicy(ctx, backupBucket.Name, storageAccountName, backupBucket.Name)
+		err = blobContainersClient.LockImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucket.Name)
 		if err != nil {
 			logger.Error(err, "Errored while locking the immutability policy of the container")
 			return util.DetermineError(err, helper.KnownCodes)
 		}
 	}
 
-	logger.Info("Reconciled successfully", "container", backupBucket.Name)
 	return nil
 }
 
@@ -149,7 +143,7 @@ func updateBackupBucketIfNeeded(
 	ctx context.Context, logger logr.Logger,
 	blobContainersClient azureclient.BlobContainers,
 	backupBucketConfig azure.BackupBucketConfig,
-	storageAccountName, backupBucketName string,
+	resourceGroupName, storageAccountName, backupBucketName string,
 	currentContainerImmutabilityDays *int32, currentlyLocked bool,
 ) error {
 	var desiredContainerImmutabilityDays *int32
@@ -163,7 +157,7 @@ func updateBackupBucketIfNeeded(
 			currentContainerImmutabilityDays != nil &&
 			*desiredContainerImmutabilityDays > *currentContainerImmutabilityDays {
 			logger.Info("Extending container immutability period", "period", *desiredContainerImmutabilityDays)
-			return blobContainersClient.ExtendImmutabilityPolicy(ctx, backupBucketName, storageAccountName, backupBucketName, desiredContainerImmutabilityDays)
+			return blobContainersClient.ExtendImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucketName, desiredContainerImmutabilityDays)
 		}
 		return nil
 	}
@@ -171,13 +165,13 @@ func updateBackupBucketIfNeeded(
 	// Delete the policy if requested
 	if currentContainerImmutabilityDays != nil && desiredContainerImmutabilityDays == nil {
 		logger.Info("Deleting the container immutability policy")
-		return blobContainersClient.DeleteImmutabilityPolicy(ctx, backupBucketName, storageAccountName, backupBucketName)
+		return blobContainersClient.DeleteImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucketName)
 	}
 
 	// Update the policy if requested
 	if !reflect.DeepEqual(currentContainerImmutabilityDays, desiredContainerImmutabilityDays) {
 		logger.Info("Updating the container immutability policy")
-		return blobContainersClient.CreateOrUpdateImmutabilityPolicy(ctx, backupBucketName, storageAccountName, backupBucketName, desiredContainerImmutabilityDays)
+		return blobContainersClient.CreateOrUpdateImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucketName, desiredContainerImmutabilityDays)
 	}
 
 	return nil
@@ -241,7 +235,8 @@ func (a *actuator) delete(ctx context.Context, _ logr.Logger, backupBucket *exte
 		if err != nil {
 			return err
 		}
-		storageAccountName := fmt.Sprintf("bkp%s", utils.ComputeSHA256Hex([]byte(backupBucket.Name))[:15])
+		storageAccountName := getStorageAccountName(backupBucket.Name)
+		// resourceGroupName and backupBucketName are identical
 		if err := blobContainersClient.DeleteContainer(ctx, backupBucket.Name, storageAccountName, backupBucket.Name); err != nil {
 			return err
 		}
