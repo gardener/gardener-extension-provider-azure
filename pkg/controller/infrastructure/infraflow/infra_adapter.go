@@ -189,6 +189,7 @@ func (ia *InfrastructureAdapter) availabilitySetConfig() (*AvailabilitySetConfig
 			Name:          ia.AvailabilitySetName(),
 			Kind:          KindAvailabilitySet,
 		},
+		Location: ia.Region(),
 	}
 
 	if asc.CountFaultDomains == nil {
