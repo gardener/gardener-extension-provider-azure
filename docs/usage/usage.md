@@ -622,21 +622,34 @@ To have the CSI-driver configured to support the necessary features for [VolumeA
 
 For more information and examples on how to configure the volume attributes class, see [example](https://github.com/kubernetes-sigs/azuredisk-csi-driver/blob/release-1.31/deploy/example/modifyvolume/README.md) provided in the the azuredisk-csi-driver repository.
 
-### Preview: Shoot clusters with VMSS Flexible Orchestration (VMSS Flex/VMO)
+### Shoot clusters with VMSS Flexible Orchestration (VMSS Flex/VMO)
 
-The machines of an Azure cluster can be created while being attached to an [Azure Virtual Machine ScaleSet with flexible orchestraion](https://docs.microsoft.com/en-us/azure/virtual-machine-scale-sets/virtual-machine-scale-sets-orchestration-modes#scale-sets-with-flexible-orchestration).
-The Virtual Machine ScaleSet with flexible orchestration feature is currently in preview and not yet general available on Azure.
-Subscriptions need to [join the preview](https://docs.microsoft.com/en-us/azure/virtual-machine-scale-sets/virtual-machine-scale-sets-orchestration-modes#register-for-flexible-orchestration-mode) to make use of the feature.
+The machines of an Azure cluster can be created while being attached to an [Azure Virtual Machine ScaleSet with flexible orchestration](https://docs.microsoft.com/en-us/azure/virtual-machine-scale-sets/virtual-machine-scale-sets-orchestration-modes#scale-sets-with-flexible-orchestration).
 
 Azure VMSS Flex is the replacement of Azure AvailabilitySet for non-zoned Azure Shoot clusters as VMSS Flex come with less disadvantages like no blocking machine operations or compatibility with `Standard` SKU loadbalancer etc.
 
 Now, Azure Shoot clusters are using VMSS Flex by default for non-zoned clusters.
 In the past you used to need to do the following:
 - The `InfrastructureConfig` of the Shoot configuration need to contain `.zoned=false`
-- Shoot resource need to have the following annotation assigned: `alpha.azure.provider.extensions.gardener.cloud/vmo=true`
 
 Some key facts about VMSS Flex based clusters:
 - Unlike regular non-zonal Azure Shoot clusters, which have a primary AvailabilitySet which is shared between all machines in all worker pools of a Shoot cluster, a VMSS Flex based cluster has an own VMSS for each workerpool
 - In case the configuration of the VMSS will change (e.g. amount of fault domains in a region change; configured in the CloudProfile) all machines of the worker pool need to be rolled
 - It is not possible to migrate an existing primary AvailabilitySet based Shoot cluster to VMSS Flex based Shoot cluster and vice versa
 - VMSS Flex based clusters are using `Standard` SKU LoadBalancers instead of `Basic` SKU LoadBalancers for AvailabilitySet based Shoot clusters
+
+### Migrating AvailabilitySet shoots to VMSS Flex
+
+Azure plans to deprecate `Basic` SKU public IP addresses. 
+See the [official announcement](https://azure.microsoft.com/en-us/updates?id=upgrade-to-standard-sku-public-ip-addresses-in-azure-by-30-september-2025-basic-sku-will-be-retired). 
+This will create issues with existing legacy non-zonal clusters since their existing LoadBalancers are using `Basic` SKU and they can't directly migrate to `Standard` SKU.
+
+Provider-azure is offering a migration path from availability sets to VMSS Flex.
+You have to annotate your shoot with the following annotation: `migration.azure.provider.extensions.gardener.cloud/vmo='true'` and trigger the shoot `Maintenance`. 
+The process for the migration closely traces the process [outlined by Azure](https://learn.microsoft.com/en-us/azure/virtual-network/ip-services/public-ip-basic-upgrade-guidance)
+This **will allow you to preserve your public IPs** during the migration.
+
+During this process there will be downtime that users need to plan.  
+For the transition the Loadbalancer will have to be deleted and recreated. 
+Also **all nodes will have to roll out to the VMSS flex workers**.
+The rollout is controlled by the worker's MCM settings, but it is suggested that you speed up this process so that traffic to your cluster is restored as quickly as possible (for example by using higher `maxUnavailable` values)
