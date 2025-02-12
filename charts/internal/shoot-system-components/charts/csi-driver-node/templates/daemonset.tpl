@@ -133,6 +133,8 @@ spec:
         resources:
 {{ toYaml .Values.resources.nodeDriverRegistrar | indent 10 }}
 {{- end }}
+        securityContext:
+          allowPrivilegeEscalation: false
         volumeMounts:
         - name: plugin-dir
           mountPath: /csi
@@ -150,6 +152,8 @@ spec:
         resources:
 {{ toYaml .Values.resources.livenessProbe | indent 10 }}
 {{- end }}
+        securityContext:
+          allowPrivilegeEscalation: false
         volumeMounts:
         - name: plugin-dir
           mountPath: /csi

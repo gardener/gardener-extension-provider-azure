@@ -48,6 +48,8 @@ spec:
         - --target-metrics-bind-address=:{{.Values.targetManager.metricsPort}}
         - --disable-controllers={{ .Values.disableControllers | join "," }}
         - --target-disable-controllers={{ .Values.targetDisableControllers | join "," }}
+        securityContext:
+          allowPrivilegeEscalation: false
         env:
         - name: LEADER_ELECTION_NAMESPACE
           valueFrom:

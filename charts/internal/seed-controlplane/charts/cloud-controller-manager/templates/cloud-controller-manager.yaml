@@ -59,6 +59,8 @@ spec:
         - --tls-cipher-suites={{ .Values.tlsCipherSuites | join "," }}
         - --use-service-account-credentials
         - --v=2
+        securityContext:
+          allowPrivilegeEscalation: false
         livenessProbe:
           httpGet:
             path: /healthz

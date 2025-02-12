@@ -86,6 +86,8 @@ spec:
         - --seed-provider={{ .Values.gardener.seed.provider }}
         - --seed-region={{ .Values.gardener.seed.region }}
         {{- end }}
+        securityContext:
+          allowPrivilegeEscalation: false
         env:
         - name: LEADER_ELECTION_NAMESPACE
           valueFrom:
