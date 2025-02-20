@@ -161,6 +161,10 @@ const (
 	WorkloadIdentityMountPath = "/var/run/secrets/gardener.cloud/workload-identity"
 	// WorkloadIdentityTokenFileKey is the key indicating the full path to the workload identity token file.
 	WorkloadIdentityTokenFileKey = "workloadIdentityTokenFile"
+
+	// TODO (AndreasBurger): Clean up once SnapshotValidation is removed everywhere
+	// CSISnapshotValidationName is the constant for the name of the csi-snapshot-validation-webhook component.
+	CSISnapshotValidationName = "csi-snapshot-validation"
 )
 
 // UsernamePrefix is a constant for the username prefix of components deployed by Azure.
