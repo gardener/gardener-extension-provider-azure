@@ -156,6 +156,9 @@ const (
 	CCMServiceTagKey = "k8s-azure-service"
 	// CCMLegacyServiceTagKey is the legacy service key applied for public IP tags.
 	CCMLegacyServiceTagKey = "service"
+
+	// CSISnapshotValidationName is the constant for the name of the csi-snapshot-validation-webhook component.
+	CSISnapshotValidationName = "csi-snapshot-validation" // TODO(AndreasBurger): Clean up once SnapshotValidation is removed everywhere
 )
 
 // UsernamePrefix is a constant for the username prefix of components deployed by Azure.
