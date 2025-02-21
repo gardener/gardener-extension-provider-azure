@@ -10,21 +10,19 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
-	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	"github.com/gardener/gardener/pkg/utils"
 
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
+	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"github.com/gardener/gardener/pkg/utils"
 )
 
-func getStorageAccountName(backupBucketName string) string {
+func GenerateStorageAccountName(backupBucketName string) string {
 	backupBucketNameSHA := utils.ComputeSHA256Hex([]byte(backupBucketName))
 	return fmt.Sprintf("bkp%s", backupBucketNameSHA[:15])
 }
 
 // ensureResourceGroupAndStorageAccount ensures the existence of the necessary resourcegroup and storageacccount for the backupbucket
 func ensureResourceGroupAndStorageAccount(ctx context.Context, factory azureclient.Factory, backupBucket *extensionsv1alpha1.BackupBucket) (string, error) {
-	storageAccountName := getStorageAccountName(backupBucket.Name)
-
 	// Get resource group client to ensure resource group to host backup storage account exists.
 	groupClient, err := factory.Group()
 	if err != nil {
@@ -37,6 +35,7 @@ func ensureResourceGroupAndStorageAccount(ctx context.Context, factory azureclie
 	}
 
 	// Get storage account client to create the backup storage account.
+	storageAccountName := GenerateStorageAccountName(backupBucket.Name)
 	storageAccountClient, err := factory.StorageAccount()
 	if err != nil {
 		return "", err
