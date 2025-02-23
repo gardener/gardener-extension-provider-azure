@@ -10,8 +10,6 @@
 </p>
 Resource Types:
 <ul><li>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.BackupBucketConfig">BackupBucketConfig</a>
-</li><li>
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.CloudProfileConfig">CloudProfileConfig</a>
 </li><li>
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.ControlPlaneConfig">ControlPlaneConfig</a>
@@ -24,66 +22,6 @@ Resource Types:
 </li><li>
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.WorkloadIdentityConfig">WorkloadIdentityConfig</a>
 </li></ul>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.BackupBucketConfig">BackupBucketConfig
-</h3>
-<p>
-<p>BackupBucketConfig is the provider-specific configuration for backup buckets/entries</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>apiVersion</code></br>
-string</td>
-<td>
-<code>
-azure.provider.extensions.gardener.cloud/v1alpha1
-</code>
-</td>
-</tr>
-<tr>
-<td>
-<code>kind</code></br>
-string
-</td>
-<td><code>BackupBucketConfig</code></td>
-</tr>
-<tr>
-<td>
-<code>cloudConfiguration</code></br>
-<em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.CloudConfiguration">
-CloudConfiguration
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>CloudConfiguration contains config that controls which cloud to connect to.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>immutability</code></br>
-<em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.ImmutableConfig">
-ImmutableConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Immutability defines the immutability config for the backup bucket.</p>
-</td>
-</tr>
-</tbody>
-</table>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.CloudProfileConfig">CloudProfileConfig
 </h3>
 <p>
@@ -649,12 +587,55 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.BackupBucketConfig">BackupBucketConfig
+</h3>
+<p>
+<p>BackupBucketConfig is the provider-specific configuration for backup buckets/entries</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>cloudConfiguration</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.CloudConfiguration">
+CloudConfiguration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CloudConfiguration contains config that controls which cloud to connect to.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>immutability</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.ImmutableConfig">
+ImmutableConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Immutability defines the immutability config for the backup bucket.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.CloudConfiguration">CloudConfiguration
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.BackupBucketConfig">BackupBucketConfig</a>, 
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.CloudProfileConfig">CloudProfileConfig</a>)
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.CloudProfileConfig">CloudProfileConfig</a>, 
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.BackupBucketConfig">BackupBucketConfig</a>)
 </p>
 <p>
 <p>CloudConfiguration contains detailed config for the cloud to connect to. Currently we only support selection of well-
@@ -1033,13 +1014,15 @@ string
 <td>
 <code>retentionType</code></br>
 <em>
-string
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.RetentionType">
+RetentionType
+</a>
 </em>
 </td>
 <td>
 <p>RetentionType specifies the type of retention for the backup bucket.
 Currently allowed values are:
-- &ldquo;bucket&rdquo;: The retention policy applies to the entire bucket.</p>
+- BucketLevelImmutability: The retention policy applies to the entire bucket.</p>
 </td>
 </tr>
 <tr>
@@ -1857,6 +1840,15 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.RetentionType">RetentionType
+(<code>string</code> alias)</p></h3>
+<p>
+(<em>Appears on:</em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.ImmutableConfig">ImmutableConfig</a>)
+</p>
+<p>
+<p>RetentionType defines the level at which immutability properties are obtained by objects</p>
+</p>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.RouteTable">RouteTable
 </h3>
 <p>

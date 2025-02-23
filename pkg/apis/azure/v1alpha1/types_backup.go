@@ -8,9 +8,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// RetentionType defines the level at which immutability properties are obtained by objects
+type RetentionType string
+
+const (
+	BucketLevelImmutability RetentionType = "bucket"
+)
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // BackupBucketConfig is the provider-specific configuration for backup buckets/entries
 type BackupBucketConfig struct {
 	metav1.TypeMeta `json:",inline"`
@@ -26,8 +32,8 @@ type BackupBucketConfig struct {
 type ImmutableConfig struct {
 	// RetentionType specifies the type of retention for the backup bucket.
 	// Currently allowed values are:
-	// - "bucket": The retention policy applies to the entire bucket.
-	RetentionType string `json:"retentionType"`
+	// - BucketLevelImmutability: The retention policy applies to the entire bucket.
+	RetentionType RetentionType `json:"retentionType"`
 
 	// RetentionPeriod specifies the immutability retention period for the backup bucket.
 	RetentionPeriod metav1.Duration `json:"retentionPeriod"`

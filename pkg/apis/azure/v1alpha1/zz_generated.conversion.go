@@ -721,7 +721,7 @@ func Convert_azure_Image_To_v1alpha1_Image(in *azure.Image, out *Image, s conver
 }
 
 func autoConvert_v1alpha1_ImmutableConfig_To_azure_ImmutableConfig(in *ImmutableConfig, out *azure.ImmutableConfig, s conversion.Scope) error {
-	out.RetentionType = in.RetentionType
+	out.RetentionType = azure.RetentionType(in.RetentionType)
 	out.RetentionPeriod = in.RetentionPeriod
 	out.Locked = in.Locked
 	return nil
@@ -733,7 +733,7 @@ func Convert_v1alpha1_ImmutableConfig_To_azure_ImmutableConfig(in *ImmutableConf
 }
 
 func autoConvert_azure_ImmutableConfig_To_v1alpha1_ImmutableConfig(in *azure.ImmutableConfig, out *ImmutableConfig, s conversion.Scope) error {
-	out.RetentionType = in.RetentionType
+	out.RetentionType = RetentionType(in.RetentionType)
 	out.RetentionPeriod = in.RetentionPeriod
 	out.Locked = in.Locked
 	return nil
