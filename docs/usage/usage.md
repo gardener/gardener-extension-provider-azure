@@ -664,11 +664,24 @@ spec:
 If no configuration is specified the extension will default to the public instance.
 Azure instances other than `AzurePublic`, `AzureGovernment`, or `AzureChina` are not supported at this time.
 
+### Disabling the automatic deployment of `allow-{tcp,udp} loadbalancer services`
+
+Using the `azure-cloud-controller-manager` when a user first creates a loadbalancer service in the cluster, a new Load Balancer is created in Azure and all nodes of the cluster are registered as backend.
+When a NAT Gateway is not used, then this Load Balancer is used as a NAT device for outbound traffic by using one of the registered FrontendIPs assigned to the k8s LB service.
+In cases where a NATGateway is not used, `provider-azure` will deploy by default a set of 2 Load Balancer services in the `kube-system`.
+These are responsible for allowing outbound traffic in all cases for UDP and TCP.
+
+There is a way for users to disable the deployment of these additional LBs by using the `azure.provider.extensions.gardener.cloud/skip-allow-egress="true"` annotation on their shoot.
+[!WARNING]
+Disabling the system Load Balancers may affect the outbound of your shoot.
+Before disabling them, users are highly advised to have created at least one Load Balancer for **TCP and UDP** or forward outbound traffic via a different route.
+
 ### Support for VolumeAttributesClasses (Beta in k8s 1.31)
 
 To have the CSI-driver configured to support the necessary features for [VolumeAttributesClasses](https://kubernetes.io/docs/concepts/storage/volume-attributes-classes/) on Azure for shoots with a k8s-version greater than 1.31, use the `azure.provider.extensions.gardener.cloud/enable-volume-attributes-class` annotation on the shoot. Keep in mind to also enable the required feature flags and runtime-config on the common kubernetes controllers (as outlined in the link above) in the shoot-spec.
 
 For more information and examples on how to configure the volume attributes class, see [example](https://github.com/kubernetes-sigs/azuredisk-csi-driver/blob/release-1.31/deploy/example/modifyvolume/README.md) provided in the the azuredisk-csi-driver repository.
+
 
 ### Preview: Shoot clusters with VMSS Flexible Orchestration (VMSS Flex/VMO)
 
