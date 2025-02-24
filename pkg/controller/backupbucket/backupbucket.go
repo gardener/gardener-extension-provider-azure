@@ -16,6 +16,7 @@ import (
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
 
+// GenerateStorageAccountName generates the name of the storage account from the bucket name <backupBucketName>.
 func GenerateStorageAccountName(backupBucketName string) string {
 	backupBucketNameSHA := utils.ComputeSHA256Hex([]byte(backupBucketName))
 	return fmt.Sprintf("bkp%s", backupBucketNameSHA[:15])

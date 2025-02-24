@@ -96,6 +96,7 @@ func BackupConfigFromBackupBucket(backupBucket *extensionsv1alpha1.BackupBucket)
 	return BackupConfigFromProviderConfig(backupBucket.Spec.ProviderConfig)
 }
 
+// BackupConfigFromProviderConfig decodes the provider specific config from the RawExtension.
 func BackupConfigFromProviderConfig(config *runtime.RawExtension) (api.BackupBucketConfig, error) {
 	backupConfig := api.BackupBucketConfig{}
 

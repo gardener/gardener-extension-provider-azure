@@ -8,6 +8,7 @@ import (
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 )
 
+// ValidateBackupBucketConfig validates a BackupBucketConfig object.
 func ValidateBackupBucketConfig(backupBucketConfig *apisazure.BackupBucketConfig, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 

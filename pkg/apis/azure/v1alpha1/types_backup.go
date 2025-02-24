@@ -12,11 +12,13 @@ import (
 type RetentionType string
 
 const (
+	// BucketLevelImmutability sets the immutability at the bucket level
 	BucketLevelImmutability RetentionType = "bucket"
 )
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 // BackupBucketConfig is the provider-specific configuration for backup buckets/entries
 type BackupBucketConfig struct {
 	metav1.TypeMeta `json:",inline"`

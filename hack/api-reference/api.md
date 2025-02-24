@@ -10,6 +10,8 @@
 </p>
 Resource Types:
 <ul><li>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.BackupBucketConfig">BackupBucketConfig</a>
+</li><li>
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.CloudProfileConfig">CloudProfileConfig</a>
 </li><li>
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.ControlPlaneConfig">ControlPlaneConfig</a>
@@ -22,6 +24,66 @@ Resource Types:
 </li><li>
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.WorkloadIdentityConfig">WorkloadIdentityConfig</a>
 </li></ul>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.BackupBucketConfig">BackupBucketConfig
+</h3>
+<p>
+<p>BackupBucketConfig is the provider-specific configuration for backup buckets/entries</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code></br>
+string</td>
+<td>
+<code>
+azure.provider.extensions.gardener.cloud/v1alpha1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code></br>
+string
+</td>
+<td><code>BackupBucketConfig</code></td>
+</tr>
+<tr>
+<td>
+<code>cloudConfiguration</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.CloudConfiguration">
+CloudConfiguration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CloudConfiguration contains config that controls which cloud to connect to.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>immutability</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.ImmutableConfig">
+ImmutableConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Immutability defines the immutability config for the backup bucket.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.CloudProfileConfig">CloudProfileConfig
 </h3>
 <p>
@@ -587,55 +649,12 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.BackupBucketConfig">BackupBucketConfig
-</h3>
-<p>
-<p>BackupBucketConfig is the provider-specific configuration for backup buckets/entries</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>cloudConfiguration</code></br>
-<em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.CloudConfiguration">
-CloudConfiguration
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>CloudConfiguration contains config that controls which cloud to connect to.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>immutability</code></br>
-<em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.ImmutableConfig">
-ImmutableConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Immutability defines the immutability config for the backup bucket.</p>
-</td>
-</tr>
-</tbody>
-</table>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.CloudConfiguration">CloudConfiguration
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.CloudProfileConfig">CloudProfileConfig</a>, 
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.BackupBucketConfig">BackupBucketConfig</a>)
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.BackupBucketConfig">BackupBucketConfig</a>, 
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.CloudProfileConfig">CloudProfileConfig</a>)
 </p>
 <p>
 <p>CloudConfiguration contains detailed config for the cloud to connect to. Currently we only support selection of well-

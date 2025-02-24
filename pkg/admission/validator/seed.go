@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
+	"github.com/gardener/gardener/pkg/apis/core"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -13,8 +15,6 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azurevalidation "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/validation"
-	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
-	"github.com/gardener/gardener/pkg/apis/core"
 )
 
 // seedValidator validates create and update operations on Seed resources,
@@ -40,7 +40,7 @@ func NewSeedValidator(mgr manager.Manager) extensionswebhook.Validator {
 // appropriate values for the `spec.backup.immutability`.
 // It also validates the seed resource during updates by disallowing
 // disabling immutable settings, reducing retention periods, or changing retention types.
-func (s *seedValidator) Validate(ctx context.Context, newObj, oldObj client.Object) error {
+func (s *seedValidator) Validate(_ context.Context, newObj, oldObj client.Object) error {
 	newSeed, ok := newObj.(*core.Seed)
 	if !ok {
 		return fmt.Errorf("wrong object type %T for new object", newObj)

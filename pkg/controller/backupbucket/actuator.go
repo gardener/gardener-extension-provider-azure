@@ -28,6 +28,7 @@ type actuator struct {
 	client client.Client
 }
 
+// NewActuator creates a new Actuator that manages BackupBucket resources.
 func NewActuator(mgr manager.Manager) backupbucket.Actuator {
 	return &actuator{
 		client: mgr.GetClient(),
