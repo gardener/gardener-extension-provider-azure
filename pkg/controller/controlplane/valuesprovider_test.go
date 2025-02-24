@@ -599,6 +599,22 @@ var _ = Describe("ValuesProvider", func() {
 			}))
 		})
 
+		It("should return false if allowEgress behavior is overwritten by user", func() {
+			infrastructureStatus.Zoned = true
+			cluster.Shoot.GetAnnotations()[azure.ShootSkipAllowEgressDeployment] = "true"
+			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+			csiNode := csiNodeEnabled
+
+			values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(map[string]interface{}{
+				azure.AllowEgressName:            enabledFalse,
+				azure.CloudControllerManagerName: cloudControllerManager,
+				azure.CSINodeName:                csiNode,
+				azure.RemedyControllerName:       enabledTrue,
+			}))
+		})
+
 		Context("remedy controller is disabled", func() {
 			BeforeEach(func() {
 				shootAnnotations := map[string]string{
@@ -725,6 +741,9 @@ func generateControlPlane(controlPlaneConfig *v1alpha1.ControlPlaneConfig, infra
 
 func generateCluster(cidr, k8sVersion string, vpaEnabled bool, shootAnnotations map[string]string, shootControlPlane *gardencorev1beta1.ControlPlane, seed *gardencorev1beta1.Seed) *extensionscontroller.Cluster {
 	shoot := &gardencorev1beta1.Shoot{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: make(map[string]string),
+		},
 		Spec: gardencorev1beta1.ShootSpec{
 			Provider: gardencorev1beta1.Provider{
 				Workers: []gardencorev1beta1.Worker{
@@ -745,6 +764,7 @@ func generateCluster(cidr, k8sVersion string, vpaEnabled bool, shootAnnotations 
 			},
 			ControlPlane: shootControlPlane,
 		},
+		Status: gardencorev1beta1.ShootStatus{},
 	}
 	if shootAnnotations != nil {
 		shoot.ObjectMeta.Annotations = shootAnnotations

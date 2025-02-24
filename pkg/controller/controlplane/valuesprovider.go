@@ -14,6 +14,7 @@ import (
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
 	extensionssecretsmanager "github.com/gardener/gardener/extensions/pkg/util/secret/manager"
+	"github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -727,7 +728,7 @@ func getControlPlaneShootChartValues(
 		// - when the shoot is using AVSets due to using basic loadbalancers (see https://github.com/gardener/gardener-extension-provider-azure/issues/1).
 		// - when the outbound connectivity is done via a NATGateway (currently meaning that all worker subnets have a NATGateway attached).
 		azure.AllowEgressName: map[string]interface{}{
-			"enabled": (infraStatus.Zoned || azureapihelper.IsVmoRequired(infraStatus)) && infraStatus.Networks.OutboundAccessType == apisazure.OutboundAccessTypeLoadBalancer,
+			"enabled": deployAllowEgressChart(cluster.Shoot, infraStatus),
 		},
 		azure.CloudControllerManagerName: map[string]interface{}{
 			"enabled":    true,
@@ -768,4 +769,12 @@ func cleanupSeedLegacyCSISnapshotValidation(
 	}
 
 	return nil
+}
+
+func deployAllowEgressChart(shoot *v1beta1.Shoot, infraStatus *apisazure.InfrastructureStatus) bool {
+	if v := shoot.GetAnnotations()[azure.ShootSkipAllowEgressDeployment]; v == "true" {
+		return false
+	}
+
+	return (infraStatus.Zoned || azureapihelper.IsVmoRequired(infraStatus)) && infraStatus.Networks.OutboundAccessType == apisazure.OutboundAccessTypeLoadBalancer
 }

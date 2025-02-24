@@ -16,6 +16,8 @@ const (
 	ShootVmoUsageAnnotation = "alpha.azure.provider.extensions.gardener.cloud/vmo"
 	// ShootVmoMigrationAnnotation is an annotation assigned to the Shoot resource which indicates if the availability set shoot, should be migrated to a VMO shoot.
 	ShootVmoMigrationAnnotation = "migration.azure.provider.extensions.gardener.cloud/vmo"
+	// ShootSkipAllowEgressDeployment skips the deployment of AllowEgress chart. The annotation exposes an option for shoot owners to override the automated behavior of Gardener.
+	ShootSkipAllowEgressDeployment = "azure.provider.extensions.gardener.cloud/skip-allow-egress"
 
 	// NetworkLayoutZoneMigrationAnnotation is used when migrating from a single subnet network layout to a multiple subnet network layout to indicate the zone that the existing subnet should be assigned to.
 	NetworkLayoutZoneMigrationAnnotation = "migration.azure.provider.extensions.gardener.cloud/zone"
