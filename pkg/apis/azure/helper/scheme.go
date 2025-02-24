@@ -89,18 +89,24 @@ func CloudProfileConfigFromCluster(cluster *controller.Cluster) (*api.CloudProfi
 
 // BackupConfigFromBackupBucket decodes the provider specific config from a given BackupBucket object.
 func BackupConfigFromBackupBucket(backupBucket *extensionsv1alpha1.BackupBucket) (api.BackupBucketConfig, error) {
-	backupConfig := api.BackupBucketConfig{}
-	if backupBucket != nil && backupBucket.Spec.ProviderConfig != nil {
-		bucketJson, err := backupBucket.Spec.ProviderConfig.MarshalJSON()
-		if err != nil {
-			return backupConfig, err
-		}
-
-		if _, _, err := decoder.Decode(bucketJson, nil, &backupConfig); err != nil {
-			return backupConfig, err
-		}
+	if backupBucket == nil || backupBucket.Spec.ProviderConfig == nil {
+		return api.BackupBucketConfig{}, nil
 	}
-	return backupConfig, nil
+
+	return BackupConfigFromProviderConfig(backupBucket.Spec.ProviderConfig)
+}
+
+func BackupConfigFromProviderConfig(config *runtime.RawExtension) (api.BackupBucketConfig, error) {
+	backupConfig := api.BackupBucketConfig{}
+
+	bucketJson, err := config.MarshalJSON()
+	if err != nil {
+		return backupConfig, err
+	}
+
+	_, _, err = decoder.Decode(bucketJson, nil, &backupConfig)
+
+	return backupConfig, err
 }
 
 // HasFlowState returns true if the group version of the State field in the provided
