@@ -1,7 +1,7 @@
 module github.com/gardener/gardener-extension-provider-azure
 
 // minimum version of Go required
-go 1.23.0
+go 1.24.0
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.17.0
