@@ -15,4 +15,4 @@ spec:
     --network-vnet-cidr=$NETWORK_VNET_CIDR
     --network-worker-cidr=$NETWORK_WORKER_CIDR
     --zoned=$ZONED
-  image: golang:1.23
+  image: golang:1.24
