@@ -76,13 +76,10 @@ func (s *seedValidator) validateCreate(seed *core.Seed) field.ErrorList {
 
 	backupBucketConfig, err := helper.BackupConfigFromProviderConfig(seed.Spec.Backup.ProviderConfig)
 	if err != nil {
-		allErrs = append(allErrs, field.Invalid(providerConfigfldPath, seed.Spec.Backup.ProviderConfig, fmt.Errorf("failed to decode new provider config: %v", err).Error()))
-		return allErrs
+		return append(allErrs, field.Invalid(providerConfigfldPath, seed.Spec.Backup.ProviderConfig, fmt.Errorf("failed to decode new provider config: %v", err).Error()))
 	}
 
-	allErrs = append(allErrs, azurevalidation.ValidateBackupBucketConfig(&backupBucketConfig, providerConfigfldPath)...)
-
-	return allErrs
+	return append(allErrs, azurevalidation.ValidateBackupBucketConfig(&backupBucketConfig, providerConfigfldPath)...)
 }
 
 func (s *seedValidator) validateUpdate(oldSeed, newSeed *core.Seed) field.ErrorList {
@@ -98,52 +95,19 @@ func (s *seedValidator) validateUpdate(oldSeed, newSeed *core.Seed) field.ErrorL
 
 	oldBackupBucketConfig, err := helper.BackupConfigFromProviderConfig(oldSeed.Spec.Backup.ProviderConfig)
 	if err != nil {
-		allErrs = append(allErrs, field.Invalid(providerConfigfldPath, oldSeed.Spec.Backup.ProviderConfig, fmt.Errorf("failed to decode old provider config: %v", err).Error()))
-		return allErrs
+		return append(allErrs, field.Invalid(providerConfigfldPath, oldSeed.Spec.Backup.ProviderConfig, fmt.Errorf("failed to decode old provider config: %v", err).Error()))
 	}
 
 	var newBackupBucketConfig azure.BackupBucketConfig
 	if newSeed != nil && newSeed.Spec.Backup != nil && newSeed.Spec.Backup.ProviderConfig != nil {
 		newBackupBucketConfig, err = helper.BackupConfigFromProviderConfig(newSeed.Spec.Backup.ProviderConfig)
 		if err != nil {
-			allErrs = append(allErrs, field.Invalid(providerConfigfldPath, newSeed.Spec.Backup.ProviderConfig, fmt.Errorf("failed to decode new provider config: %v", err).Error()))
-			return allErrs
+			return append(allErrs, field.Invalid(providerConfigfldPath, newSeed.Spec.Backup.ProviderConfig, fmt.Errorf("failed to decode new provider config: %v", err).Error()))
 		}
 	}
 
 	allErrs = append(allErrs, azurevalidation.ValidateBackupBucketConfig(&newBackupBucketConfig, providerConfigfldPath)...)
-	allErrs = append(allErrs, s.validateImmutabilityUpdate(&oldBackupBucketConfig, &newBackupBucketConfig, providerConfigfldPath)...)
-
-	return allErrs
-}
-
-// validateImmutability validates immutability constraints.
-func (s *seedValidator) validateImmutabilityUpdate(oldConfig, newConfig *azure.BackupBucketConfig, fldPath *field.Path) field.ErrorList {
-	var (
-		allErrs          = field.ErrorList{}
-		immutabilityPath = fldPath.Child("immutability")
-	)
-
-	if oldConfig.Immutability == nil || !oldConfig.Immutability.Locked {
-		return allErrs
-	}
-
-	if newConfig == nil || newConfig.Immutability == nil || *newConfig.Immutability == (azure.ImmutableConfig{}) {
-		allErrs = append(allErrs, field.Invalid(immutabilityPath, newConfig, "immutability cannot be disabled once it is locked"))
-		return allErrs
-	}
-
-	if !newConfig.Immutability.Locked {
-		allErrs = append(allErrs, field.Forbidden(immutabilityPath.Child("locked"), "immutable retention policy lock cannot be unlocked once it is locked"))
-	} else if newConfig.Immutability.RetentionPeriod.Duration < oldConfig.Immutability.RetentionPeriod.Duration {
-		allErrs = append(allErrs, field.Forbidden(
-			immutabilityPath.Child("retentionPeriod"),
-			fmt.Sprintf("reducing the retention period from %v to %v is prohibited when the immutable retention policy is locked",
-				oldConfig.Immutability.RetentionPeriod.Duration,
-				newConfig.Immutability.RetentionPeriod.Duration,
-			),
-		))
-	}
+	allErrs = append(allErrs, azurevalidation.ValidateBackupBucketConfigUpdate(&oldBackupBucketConfig, &newBackupBucketConfig, providerConfigfldPath)...)
 
 	return allErrs
 }
