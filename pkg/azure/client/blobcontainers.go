@@ -49,8 +49,8 @@ func (c *BlobContainersClient) GetImmutabilityPolicy(ctx context.Context, resour
 }
 
 // CreateOrUpdateImmutabilityPolicy creates, or updates the immutability policy set at the container level on the container with the name <containerName>, in the storage account <accountName>, and resource group <resourceGroupName>. This method can be called on containers without an immutability policy, or with an unlocked immutability policy.
-func (c *BlobContainersClient) CreateOrUpdateImmutabilityPolicy(ctx context.Context, resourceGroupName, accountName, containerName string, immutabilityPeriodSinceCreationInDays *int32) error {
-	_, err := c.client.CreateOrUpdateImmutabilityPolicy(ctx, resourceGroupName, accountName, containerName, &armstorage.BlobContainersClientCreateOrUpdateImmutabilityPolicyOptions{
+func (c *BlobContainersClient) CreateOrUpdateImmutabilityPolicy(ctx context.Context, resourceGroupName, accountName, containerName string, immutabilityPeriodSinceCreationInDays *int32) (*string, error) {
+	createOrUpdateImmutabilityPolicyResponse, err := c.client.CreateOrUpdateImmutabilityPolicy(ctx, resourceGroupName, accountName, containerName, &armstorage.BlobContainersClientCreateOrUpdateImmutabilityPolicyOptions{
 		Parameters: &armstorage.ImmutabilityPolicy{
 			Properties: &armstorage.ImmutabilityPolicyProperty{
 				AllowProtectedAppendWrites:            ptr.To(false),
@@ -59,7 +59,7 @@ func (c *BlobContainersClient) CreateOrUpdateImmutabilityPolicy(ctx context.Cont
 			},
 		},
 	})
-	return err
+	return createOrUpdateImmutabilityPolicyResponse.Etag, err
 }
 
 // ExtendImmutabilityPolicy extends the locked immutability policy of the container with the name <containerName>, in storage account <accountName>, and resource group <resourceGroupName>. This method is to be called only on containers with locked immutability policies.

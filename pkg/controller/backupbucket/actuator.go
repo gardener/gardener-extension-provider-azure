@@ -12,6 +12,7 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/util"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/go-logr/logr"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
@@ -110,53 +111,35 @@ func (a *actuator) Reconcile(ctx context.Context, logger logr.Logger, backupBuck
 		}
 	}
 
-	// update the bucket if necessary
-	currentContainerImmutabilityDays, currentlyLocked, etag, err := blobContainersClient.GetImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucket.Name)
-	if err != nil {
-		logger.Error(err, "Errored while fetching immutability information", "bucket", backupBucket.Name)
-		return util.DetermineError(err, helper.KnownCodes)
-	}
-	if err = updateBackupBucketIfNeeded(
+	// set the immutability policy on the container as configured in the backupBucket
+	if err = ensureBackupBucketImmutabilityPolicy(
 		ctx, logger,
 		blobContainersClient, backupBucketConfig,
 		resourceGroupName, storageAccountName, backupBucket.Name,
-		currentContainerImmutabilityDays, currentlyLocked, etag,
 	); err != nil {
 		logger.Error(err, "Errored while updating the bucket")
 		return util.DetermineError(err, helper.KnownCodes)
 	}
 
-	// lock the policy if configured
-	if backupBucketConfig.Immutability != nil && backupBucketConfig.Immutability.Locked && !currentlyLocked {
-		logger.Info("Locking bucket immutability policy")
-		// Etag of the resource will change if the policy was updated in the same reconiliation
-		// get the bucket policy again and use that etag
-		_, _, etag, err = blobContainersClient.GetImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucket.Name)
-		if err != nil {
-			logger.Error(err, "Errored while fetching immutability information again before locking", "bucket", backupBucket.Name)
-			return util.DetermineError(err, helper.KnownCodes)
-		}
-		err = blobContainersClient.LockImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucket.Name, etag)
-		if err != nil {
-			logger.Error(err, "Errored while locking the immutability policy of the bucket")
-			return util.DetermineError(err, helper.KnownCodes)
-		}
-	}
-
 	return nil
 }
 
-func updateBackupBucketIfNeeded(
+func ensureBackupBucketImmutabilityPolicy(
 	ctx context.Context, logger logr.Logger,
 	blobContainersClient azureclient.BlobContainers,
 	backupBucketConfig azure.BackupBucketConfig,
 	resourceGroupName, storageAccountName, backupBucketName string,
-	currentContainerImmutabilityDays *int32, currentlyLocked bool, etag *string,
 ) error {
-	var currentDays, desiredDays int32
-	if currentContainerImmutabilityDays != nil {
-		currentDays = *currentContainerImmutabilityDays
+	currentContainerImmutabilityDays, currentlyLocked, etag, err := blobContainersClient.GetImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucketName)
+	if err != nil {
+		logger.Error(err, "Errored while fetching immutability information", "bucket", backupBucketName)
+		return err
 	}
+
+	var (
+		currentDays int32 = ptr.Deref(currentContainerImmutabilityDays, 0)
+		desiredDays int32
+	)
 	if backupBucketConfig.Immutability != nil {
 		desiredDays = int32(backupBucketConfig.Immutability.RetentionPeriod.Duration.Hours() / 24)
 	}
@@ -167,6 +150,7 @@ func updateBackupBucketIfNeeded(
 			logger.Info("Extending bucket immutability period", "new period days", desiredDays)
 			return blobContainersClient.ExtendImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucketName, &desiredDays, etag)
 		}
+		// No other action can be performed on a locked bucket, return
 		return nil
 	}
 
@@ -176,11 +160,26 @@ func updateBackupBucketIfNeeded(
 		return blobContainersClient.DeleteImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucketName, etag)
 	}
 
-	// Update the policy if requested
+	// Create or update the unlocked policy on the bucket
 	if currentDays != desiredDays {
 		logger.Info("Updating the bucket immutability policy", "new period days", desiredDays)
-		return blobContainersClient.CreateOrUpdateImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucketName, &desiredDays)
+		etag, err = blobContainersClient.CreateOrUpdateImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucketName, &desiredDays)
+		if err != nil {
+			logger.Error(err, "Error while creating/updating the immutability policy", "bucket", backupBucketName)
+			return err
+		}
 	}
+
+	// Lock the policy if configured
+	if backupBucketConfig.Immutability != nil && backupBucketConfig.Immutability.Locked && !currentlyLocked {
+		logger.Info("Locking bucket immutability policy")
+		err = blobContainersClient.LockImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucketName, etag)
+		if err != nil {
+			logger.Error(err, "Errored while locking the immutability policy of the bucket")
+			return err
+		}
+	}
+
 	return nil
 }
 

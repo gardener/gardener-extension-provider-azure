@@ -178,7 +178,7 @@ type BlobContainers interface {
 	GetContainer(context.Context, string, string, string) (armstorage.BlobContainersClientGetResponse, error)
 	CreateContainer(context.Context, string, string, string) (armstorage.BlobContainersClientCreateResponse, error)
 	GetImmutabilityPolicy(context.Context, string, string, string) (*int32, bool, *string, error)
-	CreateOrUpdateImmutabilityPolicy(context.Context, string, string, string, *int32) error
+	CreateOrUpdateImmutabilityPolicy(context.Context, string, string, string, *int32) (*string, error)
 	DeleteImmutabilityPolicy(context.Context, string, string, string, *string) error
 	ExtendImmutabilityPolicy(context.Context, string, string, string, *int32, *string) error
 	LockImmutabilityPolicy(context.Context, string, string, string, *string) error
