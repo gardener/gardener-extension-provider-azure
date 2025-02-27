@@ -329,7 +329,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		}
 
 		// AvailabilitySet
-		if !infrastructureStatus.Zoned && vmoDependency == nil {
+		if !infrastructureStatus.Zoned {
 			nodesAvailabilitySet, err := azureapihelper.FindAvailabilitySetByPurpose(infrastructureStatus.AvailabilitySets, azureapi.PurposeNodes)
 			if err != nil {
 				return err
