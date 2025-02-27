@@ -58,6 +58,8 @@ var _ = Describe("Actuator", func() {
 		defaultFactory            = DefaultAzureClientFactoryFunc
 		storageAccountName        string
 		resourceGroupName         string
+		etag                      = "backupbucket-first-etag"
+		etag2                     = "backupbucket-second-etag"
 	)
 
 	BeforeEach(func() {
@@ -206,13 +208,12 @@ var _ = Describe("Actuator", func() {
 				azureBlobContainersClient.EXPECT().CreateContainer(ctx, resourceGroupName, storageAccountName, backupBucket.Name)
 
 				// No immutability policy will be present on the newly created bucket
-				etag := "backupbucket-first-etag"
 				azureBlobContainersClient.EXPECT().GetImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucket.Name).Return(nil, false, &etag, nil)
 			})
 
 			It("should error if adding the immutability policy fails", func() {
 				immutabilityDays := int32(1)
-				azureBlobContainersClient.EXPECT().CreateOrUpdateImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucket.Name, &immutabilityDays).Return(fmt.Errorf("adding the immutability policy error test"))
+				azureBlobContainersClient.EXPECT().CreateOrUpdateImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucket.Name, &immutabilityDays).Return(nil, fmt.Errorf("adding the immutability policy error test"))
 
 				err := a.Reconcile(ctx, logger, backupBucket)
 				Expect(err).Should(HaveOccurred())
@@ -249,17 +250,14 @@ var _ = Describe("Actuator", func() {
 				azureBlobContainersClient.EXPECT().CreateContainer(ctx, resourceGroupName, storageAccountName, backupBucket.Name)
 
 				// No immutability policy will be present on the newly created bucket
-				etag := "backupbucket-first-etag"
 				azureBlobContainersClient.EXPECT().GetImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucket.Name).Return(nil, false, &etag, nil)
 
 				immutabilityDays := int32(1)
-				azureBlobContainersClient.EXPECT().CreateOrUpdateImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucket.Name, &immutabilityDays)
+				azureBlobContainersClient.EXPECT().CreateOrUpdateImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucket.Name, &immutabilityDays).Return(&etag2, nil)
 			})
 
 			It("should error if locking the immutability policy fails after creation of bucket and addition of policy", func() {
 				// lock the immutability policy
-				etag2 := "backupbucket-first-etag-2"
-				azureBlobContainersClient.EXPECT().GetImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucket.Name).Return(nil, true, &etag2, nil)
 				azureBlobContainersClient.EXPECT().LockImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucket.Name, &etag2).Return(fmt.Errorf("locking the immutability policy error test"))
 
 				err := a.Reconcile(ctx, logger, backupBucket)
@@ -268,8 +266,6 @@ var _ = Describe("Actuator", func() {
 
 			It("should create a locked bucket as configured", func() {
 				// lock the immutability policy
-				etag2 := "backupbucket-first-etag-2"
-				azureBlobContainersClient.EXPECT().GetImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucket.Name).Return(nil, true, &etag2, nil)
 				azureBlobContainersClient.EXPECT().LockImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucket.Name, &etag2)
 
 				err := a.Reconcile(ctx, logger, backupBucket)
@@ -292,13 +288,12 @@ var _ = Describe("Actuator", func() {
 				azureBlobContainersClient.EXPECT().GetContainer(ctx, resourceGroupName, storageAccountName, backupBucket.Name).Return(armstorage.BlobContainersClientGetResponse{}, nil)
 
 				// No immutability policy will be present on the bucket
-				etag := "backupbucket-first-etag"
 				azureBlobContainersClient.EXPECT().GetImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucket.Name).Return(nil, false, &etag, nil)
 			})
 
 			It("should error if adding the policy fails", func() {
 				immutabilityDays := int32(1)
-				azureBlobContainersClient.EXPECT().CreateOrUpdateImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucket.Name, &immutabilityDays).Return(fmt.Errorf("adding the immutability policy error test"))
+				azureBlobContainersClient.EXPECT().CreateOrUpdateImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucket.Name, &immutabilityDays).Return(nil, fmt.Errorf("adding the immutability policy error test"))
 
 				err := a.Reconcile(ctx, logger, backupBucket)
 				Expect(err).Should(HaveOccurred())
@@ -328,18 +323,15 @@ var _ = Describe("Actuator", func() {
 				azureBlobContainersClient.EXPECT().GetContainer(ctx, resourceGroupName, storageAccountName, backupBucket.Name).Return(armstorage.BlobContainersClientGetResponse{}, nil)
 
 				// No immutability policy will be present on the bucket
-				etag := "backupbucket-first-etag"
 				azureBlobContainersClient.EXPECT().GetImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucket.Name).Return(nil, false, &etag, nil)
 
 				immutabilityDays := int32(1)
-				azureBlobContainersClient.EXPECT().CreateOrUpdateImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucket.Name, &immutabilityDays)
+				azureBlobContainersClient.EXPECT().CreateOrUpdateImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucket.Name, &immutabilityDays).Return(&etag2, nil)
 
 			})
 
 			It("should error if adding the lock fails", func() {
 				// lock the immutability policy
-				etag2 := "backupbucket-first-etag-2"
-				azureBlobContainersClient.EXPECT().GetImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucket.Name).Return(nil, true, &etag2, nil)
 				azureBlobContainersClient.EXPECT().LockImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucket.Name, &etag2).Return(fmt.Errorf("locking the policy error test"))
 
 				err := a.Reconcile(ctx, logger, backupBucket)
@@ -348,8 +340,6 @@ var _ = Describe("Actuator", func() {
 
 			It("should become locked immutable", func() {
 				// lock the immutability policy
-				etag2 := "backupbucket-first-etag-2"
-				azureBlobContainersClient.EXPECT().GetImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucket.Name).Return(nil, true, &etag2, nil)
 				azureBlobContainersClient.EXPECT().LockImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucket.Name, &etag2)
 
 				err := a.Reconcile(ctx, logger, backupBucket)
@@ -375,7 +365,6 @@ var _ = Describe("Actuator", func() {
 				azureBlobContainersClient.EXPECT().GetContainer(ctx, resourceGroupName, storageAccountName, backupBucket.Name).Return(armstorage.BlobContainersClientGetResponse{}, nil)
 
 				// immutability policy will be present on the bucket
-				etag := "backupbucket-first-etag"
 				currentImmutabilityDays := int32(2)
 				azureBlobContainersClient.EXPECT().GetImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucket.Name).Return(&currentImmutabilityDays, false, &etag, nil)
 
@@ -396,7 +385,6 @@ var _ = Describe("Actuator", func() {
 				azureBlobContainersClient.EXPECT().GetContainer(ctx, resourceGroupName, storageAccountName, backupBucket.Name).Return(armstorage.BlobContainersClientGetResponse{}, nil)
 
 				// immutability policy will be present on the bucket
-				etag := "backupbucket-first-etag"
 				currentImmutabilityDays := int32(2)
 				azureBlobContainersClient.EXPECT().GetImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucket.Name).Return(&currentImmutabilityDays, false, &etag, nil)
 
@@ -415,7 +403,6 @@ var _ = Describe("Actuator", func() {
 				azureBlobContainersClient.EXPECT().GetContainer(ctx, resourceGroupName, storageAccountName, backupBucket.Name).Return(armstorage.BlobContainersClientGetResponse{}, nil)
 
 				// immutability policy will be present on the bucket
-				etag := "backupbucket-first-etag"
 				currentImmutabilityDays := int32(2)
 				azureBlobContainersClient.EXPECT().GetImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucket.Name).Return(&currentImmutabilityDays, false, &etag, nil)
 
@@ -443,7 +430,6 @@ var _ = Describe("Actuator", func() {
 				azureBlobContainersClient.EXPECT().GetContainer(ctx, resourceGroupName, storageAccountName, backupBucket.Name).Return(armstorage.BlobContainersClientGetResponse{}, nil)
 
 				// immutability policy will be present on the bucket
-				etag := "backupbucket-first-etag"
 				currentImmutabilityDays := int32(1)
 				azureBlobContainersClient.EXPECT().GetImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucket.Name).Return(&currentImmutabilityDays, true, &etag, nil)
 
@@ -470,7 +456,6 @@ var _ = Describe("Actuator", func() {
 				azureBlobContainersClient.EXPECT().GetContainer(ctx, resourceGroupName, storageAccountName, backupBucket.Name).Return(armstorage.BlobContainersClientGetResponse{}, nil)
 
 				// No immutability policy will be present on the bucket
-				etag := "backupbucket-first-etag"
 				azureBlobContainersClient.EXPECT().GetImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucket.Name).Return(nil, false, &etag, nil)
 
 				err := a.Reconcile(ctx, logger, backupBucket)
@@ -488,7 +473,6 @@ var _ = Describe("Actuator", func() {
 				azureBlobContainersClient.EXPECT().GetContainer(ctx, resourceGroupName, storageAccountName, backupBucket.Name).Return(armstorage.BlobContainersClientGetResponse{}, nil)
 
 				// immutability policy will be present on the bucket
-				etag := "backupbucket-first-etag"
 				immutabilityDays := int32(1)
 				azureBlobContainersClient.EXPECT().GetImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucket.Name).Return(&immutabilityDays, false, &etag, nil)
 
@@ -507,7 +491,6 @@ var _ = Describe("Actuator", func() {
 				azureBlobContainersClient.EXPECT().GetContainer(ctx, resourceGroupName, storageAccountName, backupBucket.Name).Return(armstorage.BlobContainersClientGetResponse{}, nil)
 
 				// immutability policy will be present on the bucket
-				etag := "backupbucket-first-etag"
 				immutabilityDays := int32(1)
 				azureBlobContainersClient.EXPECT().GetImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, backupBucket.Name).Return(&immutabilityDays, true, &etag, nil)
 
