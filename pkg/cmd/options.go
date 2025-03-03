@@ -35,6 +35,7 @@ import (
 	infrastructurewebhook "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/infrastructure"
 	networkwebhook "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/network"
 	seedproviderwebhook "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/seedprovider"
+	terraformerwebhook "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/terraformer"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/webhook/topology"
 )
 
@@ -64,5 +65,6 @@ func WebhookSwitchOptions() *webhookcmd.SwitchOptions {
 		webhookcmd.Switch(extensionscloudproviderwebhook.WebhookName, cloudproviderwebhook.AddToManager),
 		webhookcmd.Switch(topology.WebhookName, topology.AddToManager),
 		webhookcmd.Switch(haNamespace.WebhookName, haNamespace.AddToManager),
+		webhookcmd.Switch(terraformerwebhook.WebhookName, terraformerwebhook.AddToManager),
 	)
 }
