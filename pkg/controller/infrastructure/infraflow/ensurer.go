@@ -401,7 +401,6 @@ func (fctx *FlowContext) ensurePublicIps(ctx context.Context) error {
 		return fctx.adapter.HasShootPrefix(address.Name) &&
 			ptr.Deref(address.Tags[TagManagedByGardener], "") == "true" &&
 			ptr.Deref(address.Tags[TagShootName], "") == fctx.adapter.TechnicalName()
-
 	})
 	// obtain an indexed list of current IPs
 	nameToCurrentIps := ToMap(currentIPs, func(t *armnetwork.PublicIPAddress) string {
@@ -427,7 +426,7 @@ func (fctx *FlowContext) ensurePublicIps(ctx context.Context) error {
 		// delete all the resources that are not in the list of target resources
 		pipCfg, ok := desiredConfiguration[name]
 		if !ok {
-			// 	skip deletion of IPs that may fit our criteria, but are referenced explicitly in the shoot spec.
+			// skip deletion of IPs that may fit our criteria, but are referenced explicitly in the shoot spec.
 			if fctx.adapter.IsPublicIPPinned(name) {
 				// mark the IP as not managed by gardener.
 				log.Info("Found public IP pinned... skipping deletion", "ip", nameToCurrentIps[name].ID)
