@@ -85,13 +85,13 @@ gardener:
   version: ""
   gardenlet:
     featureGates: {}
-  seed:
-    provider: azure
-    region: ""
-    spec:
-      settings:
-        topologyAwareRouting:
-          enabled: false
+# seed:
+#   provider: azure
+#   region: ""
+#   spec:
+#     settings:
+#       topologyAwareRouting:
+#         enabled: false
 
 # servicePrincipals:
 # - tenantID: tenant-1
@@ -101,9 +101,9 @@ gardener:
 #   clientID: spn-2
 #   clientSecret: secret-2
 
-  runtimeCluster:
-    enabled: false
-  # priorityClassName: gardener-garden-system-200
+# runtimeCluster:
+#   enabled: false
+#   priorityClassName: gardener-garden-system-200
 
 usablePorts:
 - 8080  # metrics
