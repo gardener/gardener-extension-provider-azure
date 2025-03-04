@@ -85,7 +85,6 @@ var _ = Describe("ReconcilationStrategy", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(useFlow).To(BeTrue())
 	})
-
 })
 
 func getRawTerraformState(jsonContent string) []byte {
