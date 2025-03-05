@@ -114,6 +114,7 @@ var _ = Describe("Machines", func() {
 				namePool2           string
 				minPool2            int32
 				maxPool2            int32
+				priorityPool2       int32
 				maxSurgePool2       intstr.IntOrString
 				maxUnavailablePool2 intstr.IntOrString
 
@@ -264,6 +265,7 @@ var _ = Describe("Machines", func() {
 				namePool2 = "pool-zones"
 				minPool2 = 30
 				maxPool2 = 45
+				priorityPool2 = 100
 				maxSurgePool2 = intstr.FromInt(10)
 				maxUnavailablePool2 = intstr.FromInt(15)
 
@@ -356,6 +358,7 @@ var _ = Describe("Machines", func() {
 					Name:           namePool2,
 					Minimum:        minPool2,
 					Maximum:        maxPool2,
+					Priority:       ptr.To(priorityPool2),
 					MaxSurge:       maxSurgePool2,
 					Architecture:   ptr.To(archAMD),
 					MaxUnavailable: maxUnavailablePool2,
@@ -628,6 +631,7 @@ var _ = Describe("Machines", func() {
 							SecretName:           machineClassWithHashPool2,
 							Minimum:              minPool2,
 							Maximum:              maxPool2,
+							Priority:             ptr.To(priorityPool2),
 							MaxSurge:             maxSurgePool2,
 							MaxUnavailable:       maxUnavailablePool2,
 							Labels:               labels,
