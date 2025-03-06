@@ -36,6 +36,7 @@ type Factory interface {
 	ManagedUserIdentity() (ManagedUserIdentity, error)
 	VirtualMachineImages() (VirtualMachineImages, error)
 	BlobContainers() (BlobContainers, error)
+	ManagementPolicies() (ManagementPolicies, error)
 }
 
 // ResourceGroup represents an Azure ResourceGroup k8sClient.
@@ -183,4 +184,9 @@ type BlobContainers interface {
 	ExtendImmutabilityPolicy(context.Context, string, string, string, *int32, *string) error
 	LockImmutabilityPolicy(context.Context, string, string, string, *string) error
 	DeleteContainer(context.Context, string, string, string) error
+}
+
+// ManagementPolicies is an Azure Blob Storage storage account lifecycle policy client
+type ManagementPolicies interface {
+	CreateOrUpdate(context.Context, string, string, int) error
 }
