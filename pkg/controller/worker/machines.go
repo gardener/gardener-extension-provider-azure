@@ -171,6 +171,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 					Maximum:              pool.Maximum,
 					MaxSurge:             pool.MaxSurge,
 					MaxUnavailable:       pool.MaxUnavailable,
+					Priority:             pool.Priority,
 					Labels:               addTopologyLabel(pool.Labels, w.worker.Spec.Region, zone),
 					Annotations:          pool.Annotations,
 					Taints:               pool.Taints,
