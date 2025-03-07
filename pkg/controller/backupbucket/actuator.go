@@ -90,6 +90,16 @@ func (a *actuator) Reconcile(ctx context.Context, logger logr.Logger, backupBuck
 		}
 	}
 
+	// add lifecycle policies to the storage account to perform delayed delete of backupentries
+	managementPoliciesClient, err := factory.ManagementPolicies()
+	if err != nil {
+		return util.DetermineError(err, helper.KnownCodes)
+	}
+	if err = managementPoliciesClient.CreateOrUpdate(ctx, resourceGroupName, storageAccountName, 0); err != nil {
+		logger.Error(err, "Failed to add the lifecycle policy on the storage account")
+		return util.DetermineError(err, helper.KnownCodes)
+	}
+
 	blobContainersClient, err := factory.BlobContainers()
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
