@@ -139,7 +139,7 @@ var _ = Describe("Ensurer", func() {
 			}
 		})
 
-		It("should add missing elements to kube-apiserver deployment (k8s >= 1.27, < 1.30)", func() {
+		It("should add missing elements to kube-apiserver deployment (k8s < 1.30)", func() {
 			err := ensurer.EnsureKubeAPIServerDeployment(ctx, eContextK8s127, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
 
@@ -213,7 +213,7 @@ var _ = Describe("Ensurer", func() {
 			}
 		})
 
-		It("should add missing elements to kube-controller-manager deployment (k8s >= 1.27, < 1.30)", func() {
+		It("should add missing elements to kube-controller-manager deployment (k8s < 1.30)", func() {
 			err := ensurer.EnsureKubeControllerManagerDeployment(ctx, eContextK8s127, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
 
@@ -281,7 +281,7 @@ var _ = Describe("Ensurer", func() {
 			}
 		})
 
-		It("should add missing elements to kube-scheduler deployment (k8s >= 1.27, < 1.30)", func() {
+		It("should add missing elements to kube-scheduler deployment (k8s < 1.30)", func() {
 			err := ensurer.EnsureKubeSchedulerDeployment(ctx, eContextK8s127, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
 
@@ -323,7 +323,7 @@ var _ = Describe("Ensurer", func() {
 			}
 		})
 
-		It("should add missing elements to cluster-autoscaler deployment (k8s >= 1.27, < 1.30)", func() {
+		It("should add missing elements to cluster-autoscaler deployment (k8s < 1.30)", func() {
 			err := ensurer.EnsureClusterAutoscalerDeployment(ctx, eContextK8s127, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
 
@@ -435,7 +435,7 @@ var _ = Describe("Ensurer", func() {
 				Expect(&kubeletConfig).To(Equal(newKubeletConfig))
 			},
 
-			Entry("kubelet k8s >=1.27, < 1.30",
+			Entry("kubelet k8s < 1.30",
 				eContextK8s127,
 				semver.MustParse("1.27.0"),
 				map[string]bool{
@@ -627,7 +627,7 @@ func checkKubeAPIServerDeployment(dep *appsv1.Deployment, k8sVersion string) {
 		Expect(c.Command).NotTo(ContainElement(HavePrefix("--feature-gates")))
 	case k8sVersionAtLeast130:
 		Expect(c.Command).To(ContainElement("--feature-gates=InTreePluginAzureDiskUnregister=true,InTreePluginAzureFileUnregister=true"))
-	default: // >= 1.27
+	default: // < 1.30
 		Expect(c.Command).To(ContainElement("--feature-gates=CSIMigrationAzureFile=true,InTreePluginAzureDiskUnregister=true,InTreePluginAzureFileUnregister=true"))
 	}
 
@@ -659,7 +659,7 @@ func checkKubeControllerManagerDeployment(dep *appsv1.Deployment, k8sVersion str
 		Expect(c.Command).NotTo(ContainElement(HavePrefix("--feature-gates")))
 	case k8sVersionAtLeast130:
 		Expect(c.Command).To(ContainElement("--feature-gates=InTreePluginAzureDiskUnregister=true,InTreePluginAzureFileUnregister=true"))
-	default: // >= 1.27
+	default: // < 1.30
 		Expect(c.Command).To(ContainElement("--feature-gates=CSIMigrationAzureFile=true,InTreePluginAzureDiskUnregister=true,InTreePluginAzureFileUnregister=true"))
 	}
 
@@ -688,7 +688,7 @@ func checkKubeSchedulerDeployment(dep *appsv1.Deployment, k8sVersion string) {
 		Expect(c.Command).NotTo(ContainElement(HavePrefix("--feature-gates")))
 	case k8sVersionAtLeast130:
 		Expect(c.Command).To(ContainElement("--feature-gates=InTreePluginAzureDiskUnregister=true,InTreePluginAzureFileUnregister=true"))
-	default: // >= 1.27
+	default: // < 1.30
 		Expect(c.Command).To(ContainElement("--feature-gates=CSIMigrationAzureFile=true,InTreePluginAzureDiskUnregister=true,InTreePluginAzureFileUnregister=true"))
 	}
 }
@@ -706,7 +706,7 @@ func checkClusterAutoscalerDeployment(dep *appsv1.Deployment, k8sVersion string)
 		Expect(c.Command).NotTo(ContainElement(HavePrefix("--feature-gates")))
 	case k8sVersionAtLeast130:
 		Expect(c.Command).To(ContainElement("--feature-gates=InTreePluginAzureDiskUnregister=true,InTreePluginAzureFileUnregister=true"))
-	default: // >= 1.27
+	default: // < 1.30
 		Expect(c.Command).To(ContainElement("--feature-gates=CSIMigrationAzureFile=true,InTreePluginAzureDiskUnregister=true,InTreePluginAzureFileUnregister=true"))
 	}
 }
