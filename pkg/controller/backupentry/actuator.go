@@ -41,10 +41,10 @@ func (a *actuator) GetETCDSecretData(_ context.Context, _ logr.Logger, _ *extens
 }
 
 func (a *actuator) Delete(ctx context.Context, _ logr.Logger, backupEntry *extensionsv1alpha1.BackupEntry) error {
-	storageClient, err := DefaultBlobStorageClient(ctx, a.client, &backupEntry.Spec.SecretRef)
+	storageClient, err := DefaultBlobStorageClient(ctx, a.client, &backupEntry.Spec.SecretRef, backupEntry.Spec.BucketName)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}
 	entryName := strings.TrimPrefix(backupEntry.Name, v1beta1constants.BackupSourcePrefix+"-")
-	return util.DetermineError(storageClient.DeleteObjectsWithPrefix(ctx, backupEntry.Spec.BucketName, fmt.Sprintf("%s/", entryName)), helper.KnownCodes)
+	return util.DetermineError(storageClient.CleanupObjectsWithPrefix(ctx, fmt.Sprintf("%s/", entryName)), helper.KnownCodes)
 }

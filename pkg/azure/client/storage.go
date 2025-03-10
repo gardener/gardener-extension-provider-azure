@@ -13,6 +13,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blob"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/bloberror"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/container"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
@@ -26,8 +27,7 @@ var _ BlobStorage = &BlobStorageClient{}
 
 // BlobStorageClient is an implementation of Storage for a blob storage k8sClient.
 type BlobStorageClient struct {
-	// serviceURL *azblob.ServiceURL
-	client *azblob.Client
+	client *container.Client
 }
 
 // BlobStorageDomainFromCloudConfiguration returns the storage service domain given a known cloudConfiguration.
@@ -50,23 +50,24 @@ func BlobStorageDomainFromCloudConfiguration(cloudConfiguration *azureapi.CloudC
 	return "", fmt.Errorf("unknown cloud configuration name '%s'", cloudConfiguration.Name)
 }
 
-// NewBlobStorageClient creates a blob storage client.
-func NewBlobStorageClient(_ context.Context, storageAccountName, storageAccountKey, storageDomain string) (*BlobStorageClient, error) {
+// NewBlobStorageClient creates a blob storage client for the container <containerName>.
+func NewBlobStorageClient(_ context.Context, storageAccountName, storageAccountKey, storageDomain, containerName string) (*BlobStorageClient, error) {
 	credentials, err := azblob.NewSharedKeyCredential(storageAccountName, storageAccountKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create shared key credentials: %v", err)
 	}
 
-	storageEndpointURL, err := url.Parse(fmt.Sprintf("https://%s.%s", storageAccountName, storageDomain))
+	containerEndpointURL, err := url.Parse(fmt.Sprintf("https://%s.%s/%s", storageAccountName, storageDomain, containerName))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse service url: %v", err)
 	}
-	blobclient, err := azblob.NewClientWithSharedKeyCredential(storageEndpointURL.String(), credentials, nil)
-	return &BlobStorageClient{blobclient}, err
+
+	containerClient, err := container.NewClientWithSharedKeyCredential(containerEndpointURL.String(), credentials, nil)
+	return &BlobStorageClient{containerClient}, err
 }
 
-// NewBlobStorageClientFromSecretRef creates a client for an Azure Blob storage by reading auth information from secret reference.
-func NewBlobStorageClientFromSecretRef(ctx context.Context, client client.Client, secretRef *corev1.SecretReference) (*BlobStorageClient, error) {
+// NewBlobStorageClientFromSecretRef creates a client for an Azure Blob storage by reading auth information from secret reference for the container <containerName>.
+func NewBlobStorageClientFromSecretRef(ctx context.Context, client client.Client, secretRef *corev1.SecretReference, containerName string) (*BlobStorageClient, error) {
 	secret, err := extensionscontroller.GetSecretByReference(ctx, client, secretRef)
 	if err != nil {
 		return nil, err
@@ -86,20 +87,27 @@ func NewBlobStorageClientFromSecretRef(ctx context.Context, client client.Client
 		storageDomain = string(v)
 	}
 
-	return NewBlobStorageClient(ctx, string(storageAccountName), string(storageAccountKey), storageDomain)
+	return NewBlobStorageClient(ctx, string(storageAccountName), string(storageAccountKey), storageDomain, containerName)
 }
 
-// DeleteObjectsWithPrefix deletes the blob objects with the specific <prefix> from <container>.
-// If it does not exist, no error is returned.
-func (c *BlobStorageClient) DeleteObjectsWithPrefix(ctx context.Context, container, prefix string) error {
-	pager := c.client.NewListBlobsFlatPager(container, &azblob.ListBlobsFlatOptions{Prefix: ptr.To(prefix)})
+// CleanupObjectsWithPrefix cleans up the blob objects with the specific <prefix> from <container>.
+//
+// If the <container> has no immutability, the objects are deleted.
+//
+// If the <container> has immutability:
+//  1. If the object's immutability has expired, it is deleted.
+//  2. If the object's immutability has not expired, the BlobMarkedForDeletionTagKey tag is added to perform a delayed delete of the object through the lifecycle policy set on the storage account.
+//
+// If blobs with <prefix> do not exist, no error is returned.
+func (c *BlobStorageClient) CleanupObjectsWithPrefix(ctx context.Context, prefix string) error {
+	pager := c.client.NewListBlobsFlatPager(&azblob.ListBlobsFlatOptions{Prefix: ptr.To(prefix)})
 	for pager.More() {
 		page, err := pager.NextPage(ctx)
 		if err != nil {
 			return err
 		}
 		for _, blob := range page.Segment.BlobItems {
-			if err := c.deleteBlobIfExists(ctx, container, *blob.Name); err != nil {
+			if err := c.cleanupBlobIfExists(ctx, *blob.Name); err != nil {
 				return err
 			}
 		}
@@ -107,14 +115,30 @@ func (c *BlobStorageClient) DeleteObjectsWithPrefix(ctx context.Context, contain
 	return nil
 }
 
-// deleteBlobIfExists deletes the azure blob with name <blobName> from <container>.
-// If it does not exist,no error is returned.
-func (c *BlobStorageClient) deleteBlobIfExists(ctx context.Context, container, blobName string) error {
-	_, err := c.client.DeleteBlob(ctx, container, blobName, &blob.DeleteOptions{
+// cleanupBlobIfExists cleans up the azure blob with name <blobName>.
+//
+// If the <container> has no immutability, the objects are deleted.
+//
+// If the <container> has immutability:
+//  1. If the object's immutability has expired, it is deleted.
+//  2. If the object's immutability has not expired, the BlobMarkedForDeletionTagKey tag is added to perform a delayed delete of the object through the lifecycle policy set on the storage account.
+//
+// If the blob with <blobName> does not exist, no error is returned.
+func (c *BlobStorageClient) cleanupBlobIfExists(ctx context.Context, blobName string) error {
+	blobClient := c.client.NewBlockBlobClient(blobName)
+	_, err := blobClient.Delete(ctx, &blob.DeleteOptions{
 		DeleteSnapshots: ptr.To(azblob.DeleteSnapshotsOptionTypeInclude),
 	})
 	if err == nil || bloberror.HasCode(err, bloberror.BlobNotFound) {
 		return nil
+	}
+
+	// Blob is immutable, set the tag that triggers cleanup through lifecycle policy
+	if bloberror.HasCode(err, bloberror.BlobImmutableDueToPolicy) {
+		tags := map[string]string{
+			azure.BlobMarkedForDeletionTagKey: "true",
+		}
+		_, err = blobClient.SetTags(ctx, tags, nil)
 	}
 	return err
 }

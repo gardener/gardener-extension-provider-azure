@@ -164,7 +164,7 @@ type VirtualMachineImages interface {
 
 // BlobStorage represents an Azure blob storage k8sClient.
 type BlobStorage interface {
-	DeleteObjectsWithPrefix(context.Context, string, string) error
+	CleanupObjectsWithPrefix(context.Context, string) error
 }
 
 // Resource is an Azure resources client.
