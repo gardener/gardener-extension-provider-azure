@@ -43,23 +43,24 @@ const (
 
 var _ = Describe("Actuator", func() {
 	var (
-		ctx                       context.Context
-		ctrl                      *gomock.Controller
-		c                         *mockclient.MockClient
-		sw                        *mockclient.MockStatusWriter
-		mgr                       *mockmanager.MockManager
-		azureClientFactory        *mockazureclient.MockFactory
-		azureGroupClient          *mockazureclient.MockResourceGroup
-		azureStorageAccountClient *mockazureclient.MockStorageAccount
-		azureBlobContainersClient *mockazureclient.MockBlobContainers
-		a                         backupbucket.Actuator
-		logger                    logr.Logger
-		backupBucket              *extensionsv1alpha1.BackupBucket
-		defaultFactory            = DefaultAzureClientFactoryFunc
-		storageAccountName        string
-		resourceGroupName         string
-		etag                      = "backupbucket-first-etag"
-		etag2                     = "backupbucket-second-etag"
+		ctx                           context.Context
+		ctrl                          *gomock.Controller
+		c                             *mockclient.MockClient
+		sw                            *mockclient.MockStatusWriter
+		mgr                           *mockmanager.MockManager
+		azureClientFactory            *mockazureclient.MockFactory
+		azureGroupClient              *mockazureclient.MockResourceGroup
+		azureStorageAccountClient     *mockazureclient.MockStorageAccount
+		azureBlobContainersClient     *mockazureclient.MockBlobContainers
+		azureManagementPoliciesClient *mockazureclient.MockManagementPolicies
+		a                             backupbucket.Actuator
+		logger                        logr.Logger
+		backupBucket                  *extensionsv1alpha1.BackupBucket
+		defaultFactory                = DefaultAzureClientFactoryFunc
+		storageAccountName            string
+		resourceGroupName             string
+		etag                          = "backupbucket-first-etag"
+		etag2                         = "backupbucket-second-etag"
 	)
 
 	BeforeEach(func() {
@@ -72,6 +73,7 @@ var _ = Describe("Actuator", func() {
 		azureGroupClient = mockazureclient.NewMockResourceGroup(ctrl)
 		azureStorageAccountClient = mockazureclient.NewMockStorageAccount(ctrl)
 		azureBlobContainersClient = mockazureclient.NewMockBlobContainers(ctrl)
+		azureManagementPoliciesClient = mockazureclient.NewMockManagementPolicies(ctrl)
 
 		c.EXPECT().Status().Return(sw).AnyTimes()
 
@@ -151,12 +153,30 @@ var _ = Describe("Actuator", func() {
 			})
 		})
 
+		Context("set lifecycle policy on the storage account during each reconciliation", func() {
+			It("should error if adding the lifecycle policy to the storage account fails", func() {
+				mockEnsureResourceGroupAndStorageAccount(ctx, azureClientFactory, azureGroupClient, azureStorageAccountClient, storageAccountName, backupBucket)
+
+				// create generated secret
+				mockGeneratedSecretCreation(ctx, c, sw, storageAccountName, backupBucket)
+
+				azureClientFactory.EXPECT().ManagementPolicies().Return(azureManagementPoliciesClient, nil)
+				azureManagementPoliciesClient.EXPECT().CreateOrUpdate(ctx, resourceGroupName, storageAccountName, 0).Return(fmt.Errorf("management policy addition on storage account error test"))
+
+				err := a.Reconcile(ctx, logger, backupBucket)
+				Expect(err).Should(HaveOccurred())
+			})
+		})
+
 		Context("when the backupBucket configured without immutability does not exist", func() {
 			BeforeEach(func() {
 				mockEnsureResourceGroupAndStorageAccount(ctx, azureClientFactory, azureGroupClient, azureStorageAccountClient, storageAccountName, backupBucket)
 
 				// create generated secret
 				mockGeneratedSecretCreation(ctx, c, sw, storageAccountName, backupBucket)
+
+				azureClientFactory.EXPECT().ManagementPolicies().Return(azureManagementPoliciesClient, nil)
+				azureManagementPoliciesClient.EXPECT().CreateOrUpdate(ctx, resourceGroupName, storageAccountName, 0)
 
 				azureClientFactory.EXPECT().BlobContainers().Return(azureBlobContainersClient, nil)
 
@@ -196,6 +216,9 @@ var _ = Describe("Actuator", func() {
 
 				// create generated secret
 				mockGeneratedSecretCreation(ctx, c, sw, storageAccountName, backupBucket)
+
+				azureClientFactory.EXPECT().ManagementPolicies().Return(azureManagementPoliciesClient, nil)
+				azureManagementPoliciesClient.EXPECT().CreateOrUpdate(ctx, resourceGroupName, storageAccountName, 0)
 
 				azureClientFactory.EXPECT().BlobContainers().Return(azureBlobContainersClient, nil)
 
@@ -238,6 +261,9 @@ var _ = Describe("Actuator", func() {
 
 				// create generated secret
 				mockGeneratedSecretCreation(ctx, c, sw, storageAccountName, backupBucket)
+
+				azureClientFactory.EXPECT().ManagementPolicies().Return(azureManagementPoliciesClient, nil)
+				azureManagementPoliciesClient.EXPECT().CreateOrUpdate(ctx, resourceGroupName, storageAccountName, 0)
 
 				azureClientFactory.EXPECT().BlobContainers().Return(azureBlobContainersClient, nil)
 
@@ -282,6 +308,10 @@ var _ = Describe("Actuator", func() {
 				backupBucket.Spec.ProviderConfig = &runtime.RawExtension{
 					Raw: []byte(`{"apiVersion":"azure.provider.extensions.gardener.cloud/v1alpha1","kind":"BackupBucketConfig","immutability":{"retentionType":"bucket","retentionPeriod":"24h","locked":false}}`),
 				}
+
+				azureClientFactory.EXPECT().ManagementPolicies().Return(azureManagementPoliciesClient, nil)
+				azureManagementPoliciesClient.EXPECT().CreateOrUpdate(ctx, resourceGroupName, storageAccountName, 0)
+
 				azureClientFactory.EXPECT().BlobContainers().Return(azureBlobContainersClient, nil)
 
 				// bucket already exists
@@ -317,6 +347,10 @@ var _ = Describe("Actuator", func() {
 				backupBucket.Spec.ProviderConfig = &runtime.RawExtension{
 					Raw: []byte(`{"apiVersion":"azure.provider.extensions.gardener.cloud/v1alpha1","kind":"BackupBucketConfig","immutability":{"retentionType":"bucket","retentionPeriod":"24h","locked":true}}`),
 				}
+
+				azureClientFactory.EXPECT().ManagementPolicies().Return(azureManagementPoliciesClient, nil)
+				azureManagementPoliciesClient.EXPECT().CreateOrUpdate(ctx, resourceGroupName, storageAccountName, 0)
+
 				azureClientFactory.EXPECT().BlobContainers().Return(azureBlobContainersClient, nil)
 
 				// bucket already exists
@@ -353,6 +387,9 @@ var _ = Describe("Actuator", func() {
 					Name:      fmt.Sprintf("generated-bucket-%s", backupBucket.Name),
 					Namespace: "garden",
 				}
+
+				azureClientFactory.EXPECT().ManagementPolicies().Return(azureManagementPoliciesClient, nil)
+				azureManagementPoliciesClient.EXPECT().CreateOrUpdate(ctx, resourceGroupName, storageAccountName, 0)
 			})
 
 			It("should increase the duration when configured so", func() {
@@ -419,6 +456,9 @@ var _ = Describe("Actuator", func() {
 					Name:      fmt.Sprintf("generated-bucket-%s", backupBucket.Name),
 					Namespace: "garden",
 				}
+
+				azureClientFactory.EXPECT().ManagementPolicies().Return(azureManagementPoliciesClient, nil)
+				azureManagementPoliciesClient.EXPECT().CreateOrUpdate(ctx, resourceGroupName, storageAccountName, 0)
 			})
 			It("should extend the locked duration if configured", func() {
 				backupBucket.Spec.ProviderConfig = &runtime.RawExtension{
@@ -447,6 +487,9 @@ var _ = Describe("Actuator", func() {
 					Name:      fmt.Sprintf("generated-bucket-%s", backupBucket.Name),
 					Namespace: "garden",
 				}
+
+				azureClientFactory.EXPECT().ManagementPolicies().Return(azureManagementPoliciesClient, nil)
+				azureManagementPoliciesClient.EXPECT().CreateOrUpdate(ctx, resourceGroupName, storageAccountName, 0)
 			})
 
 			It("should no-op in a non-immutable state", func() {
