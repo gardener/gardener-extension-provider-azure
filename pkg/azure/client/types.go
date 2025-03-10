@@ -11,6 +11,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage"
 )
 
 // Factory represents a factory to produce clients for various Azure services.
@@ -34,6 +35,8 @@ type Factory interface {
 	AvailabilitySet() (AvailabilitySet, error)
 	ManagedUserIdentity() (ManagedUserIdentity, error)
 	VirtualMachineImages() (VirtualMachineImages, error)
+	BlobContainers() (BlobContainers, error)
+	ManagementPolicies() (ManagementPolicies, error)
 }
 
 // ResourceGroup represents an Azure ResourceGroup k8sClient.
@@ -161,12 +164,27 @@ type VirtualMachineImages interface {
 
 // BlobStorage represents an Azure blob storage k8sClient.
 type BlobStorage interface {
-	DeleteObjectsWithPrefix(context.Context, string, string) error
-	CreateContainerIfNotExists(context.Context, string) error
-	DeleteContainerIfExists(context.Context, string) error
+	CleanupObjectsWithPrefix(context.Context, string) error
 }
 
 // Resource is an Azure resources client.
 type Resource interface {
 	ListByResourceGroup(ctx context.Context, resourceGroupName string, options *armresources.ClientListByResourceGroupOptions) ([]*armresources.GenericResourceExpanded, error)
+}
+
+// BlobContainers is an Azure Blob Container client.
+type BlobContainers interface {
+	GetContainer(context.Context, string, string, string) (armstorage.BlobContainersClientGetResponse, error)
+	CreateContainer(context.Context, string, string, string) (armstorage.BlobContainersClientCreateResponse, error)
+	GetImmutabilityPolicy(context.Context, string, string, string) (*int32, bool, *string, error)
+	CreateOrUpdateImmutabilityPolicy(context.Context, string, string, string, *int32) (*string, error)
+	DeleteImmutabilityPolicy(context.Context, string, string, string, *string) error
+	ExtendImmutabilityPolicy(context.Context, string, string, string, *int32, *string) error
+	LockImmutabilityPolicy(context.Context, string, string, string, *string) error
+	DeleteContainer(context.Context, string, string, string) error
+}
+
+// ManagementPolicies is an Azure Blob Storage storage account lifecycle policy client
+type ManagementPolicies interface {
+	CreateOrUpdate(context.Context, string, string, int) error
 }
