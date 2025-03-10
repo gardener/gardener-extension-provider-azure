@@ -7,7 +7,6 @@ package validator_test
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	core "github.com/gardener/gardener/pkg/apis/core"
@@ -138,7 +137,6 @@ var _ = Describe("Seed Validator", func() {
 		DescribeTable("Invalid update scenarios",
 			func(oldSeed, newSeed *core.Seed, expectedError string) {
 				err := seedValidator.Validate(context.Background(), newSeed, oldSeed)
-				fmt.Printf("%#v\n", err)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring(expectedError))
 			},

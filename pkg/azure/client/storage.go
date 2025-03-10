@@ -118,23 +118,3 @@ func (c *BlobStorageClient) deleteBlobIfExists(ctx context.Context, container, b
 	}
 	return err
 }
-
-// CreateContainerIfNotExists creates the azure blob container with name <container>.
-// If it already exist,no error is returned.
-func (c *BlobStorageClient) CreateContainerIfNotExists(ctx context.Context, container string) error {
-	_, err := c.client.CreateContainer(ctx, container, nil)
-	if err == nil || bloberror.HasCode(err, bloberror.ContainerAlreadyExists) {
-		return nil
-	}
-	return err
-}
-
-// DeleteContainerIfExists deletes the azure blob container with name <container>.
-// If it does not exist, no error is returned.
-func (c *BlobStorageClient) DeleteContainerIfExists(ctx context.Context, container string) error {
-	_, err := c.client.DeleteContainer(ctx, container, nil)
-	if err == nil || bloberror.HasCode(err, bloberror.ContainerBeingDeleted, bloberror.ContainerNotFound) {
-		return nil
-	}
-	return err
-}

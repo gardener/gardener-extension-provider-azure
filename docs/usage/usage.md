@@ -702,11 +702,11 @@ Some key facts about VMSS Flex based clusters:
 - It is not possible to migrate an existing primary AvailabilitySet based Shoot cluster to VMSS Flex based Shoot cluster and vice versa
 - VMSS Flex based clusters are using `Standard` SKU LoadBalancers instead of `Basic` SKU LoadBalancers for AvailabilitySet based Shoot clusters
 
-## `BackupBucketConfig`
+## BackupBucketConfig
 
 `BackupBucketConfig` describes the configuration that needs to be passed over for creation of the backup bucket infrastructure. Configuration like immutability (WORM, i.e. write-once-read-many) that can be set on the bucket are specified here. Objects in the bucket will inherit the immutability duration which is set on the bucket, and they can not be modified or deleted for that duration.
 
-This extension supports creating (and migrating already existing buckets) to use [container-level WORM policies](https://learn.microsoft.com/en-us/azure/storage/blobs/immutable-container-level-worm-policies).
+This extension supports creating (and migrating already existing buckets if enabled) to use [container-level WORM policies](https://learn.microsoft.com/en-us/azure/storage/blobs/immutable-container-level-worm-policies).
 
 Example:
 
@@ -733,8 +733,7 @@ kind: BackupBucket
 metadata:
   name: my-backup-bucket
 spec:
-  provider:
-    region: westeurope
+  region: westeurope
   secretRef:
     name: my-azure-secret
     namespace: my-namespace

@@ -21,7 +21,7 @@ import (
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
 
-// DefaultAzureClientFactoryFunc is the default function for creating a DNS client. It can be overridden for tests.
+// DefaultAzureClientFactoryFunc is the default function for creating a backupbucket client. It can be overridden for tests.
 var DefaultAzureClientFactoryFunc = azureclient.NewAzureClientFactoryFromSecret
 
 type actuator struct {
