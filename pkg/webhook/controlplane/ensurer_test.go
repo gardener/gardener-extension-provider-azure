@@ -363,45 +363,31 @@ var _ = Describe("Ensurer", func() {
 			}
 		})
 
-		DescribeTable("should modify existing elements of kubelet.service unit options",
-			func(gctx gcontext.GardenContext, cloudProvider string, withACRConfig bool, _ bool) {
-				newUnitOptions := []*unit.UnitOption{
-					{
-						Section: "Service",
-						Name:    "ExecStart",
-						Value: `/opt/bin/hyperkube kubelet \
+		It("should modify existing elements of kubelet.service unit options", func() {
+			newUnitOptions := []*unit.UnitOption{
+				{
+					Section: "Service",
+					Name:    "ExecStart",
+					Value: `/opt/bin/hyperkube kubelet \
     --config=/var/lib/kubelet/config/kubelet`,
-					},
-				}
-
-				if cloudProvider == "azure" {
-					newUnitOptions[0].Value += ` \
-    --cloud-provider=azure \
-    --cloud-config=/var/lib/kubelet/cloudprovider.conf`
-				} else if cloudProvider == "external" {
-					newUnitOptions[0].Value += ` \
+				},
+			}
+			newUnitOptions[0].Value += ` \
     --cloud-provider=external`
-				}
 
-				if withACRConfig {
-					acrCM := &corev1.ConfigMap{
-						ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: azure.CloudProviderAcrConfigName},
-						Data:       map[string]string{},
-					}
-					c.EXPECT().Get(ctx, acrCmKey, &corev1.ConfigMap{}).DoAndReturn(clientGet(acrCM))
+			acrCM := &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: azure.CloudProviderAcrConfigName},
+				Data:       map[string]string{},
+			}
+			c.EXPECT().Get(ctx, acrCmKey, &corev1.ConfigMap{}).DoAndReturn(clientGet(acrCM))
 
-					newUnitOptions[0].Value += ` \
+			newUnitOptions[0].Value += ` \
     --azure-container-registry-config=/var/lib/kubelet/acr.conf`
-				} else {
-					c.EXPECT().Get(ctx, acrCmKey, &corev1.ConfigMap{}).Return(apierrors.NewNotFound(schema.GroupResource{}, azure.CloudProviderAcrConfigName))
-				}
 
-				opts, err := ensurer.EnsureKubeletServiceUnitOptions(ctx, gctx, nil, oldUnitOptions, nil)
-				Expect(err).To(Not(HaveOccurred()))
-				Expect(opts).To(Equal(newUnitOptions))
-			},
-
-			Entry("kubelet >= 1.27, w/ acr", eContextK8s127, "external", true, false),
+			opts, err := ensurer.EnsureKubeletServiceUnitOptions(ctx, eContextK8s127, nil, oldUnitOptions, nil)
+			Expect(err).To(Not(HaveOccurred()))
+			Expect(opts).To(Equal(newUnitOptions))
+		},
 		)
 	})
 
