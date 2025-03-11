@@ -134,14 +134,8 @@ rules:
 - apiGroups:
   - azure.remedy.gardener.cloud
   resources:
-  - create
-  - get
-  - list
-  - watch
-  - patch
-  - update
-  - delete
-  - deletecollection
+  - publicipaddresses
+  - virtualmachines
   verbs:
   - create
   - get

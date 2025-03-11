@@ -7,7 +7,7 @@ rules:
 - apiGroups:
   - azure.remedy.gardener.cloud
   resources:
-  - publicipadresses
+  - publicipaddresses
   - virtualmachines  
   verbs:
   - create
