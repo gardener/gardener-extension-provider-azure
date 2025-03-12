@@ -387,8 +387,7 @@ var _ = Describe("Ensurer", func() {
 			opts, err := ensurer.EnsureKubeletServiceUnitOptions(ctx, eContextK8s127, nil, oldUnitOptions, nil)
 			Expect(err).To(Not(HaveOccurred()))
 			Expect(opts).To(Equal(newUnitOptions))
-		},
-		)
+		})
 	})
 
 	Describe("#EnsureKubeletConfiguration", func() {
