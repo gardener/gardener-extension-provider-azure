@@ -171,3 +171,11 @@ func (f azureFactory) ManagedUserIdentity() (ManagedUserIdentity, error) {
 func (f azureFactory) VirtualMachineImages() (VirtualMachineImages, error) {
 	return NewVirtualMachineImagesClient(f.auth, f.tokenCredential, f.clientOpts)
 }
+
+func (f azureFactory) BlobContainers() (BlobContainers, error) {
+	return NewBlobContainersClient(f.auth, f.tokenCredential, f.clientOpts)
+}
+
+func (f azureFactory) ManagementPolicies() (ManagementPolicies, error) {
+	return NewManagementPoliciesClient(f.auth, f.tokenCredential, f.clientOpts)
+}
