@@ -7,7 +7,9 @@ package backupbucket
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage"
 	"github.com/gardener/gardener/extensions/pkg/controller/backupbucket"
 	"github.com/gardener/gardener/extensions/pkg/util"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -18,6 +20,7 @@ import (
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
+	azuretypes "github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
 
@@ -35,17 +38,27 @@ func NewActuator(mgr manager.Manager) backupbucket.Actuator {
 		client: mgr.GetClient(),
 	}
 }
-
 func (a *actuator) Reconcile(ctx context.Context, logger logr.Logger, backupBucket *extensionsv1alpha1.BackupBucket) error {
+	return util.DetermineError(a.reconcile(ctx, logger, backupBucket), helper.KnownCodes)
+}
+func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, backupBucket *extensionsv1alpha1.BackupBucket) error {
 	backupBucketConfig, err := helper.BackupConfigFromBackupBucket(backupBucket)
 	if err != nil {
-		logger.Error(err, "failed to decode the provider specific configuration from the backupbucket resource")
-		return err
+		return logWithError(logger, err, "Failed to decode the provider specific configuration from the backupbucket resource")
+	}
+
+	bucketCloudConfiguration, err := azureclient.CloudConfiguration(backupBucketConfig.CloudConfiguration, &backupBucket.Spec.Region)
+	if err != nil {
+		return logWithError(logger, err, "Failed to determine cloud configuration")
 	}
 
 	azCloudConfiguration, err := azureclient.AzureCloudConfiguration(backupBucketConfig.CloudConfiguration, &backupBucket.Spec.Region)
 	if err != nil {
 		return err
+	}
+	storageDomain, err := azureclient.BlobStorageDomainFromCloudConfiguration(bucketCloudConfiguration)
+	if err != nil {
+		return logWithError(logger, err, "Failed to determine blob storage service domain")
 	}
 
 	factory, err := DefaultAzureClientFactoryFunc(
@@ -59,35 +72,12 @@ func (a *actuator) Reconcile(ctx context.Context, logger logr.Logger, backupBuck
 		return err
 	}
 
-	var (
-		resourceGroupName  = backupBucket.Name // current implementation uses the same name for resourceGroup and backupBucket
-		storageAccountName = GenerateStorageAccountName(backupBucket.Name)
-	)
-	// If the generated secret in the backupbucket status does not exist
-	// it means no backupbucket exists and it needs to be created.
-	if backupBucket.Status.GeneratedSecretRef == nil {
-		storageAccountKey, err := ensureResourceGroupAndStorageAccount(ctx, factory, backupBucket)
-		if err != nil {
-			logger.Error(err, "Failed to ensure the resource group and storage account")
-			return util.DetermineError(err, helper.KnownCodes)
-		}
-
-		bucketCloudConfiguration, err := azureclient.CloudConfiguration(backupBucketConfig.CloudConfiguration, &backupBucket.Spec.Region)
-		if err != nil {
-			logger.Error(err, "Failed to determine cloud configuration")
-			return err
-		}
-
-		storageDomain, err := azureclient.BlobStorageDomainFromCloudConfiguration(bucketCloudConfiguration)
-		if err != nil {
-			logger.Error(err, "Failed to determine blob storage service domain")
-			return fmt.Errorf("failed to determine blob storage service domain: %w", err)
-		}
-		// Create the generated backupbucket secret.
-		if err := a.createBackupBucketGeneratedSecret(ctx, backupBucket, storageAccountName, storageAccountKey, storageDomain); err != nil {
-			logger.Error(err, "Failed to generate the backupbucket secret")
-			return util.DetermineError(err, helper.KnownCodes)
-		}
+	resourceGroupName, storageAccountName, err := ensureResourceGroupAndStorageAccount(ctx, factory, backupBucket, &backupBucketConfig)
+	if err != nil {
+		return logWithError(logger, err, "Failed to ensure the resource group and storage account")
+	}
+	if err := a.ensureStorageAccountKey(ctx, logger, factory, resourceGroupName, storageAccountName, storageDomain, backupBucket, &backupBucketConfig); err != nil {
+		return logWithError(logger, err, "Failed to ensure the storage account key")
 	}
 
 	// add lifecycle policies to the storage account to perform delayed delete of backupentries
@@ -131,6 +121,69 @@ func (a *actuator) Reconcile(ctx context.Context, logger logr.Logger, backupBuck
 		return util.DetermineError(err, helper.KnownCodes)
 	}
 
+	return nil
+}
+
+func (a *actuator) ensureStorageAccountKey(
+	ctx context.Context,
+	logger logr.Logger,
+	factory azureclient.Factory,
+	resourceGroupName, storageAccountName, storageDomain string,
+	backupBucket *extensionsv1alpha1.BackupBucket,
+	backupBucketConfig *azure.BackupBucketConfig,
+) error {
+	// If the generated secret in the backupbucket status does not exist
+	// it means no backupbucket exists, and it needs to be created.
+	if backupBucket.Status.GeneratedSecretRef == nil {
+		storageAccountKey, err := getMostRecentKey(ctx, factory, resourceGroupName, storageAccountName)
+		if err != nil {
+			return logWithError(logger, err, "Failed to find storage account key")
+		}
+
+		// Create the generated backupbucket secret.
+		if err := a.createOrUpdateBackupBucketGeneratedSecret(ctx, backupBucket, storageAccountName, *storageAccountKey.Value, storageDomain); err != nil {
+			return logWithError(logger, err, "Failed to generate the backupbucket secret")
+		}
+	} else {
+		secret, err := a.getBackupBucketGeneratedSecret(ctx, backupBucket)
+		if err != nil {
+			return logWithError(logger, err, "Failed to get backupbucket secret")
+		}
+		var storageAccountKey *armstorage.AccountKey
+		if currKeyValue, ok := secret.Data[azuretypes.StorageKey]; !ok {
+			logger.Error(nil, "The backupbucket secret does not contain the storage account key")
+			storageAccountKey, err = getMostRecentKey(ctx, factory, resourceGroupName, storageAccountName)
+			if err != nil {
+				return logWithError(logger, err, "Failed to find storage account key")
+			}
+			// Create the generated backupbucket secret.
+			if err := a.createOrUpdateBackupBucketGeneratedSecret(ctx, backupBucket, storageAccountName, *storageAccountKey.Value, storageDomain); err != nil {
+				return logWithError(logger, err, "Failed to generate the backupbucket secret")
+			}
+		} else if backupBucketConfig.RotationConfig != nil {
+			var isRotated bool
+			storageAccountKey, isRotated, err = ensureKeyRotated(ctx, logger, factory, resourceGroupName, storageAccountName, string(currKeyValue), backupBucket, backupBucketConfig)
+			if err != nil {
+				return logWithError(logger, err, "Failed to ensure account key rotation")
+			}
+			if storageAccountKey == nil || storageAccountKey.Value == nil {
+				return logWithError(logger, err, "The backupbucket secret does not contain the storage account key")
+			}
+			if isRotated {
+				logger.Info("remove rotation annotation if necessary")
+				bbPatch := client.MergeFrom(backupBucket.DeepCopy())
+				delete(backupBucket.GetAnnotations(), azuretypes.StorageAccountKeyMustRotate)
+				if err := a.client.Patch(ctx, backupBucket, bbPatch); err != nil {
+					return logWithError(logger, err, "Failed to remove the rotation annotation")
+				}
+
+				logger.Info("Updating backupbucket with new account key", "name", *storageAccountKey.KeyName)
+				if err := a.createOrUpdateBackupBucketGeneratedSecret(ctx, backupBucket, storageAccountName, *storageAccountKey.Value, storageDomain); err != nil {
+					return logWithError(logger, err, "Failed to generate the backupbucket secret")
+				}
+			}
+		}
+	}
 	return nil
 }
 
@@ -269,4 +322,12 @@ func (a *actuator) delete(ctx context.Context, _ logr.Logger, backupBucket *exte
 
 	// Delete the generated backup secret in the garden namespace.
 	return a.deleteBackupBucketGeneratedSecret(ctx, backupBucket)
+}
+
+func logWithError(logger logr.Logger, err error, msg string) error {
+	logger.WithCallDepth(1).Error(err, msg)
+	if err == nil {
+		return fmt.Errorf("%s", strings.ToLower(msg))
+	}
+	return fmt.Errorf("%s: %w", strings.ToLower(msg), err)
 }

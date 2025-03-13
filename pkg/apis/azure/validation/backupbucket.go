@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/utils/ptr"
 
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 )
@@ -16,24 +17,55 @@ import (
 // ValidateBackupBucketConfig validates a BackupBucketConfig object.
 func ValidateBackupBucketConfig(backupBucketConfig *apisazure.BackupBucketConfig, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
+	if backupBucketConfig == nil {
+		return nil
+	}
 
-	if backupBucketConfig == nil || backupBucketConfig.Immutability == nil {
+	allErrs = append(allErrs, validateImmutability(backupBucketConfig.Immutability, fldPath.Child("immutability"))...)
+	allErrs = append(allErrs, validateKeyRotation(backupBucketConfig.RotationConfig, fldPath.Child("rotationConfig"))...)
+
+	return allErrs
+}
+func validateKeyRotation(cfg *apisazure.RotationConfig, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if cfg == nil {
+		return allErrs
+	}
+	if cfg.RotationPeriodDays < 1 {
+		return append(allErrs, field.Required(fldPath.Child("rotationPeriodDays"), "rotationPeriod must be configured if key rotation is enabled"))
+	}
+
+	if cfg.RotationPeriodDays < 2 {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("retentionPeriodDays"), cfg.RotationPeriodDays, "must be greater than 2 days"))
+	}
+
+	if cfg.ExpirationPeriodDays != nil {
+		if ptr.Deref(cfg.ExpirationPeriodDays, 0) <= cfg.RotationPeriodDays {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("expirationPeriodDays"), cfg.ExpirationPeriodDays, "must be greater than the rotation period"))
+		}
+	}
+
+	return allErrs
+}
+
+func validateImmutability(immutabilityCfg *apisazure.ImmutableConfig, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if immutabilityCfg == nil {
 		return allErrs
 	}
 
-	if backupBucketConfig.Immutability.RetentionType != apisazure.BucketLevelImmutability {
-		allErrs = append(allErrs, field.Invalid(fldPath.Child("immutability", "retentionType"), backupBucketConfig.Immutability.RetentionType, "must be 'bucket'"))
+	if immutabilityCfg.RetentionType != apisazure.BucketLevelImmutability {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("retentionType"), immutabilityCfg.RetentionType, "must be 'bucket'"))
 	}
 
 	// Azure Blob Storage immutability period can only be set in days
-	if backupBucketConfig.Immutability.RetentionPeriod.Duration < 24*time.Hour {
-		allErrs = append(allErrs, field.Invalid(fldPath.Child("immutability", "retentionPeriod"), backupBucketConfig.Immutability.RetentionPeriod.Duration.String(), "must be greater than 24h"))
+	if immutabilityCfg.RetentionPeriod.Duration < 24*time.Hour {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("retentionPeriod"), immutabilityCfg.RetentionPeriod.Duration.String(), "must be greater than 24h"))
 	}
 
-	if backupBucketConfig.Immutability.RetentionPeriod.Duration%(24*time.Hour) != 0 {
-		allErrs = append(allErrs, field.Invalid(fldPath.Child("immutability", "retentionPeriod"), backupBucketConfig.Immutability.RetentionPeriod.Duration.String(), "must be a positive integer multiple of 24h"))
+	if immutabilityCfg.RetentionPeriod.Duration%(24*time.Hour) != 0 {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("retentionPeriod"), immutabilityCfg.RetentionPeriod.Duration.String(), "must be a positive integer multiple of 24h"))
 	}
-
 	return allErrs
 }
 

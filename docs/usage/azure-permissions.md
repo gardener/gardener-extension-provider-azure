@@ -130,4 +130,7 @@ Microsoft.Storage/storageAccounts/delete
 Microsoft.Storage/storageAccounts/listkeys/action
 Microsoft.Storage/storageAccounts/read
 Microsoft.Storage/storageAccounts/write
+
+# Required to configure storage key rotation
+Microsoft.Storage/storageAccounts/regeneratekey/action
 ```

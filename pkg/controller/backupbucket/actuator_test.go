@@ -146,7 +146,7 @@ var _ = Describe("Actuator", func() {
 
 				// try creating storage account
 				azureClientFactory.EXPECT().StorageAccount().Return(azureStorageAccountClient, nil)
-				azureStorageAccountClient.EXPECT().CreateStorageAccount(ctx, name, storageAccountName, backupBucket.Spec.Region).Return(fmt.Errorf("storage account creation error test"))
+				azureStorageAccountClient.EXPECT().CreateOrUpdateStorageAccount(ctx, name, storageAccountName, backupBucket.Spec.Region, nil).Return(fmt.Errorf("storage account creation error test"))
 
 				err := a.Reconcile(ctx, logger, backupBucket)
 				Expect(err).Should(HaveOccurred())
@@ -613,7 +613,7 @@ func mockEnsureResourceGroupAndStorageAccount(
 
 	// create storage account
 	azureClientFactory.EXPECT().StorageAccount().Return(azureStorageAccountClient, nil)
-	azureStorageAccountClient.EXPECT().CreateStorageAccount(ctx, name, storageAccountName, backupBucket.Spec.Region)
+	azureStorageAccountClient.EXPECT().CreateOrUpdateStorageAccount(ctx, name, storageAccountName, backupBucket.Spec.Region, nil)
 	azureStorageAccountClient.EXPECT().ListStorageAccountKey(ctx, name, storageAccountName).Return(storageAccountKey, nil)
 }
 
