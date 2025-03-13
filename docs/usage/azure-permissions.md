@@ -140,4 +140,7 @@ Microsoft.Storage/storageAccounts/blobServices/containers/immutabilityPolicies/r
 Microsoft.Storage/storageAccounts/managementPolicies/delete
 Microsoft.Storage/storageAccounts/managementPolicies/read
 Microsoft.Storage/storageAccounts/managementPolicies/write
+
+# Required to configure storage key rotation
+Microsoft.Storage/storageAccounts/regeneratekey/action
 ```

@@ -11,6 +11,7 @@ import (
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/utils/ptr"
 
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 )
@@ -22,73 +23,114 @@ var _ = Describe("ValidateBackupBucketConfig", func() {
 		fldPath = field.NewPath("spec")
 	})
 
-	DescribeTable("validation cases",
-		func(config *apisazure.BackupBucketConfig, wantErr bool, errMsg string) {
-			errs := ValidateBackupBucketConfig(config, fldPath)
-			if wantErr {
-				Expect(errs).NotTo(BeEmpty())
-				Expect(errs[0].Error()).To(ContainSubstring(errMsg))
-			} else {
-				Expect(errs).To(BeEmpty())
-			}
-		},
-		Entry("valid config",
-			&apisazure.BackupBucketConfig{
-				Immutability: &apisazure.ImmutableConfig{
-					RetentionType:   apisazure.BucketLevelImmutability,
-					RetentionPeriod: metav1.Duration{Duration: 24 * time.Hour},
+	Context("key rotation", func() {
+		DescribeTable("validation cases",
+			func(config *apisazure.BackupBucketConfig, wantErr bool, errMsg string) {
+				errs := ValidateBackupBucketConfig(config, fldPath)
+				if wantErr {
+					Expect(errs).NotTo(BeEmpty())
+					Expect(errs[0].Error()).To(ContainSubstring(errMsg))
+				} else {
+					Expect(errs).To(BeEmpty())
+				}
+			},
+			Entry("default config", &apisazure.BackupBucketConfig{}, false, ""),
+			Entry("rotationPeriod not configured", &apisazure.BackupBucketConfig{
+				RotationConfig: &apisazure.RotationConfig{},
+			}, true, "rotationPeriod must be configured if key rotation is enabled"),
+			Entry("rotationPeriod less then acceptable", &apisazure.BackupBucketConfig{
+				RotationConfig: &apisazure.RotationConfig{
+					RotationPeriodDays: 1,
+				},
+			}, true, "must be greater than 2 days"),
+			Entry("valid config", &apisazure.BackupBucketConfig{
+				RotationConfig: &apisazure.RotationConfig{
+					RotationPeriodDays: 2,
 				},
 			}, false, ""),
-		Entry("missing retentionType",
-			&apisazure.BackupBucketConfig{
-				Immutability: &apisazure.ImmutableConfig{
-					RetentionType:   "",
-					RetentionPeriod: metav1.Duration{Duration: 1 * time.Hour},
+			Entry("has valid expirationPeriod", &apisazure.BackupBucketConfig{
+				RotationConfig: &apisazure.RotationConfig{
+					RotationPeriodDays:   20,
+					ExpirationPeriodDays: ptr.To(int32(60)),
 				},
-			}, true, "must be 'bucket'"),
-		Entry("invalid retentionType",
-			&apisazure.BackupBucketConfig{
-				Immutability: &apisazure.ImmutableConfig{
-					RetentionType:   "invalid",
-					RetentionPeriod: metav1.Duration{Duration: 1 * time.Hour},
+			}, false, ""),
+			Entry("does not have valid expirationPeriod", &apisazure.BackupBucketConfig{
+				RotationConfig: &apisazure.RotationConfig{
+					RotationPeriodDays:   20,
+					ExpirationPeriodDays: ptr.To(int32(10)),
 				},
-			}, true, "must be 'bucket'"),
-		Entry("non-positive retentionPeriod",
-			&apisazure.BackupBucketConfig{
-				Immutability: &apisazure.ImmutableConfig{
-					RetentionType:   apisazure.BucketLevelImmutability,
-					RetentionPeriod: metav1.Duration{Duration: 0},
-				},
-			}, true, "must be greater than 24h"),
-		Entry("negative retentionPeriod",
-			&apisazure.BackupBucketConfig{
-				Immutability: &apisazure.ImmutableConfig{
-					RetentionType:   apisazure.BucketLevelImmutability,
-					RetentionPeriod: metav1.Duration{Duration: -1 * time.Hour},
-				},
-			}, true, "must be greater than 24h"),
-		Entry("empty retentionPeriod",
-			&apisazure.BackupBucketConfig{
-				Immutability: &apisazure.ImmutableConfig{
-					RetentionType:   apisazure.BucketLevelImmutability,
-					RetentionPeriod: metav1.Duration{},
-				},
-			}, true, "must be greater than 24h"),
-		Entry("retentionPeriod less than 24 hours",
-			&apisazure.BackupBucketConfig{
-				Immutability: &apisazure.ImmutableConfig{
-					RetentionType:   apisazure.BucketLevelImmutability,
-					RetentionPeriod: metav1.Duration{Duration: 23 * time.Hour},
-				},
-			}, true, "must be greater than 24h"),
-		Entry("retentionPeriod is not a positive integer multiple of 24h",
-			&apisazure.BackupBucketConfig{
-				Immutability: &apisazure.ImmutableConfig{
-					RetentionType:   apisazure.BucketLevelImmutability,
-					RetentionPeriod: metav1.Duration{Duration: 27 * time.Hour},
-				},
-			}, true, "must be a positive integer multiple of 24h"),
-	)
+			}, true, "must be greater than the rotation period"),
+		)
+	})
+	Context("immutability", func() {
+		DescribeTable("validation cases",
+			func(config *apisazure.BackupBucketConfig, wantErr bool, errMsg string) {
+				errs := ValidateBackupBucketConfig(config, fldPath)
+				if wantErr {
+					Expect(errs).NotTo(BeEmpty())
+					Expect(errs[0].Error()).To(ContainSubstring(errMsg))
+				} else {
+					Expect(errs).To(BeEmpty())
+				}
+			},
+			Entry("valid config",
+				&apisazure.BackupBucketConfig{
+					Immutability: &apisazure.ImmutableConfig{
+						RetentionType:   apisazure.BucketLevelImmutability,
+						RetentionPeriod: metav1.Duration{Duration: 24 * time.Hour},
+					},
+				}, false, ""),
+			Entry("missing retentionType",
+				&apisazure.BackupBucketConfig{
+					Immutability: &apisazure.ImmutableConfig{
+						RetentionType:   "",
+						RetentionPeriod: metav1.Duration{Duration: 1 * time.Hour},
+					},
+				}, true, "must be 'bucket'"),
+			Entry("invalid retentionType",
+				&apisazure.BackupBucketConfig{
+					Immutability: &apisazure.ImmutableConfig{
+						RetentionType:   "invalid",
+						RetentionPeriod: metav1.Duration{Duration: 1 * time.Hour},
+					},
+				}, true, "must be 'bucket'"),
+			Entry("non-positive retentionPeriod",
+				&apisazure.BackupBucketConfig{
+					Immutability: &apisazure.ImmutableConfig{
+						RetentionType:   apisazure.BucketLevelImmutability,
+						RetentionPeriod: metav1.Duration{Duration: 0},
+					},
+				}, true, "must be greater than 24h"),
+			Entry("negative retentionPeriod",
+				&apisazure.BackupBucketConfig{
+					Immutability: &apisazure.ImmutableConfig{
+						RetentionType:   apisazure.BucketLevelImmutability,
+						RetentionPeriod: metav1.Duration{Duration: -1 * time.Hour},
+					},
+				}, true, "must be greater than 24h"),
+			Entry("empty retentionPeriod",
+				&apisazure.BackupBucketConfig{
+					Immutability: &apisazure.ImmutableConfig{
+						RetentionType:   apisazure.BucketLevelImmutability,
+						RetentionPeriod: metav1.Duration{},
+					},
+				}, true, "must be greater than 24h"),
+			Entry("retentionPeriod less than 24 hours",
+				&apisazure.BackupBucketConfig{
+					Immutability: &apisazure.ImmutableConfig{
+						RetentionType:   apisazure.BucketLevelImmutability,
+						RetentionPeriod: metav1.Duration{Duration: 23 * time.Hour},
+					},
+				}, true, "must be greater than 24h"),
+			Entry("retentionPeriod is not a positive integer multiple of 24h",
+				&apisazure.BackupBucketConfig{
+					Immutability: &apisazure.ImmutableConfig{
+						RetentionType:   apisazure.BucketLevelImmutability,
+						RetentionPeriod: metav1.Duration{Duration: 27 * time.Hour},
+					},
+				}, true, "must be a positive integer multiple of 24h"),
+		)
+	})
 })
 
 var _ = Describe("ValidateBackupBucketConfigUpdate", func() {
