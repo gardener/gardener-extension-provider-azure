@@ -166,6 +166,14 @@ const (
 
 	// CSISnapshotValidationName is the constant for the name of the csi-snapshot-validation-webhook component.
 	CSISnapshotValidationName = "csi-snapshot-validation" // TODO(AndreasBurger): Clean up once SnapshotValidation is removed everywhere
+
+	// BlobDeletionLifecyclePolicyName is the name of the lifecycle policy that is added to storage accounts which deletes objects after their immutability expires.
+	BlobDeletionLifecyclePolicyName = "delete-backupentry"
+	// BlobMarkedForDeletionTagKey is the tag to be added to objects to delete them after their immutability expires.
+	BlobMarkedForDeletionTagKey = "blob-marked-for-deletion"
+
+	// StorageAccountKeyMustRotate is an annotation to indicate that the storageAccountKey has to be rotated.
+	StorageAccountKeyMustRotate = "azure.provider.extensions.gardener.cloud/rotate"
 )
 
 // UsernamePrefix is a constant for the username prefix of components deployed by Azure.
