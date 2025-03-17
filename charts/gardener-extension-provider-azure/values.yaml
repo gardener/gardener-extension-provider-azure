@@ -80,6 +80,7 @@ config:
       volumeBindingMode: WaitForFirstConsumer
   featureGates:
     disableRemedyController: false
+    enableImmutableBuckets: false
 
 gardener:
   version: ""

@@ -19,6 +19,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/features"
 )
 
 // DefaultAzureClientFactoryFunc is the default function for creating a backupbucket client. It can be overridden for tests.
@@ -90,14 +91,17 @@ func (a *actuator) Reconcile(ctx context.Context, logger logr.Logger, backupBuck
 		}
 	}
 
-	// add lifecycle policies to the storage account to perform delayed delete of backupentries
-	managementPoliciesClient, err := factory.ManagementPolicies()
-	if err != nil {
-		return util.DetermineError(err, helper.KnownCodes)
-	}
-	if err = managementPoliciesClient.CreateOrUpdate(ctx, resourceGroupName, storageAccountName, 0); err != nil {
-		logger.Error(err, "Failed to add the lifecycle policy on the storage account")
-		return util.DetermineError(err, helper.KnownCodes)
+	immutableBucketsFeatureEnabled := features.ExtensionFeatureGate.Enabled(features.EnableImmutableBuckets)
+	if immutableBucketsFeatureEnabled {
+		// add lifecycle policies to the storage account to perform delayed delete of backupentries
+		managementPoliciesClient, err := factory.ManagementPolicies()
+		if err != nil {
+			return util.DetermineError(err, helper.KnownCodes)
+		}
+		if err = managementPoliciesClient.CreateOrUpdate(ctx, resourceGroupName, storageAccountName, 0); err != nil {
+			logger.Error(err, "Failed to add or update the lifecycle policy on the storage account")
+			return util.DetermineError(err, helper.KnownCodes)
+		}
 	}
 
 	blobContainersClient, err := factory.BlobContainers()
@@ -121,14 +125,16 @@ func (a *actuator) Reconcile(ctx context.Context, logger logr.Logger, backupBuck
 		}
 	}
 
-	// set the immutability policy on the container as configured in the backupBucket
-	if err = ensureBackupBucketImmutabilityPolicy(
-		ctx, logger,
-		blobContainersClient, backupBucketConfig,
-		resourceGroupName, storageAccountName, backupBucket.Name,
-	); err != nil {
-		logger.Error(err, "Errored while updating the bucket")
-		return util.DetermineError(err, helper.KnownCodes)
+	if immutableBucketsFeatureEnabled {
+		// set the immutability policy on the container as configured in the backupBucket
+		if err = ensureBackupBucketImmutabilityPolicy(
+			ctx, logger,
+			blobContainersClient, backupBucketConfig,
+			resourceGroupName, storageAccountName, backupBucket.Name,
+		); err != nil {
+			logger.Error(err, "Errored while updating the bucket")
+			return util.DetermineError(err, helper.KnownCodes)
+		}
 	}
 
 	return nil

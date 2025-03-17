@@ -33,6 +33,7 @@ import (
 	azclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	mockazureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client/mock"
 	. "github.com/gardener/gardener-extension-provider-azure/pkg/controller/backupbucket"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/features"
 )
 
 const (
@@ -108,6 +109,8 @@ var _ = Describe("Actuator", func() {
 
 		storageAccountName = GenerateStorageAccountName(backupBucket.Name)
 		resourceGroupName = backupBucket.Name
+
+		Expect(features.ExtensionFeatureGate.Set(fmt.Sprintf("%s=%s", features.EnableImmutableBuckets, "true"))).ShouldNot(HaveOccurred())
 	})
 
 	AfterEach(func() {
