@@ -130,4 +130,14 @@ Microsoft.Storage/storageAccounts/delete
 Microsoft.Storage/storageAccounts/listkeys/action
 Microsoft.Storage/storageAccounts/read
 Microsoft.Storage/storageAccounts/write
+
+# Required if Shoot should act as Seed with immutable ABS containers.
+Microsoft.Storage/storageAccounts/blobServices/containers/immutabilityPolicies/extend/action
+Microsoft.Storage/storageAccounts/blobServices/containers/immutabilityPolicies/delete
+Microsoft.Storage/storageAccounts/blobServices/containers/immutabilityPolicies/write
+Microsoft.Storage/storageAccounts/blobServices/containers/immutabilityPolicies/lock/action
+Microsoft.Storage/storageAccounts/blobServices/containers/immutabilityPolicies/read
+Microsoft.Storage/storageAccounts/managementPolicies/delete
+Microsoft.Storage/storageAccounts/managementPolicies/read
+Microsoft.Storage/storageAccounts/managementPolicies/write
 ```

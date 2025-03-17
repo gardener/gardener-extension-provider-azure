@@ -27,7 +27,7 @@ type BackupBucketConfig struct {
 	CloudConfiguration *CloudConfiguration `json:"cloudConfiguration,omitempty"`
 	// Immutability defines the immutability config for the backup bucket.
 	// +optional
-	Immutability *ImmutableConfig `json:"immutability"`
+	Immutability *ImmutableConfig `json:"immutability,omitempty"`
 }
 
 // ImmutableConfig represents the immutability configuration for a backup bucket.
