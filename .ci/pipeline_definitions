@@ -43,6 +43,9 @@ gardener-extension-provider-azure:
             github_hostname: 'github.com'
       publish:
         oci-builder: 'docker-buildx'
+        platforms:
+        - 'linux/x86_64'
+        - 'linux/arm64'
         dockerimages:
           gardener-extension-provider-azure:
             image: europe-docker.pkg.dev/gardener-project/snapshots/gardener/extensions/provider-azure
