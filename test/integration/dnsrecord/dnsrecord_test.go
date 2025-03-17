@@ -304,11 +304,6 @@ var _ = Describe("DNSRecord tests", func() {
 			runTest(dns, nil, nil, nil, nil)
 		})
 
-		// It("should successfully create and delete a dnsrecord of type CNAME as an alias target (IPv4)", func() {
-		// 	dns := newDNSRecord(testName, zoneName, nil, extensionsv1alpha1.DNSRecordTypeCNAME, []string{"foo.elb.eu-west-1.amazonaws.com"}, nil)
-		// 	runTest(dns, nil, nil, nil, nil)
-		// })
-
 		It("should successfully create and delete a dnsrecord of type TXT", func() {
 			dns := newDNSRecord(testName, zoneName, ptr.To(zoneID), extensionsv1alpha1.DNSRecordTypeTXT, []string{"foo", "bar"}, nil)
 			runTest(dns, nil, nil, nil, nil)
@@ -420,6 +415,7 @@ func waitUntilDNSRecordDeleted(ctx context.Context, c client.Client, log logr.Lo
 
 func newDNSRecord(namespace string, zoneName string, zone *string, recordType extensionsv1alpha1.DNSRecordType, values []string, ttl *int64) *extensionsv1alpha1.DNSRecord {
 	name := "dnsrecord-" + randomString()
+	resourceGroupZone := testName + "/" + *zone
 	return &extensionsv1alpha1.DNSRecord{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -433,7 +429,7 @@ func newDNSRecord(namespace string, zoneName string, zone *string, recordType ex
 				Name:      "dnsrecord",
 				Namespace: namespace,
 			},
-			Zone:       zone,
+			Zone:       &resourceGroupZone,
 			Name:       name + "." + zoneName,
 			RecordType: recordType,
 			Values:     values,
@@ -501,27 +497,11 @@ func deleteDNSRecordSet(ctx context.Context, clientSet *azureClientSet, dns *ext
 	Expect(err).NotTo(HaveOccurred())
 }
 
-func getRecordType(dns *extensionsv1alpha1.DNSRecord) string {
-	return string(dns.Spec.RecordType)
-}
-
 func ensureTrailingDot(name string) string {
 	if strings.HasSuffix(name, ".") {
 		return name
 	}
 	return name + "."
-}
-
-func ensureQuoted(s string) string {
-	if s[0] != '"' || s[len(s)-1] != '"' {
-		return fmt.Sprintf(`"%s"`, s)
-	}
-	return s
-}
-
-func normalizeZoneID(zoneID string) string {
-	parts := strings.Split(zoneID, "/")
-	return parts[len(parts)-1]
 }
 
 func randomString() string {
