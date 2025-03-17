@@ -79,3 +79,10 @@ spec:
         - name: REGION
           type: env
           value: westeurope
+    - name: dnsrecord-test
+      definition:
+        name: dnsrecord-test
+        config:
+        - name: USE_EXISTING_CLUSTER
+          type: env
+          value: "true"

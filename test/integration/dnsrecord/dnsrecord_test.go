@@ -195,12 +195,7 @@ var _ = BeforeSuite(func() {
 	Expect(extensionsv1alpha1.AddToScheme(mgr.GetScheme())).To(Succeed())
 	Expect(azureinstall.AddToScheme(mgr.GetScheme())).To(Succeed())
 
-	Expect(dnsrecordctrl.AddToManagerWithOptions(ctx, mgr, dnsrecordctrl.AddOptions{
-		// RateLimiter: dnsrecordctrl.RateLimiterOptions{
-		// 	Limit:       rate.Inf,
-		// 	WaitTimeout: 1 * time.Second,
-		// },
-	})).To(Succeed())
+	Expect(dnsrecordctrl.AddToManagerWithOptions(ctx, mgr, dnsrecordctrl.AddOptions{})).To(Succeed())
 
 	var mgrContext context.Context
 	mgrContext, mgrCancel = context.WithCancel(ctx)
