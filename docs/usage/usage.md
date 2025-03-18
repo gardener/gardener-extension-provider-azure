@@ -704,6 +704,10 @@ Some key facts about VMSS Flex based clusters:
 
 ## BackupBucketConfig
 
+The extension provides a gated feature currently in alpha called `enableImmutableBuckets`.
+To make use of this feature, and enable the extension to react to the configuration below, you will need to set `config.featureGates.enableImmutableBuckets: true` in your helm charts' `values.yaml`. See [values.yaml](../../charts/gardener-extension-provider-azure/values.yaml) for an example.
+Before enabling this feature, you will need to add additional permissions to your Azure credential. Please check the linked section in [docs/usage/azure-permissions.md](/docs/usage/azure-permissions.md#microsoftstorage).
+
 `BackupBucketConfig` describes the configuration that needs to be passed over for creation of the backup bucket infrastructure. Configuration like immutability (WORM, i.e. write-once-read-many) that can be set on the bucket are specified here. Objects in the bucket will inherit the immutability duration which is set on the bucket, and they can not be modified or deleted for that duration.
 
 This extension supports creating (and migrating already existing buckets if enabled) to use [container-level WORM policies](https://learn.microsoft.com/en-us/azure/storage/blobs/immutable-container-level-worm-policies).
@@ -723,7 +727,7 @@ immutability:
 - **`retentionPeriod`**: Defines the duration for which objects in the bucket will remain immutable. Azure Blob Storage only supports immutability durations in days, therefore this field must be set as multiples of 24h.
 - **`locked`**: A boolean indicating whether the retention policy is locked. Once locked, the policy cannot be removed or shortened, ensuring immutability. Learn more about locking policies [here](https://learn.microsoft.com/en-us/azure/storage/blobs/immutable-policy-configure-container-scope?tabs=azure-portal#lock-a-time-based-retention-policy).
 
-To configure a `BackupBucket` with immutability, include the `BackupBucketConfig` in the `ProviderConfig` of the `BackupBucket` resource. If the `locked` field is set to `true`, the retention policy will be locked, preventing further changes.
+To configure a `BackupBucket` with immutability, include the `BackupBucketConfig` in the `providerConfig` of the `BackupBucket` resource. If the `locked` field is set to `true`, the retention policy will be locked, preventing further changes.
 
 Here is an example of configuring a `BackupBucket` with immutability:
 

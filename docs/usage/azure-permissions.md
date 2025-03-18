@@ -2,7 +2,7 @@
 
 The following document describes the required Azure actions manage a Shoot cluster on Azure split by the different Azure provider/services.
 
-Be aware some actions are just required if particilar deployment sceanrios or features e.g. bring your own vNet, use Azure-file, let the Shoot act as Seed etc. should be used.
+Be aware some actions are just required if particular deployment scenarios or features e.g. bring your own vNet, use Azure-file, let the Shoot act as Seed, immutable buckets, etc. should be used.
 
 ## `Microsoft.Compute`
 ```
