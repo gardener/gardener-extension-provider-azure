@@ -15,7 +15,14 @@ rules:
   resources:
   - configmaps
   verbs:
-  - "*"
+  - create
+  - get
+  - list
+  - watch
+  - patch
+  - update
+  - delete
+  - deletecollection
 - apiGroups:
   - coordination.k8s.io
   resources:
