@@ -34,7 +34,7 @@ type AddOptions struct {
 // The opts.Reconciler is being set with a newly instantiated actuator.
 func AddToManagerWithOptions(_ context.Context, mgr manager.Manager, opts AddOptions) error {
 	return backupbucket.Add(mgr, backupbucket.AddArgs{
-		Actuator:          newActuator(mgr),
+		Actuator:          NewActuator(mgr),
 		ControllerOptions: opts.Controller,
 		Predicates:        backupbucket.DefaultPredicates(opts.IgnoreOperationAnnotation),
 		Type:              azure.Type,

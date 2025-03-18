@@ -29,4 +29,7 @@ data:
 {{- if .Values.config.featureGates.disableRemedyController }}
       DisableRemedyController: {{ .Values.config.featureGates.disableRemedyController }}
 {{- end }}
+{{- if .Values.config.featureGates.enableImmutableBuckets }}
+      EnableImmutableBuckets: {{ .Values.config.featureGates.enableImmutableBuckets }}
+{{- end }}
 {{- end }}
