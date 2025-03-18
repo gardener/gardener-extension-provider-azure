@@ -171,11 +171,13 @@ func (a *actuator) ensureStorageAccountKey(
 				return logWithError(logger, err, "The backupbucket secret does not contain the storage account key")
 			}
 			if isRotated {
-				logger.Info("remove rotation annotation if necessary")
-				backupBucketPatch := client.MergeFrom(backupBucket.DeepCopy())
-				delete(backupBucket.GetAnnotations(), azuretypes.StorageAccountKeyMustRotate)
-				if err := a.client.Patch(ctx, backupBucket, backupBucketPatch); err != nil {
-					return logWithError(logger, err, "Failed to remove the rotation annotation")
+				if _, ok := backupBucket.GetAnnotations()[azuretypes.StorageAccountKeyMustRotate]; ok {
+					logger.Info("remove rotation annotation if necessary")
+					backupBucketPatch := client.MergeFrom(backupBucket.DeepCopy())
+					delete(backupBucket.GetAnnotations(), azuretypes.StorageAccountKeyMustRotate)
+					if err := a.client.Patch(ctx, backupBucket, backupBucketPatch); err != nil {
+						return logWithError(logger, err, "Failed to remove the rotation annotation")
+					}
 				}
 
 				logger.Info("Updating backupbucket with new account key", "name", *storageAccountKey.KeyName)
