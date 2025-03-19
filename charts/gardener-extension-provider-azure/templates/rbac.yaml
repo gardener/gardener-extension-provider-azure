@@ -134,9 +134,19 @@ rules:
 - apiGroups:
   - azure.remedy.gardener.cloud
   resources:
-  - "*"
+  - publicipaddresses
+  - publicipaddresses/status
+  - virtualmachines
+  - virtualmachines/status
   verbs:
-  - "*"
+  - delete
+  - deletecollection
+  - get
+  - list
+  - patch
+  - create
+  - update
+  - watch
 - apiGroups:
   - policy
   resources:
