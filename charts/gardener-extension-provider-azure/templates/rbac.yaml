@@ -63,6 +63,16 @@ rules:
   - update
   - patch
 - apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  resourceNames:
+  - remedy-controller-azure-leader-election
+  verbs:
+  - get
+  - watch
+  - update
+- apiGroups:
   - ""
   - apps
   - batch
@@ -135,9 +145,7 @@ rules:
   - azure.remedy.gardener.cloud
   resources:
   - publicipaddresses
-  - publicipaddresses/status
   - virtualmachines
-  - virtualmachines/status
   verbs:
   - delete
   - deletecollection
