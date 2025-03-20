@@ -58,19 +58,9 @@ rules:
   resourceNames:
   - provider-azure-leader-election
   - gardener-extension-heartbeat
-  verbs:
-  - get
-  - update
-  - patch
-- apiGroups:
-  - coordination.k8s.io
-  resources:
-  - leases
-  resourceNames:
   - remedy-controller-azure-leader-election
   verbs:
   - get
-  - watch
   - update
 - apiGroups:
   - ""
