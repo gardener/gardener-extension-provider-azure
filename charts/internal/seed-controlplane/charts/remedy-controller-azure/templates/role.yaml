@@ -8,9 +8,7 @@ rules:
   - azure.remedy.gardener.cloud
   resources:
   - publicipaddresses
-  - publicipaddresses/status
   - virtualmachines
-  - virtualmachines/status
   verbs:
   - delete
   - deletecollection
