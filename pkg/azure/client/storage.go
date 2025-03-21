@@ -66,12 +66,18 @@ func NewBlobStorageClient(_ context.Context, storageAccountName, storageAccountK
 	return &BlobStorageClient{containerClient}, err
 }
 
-// NewBlobStorageClientFromSecretRef creates a client for an Azure Blob storage by reading auth information from secret reference for the container <containerName>.
+// NewBlobStorageClientFromSecretRef creates a client for an Azure Blob storage by reading auth information from a secret reference.
 func NewBlobStorageClientFromSecretRef(ctx context.Context, client client.Client, secretRef *corev1.SecretReference, containerName string) (*BlobStorageClient, error) {
 	secret, err := extensionscontroller.GetSecretByReference(ctx, client, secretRef)
 	if err != nil {
 		return nil, err
 	}
+
+	return NewBlobStorageClientFromSecret(ctx, secret, containerName)
+}
+
+// NewBlobStorageClientFromSecret creates a client for an Azure Blob storage by reading auth information from a secret for the container <containerName>.
+func NewBlobStorageClientFromSecret(ctx context.Context, secret *corev1.Secret, containerName string) (*BlobStorageClient, error) {
 	storageAccountName, ok := secret.Data[azure.StorageAccount]
 	if !ok {
 		return nil, fmt.Errorf("secret %s/%s doesn't have a storage account", secret.Namespace, secret.Name)

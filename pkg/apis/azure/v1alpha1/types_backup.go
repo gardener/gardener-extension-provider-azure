@@ -28,6 +28,8 @@ type BackupBucketConfig struct {
 	// Immutability defines the immutability config for the backup bucket.
 	// +optional
 	Immutability *ImmutableConfig `json:"immutability,omitempty"`
+	// RotationConfig controls the behavior for the rotation of storage account keys.
+	RotationConfig *RotationConfig `json:"rotationConfig,omitempty"`
 }
 
 // ImmutableConfig represents the immutability configuration for a backup bucket.
@@ -43,4 +45,12 @@ type ImmutableConfig struct {
 	// Locked indicates whether the immutable retention policy is locked for the backup bucket.
 	// If set to true, the retention policy cannot be removed or the retention period reduced, enforcing immutability.
 	Locked bool `json:"locked"`
+}
+
+// RotationConfig controls the behavior for the rotation of storage account keys.
+type RotationConfig struct {
+	// RotationPeriod is the period after the creation of the currently used key, that a key rotation will be triggered.
+	RotationPeriodDays int32 `json:"rotationPeriodDays"`
+	// ExpirationPeriod sets the policy on the storage account to expire stale storage account keys. Can only be configured if `rotationPeriod` is configured.
+	ExpirationPeriodDays *int32 `json:"expirationPeriodDays,omitempty"`
 }
