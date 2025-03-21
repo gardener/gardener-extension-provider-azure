@@ -193,3 +193,14 @@ integration-test-bastion:
 		--client-id='$(shell cat $(CLIENT_ID_FILE))' \
 		--client-secret='$(shell cat $(CLIENT_SECRET_FILE))' \
 		--region=$(REGION)
+
+.PHONY: integration-test-dnsrecord
+integration-test-dnsrecord:
+	@bash $(GARDENER_HACK_DIR)/test-integration.sh -timeout=0 ./test/integration/dnsrecord \
+		--v -ginkgo.v -ginkgo.show-node-events \
+		--kubeconfig=${KUBECONFIG} \
+		--subscription-id='$(shell cat $(SUBSCRIPTION_ID_FILE))' \
+		--tenant-id='$(shell cat $(TENANT_ID_FILE))' \
+		--client-id='$(shell cat $(CLIENT_ID_FILE))' \
+		--client-secret='$(shell cat $(CLIENT_SECRET_FILE))' \
+		--region=$(REGION)
