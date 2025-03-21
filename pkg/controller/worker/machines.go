@@ -534,11 +534,13 @@ func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPo
 
 // workerPoolHashDataV2 adds additional provider-specific data points to consider to the given data.
 func (w workerDelegate) workerPoolHashDataV2(workerConfig api.WorkerConfig, additionalData []string) ([]string, error) {
-	hashData := make([]string, len(additionalData))
-	copy(hashData, additionalData)
+	hashData := append([]string{}, additionalData...)
 
-	if workerConfig.DiagnosticsProfile != nil && workerConfig.DiagnosticsProfile.StorageURI != nil {
-		hashData = append(hashData, *workerConfig.DiagnosticsProfile.StorageURI)
+	if workerConfig.DiagnosticsProfile != nil && workerConfig.DiagnosticsProfile.Enabled {
+		hashData = append(hashData, "DiagnosticsProfileEnabled")
+		if workerConfig.DiagnosticsProfile.StorageURI != nil {
+			hashData = append(hashData, *workerConfig.DiagnosticsProfile.StorageURI)
+		}
 	}
 
 	return hashData, nil
