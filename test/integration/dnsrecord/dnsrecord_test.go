@@ -349,15 +349,18 @@ var _ = Describe("DNSRecord tests", func() {
 				[]string{"3.3.3.3", "1.1.1.1"},
 				func() {
 					By("creating Azure DNS recordset")
-					Expect(clientSet.dnsRecordSet.CreateOrUpdate(ctx, testName, zoneName, dns.Spec.Name, armdns.RecordTypeA, recordSet, nil)).To(Succeed())
+					_, err := clientSet.dnsRecordSet.CreateOrUpdate(ctx, testName, zoneName, dns.Name, armdns.RecordTypeA, recordSet, nil)
+					Expect(err).ToNot(HaveOccurred())
 				},
 				func() {
 					By("updating Azure DNS recordset")
-					Expect(clientSet.dnsRecordSet.CreateOrUpdate(ctx, testName, zoneName, dns.Spec.Name, armdns.RecordTypeA, recordSet, nil)).To(Succeed())
+					_, err := clientSet.dnsRecordSet.CreateOrUpdate(ctx, testName, zoneName, dns.Name, armdns.RecordTypeA, recordSet, nil)
+					Expect(err).ToNot(HaveOccurred())
 				},
 				func() {
 					By("updating Azure DNS recordset")
-					Expect(clientSet.dnsRecordSet.CreateOrUpdate(ctx, testName, zoneName, dns.Spec.Name, armdns.RecordTypeA, recordSet, nil)).To(Succeed())
+					_, err := clientSet.dnsRecordSet.CreateOrUpdate(ctx, testName, zoneName, dns.Name, armdns.RecordTypeA, recordSet, nil)
+					Expect(err).ToNot(HaveOccurred())
 				},
 			)
 		})
@@ -374,12 +377,14 @@ var _ = Describe("DNSRecord tests", func() {
 				nil,
 				func() {
 					By("creating Azure DNS recordset")
-					Expect(clientSet.dnsRecordSet.CreateOrUpdate(ctx, testName, zoneName, dns.Spec.Name, armdns.RecordTypeA, recordSet, nil)).To(Succeed())
+					_, err := clientSet.dnsRecordSet.CreateOrUpdate(ctx, testName, zoneName, dns.Name, armdns.RecordTypeA, recordSet, nil)
+					Expect(err).ToNot(HaveOccurred())
 				},
 				nil,
 				func() {
 					By("deleting Azure DNS recordset")
-					Expect(clientSet.dnsRecordSet.Delete(ctx, testName, zoneName, dns.Spec.Name, armdns.RecordTypeA, nil)).To(Succeed())
+					_, err := clientSet.dnsRecordSet.Delete(ctx, testName, zoneName, dns.Name, armdns.RecordTypeA, nil)
+					Expect(err).ToNot(HaveOccurred())
 				},
 			)
 		})
