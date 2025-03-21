@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
@@ -443,7 +442,7 @@ func waitUntilDNSRecordDeleted(ctx context.Context, c client.Client, log logr.Lo
 
 func newDNSRecord(namespace string, zoneName string, zone *string, recordType extensionsv1alpha1.DNSRecordType, values []string, ttl *int64) *extensionsv1alpha1.DNSRecord {
 	name := "dnsrecord-" + randomString()
-	resourceGroupZone := testName + "/" + *zone
+	resourceGroupZone := testName + "/" + zoneName
 	return &extensionsv1alpha1.DNSRecord{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -492,14 +491,15 @@ func deleteResourceGroup(ctx context.Context, clientSet *azureClientSet, groupNa
 
 func verifyDNSRecordSet(ctx context.Context, clientSet *azureClientSet, dns *extensionsv1alpha1.DNSRecord) {
 	recordType := armdns.RecordType(dns.Spec.RecordType)
-	response, err := clientSet.dnsRecordSet.Get(ctx, testName, zoneName, dns.Spec.Name, recordType, &armdns.RecordSetsClientGetOptions{})
+	response, err := clientSet.dnsRecordSet.Get(ctx, testName, zoneName, dns.Name, recordType, &armdns.RecordSetsClientGetOptions{})
 	Expect(err).NotTo(HaveOccurred())
 
 	rrs := response.RecordSet
 	Expect(response.RecordSet).NotTo(BeNil())
 
-	Expect(rrs.Name).To(PointTo(Equal(ensureTrailingDot(dns.Spec.Name))))
-	Expect(rrs.Type).To(Equal(recordType))
+	expectedType := string("Microsoft.Network/dnszones/" + recordType)
+	Expect(rrs.Name).To(PointTo(Equal(dns.Name)))
+	Expect(rrs.Type).To(PointTo(Equal(expectedType)))
 	Expect(rrs.Properties.TTL).To(PointTo(Equal(ptr.Deref(dns.Spec.TTL, 120))))
 
 	switch recordType {
@@ -534,13 +534,6 @@ func verifyDNSRecordSetDeleted(ctx context.Context, clientSet *azureClientSet, d
 func deleteDNSRecordSet(ctx context.Context, clientSet *azureClientSet, dns *extensionsv1alpha1.DNSRecord) {
 	_, err := clientSet.dnsRecordSet.Delete(ctx, testName, zoneName, dns.Spec.Name, armdns.RecordType(dns.Spec.RecordType), &armdns.RecordSetsClientDeleteOptions{})
 	Expect(err).NotTo(HaveOccurred())
-}
-
-func ensureTrailingDot(name string) string {
-	if strings.HasSuffix(name, ".") {
-		return name
-	}
-	return name + "."
 }
 
 func randomString() string {
