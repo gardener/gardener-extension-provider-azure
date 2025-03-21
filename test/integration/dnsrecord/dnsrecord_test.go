@@ -324,24 +324,24 @@ var runTest = func(dns *extensionsv1alpha1.DNSRecord, newValues []string, before
 var _ = Describe("DNSRecord tests", func() {
 	Context("when a DNS recordset doesn't exist and is not changed or deleted before dnsrecord deletion", func() {
 		It("should successfully create and delete a dnsrecord of type A", func() {
-			dns := newDNSRecord(testName, zoneName, nil, extensionsv1alpha1.DNSRecordTypeA, []string{"1.1.1.1", "2.2.2.2"}, ptr.To[int64](300))
+			dns := newDNSRecord(testName, zoneName, extensionsv1alpha1.DNSRecordTypeA, []string{"1.1.1.1", "2.2.2.2"}, ptr.To[int64](300))
 			runTest(dns, nil, nil, nil, nil)
 		})
 
 		It("should successfully create and delete a dnsrecord of type CNAME", func() {
-			dns := newDNSRecord(testName, zoneName, ptr.To(zoneID), extensionsv1alpha1.DNSRecordTypeCNAME, []string{"foo.example.com"}, ptr.To[int64](600))
+			dns := newDNSRecord(testName, zoneName, extensionsv1alpha1.DNSRecordTypeCNAME, []string{"foo.example.com"}, ptr.To[int64](600))
 			runTest(dns, nil, nil, nil, nil)
 		})
 
 		It("should successfully create and delete a dnsrecord of type TXT", func() {
-			dns := newDNSRecord(testName, zoneName, ptr.To(zoneID), extensionsv1alpha1.DNSRecordTypeTXT, []string{"foo", "bar"}, nil)
+			dns := newDNSRecord(testName, zoneName, extensionsv1alpha1.DNSRecordTypeTXT, []string{"foo", "bar"}, nil)
 			runTest(dns, nil, nil, nil, nil)
 		})
 	})
 
 	Context("when a DNS recordset exists and is changed before dnsrecord update and deletion", func() {
 		It("should successfully create, update, and delete a dnsrecord", func() {
-			dns := newDNSRecord(testName, zoneName, ptr.To(zoneID), extensionsv1alpha1.DNSRecordTypeA, []string{"1.1.1.1", "2.2.2.2"}, ptr.To[int64](300))
+			dns := newDNSRecord(testName, zoneName, extensionsv1alpha1.DNSRecordTypeA, []string{"1.1.1.1", "2.2.2.2"}, ptr.To[int64](300))
 			aRecord := armdns.ARecord{IPv4Address: ptr.To("8.8.8.8")}
 			recordSet := armdns.RecordSet{Properties: &armdns.RecordSetProperties{TTL: ptr.To(int64(120)), ARecords: []*armdns.ARecord{&aRecord}}}
 
@@ -369,7 +369,7 @@ var _ = Describe("DNSRecord tests", func() {
 
 	Context("when a DNS recordset exists and is deleted before dnsrecord deletion", func() {
 		It("should successfully create and delete a dnsrecord", func() {
-			dns := newDNSRecord(testName, zoneName, nil, extensionsv1alpha1.DNSRecordTypeA, []string{"1.1.1.1", "2.2.2.2"}, ptr.To[int64](300))
+			dns := newDNSRecord(testName, zoneName, extensionsv1alpha1.DNSRecordTypeA, []string{"1.1.1.1", "2.2.2.2"}, ptr.To[int64](300))
 			aRecord := armdns.ARecord{IPv4Address: ptr.To("8.8.8.8")}
 			recordSet := armdns.RecordSet{Properties: &armdns.RecordSetProperties{TTL: ptr.To(int64(120)), ARecords: []*armdns.ARecord{&aRecord}}}
 
@@ -447,7 +447,7 @@ func waitUntilDNSRecordDeleted(ctx context.Context, c client.Client, log logr.Lo
 	)).To(Succeed())
 }
 
-func newDNSRecord(namespace string, zoneName string, zone *string, recordType extensionsv1alpha1.DNSRecordType, values []string, ttl *int64) *extensionsv1alpha1.DNSRecord {
+func newDNSRecord(namespace string, zoneName string, recordType extensionsv1alpha1.DNSRecordType, values []string, ttl *int64) *extensionsv1alpha1.DNSRecord {
 	name := "dnsrecord-" + randomString()
 	resourceGroupZone := testName + "/" + zoneName
 	return &extensionsv1alpha1.DNSRecord{
