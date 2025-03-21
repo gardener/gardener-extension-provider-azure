@@ -15,6 +15,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/dns/armdns"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/extensions"
@@ -46,10 +47,12 @@ var (
 	clientSecret   = flag.String("client-secret", "", "Azure client secret")
 	subscriptionId = flag.String("subscription-id", "", "Azure subscription ID")
 	tenantId       = flag.String("tenant-id", "", "Azure tenant ID")
+	region         = flag.String("region", "", "Azure region")
 	logLevel       = flag.String("logLevel", "", "Log level (debug, info, error)")
 )
 
 type azureClientSet struct {
+	groups       *armresources.ResourceGroupsClient
 	dnsZone      *armdns.ZonesClient
 	dnsRecordSet *armdns.RecordSetsClient
 }
@@ -59,6 +62,12 @@ func newAzureClientSet(subscriptionId, tenantId, clientId, clientSecret string) 
 	if err != nil {
 		return nil, err
 	}
+
+	groupsClient, err := armresources.NewResourceGroupsClient(subscriptionId, credential, nil)
+	if err != nil {
+		return nil, err
+	}
+
 	factory, err := armdns.NewClientFactory(subscriptionId, credential, nil)
 	if err != nil {
 		return nil, err
@@ -67,6 +76,7 @@ func newAzureClientSet(subscriptionId, tenantId, clientId, clientSecret string) 
 	dnsRecordSet := factory.NewRecordSetsClient()
 
 	return &azureClientSet{
+		groups:       groupsClient,
 		dnsZone:      dnsZone,
 		dnsRecordSet: dnsRecordSet,
 	}, nil
@@ -84,6 +94,9 @@ func validateFlags() {
 	}
 	if len(*clientSecret) == 0 {
 		panic("need an Azure client secret")
+	}
+	if len(*region) == 0 {
+		panic("need an Azure region")
 	}
 	if len(*logLevel) == 0 {
 		logLevel = ptr.To(logger.DebugLevel)
@@ -129,8 +142,8 @@ var _ = BeforeSuite(func() {
 		By("running cleanup actions")
 		framework.RunCleanupActions()
 
-		By("deleting Azure DNS hosted zone")
-		deleteDNSHostedZone(ctx, clientSet, zoneID)
+		By("deleting Azure resource group")
+		deleteResourceGroup(ctx, clientSet, testName)
 
 		By("tearing down shoot environment")
 		teardownShootEnvironment(ctx, c, namespace, secret, cluster)
@@ -223,6 +236,9 @@ var _ = BeforeSuite(func() {
 
 	By("setting up shoot environment")
 	setupShootEnvironment(ctx, c, namespace, secret, cluster)
+
+	By("creating Azure resource group")
+	createResourceGroup(ctx, clientSet, testName, *region)
 
 	By("creating Azure DNS hosted zone")
 	zoneID = createDNSHostedZone(ctx, clientSet, zoneName)
@@ -434,13 +450,24 @@ func newDNSRecord(namespace string, zoneName string, zone *string, recordType ex
 }
 
 func createDNSHostedZone(ctx context.Context, clientSet *azureClientSet, zoneName string) string {
-	response, err := clientSet.dnsZone.CreateOrUpdate(ctx, testName, zoneName, armdns.Zone{}, &armdns.ZonesClientCreateOrUpdateOptions{})
+	global := "global"
+	response, err := clientSet.dnsZone.CreateOrUpdate(ctx, testName, zoneName, armdns.Zone{
+		Location: &global,
+	}, &armdns.ZonesClientCreateOrUpdateOptions{})
 	Expect(err).NotTo(HaveOccurred())
-	return *response.ID
+	zoneID := testName + "/" + *response.Name
+	return zoneID
 }
 
-func deleteDNSHostedZone(ctx context.Context, clientSet *azureClientSet, zoneID string) {
-	poller, err := clientSet.dnsZone.BeginDelete(ctx, testName, zoneID, &armdns.ZonesClientBeginDeleteOptions{})
+func createResourceGroup(ctx context.Context, clientSet *azureClientSet, groupName string, region string) {
+	_, err := clientSet.groups.CreateOrUpdate(ctx, groupName, armresources.ResourceGroup{
+		Location: ptr.To(region),
+	}, nil)
+	Expect(err).ToNot(HaveOccurred())
+}
+
+func deleteResourceGroup(ctx context.Context, clientSet *azureClientSet, groupName string) {
+	poller, err := clientSet.groups.BeginDelete(ctx, groupName, nil)
 	Expect(err).NotTo(HaveOccurred())
 	_, err = poller.PollUntilDone(ctx, nil)
 	Expect(err).NotTo(HaveOccurred())

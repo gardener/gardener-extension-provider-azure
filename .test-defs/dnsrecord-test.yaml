@@ -16,5 +16,6 @@ spec:
     --tenant-id=${TENANT_ID}
     --client-id=${CLIENT_ID}
     --client-secret=${CLIENT_SECRET}
+    --region=${REGION}
   
   image: golang:1.24
