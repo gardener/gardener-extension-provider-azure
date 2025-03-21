@@ -40,6 +40,7 @@ import (
 	azureinstall "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/install"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	dnsrecordctrl "github.com/gardener/gardener-extension-provider-azure/pkg/controller/dnsrecord"
+	. "github.com/gardener/gardener-extension-provider-azure/test/utils"
 )
 
 var (
@@ -525,10 +526,8 @@ func verifyDNSRecordSet(ctx context.Context, clientSet *azureClientSet, dns *ext
 }
 
 func verifyDNSRecordSetDeleted(ctx context.Context, clientSet *azureClientSet, dns *extensionsv1alpha1.DNSRecord) {
-	response, err := clientSet.dnsRecordSet.Get(ctx, testName, zoneName, dns.Spec.Name, armdns.RecordType(dns.Spec.RecordType), &armdns.RecordSetsClientGetOptions{})
-	Expect(err).NotTo(HaveOccurred())
-	// TODO: verify what the response looks like
-	Expect(response.RecordSet).To(BeNil())
+	_, err := clientSet.dnsRecordSet.Get(ctx, testName, zoneName, dns.Spec.Name, armdns.RecordType(dns.Spec.RecordType), &armdns.RecordSetsClientGetOptions{})
+	Expect(err).To(BeNotFoundError())
 }
 
 func deleteDNSRecordSet(ctx context.Context, clientSet *azureClientSet, dns *extensionsv1alpha1.DNSRecord) {
