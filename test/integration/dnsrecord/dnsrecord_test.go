@@ -211,6 +211,7 @@ var _ = BeforeSuite(func() {
 				filepath.Join(repoRoot, "example", "20-crd-extensions.gardener.cloud_clusters.yaml"),
 			},
 		},
+		ControlPlaneStopTimeout: 2 * time.Minute,
 	}
 
 	cfg, err := testEnv.Start()
