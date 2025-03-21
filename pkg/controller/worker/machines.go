@@ -538,9 +538,9 @@ func (w workerDelegate) workerPoolHashDataV2(workerConfig api.WorkerConfig, addi
 
 	if workerConfig.DiagnosticsProfile != nil && workerConfig.DiagnosticsProfile.Enabled {
 		hashData = append(hashData, "DiagnosticsProfileEnabled")
-	}
-	if workerConfig.DiagnosticsProfile != nil && workerConfig.DiagnosticsProfile.StorageURI != nil {
-		hashData = append(hashData, *workerConfig.DiagnosticsProfile.StorageURI)
+		if workerConfig.DiagnosticsProfile.StorageURI != nil {
+			hashData = append(hashData, *workerConfig.DiagnosticsProfile.StorageURI)
+		}
 	}
 
 	return hashData, nil
