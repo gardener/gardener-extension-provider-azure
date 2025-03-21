@@ -54,7 +54,7 @@ import (
 	azurev1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure"
-	. "github.com/gardener/gardener-extension-provider-azure/test/integration/infrastructure"
+	. "github.com/gardener/gardener-extension-provider-azure/test/utils"
 )
 
 const (
