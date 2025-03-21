@@ -285,11 +285,6 @@ var runTest = func(dns *extensionsv1alpha1.DNSRecord, newValues []string, before
 		verifyDNSRecordSetDeleted(ctx, clientSet, dns)
 	}()
 
-	framework.AddCleanupAction(func() {
-		By("deleting the Azure DNS recordset if it still exists")
-		deleteDNSRecordSet(ctx, clientSet, dns)
-	})
-
 	By("waiting until dnsrecord is ready")
 	waitUntilDNSRecordReady(ctx, c, log, dns)
 
@@ -534,11 +529,6 @@ func verifyDNSRecordSet(ctx context.Context, clientSet *azureClientSet, dns *ext
 func verifyDNSRecordSetDeleted(ctx context.Context, clientSet *azureClientSet, dns *extensionsv1alpha1.DNSRecord) {
 	_, err := clientSet.dnsRecordSet.Get(ctx, testName, zoneName, dns.Spec.Name, armdns.RecordType(dns.Spec.RecordType), &armdns.RecordSetsClientGetOptions{})
 	Expect(err).To(BeNotFoundError())
-}
-
-func deleteDNSRecordSet(ctx context.Context, clientSet *azureClientSet, dns *extensionsv1alpha1.DNSRecord) {
-	_, err := clientSet.dnsRecordSet.Delete(ctx, testName, zoneName, dns.Spec.Name, armdns.RecordType(dns.Spec.RecordType), &armdns.RecordSetsClientDeleteOptions{})
-	Expect(err).NotTo(HaveOccurred())
 }
 
 func randomString() string {
