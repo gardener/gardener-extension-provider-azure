@@ -8,6 +8,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -82,6 +83,21 @@ func newAzureClientSet(subscriptionId, tenantId, clientId, clientSecret string) 
 	}, nil
 }
 
+func secretsFromEnv() {
+	if len(*subscriptionId) == 0 {
+		subscriptionId = ptr.To(os.Getenv("SUBSCRIPTION_ID"))
+	}
+	if len(*tenantId) == 0 {
+		tenantId = ptr.To(os.Getenv("TENANT_ID"))
+	}
+	if len(*clientId) == 0 {
+		clientId = ptr.To(os.Getenv("CLIENT_ID"))
+	}
+	if len(*clientSecret) == 0 {
+		clientSecret = ptr.To(os.Getenv("CLIENT_SECRET"))
+	}
+}
+
 func validateFlags() {
 	if len(*subscriptionId) == 0 {
 		panic("need an Azure subscription ID")
@@ -132,6 +148,10 @@ var _ = BeforeSuite(func() {
 	logf.SetLogger(logger.MustNewZapLogger(*logLevel, logger.FormatJSON, zap.WriteTo(GinkgoWriter)))
 
 	log = logf.Log.WithName("dnsrecord-test")
+
+	flag.Parse()
+	secretsFromEnv()
+	validateFlags()
 
 	DeferCleanup(func() {
 		defer func() {
@@ -227,9 +247,6 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).NotTo(HaveOccurred())
 	Expect(c).NotTo(BeNil())
-
-	flag.Parse()
-	validateFlags()
 
 	clientSet, err = newAzureClientSet(*subscriptionId, *tenantId, *clientId, *clientSecret)
 	Expect(err).NotTo(HaveOccurred())
