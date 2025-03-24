@@ -236,4 +236,5 @@ Changes to the `Shoot` worker-pools are applied in-place where possible. In case
 
 If the feature gate _is_ enabled, instead of the complete provider config only the fields explicitly mentioned above are used, with the addition of
 
-- `.spec.provider.workers[].providerConfig.diagnosticsProfile`
+- `.spec.provider.workers[].providerConfig.diagnosticsProfile.enabled`
+- `.spec.provider.workers[].providerConfig.diagnosticsProfile.storageURI`
