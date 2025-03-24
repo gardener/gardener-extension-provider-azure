@@ -29,6 +29,7 @@ type BackupBucketConfig struct {
 	// +optional
 	Immutability *ImmutableConfig `json:"immutability,omitempty"`
 	// RotationConfig controls the behavior for the rotation of storage account keys.
+	// +optional
 	RotationConfig *RotationConfig `json:"rotationConfig,omitempty"`
 }
 

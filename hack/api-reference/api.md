@@ -92,6 +92,7 @@ RotationConfig
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>RotationConfig controls the behavior for the rotation of storage account keys.</p>
 </td>
 </tr>

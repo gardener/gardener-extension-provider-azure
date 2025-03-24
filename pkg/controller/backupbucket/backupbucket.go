@@ -16,7 +16,7 @@ import (
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils"
 	"github.com/go-logr/logr"
-	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	azuretypes "github.com/gardener/gardener-extension-provider-azure/pkg/azure"
@@ -58,7 +58,7 @@ func ensureResourceGroupAndStorageAccount(
 	}
 
 	var keyExpirationDays *int32
-	if backupBucketConfig != nil && backupBucketConfig.RotationConfig != nil && backupBucketConfig.RotationConfig.ExpirationPeriodDays != nil {
+	if backupBucketConfig != nil && backupBucketConfig.RotationConfig != nil {
 		keyExpirationDays = backupBucketConfig.RotationConfig.ExpirationPeriodDays
 	}
 	if err := storageAccountClient.CreateOrUpdateStorageAccount(ctx, resourceGroupName, storageAccountName, backupBucket.Spec.Region, keyExpirationDays); err != nil {
@@ -66,20 +66,9 @@ func ensureResourceGroupAndStorageAccount(
 	}
 	return resourceGroupName, storageAccountName, nil
 }
-
-func getMostRecentKey(
-	ctx context.Context,
-	factory azureclient.Factory,
-	resourceGroupName, storageAccountName string,
-) (*armstorage.AccountKey, error) {
-	storageAccountClient, err := factory.StorageAccount()
-	if err != nil {
-		return nil, err
-	}
-	keys, err := storageAccountClient.ListStorageAccountKeys(ctx, resourceGroupName, storageAccountName)
-	if err != nil {
-		return nil, err
-	}
+func SortKeysByAge(
+	keys []*armstorage.AccountKey,
+) []*armstorage.AccountKey {
 	slices.SortFunc(keys, func(a, b *armstorage.AccountKey) int {
 		if a.CreationTime == nil {
 			return 1
@@ -87,56 +76,75 @@ func getMostRecentKey(
 		if b.CreationTime == nil {
 			return -1
 		}
-		return a.CreationTime.Compare(*b.CreationTime)
+		return b.CreationTime.Compare(*a.CreationTime)
 	})
 
-	return keys[0], nil
+	return keys
 }
 
 // ensureKeyRotated ensures that they storage account key is rotated if it is older than the expected age.
 // In case of no operation to be performed, it returns the current key. It is required to return a value in case no
 // error occurred.
-func ensureKeyRotated(
+func (a *actuator) ensureKeyRotated(
 	ctx context.Context,
 	log logr.Logger,
-	factory azureclient.Factory,
-	resourceGroupName, storageAccountName, currentKey string,
-	bb *extensionsv1alpha1.BackupBucket,
-	bbCfg *azure.BackupBucketConfig,
-) (*armstorage.AccountKey, bool, error) {
-	// skip rotation if not configured
-	if bbCfg.RotationConfig == nil || bbCfg.RotationConfig.RotationPeriodDays == 0 {
-		return nil, false, nil
+	storageAccount azureclient.StorageAccount,
+	resourceGroupName, storageAccountName string,
+	currentKeys []*armstorage.AccountKey,
+	backupBucket *extensionsv1alpha1.BackupBucket,
+	backupBucketConfig *azure.BackupBucketConfig,
+) ([]*armstorage.AccountKey, error) {
+	if backupBucketConfig.RotationConfig == nil {
+		log.Info("Skipping rotation because it's not configured for the backup bucket")
+		return currentKeys, nil
 	}
-	storageAccountClient, err := factory.StorageAccount()
+	// we should never enter this condition as it is protected by the admission controller. Still we assert our invariants.
+	if backupBucketConfig.RotationConfig.RotationPeriodDays == 0 {
+		log.Error(nil, "backup bucket rotation config is required")
+		return currentKeys, nil
+	}
+	mostRecentKey := SortKeysByAge(currentKeys)[0]
+
+	shouldRotateByAge := mostRecentKey.CreationTime == nil ||
+		time.Now().After(mostRecentKey.CreationTime.Add(time.Hour*24*time.Duration(backupBucketConfig.RotationConfig.RotationPeriodDays)))
+	shouldRotateByAnnotation := backupBucket.GetAnnotations()[azuretypes.StorageAccountKeyMustRotate] == "true"
+
+	if !shouldRotateByAge && !shouldRotateByAnnotation {
+		// no need to rotate
+		return currentKeys, nil
+	}
+
+	reasonForRotation := "rotation due to age"
+	if shouldRotateByAnnotation {
+		reasonForRotation = "rotation due to annotation"
+		secret, err := a.getBackupBucketGeneratedSecret(ctx, backupBucket)
+		if err != nil {
+			return nil, err
+		}
+		if v, ok := secret.Data[azuretypes.StorageKey]; ok {
+			// The key in the secret can either be the most recent, the oldest, or not found in the list of keys from Azure API.
+			// Unless the secret value matches the most recent key, we can assume that the rotation already happened but the secret was not properly
+			// updated. Hence, we no-op and return the current most recent key.
+			if string(v) != *mostRecentKey.Value {
+				log.Info("Skipping rotation because backup bucket current key does not match storage account keys. Using most recent rotation key instead.")
+				return currentKeys, nil
+			}
+		}
+	}
+
+	log.Info("Rotating key", "name", *mostRecentKey.KeyName, "reasonForRotation", reasonForRotation)
+	keys, err := storageAccount.RotateKey(ctx, resourceGroupName, storageAccountName, *currentKeys[1].KeyName)
 	if err != nil {
-		return nil, false, err
-	}
-	keys, err := storageAccountClient.ListStorageAccountKeys(ctx, resourceGroupName, storageAccountName)
-	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 
-	idx := slices.IndexFunc(keys, func(key *armstorage.AccountKey) bool {
-		return ptr.Deref(key.Value, "") == currentKey
-	})
-	if idx == -1 {
-		return nil, false, fmt.Errorf("key %s not found in storage account %s", currentKey, resourceGroupName)
+	if shouldRotateByAnnotation {
+		log.Info("removing rotation annotation")
+		backupBucketPatch := client.MergeFrom(backupBucket.DeepCopy())
+		delete(backupBucket.GetAnnotations(), azuretypes.StorageAccountKeyMustRotate)
+		if err := a.client.Patch(ctx, backupBucket, backupBucketPatch); err != nil {
+			return nil, fmt.Errorf("failed to remove rotation annotation: %w", err)
+		}
 	}
-	otherKeyIdx := (idx + 1) % 2
-
-	if keys[idx].CreationTime != nil &&
-		time.Now().Before(keys[idx].CreationTime.Add(time.Hour*24*time.Duration(bbCfg.RotationConfig.RotationPeriodDays))) &&
-		bb.GetAnnotations()[azuretypes.StorageAccountKeyMustRotate] != "true" {
-		// not need to rotate
-		return keys[idx], false, nil
-	}
-
-	log.Info("Rotating key", "name", *keys[otherKeyIdx].KeyName)
-	newKey, err := storageAccountClient.RotateKey(ctx, resourceGroupName, storageAccountName, ptr.Deref(keys[otherKeyIdx].KeyName, ""))
-	if err != nil {
-		return nil, false, err
-	}
-
-	return newKey, true, nil
+	return keys, nil
 }

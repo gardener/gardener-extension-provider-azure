@@ -42,6 +42,12 @@ func (a *actuator) createOrUpdateBackupBucketGeneratedSecret(ctx context.Context
 		Name:      generatedSecret.Name,
 		Namespace: generatedSecret.Namespace,
 	}
+	if data, err := patch.Data(backupBucket); err != nil {
+		return fmt.Errorf("failed getting patch data for BackupBucket %s: %w", backupBucket.Name, err)
+	} else if string(data) == `{}` {
+		return nil
+	}
+
 	return a.client.Status().Patch(ctx, backupBucket, patch)
 }
 

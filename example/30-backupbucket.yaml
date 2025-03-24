@@ -29,4 +29,5 @@ spec:
   #     retentionPeriod: 24h
   #     locked: "false"
   #   rotationConfig:
-  #     rotationPeriod: 48h
+  #     rotationPeriodDays: 2
+  #     expirationPeriodDays: 4

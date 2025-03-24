@@ -1133,21 +1133,6 @@ func (mr *MockStorageAccountMockRecorder) CreateOrUpdateStorageAccount(arg0, arg
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdateStorageAccount", reflect.TypeOf((*MockStorageAccount)(nil).CreateOrUpdateStorageAccount), arg0, arg1, arg2, arg3, arg4)
 }
 
-// ListStorageAccountKey mocks base method.
-func (m *MockStorageAccount) ListStorageAccountKey(arg0 context.Context, arg1, arg2 string) (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListStorageAccountKey", arg0, arg1, arg2)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ListStorageAccountKey indicates an expected call of ListStorageAccountKey.
-func (mr *MockStorageAccountMockRecorder) ListStorageAccountKey(arg0, arg1, arg2 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListStorageAccountKey", reflect.TypeOf((*MockStorageAccount)(nil).ListStorageAccountKey), arg0, arg1, arg2)
-}
-
 // ListStorageAccountKeys mocks base method.
 func (m *MockStorageAccount) ListStorageAccountKeys(arg0 context.Context, arg1, arg2 string) ([]*armstorage.AccountKey, error) {
 	m.ctrl.T.Helper()
@@ -1164,10 +1149,10 @@ func (mr *MockStorageAccountMockRecorder) ListStorageAccountKeys(arg0, arg1, arg
 }
 
 // RotateKey mocks base method.
-func (m *MockStorageAccount) RotateKey(arg0 context.Context, arg1, arg2, arg3 string) (*armstorage.AccountKey, error) {
+func (m *MockStorageAccount) RotateKey(arg0 context.Context, arg1, arg2, arg3 string) ([]*armstorage.AccountKey, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RotateKey", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(*armstorage.AccountKey)
+	ret0, _ := ret[0].([]*armstorage.AccountKey)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

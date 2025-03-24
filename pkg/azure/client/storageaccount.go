@@ -6,7 +6,6 @@ package client
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
@@ -61,21 +60,6 @@ func (c *StorageAccountClient) CreateOrUpdateStorageAccount(ctx context.Context,
 	return err
 }
 
-// ListStorageAccountKey lists the first key of a storage account.
-func (c *StorageAccountClient) ListStorageAccountKey(ctx context.Context, resourceGroupName, storageAccountName string) (string, error) {
-	response, err := c.ListStorageAccountKeys(ctx, resourceGroupName, storageAccountName)
-	if err != nil {
-		return "", err
-	}
-
-	if len(response) < 1 {
-		return "", fmt.Errorf("no key found in storage account %s", storageAccountName)
-	}
-
-	firstKey := response[0]
-	return *firstKey.Value, nil
-}
-
 // ListStorageAccountKeys lists all keys for the specified storage account.
 func (c *StorageAccountClient) ListStorageAccountKeys(ctx context.Context, resourceGroupName, storageAccountName string) ([]*armstorage.AccountKey, error) {
 	response, err := c.client.ListKeys(ctx, resourceGroupName, storageAccountName, &armstorage.AccountsClientListKeysOptions{})
@@ -88,7 +72,7 @@ func (c *StorageAccountClient) ListStorageAccountKeys(ctx context.Context, resou
 }
 
 // RotateKey rotates the key with the given name and returns the updated key.
-func (c *StorageAccountClient) RotateKey(ctx context.Context, resourceGroupName, storageAccountName, storageAccountKeyName string) (*armstorage.AccountKey, error) {
+func (c *StorageAccountClient) RotateKey(ctx context.Context, resourceGroupName, storageAccountName, storageAccountKeyName string) ([]*armstorage.AccountKey, error) {
 	resp, err := c.client.RegenerateKey(
 		ctx,
 		resourceGroupName,
@@ -100,11 +84,6 @@ func (c *StorageAccountClient) RotateKey(ctx context.Context, resourceGroupName,
 	if err != nil {
 		return nil, err
 	}
-	for _, k := range resp.Keys {
-		if ptr.Deref(k.KeyName, "") == storageAccountKeyName {
-			return k, nil
-		}
-	}
 
-	return nil, fmt.Errorf("error rotating storage account key '%v'", storageAccountKeyName)
+	return resp.Keys, nil
 }
