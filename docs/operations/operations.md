@@ -226,3 +226,15 @@ One of the benefits of having managed service principals is that the operator co
 
 After the service principal secret has been rotated and the corresponding secret is updated, all Shoot clusters using it need to be reconciled or the last operation to be retried.
 
+### Rolling Update Triggers
+
+Changes to the `Shoot` worker-pools are applied in-place where possible. In case this is not possible a rolling update of the workers will be performed to apply the new configuration, as outlined in [the Gardener documentation](https://github.com/gardener/gardener/blob/master/docs/usage/shoot-operations/shoot_updates.md#in-place-vs-rolling-updates). The exact fields that trigger this behaviour depend on whether the feature gate `NewWorkerPoolHash` is enabled. If it is not enabled, the fields mentioned in the [Gardener doc](https://github.com/gardener/gardener/blob/master/docs/usage/shoot-operations/shoot_updates.md#rolling-update-triggers) are used, with a few additions:
+
+- `.spec.provider.infrastructureConfig.identity`
+- `.spec.provider.workers[].dataVolumes[].size` (only the affected worker pool)
+- `.spec.provider.workers[].dataVolumes[].type` (only the affected worker pool)
+
+If the feature gate _is_ enabled, instead of the complete provider config only the fields explicitly mentioned above are used, with the addition of
+
+- `.spec.provider.workers[].providerConfig.diagnosticsProfile.enabled`
+- `.spec.provider.workers[].providerConfig.diagnosticsProfile.storageURI`
