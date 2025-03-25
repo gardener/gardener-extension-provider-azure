@@ -66,6 +66,9 @@ func ensureResourceGroupAndStorageAccount(
 	}
 	return resourceGroupName, storageAccountName, nil
 }
+
+// SortKeysByAge sorts the storage AccountKey by their age in ascending order. The younger key is
+// placed in the beginning of the sorted list. A nil timestamp is treated as "infinitely old"
 func SortKeysByAge(
 	keys []*armstorage.AccountKey,
 ) []*armstorage.AccountKey {
