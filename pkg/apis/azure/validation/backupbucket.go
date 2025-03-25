@@ -36,7 +36,7 @@ func validateKeyRotation(cfg *apisazure.RotationConfig, fldPath *field.Path) fie
 	}
 
 	if cfg.RotationPeriodDays < 2 {
-		allErrs = append(allErrs, field.Invalid(fldPath.Child("retentionPeriodDays"), cfg.RotationPeriodDays, "must be greater than 2 days"))
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("rotationPeriodDays"), cfg.RotationPeriodDays, "must be equal or greater than 2 days"))
 	}
 
 	if cfg.ExpirationPeriodDays != nil {
