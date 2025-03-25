@@ -28,3 +28,6 @@ spec:
   #     retentionType: "bucket"
   #     retentionPeriod: 24h
   #     locked: "false"
+  #   rotationConfig:
+  #     rotationPeriodDays: 2
+  #     expirationPeriodDays: 4

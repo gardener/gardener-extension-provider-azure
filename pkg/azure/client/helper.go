@@ -70,6 +70,16 @@ func IsAzureAPIUnauthorized(err error) bool {
 	return errors.As(err, &inErr)
 }
 
+func hasAnyPrefix(s string, prefixes ...string) bool {
+	lString := strings.ToLower(s)
+	for _, p := range prefixes {
+		if strings.HasPrefix(lString, strings.ToLower(p)) {
+			return true
+		}
+	}
+	return false
+}
+
 // CloudConfiguration returns a CloudConfiguration for the given input, prioritising the given CloudConfiguration if both inputs are not nil. In essence
 // this function unifies both ways to configure the instance to connect to into a single type - our CloudConfiguration.
 func CloudConfiguration(cloudConfiguration *azure.CloudConfiguration, region *string) (*azure.CloudConfiguration, error) {
@@ -131,14 +141,4 @@ func AzureCloudConfigurationFromCloudConfiguration(cloudConfiguration *azure.Clo
 	default:
 		return cloud.Configuration{}, fmt.Errorf("unknown cloud configuration name '%s'", cloudConfigurationName)
 	}
-}
-
-func hasAnyPrefix(s string, prefixes ...string) bool {
-	lString := strings.ToLower(s)
-	for _, p := range prefixes {
-		if strings.HasPrefix(lString, strings.ToLower(p)) {
-			return true
-		}
-	}
-	return false
 }

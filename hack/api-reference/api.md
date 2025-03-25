@@ -82,6 +82,20 @@ ImmutableConfig
 <p>Immutability defines the immutability config for the backup bucket.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>rotationConfig</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.RotationConfig">
+RotationConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RotationConfig controls the behavior for the rotation of storage account keys.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.CloudProfileConfig">CloudProfileConfig
@@ -1868,6 +1882,47 @@ string
 <p>
 <p>RetentionType defines the level at which immutability properties are obtained by objects</p>
 </p>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.RotationConfig">RotationConfig
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.BackupBucketConfig">BackupBucketConfig</a>)
+</p>
+<p>
+<p>RotationConfig controls the behavior for the rotation of storage account keys.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>rotationPeriodDays</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>RotationPeriod is the period after the creation of the currently used key, that a key rotation will be triggered.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>expirationPeriodDays</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>ExpirationPeriod sets the policy on the storage account to expire stale storage account keys. Can only be configured if <code>rotationPeriod</code> is configured.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.RouteTable">RouteTable
 </h3>
 <p>
