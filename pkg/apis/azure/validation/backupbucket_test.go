@@ -42,7 +42,7 @@ var _ = Describe("ValidateBackupBucketConfig", func() {
 				RotationConfig: &apisazure.RotationConfig{
 					RotationPeriodDays: 1,
 				},
-			}, true, "must be greater than 2 days"),
+			}, true, "must be equal or greater than 2 days"),
 			Entry("valid config", &apisazure.BackupBucketConfig{
 				RotationConfig: &apisazure.RotationConfig{
 					RotationPeriodDays: 2,
