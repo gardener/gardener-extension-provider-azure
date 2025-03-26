@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
@@ -16,6 +17,7 @@ import (
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils"
 	"github.com/go-logr/logr"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
@@ -72,7 +74,13 @@ func ensureResourceGroupAndStorageAccount(
 func SortKeysByAge(
 	keys []*armstorage.AccountKey,
 ) []*armstorage.AccountKey {
-	slices.SortFunc(keys, func(a, b *armstorage.AccountKey) int {
+	slices.SortStableFunc(keys, func(a, b *armstorage.AccountKey) int {
+		// this is for the rare case that all keys are nil or have the same timestamp.
+		// the sorting of the array is determined by the ordering of the keys
+		// as returned from the API. In this case, sorting by name as secondary criterion avoids any randomness.
+		return strings.Compare(ptr.Deref(a.KeyName, ""), ptr.Deref(b.KeyName, ""))
+	})
+	slices.SortStableFunc(keys, func(a, b *armstorage.AccountKey) int {
 		if a.CreationTime == nil {
 			return 1
 		}

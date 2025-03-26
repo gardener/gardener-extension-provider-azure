@@ -288,8 +288,8 @@ func (a *actuator) delete(ctx context.Context, _ logr.Logger, backupBucket *exte
 	return a.deleteBackupBucketGeneratedSecret(ctx, backupBucket)
 }
 
-func logWithError(logger logr.Logger, err error, msg string, otherFields ...string) error {
-	logger.WithCallDepth(1).Error(err, msg, otherFields)
+func logWithError(logger logr.Logger, err error, msg string, otherFields ...any) error {
+	logger.WithCallDepth(1).Error(err, msg, otherFields...)
 	if err == nil {
 		return fmt.Errorf("%s", strings.ToLower(msg))
 	}
