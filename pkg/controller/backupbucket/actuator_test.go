@@ -823,6 +823,17 @@ func mockGeneratedSecretNoop(
 		},
 	}
 
+	secret := &corev1.Secret{}
+	c.EXPECT().Get(ctx, client.ObjectKeyFromObject(generatedSecret), secret).DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *corev1.Secret, _ ...client.GetOption) error {
+		*obj = *generatedSecret.DeepCopy()
+		obj.Data = map[string][]byte{
+			azure.StorageDomain:  []byte(azure.AzureBlobStorageDomain),
+			azure.StorageAccount: []byte(storageAccountName),
+			azure.StorageKey:     []byte("secret1"),
+		}
+		return nil
+	})
+
 	c.EXPECT().Get(ctx, client.ObjectKeyFromObject(generatedSecret), generatedSecret.DeepCopy()).DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *corev1.Secret, _ ...client.GetOption) error {
 		generatedSecret.Data = map[string][]byte{
 			azure.StorageDomain:  []byte(azure.AzureBlobStorageDomain),
@@ -854,10 +865,22 @@ func mockGeneratedSecretUpdate(
 		},
 	}
 
+	secret := &corev1.Secret{}
+	c.EXPECT().Get(ctx, client.ObjectKeyFromObject(generatedSecret), secret).DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *corev1.Secret, _ ...client.GetOption) error {
+		*obj = *generatedSecret.DeepCopy()
+		obj.Data = map[string][]byte{
+			"domain":         []byte(azure.AzureBlobStorageDomain),
+			"storageAccount": []byte(storageAccountName),
+			"storageKey":     []byte(oldStorageAccountKey),
+		}
+		return nil
+	})
 	c.EXPECT().Get(ctx, client.ObjectKeyFromObject(generatedSecret), generatedSecret.DeepCopy()).DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *corev1.Secret, _ ...client.GetOption) error {
 		secret := generatedSecret.DeepCopy()
 		secret.Data = map[string][]byte{
-			azure.StorageKey: []byte(oldStorageAccountKey),
+			"domain":         []byte(azure.AzureBlobStorageDomain),
+			"storageAccount": []byte(storageAccountName),
+			"storageKey":     []byte(oldStorageAccountKey),
 		}
 		*obj = *secret
 		return nil

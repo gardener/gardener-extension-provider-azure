@@ -70,7 +70,7 @@ func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, backupBuck
 		return err
 	}
 
-	resourceGroupName, storageAccountName, err := ensureResourceGroupAndStorageAccount(ctx, factory, backupBucket, &backupBucketConfig)
+	resourceGroupName, storageAccountName, err := a.ensureResourceGroupAndStorageAccount(ctx, factory, backupBucket, &backupBucketConfig)
 	if err != nil {
 		return logWithError(logger, err, "Failed to ensure the resource group and storage account")
 	}
@@ -288,8 +288,8 @@ func (a *actuator) delete(ctx context.Context, _ logr.Logger, backupBucket *exte
 	return a.deleteBackupBucketGeneratedSecret(ctx, backupBucket)
 }
 
-func logWithError(logger logr.Logger, err error, msg string, otherFields ...string) error {
-	logger.WithCallDepth(1).Error(err, msg, otherFields)
+func logWithError(logger logr.Logger, err error, msg string, otherFields ...any) error {
+	logger.WithCallDepth(1).Error(err, msg, otherFields...)
 	if err == nil {
 		return fmt.Errorf("%s", strings.ToLower(msg))
 	}

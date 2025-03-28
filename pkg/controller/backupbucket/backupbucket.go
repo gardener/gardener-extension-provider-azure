@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
@@ -16,6 +17,7 @@ import (
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils"
 	"github.com/go-logr/logr"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
@@ -30,7 +32,7 @@ func GenerateStorageAccountName(backupBucketName string) string {
 }
 
 // ensureResourceGroupAndStorageAccount ensures the existence of the necessary resourcegroup and storageacccount for the backupbucket
-func ensureResourceGroupAndStorageAccount(
+func (a *actuator) ensureResourceGroupAndStorageAccount(
 	ctx context.Context,
 	factory azureclient.Factory,
 	backupBucket *extensionsv1alpha1.BackupBucket,
@@ -61,6 +63,18 @@ func ensureResourceGroupAndStorageAccount(
 	if backupBucketConfig != nil && backupBucketConfig.RotationConfig != nil {
 		keyExpirationDays = backupBucketConfig.RotationConfig.ExpirationPeriodDays
 	}
+
+	secret, err := a.getBackupBucketGeneratedSecret(ctx, backupBucket)
+	if err != nil {
+		return "", "", err
+	}
+	if secret != nil {
+		if _, ok := secret.Data[azuretypes.StorageAccount]; !ok {
+			return "", "", fmt.Errorf("secret %s/%s does not contain expected key %s", secret.Namespace, secret.Name, azuretypes.StorageAccount)
+		}
+		storageAccountName = string(secret.Data[azuretypes.StorageAccount])
+	}
+
 	if err := storageAccountClient.CreateOrUpdateStorageAccount(ctx, resourceGroupName, storageAccountName, backupBucket.Spec.Region, keyExpirationDays); err != nil {
 		return "", "", err
 	}
@@ -72,7 +86,13 @@ func ensureResourceGroupAndStorageAccount(
 func SortKeysByAge(
 	keys []*armstorage.AccountKey,
 ) []*armstorage.AccountKey {
-	slices.SortFunc(keys, func(a, b *armstorage.AccountKey) int {
+	slices.SortStableFunc(keys, func(a, b *armstorage.AccountKey) int {
+		// this is for the rare case that all keys are nil or have the same timestamp.
+		// the sorting of the array is determined by the ordering of the keys
+		// as returned from the API. In this case, sorting by name as secondary criterion avoids any randomness.
+		return strings.Compare(ptr.Deref(a.KeyName, ""), ptr.Deref(b.KeyName, ""))
+	})
+	slices.SortStableFunc(keys, func(a, b *armstorage.AccountKey) int {
 		if a.CreationTime == nil {
 			return 1
 		}
@@ -124,13 +144,15 @@ func (a *actuator) ensureKeyRotated(
 		if err != nil {
 			return nil, err
 		}
-		if v, ok := secret.Data[azuretypes.StorageKey]; ok {
-			// The key in the secret can either be the most recent, the oldest, or not found in the list of keys from Azure API.
-			// Unless the secret value matches the most recent key, we can assume that the rotation already happened but the secret was not properly
-			// updated. Hence, we no-op and return the current most recent key.
-			if string(v) != *mostRecentKey.Value {
-				log.Info("Skipping rotation because backup bucket current key does not match storage account keys. Using most recent rotation key instead.")
-				return currentKeys, nil
+		if secret != nil {
+			if v, ok := secret.Data[azuretypes.StorageKey]; ok {
+				// The key in the secret can either be the most recent, the oldest, or not found in the list of keys from Azure API.
+				// Unless the secret value matches the most recent key, we can assume that the rotation already happened but the secret was not properly
+				// updated. Hence, we no-op and return the current most recent key.
+				if string(v) != *mostRecentKey.Value {
+					log.Info("Skipping rotation because backup bucket current key does not match storage account keys. Using most recent rotation key instead.")
+					return currentKeys, nil
+				}
 			}
 		}
 	}
