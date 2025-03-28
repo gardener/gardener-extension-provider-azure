@@ -32,7 +32,7 @@ func GenerateStorageAccountName(backupBucketName string) string {
 }
 
 // ensureResourceGroupAndStorageAccount ensures the existence of the necessary resourcegroup and storageacccount for the backupbucket
-func ensureResourceGroupAndStorageAccount(
+func (a *actuator) ensureResourceGroupAndStorageAccount(
 	ctx context.Context,
 	factory azureclient.Factory,
 	backupBucket *extensionsv1alpha1.BackupBucket,
@@ -63,6 +63,18 @@ func ensureResourceGroupAndStorageAccount(
 	if backupBucketConfig != nil && backupBucketConfig.RotationConfig != nil {
 		keyExpirationDays = backupBucketConfig.RotationConfig.ExpirationPeriodDays
 	}
+
+	secret, err := a.getBackupBucketGeneratedSecret(ctx, backupBucket)
+	if err != nil {
+		return "", "", err
+	}
+	if secret != nil {
+		if _, ok := secret.Data[azuretypes.StorageAccount]; !ok {
+			return "", "", fmt.Errorf("secret %s/%s does not contain expected key %s", secret.Namespace, secret.Name, azuretypes.StorageAccount)
+		}
+		storageAccountName = string(secret.Data[azuretypes.StorageAccount])
+	}
+
 	if err := storageAccountClient.CreateOrUpdateStorageAccount(ctx, resourceGroupName, storageAccountName, backupBucket.Spec.Region, keyExpirationDays); err != nil {
 		return "", "", err
 	}
@@ -132,13 +144,15 @@ func (a *actuator) ensureKeyRotated(
 		if err != nil {
 			return nil, err
 		}
-		if v, ok := secret.Data[azuretypes.StorageKey]; ok {
-			// The key in the secret can either be the most recent, the oldest, or not found in the list of keys from Azure API.
-			// Unless the secret value matches the most recent key, we can assume that the rotation already happened but the secret was not properly
-			// updated. Hence, we no-op and return the current most recent key.
-			if string(v) != *mostRecentKey.Value {
-				log.Info("Skipping rotation because backup bucket current key does not match storage account keys. Using most recent rotation key instead.")
-				return currentKeys, nil
+		if secret != nil {
+			if v, ok := secret.Data[azuretypes.StorageKey]; ok {
+				// The key in the secret can either be the most recent, the oldest, or not found in the list of keys from Azure API.
+				// Unless the secret value matches the most recent key, we can assume that the rotation already happened but the secret was not properly
+				// updated. Hence, we no-op and return the current most recent key.
+				if string(v) != *mostRecentKey.Value {
+					log.Info("Skipping rotation because backup bucket current key does not match storage account keys. Using most recent rotation key instead.")
+					return currentKeys, nil
+				}
 			}
 		}
 	}

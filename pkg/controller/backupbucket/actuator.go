@@ -70,7 +70,7 @@ func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, backupBuck
 		return err
 	}
 
-	resourceGroupName, storageAccountName, err := ensureResourceGroupAndStorageAccount(ctx, factory, backupBucket, &backupBucketConfig)
+	resourceGroupName, storageAccountName, err := a.ensureResourceGroupAndStorageAccount(ctx, factory, backupBucket, &backupBucketConfig)
 	if err != nil {
 		return logWithError(logger, err, "Failed to ensure the resource group and storage account")
 	}
