@@ -20,7 +20,14 @@ rules:
     resources:
       - nodes
     verbs:
-      - "*"
+    - create
+    - get
+    - list
+    - watch
+    - patch
+    - update
+    - delete
+    - deletecollection
   - apiGroups:
       - ""
     resources:

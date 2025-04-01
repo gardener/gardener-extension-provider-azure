@@ -7,15 +7,30 @@ rules:
 - apiGroups:
   - azure.remedy.gardener.cloud
   resources:
-  - "*"
+  - publicipaddresses
+  - virtualmachines
   verbs:
-  - "*"
+  - delete
+  - deletecollection
+  - get
+  - list
+  - patch
+  - create
+  - update
+  - watch
 - apiGroups:
   - ""
   resources:
   - configmaps
   verbs:
-  - "*"
+  - create
+  - get
+  - list
+  - watch
+  - patch
+  - update
+  - delete
+  - deletecollection
 - apiGroups:
   - coordination.k8s.io
   resources:
