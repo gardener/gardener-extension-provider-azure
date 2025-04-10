@@ -499,8 +499,8 @@ func (fctx *FlowContext) ensureNatGateways(ctx context.Context) error {
 		return err
 	}
 	// filter only those prefixed by the cluster name.
-	currentNats = Filter(currentNats, func(address *armnetwork.NatGateway) bool {
-		return fctx.adapter.HasShootPrefix(address.Name)
+	currentNats = Filter(currentNats, func(nat *armnetwork.NatGateway) bool {
+		return fctx.adapter.HasShootPrefix(nat.Name)
 	})
 
 	// obtain an indexed list of current Nats
