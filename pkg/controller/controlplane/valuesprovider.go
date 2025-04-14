@@ -554,7 +554,7 @@ func getControlPlaneChartValues(
 		return nil, err
 	}
 
-	csi, err := getCSIControllerChartValues(cluster, scaledDown, infraStatus, checksums)
+	csi, err := getCSIControllerChartValues(cluster, scaledDown, infraStatus, checksums, useWorkloadIdentity)
 	if err != nil {
 		return nil, err
 	}
@@ -624,6 +624,7 @@ func getCSIControllerChartValues(
 	scaledDown bool,
 	infraStatus *apisazure.InfrastructureStatus,
 	checksums map[string]string,
+	useWorkloadIdentity bool,
 ) (map[string]interface{}, error) {
 	values := map[string]interface{}{
 		"enabled": true,
@@ -634,6 +635,7 @@ func getCSIControllerChartValues(
 		"csiSnapshotController": map[string]interface{}{
 			"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
 		},
+		"useWorkloadIdentity": useWorkloadIdentity,
 	}
 
 	k8sVersion, err := semver.NewVersion(cluster.Shoot.Spec.Kubernetes.Version)
