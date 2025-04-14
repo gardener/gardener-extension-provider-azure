@@ -363,17 +363,6 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 		return nil, err
 	}
 
-	// TODO(rfranzke): Delete this after August 2024.
-	gep19Monitoring := vp.client.Get(ctx, k8sclient.ObjectKey{Name: "prometheus-shoot", Namespace: cp.Namespace}, &appsv1.StatefulSet{}) == nil
-	if gep19Monitoring {
-		if err := kutil.DeleteObject(ctx, vp.client, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "cloud-controller-manager-observability-config", Namespace: cp.Namespace}}); err != nil {
-			return nil, fmt.Errorf("failed deleting cloud-controller-manager-observability-config ConfigMap: %w", err)
-		}
-		if err := kutil.DeleteObject(ctx, vp.client, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "remedy-controller-azure-monitoring-config", Namespace: cp.Namespace}}); err != nil {
-			return nil, fmt.Errorf("failed deleting remedy-controller-azure-monitoring-config ConfigMap: %w", err)
-		}
-	}
-
 	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: cp.Spec.SecretRef.Name, Namespace: cp.Spec.SecretRef.Namespace}}
 	if err := vp.client.Get(ctx, k8sclient.ObjectKeyFromObject(secret), secret); err != nil {
 		return nil, fmt.Errorf("failed getting controlplane secret: %w", err)
@@ -383,7 +372,7 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 		useWorkloadIdentity = true
 	}
 
-	return getControlPlaneChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown, infraStatus, gep19Monitoring, useWorkloadIdentity)
+	return getControlPlaneChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown, infraStatus, useWorkloadIdentity)
 }
 
 // GetControlPlaneShootChartValues returns the values for the control plane shoot chart applied by the generic actuator.
@@ -543,13 +532,12 @@ func getControlPlaneChartValues(
 	checksums map[string]string,
 	scaledDown bool,
 	infraStatus *apisazure.InfrastructureStatus,
-	gep19Monitoring bool,
 	useWorkloadIdentity bool,
 ) (
 	map[string]interface{},
 	error,
 ) {
-	ccm, err := getCCMChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown, gep19Monitoring, useWorkloadIdentity)
+	ccm, err := getCCMChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown, useWorkloadIdentity)
 	if err != nil {
 		return nil, err
 	}
@@ -559,7 +547,7 @@ func getControlPlaneChartValues(
 		return nil, err
 	}
 
-	remedy, err := getRemedyControllerChartValues(cluster, checksums, scaledDown, gep19Monitoring, useWorkloadIdentity)
+	remedy, err := getRemedyControllerChartValues(cluster, checksums, scaledDown, useWorkloadIdentity)
 	if err != nil {
 		return nil, err
 	}
@@ -582,7 +570,6 @@ func getCCMChartValues(
 	secretsReader secretsmanager.Reader,
 	checksums map[string]string,
 	scaledDown bool,
-	gep19Monitoring bool,
 	useWorkloadIdentity bool,
 ) (map[string]interface{}, error) {
 	serverSecret, found := secretsReader.Get(cloudControllerManagerServerName)
@@ -607,7 +594,6 @@ func getCCMChartValues(
 		"secrets": map[string]interface{}{
 			"server": serverSecret.Name,
 		},
-		"gep19Monitoring":     gep19Monitoring,
 		"useWorkloadIdentity": useWorkloadIdentity,
 	}
 
@@ -669,7 +655,6 @@ func getRemedyControllerChartValues(
 	cluster *extensionscontroller.Cluster,
 	checksums map[string]string,
 	scaledDown bool,
-	gep19Monitoring bool,
 	useWorkloadIdentity bool,
 ) (map[string]interface{}, error) {
 	disableRemedyController :=
@@ -685,7 +670,6 @@ func getRemedyControllerChartValues(
 		"podAnnotations": map[string]interface{}{
 			"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
 		},
-		"gep19Monitoring":     gep19Monitoring,
 		"useWorkloadIdentity": useWorkloadIdentity,
 	}, nil
 }
