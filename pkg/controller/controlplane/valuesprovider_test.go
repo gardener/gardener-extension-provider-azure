@@ -383,7 +383,8 @@ var _ = Describe("ValuesProvider", func() {
 					"csiSnapshotController": map[string]interface{}{
 						"replicas": 1,
 					},
-					"vmType": "vmss",
+					"vmType":              "vmss",
+					"useWorkloadIdentity": false,
 				}),
 				azure.RemedyControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
 					"replicas": 1,
@@ -421,6 +422,7 @@ var _ = Describe("ValuesProvider", func() {
 					"csiSnapshotController": map[string]interface{}{
 						"replicas": 1,
 					},
+					"useWorkloadIdentity": false,
 				}),
 				azure.RemedyControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
 					"replicas": 1,
@@ -461,6 +463,7 @@ var _ = Describe("ValuesProvider", func() {
 					"csiSnapshotController": map[string]interface{}{
 						"replicas": 1,
 					},
+					"useWorkloadIdentity": false,
 				}),
 				azure.RemedyControllerName: remedyDisabled,
 			}))
