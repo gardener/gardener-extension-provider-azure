@@ -120,7 +120,6 @@ var (
 				Objects: []*chart.Object{
 					{Type: &corev1.Service{}, Name: azure.CloudControllerManagerName},
 					{Type: &appsv1.Deployment{}, Name: azure.CloudControllerManagerName},
-					{Type: &corev1.ConfigMap{}, Name: azure.CloudControllerManagerName + "-observability-config"},
 					{Type: &monitoringv1.ServiceMonitor{}, Name: "shoot-cloud-controller-manager"},
 					{Type: &monitoringv1.PrometheusRule{}, Name: "shoot-cloud-controller-manager"},
 					{Type: &autoscalingv1.VerticalPodAutoscaler{}, Name: azure.CloudControllerManagerName + "-vpa"},
@@ -351,11 +350,6 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 		if infraStatus, err = azureapihelper.InfrastructureStatusFromRaw(cp.Spec.InfrastructureProviderStatus); err != nil {
 			return nil, fmt.Errorf("could not decode infrastructureProviderStatus of controlplane '%s': %w", k8sclient.ObjectKeyFromObject(cp), err)
 		}
-	}
-
-	// TODO(rfranzke): Delete this in a future release.
-	if err := kutil.DeleteObject(ctx, vp.client, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "csi-driver-controller-observability-config", Namespace: cp.Namespace}}); err != nil {
-		return nil, fmt.Errorf("failed deleting legacy csi-driver-controller-observability-config ConfigMap: %w", err)
 	}
 
 	// TODO(AndreasBurger): rm in future release.
