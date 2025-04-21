@@ -166,11 +166,11 @@ func ensureBackupBucketImmutabilityPolicy(
 	}
 
 	var (
-		currentDays int32 = ptr.Deref(currentContainerImmutabilityDays, 0)
+		currentDays = ptr.Deref(currentContainerImmutabilityDays, 0)
 		desiredDays int32
 	)
 	if backupBucketConfig.Immutability != nil {
-		desiredDays = int32(backupBucketConfig.Immutability.RetentionPeriod.Duration.Hours() / 24)
+		desiredDays = int32(backupBucketConfig.Immutability.RetentionPeriod.Hours() / 24)
 	}
 
 	// Extend policy if necessary

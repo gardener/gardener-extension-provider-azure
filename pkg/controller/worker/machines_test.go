@@ -34,7 +34,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-azure/charts"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	. "github.com/gardener/gardener-extension-provider-azure/pkg/controller/worker"
@@ -497,7 +496,7 @@ var _ = Describe("Machines", func() {
 						"sshPublicKey": sshKey,
 						"identityID":   identityID,
 						"cloudConfiguration": map[string]interface{}{
-							"name": azure.AzurePublicCloudName,
+							"name": apisazure.AzurePublicCloudName,
 						},
 					}
 
@@ -591,19 +590,19 @@ var _ = Describe("Machines", func() {
 
 					machineClassPool1["operatingSystem"] = map[string]interface{}{
 						"operatingSystemName":    machineImageName,
-						"operatingSystemVersion": strings.Replace(machineImageVersion, "+", "_", -1),
+						"operatingSystemVersion": strings.ReplaceAll(machineImageVersion, "+", "_"),
 					}
 					machineClassPool2["operatingSystem"] = map[string]interface{}{
 						"operatingSystemName":    machineImageName,
-						"operatingSystemVersion": strings.Replace(machineImageVersionID, "+", "_", -1),
+						"operatingSystemVersion": strings.ReplaceAll(machineImageVersionID, "+", "_"),
 					}
 					machineClassPool3["operatingSystem"] = map[string]interface{}{
 						"operatingSystemName":    machineImageName,
-						"operatingSystemVersion": strings.Replace(machineImageVersionCommunityID, "+", "_", -1),
+						"operatingSystemVersion": strings.ReplaceAll(machineImageVersionCommunityID, "+", "_"),
 					}
 					machineClassPool4["operatingSystem"] = map[string]interface{}{
 						"operatingSystemName":    machineImageName,
-						"operatingSystemVersion": strings.Replace(machineImageVersionSharedID, "+", "_", -1),
+						"operatingSystemVersion": strings.ReplaceAll(machineImageVersionSharedID, "+", "_"),
 					}
 
 					machineClasses = map[string]interface{}{"machineClasses": []map[string]interface{}{

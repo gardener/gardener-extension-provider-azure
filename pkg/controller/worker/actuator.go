@@ -22,7 +22,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cluster"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
@@ -77,7 +76,7 @@ func (d *delegateFactory) WorkerDelegate(ctx context.Context, worker *extensions
 		return nil, err
 	}
 
-	var cloudConfiguration *azure.CloudConfiguration
+	var cloudConfiguration *api.CloudConfiguration
 	if cloudProfile != nil {
 		cloudConfiguration = cloudProfile.CloudConfiguration
 	}

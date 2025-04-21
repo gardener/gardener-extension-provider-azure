@@ -36,7 +36,7 @@ func (c VmssClient) List(ctx context.Context, resourceGroupName string) ([]*armc
 		if err != nil {
 			return nil, err
 		}
-		ls = append(ls, res.VirtualMachineScaleSetListResult.Value...)
+		ls = append(ls, res.Value...)
 	}
 	return ls, nil
 }

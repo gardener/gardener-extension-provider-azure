@@ -61,7 +61,7 @@ func GetClientAuthData(ctx context.Context, c client.Client, secretRef corev1.Se
 
 // NewClientAuthDataFromSecret reads the client auth details from the given secret.
 func NewClientAuthDataFromSecret(secret *corev1.Secret, allowDNSKeys bool) (*ClientAuth, error) {
-	if secret.ObjectMeta.Labels != nil && secret.ObjectMeta.Labels[securityv1alpha1constants.LabelPurpose] == securityv1alpha1constants.LabelPurposeWorkloadIdentityTokenRequestor {
+	if secret.Labels != nil && secret.Labels[securityv1alpha1constants.LabelPurpose] == securityv1alpha1constants.LabelPurposeWorkloadIdentityTokenRequestor {
 		return &ClientAuth{
 			SubscriptionID: string(secret.Data[azure.SubscriptionIDKey]),
 			TenantID:       string(secret.Data[azure.TenantIDKey]),

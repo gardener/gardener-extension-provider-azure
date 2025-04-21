@@ -245,7 +245,7 @@ func generateInfrastructureWithProviderConfig(config *azurev1alpha1.Infrastructu
 		marshalled, err := json.Marshal(config)
 		Expect(err).To(BeNil())
 
-		infra.Spec.DefaultSpec.ProviderConfig = &runtime.RawExtension{
+		infra.Spec.ProviderConfig = &runtime.RawExtension{
 			Raw: marshalled,
 		}
 	}

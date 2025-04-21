@@ -361,8 +361,8 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 	if err := vp.client.Get(ctx, k8sclient.ObjectKeyFromObject(secret), secret); err != nil {
 		return nil, fmt.Errorf("failed getting controlplane secret: %w", err)
 	}
-	useWorkloadIdentity := false
-	if secret.ObjectMeta.Labels != nil && secret.ObjectMeta.Labels[securityv1alpha1constants.LabelPurpose] == securityv1alpha1constants.LabelPurposeWorkloadIdentityTokenRequestor {
+	var useWorkloadIdentity bool
+	if secret.Labels != nil && secret.Labels[securityv1alpha1constants.LabelPurpose] == securityv1alpha1constants.LabelPurposeWorkloadIdentityTokenRequestor {
 		useWorkloadIdentity = true
 	}
 
@@ -475,10 +475,10 @@ func getConfigChartValues(infraStatus *apisazure.InfrastructureStatus, cp *exten
 }
 
 func cloudInstanceName(cloudConfiguration apisazure.CloudConfiguration) string {
-	switch {
-	case cloudConfiguration.Name == apisazure.AzureChinaCloudName:
+	switch cloudConfiguration.Name {
+	case apisazure.AzureChinaCloudName:
 		return "AZURECHINACLOUD"
-	case cloudConfiguration.Name == apisazure.AzureGovCloudName:
+	case apisazure.AzureGovCloudName:
 		return "AZUREUSGOVERNMENT"
 	default:
 		return "AZUREPUBLICCLOUD"

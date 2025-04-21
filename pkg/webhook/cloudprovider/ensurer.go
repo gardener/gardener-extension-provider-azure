@@ -43,7 +43,7 @@ type ensurer struct {
 // a service principal clientID and clientSecret (if not present) that match
 // to a corresponding tenantID.
 func (e *ensurer) EnsureCloudProviderSecret(ctx context.Context, _ gcontext.GardenContext, newSecret, _ *corev1.Secret) error {
-	if newSecret.ObjectMeta.Labels != nil && newSecret.ObjectMeta.Labels[securityv1alpha1constants.LabelWorkloadIdentityProvider] == "azure" {
+	if newSecret.Labels != nil && newSecret.Labels[securityv1alpha1constants.LabelWorkloadIdentityProvider] == "azure" {
 		if _, ok := newSecret.Data[securityv1alpha1constants.DataKeyConfig]; !ok {
 			return errors.New("cloudprovider secret is missing a 'config' data key")
 		}
