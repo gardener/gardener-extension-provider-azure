@@ -59,11 +59,11 @@ func (t *TFOutput) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("unable to parse value of field '%v' as string, float, or integer: %v", valueKey, v[valueKey])
 	}
 
-	if typeValue, ok := v[typeKey].(string); ok {
-		t.Type = typeValue
-	} else {
+	if _, ok := v[typeKey].(string); !ok {
 		return fmt.Errorf("unable to parse value of field '%v' as string", typeKey)
 	}
+	t.Type = v[typeKey].(string)
+
 	return nil
 }
 
