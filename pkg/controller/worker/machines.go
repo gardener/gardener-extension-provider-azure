@@ -169,8 +169,6 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				machineDeployment = worker.MachineDeployment{
 					Minimum:              pool.Minimum,
 					Maximum:              pool.Maximum,
-					MaxSurge:             pool.MaxSurge,
-					MaxUnavailable:       pool.MaxUnavailable,
 					Priority:             pool.Priority,
 					Labels:               addTopologyLabel(pool.Labels, w.worker.Spec.Region, zone),
 					Annotations:          pool.Annotations,
@@ -215,13 +213,29 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			}
 			machineClassSpec["network"] = networkConfig
 
+			updateConfiguration := machinev1alpha1.UpdateConfiguration{
+				MaxUnavailable: &pool.MaxUnavailable,
+				MaxSurge:       &pool.MaxSurge,
+			}
+
 			if zone != nil {
 				machineDeployment.Minimum = worker.DistributeOverZones(zone.index, pool.Minimum, zone.count)
 				machineDeployment.Maximum = worker.DistributeOverZones(zone.index, pool.Maximum, zone.count)
-				machineDeployment.MaxSurge = worker.DistributePositiveIntOrPercent(zone.index, pool.MaxSurge, zone.count, pool.Maximum)
-				machineDeployment.MaxUnavailable = worker.DistributePositiveIntOrPercent(zone.index, pool.MaxUnavailable, zone.count, pool.Minimum)
+				updateConfiguration = machinev1alpha1.UpdateConfiguration{
+					MaxUnavailable: ptr.To(worker.DistributePositiveIntOrPercent(zone.index, pool.MaxUnavailable, zone.count, pool.Minimum)),
+					MaxSurge:       ptr.To(worker.DistributePositiveIntOrPercent(zone.index, pool.MaxSurge, zone.count, pool.Maximum)),
+				}
 				machineClassSpec["zone"] = zone.name
 			}
+
+			machineDeploymentStrategy := machinev1alpha1.MachineDeploymentStrategy{
+				Type: machinev1alpha1.RollingUpdateMachineDeploymentStrategyType,
+				RollingUpdate: &machinev1alpha1.RollingUpdateMachineDeployment{
+					UpdateConfiguration: updateConfiguration,
+				},
+			}
+
+			machineDeployment.Strategy = machineDeploymentStrategy
 
 			if workerConfig.DiagnosticsProfile != nil {
 				diagnosticProfile := map[string]interface{}{
