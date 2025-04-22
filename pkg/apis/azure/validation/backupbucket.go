@@ -60,11 +60,11 @@ func validateImmutability(immutabilityCfg *apisazure.ImmutableConfig, fldPath *f
 
 	// Azure Blob Storage immutability period can only be set in days
 	if immutabilityCfg.RetentionPeriod.Duration < 24*time.Hour {
-		allErrs = append(allErrs, field.Invalid(fldPath.Child("retentionPeriod"), immutabilityCfg.RetentionPeriod.Duration.String(), "must be greater than 24h"))
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("retentionPeriod"), immutabilityCfg.RetentionPeriod.String(), "must be greater than 24h"))
 	}
 
 	if immutabilityCfg.RetentionPeriod.Duration%(24*time.Hour) != 0 {
-		allErrs = append(allErrs, field.Invalid(fldPath.Child("retentionPeriod"), immutabilityCfg.RetentionPeriod.Duration.String(), "must be a positive integer multiple of 24h"))
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("retentionPeriod"), immutabilityCfg.RetentionPeriod.String(), "must be a positive integer multiple of 24h"))
 	}
 	return allErrs
 }

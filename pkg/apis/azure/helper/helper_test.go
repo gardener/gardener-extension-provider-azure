@@ -24,10 +24,10 @@ var _ = Describe("Helper", func() {
 	var (
 		purpose          api.Purpose = "foo"
 		purposeWrong     api.Purpose = "baz"
-		urn              string      = "publisher:offer:sku:version"
-		imageID          string      = "/image/id"
-		communityImageId string      = "/CommunityGalleries/myGallery/Images/myImage/Versions/1.0.0"
-		sharedImageId    string      = "/SharedGalleries/myGallery/Images/myImage/Versions/1.0.0"
+		urn                          = "publisher:offer:sku:version"
+		imageID                      = "/image/id"
+		communityImageId             = "/CommunityGalleries/myGallery/Images/myImage/Versions/1.0.0"
+		sharedImageId                = "/SharedGalleries/myGallery/Images/myImage/Versions/1.0.0"
 		boolTrue                     = true
 		boolFalse                    = false
 		zone                         = "zone"

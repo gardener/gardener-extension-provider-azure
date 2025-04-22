@@ -24,7 +24,7 @@ import (
 	"golang.org/x/exp/maps"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -124,7 +124,7 @@ var _ = Describe("ValuesProvider", func() {
 		azureContainerRegistryConfigMap = &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{Name: azure.CloudProviderAcrConfigName, Namespace: namespace},
 		}
-		errorAzureContainerRegistryConfigMapNotFound = errors.NewNotFound(schema.GroupResource{}, azure.CloudProviderAcrConfigName)
+		errorAzureContainerRegistryConfigMapNotFound = apierrors.NewNotFound(schema.GroupResource{}, azure.CloudProviderAcrConfigName)
 
 		// Primary AvailabilitySet
 		primaryAvailabilitySetName = "primary-availability-set"
@@ -762,7 +762,7 @@ func generateCluster(cidr, k8sVersion string, vpaEnabled bool, shootAnnotations 
 		Status: gardencorev1beta1.ShootStatus{},
 	}
 	if shootAnnotations != nil {
-		shoot.ObjectMeta.Annotations = shootAnnotations
+		shoot.Annotations = shootAnnotations
 	}
 
 	return &extensionscontroller.Cluster{

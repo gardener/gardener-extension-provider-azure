@@ -211,11 +211,10 @@ func (r *TerraformReconciler) Delete(ctx context.Context, infra *extensionsv1alp
 
 	resourceGroupExists, err := infrastructure.IsShootResourceGroupAvailable(ctx, clientFactory, infra, cfg)
 	if err != nil {
-		if azureclient.IsAzureAPIUnauthorized(err) {
-			r.Logger.Error(err, "Failed to check resource group availability due to invalid credentials")
-		} else {
+		if !azureclient.IsAzureAPIUnauthorized(err) {
 			return err
 		}
+		r.Logger.Error(err, "Failed to check resource group availability due to invalid credentials")
 	}
 
 	if !resourceGroupExists {
