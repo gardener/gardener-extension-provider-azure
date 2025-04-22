@@ -21,6 +21,8 @@ Resource Types:
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig</a>
 </li><li>
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.WorkerStatus">WorkerStatus</a>
+</li><li>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.WorkloadIdentityConfig">WorkloadIdentityConfig</a>
 </li></ul>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.BackupBucketConfig">BackupBucketConfig
 </h3>
@@ -64,6 +66,34 @@ CloudConfiguration
 <td>
 <em>(Optional)</em>
 <p>CloudConfiguration contains config that controls which cloud to connect to.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>immutability</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.ImmutableConfig">
+ImmutableConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Immutability defines the immutability config for the backup bucket.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>rotationConfig</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.RotationConfig">
+RotationConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RotationConfig controls the behavior for the rotation of storage account keys.</p>
 </td>
 </tr>
 </tbody>
@@ -445,6 +475,71 @@ reconciliation is possible.</p>
 <td>
 <em>(Optional)</em>
 <p>VmoDependencies is a list of external VirtualMachineScaleSet Orchestration Mode VM (VMO) dependencies.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.WorkloadIdentityConfig">WorkloadIdentityConfig
+</h3>
+<p>
+<p>WorkloadIdentityConfig contains configuration settings for workload identity.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code></br>
+string</td>
+<td>
+<code>
+azure.provider.extensions.gardener.cloud/v1alpha1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code></br>
+string
+</td>
+<td><code>WorkloadIdentityConfig</code></td>
+</tr>
+<tr>
+<td>
+<code>clientID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>ClientID is the ID of the Azure client.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tenantID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>TenantID is the ID of the Azure tenant.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>subscriptionID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>SubscriptionID is the ID of the subscription.</p>
 </td>
 </tr>
 </tbody>
@@ -927,6 +1022,65 @@ string
 <td>
 <em>(Optional)</em>
 <p>SharedGalleryImageID is the Shared Image Gallery image id.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.ImmutableConfig">ImmutableConfig
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.BackupBucketConfig">BackupBucketConfig</a>)
+</p>
+<p>
+<p>ImmutableConfig represents the immutability configuration for a backup bucket.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>retentionType</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.RetentionType">
+RetentionType
+</a>
+</em>
+</td>
+<td>
+<p>RetentionType specifies the type of retention for the backup bucket.
+Currently allowed values are:
+- BucketLevelImmutability: The retention policy applies to the entire bucket.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>retentionPeriod</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#duration-v1-meta">
+Kubernetes meta/v1.Duration
+</a>
+</em>
+</td>
+<td>
+<p>RetentionPeriod specifies the immutability retention period for the backup bucket.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>locked</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Locked indicates whether the immutable retention policy is locked for the backup bucket.
+If set to true, the retention policy cannot be removed or the retention period reduced, enforcing immutability.</p>
 </td>
 </tr>
 </tbody>
@@ -1715,6 +1869,56 @@ string
 </td>
 <td>
 <p>Name is the name of the resource group</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.RetentionType">RetentionType
+(<code>string</code> alias)</p></h3>
+<p>
+(<em>Appears on:</em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.ImmutableConfig">ImmutableConfig</a>)
+</p>
+<p>
+<p>RetentionType defines the level at which immutability properties are obtained by objects</p>
+</p>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.RotationConfig">RotationConfig
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.BackupBucketConfig">BackupBucketConfig</a>)
+</p>
+<p>
+<p>RotationConfig controls the behavior for the rotation of storage account keys.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>rotationPeriodDays</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>RotationPeriod is the period after the creation of the currently used key, that a key rotation will be triggered.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>expirationPeriodDays</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>ExpirationPeriod sets the policy on the storage account to expire stale storage account keys. Can only be configured if <code>rotationPeriod</code> is configured.</p>
 </td>
 </tr>
 </tbody>

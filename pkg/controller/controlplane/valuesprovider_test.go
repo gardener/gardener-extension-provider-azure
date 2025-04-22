@@ -24,7 +24,6 @@ import (
 	"golang.org/x/exp/maps"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -125,7 +124,7 @@ var _ = Describe("ValuesProvider", func() {
 		azureContainerRegistryConfigMap = &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{Name: azure.CloudProviderAcrConfigName, Namespace: namespace},
 		}
-		errorAzureContainerRegistryConfigMapNotFound = errors.NewNotFound(schema.GroupResource{}, azure.CloudProviderAcrConfigName)
+		errorAzureContainerRegistryConfigMapNotFound = apierrors.NewNotFound(schema.GroupResource{}, azure.CloudProviderAcrConfigName)
 
 		// Primary AvailabilitySet
 		primaryAvailabilitySetName = "primary-availability-set"
@@ -159,18 +158,19 @@ var _ = Describe("ValuesProvider", func() {
 		cluster = generateCluster(cidr, k8sVersion, false, nil, nil, nil)
 
 		ControlPlaneChartValues = map[string]interface{}{
-			"tenantId":          "TenantID",
-			"subscriptionId":    "SubscriptionID",
-			"aadClientId":       "ClientID",
-			"aadClientSecret":   "ClientSecret",
-			"resourceGroup":     "rg-abcd1234",
-			"vnetName":          "vnet-abcd1234",
-			"subnetName":        "subnet-abcd1234-nodes",
-			"region":            "eu-west-1a",
-			"routeTableName":    "route-table-name",
-			"securityGroupName": "security-group-name-workers",
-			"vmType":            "standard",
-			"cloud":             "AZUREPUBLICCLOUD",
+			"tenantId":            "TenantID",
+			"subscriptionId":      "SubscriptionID",
+			"aadClientId":         "ClientID",
+			"aadClientSecret":     "ClientSecret",
+			"resourceGroup":       "rg-abcd1234",
+			"vnetName":            "vnet-abcd1234",
+			"subnetName":          "subnet-abcd1234-nodes",
+			"region":              "eu-west-1a",
+			"routeTableName":      "route-table-name",
+			"securityGroupName":   "security-group-name-workers",
+			"vmType":              "standard",
+			"cloud":               "AZUREPUBLICCLOUD",
+			"useWorkloadIdentity": false,
 		}
 	})
 
@@ -344,8 +344,16 @@ var _ = Describe("ValuesProvider", func() {
 			Expect(fakeClient.Create(context.TODO(), &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "ca-provider-azure-controlplane", Namespace: namespace}})).To(Succeed())
 			Expect(fakeClient.Create(context.TODO(), &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "cloud-controller-manager-server", Namespace: namespace}})).To(Succeed())
 
-			c.EXPECT().Delete(context.TODO(), &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "csi-driver-controller-observability-config", Namespace: namespace}})
-			c.EXPECT().Get(context.TODO(), client.ObjectKey{Name: "prometheus-shoot", Namespace: namespace}, gomock.AssignableToTypeOf(&appsv1.StatefulSet{})).Return(apierrors.NewNotFound(schema.GroupResource{}, ""))
+			c.EXPECT().Delete(context.TODO(), &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: azure.CSISnapshotValidationName, Namespace: namespace}})
+			c.EXPECT().Delete(context.TODO(), &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: azure.CSISnapshotValidationName, Namespace: namespace}})
+
+			cloudProviderSecret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "cloudprovider",
+					Namespace: "test",
+				},
+			}
+			c.EXPECT().Get(ctx, client.ObjectKeyFromObject(cloudProviderSecret), cloudProviderSecret).Return(nil)
 		})
 
 		It("should return correct control plane chart values without zoned infrastructure", func() {
@@ -360,8 +368,8 @@ var _ = Describe("ValuesProvider", func() {
 					"genericTokenKubeconfigSecretName": genericTokenKubeconfigSecretName,
 				},
 				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
-					"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
-					"gep19Monitoring":   false,
+					"kubernetesVersion":   cluster.Shoot.Spec.Kubernetes.Version,
+					"useWorkloadIdentity": false,
 				}),
 				azure.CSIControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
 					"replicas": 1,
@@ -371,14 +379,15 @@ var _ = Describe("ValuesProvider", func() {
 					"csiSnapshotController": map[string]interface{}{
 						"replicas": 1,
 					},
-					"vmType": "vmss",
+					"vmType":              "vmss",
+					"useWorkloadIdentity": false,
 				}),
 				azure.RemedyControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
 					"replicas": 1,
 					"podAnnotations": map[string]interface{}{
 						"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
 					},
-					"gep19Monitoring": false,
+					"useWorkloadIdentity": false,
 				}),
 			}))
 		})
@@ -395,8 +404,8 @@ var _ = Describe("ValuesProvider", func() {
 					"genericTokenKubeconfigSecretName": genericTokenKubeconfigSecretName,
 				},
 				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
-					"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
-					"gep19Monitoring":   false,
+					"kubernetesVersion":   cluster.Shoot.Spec.Kubernetes.Version,
+					"useWorkloadIdentity": false,
 				}),
 				azure.CSIControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
 					"replicas": 1,
@@ -407,13 +416,14 @@ var _ = Describe("ValuesProvider", func() {
 					"csiSnapshotController": map[string]interface{}{
 						"replicas": 1,
 					},
+					"useWorkloadIdentity": false,
 				}),
 				azure.RemedyControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
 					"replicas": 1,
 					"podAnnotations": map[string]interface{}{
 						"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
 					},
-					"gep19Monitoring": false,
+					"useWorkloadIdentity": false,
 				}),
 			}))
 		})
@@ -433,8 +443,8 @@ var _ = Describe("ValuesProvider", func() {
 					"genericTokenKubeconfigSecretName": genericTokenKubeconfigSecretName,
 				},
 				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
-					"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
-					"gep19Monitoring":   false,
+					"kubernetesVersion":   cluster.Shoot.Spec.Kubernetes.Version,
+					"useWorkloadIdentity": false,
 				}),
 				azure.CSIControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
 					"replicas": 1,
@@ -445,6 +455,7 @@ var _ = Describe("ValuesProvider", func() {
 					"csiSnapshotController": map[string]interface{}{
 						"replicas": 1,
 					},
+					"useWorkloadIdentity": false,
 				}),
 				azure.RemedyControllerName: remedyDisabled,
 			}))
@@ -583,6 +594,22 @@ var _ = Describe("ValuesProvider", func() {
 			}))
 		})
 
+		It("should return false if allowEgress behavior is overwritten by user", func() {
+			infrastructureStatus.Zoned = true
+			cluster.Shoot.GetAnnotations()[azure.ShootSkipAllowEgressDeployment] = "true"
+			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+			csiNode := csiNodeEnabled
+
+			values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(map[string]interface{}{
+				azure.AllowEgressName:            enabledFalse,
+				azure.CloudControllerManagerName: cloudControllerManager,
+				azure.CSINodeName:                csiNode,
+				azure.RemedyControllerName:       enabledTrue,
+			}))
+		})
+
 		Context("remedy controller is disabled", func() {
 			BeforeEach(func() {
 				shootAnnotations := map[string]string{
@@ -709,6 +736,9 @@ func generateControlPlane(controlPlaneConfig *v1alpha1.ControlPlaneConfig, infra
 
 func generateCluster(cidr, k8sVersion string, vpaEnabled bool, shootAnnotations map[string]string, shootControlPlane *gardencorev1beta1.ControlPlane, seed *gardencorev1beta1.Seed) *extensionscontroller.Cluster {
 	shoot := &gardencorev1beta1.Shoot{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: make(map[string]string),
+		},
 		Spec: gardencorev1beta1.ShootSpec{
 			Provider: gardencorev1beta1.Provider{
 				Workers: []gardencorev1beta1.Worker{
@@ -729,9 +759,10 @@ func generateCluster(cidr, k8sVersion string, vpaEnabled bool, shootAnnotations 
 			},
 			ControlPlane: shootControlPlane,
 		},
+		Status: gardencorev1beta1.ShootStatus{},
 	}
 	if shootAnnotations != nil {
-		shoot.ObjectMeta.Annotations = shootAnnotations
+		shoot.Annotations = shootAnnotations
 	}
 
 	return &extensionscontroller.Cluster{

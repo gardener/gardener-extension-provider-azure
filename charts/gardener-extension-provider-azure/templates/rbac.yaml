@@ -1,4 +1,4 @@
-{{ if not .Values.gardener.runtimeCluster.enabled }}
+{{ if not (include "runtimeCluster.enabled" .) }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -55,6 +55,7 @@ rules:
   verbs:
   - get
   - update
+  - patch
 - apiGroups:
   - ""
   - apps
@@ -87,7 +88,6 @@ rules:
   - networkpolicies
   - servicemonitors
   - prometheusrules
-  - statefulsets # TODO(rfranzke): Remove this after August 2024.
   verbs:
   - "*"
 - apiGroups:

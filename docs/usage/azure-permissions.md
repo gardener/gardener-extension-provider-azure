@@ -2,7 +2,7 @@
 
 The following document describes the required Azure actions manage a Shoot cluster on Azure split by the different Azure provider/services.
 
-Be aware some actions are just required if particilar deployment sceanrios or features e.g. bring your own vNet, use Azure-file, let the Shoot act as Seed etc. should be used.
+Be aware some actions are just required if particular deployment scenarios or features e.g. bring your own vNet, use Azure-file, let the Shoot act as Seed, immutable buckets, etc. should be used.
 
 ## `Microsoft.Compute`
 ```
@@ -130,4 +130,17 @@ Microsoft.Storage/storageAccounts/delete
 Microsoft.Storage/storageAccounts/listkeys/action
 Microsoft.Storage/storageAccounts/read
 Microsoft.Storage/storageAccounts/write
+
+# Required if Shoot should act as Seed with immutable ABS containers.
+Microsoft.Storage/storageAccounts/blobServices/containers/immutabilityPolicies/extend/action
+Microsoft.Storage/storageAccounts/blobServices/containers/immutabilityPolicies/delete
+Microsoft.Storage/storageAccounts/blobServices/containers/immutabilityPolicies/write
+Microsoft.Storage/storageAccounts/blobServices/containers/immutabilityPolicies/lock/action
+Microsoft.Storage/storageAccounts/blobServices/containers/immutabilityPolicies/read
+Microsoft.Storage/storageAccounts/managementPolicies/delete
+Microsoft.Storage/storageAccounts/managementPolicies/read
+Microsoft.Storage/storageAccounts/managementPolicies/write
+
+# Required to configure storage key rotation
+Microsoft.Storage/storageAccounts/regeneratekey/action
 ```

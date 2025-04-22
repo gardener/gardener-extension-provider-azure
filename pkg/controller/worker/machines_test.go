@@ -34,7 +34,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-azure/charts"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	. "github.com/gardener/gardener-extension-provider-azure/pkg/controller/worker"
@@ -114,6 +113,7 @@ var _ = Describe("Machines", func() {
 				namePool2           string
 				minPool2            int32
 				maxPool2            int32
+				priorityPool2       int32
 				maxSurgePool2       intstr.IntOrString
 				maxUnavailablePool2 intstr.IntOrString
 
@@ -264,6 +264,7 @@ var _ = Describe("Machines", func() {
 				namePool2 = "pool-zones"
 				minPool2 = 30
 				maxPool2 = 45
+				priorityPool2 = 100
 				maxSurgePool2 = intstr.FromInt(10)
 				maxUnavailablePool2 = intstr.FromInt(15)
 
@@ -279,8 +280,8 @@ var _ = Describe("Machines", func() {
 				maxSurgePool4 = intstr.FromInt(1)
 				maxUnavailablePool4 = intstr.FromInt(2)
 
-				shootVersionMajorMinor = "1.25"
-				shootVersion = shootVersionMajorMinor + ".4"
+				shootVersionMajorMinor = "1.32"
+				shootVersion = shootVersionMajorMinor + ".0"
 
 				machineImages = []apiv1alpha1.MachineImages{
 					{
@@ -356,6 +357,7 @@ var _ = Describe("Machines", func() {
 					Name:           namePool2,
 					Minimum:        minPool2,
 					Maximum:        maxPool2,
+					Priority:       ptr.To(priorityPool2),
 					MaxSurge:       maxSurgePool2,
 					Architecture:   ptr.To(archAMD),
 					MaxUnavailable: maxUnavailablePool2,
@@ -494,7 +496,7 @@ var _ = Describe("Machines", func() {
 						"sshPublicKey": sshKey,
 						"identityID":   identityID,
 						"cloudConfiguration": map[string]interface{}{
-							"name": azure.AzurePublicCloudName,
+							"name": apisazure.AzurePublicCloudName,
 						},
 					}
 
@@ -588,19 +590,19 @@ var _ = Describe("Machines", func() {
 
 					machineClassPool1["operatingSystem"] = map[string]interface{}{
 						"operatingSystemName":    machineImageName,
-						"operatingSystemVersion": strings.Replace(machineImageVersion, "+", "_", -1),
+						"operatingSystemVersion": strings.ReplaceAll(machineImageVersion, "+", "_"),
 					}
 					machineClassPool2["operatingSystem"] = map[string]interface{}{
 						"operatingSystemName":    machineImageName,
-						"operatingSystemVersion": strings.Replace(machineImageVersionID, "+", "_", -1),
+						"operatingSystemVersion": strings.ReplaceAll(machineImageVersionID, "+", "_"),
 					}
 					machineClassPool3["operatingSystem"] = map[string]interface{}{
 						"operatingSystemName":    machineImageName,
-						"operatingSystemVersion": strings.Replace(machineImageVersionCommunityID, "+", "_", -1),
+						"operatingSystemVersion": strings.ReplaceAll(machineImageVersionCommunityID, "+", "_"),
 					}
 					machineClassPool4["operatingSystem"] = map[string]interface{}{
 						"operatingSystemName":    machineImageName,
-						"operatingSystemVersion": strings.Replace(machineImageVersionSharedID, "+", "_", -1),
+						"operatingSystemVersion": strings.ReplaceAll(machineImageVersionSharedID, "+", "_"),
 					}
 
 					machineClasses = map[string]interface{}{"machineClasses": []map[string]interface{}{
@@ -612,46 +614,75 @@ var _ = Describe("Machines", func() {
 
 					machineDeployments = worker.MachineDeployments{
 						{
-							Name:                 machineClassNamePool1,
-							ClassName:            machineClassWithHashPool1,
-							SecretName:           machineClassWithHashPool1,
-							Minimum:              minPool1,
-							Maximum:              maxPool1,
-							MaxSurge:             maxSurgePool1,
-							MaxUnavailable:       maxUnavailablePool1,
+							Name:       machineClassNamePool1,
+							ClassName:  machineClassWithHashPool1,
+							SecretName: machineClassWithHashPool1,
+							Minimum:    minPool1,
+							Maximum:    maxPool1,
+							Strategy: machinev1alpha1.MachineDeploymentStrategy{
+								Type: machinev1alpha1.RollingUpdateMachineDeploymentStrategyType,
+								RollingUpdate: &machinev1alpha1.RollingUpdateMachineDeployment{
+									UpdateConfiguration: machinev1alpha1.UpdateConfiguration{
+										MaxSurge:       &maxSurgePool1,
+										MaxUnavailable: &maxUnavailablePool1,
+									},
+								},
+							},
 							Labels:               labels,
 							MachineConfiguration: &machinev1alpha1.MachineConfiguration{},
 						},
 						{
-							Name:                 machineClassNamePool2,
-							ClassName:            machineClassWithHashPool2,
-							SecretName:           machineClassWithHashPool2,
-							Minimum:              minPool2,
-							Maximum:              maxPool2,
-							MaxSurge:             maxSurgePool2,
-							MaxUnavailable:       maxUnavailablePool2,
+							Name:       machineClassNamePool2,
+							ClassName:  machineClassWithHashPool2,
+							SecretName: machineClassWithHashPool2,
+							Minimum:    minPool2,
+							Maximum:    maxPool2,
+							Priority:   ptr.To(priorityPool2),
+							Strategy: machinev1alpha1.MachineDeploymentStrategy{
+								Type: machinev1alpha1.RollingUpdateMachineDeploymentStrategyType,
+								RollingUpdate: &machinev1alpha1.RollingUpdateMachineDeployment{
+									UpdateConfiguration: machinev1alpha1.UpdateConfiguration{
+										MaxSurge:       &maxSurgePool2,
+										MaxUnavailable: &maxUnavailablePool2,
+									},
+								},
+							},
 							Labels:               labels,
 							MachineConfiguration: &machinev1alpha1.MachineConfiguration{},
 						},
 						{
-							Name:                 machineClassNamePool3,
-							ClassName:            machineClassWithHashPool3,
-							SecretName:           machineClassWithHashPool3,
-							Minimum:              minPool3,
-							Maximum:              maxPool3,
-							MaxSurge:             maxSurgePool3,
-							MaxUnavailable:       maxUnavailablePool3,
+							Name:       machineClassNamePool3,
+							ClassName:  machineClassWithHashPool3,
+							SecretName: machineClassWithHashPool3,
+							Minimum:    minPool3,
+							Maximum:    maxPool3,
+							Strategy: machinev1alpha1.MachineDeploymentStrategy{
+								Type: machinev1alpha1.RollingUpdateMachineDeploymentStrategyType,
+								RollingUpdate: &machinev1alpha1.RollingUpdateMachineDeployment{
+									UpdateConfiguration: machinev1alpha1.UpdateConfiguration{
+										MaxSurge:       &maxSurgePool3,
+										MaxUnavailable: &maxUnavailablePool3,
+									},
+								},
+							},
 							Labels:               labels,
 							MachineConfiguration: &machinev1alpha1.MachineConfiguration{},
 						},
 						{
-							Name:                 machineClassNamePool4,
-							ClassName:            machineClassWithHashPool4,
-							SecretName:           machineClassWithHashPool4,
-							Minimum:              minPool4,
-							Maximum:              maxPool4,
-							MaxSurge:             maxSurgePool4,
-							MaxUnavailable:       maxUnavailablePool4,
+							Name:       machineClassNamePool4,
+							ClassName:  machineClassWithHashPool4,
+							SecretName: machineClassWithHashPool4,
+							Minimum:    minPool4,
+							Maximum:    maxPool4,
+							Strategy: machinev1alpha1.MachineDeploymentStrategy{
+								Type: machinev1alpha1.RollingUpdateMachineDeploymentStrategyType,
+								RollingUpdate: &machinev1alpha1.RollingUpdateMachineDeployment{
+									UpdateConfiguration: machinev1alpha1.UpdateConfiguration{
+										MaxSurge:       &maxSurgePool4,
+										MaxUnavailable: &maxUnavailablePool4,
+									},
+								},
+							},
 							Labels:               labels,
 							MachineConfiguration: &machinev1alpha1.MachineConfiguration{},
 						},
@@ -763,24 +794,38 @@ var _ = Describe("Machines", func() {
 
 						machineDeployments = worker.MachineDeployments{
 							{
-								Name:                 machineClassNamePool1,
-								ClassName:            machineClassWithHashPool1,
-								SecretName:           machineClassWithHashPool1,
-								Minimum:              minPoolZones,
-								Maximum:              maxPoolZones,
-								MaxSurge:             maxSurgePoolZones,
-								MaxUnavailable:       maxUnavailablePoolZones,
+								Name:       machineClassNamePool1,
+								ClassName:  machineClassWithHashPool1,
+								SecretName: machineClassWithHashPool1,
+								Minimum:    minPoolZones,
+								Maximum:    maxPoolZones,
+								Strategy: machinev1alpha1.MachineDeploymentStrategy{
+									Type: machinev1alpha1.RollingUpdateMachineDeploymentStrategyType,
+									RollingUpdate: &machinev1alpha1.RollingUpdateMachineDeployment{
+										UpdateConfiguration: machinev1alpha1.UpdateConfiguration{
+											MaxSurge:       &maxSurgePoolZones,
+											MaxUnavailable: &maxUnavailablePoolZones,
+										},
+									},
+								},
 								Labels:               labelsPool1,
 								MachineConfiguration: &machinev1alpha1.MachineConfiguration{},
 							},
 							{
-								Name:                 machineClassNamePool2,
-								ClassName:            machineClassWithHashPool2,
-								SecretName:           machineClassWithHashPool2,
-								Minimum:              minPoolZones,
-								Maximum:              maxPoolZones,
-								MaxSurge:             maxSurgePoolZones,
-								MaxUnavailable:       maxUnavailablePoolZones,
+								Name:       machineClassNamePool2,
+								ClassName:  machineClassWithHashPool2,
+								SecretName: machineClassWithHashPool2,
+								Minimum:    minPoolZones,
+								Maximum:    maxPoolZones,
+								Strategy: machinev1alpha1.MachineDeploymentStrategy{
+									Type: machinev1alpha1.RollingUpdateMachineDeploymentStrategyType,
+									RollingUpdate: &machinev1alpha1.RollingUpdateMachineDeployment{
+										UpdateConfiguration: machinev1alpha1.UpdateConfiguration{
+											MaxSurge:       &maxSurgePoolZones,
+											MaxUnavailable: &maxUnavailablePoolZones,
+										},
+									},
+								},
 								Labels:               labelsPool2,
 								MachineConfiguration: &machinev1alpha1.MachineConfiguration{},
 							},

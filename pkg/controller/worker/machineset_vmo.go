@@ -105,7 +105,7 @@ func (w *workerDelegate) cleanupVmoDependencies(ctx context.Context, infrastruct
 	}
 
 	// Delete all vmo workerpool dependencies as the Worker is intended to be deleted.
-	if w.worker.ObjectMeta.DeletionTimestamp != nil {
+	if w.worker.DeletionTimestamp != nil {
 		for _, dependency := range workerProviderStatus.VmoDependencies {
 			if err := vmoClient.Delete(ctx, infrastructureStatus.ResourceGroup.Name, dependency.Name, ptr.To(false)); err != nil {
 				return vmoDependencies, err

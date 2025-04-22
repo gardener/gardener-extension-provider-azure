@@ -21,4 +21,9 @@ const (
 	ChildKeyMigration = "migration"
 	// ChildKeyComplete is a key to indicate whether a task is complete.
 	ChildKeyComplete = "complete"
+
+	// TagManagedByGardener is the tag used to mark resources managed by Gardener.
+	TagManagedByGardener = "managed-by-gardener"
+	// TagShootName is the tag used to mark the shoot name on resources managed by Gardener.
+	TagShootName = "gardener-shoot-name"
 )

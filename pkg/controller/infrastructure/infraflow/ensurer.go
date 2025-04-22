@@ -397,9 +397,10 @@ func (fctx *FlowContext) ensurePublicIps(ctx context.Context) error {
 		return err
 	}
 	currentIPs = Filter(currentIPs, func(address *armnetwork.PublicIPAddress) bool {
-		// filter only these IpConfigs prefixed by the cluster name and that do not contain the CCM tags.
+		// filter only these IpConfigs that are managed by gardener
 		return fctx.adapter.HasShootPrefix(address.Name) &&
-			(address.Tags[azure.CCMServiceTagKey] == nil && address.Tags[azure.CCMLegacyServiceTagKey] == nil)
+			ptr.Deref(address.Tags[TagManagedByGardener], "") == "true" &&
+			ptr.Deref(address.Tags[TagShootName], "") == fctx.adapter.TechnicalName()
 	})
 	// obtain an indexed list of current IPs
 	nameToCurrentIps := ToMap(currentIPs, func(t *armnetwork.PublicIPAddress) string {
@@ -410,6 +411,7 @@ func (fctx *FlowContext) ensurePublicIps(ctx context.Context) error {
 	for name, ip := range desiredConfiguration {
 		toReconcile[name] = ip.ToProvider(nameToCurrentIps[name])
 	}
+
 	for _, resource := range fctx.inventory.ByKind(KindPublicIP) {
 		if _, ok := nameToCurrentIps[resource.Name]; !ok {
 			log.Info("Removing public IP from inventory", "id", resource.String())
@@ -424,6 +426,13 @@ func (fctx *FlowContext) ensurePublicIps(ctx context.Context) error {
 		// delete all the resources that are not in the list of target resources
 		pipCfg, ok := desiredConfiguration[name]
 		if !ok {
+			// skip deletion of IPs that may fit our criteria, but are referenced explicitly in the shoot spec.
+			if fctx.adapter.IsPublicIPPinned(name) {
+				// mark the IP as not managed by gardener.
+				log.Info("Found public IP pinned... skipping deletion", "ip", nameToCurrentIps[name].ID)
+				fctx.inventory.Delete(*current.ID)
+				continue
+			}
 			log.Info("Will delete public IP because it is not needed", "Resource Group", fctx.adapter.ResourceGroupName(), "Name", name)
 			toDelete[name] = *current.ID
 			continue
@@ -489,12 +498,12 @@ func (fctx *FlowContext) ensureNatGateways(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	// filter only thos prefixed by the cluster name.
-	currentNats = Filter(currentNats, func(address *armnetwork.NatGateway) bool {
-		return fctx.adapter.HasShootPrefix(address.Name)
+	// filter only those prefixed by the cluster name.
+	currentNats = Filter(currentNats, func(nat *armnetwork.NatGateway) bool {
+		return fctx.adapter.HasShootPrefix(nat.Name)
 	})
 
-	// obtain an indexed list of current IPs
+	// obtain an indexed list of current Nats
 	nameToCurrentNats := ToMap(currentNats, func(t *armnetwork.NatGateway) string {
 		return *t.Name
 	})

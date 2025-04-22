@@ -10,6 +10,7 @@ import (
 
 	"github.com/gardener/gardener/extensions/pkg/webhook/cloudprovider"
 	gcontext "github.com/gardener/gardener/extensions/pkg/webhook/context"
+	"github.com/gardener/gardener/pkg/client/kubernetes"
 	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
 	mockmanager "github.com/gardener/gardener/third_party/mock/controller-runtime/manager"
 	. "github.com/onsi/ginkgo/v2"
@@ -19,6 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/install"
 	. "github.com/gardener/gardener-extension-provider-azure/pkg/webhook/cloudprovider"
 )
 
@@ -64,6 +66,9 @@ var _ = Describe("Ensurer", func() {
 		mgr = mockmanager.NewMockManager(ctrl)
 
 		mgr.EXPECT().GetClient().Return(c)
+		scheme := kubernetes.SeedScheme
+		Expect(install.AddToScheme(scheme)).To(Succeed())
+		mgr.EXPECT().GetScheme().Return(scheme)
 
 		ensurer = NewEnsurer(mgr, logger)
 	})
@@ -136,6 +141,68 @@ var _ = Describe("Ensurer", func() {
 			err := ensurer.EnsureCloudProviderSecret(ctx, gctx, secret, nil)
 			Expect(err).To(HaveOccurred())
 		})
-	})
 
+		It("should not add workload identity config to the secret if it is not labeled correctly", func() {
+			c.EXPECT().List(gomock.Any(), &corev1.SecretList{}, labelSelector).
+				DoAndReturn(func(_ context.Context, list *corev1.SecretList, _ ...client.ListOption) error {
+					list.Items = []corev1.Secret{servicePrincipalSecret}
+					return nil
+				})
+			secret.Labels = map[string]string{"workloadidentity.security.gardener.cloud/provider": "foo"}
+			expected := secret.DeepCopy()
+			Expect(ensurer.EnsureCloudProviderSecret(ctx, gctx, secret, nil)).To(Succeed())
+			expected.Data = map[string][]byte{
+				"tenantID":     []byte("tenant-id"),
+				"clientID":     []byte("client-id"),
+				"clientSecret": []byte("client-secret"),
+			}
+			Expect(secret).To(Equal(expected))
+		})
+
+		It("should error if cloudprovider secret does not contain config data key but is labeled correctly", func() {
+			secret.Labels = map[string]string{"workloadidentity.security.gardener.cloud/provider": "azure"}
+			err := ensurer.EnsureCloudProviderSecret(ctx, nil, secret, nil)
+			Expect(err).To(HaveOccurred())
+
+			Expect(err).To(MatchError("cloudprovider secret is missing a 'config' data key"))
+		})
+
+		It("should error if cloudprovider secret does not contain a valid WorkloadIdentityConfig", func() {
+			secret.Data["config"] = []byte(`
+apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+kind: WorkloadIdentityConfigInvalid
+`)
+			secret.Labels = map[string]string{"workloadidentity.security.gardener.cloud/provider": "azure"}
+			err := ensurer.EnsureCloudProviderSecret(ctx, nil, secret, nil)
+			Expect(err).To(HaveOccurred())
+
+			Expect(err.Error()).To(ContainSubstring("could not decode 'config' as WorkloadIdentityConfig"))
+		})
+
+		It("should add config to cloudprovider secret with if it contains WorkloadIdentityConfig", func() {
+			secret.Data = map[string][]byte{
+				"config": []byte(`
+apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+kind: WorkloadIdentityConfig
+clientID: "client"
+tenantID: "tenant"
+subscriptionID: "subscription"
+`)}
+			secret.Labels = map[string]string{"workloadidentity.security.gardener.cloud/provider": "azure"}
+			Expect(ensurer.EnsureCloudProviderSecret(ctx, nil, secret, nil)).To(Succeed())
+			Expect(secret.Data).To(Equal(map[string][]byte{
+				"config": []byte(`
+apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+kind: WorkloadIdentityConfig
+clientID: "client"
+tenantID: "tenant"
+subscriptionID: "subscription"
+`),
+				"clientID":                  []byte("client"),
+				"tenantID":                  []byte("tenant"),
+				"subscriptionID":            []byte("subscription"),
+				"workloadIdentityTokenFile": []byte("/var/run/secrets/gardener.cloud/workload-identity/token"),
+			}))
+		})
+	})
 })

@@ -6,7 +6,6 @@ package client
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
@@ -29,18 +28,27 @@ func NewStorageAccountClient(auth *internal.ClientAuth, tc azcore.TokenCredentia
 	return &StorageAccountClient{client}, err
 }
 
-// CreateStorageAccount creates a storage account.
-func (c *StorageAccountClient) CreateStorageAccount(ctx context.Context, resourceGroupName, storageAccountName, region string) error {
-	poller, err := c.client.BeginCreate(ctx, resourceGroupName, storageAccountName, armstorage.AccountCreateParameters{
-		Kind:     ptr.To(armstorage.KindStorageV2),
-		Location: &region,
-		SKU:      &armstorage.SKU{Name: ptr.To(armstorage.SKUNameStandardZRS)},
-		Properties: &armstorage.AccountPropertiesCreateParameters{
-			AccessTier:             ptr.To(armstorage.AccessTierCool),
-			EnableHTTPSTrafficOnly: ptr.To(true),
-			AllowBlobPublicAccess:  ptr.To(false),
-			MinimumTLSVersion:      ptr.To(armstorage.MinimumTLSVersionTLS12),
+// CreateOrUpdateStorageAccount creates a storage account.
+func (c *StorageAccountClient) CreateOrUpdateStorageAccount(ctx context.Context, resourceGroupName, storageAccountName, region string, keyExpiration *int32) error {
+	properties := armstorage.AccountPropertiesCreateParameters{
+		AccessTier:             ptr.To(armstorage.AccessTierCool),
+		EnableHTTPSTrafficOnly: ptr.To(true),
+		AllowBlobPublicAccess:  ptr.To(false),
+		MinimumTLSVersion:      ptr.To(armstorage.MinimumTLSVersionTLS12),
+		KeyPolicy: &armstorage.KeyPolicy{
+			KeyExpirationPeriodInDays: ptr.To(int32(0)),
 		},
+	}
+	if keyExpiration != nil {
+		properties.KeyPolicy = &armstorage.KeyPolicy{
+			KeyExpirationPeriodInDays: keyExpiration,
+		}
+	}
+	poller, err := c.client.BeginCreate(ctx, resourceGroupName, storageAccountName, armstorage.AccountCreateParameters{
+		Kind:       ptr.To(armstorage.KindStorageV2),
+		Location:   &region,
+		SKU:        &armstorage.SKU{Name: ptr.To(armstorage.SKUNameStandardZRS)},
+		Properties: &properties,
 	}, nil)
 
 	if err != nil {
@@ -52,21 +60,30 @@ func (c *StorageAccountClient) CreateStorageAccount(ctx context.Context, resourc
 	return err
 }
 
-// ListStorageAccountKey lists the first key of a storage account.
-func (c *StorageAccountClient) ListStorageAccountKey(ctx context.Context, resourceGroupName, storageAccountName string) (string, error) {
-	response, err := c.client.ListKeys(ctx, resourceGroupName, storageAccountName, &armstorage.AccountsClientListKeysOptions{
-		// doc: "Specifies type of the key to be listed. Possible value is kerb.. Specifying any value will set the value to kerb."
-		Expand: ptr.To("kerb"),
-	})
+// ListStorageAccountKeys lists all keys for the specified storage account.
+func (c *StorageAccountClient) ListStorageAccountKeys(ctx context.Context, resourceGroupName, storageAccountName string) ([]*armstorage.AccountKey, error) {
+	response, err := c.client.ListKeys(ctx, resourceGroupName, storageAccountName, &armstorage.AccountsClientListKeysOptions{})
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	if len(response.Keys) < 1 {
-		return "", fmt.Errorf("no key found in storage account %s", storageAccountName)
+	return response.Keys, nil
+}
+
+// RotateKey rotates the key with the given name and returns the updated key.
+func (c *StorageAccountClient) RotateKey(ctx context.Context, resourceGroupName, storageAccountName, storageAccountKeyName string) ([]*armstorage.AccountKey, error) {
+	resp, err := c.client.RegenerateKey(
+		ctx,
+		resourceGroupName,
+		storageAccountName,
+		armstorage.AccountRegenerateKeyParameters{KeyName: ptr.To(storageAccountKeyName)},
+		nil,
+	)
+
+	if err != nil {
+		return nil, err
 	}
 
-	firstKey := response.Keys[0]
-	return *firstKey.Value, nil
+	return resp.Keys, nil
 }

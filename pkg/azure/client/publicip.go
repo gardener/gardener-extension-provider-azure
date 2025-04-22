@@ -65,7 +65,7 @@ func (c *PublicIPClient) List(ctx context.Context, resourceGroupName string) ([]
 		if err != nil {
 			return nil, err
 		}
-		ips = append(ips, res.PublicIPAddressListResult.Value...)
+		ips = append(ips, res.Value...)
 	}
 	return ips, nil
 }

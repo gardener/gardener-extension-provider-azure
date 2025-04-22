@@ -61,7 +61,7 @@ func (c *NatGatewayClient) List(ctx context.Context, resourceGroupName string) (
 		if err != nil {
 			return nil, err
 		}
-		nats = append(nats, res.NatGatewayListResult.Value...)
+		nats = append(nats, res.Value...)
 	}
 	return nats, nil
 }

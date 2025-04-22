@@ -13,6 +13,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"github.com/gardener/gardener/pkg/utils"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
@@ -72,6 +73,11 @@ func (ia *InfrastructureAdapter) TechnicalName() string {
 type ResourceGroupConfig struct {
 	AzureResourceMetadata
 	Location string
+}
+
+// ShootInfo contains information about the shoot the resource belongs.
+type ShootInfo struct {
+	ShootName string
 }
 
 // ResourceGroup returns the configuration for the shoot's resource group.
@@ -249,6 +255,7 @@ func (ia *InfrastructureAdapter) SecurityGroupConfig() SecurityGroupConfig {
 // PublicIPConfig contains configuration for a public IP resource.
 type PublicIPConfig struct {
 	AzureResourceMetadata
+	ShootInfo
 	Zones    []string
 	Location string
 	Managed  bool
@@ -370,6 +377,9 @@ func (ia *InfrastructureAdapter) zonesConfig() []ZoneConfig {
 			if len(configZone.NatGateway.IPAddresses) > 0 {
 				for _, ipRef := range configZone.NatGateway.IPAddresses {
 					ip := PublicIPConfig{
+						ShootInfo: ShootInfo{
+							ShootName: ia.TechnicalName(),
+						},
 						AzureResourceMetadata: AzureResourceMetadata{
 							ResourceGroup: ipRef.ResourceGroup,
 							Name:          ipRef.Name,
@@ -382,6 +392,9 @@ func (ia *InfrastructureAdapter) zonesConfig() []ZoneConfig {
 				}
 			} else {
 				ip := PublicIPConfig{
+					ShootInfo: ShootInfo{
+						ShootName: ia.TechnicalName(),
+					},
 					AzureResourceMetadata: AzureResourceMetadata{
 						ResourceGroup: ia.ResourceGroupName(),
 						Name:          ia.publicIPName(ngw.Name),
@@ -435,6 +448,9 @@ func (ia *InfrastructureAdapter) defaultZone() []ZoneConfig {
 	if len(config.Networks.NatGateway.IPAddresses) > 0 {
 		for _, ipRef := range config.Networks.NatGateway.IPAddresses {
 			ip := PublicIPConfig{
+				ShootInfo: ShootInfo{
+					ShootName: ia.TechnicalName(),
+				},
 				AzureResourceMetadata: AzureResourceMetadata{
 					ResourceGroup: ipRef.ResourceGroup,
 					Name:          ipRef.Name,
@@ -447,6 +463,9 @@ func (ia *InfrastructureAdapter) defaultZone() []ZoneConfig {
 		}
 	} else {
 		ip := PublicIPConfig{
+			ShootInfo: ShootInfo{
+				ShootName: ia.TechnicalName(),
+			},
 			AzureResourceMetadata: AzureResourceMetadata{
 				ResourceGroup: ia.ResourceGroupName(),
 				Name:          ia.publicIPName(ngw.Name),
@@ -497,6 +516,26 @@ func (ia *InfrastructureAdapter) IpConfigs() []PublicIPConfig {
 	return res
 }
 
+// IsPublicIPPinned checks whether a public IP found in the shoot's resource group is also pinned via the provider spec
+// as a NATGateway IP.
+func (ia *InfrastructureAdapter) IsPublicIPPinned(name string) bool {
+	for _, z := range ia.zoneConfigs {
+		if z.NatGateway == nil {
+			continue
+		}
+		for _, ip := range z.NatGateway.PublicIPList {
+			if ip.Managed {
+				continue
+			}
+			if ip.ResourceGroup == ia.ResourceGroupName() && ip.Name == name {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 // NatGatewayConfigs is the configuration for the desired NAT Gateways.
 func (ia *InfrastructureAdapter) NatGatewayConfigs() map[string]NatGatewayConfig {
 	res := make(map[string]NatGatewayConfig)
@@ -519,6 +558,9 @@ func (ia *InfrastructureAdapter) HasShootPrefix(name *string) bool {
 
 // ToProvider translates the config into the actual providerAccess object.
 func (ip *PublicIPConfig) ToProvider(base *armnetwork.PublicIPAddress) *armnetwork.PublicIPAddress {
+	if base == nil {
+		base = &armnetwork.PublicIPAddress{}
+	}
 	target := &armnetwork.PublicIPAddress{
 		Location: to.Ptr(ip.Location),
 		Properties: &armnetwork.PublicIPAddressPropertiesFormat{
@@ -535,12 +577,13 @@ func (ip *PublicIPConfig) ToProvider(base *armnetwork.PublicIPAddress) *armnetwo
 		target.Zones = to.SliceOfPtrs(ip.Zones...)
 	}
 
-	// inherited from base
-	if base != nil {
-		target.ID = base.ID
-		target.Tags = base.Tags
-	}
+	target.Tags = utils.MergeStringMaps(base.Tags, map[string]*string{
+		TagManagedByGardener: to.Ptr("true"),
+		TagShootName:         to.Ptr(ip.ShootName),
+	})
 
+	// inherited from base
+	target.ID = base.ID
 	return target
 }
 

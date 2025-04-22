@@ -25,7 +25,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-azure/charts"
-	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	azureapi "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	azureapihelper "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
@@ -169,8 +168,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				machineDeployment = worker.MachineDeployment{
 					Minimum:              pool.Minimum,
 					Maximum:              pool.Maximum,
-					MaxSurge:             pool.MaxSurge,
-					MaxUnavailable:       pool.MaxUnavailable,
+					Priority:             pool.Priority,
 					Labels:               addTopologyLabel(pool.Labels, w.worker.Spec.Region, zone),
 					Annotations:          pool.Annotations,
 					Taints:               pool.Taints,
@@ -214,13 +212,29 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			}
 			machineClassSpec["network"] = networkConfig
 
+			updateConfiguration := machinev1alpha1.UpdateConfiguration{
+				MaxUnavailable: &pool.MaxUnavailable,
+				MaxSurge:       &pool.MaxSurge,
+			}
+
 			if zone != nil {
 				machineDeployment.Minimum = worker.DistributeOverZones(zone.index, pool.Minimum, zone.count)
 				machineDeployment.Maximum = worker.DistributeOverZones(zone.index, pool.Maximum, zone.count)
-				machineDeployment.MaxSurge = worker.DistributePositiveIntOrPercent(zone.index, pool.MaxSurge, zone.count, pool.Maximum)
-				machineDeployment.MaxUnavailable = worker.DistributePositiveIntOrPercent(zone.index, pool.MaxUnavailable, zone.count, pool.Minimum)
+				updateConfiguration = machinev1alpha1.UpdateConfiguration{
+					MaxUnavailable: ptr.To(worker.DistributePositiveIntOrPercent(zone.index, pool.MaxUnavailable, zone.count, pool.Minimum)),
+					MaxSurge:       ptr.To(worker.DistributePositiveIntOrPercent(zone.index, pool.MaxSurge, zone.count, pool.Maximum)),
+				}
 				machineClassSpec["zone"] = zone.name
 			}
+
+			machineDeploymentStrategy := machinev1alpha1.MachineDeploymentStrategy{
+				Type: machinev1alpha1.RollingUpdateMachineDeploymentStrategyType,
+				RollingUpdate: &machinev1alpha1.RollingUpdateMachineDeployment{
+					UpdateConfiguration: updateConfiguration,
+				},
+			}
+
+			machineDeployment.Strategy = machineDeploymentStrategy
 
 			if workerConfig.DiagnosticsProfile != nil {
 				diagnosticProfile := map[string]interface{}{
@@ -293,7 +307,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			if pool.MachineImage.Name != "" && pool.MachineImage.Version != "" {
 				machineClassSpec["operatingSystem"] = map[string]interface{}{
 					"operatingSystemName":    pool.MachineImage.Name,
-					"operatingSystemVersion": strings.Replace(pool.MachineImage.Version, "+", "_", -1),
+					"operatingSystemVersion": strings.ReplaceAll(pool.MachineImage.Version, "+", "_"),
 				}
 			}
 
@@ -329,7 +343,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		}
 
 		// AvailabilitySet
-		if !infrastructureStatus.Zoned && vmoDependency == nil {
+		if !infrastructureStatus.Zoned {
 			nodesAvailabilitySet, err := azureapihelper.FindAvailabilitySetByPurpose(infrastructureStatus.AvailabilitySets, azureapi.PurposeNodes)
 			if err != nil {
 				return err
@@ -494,7 +508,7 @@ func addTopologyLabel(labels map[string]string, region string, zone *zoneInfo) m
 	return labels
 }
 
-func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPool, workerConfig api.WorkerConfig, infrastructureStatus *azureapi.InfrastructureStatus, vmoDependency *azureapi.VmoDependency, subnetName *string) (string, error) {
+func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPool, workerConfig azureapi.WorkerConfig, infrastructureStatus *azureapi.InfrastructureStatus, vmoDependency *azureapi.VmoDependency, subnetName *string) (string, error) {
 	additionalHashData := []string{}
 
 	// Integrate data disks/volumes in the hash.
@@ -532,12 +546,14 @@ func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPo
 }
 
 // workerPoolHashDataV2 adds additional provider-specific data points to consider to the given data.
-func (w workerDelegate) workerPoolHashDataV2(workerConfig api.WorkerConfig, additionalData []string) ([]string, error) {
-	hashData := make([]string, len(additionalData))
-	copy(hashData, additionalData)
+func (w workerDelegate) workerPoolHashDataV2(workerConfig azureapi.WorkerConfig, additionalData []string) ([]string, error) {
+	hashData := append([]string{}, additionalData...)
 
-	if workerConfig.DiagnosticsProfile != nil && workerConfig.DiagnosticsProfile.StorageURI != nil {
-		hashData = append(hashData, *workerConfig.DiagnosticsProfile.StorageURI)
+	if workerConfig.DiagnosticsProfile != nil && workerConfig.DiagnosticsProfile.Enabled {
+		hashData = append(hashData, "DiagnosticsProfileEnabled")
+		if workerConfig.DiagnosticsProfile.StorageURI != nil {
+			hashData = append(hashData, *workerConfig.DiagnosticsProfile.StorageURI)
+		}
 	}
 
 	return hashData, nil

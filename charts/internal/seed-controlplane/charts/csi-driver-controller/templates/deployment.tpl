@@ -57,6 +57,8 @@ spec:
         - --kubeconfig=/var/run/secrets/gardener.cloud/shoot/generic-kubeconfig/kubeconfig
         {{- end }}
         - --v=5
+        securityContext:
+          allowPrivilegeEscalation: false
         env:
         - name: CSI_ENDPOINT
           value: unix://{{ .Values.socketPath }}/csi.sock
@@ -101,6 +103,11 @@ spec:
           name: kubeconfig-csi-driver-controller-file
           readOnly: true
         {{- end }}
+        {{- if .Values.useWorkloadIdentity }}
+        - name: cloudprovider
+          mountPath: /var/run/secrets/gardener.cloud/workload-identity
+          readOnly: true
+        {{- end }}
         - name: cloud-provider-config
           mountPath: /etc/kubernetes/cloudprovider
 
@@ -121,6 +128,8 @@ spec:
         - --feature-gates={{ range $feature, $enabled := .Values.csiProvisioner.featureGates }}{{ $feature }}={{ $enabled }},{{ end }}
         {{- end }}
         - --v=5
+        securityContext:
+          allowPrivilegeEscalation: false
         env:
         - name: ADDRESS
           value: {{ .Values.socketPath }}/csi.sock
@@ -148,6 +157,8 @@ spec:
         - --worker-threads=500
         - --kube-api-qps=50
         - --kube-api-burst=100
+        securityContext:
+          allowPrivilegeEscalation: false
         env:
         - name: ADDRESS
           value: {{ .Values.socketPath }}/csi.sock
@@ -171,6 +182,8 @@ spec:
         - --leader-election
         - --leader-election-namespace=kube-system
         - --snapshot-name-prefix={{ .Release.Namespace }}
+        securityContext:
+          allowPrivilegeEscalation: false
         env:
         - name: CSI_ENDPOINT
           value: {{ .Values.socketPath }}/csi.sock
@@ -198,6 +211,8 @@ spec:
         {{- if ((.Values.csiResizer).featureGates) }}
         - --feature-gates={{ range $feature, $enabled := .Values.csiResizer.featureGates }}{{ $feature }}={{ $enabled }},{{ end }}
         {{- end }}
+        securityContext:
+          allowPrivilegeEscalation: false
         env:
         - name: ADDRESS
           value: {{ .Values.socketPath }}/csi.sock
@@ -220,6 +235,8 @@ spec:
         resources:
 {{ toYaml .Values.resources.livenessProbe | indent 10 }}
 {{- end }}
+        securityContext:
+          allowPrivilegeEscalation: false
         volumeMounts:
         - name: socket-dir
           mountPath: /csi
@@ -230,6 +247,18 @@ spec:
       - name: cloud-provider-config
         secret:
           secretName: cloud-provider-config
+      {{- if .Values.useWorkloadIdentity }}
+      - name: cloudprovider
+        projected:
+          defaultMode: 420
+          sources:
+          - secret:
+              items:
+                - key: token
+                  path: token
+              name: cloudprovider
+              optional: false
+      {{- end }}
       - name: kubeconfig-csi-driver-controller-{{ .role }}
         projected:
           defaultMode: 420

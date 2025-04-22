@@ -14,9 +14,11 @@ import (
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
 	extensionssecretsmanager "github.com/gardener/gardener/extensions/pkg/util/secret/manager"
+	"github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	securityv1alpha1constants "github.com/gardener/gardener/pkg/apis/security/v1alpha1/constants"
 	"github.com/gardener/gardener/pkg/utils"
 	"github.com/gardener/gardener/pkg/utils/chart"
 	gutil "github.com/gardener/gardener/pkg/utils/gardener"
@@ -118,7 +120,6 @@ var (
 				Objects: []*chart.Object{
 					{Type: &corev1.Service{}, Name: azure.CloudControllerManagerName},
 					{Type: &appsv1.Deployment{}, Name: azure.CloudControllerManagerName},
-					{Type: &corev1.ConfigMap{}, Name: azure.CloudControllerManagerName + "-observability-config"},
 					{Type: &monitoringv1.ServiceMonitor{}, Name: "shoot-cloud-controller-manager"},
 					{Type: &monitoringv1.PrometheusRule{}, Name: "shoot-cloud-controller-manager"},
 					{Type: &autoscalingv1.VerticalPodAutoscaler{}, Name: azure.CloudControllerManagerName + "-vpa"},
@@ -334,7 +335,6 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 			return nil, fmt.Errorf("could not decode providerConfig of controlplane '%s': %w", k8sclient.ObjectKeyFromObject(cp), err)
 		}
 	}
-
 	cpConfigSecret := &corev1.Secret{}
 	if err := vp.client.Get(ctx, k8sclient.ObjectKey{Namespace: cp.Namespace, Name: azure.CloudProviderConfigName}, cpConfigSecret); err != nil {
 		return nil, err
@@ -352,23 +352,21 @@ func (vp *valuesProvider) GetControlPlaneChartValues(
 		}
 	}
 
-	// TODO(rfranzke): Delete this in a future release.
-	if err := kutil.DeleteObject(ctx, vp.client, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "csi-driver-controller-observability-config", Namespace: cp.Namespace}}); err != nil {
-		return nil, fmt.Errorf("failed deleting legacy csi-driver-controller-observability-config ConfigMap: %w", err)
+	// TODO(AndreasBurger): rm in future release.
+	if err := cleanupSeedLegacyCSISnapshotValidation(ctx, vp.client, cp.Namespace); err != nil {
+		return nil, err
 	}
 
-	// TODO(rfranzke): Delete this after August 2024.
-	gep19Monitoring := vp.client.Get(ctx, k8sclient.ObjectKey{Name: "prometheus-shoot", Namespace: cp.Namespace}, &appsv1.StatefulSet{}) == nil
-	if gep19Monitoring {
-		if err := kutil.DeleteObject(ctx, vp.client, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "cloud-controller-manager-observability-config", Namespace: cp.Namespace}}); err != nil {
-			return nil, fmt.Errorf("failed deleting cloud-controller-manager-observability-config ConfigMap: %w", err)
-		}
-		if err := kutil.DeleteObject(ctx, vp.client, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "remedy-controller-azure-monitoring-config", Namespace: cp.Namespace}}); err != nil {
-			return nil, fmt.Errorf("failed deleting remedy-controller-azure-monitoring-config ConfigMap: %w", err)
-		}
+	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: cp.Spec.SecretRef.Name, Namespace: cp.Spec.SecretRef.Namespace}}
+	if err := vp.client.Get(ctx, k8sclient.ObjectKeyFromObject(secret), secret); err != nil {
+		return nil, fmt.Errorf("failed getting controlplane secret: %w", err)
+	}
+	var useWorkloadIdentity bool
+	if secret.Labels != nil && secret.Labels[securityv1alpha1constants.LabelPurpose] == securityv1alpha1constants.LabelPurposeWorkloadIdentityTokenRequestor {
+		useWorkloadIdentity = true
 	}
 
-	return getControlPlaneChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown, infraStatus, gep19Monitoring)
+	return getControlPlaneChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown, infraStatus, useWorkloadIdentity)
 }
 
 // GetControlPlaneShootChartValues returns the values for the control plane shoot chart applied by the generic actuator.
@@ -437,19 +435,25 @@ func getConfigChartValues(infraStatus *apisazure.InfrastructureStatus, cp *exten
 		maxNodes = maxNodes + worker.Maximum
 	}
 
+	var useWorkloadIdentity = false
+	if ca.TokenRetriever != nil {
+		useWorkloadIdentity = true
+	}
+
 	// Collect config chart values.
 	values := map[string]interface{}{
-		"tenantId":          ca.TenantID,
-		"subscriptionId":    ca.SubscriptionID,
-		"aadClientId":       ca.ClientID,
-		"aadClientSecret":   ca.ClientSecret,
-		"resourceGroup":     infraStatus.ResourceGroup.Name,
-		"vnetName":          infraStatus.Networks.VNet.Name,
-		"subnetName":        subnetName,
-		"routeTableName":    routeTableName,
-		"securityGroupName": securityGroupName,
-		"region":            cp.Spec.Region,
-		"maxNodes":          maxNodes,
+		"tenantId":            ca.TenantID,
+		"subscriptionId":      ca.SubscriptionID,
+		"aadClientId":         ca.ClientID,
+		"aadClientSecret":     ca.ClientSecret,
+		"useWorkloadIdentity": useWorkloadIdentity,
+		"resourceGroup":       infraStatus.ResourceGroup.Name,
+		"vnetName":            infraStatus.Networks.VNet.Name,
+		"subnetName":          subnetName,
+		"routeTableName":      routeTableName,
+		"securityGroupName":   securityGroupName,
+		"region":              cp.Spec.Region,
+		"maxNodes":            maxNodes,
 	}
 
 	cloudConfiguration, err := azureclient.CloudConfiguration(nil, &cluster.Shoot.Spec.Region)
@@ -471,10 +475,10 @@ func getConfigChartValues(infraStatus *apisazure.InfrastructureStatus, cp *exten
 }
 
 func cloudInstanceName(cloudConfiguration apisazure.CloudConfiguration) string {
-	switch {
-	case cloudConfiguration.Name == apisazure.AzureChinaCloudName:
+	switch cloudConfiguration.Name {
+	case apisazure.AzureChinaCloudName:
 		return "AZURECHINACLOUD"
-	case cloudConfiguration.Name == apisazure.AzureGovCloudName:
+	case apisazure.AzureGovCloudName:
 		return "AZUREUSGOVERNMENT"
 	default:
 		return "AZUREPUBLICCLOUD"
@@ -522,22 +526,22 @@ func getControlPlaneChartValues(
 	checksums map[string]string,
 	scaledDown bool,
 	infraStatus *apisazure.InfrastructureStatus,
-	gep19Monitoring bool,
+	useWorkloadIdentity bool,
 ) (
 	map[string]interface{},
 	error,
 ) {
-	ccm, err := getCCMChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown, gep19Monitoring)
+	ccm, err := getCCMChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown, useWorkloadIdentity)
 	if err != nil {
 		return nil, err
 	}
 
-	csi, err := getCSIControllerChartValues(cluster, scaledDown, infraStatus, checksums)
+	csi, err := getCSIControllerChartValues(cluster, scaledDown, infraStatus, checksums, useWorkloadIdentity)
 	if err != nil {
 		return nil, err
 	}
 
-	remedy, err := getRemedyControllerChartValues(cluster, checksums, scaledDown, gep19Monitoring)
+	remedy, err := getRemedyControllerChartValues(cluster, checksums, scaledDown, useWorkloadIdentity)
 	if err != nil {
 		return nil, err
 	}
@@ -560,7 +564,7 @@ func getCCMChartValues(
 	secretsReader secretsmanager.Reader,
 	checksums map[string]string,
 	scaledDown bool,
-	gep19Monitoring bool,
+	useWorkloadIdentity bool,
 ) (map[string]interface{}, error) {
 	serverSecret, found := secretsReader.Get(cloudControllerManagerServerName)
 	if !found {
@@ -584,7 +588,7 @@ func getCCMChartValues(
 		"secrets": map[string]interface{}{
 			"server": serverSecret.Name,
 		},
-		"gep19Monitoring": gep19Monitoring,
+		"useWorkloadIdentity": useWorkloadIdentity,
 	}
 
 	if cpConfig.CloudControllerManager != nil {
@@ -600,6 +604,7 @@ func getCSIControllerChartValues(
 	scaledDown bool,
 	infraStatus *apisazure.InfrastructureStatus,
 	checksums map[string]string,
+	useWorkloadIdentity bool,
 ) (map[string]interface{}, error) {
 	values := map[string]interface{}{
 		"enabled": true,
@@ -610,6 +615,7 @@ func getCSIControllerChartValues(
 		"csiSnapshotController": map[string]interface{}{
 			"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
 		},
+		"useWorkloadIdentity": useWorkloadIdentity,
 	}
 
 	k8sVersion, err := semver.NewVersion(cluster.Shoot.Spec.Kubernetes.Version)
@@ -645,7 +651,7 @@ func getRemedyControllerChartValues(
 	cluster *extensionscontroller.Cluster,
 	checksums map[string]string,
 	scaledDown bool,
-	gep19Monitoring bool,
+	useWorkloadIdentity bool,
 ) (map[string]interface{}, error) {
 	disableRemedyController :=
 		cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] == "true" ||
@@ -660,7 +666,7 @@ func getRemedyControllerChartValues(
 		"podAnnotations": map[string]interface{}{
 			"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
 		},
-		"gep19Monitoring": gep19Monitoring,
+		"useWorkloadIdentity": useWorkloadIdentity,
 	}, nil
 }
 
@@ -702,7 +708,7 @@ func getControlPlaneShootChartValues(
 		// - when the shoot is using AVSets due to using basic loadbalancers (see https://github.com/gardener/gardener-extension-provider-azure/issues/1).
 		// - when the outbound connectivity is done via a NATGateway (currently meaning that all worker subnets have a NATGateway attached).
 		azure.AllowEgressName: map[string]interface{}{
-			"enabled": (infraStatus.Zoned || azureapihelper.IsVmoRequired(infraStatus)) && infraStatus.Networks.OutboundAccessType == apisazure.OutboundAccessTypeLoadBalancer,
+			"enabled": deployAllowEgressChart(cluster.Shoot, infraStatus),
 		},
 		azure.CloudControllerManagerName: map[string]interface{}{
 			"enabled":    true,
@@ -720,4 +726,35 @@ func getControlPlaneShootChartValues(
 			"enabled": !disableRemedyController,
 		},
 	}, err
+}
+
+func cleanupSeedLegacyCSISnapshotValidation(
+	ctx context.Context,
+	client k8sclient.Client,
+	namespace string,
+) error {
+	if err := kutil.DeleteObject(
+		ctx,
+		client,
+		&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: azure.CSISnapshotValidationName, Namespace: namespace}},
+	); err != nil {
+		return fmt.Errorf("failed to delete legacy csi snapshot validation deployment: %w", err)
+	}
+	if err := kutil.DeleteObject(
+		ctx,
+		client,
+		&corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: azure.CSISnapshotValidationName, Namespace: namespace}},
+	); err != nil {
+		return fmt.Errorf("failed to delete legacy csi snapshot validation service: %w", err)
+	}
+
+	return nil
+}
+
+func deployAllowEgressChart(shoot *v1beta1.Shoot, infraStatus *apisazure.InfrastructureStatus) bool {
+	if v := shoot.GetAnnotations()[azure.ShootSkipAllowEgressDeployment]; v == "true" {
+		return false
+	}
+
+	return (infraStatus.Zoned || azureapihelper.IsVmoRequired(infraStatus)) && infraStatus.Networks.OutboundAccessType == apisazure.OutboundAccessTypeLoadBalancer
 }

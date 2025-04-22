@@ -16,3 +16,4 @@ etcd:
 #  syncPeriod: 30s
 featureGates:
   DisableRemedyController: false
+  EnableImmutableBuckets: false

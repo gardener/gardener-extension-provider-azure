@@ -2,7 +2,14 @@ provider "azurerm" {
   subscription_id = var.SUBSCRIPTION_ID
   tenant_id       = var.TENANT_ID
   client_id       = var.CLIENT_ID
+
+  {{- if .useWorkloadIdentity }}
+  use_oidc        = true
+  use_cli         = false
+  oidc_token_file_path = "/var/run/secrets/gardener.cloud/workload-identity/token"
+  {{- else }}
   client_secret   = var.CLIENT_SECRET
+  {{- end }}
 
   skip_provider_registration = "true"
   features {

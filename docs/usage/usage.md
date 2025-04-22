@@ -31,8 +31,9 @@ data:
   tenantID: base64(tenant-id)
 ```
 
-⚠️ Depending on your API usage it can be problematic to reuse the same Service Principal for different Shoot clusters due to rate limits.
-Please consider spreading your Shoots over Service Principals from different Azure subscriptions if you are hitting those limits.
+> [!WARNING]
+> Depending on your API usage it can be problematic to reuse the same Service Principal for different Shoot clusters due to rate limits.
+> Please consider spreading your Shoots over Service Principals from different Azure subscriptions if you are hitting those limits.
 
 ### Managed Service Principals
 
@@ -45,7 +46,54 @@ Removing those fields from the secret of an existing Shoot will also let it adop
 Based on the `tenantID` field, the Gardener extension will try to assign the managed service principal to the Shoot.
 If no managed service principal can be assigned then the next operation on the Shoot will fail.
 
-⚠️ The managed service principal need to be assigned to the users Azure subscription with proper permissions before using it.
+> [!WARNING]
+> The managed service principal need to be assigned to the users Azure subscription with proper permissions before using it.
+
+### Azure Workload Identity Federation
+
+Users can choose to trust Gardener's Workload Identity Issuer and eliminate the need for providing Azure credentials.
+
+As a first step a resource of type `WorkloadIdentity` should be created in the Garden cluster and configured with the required Azure information.
+This identity will be used by infrastructure components to authenticate against Azure APIs.
+A sample of such resource is shown below:
+
+```yaml
+apiVersion: security.gardener.cloud/v1alpha1
+kind: WorkloadIdentity
+metadata:
+  name: azure
+  namespace: garden-myproj
+spec:
+  audiences:
+  # This is the audience that you configure during the creation of a federated credential
+  - api://AzureADTokenExchange-my-application
+  targetSystem:
+    type: azure
+    providerConfig:
+      apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+      kind: WorkloadIdentityConfig
+      clientID: 00000000-0000-0000-0000-000000000001 # This is the id of the application (client)
+      tenantID: 00000000-0000-0000-0000-000000000002 # This is the id of the directory (tenant)
+      subscriptionID: 00000000-0000-0000-0000-000000000003 # This is the id of the Azure subscription
+```
+
+Once created the `WorkloadIdentity` will get its own id which will be used to form the subject of the said `WorkloadIdentity`.
+The subject can be obtained by running the following command:
+
+```bash
+kubectl -n garden-myproj get wi azure -o=jsonpath={.status.sub}
+```
+
+As a second step users should configure [Workload Identity Federation](https://learn.microsoft.com/en-us/entra/workload-id/workload-identity-federation-create-trust?pivots=identity-wif-apps-methods-azp#other-identity-providers) so that their application trusts Gardener's Workload Identity Issuer.
+In the shown example a `WorkloadIdentity` with name `azure` with id `00000000-0000-0000-0000-000000000000` from the `garden-myproj` namespace will be trusted by the Azure application.
+
+> [!IMPORTANT]
+> You should replace the subject indentifier in the example below with the subject that is populated in the status of the `WorkloadIdentity`, obtained in a previous step.
+
+![Federated Credential](images/federated_credential.png)
+
+Please ensure that the Azure application (spn) has the proper [IAM actions](azure-permissions.md) assigned.
+If no fine-grained permissions/actions required then simply assign the [Contributor](https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#contributor) role.
 
 ## `InfrastructureConfig`
 
@@ -291,9 +339,9 @@ $ cat new-infra.json
 kubectl patch --type="json" --patch-file new-infra.json shoot <my-shoot>
 ```
 
-:warning: The migration to shoots with dedicated subnets per zone is a one-way process. Reverting the shoot to the previous configuration is not supported.
-
-:warning: During the migration a subset of the nodes will be rolled to the new subnets.
+> [!WARNING]
+> The migration to shoots with dedicated subnets per zone is a one-way process. Reverting the shoot to the previous configuration is not supported.
+> During the migration a subset of the nodes will be rolled to the new subnets.
 
 ## `ControlPlaneConfig`
 
@@ -616,11 +664,24 @@ spec:
 If no configuration is specified the extension will default to the public instance.
 Azure instances other than `AzurePublic`, `AzureGovernment`, or `AzureChina` are not supported at this time.
 
+### Disabling the automatic deployment of `allow-{tcp,udp} loadbalancer services`
+
+Using the `azure-cloud-controller-manager` when a user first creates a loadbalancer service in the cluster, a new Load Balancer is created in Azure and all nodes of the cluster are registered as backend.
+When a NAT Gateway is not used, then this Load Balancer is used as a NAT device for outbound traffic by using one of the registered FrontendIPs assigned to the k8s LB service.
+In cases where a NATGateway is not used, `provider-azure` will deploy by default a set of 2 Load Balancer services in the `kube-system`.
+These are responsible for allowing outbound traffic in all cases for UDP and TCP.
+
+There is a way for users to disable the deployment of these additional LBs by using the `azure.provider.extensions.gardener.cloud/skip-allow-egress="true"` annotation on their shoot.
+[!WARNING]
+Disabling the system Load Balancers may affect the outbound of your shoot.
+Before disabling them, users are highly advised to have created at least one Load Balancer for **TCP and UDP** or forward outbound traffic via a different route.
+
 ### Support for VolumeAttributesClasses (Beta in k8s 1.31)
 
 To have the CSI-driver configured to support the necessary features for [VolumeAttributesClasses](https://kubernetes.io/docs/concepts/storage/volume-attributes-classes/) on Azure for shoots with a k8s-version greater than 1.31, use the `azure.provider.extensions.gardener.cloud/enable-volume-attributes-class` annotation on the shoot. Keep in mind to also enable the required feature flags and runtime-config on the common kubernetes controllers (as outlined in the link above) in the shoot-spec.
 
 For more information and examples on how to configure the volume attributes class, see [example](https://github.com/kubernetes-sigs/azuredisk-csi-driver/blob/release-1.31/deploy/example/modifyvolume/README.md) provided in the the azuredisk-csi-driver repository.
+
 
 ### Shoot clusters with VMSS Flexible Orchestration (VMSS Flex/VMO)
 
@@ -638,6 +699,7 @@ Some key facts about VMSS Flex based clusters:
 - It is not possible to migrate an existing primary AvailabilitySet based Shoot cluster to VMSS Flex based Shoot cluster and vice versa
 - VMSS Flex based clusters are using `Standard` SKU LoadBalancers instead of `Basic` SKU LoadBalancers for AvailabilitySet based Shoot clusters
 
+
 ### Migrating AvailabilitySet shoots to VMSS Flex
 
 Azure plans to deprecate `Basic` SKU public IP addresses. 
@@ -653,3 +715,93 @@ During this process there will be downtime that users need to plan.
 For the transition the Loadbalancer will have to be deleted and recreated. 
 Also **all nodes will have to roll out to the VMSS flex workers**.
 The rollout is controlled by the worker's MCM settings, but it is suggested that you speed up this process so that traffic to your cluster is restored as quickly as possible (for example by using higher `maxUnavailable` values)
+
+## BackupBucketConfig
+
+### Immutable Buckets
+
+The extension provides a gated feature currently in alpha called `enableImmutableBuckets`.
+To make use of this feature, and enable the extension to react to the configuration below, you will need to set `config.featureGates.enableImmutableBuckets: true` in your helm charts' `values.yaml`. See [values.yaml](../../charts/gardener-extension-provider-azure/values.yaml) for an example.
+Before enabling this feature, you will need to add additional permissions to your Azure credential. Please check the linked section in [docs/usage/azure-permissions.md](/docs/usage/azure-permissions.md#microsoftstorage).
+
+`BackupBucketConfig` describes the configuration that needs to be passed over for creation of the backup bucket infrastructure. Configuration like immutability (WORM, i.e. write-once-read-many) that can be set on the bucket are specified here. Objects in the bucket will inherit the immutability duration which is set on the bucket, and they can not be modified or deleted for that duration.
+
+This extension supports creating (and migrating already existing buckets if enabled) to use [container-level WORM policies](https://learn.microsoft.com/en-us/azure/storage/blobs/immutable-container-level-worm-policies).
+
+Example:
+
+```yaml
+apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+kind: BackupBucketConfig
+immutability:
+  retentionType: "bucket"
+  retentionPeriod: 24h
+  locked: false
+```
+
+Options: 
+
+- **`retentionType`**: Specifies the type of retention policy. The allowed value is `bucket`, which applies the retention policy to the entire bucket. See the [documentation](https://learn.microsoft.com/en-us/azure/storage/blobs/immutable-container-level-worm-policies).
+- **`retentionPeriod`**: Defines the duration for which objects in the bucket will remain immutable. Azure Blob Storage only supports immutability durations in days, therefore this field must be set as multiples of 24h.
+- **`locked`**: A boolean indicating whether the retention policy is locked. Once locked, the policy cannot be removed or shortened, ensuring immutability. Learn more about locking policies [here](https://learn.microsoft.com/en-us/azure/storage/blobs/immutable-policy-configure-container-scope?tabs=azure-portal#lock-a-time-based-retention-policy).
+
+To configure a `BackupBucket` with immutability, include the `BackupBucketConfig` in the `ProviderConfig` of the `BackupBucket` resource. If the `locked` field is set to `true`, the retention policy will be locked, preventing further changes.
+
+Here is an example of configuring a `BackupBucket` with immutability:
+
+```yaml
+apiVersion: extensions.gardener.cloud/v1alpha1
+kind: BackupBucket
+metadata:
+  name: my-backup-bucket
+spec:
+  region: westeurope
+  secretRef:
+    name: my-azure-secret
+    namespace: my-namespace
+  providerConfig:
+    apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+    kind: BackupBucketConfig
+    immutability:
+      retentionType: "bucket"
+      retentionPeriod: 24h
+      locked: true
+```
+
+### Storage Account Key Rotation
+
+Here is an example of configuring a `BackupBucket` configured with key rotation:
+
+```yaml
+apiVersion: extensions.gardener.cloud/v1alpha1
+kind: BackupBucket
+metadata:
+  name: my-backup-bucket
+spec:
+  region: westeurope
+  secretRef:
+    name: my-azure-secret
+    namespace: my-namespace
+  providerConfig:
+    apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+    kind: BackupBucketConfig
+    rotationConfig:
+      rotationPeriodDays:  2
+      expirationPeriodDays: 10
+```
+
+Storage account key rotation is only enabled when the `rotationConfig` is configured.
+
+A storage account in Azure is always created with 2 different keys.
+Every triggered rotation by the `BackupBucket` controller will rotate the key **that is not currently in use**, and update the `BackupBucket` referenced secret to the new key.
+
+In addition *operators* can annotate a `BackupBucket` with `azure.provider.extensions.gardener.cloud/rotate=true` to trigger a key rotation on the **next reconciliation**, regardless of the key's age.
+
+Options:
+- **`rotationPeriodDays`**: Defines the period after its creation that an `storage account key` should be rotated.
+- **`expirationPeriodDays`**: When specified it will install an expiration policy for keys in the Azure storage account.
+
+[!WARN]
+A full rotation (a rotation of both storage account keys) is completed after 2*`rotationPeriod`.
+   It is suggested that the `rotationPeriod` is configured at least twice the maintenance frequency of the shoots. 
+   This will ensure that at least one active key is currently used by the etcd-backup pods.
