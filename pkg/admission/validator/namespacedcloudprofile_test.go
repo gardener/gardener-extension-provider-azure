@@ -302,7 +302,7 @@ var _ = Describe("NamespacedCloudProfile Validator", func() {
 			Expect(fakeClient.Create(ctx, cloudProfile)).To(Succeed())
 
 			err := namespacedCloudProfileValidator.Validate(ctx, namespacedCloudProfile, nil)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 })

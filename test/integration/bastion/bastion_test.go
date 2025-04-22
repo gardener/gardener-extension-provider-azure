@@ -714,7 +714,7 @@ func checkSecurityRuleDoesNotExist(ctx context.Context, az *azureClientSet, opti
 
 	Expect(ignoreAzureNotFoundError(err)).To(Succeed())
 	if sg.Properties != nil && sg.Properties.SecurityRules != nil {
-		Expect(len(sg.Properties.SecurityRules)).To(Equal(0))
+		Expect(sg.Properties.SecurityRules).To(BeEmpty())
 	}
 }
 

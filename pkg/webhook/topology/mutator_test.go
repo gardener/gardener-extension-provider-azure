@@ -83,7 +83,7 @@ var _ = Describe("Topology", func() {
 			podCopy := pod.DeepCopy()
 
 			err := mutator.Mutate(context.Background(), pod, pod)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(pod).To(Equal(podCopy))
 		})
 

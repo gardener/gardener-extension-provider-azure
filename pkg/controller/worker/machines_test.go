@@ -256,7 +256,7 @@ var _ = Describe("Machines", func() {
 				}
 
 				marshalledWorkerConfig, err := json.Marshal(workerConfig)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				providerConfig = &runtime.RawExtension{
 					Raw: marshalledWorkerConfig,
 				}
