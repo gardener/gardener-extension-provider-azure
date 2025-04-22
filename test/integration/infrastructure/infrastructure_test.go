@@ -75,7 +75,6 @@ var (
 	subscriptionId = flag.String("subscription-id", "", "Azure subscription ID")
 	tenantId       = flag.String("tenant-id", "", "Azure tenant ID")
 	region         = flag.String("region", "", "Azure region")
-	secretYamlPath = flag.String("secret-path", "", "Yaml file with secret including Azure credentials")
 	reconciler     = flag.String("reconciler", reconcilerUseTF, "Set annotation to use flow for reconciliation")
 
 	testId = string(uuid.NewUUID())
