@@ -9,7 +9,7 @@ const (
 	// DisableRemedyController controls whether the azure provider will disable the remedy-controller. Technically it will still be deployed, but scaled down to zero.
 	// alpha: v1.29.0
 	DisableRemedyController featuregate.Feature = "DisableRemedyController"
-	// EnableImmutableBuckets controls whether the controller would react to immutable bucket configuration. Extra permissions from Azure are necesary for this feature to work.
+	// EnableImmutableBuckets controls whether the controller would react to immutable bucket configuration. Extra permissions from Azure are necessary for this feature to work.
 	// alpha: v1.52.0
 	EnableImmutableBuckets featuregate.Feature = "EnableImmutableBuckets"
 )

@@ -1112,7 +1112,7 @@ func verifyCreation(
 		Expect(id.Properties.ClientID).ToNot(BeNil())
 		Expect(status.Identity.ClientID).To(Equal(*(id.Properties.ClientID)))
 		Expect(id.ID).ToNot(BeNil())
-		// This is a case-insensitive check to determine if the resouce IDs match. In some cases Azure would respond with
+		// This is a case-insensitive check to determine if the resource IDs match. In some cases Azure would respond with
 		// different cases in certain parts of the ID string (e.g. resourceGroups vs resourcegroups). IDs in Azure however seem to not take
 		// case into account, hence we can safely check with EqualFold.
 		Expect(strings.EqualFold(status.Identity.ID, *id.ID)).To(BeTrue())
