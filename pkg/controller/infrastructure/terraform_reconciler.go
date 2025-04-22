@@ -116,7 +116,6 @@ func (r *TerraformReconciler) reconcile(ctx context.Context, infra *extensionsv1
 	if err := tf.
 		InitializeWith(ctx, terraformer.DefaultInitializer(r.Client, terraformFiles.Main, terraformFiles.Variables, terraformFiles.TFVars, initializer)).
 		Apply(ctx); err != nil {
-
 		codes := util.DetermineErrorCodes(err, helper.KnownCodes)
 		isDependenciesError := false
 		for _, code := range codes {
@@ -165,7 +164,6 @@ func (r *TerraformReconciler) reconcile(ctx context.Context, infra *extensionsv1
 
 // getState calculates the State resource after each reconciliation.
 func (r *TerraformReconciler) getState(terraformState *terraformer.RawState, status *v1alpha1.InfrastructureStatus) (*runtime.RawExtension, error) {
-
 	stateByte, err := terraformState.Marshal()
 	if err != nil {
 		return nil, err
@@ -184,7 +182,6 @@ func (r *TerraformReconciler) getState(terraformState *terraformer.RawState, sta
 
 // Delete removes any created infrastructure resource on the provider.
 func (r *TerraformReconciler) Delete(ctx context.Context, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
-
 	tf, err := internal.NewTerraformer(r.Logger, r.RestConfig, infrastructure.TerraformerPurpose, infra, r.disableProjectedTokenMount)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)

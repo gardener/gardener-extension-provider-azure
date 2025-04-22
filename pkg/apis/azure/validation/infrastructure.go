@@ -123,7 +123,6 @@ func validateNetworkConfig(
 	services cidrvalidation.CIDR,
 	fldPath *field.Path,
 ) field.ErrorList {
-
 	var (
 		config       = infra.Networks
 		networksPath = fldPath.Child("networks")

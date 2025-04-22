@@ -491,7 +491,6 @@ func teardownShootEnvironment(ctx context.Context, c client.Client, namespace *c
 	Expect(client.IgnoreNotFound(c.Delete(ctx, secret))).To(Succeed())
 	Expect(client.IgnoreNotFound(c.Delete(ctx, cluster))).To(Succeed())
 	Expect(client.IgnoreNotFound(c.Delete(ctx, namespace))).To(Succeed())
-
 }
 
 func createBastion(cluster *controller.Cluster, name string) (*extensionsv1alpha1.Bastion, *bastionctrl.Options) {

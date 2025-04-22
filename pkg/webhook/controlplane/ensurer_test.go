@@ -625,7 +625,6 @@ func checkKubeAPIServerDeployment(dep *appsv1.Deployment, k8sVersion string) {
 	Expect(c.VolumeMounts).NotTo(ContainElement(cloudProviderConfigVolumeMount))
 	Expect(dep.Spec.Template.Spec.Volumes).NotTo(ContainElement(cloudProviderConfigVolume))
 	Expect(dep.Spec.Template.Annotations).To(BeNil())
-
 }
 
 func checkKubeControllerManagerDeployment(dep *appsv1.Deployment, k8sVersion string) {

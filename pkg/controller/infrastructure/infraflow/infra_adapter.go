@@ -641,7 +641,6 @@ func (s *SubnetConfig) ToProvider(base *armnetwork.Subnet) *armnetwork.Subnet {
 		target.Properties.PrivateEndpoints = base.Properties.PrivateEndpoints
 		target.Properties.PrivateEndpointNetworkPolicies = base.Properties.PrivateEndpointNetworkPolicies
 		target.Properties.Delegations = base.Properties.Delegations
-
 	}
 
 	return target
