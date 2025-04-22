@@ -266,7 +266,7 @@ func (fctx *FlowContext) EnsureRouteTable(ctx context.Context) error {
 
 	err = fctx.inventory.Insert(*rt.ID)
 	if err != nil {
-		return nil
+		return err
 	}
 	fctx.whiteboard.GetChild(ChildKeyIDs).Set(KindRouteTable.String(), *rt.ID)
 	return nil
