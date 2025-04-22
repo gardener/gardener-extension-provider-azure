@@ -537,16 +537,13 @@ func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPo
 
 	// Include additional data for new worker-pool hash generation.
 	// See https://github.com/gardener/gardener/issues/9699 for more details
-	additionalHashDataV2, err := w.workerPoolHashDataV2(workerConfig, additionalHashData)
-	if err != nil {
-		return "", err
-	}
+	additionalHashDataV2 := w.workerPoolHashDataV2(workerConfig, additionalHashData)
 
 	return worker.WorkerPoolHash(pool, w.cluster, additionalHashData, additionalHashDataV2)
 }
 
 // workerPoolHashDataV2 adds additional provider-specific data points to consider to the given data.
-func (w workerDelegate) workerPoolHashDataV2(workerConfig azureapi.WorkerConfig, additionalData []string) ([]string, error) {
+func (w workerDelegate) workerPoolHashDataV2(workerConfig azureapi.WorkerConfig, additionalData []string) []string {
 	hashData := append([]string{}, additionalData...)
 
 	if workerConfig.DiagnosticsProfile != nil && workerConfig.DiagnosticsProfile.Enabled {
@@ -556,7 +553,7 @@ func (w workerDelegate) workerPoolHashDataV2(workerConfig azureapi.WorkerConfig,
 		}
 	}
 
-	return hashData, nil
+	return hashData
 }
 
 // TODO: Remove when we have support for VM Capabilities

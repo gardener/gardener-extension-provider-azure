@@ -238,6 +238,7 @@ var _ = Describe("Mutate", func() {
 	})
 })
 
+// nolint :unparam
 func generateInfrastructureWithProviderConfig(config *azurev1alpha1.InfrastructureConfig, status *azurev1alpha1.IdentityStatus) *extensionsv1alpha1.Infrastructure {
 	infra := &extensionsv1alpha1.Infrastructure{}
 

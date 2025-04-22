@@ -541,10 +541,7 @@ func getControlPlaneChartValues(
 		return nil, err
 	}
 
-	remedy, err := getRemedyControllerChartValues(cluster, checksums, scaledDown, useWorkloadIdentity)
-	if err != nil {
-		return nil, err
-	}
+	remedy := getRemedyControllerChartValues(cluster, checksums, scaledDown, useWorkloadIdentity)
 
 	return map[string]interface{}{
 		"global": map[string]interface{}{
@@ -652,13 +649,13 @@ func getRemedyControllerChartValues(
 	checksums map[string]string,
 	scaledDown bool,
 	useWorkloadIdentity bool,
-) (map[string]interface{}, error) {
+) map[string]interface{} {
 	disableRemedyController :=
 		cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] == "true" ||
 			features.ExtensionFeatureGate.Enabled(features.DisableRemedyController)
 
 	if disableRemedyController {
-		return map[string]interface{}{"enabled": true, "replicas": 0}, nil
+		return map[string]interface{}{"enabled": true, "replicas": 0}
 	}
 	return map[string]interface{}{
 		"enabled":  true,
@@ -667,7 +664,7 @@ func getRemedyControllerChartValues(
 			"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
 		},
 		"useWorkloadIdentity": useWorkloadIdentity,
-	}, nil
+	}
 }
 
 // getControlPlaneShootChartValues collects and returns the control plane shoot chart values.

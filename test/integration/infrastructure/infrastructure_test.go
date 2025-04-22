@@ -876,12 +876,12 @@ func prepareNewVNet(ctx context.Context, log logr.Logger, az *azureClientSet, gr
 		Name:     ptr.To(vNetName),
 		Location: ptr.To(location),
 	}, nil)
-	Expect(err).ShouldNot(HaveOccurred())
+	if err != nil {
+		return err
+	}
 
 	_, err = poller.PollUntilDone(ctx, nil)
-	Expect(err).ShouldNot(HaveOccurred())
-
-	return nil
+	return err
 }
 
 func prepareNewIdentity(ctx context.Context, log logr.Logger, az *azureClientSet, groupName, idName, location string) error {
@@ -911,12 +911,12 @@ func prepareNewNatIp(ctx context.Context, log logr.Logger, az *azureClientSet, g
 
 func teardownResourceGroup(ctx context.Context, az *azureClientSet, groupName string) error {
 	poller, err := az.groups.BeginDelete(ctx, groupName, nil)
-	Expect(err).ShouldNot(HaveOccurred())
+	if err != nil {
+		return err
+	}
 
 	_, err = poller.PollUntilDone(ctx, nil)
-	Expect(err).ShouldNot(HaveOccurred())
-
-	return nil
+	return err
 }
 
 func hasForeignVNet(config *azurev1alpha1.InfrastructureConfig) bool {
