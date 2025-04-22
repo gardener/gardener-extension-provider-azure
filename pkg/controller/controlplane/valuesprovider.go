@@ -13,7 +13,7 @@ import (
 	"github.com/Masterminds/semver/v3"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
-	extensionssecretsmanager "github.com/gardener/gardener/extensions/pkg/util/secret/manager"
+	extensionssecretmanager "github.com/gardener/gardener/extensions/pkg/util/secret/manager"
 	"github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
@@ -35,7 +35,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
-	autoscalingv1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
+	vpaautoscalingv1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -56,8 +56,8 @@ const (
 	cloudControllerManagerServerName = azure.CloudControllerManagerName + "-server"
 )
 
-func secretConfigsFunc(namespace string) []extensionssecretsmanager.SecretConfigWithOptions {
-	return []extensionssecretsmanager.SecretConfigWithOptions{
+func secretConfigsFunc(namespace string) []extensionssecretmanager.SecretConfigWithOptions {
+	return []extensionssecretmanager.SecretConfigWithOptions{
 		{
 			Config: &secretutils.CertificateSecretConfig{
 				Name:       caNameControlPlane,
@@ -122,7 +122,7 @@ var (
 					{Type: &appsv1.Deployment{}, Name: azure.CloudControllerManagerName},
 					{Type: &monitoringv1.ServiceMonitor{}, Name: "shoot-cloud-controller-manager"},
 					{Type: &monitoringv1.PrometheusRule{}, Name: "shoot-cloud-controller-manager"},
-					{Type: &autoscalingv1.VerticalPodAutoscaler{}, Name: azure.CloudControllerManagerName + "-vpa"},
+					{Type: &vpaautoscalingv1.VerticalPodAutoscaler{}, Name: azure.CloudControllerManagerName + "-vpa"},
 				},
 			},
 			{
@@ -141,11 +141,11 @@ var (
 					// csi-driver-controllers
 					{Type: &appsv1.Deployment{}, Name: azure.CSIControllerDiskName},
 					{Type: &appsv1.Deployment{}, Name: azure.CSIControllerFileName},
-					{Type: &autoscalingv1.VerticalPodAutoscaler{}, Name: azure.CSIControllerDiskName + "-vpa"},
-					{Type: &autoscalingv1.VerticalPodAutoscaler{}, Name: azure.CSIControllerFileName + "-vpa"},
+					{Type: &vpaautoscalingv1.VerticalPodAutoscaler{}, Name: azure.CSIControllerDiskName + "-vpa"},
+					{Type: &vpaautoscalingv1.VerticalPodAutoscaler{}, Name: azure.CSIControllerFileName + "-vpa"},
 					// csi-snapshot-controller
 					{Type: &appsv1.Deployment{}, Name: azure.CSISnapshotControllerName},
-					{Type: &autoscalingv1.VerticalPodAutoscaler{}, Name: azure.CSISnapshotControllerName + "-vpa"},
+					{Type: &vpaautoscalingv1.VerticalPodAutoscaler{}, Name: azure.CSISnapshotControllerName + "-vpa"},
 				},
 			},
 			{
@@ -154,7 +154,7 @@ var (
 				Objects: []*chart.Object{
 					{Type: &appsv1.Deployment{}, Name: azure.RemedyControllerName},
 					{Type: &corev1.ConfigMap{}, Name: azure.RemedyControllerName + "-config"},
-					{Type: &autoscalingv1.VerticalPodAutoscaler{}, Name: azure.RemedyControllerName + "-vpa"},
+					{Type: &vpaautoscalingv1.VerticalPodAutoscaler{}, Name: azure.RemedyControllerName + "-vpa"},
 					{Type: &rbacv1.Role{}, Name: azure.RemedyControllerName},
 					{Type: &rbacv1.RoleBinding{}, Name: azure.RemedyControllerName},
 					{Type: &corev1.ServiceAccount{}, Name: azure.RemedyControllerName},
