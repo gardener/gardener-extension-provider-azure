@@ -167,7 +167,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					Workers: &workers,
 				}
 				errorList := ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)
-				Expect(errorList).To(HaveLen(0))
+				Expect(errorList).To(BeEmpty())
 			})
 
 			It("should allow to provide a ddos protection plan for a managed vnet", func() {
@@ -175,7 +175,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				infrastructureConfig.ResourceGroup = nil
 				infrastructureConfig.Networks.VNet.DDosProtectionPlanID = &ddosProtectionPlanID
 				errorList := ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)
-				Expect(errorList).To(HaveLen(0))
+				Expect(errorList).To(BeEmpty())
 			})
 
 			It("should forbid providing an ddos protection plan to an existing vnet", func() {
@@ -739,7 +739,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				}
 				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, providerPath)
 				if !expectError {
-					Expect(errorList).To(HaveLen(0))
+					Expect(errorList).To(BeEmpty())
 					return
 				}
 				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{

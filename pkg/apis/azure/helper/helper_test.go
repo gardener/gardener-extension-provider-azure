@@ -207,6 +207,7 @@ func makeProfileMachineImages(name, urnVersion, idVersion, communityGalleryImage
 	}
 }
 
+// nolint :unparam
 func makeProfileMachineImageWithURNandIDandCommunityGalleryIDandSharedGalleryImageID(name, version string, urn, id, communityGalleryImageID, sharedGalleryImageID, architecture *string) []api.MachineImages {
 	return []api.MachineImages{
 		{

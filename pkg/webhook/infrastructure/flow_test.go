@@ -105,7 +105,7 @@ var _ = Describe("Mutate", func() {
 				}
 
 				err := mutator.Mutate(ctx, newInfra, nil)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(newInfra.Annotations[azure.AnnotationKeyUseFlow]).To(Equal("foo"))
 			})
 
@@ -119,7 +119,7 @@ var _ = Describe("Mutate", func() {
 				}
 
 				err := mutator.Mutate(ctx, newInfra, nil)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(newInfra.Annotations[azure.AnnotationKeyUseFlow]).To(Equal("foo"))
 			})
 
@@ -133,7 +133,7 @@ var _ = Describe("Mutate", func() {
 				}
 
 				err := mutator.Mutate(ctx, newInfra, nil)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(newInfra.Annotations[azure.AnnotationKeyUseFlow]).To(Equal("true"))
 			})
 
@@ -146,7 +146,7 @@ var _ = Describe("Mutate", func() {
 					},
 				}
 				err := mutator.Mutate(ctx, newInfra, nil)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(newInfra.Annotations[azure.AnnotationKeyUseFlow]).To(Equal("true"))
 			})
 		})
@@ -161,7 +161,7 @@ var _ = Describe("Mutate", func() {
 					},
 				}
 				err := mutator.Mutate(ctx, newInfra, newInfra)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(newInfra.Annotations[azure.AnnotationKeyUseFlow]).To(Equal(""))
 			})
 
@@ -174,7 +174,7 @@ var _ = Describe("Mutate", func() {
 					},
 				}
 				err := mutator.Mutate(ctx, newInfra, newInfra)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(newInfra.Annotations[azure.AnnotationKeyUseFlow]).To(Equal("true"))
 			})
 
@@ -187,7 +187,7 @@ var _ = Describe("Mutate", func() {
 					},
 				}
 				err := mutator.Mutate(ctx, newInfra, newInfra)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(newInfra.Annotations[azure.AnnotationKeyUseFlow]).To(Equal("foo"))
 			})
 		})
@@ -205,7 +205,7 @@ var _ = Describe("Mutate", func() {
 				}
 
 				err := mutator.Mutate(ctx, newInfra, nil)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(newInfra.Annotations[azure.AnnotationKeyUseFlow]).To(Equal(""))
 			})
 
@@ -221,7 +221,7 @@ var _ = Describe("Mutate", func() {
 				}
 
 				err := mutator.Mutate(ctx, newInfra, nil)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(newInfra.Annotations[azure.AnnotationKeyUseFlow]).To(Equal(""))
 			})
 		})

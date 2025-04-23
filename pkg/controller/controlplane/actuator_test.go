@@ -140,7 +140,7 @@ var _ = Describe("Actuator", func() {
 
 		It("should forcefully remove remedy controller resources after grace period timeout has been reached", func() {
 			cp := newControlPlane(nil)
-			time := metav1.NewTime(time.Now().Add(time.Duration(-2 * gracefulDeletionTimeout)))
+			time := metav1.NewTime(time.Now().Add(-2 * gracefulDeletionTimeout))
 			cp.DeletionTimestamp = &time
 
 			pubip := newPubip(nil)

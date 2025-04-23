@@ -87,7 +87,7 @@ var _ = Describe("Mutate", func() {
 
 				err := mutator.Mutate(context.TODO(), newInfra, oldInfra)
 
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				v, ok := getLayoutMigrationAnnotation(newInfra)
 				Expect(ok).To(BeTrue())
 				Expect(v).To(Equal("2"))
@@ -97,7 +97,7 @@ var _ = Describe("Mutate", func() {
 
 				err := mutator.Mutate(context.TODO(), newInfra, newInfra)
 
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				_, ok := getLayoutMigrationAnnotation(newInfra)
 				Expect(ok).To(BeFalse())
 			})
@@ -106,7 +106,7 @@ var _ = Describe("Mutate", func() {
 
 				err := mutator.Mutate(context.TODO(), newInfra, nil)
 
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				_, ok := getLayoutMigrationAnnotation(newInfra)
 				Expect(ok).To(BeFalse())
 			})
@@ -115,7 +115,7 @@ var _ = Describe("Mutate", func() {
 
 				err := mutator.Mutate(context.TODO(), newInfra, newInfra)
 
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				_, ok := getLayoutMigrationAnnotation(newInfra)
 				Expect(ok).To(BeFalse())
 			})
@@ -132,11 +132,11 @@ var _ = Describe("Mutate", func() {
 					},
 				}
 				marshalled, err := json.Marshal(state)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				newInfra.Status.State = &runtime.RawExtension{Raw: marshalled}
 
 				err = mutator.Mutate(context.TODO(), newInfra, newInfra)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				v, ok := getLayoutMigrationAnnotation(newInfra)
 				Expect(ok).To(BeTrue())
 				Expect(v).To(Equal("2"))
@@ -168,7 +168,7 @@ var _ = Describe("Mutate", func() {
 					},
 				}
 				marshalled, err := json.Marshal(status)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				state := &infrastructure.InfrastructureState{
 					SavedProviderStatus: &runtime.RawExtension{
@@ -176,11 +176,11 @@ var _ = Describe("Mutate", func() {
 					},
 				}
 				marshalledState, err := json.Marshal(state)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				newInfra.Status.State = &runtime.RawExtension{Raw: marshalledState}
 
 				err = mutator.Mutate(context.TODO(), newInfra, newInfra)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				v, ok := getLayoutMigrationAnnotation(newInfra)
 				Expect(ok).To(BeTrue())
 				Expect(v).To(Equal("2"))
@@ -223,13 +223,13 @@ var _ = Describe("Mutate", func() {
 				addLayoutMigrationAnnotation(newZonesInfra, migratedSubnet)
 
 				err := mutator.Mutate(context.TODO(), newZonesInfra, zonesInfra)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				_, ok := getLayoutMigrationAnnotation(newZonesInfra)
 				Expect(ok).To(BeFalse())
 			})
 			It("should keep the annotation is the zone is still in use", func() {
 				err := mutator.Mutate(context.TODO(), zonesInfra, nil)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				a, ok := getLayoutMigrationAnnotation(zonesInfra)
 				Expect(ok).To(BeTrue())
 				Expect(a).To(Equal(strconv.Itoa(migratedSubnet)))
@@ -238,12 +238,13 @@ var _ = Describe("Mutate", func() {
 	})
 })
 
+// nolint :unparam
 func generateInfrastructureWithProviderConfig(config *azurev1alpha1.InfrastructureConfig, status *azurev1alpha1.IdentityStatus) *extensionsv1alpha1.Infrastructure {
 	infra := &extensionsv1alpha1.Infrastructure{}
 
 	if config != nil {
 		marshalled, err := json.Marshal(config)
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 
 		infra.Spec.ProviderConfig = &runtime.RawExtension{
 			Raw: marshalled,
@@ -252,7 +253,7 @@ func generateInfrastructureWithProviderConfig(config *azurev1alpha1.Infrastructu
 
 	if status != nil {
 		marshalled, err := json.Marshal(status)
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 
 		infra.Status.ProviderStatus = &runtime.RawExtension{
 			Raw: marshalled,

@@ -277,12 +277,10 @@ var _ = Describe("Bastion tests", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		By("setup Network Security Group")
-		sg, err := prepareSecurityGroup(ctx, log, resourceGroupName, securityGroupName, clientSet, *region)
-		Expect(err).NotTo(HaveOccurred())
+		sg := prepareSecurityGroup(ctx, log, resourceGroupName, securityGroupName, clientSet, *region)
 
 		By("setup Virtual Network")
-		err = prepareNewVNet(ctx, log, clientSet, resourceGroupName, vNetName, subnetName, *region, VNetCIDR, sg)
-		Expect(err).NotTo(HaveOccurred())
+		prepareNewVNet(ctx, log, clientSet, resourceGroupName, vNetName, subnetName, *region, VNetCIDR, sg)
 
 		framework.AddCleanupAction(func() {
 			err = ignoreAzureNotFoundError(teardownResourceGroup(ctx, clientSet, resourceGroupName))
@@ -409,7 +407,7 @@ func prepareNewResourceGroup(ctx context.Context, log logr.Logger, az *azureClie
 	return err
 }
 
-func prepareSecurityGroup(ctx context.Context, log logr.Logger, resourceGroupName string, securityGroupName string, az *azureClientSet, location string) (armnetwork.SecurityGroup, error) {
+func prepareSecurityGroup(ctx context.Context, log logr.Logger, resourceGroupName string, securityGroupName string, az *azureClientSet, location string) armnetwork.SecurityGroup {
 	log.Info("generating new SecurityGroups", "securityGroupName", securityGroupName)
 	poller, err := az.securityGroups.BeginCreateOrUpdate(ctx, resourceGroupName, securityGroupName, armnetwork.SecurityGroup{
 		Location: to.StringPtr(location),
@@ -419,10 +417,10 @@ func prepareSecurityGroup(ctx context.Context, log logr.Logger, resourceGroupNam
 	result, err := poller.PollUntilDone(ctx, nil)
 	Expect(err).ShouldNot(HaveOccurred())
 
-	return result.SecurityGroup, nil
+	return result.SecurityGroup
 }
 
-func prepareNewVNet(ctx context.Context, log logr.Logger, az *azureClientSet, resourceGroupName, vNetName, subnetName, location, cidr string, nsg armnetwork.SecurityGroup) error {
+func prepareNewVNet(ctx context.Context, log logr.Logger, az *azureClientSet, resourceGroupName, vNetName, subnetName, location, cidr string, nsg armnetwork.SecurityGroup) {
 	log.Info("generating new resource Group/VNet/subnetName", "resourceGroupName", resourceGroupName, " vNetName", vNetName, "subnetName", subnetName)
 	poller, err := az.vnet.BeginCreateOrUpdate(ctx, resourceGroupName, vNetName, armnetwork.VirtualNetwork{
 		Properties: &armnetwork.VirtualNetworkPropertiesFormat{
@@ -449,18 +447,16 @@ func prepareNewVNet(ctx context.Context, log logr.Logger, az *azureClientSet, re
 
 	_, err = poller.PollUntilDone(ctx, nil)
 	Expect(err).ShouldNot(HaveOccurred())
-
-	return nil
 }
 
 func teardownResourceGroup(ctx context.Context, az *azureClientSet, groupName string) error {
 	poller, err := az.groups.BeginDelete(ctx, groupName, nil)
-	Expect(err).ShouldNot(HaveOccurred())
+	if err != nil {
+		return err
+	}
 
 	_, err = poller.PollUntilDone(ctx, nil)
-	Expect(err).ShouldNot(HaveOccurred())
-
-	return nil
+	return err
 }
 
 func ignoreAzureNotFoundError(err error) error {
@@ -495,7 +491,6 @@ func teardownShootEnvironment(ctx context.Context, c client.Client, namespace *c
 	Expect(client.IgnoreNotFound(c.Delete(ctx, secret))).To(Succeed())
 	Expect(client.IgnoreNotFound(c.Delete(ctx, cluster))).To(Succeed())
 	Expect(client.IgnoreNotFound(c.Delete(ctx, namespace))).To(Succeed())
-
 }
 
 func createBastion(cluster *controller.Cluster, name string) (*extensionsv1alpha1.Bastion, *bastionctrl.Options) {
@@ -714,7 +709,7 @@ func checkSecurityRuleDoesNotExist(ctx context.Context, az *azureClientSet, opti
 
 	Expect(ignoreAzureNotFoundError(err)).To(Succeed())
 	if sg.Properties != nil && sg.Properties.SecurityRules != nil {
-		Expect(len(sg.Properties.SecurityRules)).To(Equal(0))
+		Expect(sg.Properties.SecurityRules).To(BeEmpty())
 	}
 }
 
@@ -739,9 +734,9 @@ func verifyCreation(ctx context.Context, az *azureClientSet, options *bastionctr
 	Expect(err).NotTo(HaveOccurred())
 
 	// bastion NSG - Check Ingress / Egress firewalls created
-	ruleExist(ptr.To(bastionctrl.NSGIngressAllowSSHResourceNameIPv4(options.BastionInstanceName)), sg.Properties.SecurityRules)
-	ruleExist(ptr.To(bastionctrl.NSGEgressDenyAllResourceName(options.BastionInstanceName)), sg.Properties.SecurityRules)
-	ruleExist(ptr.To(bastionctrl.NSGEgressAllowOnlyResourceName(options.BastionInstanceName)), sg.Properties.SecurityRules)
+	Expect(ruleExist(ptr.To(bastionctrl.NSGIngressAllowSSHResourceNameIPv4(options.BastionInstanceName)), sg.Properties.SecurityRules)).To(BeTrue())
+	Expect(ruleExist(ptr.To(bastionctrl.NSGEgressDenyAllResourceName(options.BastionInstanceName)), sg.Properties.SecurityRules)).To(BeTrue())
+	Expect(ruleExist(ptr.To(bastionctrl.NSGEgressAllowOnlyResourceName(options.BastionInstanceName)), sg.Properties.SecurityRules)).To(BeTrue())
 
 	By("checking bastion instance")
 	// bastion instance

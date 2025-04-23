@@ -73,7 +73,6 @@ func (p *access) DisassociatePublicIP(ctx context.Context, rgName, natName, pipI
 		if natPip != nil && !reflect.DeepEqual(*natPip.ID, pipId) {
 			natPips = append(natPips, natPip)
 		}
-
 	}
 	nat.Properties.PublicIPAddresses = natPips
 

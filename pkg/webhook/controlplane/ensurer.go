@@ -405,7 +405,6 @@ func (e *ensurer) EnsureKubeletConfiguration(
 	_ gcontext.GardenContext,
 	kubeletVersion *semver.Version,
 	newKubeletConfiguration, _ *kubeletconfigv1beta1.KubeletConfiguration) error {
-
 	if versionutils.ConstraintK8sLess130.Check(kubeletVersion) {
 		setKubeletConfigurationFeatureGate(newKubeletConfiguration, "CSIMigrationAzureFile", true)
 	}

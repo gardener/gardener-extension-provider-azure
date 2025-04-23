@@ -76,7 +76,7 @@ var _ = Describe("Bastion test", func() {
 				CIDRs:              []string{"213.69.151.131/32", "2001:db8:3333:4444:5555:6666:7777:8888/128"},
 			}
 			rules := prepareNSGRules(opt)
-			Expect(len(rules)).Should(Equal(4))
+			Expect(rules).Should(HaveLen(4))
 		})
 		It("should return 2 rules without ipv6", func() {
 			opt := &Options{
@@ -84,7 +84,7 @@ var _ = Describe("Bastion test", func() {
 				CIDRs:              []string{"213.69.151.131/32", "2001:db8:3333:4444:5555:6666:7777:8888/128"},
 			}
 			rules := prepareNSGRules(opt)
-			Expect(len(rules)).Should(Equal(3))
+			Expect(rules).Should(HaveLen(3))
 		})
 	})
 
@@ -103,9 +103,9 @@ var _ = Describe("Bastion test", func() {
 				createRule("ruleName1", "*", "8.8.8.8"),
 			}
 
-			Expect(expectedNSGRulesPresentAndValid(ruleSet1, ruleSet1)).To(Equal(true))
-			Expect(expectedNSGRulesPresentAndValid(ruleSet1, ruleSet2)).To(Equal(false))
-			Expect(expectedNSGRulesPresentAndValid(ruleSet1, ruleSet3)).To(Equal(false))
+			Expect(expectedNSGRulesPresentAndValid(ruleSet1, ruleSet1)).To(BeTrue())
+			Expect(expectedNSGRulesPresentAndValid(ruleSet1, ruleSet2)).To(BeFalse())
+			Expect(expectedNSGRulesPresentAndValid(ruleSet1, ruleSet3)).To(BeFalse())
 		})
 
 		It("should add Rules with new priority numbers and delete old one", func() {
@@ -137,7 +137,7 @@ var _ = Describe("Bastion test", func() {
 		set[11] = true
 
 		Expect(*findNextFreeNumber(set, 10)).To(Equal(int32(12)))
-		Expect(len(set)).To(Equal(3))
+		Expect(set).To(HaveLen(3))
 	})
 
 	Describe("getWorkersCIDR", func() {
@@ -260,7 +260,7 @@ var _ = Describe("Bastion test", func() {
 			var deleted bool
 			rulesArr, deleted = deleteSecurityRuleDefinitionsByName(rulesArr, "")
 
-			Expect(deleted).To(Equal(false))
+			Expect(deleted).To(BeFalse())
 			Expect(rulesArr).To(BeNil())
 		})
 
@@ -274,13 +274,13 @@ var _ = Describe("Bastion test", func() {
 
 			modified, someDeleted := deleteSecurityRuleDefinitionsByName(original, "ruleName1", "ruleName2", "non-exist-rule")
 
-			Expect(someDeleted).To(Equal(true))
+			Expect(someDeleted).To(BeTrue())
 			Expect(modified).To(Equal([]*armnetwork.SecurityRule{
 				{Name: nil},
 				{Name: ptr.To("ruleName3")},
 			}))
 
-			Expect(len(modified)).To(Equal(2))
+			Expect(modified).To(HaveLen(2))
 		})
 	})
 

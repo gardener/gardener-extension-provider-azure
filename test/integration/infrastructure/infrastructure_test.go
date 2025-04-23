@@ -75,7 +75,6 @@ var (
 	subscriptionId = flag.String("subscription-id", "", "Azure subscription ID")
 	tenantId       = flag.String("tenant-id", "", "Azure tenant ID")
 	region         = flag.String("region", "", "Azure region")
-	secretYamlPath = flag.String("secret-path", "", "Yaml file with secret including Azure credentials")
 	reconciler     = flag.String("reconciler", reconcilerUseTF, "Set annotation to use flow for reconciliation")
 
 	testId = string(uuid.NewUUID())
@@ -280,7 +279,7 @@ var _ = BeforeSuite(func() {
 		GlobalDefault: false,
 		Value:         999998300,
 	}
-	Expect(client.IgnoreAlreadyExists(c.Create(ctx, priorityClass))).To(BeNil())
+	Expect(client.IgnoreAlreadyExists(c.Create(ctx, priorityClass))).To(Succeed())
 })
 
 var _ = Describe("Infrastructure tests", func() {
@@ -876,12 +875,12 @@ func prepareNewVNet(ctx context.Context, log logr.Logger, az *azureClientSet, gr
 		Name:     ptr.To(vNetName),
 		Location: ptr.To(location),
 	}, nil)
-	Expect(err).ShouldNot(HaveOccurred())
+	if err != nil {
+		return err
+	}
 
 	_, err = poller.PollUntilDone(ctx, nil)
-	Expect(err).ShouldNot(HaveOccurred())
-
-	return nil
+	return err
 }
 
 func prepareNewIdentity(ctx context.Context, log logr.Logger, az *azureClientSet, groupName, idName, location string) error {
@@ -911,12 +910,12 @@ func prepareNewNatIp(ctx context.Context, log logr.Logger, az *azureClientSet, g
 
 func teardownResourceGroup(ctx context.Context, az *azureClientSet, groupName string) error {
 	poller, err := az.groups.BeginDelete(ctx, groupName, nil)
-	Expect(err).ShouldNot(HaveOccurred())
+	if err != nil {
+		return err
+	}
 
 	_, err = poller.PollUntilDone(ctx, nil)
-	Expect(err).ShouldNot(HaveOccurred())
-
-	return nil
+	return err
 }
 
 func hasForeignVNet(config *azurev1alpha1.InfrastructureConfig) bool {
@@ -1112,7 +1111,7 @@ func verifyCreation(
 		Expect(id.Properties.ClientID).ToNot(BeNil())
 		Expect(status.Identity.ClientID).To(Equal(*(id.Properties.ClientID)))
 		Expect(id.ID).ToNot(BeNil())
-		// This is a case-insensitive check to determine if the resouce IDs match. In some cases Azure would respond with
+		// This is a case-insensitive check to determine if the resource IDs match. In some cases Azure would respond with
 		// different cases in certain parts of the ID string (e.g. resourceGroups vs resourcegroups). IDs in Azure however seem to not take
 		// case into account, hence we can safely check with EqualFold.
 		Expect(strings.EqualFold(status.Identity.ID, *id.ID)).To(BeTrue())

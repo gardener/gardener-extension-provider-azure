@@ -5,27 +5,9 @@
 package infrastructure_test
 
 import (
-	"encoding/base64"
-	"flag"
-	"os"
-
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"gopkg.in/yaml.v2"
 )
-
-func setConfigVariablesFromFlags() {
-	flag.Parse()
-	if *secretYamlPath != "" {
-		auth := readAuthFromFile(*secretYamlPath)
-		clientId = &auth.ClientID
-		clientSecret = &auth.ClientSecret
-		subscriptionId = &auth.SubscriptionID
-		tenantId = &auth.TenantID
-	} else {
-		validateFlags()
-	}
-}
 
 func validateFlags() {
 	if len(*clientId) == 0 {
@@ -62,33 +44,4 @@ type ClientAuth struct {
 
 func (clientAuth ClientAuth) GetAzClientCredentials() (*azidentity.ClientSecretCredential, error) {
 	return azidentity.NewClientSecretCredential(clientAuth.TenantID, clientAuth.ClientID, clientAuth.ClientSecret, nil)
-}
-
-type ProviderSecret struct {
-	Data ClientAuth `yaml:"data"`
-}
-
-func readAuthFromFile(fileName string) ClientAuth {
-	secret := ProviderSecret{}
-	data, err := os.ReadFile(fileName)
-	if err != nil {
-		panic(err)
-	}
-	err = yaml.Unmarshal(data, &secret)
-	if err != nil {
-		panic(err)
-	}
-	secret.Data.ClientID = decodeString(secret.Data.ClientID)
-	secret.Data.ClientSecret = decodeString(secret.Data.ClientSecret)
-	secret.Data.SubscriptionID = decodeString(secret.Data.SubscriptionID)
-	secret.Data.TenantID = decodeString(secret.Data.TenantID)
-	return secret.Data
-}
-
-func decodeString(s string) string {
-	res, err := base64.StdEncoding.DecodeString(s)
-	if err != nil {
-		panic(err)
-	}
-	return string(res)
 }

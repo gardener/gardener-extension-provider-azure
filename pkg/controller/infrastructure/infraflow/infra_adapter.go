@@ -25,12 +25,11 @@ import (
 // inferable based on the shoot configuration. It acts as an intermediate step to make the configuration easier to process
 // for the ensurer step.
 type InfrastructureAdapter struct {
-	infra          *extensionsv1alpha1.Infrastructure
-	config         *azure.InfrastructureConfig
-	status         *azure.InfrastructureStatus
-	profile        *azure.CloudProfileConfig
-	cluster        *extensionscontroller.Cluster
-	subscriptionID string
+	infra   *extensionsv1alpha1.Infrastructure
+	config  *azure.InfrastructureConfig
+	status  *azure.InfrastructureStatus
+	profile *azure.CloudProfileConfig
+	cluster *extensionscontroller.Cluster
 
 	// cached configuration
 	vnetConfig  VirtualNetworkConfig
@@ -642,7 +641,6 @@ func (s *SubnetConfig) ToProvider(base *armnetwork.Subnet) *armnetwork.Subnet {
 		target.Properties.PrivateEndpoints = base.Properties.PrivateEndpoints
 		target.Properties.PrivateEndpointNetworkPolicies = base.Properties.PrivateEndpointNetworkPolicies
 		target.Properties.Delegations = base.Properties.Delegations
-
 	}
 
 	return target
@@ -705,13 +703,4 @@ func (r *RouteTableConfig) ToProvider(base *armnetwork.RouteTable) *armnetwork.R
 	}
 
 	return desired
-}
-
-func checkAllZonesWithFn[T any](t T, zones []ZoneConfig, check func(zone ZoneConfig, resource T) bool) bool {
-	for _, n := range zones {
-		if check(n, t) {
-			return true
-		}
-	}
-	return false
 }

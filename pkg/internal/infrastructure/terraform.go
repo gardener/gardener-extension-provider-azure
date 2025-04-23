@@ -166,12 +166,9 @@ func ComputeTerraformerTemplateValues(
 
 	var networkConfig map[string]interface{}
 	if helper.IsUsingSingleSubnetLayout(config) {
-		networkConfig, err = computeNetworkConfigSingleSubnetLayout(config)
+		networkConfig = computeNetworkConfigSingleSubnetLayout(config)
 	} else {
-		networkConfig, err = computeNetworkConfigMultipleSubnetLayout(infra, config)
-	}
-	if err != nil {
-		return nil, err
+		networkConfig = computeNetworkConfigMultipleSubnetLayout(infra, config)
 	}
 
 	result := map[string]interface{}{
@@ -225,15 +222,13 @@ func generateVNetConfig(n *api.NetworkConfig, defaultVnetName string) (bool, map
 	return createVNet, vnetConfig, outputKeys, err
 }
 
-func computeNetworkConfigSingleSubnetLayout(config *api.InfrastructureConfig) (map[string]interface{}, error) {
+func computeNetworkConfigSingleSubnetLayout(config *api.InfrastructureConfig) map[string]interface{} {
 	var (
 		networkCfg = make(map[string]interface{})
 		subnets    []map[string]interface{}
 	)
-	natGatewayConfig, err := generateNatGatewayValues(config.Networks.NatGateway)
-	if err != nil {
-		return nil, err
-	}
+
+	natGatewayConfig := generateNatGatewayValues(config.Networks.NatGateway)
 
 	subnet := map[string]interface{}{
 		"cidr":             *config.Networks.Workers,
@@ -243,10 +238,10 @@ func computeNetworkConfigSingleSubnetLayout(config *api.InfrastructureConfig) (m
 
 	subnets = append(subnets, subnet)
 	networkCfg["subnets"] = subnets
-	return networkCfg, nil
+	return networkCfg
 }
 
-func computeNetworkConfigMultipleSubnetLayout(infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig) (map[string]interface{}, error) {
+func computeNetworkConfigMultipleSubnetLayout(infra *extensionsv1alpha1.Infrastructure, config *api.InfrastructureConfig) map[string]interface{} {
 	var (
 		networkCfg = make(map[string]interface{})
 		subnets    []map[string]interface{}
@@ -265,16 +260,16 @@ func computeNetworkConfigMultipleSubnetLayout(infra *extensionsv1alpha1.Infrastr
 	}
 
 	networkCfg["subnets"] = subnets
-	return networkCfg, nil
+	return networkCfg
 }
 
-func generateNatGatewayValues(nat *api.NatGatewayConfig) (map[string]interface{}, error) {
+func generateNatGatewayValues(nat *api.NatGatewayConfig) map[string]interface{} {
 	natGatewayConfig := map[string]interface{}{
 		"enabled": false,
 	}
 
 	if nat == nil || !nat.Enabled {
-		return natGatewayConfig, nil
+		return natGatewayConfig
 	}
 
 	natGatewayConfig["enabled"] = true
@@ -296,7 +291,7 @@ func generateNatGatewayValues(nat *api.NatGatewayConfig) (map[string]interface{}
 		}
 		natGatewayConfig["ipAddresses"] = ipAddresses
 	}
-	return natGatewayConfig, nil
+	return natGatewayConfig
 }
 
 func generateZonedNatGatewayValues(nat *api.ZonedNatGatewayConfig, zone int32) map[string]interface{} {

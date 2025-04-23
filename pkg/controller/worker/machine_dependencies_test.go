@@ -246,7 +246,7 @@ var _ = Describe("MachinesDependencies", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				workerStatus := decodeWorkerProviderStatus(w)
-				Expect(workerStatus.VmoDependencies).To(HaveLen(0))
+				Expect(workerStatus.VmoDependencies).To(BeEmpty())
 			})
 
 			It("should cleanup all vmo dependencies as Worker is intended to be deleted", func() {
@@ -263,7 +263,7 @@ var _ = Describe("MachinesDependencies", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				workerStatus := decodeWorkerProviderStatus(w)
-				Expect(workerStatus.VmoDependencies).To(HaveLen(0))
+				Expect(workerStatus.VmoDependencies).To(BeEmpty())
 			})
 		})
 
@@ -351,7 +351,7 @@ var _ = Describe("MachinesDependencies", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				workerStatus := decodeWorkerProviderStatus(w)
-				Expect(workerStatus.VmoDependencies).To(HaveLen(0))
+				Expect(workerStatus.VmoDependencies).To(BeEmpty())
 			})
 
 			It("should cleanup all vmo dependencies as Worker is intended to be deleted", func() {
@@ -368,7 +368,7 @@ var _ = Describe("MachinesDependencies", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				workerStatus := decodeWorkerProviderStatus(w)
-				Expect(workerStatus.VmoDependencies).To(HaveLen(0))
+				Expect(workerStatus.VmoDependencies).To(BeEmpty())
 			})
 		})
 	})
