@@ -7,9 +7,9 @@ This document describes the configurable options for Azure and provides an examp
 ## Azure Provider Credentials
 
 In order for Gardener to create a Kubernetes cluster using Azure infrastructure components, a Shoot has to provide credentials with sufficient permissions to the desired Azure subscription.
-Every shoot cluster references a `SecretBinding` or a `CredentialsBinding`.
+Every shoot cluster references a `SecretBinding` or a [`CredentialsBinding`](https://gardener.cloud/docs/gardener/api-reference/security/#security.gardener.cloud/v1alpha1.CredentialsBinding).
 `SecretBinding`s reference a `Secret` while `CredentialsBinding`s can reference a `Secret` or a `WorkloadIdentity`.
-A `Secret` whould contain the provider credentials of the Azure subscription while a `WorkloadIdentity` would be used to represent Gardener managed workload.
+A `Secret` would contain the provider credentials of the Azure subscription while a `WorkloadIdentity` would be used to represent an identity of Gardener managed workload.
 
 > [!IMPORTANT]
 > The `SecretBinding`/`CredentialsBinding` is configurable in the [Shoot cluster](https://github.com/gardener/gardener/blob/master/example/90-shoot.yaml) with the field `secretBindingName`/`credentialsBindingName`.
@@ -96,7 +96,7 @@ As a second step users should configure [Workload Identity Federation](https://l
 > You can retrieve Gardener's Workload Identity Issuer URL directly from the Garden cluster by reading the contents of the [Gardener Info ConfigMap](https://gardener.cloud/docs/gardener/gardener/gardener_info_configmap/).
 >
 > ```bash
-> kubectl -n gardener-system-public get cm gardener-info
+> kubectl -n gardener-system-public get configmap -o yaml
 > ```
 
 In the shown example a `WorkloadIdentity` with name `azure` with id `00000000-0000-0000-0000-000000000000` from the `garden-myproj` namespace will be trusted by the Azure application.
