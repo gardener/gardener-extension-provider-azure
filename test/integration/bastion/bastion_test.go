@@ -20,7 +20,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
-	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
@@ -195,7 +194,7 @@ var _ = BeforeSuite(func() {
 
 	By("starting test environment")
 	testEnv = &envtest.Environment{
-		UseExistingCluster: to.BoolPtr(true),
+		UseExistingCluster: ptr.To(true),
 		CRDInstallOptions: envtest.CRDInstallOptions{
 			Paths: []string{
 				filepath.Join(repoRoot, "example", "20-crd-extensions.gardener.cloud_clusters.yaml"),
@@ -402,7 +401,7 @@ func verifyPort42IsClosed(ctx context.Context, c client.Client, bastion *extensi
 func prepareNewResourceGroup(ctx context.Context, log logr.Logger, az *azureClientSet, groupName, location string) error {
 	log.Info("generating new ResourceGroups", "groupName", groupName)
 	_, err := az.groups.CreateOrUpdate(ctx, groupName, armresources.ResourceGroup{
-		Location: to.StringPtr(location),
+		Location: ptr.To(location),
 	}, nil)
 	return err
 }
@@ -410,7 +409,7 @@ func prepareNewResourceGroup(ctx context.Context, log logr.Logger, az *azureClie
 func prepareSecurityGroup(ctx context.Context, log logr.Logger, resourceGroupName string, securityGroupName string, az *azureClientSet, location string) armnetwork.SecurityGroup {
 	log.Info("generating new SecurityGroups", "securityGroupName", securityGroupName)
 	poller, err := az.securityGroups.BeginCreateOrUpdate(ctx, resourceGroupName, securityGroupName, armnetwork.SecurityGroup{
-		Location: to.StringPtr(location),
+		Location: ptr.To(location),
 	}, nil)
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -431,16 +430,16 @@ func prepareNewVNet(ctx context.Context, log logr.Logger, az *azureClientSet, re
 			},
 			Subnets: []*armnetwork.Subnet{
 				{
-					Name: to.StringPtr(subnetName),
+					Name: ptr.To(subnetName),
 					Properties: &armnetwork.SubnetPropertiesFormat{
-						AddressPrefix:        to.StringPtr(cidr),
+						AddressPrefix:        ptr.To(cidr),
 						NetworkSecurityGroup: &nsg,
 					},
 				},
 			},
 		},
-		Name:     to.StringPtr(vNetName),
-		Location: to.StringPtr(location),
+		Name:     ptr.To(vNetName),
+		Location: ptr.To(location),
 	}, nil)
 
 	Expect(err).ShouldNot(HaveOccurred())

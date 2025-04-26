@@ -13,7 +13,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/go-autorest/autorest"
 	azerrors "github.com/AzureAD/microsoft-authentication-library-for-go/apps/errors"
 	corev1 "k8s.io/api/core/v1"
 
@@ -33,18 +32,9 @@ func FilterNotFoundError(err error) error {
 }
 
 func isAzureAPIStatusError(err error, status int) bool {
-	switch e := err.(type) {
-	case autorest.DetailedError: // error from old azure client
-		if code, ok := e.StatusCode.(int); ok && code == status {
-			return true
-		}
-		if e.Response != nil && e.Response.StatusCode == status {
-			return true
-		}
-	case *azcore.ResponseError: // error from new azure SDK client
-		if e.StatusCode == status {
-			return true
-		}
+	var respErr *azcore.ResponseError
+	if errors.As(err, &respErr) {
+		return respErr.StatusCode == status
 	}
 
 	cerr := azerrors.CallErr{}

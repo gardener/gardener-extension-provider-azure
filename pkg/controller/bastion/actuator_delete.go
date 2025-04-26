@@ -10,12 +10,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/util"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	ctrlerror "github.com/gardener/gardener/pkg/controllerutils/reconciler"
 	"github.com/go-logr/logr"
+	"k8s.io/utils/ptr"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
@@ -182,7 +182,7 @@ func removeBastionInstance(ctx context.Context, log logr.Logger, factory azurecl
 		return err
 	}
 
-	if err = vmClient.Delete(ctx, opt.ResourceGroupName, opt.BastionInstanceName, to.BoolPtr(false)); err != nil {
+	if err = vmClient.Delete(ctx, opt.ResourceGroupName, opt.BastionInstanceName, ptr.To(false)); err != nil {
 		return fmt.Errorf("failed to terminate bastion instance: %w", err)
 	}
 	log.Info("Instance removed", "instance", opt.BastionInstanceName)

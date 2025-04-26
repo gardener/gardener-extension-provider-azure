@@ -6,6 +6,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -13,8 +14,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/dns/armdns"
-	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/go-autorest/autorest/to"
+	"k8s.io/utils/ptr"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
@@ -70,26 +70,26 @@ func getRelativeRecordSetName(name, zoneName string) (string, error) {
 
 func newRecordSetProperties(recordType armdns.RecordType, values []string, ttl int64) *armdns.RecordSetProperties {
 	rrp := &armdns.RecordSetProperties{
-		TTL: to.Int64Ptr(ttl),
+		TTL: ptr.To[int64](ttl),
 	}
 	switch recordType {
 	case armdns.RecordTypeA:
 		var aRecords []*armdns.ARecord
 		for _, value := range values {
 			aRecords = append(aRecords, &armdns.ARecord{
-				IPv4Address: to.StringPtr(value),
+				IPv4Address: ptr.To(value),
 			})
 		}
 		rrp.ARecords = aRecords
 	case armdns.RecordTypeCNAME:
 		rrp.CnameRecord = &armdns.CnameRecord{
-			Cname: to.StringPtr(values[0]),
+			Cname: ptr.To(values[0]),
 		}
 	case armdns.RecordTypeTXT:
 		var txtRecords []*armdns.TxtRecord
 		for _, value := range values {
 			txtRecords = append(txtRecords, &armdns.TxtRecord{
-				Value: []*string{to.StringPtr(value)},
+				Value: []*string{ptr.To(value)},
 			})
 		}
 		rrp.TxtRecords = txtRecords
@@ -101,7 +101,8 @@ func ignoreAzureNotFoundError(err error) error {
 	if err == nil {
 		return nil
 	}
-	if e, ok := err.(autorest.DetailedError); ok && e.StatusCode == http.StatusNotFound {
+	var respErr *azcore.ResponseError
+	if errors.As(err, &respErr) && respErr.StatusCode == http.StatusNotFound {
 		return nil
 	}
 	return err

@@ -10,8 +10,8 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
-	"github.com/Azure/go-autorest/autorest"
 	"github.com/gardener/gardener/extensions/pkg/controller/infrastructure"
 	"github.com/gardener/gardener/extensions/pkg/terraformer"
 	mockterraform "github.com/gardener/gardener/extensions/pkg/terraformer/mock"
@@ -252,7 +252,9 @@ var _ = Describe("Actuator", func() {
 
 		It("should delete the Infrastructure with invalid credentials", func() {
 			azureClientFactory.EXPECT().Group().Return(azureGroupClient, nil)
-			azureGroupClient.EXPECT().Get(ctx, infra.Namespace).Return(nil, autorest.DetailedError{Response: &http.Response{StatusCode: http.StatusUnauthorized}})
+			azureGroupClient.EXPECT().Get(ctx, infra.Namespace).Return(nil, &azcore.ResponseError{
+				StatusCode: http.StatusUnauthorized,
+			})
 
 			tf.EXPECT().EnsureCleanedUp(ctx)
 			tf.EXPECT().RemoveTerraformerFinalizerFromConfig(gomock.Any()).Return(nil)

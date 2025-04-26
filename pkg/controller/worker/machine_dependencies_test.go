@@ -11,9 +11,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
-	"github.com/Azure/go-autorest/autorest"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
@@ -176,12 +176,8 @@ var _ = Describe("MachinesDependencies", func() {
 				w.Status.ProviderStatus = generateWorkerStatusWithVmo(vmoDependency)
 				workerDelegate := wrapNewWorkerDelegate(c, nil, w, cluster, factory)
 
-				vmoClient.EXPECT().List(ctx, resourceGroupName).Return(nil, autorest.DetailedError{
-					Original:   fmt.Errorf("ResourceGroupNotFound"),
+				vmoClient.EXPECT().List(ctx, resourceGroupName).Return(nil, &azcore.ResponseError{
 					StatusCode: http.StatusNotFound,
-					Response: &http.Response{
-						StatusCode: http.StatusNotFound,
-					},
 				})
 				expectWorkerProviderStatusUpdateToSucceed(ctx, statusWriter)
 				err := workerDelegate.PostReconcileHook(ctx)
@@ -281,12 +277,8 @@ var _ = Describe("MachinesDependencies", func() {
 				w.Status.ProviderStatus = generateWorkerStatusWithVmo(vmoDependency)
 				workerDelegate := wrapNewWorkerDelegate(c, nil, w, cluster, factory)
 
-				vmoClient.EXPECT().List(ctx, resourceGroupName).Return(nil, autorest.DetailedError{
-					Original:   fmt.Errorf("ResourceGroupNotFound"),
+				vmoClient.EXPECT().List(ctx, resourceGroupName).Return(nil, &azcore.ResponseError{
 					StatusCode: http.StatusNotFound,
-					Response: &http.Response{
-						StatusCode: http.StatusNotFound,
-					},
 				})
 				expectWorkerProviderStatusUpdateToSucceed(ctx, statusWriter)
 				err := workerDelegate.PostDeleteHook(ctx)
