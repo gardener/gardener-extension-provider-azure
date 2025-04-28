@@ -86,6 +86,3 @@ spec:
         - name: REGION
           type: env
           value: westeurope
-        - name: USE_EXISTING_CLUSTER
-          type: env
-          value: "true"
