@@ -49,7 +49,7 @@ import (
 	azurev1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	bastionctrl "github.com/gardener/gardener-extension-provider-azure/pkg/controller/bastion"
-	. "github.com/gardener/gardener-extension-provider-azure/test/integration/bastion"
+	. "github.com/gardener/gardener-extension-provider-azure/test/utils"
 )
 
 const (
