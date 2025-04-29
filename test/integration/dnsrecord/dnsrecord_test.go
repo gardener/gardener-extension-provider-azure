@@ -205,6 +205,7 @@ var _ = BeforeSuite(func() {
 
 	By("starting test environment")
 	testEnv = &envtest.Environment{
+		UseExistingCluster: ptr.To(true),
 		CRDInstallOptions: envtest.CRDInstallOptions{
 			Paths: []string{
 				filepath.Join(repoRoot, "example", "20-crd-extensions.gardener.cloud_dnsrecords.yaml"),
