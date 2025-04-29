@@ -9,7 +9,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
-	"github.com/Azure/go-autorest/autorest/to"
 	extensionsbastion "github.com/gardener/gardener/extensions/pkg/bastion"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -41,7 +40,7 @@ func createRule(name, sourceAddrPrefix, destinationAddressPrefix string) *armnet
 func createRuleWithPriority(name string, priority int32) *armnetwork.SecurityRule {
 	return &armnetwork.SecurityRule{
 		Name: ptr.To(name), Properties: &armnetwork.SecurityRulePropertiesFormat{
-			Priority: to.Int32Ptr(priority),
+			Priority: ptr.To[int32](priority),
 		},
 	}
 }
@@ -166,8 +165,8 @@ var _ = Describe("Bastion test", func() {
 			Expect(options.ResourceGroupName).To(Equal("cluster1"))
 			Expect(options.NicName).To(Equal("cluster1-bastionName1-bastion-1cdc8-nic"))
 			Expect(options.Tags).To(Equal(map[string]*string{
-				"Name": to.StringPtr("cluster1-bastionName1-bastion-1cdc8"),
-				"Type": to.StringPtr("gardenctl"),
+				"Name": ptr.To("cluster1-bastionName1-bastion-1cdc8"),
+				"Type": ptr.To("gardenctl"),
 			}))
 			Expect(options.SecurityGroupName).To(Equal("cluster1-workers"))
 			Expect(options.MachineType).To(Equal("machineName"))
@@ -290,17 +289,17 @@ var _ = Describe("Bastion test", func() {
 				IPConfigurations: []*armnetwork.InterfaceIPConfiguration{
 					{
 						Properties: &armnetwork.InterfaceIPConfigurationPropertiesFormat{
-							PrivateIPAddress: to.StringPtr("192.168.1.2"),
+							PrivateIPAddress: ptr.To("192.168.1.2"),
 						},
 					},
 					{
 						Properties: &armnetwork.InterfaceIPConfigurationPropertiesFormat{
-							PrivateIPAddress: to.StringPtr("2001:db8:3333:4444:5555:6666:7777:8888"),
+							PrivateIPAddress: ptr.To("2001:db8:3333:4444:5555:6666:7777:8888"),
 						},
 					},
 					{
 						Properties: &armnetwork.InterfaceIPConfigurationPropertiesFormat{
-							PrivateIPAddress: to.StringPtr("192.168.1.1"),
+							PrivateIPAddress: ptr.To("192.168.1.1"),
 						},
 					},
 				},
