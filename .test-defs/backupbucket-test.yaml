@@ -1,0 +1,21 @@
+kind: TestDefinition
+metadata:
+  name: backupbucket-test
+spec:
+  owner: gardener-oq@listserv.sap.com
+  description: Integration test for backupbucket creation and deletion
+  activeDeadlineSeconds: 4200
+
+  command: [bash, -c]
+  args:
+    - >-
+      go test -timeout=0 ./test/integration/backupbucket
+      --v -ginkgo.v -ginkgo.show-node-events -ginkgo.no-color
+      --subscription-id=${SUBSCRIPTION_ID}
+      --tenant-id=${TENANT_ID}
+      --client-id=${CLIENT_ID}
+      --client-secret=${CLIENT_SECRET}
+      --region=${REGION}
+      --logLevel=${LOG_LEVEL}
+
+  image: golang:1.24

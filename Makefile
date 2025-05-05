@@ -35,6 +35,7 @@ TENANT_ID_FILE := .kube-secrets/azure/tenant_id.secret
 CLIENT_ID_FILE := .kube-secrets/azure/client_id.secret
 CLIENT_SECRET_FILE := .kube-secrets/azure/client_secret.secret
 REGION := westeurope
+IT_LOGLEVEL := info
 
 ifneq ($(strip $(shell git status --porcelain 2>/dev/null)),)
 	EFFECTIVE_VERSION := $(EFFECTIVE_VERSION)-dirty
@@ -204,3 +205,14 @@ integration-test-dnsrecord:
 		--client-id='$(shell cat $(CLIENT_ID_FILE))' \
 		--client-secret='$(shell cat $(CLIENT_SECRET_FILE))' \
 		--region=$(REGION)
+
+.PHONY: integration-test-backupbucket
+integration-test-backupbucket:
+	@go test -timeout=0 ./test/integration/backupbucket \
+		--v -ginkgo.v -ginkgo.show-node-events \
+		--subscription-id='$(shell cat $(SUBSCRIPTION_ID_FILE))' \
+		--tenant-id='$(shell cat $(TENANT_ID_FILE))' \
+		--client-id='$(shell cat $(CLIENT_ID_FILE))' \
+		--client-secret='$(shell cat $(CLIENT_SECRET_FILE))' \
+		--region=$(REGION) \
+		--logLevel=$(IT_LOGLEVEL)

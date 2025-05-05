@@ -52,6 +52,16 @@ spec:
           - name: RECONCILER
             type: env
             value: tf
+    - name: backupbucket-test
+      definition:
+        name: backupbucket-test
+        config:
+          - name: REGION
+            type: env
+            value: westeurope
+          - name: LOG_LEVEL
+            type: env
+            value: debug
     - name: infra-flow-test
       definition:
         name: infrastructure-test
