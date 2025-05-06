@@ -80,6 +80,9 @@ spec:
         - --metrics-bind-address=:{{ tpl .Values.metricsPort . }}
         - --health-bind-address=:{{ tpl .Values.healthPort . }}
         - --gardener-version={{ .Values.gardener.version }}
+        {{- if .Values.gardener.autonomousShootCluster }}
+        - --autonomous-shoot-cluster={{ .Values.gardener.autonomousShootCluster }}
+        {{- end }}
         {{- if eq (include "seed.provider" .) "azure" }}
         - --seed-provider=azure
         - --seed-region={{ .Values.gardener.seed.region }}
