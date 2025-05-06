@@ -62,6 +62,9 @@ spec:
           - name: LOG_LEVEL
             type: env
             value: debug
+          - name: USE_EXISTING_CLUSTER
+            type: env
+            value: "true"
     - name: infra-flow-test
       definition:
         name: infrastructure-test

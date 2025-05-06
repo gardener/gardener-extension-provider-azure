@@ -39,12 +39,13 @@ import (
 )
 
 var (
-	clientId       = flag.String("client-id", "", "Azure client ID")
-	clientSecret   = flag.String("client-secret", "", "Azure client secret")
-	subscriptionId = flag.String("subscription-id", "", "Azure subscription ID")
-	tenantId       = flag.String("tenant-id", "", "Azure tenant ID")
-	region         = flag.String("region", "", "Azure region")
-	logLevel       = flag.String("logLevel", "", "Log level (debug, info, error)")
+	clientId           = flag.String("client-id", "", "Azure client ID")
+	clientSecret       = flag.String("client-secret", "", "Azure client secret")
+	subscriptionId     = flag.String("subscription-id", "", "Azure subscription ID")
+	tenantId           = flag.String("tenant-id", "", "Azure tenant ID")
+	region             = flag.String("region", "", "Azure region")
+	logLevel           = flag.String("log-level", "", "Log level (debug, info, error)")
+	useExistingCluster = flag.Bool("use-existing-cluster", true, "Set to true to use an existing cluster for the test")
 )
 
 type azureClientSet struct {
@@ -191,7 +192,9 @@ var _ = BeforeSuite(func() {
 
 		By("deleting namespaces")
 		deleteNamespace(ctx, c, testNamespace)
-		deleteNamespace(ctx, c, gardenNamespace)
+		if !*useExistingCluster {
+			deleteNamespace(ctx, c, gardenNamespace)
+		}
 
 		By("stopping test environment")
 		Expect(testEnv.Stop()).To(Succeed())
@@ -204,6 +207,7 @@ var _ = BeforeSuite(func() {
 
 	By("starting test environment")
 	testEnv = &envtest.Environment{
+		UseExistingCluster: ptr.To(*useExistingCluster),
 		CRDInstallOptions: envtest.CRDInstallOptions{
 			Paths: []string{
 				filepath.Join(repoRoot, "example", "20-crd-extensions.gardener.cloud_backupbuckets.yaml"),
@@ -215,7 +219,7 @@ var _ = BeforeSuite(func() {
 	cfg, err := testEnv.Start()
 	Expect(err).ToNot(HaveOccurred())
 	Expect(cfg).ToNot(BeNil())
-	log.Info("Test environment started successfully")
+	log.Info("Test environment started successfully", "useExistingCluster", *useExistingCluster)
 
 	By("setting up manager")
 	mgr, err := manager.New(cfg, manager.Options{
@@ -252,19 +256,21 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	By("creating namespaces")
-	gardenNamespace = &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "garden",
-		},
-	}
-	createNamespace(ctx, c, gardenNamespace)
-
 	testNamespace = &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: testName,
 		},
 	}
 	createNamespace(ctx, c, testNamespace)
+
+	if !*useExistingCluster {
+		gardenNamespace = &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "garden",
+			},
+		}
+		createNamespace(ctx, c, gardenNamespace)
+	}
 
 	By("creating azure provider secret")
 	secret = &corev1.Secret{
