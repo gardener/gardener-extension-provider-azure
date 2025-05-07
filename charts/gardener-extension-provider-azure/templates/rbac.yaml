@@ -36,7 +36,13 @@ rules:
   resources:
   - managedresources
   verbs:
-  - "*"
+  - create
+  - get
+  - list
+  - watch
+  - patch
+  - update
+  - delete
 - apiGroups:
   - coordination.k8s.io
   resources:
@@ -52,10 +58,10 @@ rules:
   resourceNames:
   - provider-azure-leader-election
   - gardener-extension-heartbeat
+  - remedy-controller-azure-leader-election
   verbs:
   - get
   - update
-  - patch
 - apiGroups:
   - ""
   - apps
@@ -89,25 +95,56 @@ rules:
   - servicemonitors
   - prometheusrules
   verbs:
-  - "*"
+  - create
+  - get
+  - list
+  - watch
+  - patch
+  - update
+  - delete
+  - deletecollection
 - apiGroups:
   - machine.sapcloud.io
   resources:
-  - "*"
+  - machineclasses
+  - machinedeployments
+  - machines
+  - machinesets
   verbs:
-  - "*"
+  - create
+  - get
+  - list
+  - watch
+  - patch
+  - update
+  - delete
+  - deletecollection
 - apiGroups:
   - autoscaling.k8s.io
   resources:
   - verticalpodautoscalers
   verbs:
-  - "*"
+  - create
+  - get
+  - list
+  - watch
+  - patch
+  - update
+  - delete
 - apiGroups:
   - azure.remedy.gardener.cloud
   resources:
-  - "*"
+  - publicipaddresses
+  - virtualmachines
   verbs:
-  - "*"
+  - delete
+  - deletecollection
+  - get
+  - list
+  - patch
+  - create
+  - update
+  - watch
 - apiGroups:
   - policy
   resources:
