@@ -125,14 +125,15 @@ func validateFlags() {
 var (
 	ctx = context.Background()
 
-	log             logr.Logger
-	azClientSet     *azureClientSet
-	testEnv         *envtest.Environment
-	mgrCancel       context.CancelFunc
-	c               client.Client
-	secret          *corev1.Secret
-	testNamespace   *corev1.Namespace
-	gardenNamespace *corev1.Namespace
+	log                          logr.Logger
+	azClientSet                  *azureClientSet
+	testEnv                      *envtest.Environment
+	mgrCancel                    context.CancelFunc
+	c                            client.Client
+	secret                       *corev1.Secret
+	testNamespace                *corev1.Namespace
+	gardenNamespace              *corev1.Namespace
+	gardenNamespaceAlreadyExists bool
 
 	testName string
 )
@@ -192,7 +193,7 @@ var _ = BeforeSuite(func() {
 
 		By("deleting namespaces")
 		deleteNamespace(ctx, c, testNamespace)
-		if !*useExistingCluster {
+		if !gardenNamespaceAlreadyExists {
 			deleteNamespace(ctx, c, gardenNamespace)
 		}
 
@@ -255,7 +256,7 @@ var _ = BeforeSuite(func() {
 	azClientSet, err = newAzureClientSet(*subscriptionId, *tenantId, *clientId, *clientSecret)
 	Expect(err).NotTo(HaveOccurred())
 
-	By("creating namespaces")
+	By("creating test namespace")
 	testNamespace = &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: testName,
@@ -263,14 +264,8 @@ var _ = BeforeSuite(func() {
 	}
 	createNamespace(ctx, c, testNamespace)
 
-	if !*useExistingCluster {
-		gardenNamespace = &corev1.Namespace{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "garden",
-			},
-		}
-		createNamespace(ctx, c, gardenNamespace)
-	}
+	By("ensuring garden namespace exists")
+	ensureGardenNamespace(ctx, c, log)
 
 	By("creating azure provider secret")
 	secret = &corev1.Secret{
