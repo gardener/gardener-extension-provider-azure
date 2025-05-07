@@ -110,13 +110,12 @@ spec:
           mountPath: /dev
         - name: cloud-provider-config
           mountPath: /etc/kubernetes/cloudprovider
-        - name: msi
-          mountPath: /var/lib/waagent/ManagedIdentity-Settings
-          readOnly: true
+        {{- if eq .role "disk" }}
         - name: sys-devices-dir
           mountPath: /sys/bus/scsi/devices
         - name: scsi-host-dir
           mountPath: /sys/class/scsi_host/
+        {{- end }}
 
       - name: csi-node-driver-registrar
         image: {{ index .Values.images "csi-node-driver-registrar" }}
@@ -178,9 +177,7 @@ spec:
       - name: cloud-provider-config
         configMap:
           name: cloud-provider-disk-config
-      - name: msi
-        hostPath:
-          path: /var/lib/waagent/ManagedIdentity-Settings
+      {{- if eq .role "disk" }}
       - name: sys-devices-dir
         hostPath:
           path: /sys/bus/scsi/devices
@@ -189,4 +186,5 @@ spec:
         hostPath:
           path: /sys/class/scsi_host/
           type: Directory
+      {{- end }}
 {{- end -}}
