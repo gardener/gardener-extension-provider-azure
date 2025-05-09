@@ -32,6 +32,8 @@ type AddOptions struct {
 	GardenCluster cluster.Cluster
 	// ExtensionClass defines the extension class this extension is responsible for.
 	ExtensionClass extensionsv1alpha1.ExtensionClass
+	// AutonomousShootCluster indicates whether the extension runs in an autonomous shoot cluster.
+	AutonomousShootCluster bool
 }
 
 // AddToManagerWithOptions adds a controller with the given Options to the given manager.
@@ -45,12 +47,13 @@ func AddToManagerWithOptions(ctx context.Context, mgr manager.Manager, opts AddO
 		return err
 	}
 
-	return worker.Add(mgr, worker.AddArgs{
-		Actuator:          NewActuator(mgr, opts.GardenCluster),
-		ControllerOptions: opts.Controller,
-		Predicates:        worker.DefaultPredicates(ctx, mgr, opts.IgnoreOperationAnnotation),
-		Type:              azure.Type,
-		ExtensionClass:    opts.ExtensionClass,
+	return worker.Add(ctx, mgr, worker.AddArgs{
+		Actuator:               NewActuator(mgr, opts.GardenCluster),
+		ControllerOptions:      opts.Controller,
+		Predicates:             worker.DefaultPredicates(ctx, mgr, opts.IgnoreOperationAnnotation),
+		Type:                   azure.Type,
+		ExtensionClass:         opts.ExtensionClass,
+		AutonomousShootCluster: opts.AutonomousShootCluster,
 	})
 }
 
