@@ -95,6 +95,9 @@ func secretsFromEnv() {
 	if len(*clientSecret) == 0 {
 		clientSecret = ptr.To(os.Getenv("CLIENT_SECRET"))
 	}
+	if len(*region) == 0 {
+		region = ptr.To(os.Getenv("REGION"))
+	}
 }
 
 func validateFlags() {
