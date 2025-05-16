@@ -79,7 +79,7 @@ var runTest = func(tc *TestContext, backupBucket *extensionsv1alpha1.BackupBucke
 		waitUntilBackupBucketDeleted(tc.ctx, tc.client, backupBucket)
 
 		By("verifying that the Azure storage account and container do not exist")
-		verifyBackupBucketDeleted(tc.ctx, tc.azClientSet, tc.testName, backupBucket)
+		verifyBackupBucketDeleted(tc.ctx, tc.azClientSet, backupBucket)
 	}()
 
 	By("waiting until backupbucket is ready")

@@ -271,7 +271,7 @@ func verifyBackupBucket(ctx context.Context, azClientSet *azureClientSet, testNa
 	Expect(blobContainer.ContainerProperties).NotTo(BeNil(), "Blob Container properties should not be nil")
 }
 
-func verifyBackupBucketDeleted(ctx context.Context, azClientSet *azureClientSet, testName string, backupBucket *extensionsv1alpha1.BackupBucket) {
+func verifyBackupBucketDeleted(ctx context.Context, azClientSet *azureClientSet, backupBucket *extensionsv1alpha1.BackupBucket) {
 	storageAccountName := azurebackupbucket.GenerateStorageAccountName(backupBucket.Name)
 	containerName := backupBucket.Name
 	log.Info("Verifying backupBucket deletion on Azure", "storageAccountName", storageAccountName, "containerName", containerName)
