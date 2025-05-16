@@ -13,7 +13,6 @@ import (
 
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/logger"
-	"github.com/gardener/gardener/test/framework"
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -110,9 +109,6 @@ var _ = BeforeSuite(func() {
 	DeferCleanup(func() {
 		By("stopping manager")
 		mgrCancel()
-
-		By("running cleanup actions")
-		framework.RunCleanupActions()
 
 		By("deleting azure provider secret")
 		deleteBackupBucketSecret(tc.ctx, tc.client, tc.secret)
