@@ -8,14 +8,9 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"os"
 	"path/filepath"
-	"slices"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/logger"
 	"github.com/gardener/gardener/test/framework"
@@ -38,7 +33,24 @@ import (
 	backupbucketctrl "github.com/gardener/gardener-extension-provider-azure/pkg/controller/backupbucket"
 )
 
+type TestContext struct {
+	ctx                   context.Context
+	client                client.Client
+	azClientSet           *azureClientSet
+	testNamespace         *corev1.Namespace
+	testName              string
+	secret                *corev1.Secret
+	gardenNamespace       *corev1.Namespace
+	gardenNamespaceExists bool
+}
+
 var (
+	log       logr.Logger
+	testEnv   *envtest.Environment
+	mgrCancel context.CancelFunc
+	tc        *TestContext // TestContext instance
+
+	// Flag variables
 	clientId           = flag.String("client-id", "", "Azure client ID")
 	clientSecret       = flag.String("client-secret", "", "Azure client secret")
 	subscriptionId     = flag.String("subscription-id", "", "Azure subscription ID")
@@ -48,129 +60,43 @@ var (
 	useExistingCluster = flag.Bool("use-existing-cluster", true, "Set to true to use an existing cluster for the test")
 )
 
-type azureClientSet struct {
-	resourceGroups  *armresources.ResourceGroupsClient
-	storageAccounts *armstorage.AccountsClient
-	blobContainers  *armstorage.BlobContainersClient
-}
-
-func newAzureClientSet(subscriptionId, tenantId, clientId, clientSecret string) (*azureClientSet, error) {
-	credential, err := azidentity.NewClientSecretCredential(tenantId, clientId, clientSecret, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	resourceGroupsClient, err := armresources.NewResourceGroupsClient(subscriptionId, credential, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	storageAccountsClient, err := armstorage.NewAccountsClient(subscriptionId, credential, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	blobContainersClient, err := armstorage.NewBlobContainersClient(subscriptionId, credential, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return &azureClientSet{
-		resourceGroups:  resourceGroupsClient,
-		storageAccounts: storageAccountsClient,
-		blobContainers:  blobContainersClient,
-	}, nil
-}
-
-func secretsFromEnv() {
-	if len(*subscriptionId) == 0 {
-		subscriptionId = ptr.To(os.Getenv("SUBSCRIPTION_ID"))
-	}
-	if len(*tenantId) == 0 {
-		tenantId = ptr.To(os.Getenv("TENANT_ID"))
-	}
-	if len(*clientId) == 0 {
-		clientId = ptr.To(os.Getenv("CLIENT_ID"))
-	}
-	if len(*clientSecret) == 0 {
-		clientSecret = ptr.To(os.Getenv("CLIENT_SECRET"))
-	}
-	if len(*region) == 0 {
-		region = ptr.To(os.Getenv("REGION"))
-	}
-}
-
-func validateFlags() {
-	if len(*subscriptionId) == 0 {
-		panic("Azure subscription ID required. Either provide it via the subscription-id flag or set the SUBSCRIPTION_ID environment variable")
-	}
-	if len(*tenantId) == 0 {
-		panic("Azure tenant ID required. Either provide it via the tenant-id flag or set the TENANT_ID environment variable")
-	}
-	if len(*clientId) == 0 {
-		panic("Azure client ID required. Either provide it via the client-id flag or set the CLIENT_ID environment variable")
-	}
-	if len(*clientSecret) == 0 {
-		panic("Azure client secret required. Either provide it via the client-secret flag or set the CLIENT_SECRET environment variable")
-	}
-	if len(*region) == 0 {
-		panic("Azure region required. Either provide it via the region flag or set the REGION environment variable")
-	}
-	if len(*logLevel) == 0 {
-		logLevel = ptr.To(logger.DebugLevel)
-	} else {
-		if !slices.Contains(logger.AllLogLevels, *logLevel) {
-			panic("Invalid log level: " + *logLevel)
-		}
-	}
-}
-
-var (
-	ctx = context.Background()
-
-	log                          logr.Logger
-	azClientSet                  *azureClientSet
-	testEnv                      *envtest.Environment
-	mgrCancel                    context.CancelFunc
-	c                            client.Client
-	secret                       *corev1.Secret
-	testNamespace                *corev1.Namespace
-	gardenNamespace              *corev1.Namespace
-	gardenNamespaceAlreadyExists bool
-
-	testName string
+const (
+	BackupBucketSecretName = "backupbucket"
+	GardenNamespaceName    = "garden"
 )
 
-var runTest = func(backupBucket *extensionsv1alpha1.BackupBucket) {
+var runTest = func(tc *TestContext, backupBucket *extensionsv1alpha1.BackupBucket) {
 	log.Info("Running BackupBucket test", "backupBucketName", backupBucket.Name)
 
 	By("creating backupbucket")
-	createBackupBucket(ctx, c, backupBucket)
+	createBackupBucket(tc.ctx, tc.client, backupBucket)
 
 	defer func() {
 		By("deleting backupbucket")
-		deleteBackupBucket(ctx, c, backupBucket)
+		deleteBackupBucket(tc.ctx, tc.client, backupBucket)
 
 		By("waiting until backupbucket is deleted")
-		waitUntilBackupBucketDeleted(ctx, c, log, backupBucket)
+		waitUntilBackupBucketDeleted(tc.ctx, tc.client, backupBucket)
 
 		By("verifying that the Azure storage account and container do not exist")
-		verifyBackupBucketDeleted(ctx, azClientSet, backupBucket)
+		verifyBackupBucketDeleted(tc.ctx, tc.azClientSet, tc.testName, backupBucket)
 	}()
 
 	By("waiting until backupbucket is ready")
-	waitUntilBackupBucketReady(ctx, c, log, backupBucket)
+	waitUntilBackupBucketReady(tc.ctx, tc.client, backupBucket)
 
 	By("getting backupbucket and verifying its status")
-	getBackupBucketAndVerifyStatus(ctx, c, backupBucket)
+	getBackupBucketAndVerifyStatus(tc.ctx, tc.client, backupBucket)
 
 	By("verifying that the Azure storage account and container exist and match backupbucket")
-	verifyBackupBucket(ctx, azClientSet, backupBucket)
+	verifyBackupBucket(tc.ctx, tc.azClientSet, tc.testName, backupBucket)
 
 	log.Info("BackupBucket test completed successfully", "backupBucketName", backupBucket.Name)
 }
 
 var _ = BeforeSuite(func() {
+	ctx := context.Background()
+
 	repoRoot := filepath.Join("..", "..", "..")
 
 	flag.Parse()
@@ -178,7 +104,7 @@ var _ = BeforeSuite(func() {
 	validateFlags()
 
 	logf.SetLogger(logger.MustNewZapLogger(*logLevel, logger.FormatJSON, zap.WriteTo(GinkgoWriter)))
-	log = logf.Log.WithName("backupbucket-test")
+	log := logf.Log.WithName("backupbucket-test")
 	log.Info("Starting BackupBucket test", "logLevel", *logLevel)
 
 	DeferCleanup(func() {
@@ -189,15 +115,15 @@ var _ = BeforeSuite(func() {
 		framework.RunCleanupActions()
 
 		By("deleting azure provider secret")
-		deleteBackupBucketSecret(ctx, c, secret)
+		deleteBackupBucketSecret(tc.ctx, tc.client, tc.secret)
 
 		By("deleting Azure resource group")
-		deleteResourceGroup(ctx, azClientSet, testName)
+		deleteResourceGroup(tc.ctx, tc.azClientSet, tc.testName)
 
 		By("deleting namespaces")
-		deleteNamespace(ctx, c, testNamespace)
-		if !gardenNamespaceAlreadyExists {
-			deleteNamespace(ctx, c, gardenNamespace)
+		deleteNamespace(tc.ctx, tc.client, tc.testNamespace)
+		if !tc.gardenNamespaceExists {
+			deleteNamespace(tc.ctx, tc.client, tc.gardenNamespace)
 		}
 
 		By("stopping test environment")
@@ -207,7 +133,7 @@ var _ = BeforeSuite(func() {
 	By("generating randomized backupbucket test id")
 	// adding '-it-' (integration test) to the name to make it trackable in the Azure Portal
 	// '-it--' with '--' not allowed in the Azure Blob Container names
-	testName = fmt.Sprintf("azure-backupbucket-it-%s", randomString())
+	testName := fmt.Sprintf("azure-backupbucket-it-%s", randomString())
 
 	By("starting test environment")
 	testEnv = &envtest.Environment{
@@ -221,8 +147,8 @@ var _ = BeforeSuite(func() {
 	}
 
 	cfg, err := testEnv.Start()
-	Expect(err).ToNot(HaveOccurred())
-	Expect(cfg).ToNot(BeNil())
+	Expect(err).ToNot(HaveOccurred(), "Failed to start the test environment")
+	Expect(cfg).ToNot(BeNil(), "Test environment configuration is nil")
 	log.Info("Test environment started successfully", "useExistingCluster", *useExistingCluster)
 
 	By("setting up manager")
@@ -231,12 +157,12 @@ var _ = BeforeSuite(func() {
 			BindAddress: "0",
 		},
 	})
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).ToNot(HaveOccurred(), "Failed to create manager for the test environment")
 
-	Expect(extensionsv1alpha1.AddToScheme(mgr.GetScheme())).To(Succeed())
-	Expect(azureinstall.AddToScheme(mgr.GetScheme())).To(Succeed())
+	Expect(extensionsv1alpha1.AddToScheme(mgr.GetScheme())).To(Succeed(), "Failed to add extensionsv1alpha1 scheme to manager")
+	Expect(azureinstall.AddToScheme(mgr.GetScheme())).To(Succeed(), "Failed to add Azure scheme to manager")
 
-	Expect(backupbucketctrl.AddToManagerWithOptions(ctx, mgr, backupbucketctrl.AddOptions{})).To(Succeed())
+	Expect(backupbucketctrl.AddToManagerWithOptions(ctx, mgr, backupbucketctrl.AddOptions{})).To(Succeed(), "Failed to add BackupBucket controller to manager")
 
 	var mgrContext context.Context
 	mgrContext, mgrCancel = context.WithCancel(ctx)
@@ -245,22 +171,22 @@ var _ = BeforeSuite(func() {
 	go func() {
 		defer GinkgoRecover()
 		err := mgr.Start(mgrContext)
-		Expect(err).NotTo(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred(), "Failed to start the manager")
 	}()
 
 	By("getting clients")
-	c, err = client.New(cfg, client.Options{
+	c, err := client.New(cfg, client.Options{
 		Scheme: mgr.GetScheme(),
 		Mapper: mgr.GetRESTMapper(),
 	})
 	Expect(err).NotTo(HaveOccurred())
 	Expect(c).NotTo(BeNil())
 
-	azClientSet, err = newAzureClientSet(*subscriptionId, *tenantId, *clientId, *clientSecret)
+	azClientSet, err := newAzureClientSet(*subscriptionId, *tenantId, *clientId, *clientSecret)
 	Expect(err).NotTo(HaveOccurred())
 
 	By("creating test namespace")
-	testNamespace = &corev1.Namespace{
+	testNamespace := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: testName,
 		},
@@ -268,12 +194,12 @@ var _ = BeforeSuite(func() {
 	createNamespace(ctx, c, testNamespace)
 
 	By("ensuring garden namespace exists")
-	ensureGardenNamespace(ctx, c, log)
+	gardenNamespace, gardenNamespaceExists := ensureGardenNamespace(ctx, c)
 
 	By("creating azure provider secret")
-	secret = &corev1.Secret{
+	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "backupbucket",
+			Name:      BackupBucketSecretName,
 			Namespace: testName,
 		},
 		Data: map[string][]byte{
@@ -285,16 +211,28 @@ var _ = BeforeSuite(func() {
 	}
 	createBackupBucketSecret(ctx, c, secret)
 
-	By("creating Azure resource group ")
+	By("creating Azure resource group")
 	createResourceGroup(ctx, azClientSet, testName, *region)
+
+	// Initialize the TestContext
+	tc = &TestContext{
+		ctx:                   ctx,
+		client:                c,
+		azClientSet:           azClientSet,
+		testNamespace:         testNamespace,
+		testName:              testName,
+		secret:                secret,
+		gardenNamespace:       gardenNamespace,
+		gardenNamespaceExists: gardenNamespaceExists,
+	}
 })
 
 var _ = Describe("BackupBucket tests", func() {
 	Context("when a BackupBucket is created with basic configuration", func() {
 		It("should successfully create and delete a backupbucket", func() {
 			providerConfig := &azurev1alpha1.BackupBucketConfig{}
-			backupBucket := newBackupBucket(testName, *region, providerConfig)
-			runTest(backupBucket)
+			backupBucket := newBackupBucket(tc.testName, *region, providerConfig)
+			runTest(tc, backupBucket)
 		})
 	})
 })
