@@ -166,6 +166,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		generateMachineClassAndDeployment := func(zone *zoneInfo, machineSet *machineSetInfo, subnetName, workerPoolHash string, workerConfig *azureapi.WorkerConfig) (worker.MachineDeployment, map[string]interface{}) {
 			var (
 				machineDeployment = worker.MachineDeployment{
+					PoolName:             pool.Name,
 					Minimum:              pool.Minimum,
 					Maximum:              pool.Maximum,
 					Priority:             pool.Priority,
@@ -232,6 +233,20 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				RollingUpdate: &machinev1alpha1.RollingUpdateMachineDeployment{
 					UpdateConfiguration: updateConfiguration,
 				},
+			}
+
+			if gardencorev1beta1helper.IsUpdateStrategyInPlace(pool.UpdateStrategy) {
+				machineDeploymentStrategy = machinev1alpha1.MachineDeploymentStrategy{
+					Type: machinev1alpha1.InPlaceUpdateMachineDeploymentStrategyType,
+					InPlaceUpdate: &machinev1alpha1.InPlaceUpdateMachineDeployment{
+						UpdateConfiguration: updateConfiguration,
+						OrchestrationType:   machinev1alpha1.OrchestrationTypeAuto,
+					},
+				}
+
+				if gardencorev1beta1helper.IsUpdateStrategyManualInPlace(pool.UpdateStrategy) {
+					machineDeploymentStrategy.InPlaceUpdate.OrchestrationType = machinev1alpha1.OrchestrationTypeManual
+				}
 			}
 
 			machineDeployment.Strategy = machineDeploymentStrategy

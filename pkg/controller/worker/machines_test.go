@@ -381,13 +381,15 @@ var _ = Describe("Machines", func() {
 				}
 
 				pool3 = extensionsv1alpha1.WorkerPool{
-					Name:           namePool3,
-					Minimum:        minPool3,
-					Maximum:        maxPool3,
-					MaxSurge:       maxSurgePool3,
-					Architecture:   ptr.To(archARM),
-					MaxUnavailable: maxUnavailablePool3,
-					MachineType:    machineType,
+					Name:              namePool3,
+					Minimum:           minPool3,
+					Maximum:           maxPool3,
+					MaxSurge:          maxSurgePool3,
+					Architecture:      ptr.To(archARM),
+					MaxUnavailable:    maxUnavailablePool3,
+					MachineType:       machineType,
+					KubernetesVersion: ptr.To(shootVersion),
+					UpdateStrategy:    ptr.To(gardencorev1beta1.ManualInPlaceUpdate),
 					NodeTemplate: &extensionsv1alpha1.NodeTemplate{
 						Capacity: nodeCapacity,
 					},
@@ -407,13 +409,15 @@ var _ = Describe("Machines", func() {
 				}
 
 				pool4 = extensionsv1alpha1.WorkerPool{
-					Name:           namePool4,
-					Minimum:        minPool4,
-					Maximum:        maxPool4,
-					MaxSurge:       maxSurgePool4,
-					Architecture:   ptr.To(archARM),
-					MaxUnavailable: maxUnavailablePool4,
-					MachineType:    machineType,
+					Name:              namePool4,
+					Minimum:           minPool4,
+					Maximum:           maxPool4,
+					MaxSurge:          maxSurgePool4,
+					Architecture:      ptr.To(archARM),
+					MaxUnavailable:    maxUnavailablePool4,
+					MachineType:       machineType,
+					KubernetesVersion: ptr.To(shootVersion),
+					UpdateStrategy:    ptr.To(gardencorev1beta1.AutoInPlaceUpdate),
 					NodeTemplate: &extensionsv1alpha1.NodeTemplate{
 						Capacity: nodeCapacity,
 					},
@@ -615,6 +619,7 @@ var _ = Describe("Machines", func() {
 					machineDeployments = worker.MachineDeployments{
 						{
 							Name:       machineClassNamePool1,
+							PoolName:   namePool1,
 							ClassName:  machineClassWithHashPool1,
 							SecretName: machineClassWithHashPool1,
 							Minimum:    minPool1,
@@ -633,6 +638,7 @@ var _ = Describe("Machines", func() {
 						},
 						{
 							Name:       machineClassNamePool2,
+							PoolName:   namePool2,
 							ClassName:  machineClassWithHashPool2,
 							SecretName: machineClassWithHashPool2,
 							Minimum:    minPool2,
@@ -652,17 +658,19 @@ var _ = Describe("Machines", func() {
 						},
 						{
 							Name:       machineClassNamePool3,
+							PoolName:   namePool3,
 							ClassName:  machineClassWithHashPool3,
 							SecretName: machineClassWithHashPool3,
 							Minimum:    minPool3,
 							Maximum:    maxPool3,
 							Strategy: machinev1alpha1.MachineDeploymentStrategy{
-								Type: machinev1alpha1.RollingUpdateMachineDeploymentStrategyType,
-								RollingUpdate: &machinev1alpha1.RollingUpdateMachineDeployment{
+								Type: machinev1alpha1.InPlaceUpdateMachineDeploymentStrategyType,
+								InPlaceUpdate: &machinev1alpha1.InPlaceUpdateMachineDeployment{
 									UpdateConfiguration: machinev1alpha1.UpdateConfiguration{
 										MaxSurge:       &maxSurgePool3,
 										MaxUnavailable: &maxUnavailablePool3,
 									},
+									OrchestrationType: machinev1alpha1.OrchestrationTypeManual,
 								},
 							},
 							Labels:               labels,
@@ -670,17 +678,19 @@ var _ = Describe("Machines", func() {
 						},
 						{
 							Name:       machineClassNamePool4,
+							PoolName:   namePool4,
 							ClassName:  machineClassWithHashPool4,
 							SecretName: machineClassWithHashPool4,
 							Minimum:    minPool4,
 							Maximum:    maxPool4,
 							Strategy: machinev1alpha1.MachineDeploymentStrategy{
-								Type: machinev1alpha1.RollingUpdateMachineDeploymentStrategyType,
-								RollingUpdate: &machinev1alpha1.RollingUpdateMachineDeployment{
+								Type: machinev1alpha1.InPlaceUpdateMachineDeploymentStrategyType,
+								InPlaceUpdate: &machinev1alpha1.InPlaceUpdateMachineDeployment{
 									UpdateConfiguration: machinev1alpha1.UpdateConfiguration{
 										MaxSurge:       &maxSurgePool4,
 										MaxUnavailable: &maxUnavailablePool4,
 									},
+									OrchestrationType: machinev1alpha1.OrchestrationTypeAuto,
 								},
 							},
 							Labels:               labels,
