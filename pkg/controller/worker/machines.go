@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
 	genericworkeractuator "github.com/gardener/gardener/extensions/pkg/controller/worker/genericactuator"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	extensionsv1alpha1helper "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1/helper"
 	"github.com/gardener/gardener/pkg/client/kubernetes"
@@ -166,6 +168,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		generateMachineClassAndDeployment := func(zone *zoneInfo, machineSet *machineSetInfo, subnetName, workerPoolHash string, workerConfig *azureapi.WorkerConfig) (worker.MachineDeployment, map[string]interface{}) {
 			var (
 				machineDeployment = worker.MachineDeployment{
+					PoolName:             pool.Name,
 					Minimum:              pool.Minimum,
 					Maximum:              pool.Maximum,
 					Priority:             pool.Priority,
@@ -232,6 +235,20 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				RollingUpdate: &machinev1alpha1.RollingUpdateMachineDeployment{
 					UpdateConfiguration: updateConfiguration,
 				},
+			}
+
+			if gardencorev1beta1helper.IsUpdateStrategyInPlace(pool.UpdateStrategy) {
+				machineDeploymentStrategy = machinev1alpha1.MachineDeploymentStrategy{
+					Type: machinev1alpha1.InPlaceUpdateMachineDeploymentStrategyType,
+					InPlaceUpdate: &machinev1alpha1.InPlaceUpdateMachineDeployment{
+						UpdateConfiguration: updateConfiguration,
+						OrchestrationType:   machinev1alpha1.OrchestrationTypeAuto,
+					},
+				}
+
+				if gardencorev1beta1helper.IsUpdateStrategyManualInPlace(pool.UpdateStrategy) {
+					machineDeploymentStrategy.InPlaceUpdate.OrchestrationType = machinev1alpha1.OrchestrationTypeManual
+				}
 			}
 
 			machineDeployment.Strategy = machineDeploymentStrategy
@@ -537,14 +554,20 @@ func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPo
 
 	// Include additional data for new worker-pool hash generation.
 	// See https://github.com/gardener/gardener/issues/9699 for more details
-	additionalHashDataV2 := w.workerPoolHashDataV2(workerConfig, additionalHashData)
+	// Do not include providerConfig in hash if the update strategy is InPlace.
+	additionalHashDataV2 := w.workerPoolHashDataV2(pool, workerConfig, additionalHashData)
 
 	return worker.WorkerPoolHash(pool, w.cluster, additionalHashData, additionalHashDataV2)
 }
 
 // workerPoolHashDataV2 adds additional provider-specific data points to consider to the given data.
-func (w workerDelegate) workerPoolHashDataV2(workerConfig azureapi.WorkerConfig, additionalData []string) []string {
-	hashData := append([]string{}, additionalData...)
+func (w workerDelegate) workerPoolHashDataV2(pool extensionsv1alpha1.WorkerPool, workerConfig azureapi.WorkerConfig, additionalData []string) []string {
+	hashData := slices.Clone(additionalData)
+
+	// Do not include providerConfig in hash if the update strategy is InPlace.
+	if gardencorev1beta1helper.IsUpdateStrategyInPlace(pool.UpdateStrategy) {
+		return hashData
+	}
 
 	if workerConfig.DiagnosticsProfile != nil && workerConfig.DiagnosticsProfile.Enabled {
 		hashData = append(hashData, "DiagnosticsProfileEnabled")
