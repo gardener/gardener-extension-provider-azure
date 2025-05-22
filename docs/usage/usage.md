@@ -7,8 +7,14 @@ This document describes the configurable options for Azure and provides an examp
 ## Azure Provider Credentials
 
 In order for Gardener to create a Kubernetes cluster using Azure infrastructure components, a Shoot has to provide credentials with sufficient permissions to the desired Azure subscription.
-Every shoot cluster references a `SecretBinding` or a `CredentialsBinding` which itself references a `Secret`, and this `Secret` contains the provider credentials of the Azure subscription.
-The `SecretBinding`/`CredentialsBinding` is configurable in the [Shoot cluster](https://github.com/gardener/gardener/blob/master/example/90-shoot.yaml) with the field `secretBindingName`/`credentialsBindingName`.
+Every shoot cluster references a `SecretBinding` or a [`CredentialsBinding`](https://gardener.cloud/docs/gardener/api-reference/security/#security.gardener.cloud/v1alpha1.CredentialsBinding).
+`SecretBinding`s reference a `Secret` while `CredentialsBinding`s can reference a `Secret` or a `WorkloadIdentity`.
+A `Secret` would contain the provider credentials of the Azure subscription while a `WorkloadIdentity` would be used to represent an identity of Gardener managed workload.
+
+> [!IMPORTANT]
+> The `SecretBinding`/`CredentialsBinding` is configurable in the [Shoot cluster](https://github.com/gardener/gardener/blob/master/example/90-shoot.yaml) with the field `secretBindingName`/`credentialsBindingName`.
+> `SecretBinding`s are considered legacy and will be deprecated in the future.
+> It is advised to use `CredentialsBinding`s instead.
 
 Create an [Azure Application and Service Principle](https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal) and obtain its credentials.
 
@@ -85,6 +91,14 @@ kubectl -n garden-myproj get wi azure -o=jsonpath={.status.sub}
 ```
 
 As a second step users should configure [Workload Identity Federation](https://learn.microsoft.com/en-us/entra/workload-id/workload-identity-federation-create-trust?pivots=identity-wif-apps-methods-azp#other-identity-providers) so that their application trusts Gardener's Workload Identity Issuer.
+
+> [!TIP]
+> You can retrieve Gardener's Workload Identity Issuer URL directly from the Garden cluster by reading the contents of the [Gardener Info ConfigMap](https://gardener.cloud/docs/gardener/gardener/gardener_info_configmap/).
+>
+> ```bash
+> kubectl -n gardener-system-public get configmap -o yaml
+> ```
+
 In the shown example a `WorkloadIdentity` with name `azure` with id `00000000-0000-0000-0000-000000000000` from the `garden-myproj` namespace will be trusted by the Azure application.
 
 > [!IMPORTANT]
@@ -94,6 +108,35 @@ In the shown example a `WorkloadIdentity` with name `azure` with id `00000000-00
 
 Please ensure that the Azure application (spn) has the proper [IAM actions](azure-permissions.md) assigned.
 If no fine-grained permissions/actions required then simply assign the [Contributor](https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#contributor) role.
+
+Once you have everything set you can create a `CredentialsBinding` that reference the `WorkloadIdentity` and configure your shoot to use it.
+Please see the following examples:
+
+```yaml
+apiVersion: security.gardener.cloud/v1alpha1
+kind: CredentialsBinding
+metadata:
+  name: azure
+  namespace: garden-myproj
+credentialsRef:
+  apiVersion: security.gardener.cloud/v1alpha1
+  kind: WorkloadIdentity
+  name: azure
+  namespace: garden-myproj
+provider:
+  type: azure
+```
+
+```yaml
+apiVersion: core.gardener.cloud/v1beta1
+kind: Shoot
+metadata:
+  name: azure
+  namespace: garden-myproj
+spec:
+  credentialsBindingName: azure
+  ...
+```
 
 ## `InfrastructureConfig`
 
@@ -444,7 +487,7 @@ spec:
   cloudProfile:
     name: azure
   region: westeurope
-  secretBindingName: core-azure
+  credentialsBindingName: core-azure
   provider:
     type: azure
     infrastructureConfig:
@@ -507,7 +550,7 @@ spec:
   cloudProfile:
     name: azure
   region: westeurope
-  secretBindingName: core-azure
+  credentialsBindingName: core-azure
   provider:
     type: azure
     infrastructureConfig:
@@ -565,7 +608,7 @@ spec:
   cloudProfile:
     name: azure
   region: westeurope
-  secretBindingName: core-azure
+  credentialsBindingName: core-azure
   provider:
     type: azure
     infrastructureConfig:
