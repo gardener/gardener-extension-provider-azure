@@ -234,9 +234,14 @@ as outlined in [the Gardener documentation](https://github.com/gardener/gardener
 The exact fields that trigger this behavior are defined in the [Gardener doc](https://github.com/gardener/gardener/blob/master/docs/usage/shoot-operations/shoot_updates.md#rolling-update-triggers), 
 with a few additions:
 
+- `.spec.provider.workers[].providerConfig`
 - `.spec.provider.infrastructureConfig.identity`
+- `.spec.provider.infrastructureConfig.zoned`
 - `.spec.provider.workers[].dataVolumes[].size` (only the affected worker pool)
 - `.spec.provider.workers[].dataVolumes[].type` (only the affected worker pool)
+
+Additionally, if the VMO name of a worker pool changes, the worker pool will be rolled.
+This can occur if the `countFaultDomains` field in the cloud profile is modified.
 
 For now, if the feature gate `NewWorkerPoolHash` _is_ enabled, the exact same fields are used.
 This behavior may change once MCM supports in-place updates, such as volume updates.

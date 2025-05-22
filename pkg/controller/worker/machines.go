@@ -326,7 +326,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			return machineDeployment, machineClassSpec
 		}
 
-		workerPoolHash, err := w.generateWorkerPoolHash(pool, workerConfig, infrastructureStatus, vmoDependency, nil)
+		workerPoolHash, err := w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, nil)
 		if err != nil {
 			return err
 		}
@@ -372,12 +372,12 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				}
 
 				if nodesSubnet.Migrated {
-					workerPoolHash, err = w.generateWorkerPoolHash(pool, workerConfig, infrastructureStatus, vmoDependency, nil)
+					workerPoolHash, err = w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, nil)
 					if err != nil {
 						return err
 					}
 				} else {
-					workerPoolHash, err = w.generateWorkerPoolHash(pool, workerConfig, infrastructureStatus, vmoDependency, &nodesSubnet.Name)
+					workerPoolHash, err = w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, &nodesSubnet.Name)
 					if err != nil {
 						return err
 					}
@@ -508,16 +508,17 @@ func addTopologyLabel(labels map[string]string, region string, zone *zoneInfo) m
 	return labels
 }
 
-func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPool, _ azureapi.WorkerConfig, infrastructureStatus *azureapi.InfrastructureStatus, vmoDependency *azureapi.VmoDependency, subnetName *string) (string, error) {
+func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPool, infrastructureStatus *azureapi.InfrastructureStatus, vmoDependency *azureapi.VmoDependency, subnetName *string) (string, error) {
 	var additionalHashData []string
 
 	// Integrate data disks/volumes in the hash.
 	for _, dv := range pool.DataVolumes {
 		additionalHashData = append(additionalHashData, dv.Size)
-
 		if dv.Type != nil {
 			additionalHashData = append(additionalHashData, *dv.Type)
 		}
+		// We exclude volume.Encrypted from the hash calculation because Azure disks are encrypted by default,
+		// and the field does not influence disk encryption behavior.
 	}
 
 	// Incorporate the identity ID in the workerpool hash.
