@@ -273,6 +273,10 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 				}
 			}
 
+			if err := mgr.Start(ctx); err != nil {
+				return fmt.Errorf("error running manager: %w", err)
+			}
+
 			return nil
 		},
 	}
