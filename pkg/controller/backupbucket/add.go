@@ -9,8 +9,13 @@ import (
 
 	"github.com/gardener/gardener/extensions/pkg/controller/backupbucket"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	backupbucketcontroller "github.com/gardener/gardener/pkg/gardenlet/controller/backupbucket"
+	kubernetesutils "github.com/gardener/gardener/pkg/utils/kubernetes"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
@@ -32,11 +37,11 @@ type AddOptions struct {
 
 // AddToManagerWithOptions adds a controller with the given Options to the given manager.
 // The opts.Reconciler is being set with a newly instantiated actuator.
-func AddToManagerWithOptions(_ context.Context, mgr manager.Manager, opts AddOptions) error {
+func AddToManagerWithOptions(ctx context.Context, mgr manager.Manager, opts AddOptions) error {
 	return backupbucket.Add(mgr, backupbucket.AddArgs{
 		Actuator:          NewActuator(mgr),
 		ControllerOptions: opts.Controller,
-		Predicates:        backupbucket.DefaultPredicates(opts.IgnoreOperationAnnotation),
+		Predicates:        getPredicates(ctx, mgr.GetClient(), opts),
 		Type:              azure.Type,
 		ExtensionClass:    opts.ExtensionClass,
 	})
@@ -45,4 +50,30 @@ func AddToManagerWithOptions(_ context.Context, mgr manager.Manager, opts AddOpt
 // AddToManager adds a controller with the default Options.
 func AddToManager(ctx context.Context, mgr manager.Manager) error {
 	return AddToManagerWithOptions(ctx, mgr, DefaultAddOptions)
+}
+
+func getPredicates(ctx context.Context, c client.Client, opts AddOptions) []predicate.Predicate {
+	// Keep old behavior by doing a logical And of the default predicates.
+	defaultPredicates := predicate.And(backupbucket.DefaultPredicates(opts.IgnoreOperationAnnotation)...)
+
+	// TODO(shafeeqes): Remove this in a future release when all generated secrets have the annotation set.
+	generatedSecretRefPredicate := predicate.NewPredicateFuncs(func(obj client.Object) bool {
+		backupBucket, ok := obj.(*extensionsv1alpha1.BackupBucket)
+		if !ok {
+			return false
+		}
+
+		if backupBucket.Status.GeneratedSecretRef == nil {
+			return false
+		}
+
+		generatedSecret, err := kubernetesutils.GetSecretByReference(ctx, c, backupBucket.Status.GeneratedSecretRef)
+		if err != nil {
+			return false
+		}
+
+		return generatedSecret != nil && !metav1.HasAnnotation(generatedSecret.ObjectMeta, backupbucketcontroller.RenewKeyTimeStampAnnotation)
+	})
+
+	return []predicate.Predicate{predicate.Or(defaultPredicates, generatedSecretRefPredicate)}
 }
