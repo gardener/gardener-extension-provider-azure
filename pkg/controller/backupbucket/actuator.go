@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/gardener/gardener/extensions/pkg/controller/backupbucket"
 	"github.com/gardener/gardener/extensions/pkg/util"
@@ -147,7 +148,12 @@ func (a *actuator) ensureStorageAccountKey(
 		return logWithError(log, err, "Failed to ensure account key rotation")
 	}
 
-	if err := a.createOrUpdateBackupBucketGeneratedSecret(ctx, backupBucket, storageAccountName, *SortKeysByAge(keys)[0].Value, storageDomain); err != nil {
+	var (
+		latestKey             = SortKeysByAge(keys)[0]
+		nextRotationTimeStamp = latestKey.CreationTime.Add(time.Hour * 24 * time.Duration(backupBucketConfig.RotationConfig.RotationPeriodDays)).Format(time.RFC3339Nano)
+	)
+
+	if err := a.createOrUpdateBackupBucketGeneratedSecret(ctx, backupBucket, storageAccountName, *latestKey.Value, storageDomain, nextRotationTimeStamp); err != nil {
 		return logWithError(log, err, "Failed to update the backupbucket secret with the storage account")
 	}
 	return nil

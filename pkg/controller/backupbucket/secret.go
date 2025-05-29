@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	backupbucketcontroller "github.com/gardener/gardener/pkg/gardenlet/controller/backupbucket"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,7 +19,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
-func (a *actuator) createOrUpdateBackupBucketGeneratedSecret(ctx context.Context, backupBucket *extensionsv1alpha1.BackupBucket, storageAccountName, storageKey, storageDomain string) error {
+func (a *actuator) createOrUpdateBackupBucketGeneratedSecret(ctx context.Context, backupBucket *extensionsv1alpha1.BackupBucket, storageAccountName, storageKey, storageDomain, nextRotationTimeStamp string) error {
 	var generatedSecret = &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("generated-bucket-%s", backupBucket.Name),
@@ -27,6 +28,7 @@ func (a *actuator) createOrUpdateBackupBucketGeneratedSecret(ctx context.Context
 	}
 
 	if _, err := controllerutil.CreateOrUpdate(ctx, a.client, generatedSecret, func() error {
+		metav1.SetMetaDataAnnotation(&generatedSecret.ObjectMeta, backupbucketcontroller.RenewKeyTimeStampAnnotation, nextRotationTimeStamp)
 		generatedSecret.Data = map[string][]byte{
 			azure.StorageAccount: []byte(storageAccountName),
 			azure.StorageKey:     []byte(storageKey),
