@@ -9,6 +9,7 @@ import (
 
 	"github.com/gardener/gardener/extensions/pkg/controller/backupbucket"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	predicateutils "github.com/gardener/gardener/pkg/controllerutils/predicate"
 	backupbucketcontroller "github.com/gardener/gardener/pkg/gardenlet/controller/backupbucket"
 	kubernetesutils "github.com/gardener/gardener/pkg/utils/kubernetes"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -56,6 +57,16 @@ func getPredicates(ctx context.Context, c client.Client, opts AddOptions) []pred
 	// Keep old behavior by doing a logical And of the default predicates.
 	defaultPredicates := predicate.And(backupbucket.DefaultPredicates(opts.IgnoreOperationAnnotation)...)
 
+	// Trigger reconcile if StorageAccountKeyMustRotate annotation is set and the event is Create or Update.
+	storageAccountKeyMustRotatePredicate := predicate.And(predicate.NewPredicateFuncs(func(obj client.Object) bool {
+		backupBucket, ok := obj.(*extensionsv1alpha1.BackupBucket)
+		if !ok {
+			return false
+		}
+
+		return kubernetesutils.HasMetaDataAnnotation(backupBucket, azure.StorageAccountKeyMustRotate, "true")
+	}), predicateutils.ForEventTypes(predicateutils.Create, predicateutils.Update))
+
 	// TODO(shafeeqes): Remove this in a future release when all generated secrets have the annotation set.
 	generatedSecretRefPredicate := predicate.NewPredicateFuncs(func(obj client.Object) bool {
 		backupBucket, ok := obj.(*extensionsv1alpha1.BackupBucket)
@@ -75,5 +86,5 @@ func getPredicates(ctx context.Context, c client.Client, opts AddOptions) []pred
 		return generatedSecret != nil && !metav1.HasAnnotation(generatedSecret.ObjectMeta, backupbucketcontroller.RenewKeyTimeStampAnnotation)
 	})
 
-	return []predicate.Predicate{predicate.Or(defaultPredicates, generatedSecretRefPredicate)}
+	return []predicate.Predicate{predicate.Or(defaultPredicates, generatedSecretRefPredicate, storageAccountKeyMustRotatePredicate)}
 }
