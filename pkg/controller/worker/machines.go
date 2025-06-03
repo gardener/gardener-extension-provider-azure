@@ -326,7 +326,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			return machineDeployment, machineClassSpec
 		}
 
-		workerPoolHash, err := w.generateWorkerPoolHash(pool, workerConfig, infrastructureStatus, vmoDependency, nil)
+		workerPoolHash, err := w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, nil)
 		if err != nil {
 			return err
 		}
@@ -372,12 +372,12 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				}
 
 				if nodesSubnet.Migrated {
-					workerPoolHash, err = w.generateWorkerPoolHash(pool, workerConfig, infrastructureStatus, vmoDependency, nil)
+					workerPoolHash, err = w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, nil)
 					if err != nil {
 						return err
 					}
 				} else {
-					workerPoolHash, err = w.generateWorkerPoolHash(pool, workerConfig, infrastructureStatus, vmoDependency, &nodesSubnet.Name)
+					workerPoolHash, err = w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, &nodesSubnet.Name)
 					if err != nil {
 						return err
 					}
@@ -508,16 +508,17 @@ func addTopologyLabel(labels map[string]string, region string, zone *zoneInfo) m
 	return labels
 }
 
-func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPool, workerConfig azureapi.WorkerConfig, infrastructureStatus *azureapi.InfrastructureStatus, vmoDependency *azureapi.VmoDependency, subnetName *string) (string, error) {
-	additionalHashData := []string{}
+func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPool, infrastructureStatus *azureapi.InfrastructureStatus, vmoDependency *azureapi.VmoDependency, subnetName *string) (string, error) {
+	var additionalHashData []string
 
 	// Integrate data disks/volumes in the hash.
 	for _, dv := range pool.DataVolumes {
 		additionalHashData = append(additionalHashData, dv.Size)
-
 		if dv.Type != nil {
 			additionalHashData = append(additionalHashData, *dv.Type)
 		}
+		// We exclude volume.Encrypted from the hash calculation because Azure disks are encrypted by default,
+		// and the field does not influence disk encryption behavior.
 	}
 
 	// Incorporate the identity ID in the workerpool hash.
@@ -537,23 +538,20 @@ func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPo
 
 	// Include additional data for new worker-pool hash generation.
 	// See https://github.com/gardener/gardener/issues/9699 for more details
-	additionalHashDataV2 := w.workerPoolHashDataV2(workerConfig, additionalHashData)
+	additionalHashDataV2 := append(additionalHashData, w.workerPoolHashDataV2(pool)...)
 
 	return worker.WorkerPoolHash(pool, w.cluster, additionalHashData, additionalHashDataV2)
 }
 
 // workerPoolHashDataV2 adds additional provider-specific data points to consider to the given data.
-func (w workerDelegate) workerPoolHashDataV2(workerConfig azureapi.WorkerConfig, additionalData []string) []string {
-	hashData := append([]string{}, additionalData...)
-
-	if workerConfig.DiagnosticsProfile != nil && workerConfig.DiagnosticsProfile.Enabled {
-		hashData = append(hashData, "DiagnosticsProfileEnabled")
-		if workerConfig.DiagnosticsProfile.StorageURI != nil {
-			hashData = append(hashData, *workerConfig.DiagnosticsProfile.StorageURI)
-		}
+func (w workerDelegate) workerPoolHashDataV2(pool extensionsv1alpha1.WorkerPool) []string {
+	// in the future, we may not calculate a hash for the whole ProviderConfig
+	// for example volume field changes could be done in place, but MCM needs to support it
+	if pool.ProviderConfig != nil && pool.ProviderConfig.Raw != nil {
+		return []string{string(pool.ProviderConfig.Raw)}
 	}
 
-	return hashData
+	return nil
 }
 
 // TODO: Remove when we have support for VM Capabilities
