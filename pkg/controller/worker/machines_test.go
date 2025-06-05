@@ -389,7 +389,6 @@ var _ = Describe("Machines", func() {
 					MaxUnavailable:    maxUnavailablePool3,
 					MachineType:       machineType,
 					KubernetesVersion: ptr.To(shootVersion),
-					UpdateStrategy:    ptr.To(gardencorev1beta1.ManualInPlaceUpdate),
 					NodeTemplate: &extensionsv1alpha1.NodeTemplate{
 						Capacity: nodeCapacity,
 					},
@@ -417,7 +416,6 @@ var _ = Describe("Machines", func() {
 					MaxUnavailable:    maxUnavailablePool4,
 					MachineType:       machineType,
 					KubernetesVersion: ptr.To(shootVersion),
-					UpdateStrategy:    ptr.To(gardencorev1beta1.AutoInPlaceUpdate),
 					NodeTemplate: &extensionsv1alpha1.NodeTemplate{
 						Capacity: nodeCapacity,
 					},
@@ -664,13 +662,12 @@ var _ = Describe("Machines", func() {
 							Minimum:    minPool3,
 							Maximum:    maxPool3,
 							Strategy: machinev1alpha1.MachineDeploymentStrategy{
-								Type: machinev1alpha1.InPlaceUpdateMachineDeploymentStrategyType,
-								InPlaceUpdate: &machinev1alpha1.InPlaceUpdateMachineDeployment{
+								Type: machinev1alpha1.RollingUpdateMachineDeploymentStrategyType,
+								RollingUpdate: &machinev1alpha1.RollingUpdateMachineDeployment{
 									UpdateConfiguration: machinev1alpha1.UpdateConfiguration{
 										MaxSurge:       &maxSurgePool3,
 										MaxUnavailable: &maxUnavailablePool3,
 									},
-									OrchestrationType: machinev1alpha1.OrchestrationTypeManual,
 								},
 							},
 							Labels:               labels,
@@ -684,13 +681,12 @@ var _ = Describe("Machines", func() {
 							Minimum:    minPool4,
 							Maximum:    maxPool4,
 							Strategy: machinev1alpha1.MachineDeploymentStrategy{
-								Type: machinev1alpha1.InPlaceUpdateMachineDeploymentStrategyType,
-								InPlaceUpdate: &machinev1alpha1.InPlaceUpdateMachineDeployment{
+								Type: machinev1alpha1.RollingUpdateMachineDeploymentStrategyType,
+								RollingUpdate: &machinev1alpha1.RollingUpdateMachineDeployment{
 									UpdateConfiguration: machinev1alpha1.UpdateConfiguration{
 										MaxSurge:       &maxSurgePool4,
 										MaxUnavailable: &maxUnavailablePool4,
 									},
-									OrchestrationType: machinev1alpha1.OrchestrationTypeAuto,
 								},
 							},
 							Labels:               labels,
