@@ -124,7 +124,6 @@ func deleteNamespace(ctx context.Context, c client.Client, namespace *corev1.Nam
 
 func ensureGardenNamespace(ctx context.Context, c client.Client) (*corev1.Namespace, bool) {
 	gardenNamespaceAlreadyExists := false
-	gardenNamespaceName := GardenNamespaceName
 	gardenNamespace := &corev1.Namespace{}
 	err := c.Get(ctx, client.ObjectKey{Name: gardenNamespaceName}, gardenNamespace)
 	if err != nil {
@@ -310,7 +309,7 @@ func newBackupBucket(name, region string, providerConfig *azurev1alpha1.BackupBu
 			},
 			Region: region,
 			SecretRef: corev1.SecretReference{
-				Name:      BackupBucketSecretName,
+				Name:      backupBucketSecretName,
 				Namespace: name,
 			},
 		},
