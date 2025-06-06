@@ -124,7 +124,6 @@ func deleteNamespace(ctx context.Context, c client.Client, namespace *corev1.Nam
 
 func ensureGardenNamespace(ctx context.Context, c client.Client) (*corev1.Namespace, bool) {
 	gardenNamespaceAlreadyExists := false
-	gardenNamespaceName := GardenNamespaceName
 	gardenNamespace := &corev1.Namespace{}
 	err := c.Get(ctx, client.ObjectKey{Name: gardenNamespaceName}, gardenNamespace)
 	if err != nil {
@@ -149,7 +148,7 @@ func ensureGardenNamespace(ctx context.Context, c client.Client) (*corev1.Namesp
 
 func createBackupBucketSecret(ctx context.Context, c client.Client, secret *corev1.Secret) {
 	log.Info("Creating secret", "name", secret.Name, "namespace", secret.Namespace)
-	Expect(c.Create(ctx, secret)).To(Succeed())
+	Expect(c.Create(ctx, secret)).To(Succeed(), "Failed to create secret: %s", secret.Name)
 }
 
 func deleteBackupBucketSecret(ctx context.Context, c client.Client, secret *corev1.Secret) {
@@ -206,7 +205,7 @@ func deleteBackupBucket(ctx context.Context, c client.Client, backupBucket *exte
 }
 
 func waitUntilBackupBucketReady(ctx context.Context, c client.Client, backupBucket *extensionsv1alpha1.BackupBucket) {
-	err := extensions.WaitUntilExtensionObjectReady(
+	Expect(extensions.WaitUntilExtensionObjectReady(
 		ctx,
 		c,
 		log,
@@ -216,11 +215,7 @@ func waitUntilBackupBucketReady(ctx context.Context, c client.Client, backupBuck
 		30*time.Second,
 		5*time.Minute,
 		nil,
-	)
-	if err != nil {
-		log.Info("BackupBucket is not ready yet; this is expected during initial reconciliation", "error", err)
-	}
-	Expect(err).To(Succeed(), "BackupBucket did not become ready: %s", backupBucket.Name)
+	)).To(Succeed(), "BackupBucket did not become ready: %s", backupBucket.Name)
 	log.Info("BackupBucket is ready", "backupBucket", backupBucket)
 }
 
@@ -310,7 +305,7 @@ func newBackupBucket(name, region string, providerConfig *azurev1alpha1.BackupBu
 			},
 			Region: region,
 			SecretRef: corev1.SecretReference{
-				Name:      BackupBucketSecretName,
+				Name:      backupBucketSecretName,
 				Namespace: name,
 			},
 		},
