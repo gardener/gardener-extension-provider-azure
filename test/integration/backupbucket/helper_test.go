@@ -205,7 +205,7 @@ func deleteBackupBucket(ctx context.Context, c client.Client, backupBucket *exte
 }
 
 func waitUntilBackupBucketReady(ctx context.Context, c client.Client, backupBucket *extensionsv1alpha1.BackupBucket) {
-	err := extensions.WaitUntilExtensionObjectReady(
+	Expect(extensions.WaitUntilExtensionObjectReady(
 		ctx,
 		c,
 		log,
@@ -215,11 +215,7 @@ func waitUntilBackupBucketReady(ctx context.Context, c client.Client, backupBuck
 		30*time.Second,
 		5*time.Minute,
 		nil,
-	)
-	if err != nil {
-		log.Info("BackupBucket is not ready yet; this is expected during initial reconciliation", "error", err)
-	}
-	Expect(err).To(Succeed(), "BackupBucket did not become ready: %s", backupBucket.Name)
+	)).To(Succeed(), "BackupBucket did not become ready: %s", backupBucket.Name)
 	log.Info("BackupBucket is ready", "backupBucket", backupBucket)
 }
 
