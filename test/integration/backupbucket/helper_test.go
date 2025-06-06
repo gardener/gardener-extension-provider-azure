@@ -148,7 +148,7 @@ func ensureGardenNamespace(ctx context.Context, c client.Client) (*corev1.Namesp
 
 func createBackupBucketSecret(ctx context.Context, c client.Client, secret *corev1.Secret) {
 	log.Info("Creating secret", "name", secret.Name, "namespace", secret.Namespace)
-	Expect(c.Create(ctx, secret)).To(Succeed())
+	Expect(c.Create(ctx, secret)).To(Succeed(), "Failed to create secret: %s", secret.Name)
 }
 
 func deleteBackupBucketSecret(ctx context.Context, c client.Client, secret *corev1.Secret) {
