@@ -8,6 +8,15 @@ metadata:
 {{ include "labels" . | indent 4 }}
 rules:
 - apiGroups:
+  - ""
+  - events.k8s.io
+  resources:
+  - events
+  verbs:
+  - create
+  - update
+  - patch
+- apiGroups:
   - extensions.gardener.cloud
   resources:
   - backupbuckets
@@ -75,7 +84,6 @@ rules:
   resources:
   - namespaces
   - namespaces/finalizers
-  - events
   - secrets
   - configmaps
   - endpoints
