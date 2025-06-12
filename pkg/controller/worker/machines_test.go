@@ -381,13 +381,15 @@ var _ = Describe("Machines", func() {
 				}
 
 				pool3 = extensionsv1alpha1.WorkerPool{
-					Name:           namePool3,
-					Minimum:        minPool3,
-					Maximum:        maxPool3,
-					MaxSurge:       maxSurgePool3,
-					Architecture:   ptr.To(archARM),
-					MaxUnavailable: maxUnavailablePool3,
-					MachineType:    machineType,
+					Name:              namePool3,
+					Minimum:           minPool3,
+					Maximum:           maxPool3,
+					MaxSurge:          maxSurgePool3,
+					Architecture:      ptr.To(archARM),
+					MaxUnavailable:    maxUnavailablePool3,
+					MachineType:       machineType,
+					KubernetesVersion: ptr.To(shootVersion),
+					UpdateStrategy:    ptr.To(gardencorev1beta1.ManualInPlaceUpdate),
 					NodeTemplate: &extensionsv1alpha1.NodeTemplate{
 						Capacity: nodeCapacity,
 					},
@@ -407,13 +409,15 @@ var _ = Describe("Machines", func() {
 				}
 
 				pool4 = extensionsv1alpha1.WorkerPool{
-					Name:           namePool4,
-					Minimum:        minPool4,
-					Maximum:        maxPool4,
-					MaxSurge:       maxSurgePool4,
-					Architecture:   ptr.To(archARM),
-					MaxUnavailable: maxUnavailablePool4,
-					MachineType:    machineType,
+					Name:              namePool4,
+					Minimum:           minPool4,
+					Maximum:           maxPool4,
+					MaxSurge:          maxSurgePool4,
+					Architecture:      ptr.To(archARM),
+					MaxUnavailable:    maxUnavailablePool4,
+					MachineType:       machineType,
+					KubernetesVersion: ptr.To(shootVersion),
+					UpdateStrategy:    ptr.To(gardencorev1beta1.AutoInPlaceUpdate),
 					NodeTemplate: &extensionsv1alpha1.NodeTemplate{
 						Capacity: nodeCapacity,
 					},
@@ -523,10 +527,10 @@ var _ = Describe("Machines", func() {
 					workerPoolHash1AdditionalData := []string{fmt.Sprintf("%dGi", dataVolume2Size), dataVolume2Type, fmt.Sprintf("%dGi", dataVolume1Size), identityID}
 					additionalData := []string{identityID}
 
-					workerPoolHash1, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster, workerPoolHash1AdditionalData, workerPoolHash1AdditionalData)
-					workerPoolHash2, _ = worker.WorkerPoolHash(w.Spec.Pools[1], cluster, additionalData, additionalData)
-					workerPoolHash3, _ = worker.WorkerPoolHash(w.Spec.Pools[2], cluster, additionalData, additionalData)
-					workerPoolHash4, _ = worker.WorkerPoolHash(w.Spec.Pools[3], cluster, additionalData, additionalData)
+					workerPoolHash1, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster, workerPoolHash1AdditionalData, workerPoolHash1AdditionalData, nil)
+					workerPoolHash2, _ = worker.WorkerPoolHash(w.Spec.Pools[1], cluster, additionalData, additionalData, nil)
+					workerPoolHash3, _ = worker.WorkerPoolHash(w.Spec.Pools[2], cluster, additionalData, additionalData, nil)
+					workerPoolHash4, _ = worker.WorkerPoolHash(w.Spec.Pools[3], cluster, additionalData, additionalData, nil)
 
 					var (
 						machineClassPool1 = copyMachineClass(urnMachineClass)
@@ -615,6 +619,7 @@ var _ = Describe("Machines", func() {
 					machineDeployments = worker.MachineDeployments{
 						{
 							Name:       machineClassNamePool1,
+							PoolName:   namePool1,
 							ClassName:  machineClassWithHashPool1,
 							SecretName: machineClassWithHashPool1,
 							Minimum:    minPool1,
@@ -633,6 +638,7 @@ var _ = Describe("Machines", func() {
 						},
 						{
 							Name:       machineClassNamePool2,
+							PoolName:   namePool2,
 							ClassName:  machineClassWithHashPool2,
 							SecretName: machineClassWithHashPool2,
 							Minimum:    minPool2,
@@ -652,17 +658,19 @@ var _ = Describe("Machines", func() {
 						},
 						{
 							Name:       machineClassNamePool3,
+							PoolName:   namePool3,
 							ClassName:  machineClassWithHashPool3,
 							SecretName: machineClassWithHashPool3,
 							Minimum:    minPool3,
 							Maximum:    maxPool3,
 							Strategy: machinev1alpha1.MachineDeploymentStrategy{
-								Type: machinev1alpha1.RollingUpdateMachineDeploymentStrategyType,
-								RollingUpdate: &machinev1alpha1.RollingUpdateMachineDeployment{
+								Type: machinev1alpha1.InPlaceUpdateMachineDeploymentStrategyType,
+								InPlaceUpdate: &machinev1alpha1.InPlaceUpdateMachineDeployment{
 									UpdateConfiguration: machinev1alpha1.UpdateConfiguration{
 										MaxSurge:       &maxSurgePool3,
 										MaxUnavailable: &maxUnavailablePool3,
 									},
+									OrchestrationType: machinev1alpha1.OrchestrationTypeManual,
 								},
 							},
 							Labels:               labels,
@@ -670,17 +678,19 @@ var _ = Describe("Machines", func() {
 						},
 						{
 							Name:       machineClassNamePool4,
+							PoolName:   namePool4,
 							ClassName:  machineClassWithHashPool4,
 							SecretName: machineClassWithHashPool4,
 							Minimum:    minPool4,
 							Maximum:    maxPool4,
 							Strategy: machinev1alpha1.MachineDeploymentStrategy{
-								Type: machinev1alpha1.RollingUpdateMachineDeploymentStrategyType,
-								RollingUpdate: &machinev1alpha1.RollingUpdateMachineDeployment{
+								Type: machinev1alpha1.InPlaceUpdateMachineDeploymentStrategyType,
+								InPlaceUpdate: &machinev1alpha1.InPlaceUpdateMachineDeployment{
 									UpdateConfiguration: machinev1alpha1.UpdateConfiguration{
 										MaxSurge:       &maxSurgePool4,
 										MaxUnavailable: &maxUnavailablePool4,
 									},
+									OrchestrationType: machinev1alpha1.OrchestrationTypeAuto,
 								},
 							},
 							Labels:               labels,
@@ -781,8 +791,8 @@ var _ = Describe("Machines", func() {
 
 						additionalHashDataZ1 := []string{identityID}
 						additionalHashDataZ2 := []string{identityID, subnet2}
-						workerPoolHashZ1, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster, additionalHashDataZ1, additionalHashDataZ1)
-						workerPoolHashZ2, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster, additionalHashDataZ2, additionalHashDataZ2)
+						workerPoolHashZ1, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster, additionalHashDataZ1, additionalHashDataZ1, nil)
+						workerPoolHashZ2, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster, additionalHashDataZ2, additionalHashDataZ2, nil)
 
 						basename := fmt.Sprintf("%s-%s", namespace, namePoolZones)
 						machineClassNamePool1 = fmt.Sprintf("%s-z%s", basename, zone1)

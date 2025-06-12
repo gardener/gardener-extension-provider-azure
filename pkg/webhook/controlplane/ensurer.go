@@ -57,7 +57,7 @@ type ensurer struct {
 var ImageVector = imagevector.ImageVector()
 
 // EnsureMachineControllerManagerDeployment ensures that the machine-controller-manager deployment conforms to the provider requirements.
-func (e *ensurer) EnsureMachineControllerManagerDeployment(ctx context.Context, _ gcontext.GardenContext, newObj, _ *appsv1.Deployment) error {
+func (e *ensurer) EnsureMachineControllerManagerDeployment(ctx context.Context, gctx gcontext.GardenContext, newObj, _ *appsv1.Deployment) error {
 	cloudProviderSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      v1beta1constants.SecretNameCloudProvider,
@@ -68,12 +68,17 @@ func (e *ensurer) EnsureMachineControllerManagerDeployment(ctx context.Context, 
 		return fmt.Errorf("failed getting cloudprovider secret: %w", err)
 	}
 
+	cluster, err := gctx.GetCluster(ctx)
+	if err != nil {
+		return fmt.Errorf("failed reading Cluster: %w", err)
+	}
+
 	image, err := ImageVector.FindImage(azure.MachineControllerManagerProviderAzureImageName)
 	if err != nil {
 		return err
 	}
 
-	sidecarContainer := machinecontrollermanager.ProviderSidecarContainer(newObj.Namespace, azure.Name, image.String())
+	sidecarContainer := machinecontrollermanager.ProviderSidecarContainer(cluster.Shoot, newObj.Namespace, azure.Name, image.String())
 	sidecarContainer.Args = append(sidecarContainer.Args, "--machine-pv-reattach-timeout=150s")
 
 	const volumeName = "workload-identity"
