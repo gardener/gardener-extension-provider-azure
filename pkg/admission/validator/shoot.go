@@ -25,7 +25,6 @@ import (
 )
 
 var (
-	metaDataPath    = field.NewPath("metadata")
 	specPath        = field.NewPath("spec")
 	nwPath          = specPath.Child("networking")
 	providerPath    = specPath.Child("provider")
@@ -165,7 +164,7 @@ func (s *shoot) validateUpdate(oldShoot, shoot *core.Shoot, cloudProfileSpec *ga
 
 	var allErrs = field.ErrorList{}
 	if !reflect.DeepEqual(oldInfraConfig, infraConfig) {
-		allErrs = append(allErrs, azurevalidation.ValidateInfrastructureConfigUpdate(oldInfraConfig, infraConfig, metaDataPath)...)
+		allErrs = append(allErrs, azurevalidation.ValidateInfrastructureConfigUpdate(oldInfraConfig, infraConfig, infraConfigPath)...)
 	}
 
 	allErrs = append(allErrs, azurevalidation.ValidateWorkersUpdate(oldShoot.Spec.Provider.Workers, shoot.Spec.Provider.Workers, workersPath)...)
