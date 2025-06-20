@@ -900,6 +900,49 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					"Field": Equal("networks.zones[0].cidr"),
 				}))
 			})
+
+			It("should deny changing zone if there is worker pool with inplace update strategy", func() {
+				shoot.Spec.Provider = core.Provider{
+					Workers: []core.Worker{
+						{
+							UpdateStrategy: ptr.To(core.AutoInPlaceUpdate),
+						},
+					},
+				}
+
+				oldInfra := &apisazure.InfrastructureConfig{
+					Zoned: true,
+					Networks: apisazure.NetworkConfig{
+						VNet: apisazure.VNet{
+							CIDR: &vnetCIDR,
+						},
+						Zones: []apisazure.Zone{
+							{
+								Name: 1,
+								CIDR: "1.1.1.1/20",
+							},
+							{
+								Name: 2,
+								CIDR: "2.2.2.2/20",
+							},
+						},
+					},
+				}
+
+				newInfra := oldInfra.DeepCopy()
+				newInfra.Networks.Zones = append(newInfra.Networks.Zones, apisazure.Zone{
+					Name: 3,
+					CIDR: "3.3.3./20",
+				})
+
+				errorList := ValidateInfrastructureConfigUpdate(oldInfra, newInfra, &shoot, providerPath)
+				Expect(errorList).NotTo(BeEmpty())
+				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.zones"),
+					"Detail": Equal("field is immutable when there is a worker with in-place update strategy"),
+				}))))
+			})
 		})
 	})
 })

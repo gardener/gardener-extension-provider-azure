@@ -375,6 +375,12 @@ func ValidateInfrastructureConfigUpdate(oldConfig, newConfig *apisazure.Infrastr
 			if !apiequality.Semantic.DeepEqual(oldConfig.Identity, newConfig.Identity) {
 				allErrs = append(allErrs, field.Invalid(providerPath.Child("identity"), newConfig.Identity, "field is immutable when there is a worker with in-place update strategy"))
 			}
+
+			// changing the zones is not allowed, if there is worker with in-place update strategy
+			// this is because based on zones new subnets are created which need recreation of the worker nodes
+			if !apiequality.Semantic.DeepEqual(oldConfig.Networks.Zones, newConfig.Networks.Zones) {
+				allErrs = append(allErrs, field.Invalid(providerPath.Child("networks").Child("zones"), newConfig.Networks.Zones, "field is immutable when there is a worker with in-place update strategy"))
+			}
 		}
 	}
 
