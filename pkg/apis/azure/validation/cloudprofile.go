@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gardener/gardener/extensions/pkg/util"
 	"github.com/gardener/gardener/pkg/apis/core"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"github.com/gardener/gardener/pkg/utils"
+	"github.com/gardener/gardener/pkg/utils/gardener"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/ptr"
 	"k8s.io/utils/strings/slices"
@@ -196,8 +196,8 @@ func VersionArchitectureKey(version, architecture string) string {
 }
 
 // NewProviderImagesContext creates a new images context for provider images.
-func NewProviderImagesContext(providerImages []apisazure.MachineImages) *util.ImagesContext[apisazure.MachineImages, apisazure.MachineImageVersion] {
-	return util.NewImagesContext(
+func NewProviderImagesContext(providerImages []apisazure.MachineImages) *gardener.ImagesContext[apisazure.MachineImages, apisazure.MachineImageVersion] {
+	return gardener.NewImagesContext(
 		utils.CreateMapFromSlice(providerImages, func(mi apisazure.MachineImages) string { return mi.Name }),
 		func(mi apisazure.MachineImages) map[string]apisazure.MachineImageVersion {
 			return utils.CreateMapFromSlice(mi.Versions, func(v apisazure.MachineImageVersion) string { return providerMachineImageKey(v) })

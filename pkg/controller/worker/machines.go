@@ -540,7 +540,7 @@ func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPo
 	// See https://github.com/gardener/gardener/issues/9699 for more details
 	additionalHashDataV2 := append(additionalHashData, w.workerPoolHashDataV2(pool)...)
 
-	return worker.WorkerPoolHash(pool, w.cluster, additionalHashData, additionalHashDataV2)
+	return worker.WorkerPoolHash(pool, w.cluster, additionalHashData, additionalHashDataV2, nil)
 }
 
 // workerPoolHashDataV2 adds additional provider-specific data points to consider to the given data.

@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
-	core "github.com/gardener/gardener/pkg/apis/core"
+	"github.com/gardener/gardener/pkg/apis/core"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
 	mockmanager "github.com/gardener/gardener/third_party/mock/controller-runtime/manager"
@@ -76,9 +76,9 @@ var _ = Describe("Seed Validator", func() {
 			config = nil
 		}
 
-		var backup *core.SeedBackup
+		var backup *core.Backup
 		if config != nil {
-			backup = &core.SeedBackup{
+			backup = &core.Backup{
 				ProviderConfig: config,
 			}
 		}
@@ -219,7 +219,7 @@ var _ = Describe("Seed Validator", func() {
 			Entry("Invalid retention period format",
 				&core.Seed{
 					Spec: core.SeedSpec{
-						Backup: &core.SeedBackup{
+						Backup: &core.Backup{
 							ProviderConfig: &runtime.RawExtension{
 								Raw: []byte(`{
 									"apiVersion":"azure.provider.extensions.gardener.cloud/v1alpha1",
