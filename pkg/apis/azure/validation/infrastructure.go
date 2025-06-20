@@ -8,8 +8,10 @@ import (
 	"fmt"
 
 	"github.com/gardener/gardener/pkg/apis/core"
+	gardencorehelper "github.com/gardener/gardener/pkg/apis/core/helper"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	cidrvalidation "github.com/gardener/gardener/pkg/utils/validation/cidr"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -358,13 +360,22 @@ func validateZonedPublicIPReference(publicIPReferences []apisazure.ZonedPublicIP
 }
 
 // ValidateInfrastructureConfigUpdate validates a InfrastructureConfig object.
-func ValidateInfrastructureConfigUpdate(oldConfig, newConfig *apisazure.InfrastructureConfig, providerPath *field.Path) field.ErrorList {
+func ValidateInfrastructureConfigUpdate(oldConfig, newConfig *apisazure.InfrastructureConfig, shoot *core.Shoot, providerPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.ResourceGroup, oldConfig.ResourceGroup, providerPath.Child("resourceGroup"))...)
 
 	if oldConfig.Networks.Workers != nil && newConfig.Networks.Workers != nil {
 		allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Networks.Workers, oldConfig.Networks.Workers, providerPath.Child("networks").Child("workers"))...)
+	}
+
+	for _, worker := range shoot.Spec.Provider.Workers {
+		if gardencorehelper.IsUpdateStrategyInPlace(worker.UpdateStrategy) {
+			// identity configuration is immutable, if there is worker with in-place update strategy
+			if !apiequality.Semantic.DeepEqual(oldConfig.Identity, newConfig.Identity) {
+				allErrs = append(allErrs, field.Invalid(providerPath.Child("identity"), newConfig.Identity, "field is immutable when there is a worker with in-place update strategy"))
+			}
+		}
 	}
 
 	// validate state transitions for the network layouts

@@ -650,20 +650,43 @@ var _ = Describe("InfrastructureConfig validation", func() {
 
 		BeforeEach(func() {
 			newInfrastructureConfig = infrastructureConfig.DeepCopy()
+			shoot = core.Shoot{}
 		})
 
 		It("should return no errors for an unchanged config", func() {
-			Expect(ValidateInfrastructureConfigUpdate(infrastructureConfig, infrastructureConfig, providerPath)).To(BeEmpty())
+			Expect(ValidateInfrastructureConfigUpdate(infrastructureConfig, infrastructureConfig, &shoot, providerPath)).To(BeEmpty())
 		})
 
 		It("should forbid changing the resource group section", func() {
 			newInfrastructureConfig.ResourceGroup = &apisazure.ResourceGroup{}
 
-			errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, providerPath)
+			errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, &shoot, providerPath)
 
 			Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":  Equal(field.ErrorTypeInvalid),
 				"Field": Equal("resourceGroup"),
+			}))))
+		})
+
+		It("should forbid changing the indentity config if there is worker with inplace update strategy", func() {
+			shoot.Spec.Provider = core.Provider{
+				Workers: []core.Worker{
+					{
+						UpdateStrategy: ptr.To(core.AutoInPlaceUpdate),
+					},
+				},
+			}
+
+			newInfrastructureConfig := infrastructureConfig.DeepCopy()
+			newInfrastructureConfig.Identity = &apisazure.IdentityConfig{
+				Name: "test-identity",
+			}
+
+			errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, &shoot, providerPath)
+			Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":   Equal(field.ErrorTypeInvalid),
+				"Field":  Equal("identity"),
+				"Detail": Equal("field is immutable when there is a worker with in-place update strategy"),
 			}))))
 		})
 
@@ -672,7 +695,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				newInfrastructureConfig := infrastructureConfig.DeepCopy()
 				newInfrastructureConfig.Networks.VNet.CIDR = ptr.To("10.0.0.0/7")
 
-				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, providerPath)
+				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, &shoot, providerPath)
 				Expect(errorList).Should(BeEmpty())
 			})
 
@@ -680,7 +703,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				newInfrastructureConfig := infrastructureConfig.DeepCopy()
 				newInfrastructureConfig.Networks.VNet.CIDR = ptr.To("10.0.0.0/9")
 
-				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, providerPath)
+				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, &shoot, providerPath)
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
 					"Field":  Equal("networks.vnet.cidr"),
@@ -696,7 +719,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				newInfrastructureConfig.Networks.VNet.Name = ptr.To("modified")
 				newInfrastructureConfig.Networks.VNet.ResourceGroup = ptr.To("modified")
 
-				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, providerPath)
+				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, &shoot, providerPath)
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
 					"Field":  Equal("networks.vnet.name"),
@@ -715,7 +738,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				newInfrastructureConfig.Networks.VNet.Name = ptr.To("modified")
 				newInfrastructureConfig.Networks.VNet.ResourceGroup = ptr.To("modified")
 
-				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, providerPath)
+				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, &shoot, providerPath)
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
 					"Field":  Equal("networks.vnet.name"),
@@ -737,7 +760,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				if isNewZoned {
 					newInfrastructureConfig.Zoned = true
 				}
-				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, providerPath)
+				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, &shoot, providerPath)
 				if !expectError {
 					Expect(errorList).To(BeEmpty())
 					return
@@ -779,7 +802,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					},
 				}
 
-				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfra, providerPath)
+				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfra, &shoot, providerPath)
 				Expect(errorList).To(BeEmpty())
 			})
 
@@ -804,7 +827,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					},
 				}
 
-				errorList := ValidateInfrastructureConfigUpdate(oldInfra, newInfra, providerPath)
+				errorList := ValidateInfrastructureConfigUpdate(oldInfra, newInfra, &shoot, providerPath)
 				Expect(errorList).NotTo(BeEmpty())
 				Expect(errorList).To(HaveLen(1))
 				Expect(errorList).To(ConsistOfFields(Fields{
@@ -836,7 +859,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					},
 				}
 
-				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfra, providerPath)
+				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfra, &shoot, providerPath)
 				Expect(errorList).NotTo(BeEmpty())
 				Expect(errorList).To(HaveLen(1))
 				Expect(errorList).To(ConsistOfFields(Fields{
@@ -869,7 +892,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				newZonedInfra := zonedInfra.DeepCopy()
 				newZonedInfra.Networks.Zones[0].CIDR = "10.0.0.0/24"
 
-				errorList := ValidateInfrastructureConfigUpdate(zonedInfra, newZonedInfra, providerPath)
+				errorList := ValidateInfrastructureConfigUpdate(zonedInfra, newZonedInfra, &shoot, providerPath)
 				Expect(errorList).NotTo(BeEmpty())
 				Expect(errorList).To(HaveLen(1))
 				Expect(errorList).To(ConsistOfFields(Fields{
