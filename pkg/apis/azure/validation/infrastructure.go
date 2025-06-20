@@ -7,6 +7,7 @@ package validation
 import (
 	"fmt"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/gardener/gardener/pkg/apis/core"
 	gardencorehelper "github.com/gardener/gardener/pkg/apis/core/helper"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -15,6 +16,7 @@ import (
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/utils/ptr"
 
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
@@ -53,7 +55,7 @@ func validateInfrastructureConfigZones(oldInfra, infra *apisazure.Infrastructure
 	}
 
 	for i, zone := range infra.Networks.Zones {
-		// Search if the current zones were alrady present and valid in the old infrastructureConfig and if so, skip further checks.
+		// Search if the current zones were already present and valid in the old infrastructureConfig and if so, skip further checks.
 		// This safeguards from breaking existing shoots in case a zone has been removed from the CloudProfile.
 		if oldInfra != nil && len(oldInfra.Networks.Zones) > 0 {
 			matchFound := false
@@ -105,13 +107,19 @@ func ValidateInfrastructureConfig(infra *apisazure.InfrastructureConfig, shoot *
 	// validation here will fail for those cases.
 	// TODO: remove the following block and uncomment below blocks once deployment into existing resource groups works properly.
 	if infra.ResourceGroup != nil {
+		allErrs = append(allErrs, validateResourceGroup(infra.ResourceGroup.Name, fldPath.Child("resourceGroup.name"))...)
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("resourceGroup"), infra.ResourceGroup, "specifying an existing resource group is not supported yet"))
 	}
 
 	allErrs = append(allErrs, validateNetworkConfig(shoot, infra, nodes, pods, services, fldPath)...)
 
-	if infra.Identity != nil && (infra.Identity.Name == "" || infra.Identity.ResourceGroup == "") {
-		allErrs = append(allErrs, field.Invalid(fldPath.Child("identity"), infra.Identity, "specifying an identity requires the name of the identity and the resource group which hosts the identity"))
+	if infra.Identity != nil {
+		path := fldPath.Child("identity")
+		if infra.Identity.Name == "" || infra.Identity.ResourceGroup == "" {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("identity"), infra.Identity, "specifying an identity requires the name of the identity and the resource group which hosts the identity"))
+		}
+		allErrs = append(allErrs, validateResourceGroup(infra.Identity.ResourceGroup, path.Child("resourceGroup"))...)
+		allErrs = append(allErrs, validateGenericName(infra.Identity.Name, path.Child("name"))...)
 	}
 
 	return allErrs
@@ -163,6 +171,10 @@ func validateNetworkConfig(
 		}
 
 		allErrs = append(allErrs, validateNatGatewayConfig(config.NatGateway, helper.HasShootVmoMigrationAnnotation(shoot.GetAnnotations()), networksPath.Child("natGateway"))...)
+
+		for idx := range config.ServiceEndpoints {
+			allErrs = append(allErrs, validateServiceEndpoint(config.ServiceEndpoints[idx], networksPath.Child("serviceEndpoints").Index(idx))...)
+		}
 		return allErrs
 	}
 
@@ -188,19 +200,34 @@ func validateVnetConfig(networkConfig *apisazure.NetworkConfig, resourceGroupCon
 		allErrs    = field.ErrorList{}
 		vnetConfig = networkConfig.VNet
 	)
-
 	// Validate that just vnet name or vnet resource group is specified.
-	if (networkConfig.VNet.Name != nil && vnetConfig.ResourceGroup == nil) || (vnetConfig.Name == nil && vnetConfig.ResourceGroup != nil) {
+	if (vnetConfig.Name != nil && vnetConfig.ResourceGroup == nil) || (vnetConfig.Name == nil && vnetConfig.ResourceGroup != nil) {
 		return append(allErrs, field.Invalid(vNetPath, vnetConfig, "a vnet cidr or vnet name and resource group need to be specified"))
+	}
+
+	if vnetConfig.DDosProtectionPlanID != nil {
+		fldPath := vNetPath.Child("ddosProtectionPlanID")
+		resourceID, err := arm.ParseResourceID(*vnetConfig.DDosProtectionPlanID)
+		if err != nil {
+			return append(allErrs, field.Invalid(fldPath, vnetConfig.DDosProtectionPlanID, fmt.Sprintf("invalid DDoS protection plan ID: %v", err)))
+		}
+
+		allErrs = append(allErrs, validateResourceID(resourceID, ptr.To("ddosProtectionPlans"), fldPath)...)
+		allErrs = append(validateGenericName(resourceID.Name, fldPath), allErrs...)
 	}
 
 	if isExternalVnetUsed(&networkConfig.VNet) {
 		if *networkConfig.VNet.Name == "" {
-			allErrs = append(allErrs, field.Required(vNetPath.Child("name"), "the vnet name must not be empty"))
+			allErrs = append(allErrs, field.Required(vNetPath.Child("name"), "the vnet name must not be empty if specifying an existing vnet"))
 		}
+
 		if *networkConfig.VNet.ResourceGroup == "" {
-			allErrs = append(allErrs, field.Required(vNetPath.Child("resourceGroup"), "the vnet resource group must not be empty"))
+			allErrs = append(allErrs, field.Required(vNetPath.Child("resourceGroup"), "the vnet resource group must not be empty if specifying an existing vnet"))
 		}
+
+		allErrs = append(allErrs, validateResourceGroup(*vnetConfig.ResourceGroup, vNetPath.Child("resourceGroup"))...)
+		allErrs = append(allErrs, validateVnetName(*vnetConfig.Name, vNetPath.Child("name"))...)
+
 		if networkConfig.VNet.CIDR != nil {
 			allErrs = append(allErrs, field.Invalid(vNetPath.Child("cidr"), vnetConfig, "specifying a cidr for an existing vnet is not possible"))
 		}
@@ -261,6 +288,11 @@ func validateZones(zones []apisazure.Zone, nodes, pods, services cidrvalidation.
 		zoneCIDRs = append(zoneCIDRs, zoneCIDR)
 		allErrs = append(allErrs, cidrvalidation.ValidateCIDRIsCanonical(zoneCIDR.GetFieldPath(), zoneCIDR.GetCIDR())...)
 
+		// service endpoint validation
+		for _, se := range zone.ServiceEndpoints {
+			allErrs = append(validateServiceEndpoint(se, fld.Child("serviceEndpoints")), allErrs...)
+		}
+
 		// NAT validation
 		allErrs = append(allErrs, validateZonedNatGatewayConfig(zone.NatGateway, zonePath.Child("natGateway"))...)
 	}
@@ -299,7 +331,12 @@ func validateNatGatewayConfig(natGatewayConfig *apisazure.NatGatewayConfig, hasS
 	}
 
 	if natGatewayConfig.IdleConnectionTimeoutMinutes != nil && (*natGatewayConfig.IdleConnectionTimeoutMinutes < natGatewayMinTimeoutInMinutes || *natGatewayConfig.IdleConnectionTimeoutMinutes > natGatewayMaxTimeoutInMinutes) {
-		allErrs = append(allErrs, field.Invalid(natGatewayPath.Child("idleConnectionTimeoutMinutes"), *natGatewayConfig.IdleConnectionTimeoutMinutes, "idleConnectionTimeoutMinutes values must range between 4 and 120"))
+		allErrs = append(allErrs, field.Invalid(natGatewayPath.Child("idleConnectionTimeoutMinutes"), *natGatewayConfig.IdleConnectionTimeoutMinutes, fmt.Sprintf("idleConnectionTimeoutMinutes values must range between %d and %d", natGatewayMinTimeoutInMinutes, natGatewayMaxTimeoutInMinutes)))
+	}
+
+	for idx := range natGatewayConfig.IPAddresses {
+		allErrs = append(allErrs, validateResourceGroup(natGatewayConfig.IPAddresses[idx].ResourceGroup, natGatewayPath.Child("ipAddresses").Index(idx).Child("resourceGroup"))...)
+		allErrs = append(allErrs, validatePublicIP(natGatewayConfig.IPAddresses[idx].Name, natGatewayPath.Child("ipAddresses").Index(idx).Child("name"))...)
 	}
 
 	if natGatewayConfig.Zone == nil {
@@ -322,7 +359,7 @@ func validateNatGatewayIPReference(publicIPReferences []apisazure.PublicIPRefere
 			allErrs = append(allErrs, field.Required(fldPath.Index(i).Child("name"), "Name for NatGateway public ip resource is required"))
 		}
 		if publicIPRef.ResourceGroup == "" {
-			allErrs = append(allErrs, field.Required(fldPath.Index(i).Child("resourceGroup"), "ResourceGroup for NatGateway public ip resouce is required"))
+			allErrs = append(allErrs, field.Required(fldPath.Index(i).Child("resourceGroup"), "ResourceGroup for NatGateway public ip resource is required"))
 		}
 	}
 	return allErrs
@@ -330,9 +367,11 @@ func validateNatGatewayIPReference(publicIPReferences []apisazure.PublicIPRefere
 
 func validateZonedNatGatewayConfig(natGatewayConfig *apisazure.ZonedNatGatewayConfig, natGatewayPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
-
 	if natGatewayConfig == nil {
 		return nil
+	}
+	if natGatewayConfig.IdleConnectionTimeoutMinutes != nil && (*natGatewayConfig.IdleConnectionTimeoutMinutes < natGatewayMinTimeoutInMinutes || *natGatewayConfig.IdleConnectionTimeoutMinutes > natGatewayMaxTimeoutInMinutes) {
+		allErrs = append(allErrs, field.Invalid(natGatewayPath.Child("idleConnectionTimeoutMinutes"), *natGatewayConfig.IdleConnectionTimeoutMinutes, fmt.Sprintf("idleConnectionTimeoutMinutes values must range between %d and %d", natGatewayMinTimeoutInMinutes, natGatewayMaxTimeoutInMinutes)))
 	}
 
 	if !natGatewayConfig.Enabled {
@@ -348,13 +387,16 @@ func validateZonedNatGatewayConfig(natGatewayConfig *apisazure.ZonedNatGatewayCo
 
 func validateZonedPublicIPReference(publicIPReferences []apisazure.ZonedPublicIPReference, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
-	for i, publicIPRef := range publicIPReferences {
-		if publicIPRef.Name == "" {
-			allErrs = append(allErrs, field.Required(fldPath.Index(i).Child("name"), "Name for NatGateway public ip resource is required"))
+	for idx, ipRef := range publicIPReferences {
+		ipFld := fldPath.Index(idx)
+		if ipRef.ResourceGroup == "" {
+			allErrs = append(allErrs, field.Required(ipFld.Child("resourceGroup"), "ResourceGroup for NatGateway public ip resource is required"))
 		}
-		if publicIPRef.ResourceGroup == "" {
-			allErrs = append(allErrs, field.Required(fldPath.Index(i).Child("resourceGroup"), "ResourceGroup for NatGateway public ip resouce is required"))
+		allErrs = append(allErrs, validateResourceGroup(ipRef.ResourceGroup, ipFld.Child("resourceGroup"))...)
+		if ipRef.Name == "" {
+			allErrs = append(allErrs, field.Required(fldPath.Index(idx).Child("name"), "Name for NatGateway public ip resource is required"))
 		}
+		allErrs = append(allErrs, validatePublicIP(ipRef.Name, ipFld.Child("name"))...)
 	}
 	return allErrs
 }
@@ -477,7 +519,7 @@ func isExternalVnetUsed(vnetConfig *apisazure.VNet) bool {
 	if vnetConfig == nil {
 		return false
 	}
-	if vnetConfig.Name != nil && vnetConfig.ResourceGroup != nil {
+	if vnetConfig.Name != nil || vnetConfig.ResourceGroup != nil {
 		return true
 	}
 	return false
