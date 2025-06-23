@@ -108,7 +108,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 
 	for _, pool := range w.worker.Spec.Pools {
 		// Get the vmo dependency from the worker status if exists.
-		vmoDependency, err := w.determineWorkerPoolVmoDependency(ctx, infrastructureStatus, workerStatus, pool.Name)
+		vmoDependency, err := w.determineWorkerPoolVmoDependency(ctx, infrastructureStatus, workerStatus, pool.Name, pool.UpdateStrategy)
 		if err != nil {
 			return err
 		}
