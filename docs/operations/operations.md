@@ -158,7 +158,9 @@ spec:
   backup:
     provider: azure
     region: westeurope # default region
-    secretRef:
+    credentialsRef:
+      apiVersion: v1
+      kind: Secret
       name: backup-credentials
       namespace: garden
   ...
@@ -229,9 +231,9 @@ After the service principal secret has been rotated and the corresponding secret
 ### Rolling Update Triggers
 
 Changes to the `Shoot` worker-pools are applied in-place where possible.
-In case this is not possible a rolling update of the workers will be performed to apply the new configuration, 
+In case this is not possible a rolling update of the workers will be performed to apply the new configuration,
 as outlined in [the Gardener documentation](https://github.com/gardener/gardener/blob/master/docs/usage/shoot-operations/shoot_updates.md#in-place-vs-rolling-updates).
-The exact fields that trigger this behavior are defined in the [Gardener doc](https://github.com/gardener/gardener/blob/master/docs/usage/shoot-operations/shoot_updates.md#rolling-update-triggers), 
+The exact fields that trigger this behavior are defined in the [Gardener doc](https://github.com/gardener/gardener/blob/master/docs/usage/shoot-operations/shoot_updates.md#rolling-update-triggers),
 with a few additions:
 
 - `.spec.provider.workers[].providerConfig`
