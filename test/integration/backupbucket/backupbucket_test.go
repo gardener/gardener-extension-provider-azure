@@ -111,15 +111,21 @@ var _ = BeforeSuite(func() {
 		mgrCancel()
 
 		By("deleting azure provider secret")
-		deleteBackupBucketSecret(tc.ctx, tc.client, tc.secret)
+		if tc != nil && tc.client != nil && tc.secret != nil {
+			deleteBackupBucketSecret(tc.ctx, tc.client, tc.secret)
+		}
 
 		By("deleting Azure resource group")
-		deleteResourceGroup(tc.ctx, tc.azClientSet, tc.testName)
+		if tc != nil && tc.azClientSet != nil && tc.testName != "" {
+			deleteResourceGroup(tc.ctx, tc.azClientSet, tc.testName)
+		}
 
 		By("deleting namespaces")
-		deleteNamespace(tc.ctx, tc.client, tc.testNamespace)
-		if !tc.gardenNamespaceExists {
-			deleteNamespace(tc.ctx, tc.client, tc.gardenNamespace)
+		if tc != nil && tc.client != nil && tc.testNamespace != nil {
+			deleteNamespace(tc.ctx, tc.client, tc.testNamespace)
+			if !tc.gardenNamespaceExists {
+				deleteNamespace(tc.ctx, tc.client, tc.gardenNamespace)
+			}
 		}
 
 		By("stopping test environment")
