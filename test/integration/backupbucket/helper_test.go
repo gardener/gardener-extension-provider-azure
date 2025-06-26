@@ -248,19 +248,19 @@ func getBackupBucketAndVerifyStatus(ctx context.Context, c client.Client, backup
 	}
 }
 
-func verifyBackupBucket(ctx context.Context, azClientSet *azureClientSet, testName string, backupBucket *extensionsv1alpha1.BackupBucket) {
+func verifyBackupBucket(ctx context.Context, azClientSet *azureClientSet, backupBucket *extensionsv1alpha1.BackupBucket) {
 	storageAccountName := azurebackupbucket.GenerateStorageAccountName(backupBucket.Name)
-	containerName := backupBucket.Name
+	resourceGroupName, containerName := backupBucket.Name, backupBucket.Name
 	log.Info("Verifying backupBucket on Azure", "storageAccountName", storageAccountName, "containerName", containerName)
 
 	By("verifying Azure storage account")
-	storageAccount, err := azClientSet.storageAccounts.GetProperties(ctx, testName, storageAccountName, nil)
+	storageAccount, err := azClientSet.storageAccounts.GetProperties(ctx, resourceGroupName, storageAccountName, nil)
 	Expect(err).NotTo(HaveOccurred(), "Failed to get Azure Storage Account properties")
 	Expect(storageAccount).NotTo(BeNil(), "Azure Storage Account should exist")
 	Expect(storageAccount.Properties).NotTo(BeNil(), "Storage Account properties should not be nil")
 
 	By("verifying Azure blob container")
-	blobContainer, err := azClientSet.blobContainers.Get(ctx, testName, storageAccountName, containerName, nil)
+	blobContainer, err := azClientSet.blobContainers.Get(ctx, resourceGroupName, storageAccountName, containerName, nil)
 	Expect(err).NotTo(HaveOccurred(), "Failed to get Azure Blob Container properties")
 	Expect(blobContainer).NotTo(BeNil(), "Azure Blob Container should exist")
 	Expect(blobContainer.ContainerProperties).NotTo(BeNil(), "Blob Container properties should not be nil")
