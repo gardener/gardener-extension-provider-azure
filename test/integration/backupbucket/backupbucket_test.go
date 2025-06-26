@@ -64,7 +64,7 @@ const (
 	gardenNamespaceName    = "garden"
 )
 
-var runTest = func(tc *TestContext, backupBucket *extensionsv1alpha1.BackupBucket) {
+var runTest = func(tc *TestContext, backupBucket *extensionsv1alpha1.BackupBucket, verifyFuncs ...func()) {
 	log.Info("Running BackupBucket test", "backupBucketName", backupBucket.Name)
 
 	By("creating backupbucket")
@@ -84,17 +84,19 @@ var runTest = func(tc *TestContext, backupBucket *extensionsv1alpha1.BackupBucke
 	By("waiting until backupbucket is ready")
 	waitUntilBackupBucketReady(tc.ctx, tc.client, backupBucket)
 
-	By("getting backupbucket and verifying its status")
-	getBackupBucketAndVerifyStatus(tc.ctx, tc.client, backupBucket)
-
-	By("verifying that the Azure storage account and container exist and match backupbucket")
-	verifyBackupBucket(tc.ctx, tc.azClientSet, tc.testName, backupBucket)
+	// Execute any additional verification functions passed to the test
+	for _, verifyFunc := range verifyFuncs {
+		verifyFunc()
+	}
 
 	log.Info("BackupBucket test completed successfully", "backupBucketName", backupBucket.Name)
 }
 
 var _ = BeforeSuite(func() {
 	ctx := context.Background()
+
+	By("enabling the EnableImmutableBuckets feature gate")
+	enableFeatureGate()
 
 	repoRoot := filepath.Join("..", "..", "..")
 
@@ -103,7 +105,7 @@ var _ = BeforeSuite(func() {
 	validateFlags()
 
 	logf.SetLogger(logger.MustNewZapLogger(*logLevel, logger.FormatJSON, zap.WriteTo(GinkgoWriter)))
-	log := logf.Log.WithName("backupbucket-test")
+	log = logf.Log.WithName("backupbucket-test")
 	log.Info("Starting BackupBucket test", "logLevel", *logLevel)
 
 	DeferCleanup(func() {
@@ -234,7 +236,107 @@ var _ = Describe("BackupBucket tests", func() {
 		It("should successfully create and delete a backupbucket", func() {
 			providerConfig := &azurev1alpha1.BackupBucketConfig{}
 			backupBucket := newBackupBucket(tc.testName, *region, providerConfig)
-			runTest(tc, backupBucket)
+			runTest(tc, backupBucket, func() {
+				verifyBackupBucketAndStatus(tc.ctx, tc.client, tc.azClientSet, backupBucket)
+			})
+		})
+	})
+
+	Context("when a BackupBucket is created with immutability configuration", func() {
+		It("should successfully create and delete a backupbucket with immutability enabled", func() {
+			providerConfig := &azurev1alpha1.BackupBucketConfig{
+				Immutability: &azurev1alpha1.ImmutableConfig{
+					RetentionType:   azurev1alpha1.BucketLevelImmutability,
+					RetentionPeriod: metav1.Duration{Duration: 24 * time.Hour},
+					Locked:          false,
+				},
+			}
+			backupBucket := newBackupBucket(tc.testName, *region, providerConfig)
+			runTest(tc, backupBucket, func() {
+				By("verifying immutability policy on Azure")
+				verifyImmutabilityPolicy(tc.ctx, tc.azClientSet, backupBucket, providerConfig.Immutability)
+			})
+		})
+
+		It("should ensure immutability of objects stored in the bucket", func() {
+			providerConfig := &azurev1alpha1.BackupBucketConfig{
+				Immutability: &azurev1alpha1.ImmutableConfig{
+					RetentionType:   azurev1alpha1.BucketLevelImmutability,
+					RetentionPeriod: metav1.Duration{Duration: 24 * time.Hour},
+					Locked:          false,
+				},
+			}
+			backupBucket := newBackupBucket(tc.testName, *region, providerConfig)
+			runTest(tc, backupBucket, func() {
+				By("writing an object to the bucket and verifying immutability")
+				verifyContainerImmutability(tc.ctx, tc.client, tc.azClientSet, backupBucket)
+			})
+		})
+
+		It("should fail to modify or remove a locked immutability policy", func() {
+			providerConfig := &azurev1alpha1.BackupBucketConfig{
+				Immutability: &azurev1alpha1.ImmutableConfig{
+					RetentionType:   azurev1alpha1.BucketLevelImmutability,
+					RetentionPeriod: metav1.Duration{Duration: 24 * time.Hour},
+					Locked:          true,
+				},
+			}
+			backupBucket := newBackupBucket(tc.testName, *region, providerConfig)
+			runTest(tc, backupBucket, func() {
+				By("verifying error when attempting to delete or modify locked immutability policy")
+				verifyLockedImmutabilityPolicy(tc.ctx, tc.azClientSet, backupBucket)
+			})
+		})
+	})
+
+	Context("when a BackupBucket is created with key rotation configuration", func() {
+		It("should successfully create and delete a backupbucket with key rotation enabled", func() {
+			providerConfig := &azurev1alpha1.BackupBucketConfig{
+				RotationConfig: &azurev1alpha1.RotationConfig{
+					RotationPeriodDays:   2,
+					ExpirationPeriodDays: ptr.To[int32](10),
+				},
+			}
+			backupBucket := newBackupBucket(tc.testName, *region, providerConfig)
+			runTest(tc, backupBucket, func() {
+				By("verifying key rotation policy on Azure")
+				verifyKeyRotationPolicy(tc.ctx, tc.azClientSet, backupBucket, providerConfig.RotationConfig)
+			})
+		})
+
+		It("should successfully rotate keys with added key rotate annotation", func() {
+			providerConfig := &azurev1alpha1.BackupBucketConfig{
+				RotationConfig: &azurev1alpha1.RotationConfig{
+					RotationPeriodDays:   2,
+					ExpirationPeriodDays: ptr.To[int32](10),
+				},
+			}
+			backupBucket := newBackupBucket(tc.testName, *region, providerConfig)
+			runTest(tc, backupBucket, func() {
+				By("verifying key rotation initiated by annotation")
+				verifyKeyRotation(tc.ctx, tc.client, tc.azClientSet, backupBucket)
+			})
+		})
+	})
+
+	Context("when a BackupBucket is created with immutability and key rotation configuration", func() {
+		It("should successfully create and delete a backupbucket with both immutability and key rotation enabled", func() {
+			providerConfig := &azurev1alpha1.BackupBucketConfig{
+				Immutability: &azurev1alpha1.ImmutableConfig{
+					RetentionType:   azurev1alpha1.BucketLevelImmutability,
+					RetentionPeriod: metav1.Duration{Duration: 24 * time.Hour},
+					Locked:          false,
+				},
+				RotationConfig: &azurev1alpha1.RotationConfig{
+					RotationPeriodDays:   2,
+					ExpirationPeriodDays: ptr.To[int32](10),
+				},
+			}
+			backupBucket := newBackupBucket(tc.testName, *region, providerConfig)
+			runTest(tc, backupBucket, func() {
+				By("verifying both immutability and key rotation policies on Azure")
+				verifyImmutabilityAndKeyRotation(tc.ctx, tc.client, tc.azClientSet, backupBucket, providerConfig)
+			})
 		})
 	})
 })
