@@ -181,11 +181,11 @@ var _ = BeforeSuite(func() {
 		Scheme: mgr.GetScheme(),
 		Mapper: mgr.GetRESTMapper(),
 	})
-	Expect(err).NotTo(HaveOccurred())
-	Expect(c).NotTo(BeNil())
+	Expect(err).NotTo(HaveOccurred(), "Failed to create client for the test environment")
+	Expect(c).NotTo(BeNil(), "Client for the test environment is nil")
 
 	azClientSet, err := newAzureClientSet(*subscriptionId, *tenantId, *clientId, *clientSecret)
-	Expect(err).NotTo(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred(), "Failed to create Azure client set")
 
 	By("creating test namespace")
 	testNamespace := &corev1.Namespace{

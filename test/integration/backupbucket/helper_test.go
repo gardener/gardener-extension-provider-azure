@@ -161,7 +161,7 @@ func createResourceGroup(ctx context.Context, azClientSet *azureClientSet, resou
 	_, err := azClientSet.resourceGroups.CreateOrUpdate(ctx, resourceGroupName, armresources.ResourceGroup{
 		Location: ptr.To(region),
 	}, nil)
-	Expect(err).NotTo(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred(), "Failed to create Azure resource group %s in region %s. Error: %v", resourceGroupName, region, err)
 }
 
 func deleteResourceGroup(ctx context.Context, azClientSet *azureClientSet, resourceGroupName string) {
@@ -196,7 +196,7 @@ func isNotFoundError(err error) bool {
 
 func createBackupBucket(ctx context.Context, c client.Client, backupBucket *extensionsv1alpha1.BackupBucket) {
 	log.Info("Creating backupBucket", "backupBucket", backupBucket)
-	Expect(c.Create(ctx, backupBucket)).To(Succeed())
+	Expect(c.Create(ctx, backupBucket)).To(Succeed(), "Failed to create backupBucket: %s", backupBucket.Name)
 }
 
 func deleteBackupBucket(ctx context.Context, c client.Client, backupBucket *extensionsv1alpha1.BackupBucket) {
