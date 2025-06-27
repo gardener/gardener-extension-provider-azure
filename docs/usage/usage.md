@@ -788,7 +788,7 @@ Options:
 - **`retentionPeriod`**: Defines the duration for which objects in the bucket will remain immutable. Azure Blob Storage only supports immutability durations in days, therefore this field must be set as multiples of 24h.
 - **`locked`**: A boolean indicating whether the retention policy is locked. Once locked, the policy cannot be removed or shortened, ensuring immutability. Learn more about locking policies [here](https://learn.microsoft.com/en-us/azure/storage/blobs/immutable-policy-configure-container-scope?tabs=azure-portal#lock-a-time-based-retention-policy).
 
-To configure a `BackupBucket` with immutability, include the `BackupBucketConfig` in the `ProviderConfig` of the `BackupBucket` resource. If the `locked` field is set to `true`, the retention policy will be locked, preventing further changes.
+To configure a `BackupBucket` with immutability, include the `BackupBucketConfig` in the `ProviderConfig` of the `BackupBucket` resource. If the `locked` field is set to `true`, the retention policy will be locked, preventing further changes. However, the retention interval can be lengthened for a locked policy up to five times, but it can't be shortened.
 
 Here is an example of configuring a `BackupBucket` with immutability:
 
@@ -844,7 +844,7 @@ Options:
 - **`rotationPeriodDays`**: Defines the period after its creation that an `storage account key` should be rotated.
 - **`expirationPeriodDays`**: When specified it will install an expiration policy for keys in the Azure storage account.
 
-[!WARN]
-A full rotation (a rotation of both storage account keys) is completed after 2*`rotationPeriod`.
-   It is suggested that the `rotationPeriod` is configured at least twice the maintenance frequency of the shoots. 
-   This will ensure that at least one active key is currently used by the etcd-backup pods.
+> [!WARNING]
+> A full rotation (a rotation of both storage account keys) is completed after 2*`rotationPeriod`.
+> It is suggested that the `rotationPeriod` is configured at least twice the maintenance interval of the shoots. 
+> This will ensure that at least one active key is currently used by the etcd-backup pods.
