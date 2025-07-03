@@ -156,10 +156,10 @@ var _ = Describe("Machines", func() {
 				machineImages []apiv1alpha1.MachineImages
 				machineTypes  []apiv1alpha1.MachineType
 
-				pool1, pool2, pool3, pool4, poolZones extensionsv1alpha1.WorkerPool
-				infrastructureStatus                  *apisazure.InfrastructureStatus
-				w                                     *extensionsv1alpha1.Worker
-				cluster                               *extensionscontroller.Cluster
+				pool1, pool2, pool3, pool4, poolZones, poolInPlace extensionsv1alpha1.WorkerPool
+				infrastructureStatus                               *apisazure.InfrastructureStatus
+				w                                                  *extensionsv1alpha1.Worker
+				cluster                                            *extensionscontroller.Cluster
 			)
 
 			BeforeEach(func() {
@@ -317,13 +317,14 @@ var _ = Describe("Machines", func() {
 				}
 
 				pool1 = extensionsv1alpha1.WorkerPool{
-					Name:           namePool1,
-					Minimum:        minPool1,
-					Maximum:        maxPool1,
-					MaxSurge:       maxSurgePool1,
-					MaxUnavailable: maxUnavailablePool1,
-					Architecture:   ptr.To(archAMD),
-					MachineType:    machineType,
+					Name:              namePool1,
+					Minimum:           minPool1,
+					Maximum:           maxPool1,
+					MaxSurge:          maxSurgePool1,
+					MaxUnavailable:    maxUnavailablePool1,
+					Architecture:      ptr.To(archAMD),
+					MachineType:       machineType,
+					KubernetesVersion: ptr.To(shootVersion),
 					NodeTemplate: &extensionsv1alpha1.NodeTemplate{
 						Capacity: nodeCapacity,
 					},
@@ -354,14 +355,15 @@ var _ = Describe("Machines", func() {
 				}
 
 				pool2 = extensionsv1alpha1.WorkerPool{
-					Name:           namePool2,
-					Minimum:        minPool2,
-					Maximum:        maxPool2,
-					Priority:       ptr.To(priorityPool2),
-					MaxSurge:       maxSurgePool2,
-					Architecture:   ptr.To(archAMD),
-					MaxUnavailable: maxUnavailablePool2,
-					MachineType:    machineType,
+					Name:              namePool2,
+					Minimum:           minPool2,
+					Maximum:           maxPool2,
+					Priority:          ptr.To(priorityPool2),
+					MaxSurge:          maxSurgePool2,
+					Architecture:      ptr.To(archAMD),
+					MaxUnavailable:    maxUnavailablePool2,
+					MachineType:       machineType,
+					KubernetesVersion: ptr.To(shootVersion),
 					NodeTemplate: &extensionsv1alpha1.NodeTemplate{
 						Capacity: nodeCapacity,
 					},
@@ -381,13 +383,14 @@ var _ = Describe("Machines", func() {
 				}
 
 				pool3 = extensionsv1alpha1.WorkerPool{
-					Name:           namePool3,
-					Minimum:        minPool3,
-					Maximum:        maxPool3,
-					MaxSurge:       maxSurgePool3,
-					Architecture:   ptr.To(archARM),
-					MaxUnavailable: maxUnavailablePool3,
-					MachineType:    machineType,
+					Name:              namePool3,
+					Minimum:           minPool3,
+					Maximum:           maxPool3,
+					MaxSurge:          maxSurgePool3,
+					Architecture:      ptr.To(archARM),
+					MaxUnavailable:    maxUnavailablePool3,
+					MachineType:       machineType,
+					KubernetesVersion: ptr.To(shootVersion),
 					NodeTemplate: &extensionsv1alpha1.NodeTemplate{
 						Capacity: nodeCapacity,
 					},
@@ -407,13 +410,14 @@ var _ = Describe("Machines", func() {
 				}
 
 				pool4 = extensionsv1alpha1.WorkerPool{
-					Name:           namePool4,
-					Minimum:        minPool4,
-					Maximum:        maxPool4,
-					MaxSurge:       maxSurgePool4,
-					Architecture:   ptr.To(archARM),
-					MaxUnavailable: maxUnavailablePool4,
-					MachineType:    machineType,
+					Name:              namePool4,
+					Minimum:           minPool4,
+					Maximum:           maxPool4,
+					MaxSurge:          maxSurgePool4,
+					Architecture:      ptr.To(archARM),
+					MaxUnavailable:    maxUnavailablePool4,
+					MachineType:       machineType,
+					KubernetesVersion: ptr.To(shootVersion),
 					NodeTemplate: &extensionsv1alpha1.NodeTemplate{
 						Capacity: nodeCapacity,
 					},
@@ -615,6 +619,7 @@ var _ = Describe("Machines", func() {
 					machineDeployments = worker.MachineDeployments{
 						{
 							Name:       machineClassNamePool1,
+							PoolName:   namePool1,
 							ClassName:  machineClassWithHashPool1,
 							SecretName: machineClassWithHashPool1,
 							Minimum:    minPool1,
@@ -633,6 +638,7 @@ var _ = Describe("Machines", func() {
 						},
 						{
 							Name:       machineClassNamePool2,
+							PoolName:   namePool2,
 							ClassName:  machineClassWithHashPool2,
 							SecretName: machineClassWithHashPool2,
 							Minimum:    minPool2,
@@ -652,6 +658,7 @@ var _ = Describe("Machines", func() {
 						},
 						{
 							Name:       machineClassNamePool3,
+							PoolName:   namePool3,
 							ClassName:  machineClassWithHashPool3,
 							SecretName: machineClassWithHashPool3,
 							Minimum:    minPool3,
@@ -670,6 +677,7 @@ var _ = Describe("Machines", func() {
 						},
 						{
 							Name:       machineClassNamePool4,
+							PoolName:   namePool4,
 							ClassName:  machineClassWithHashPool4,
 							SecretName: machineClassWithHashPool4,
 							Minimum:    minPool4,
@@ -720,24 +728,48 @@ var _ = Describe("Machines", func() {
 					Expect(result).To(Equal(machineDeployments))
 				})
 
+				Describe("wokrers with in-place updates strategy", func() {
+					It("should return error if there is worker pool with inplace update strategy and shoot uses availability set", func() {
+						infrastructureStatus = makeInfrastructureStatus(resourceGroupName, vnetName, subnetName, false, &vnetResourceGroupName, &availabilitySetID, &identityID)
+						pool3.UpdateStrategy = ptr.To(gardencorev1beta1.AutoInPlaceUpdate)
+						pool4.UpdateStrategy = ptr.To(gardencorev1beta1.ManualInPlaceUpdate)
+						w = makeWorker(namespace, region, &sshKey, infrastructureStatus, pool1, pool2, pool3, pool4)
+
+						workerDelegate := wrapNewWorkerDelegate(c, chartApplier, w, cluster, nil)
+
+						expectedUserDataSecretRefRead()
+
+						// Test workerDelegate.DeployMachineClasses()
+						err := workerDelegate.DeployMachineClasses(ctx)
+						Expect(err).To(HaveOccurred())
+						Expect(err.Error()).To(ContainSubstring("worker pools with in-place update strategy is not supported when availability sets are used"))
+					})
+				})
+
 				Describe("#Zonal setup", func() {
 					var (
 						w                *extensionsv1alpha1.Worker
 						workerPoolHashZ1 string
 						workerPoolHashZ2 string
+						workerPoolHashZ3 string
+						workerPoolHashZ4 string
 
 						machineClassNamePool1 string
 						machineClassNamePool2 string
+						machineClassNamePool3 string
+						machineClassNamePool4 string
 
 						machineClassWithHashPool1 string
 						machineClassWithHashPool2 string
+						machineClassWithHashPool3 string
+						machineClassWithHashPool4 string
 						volumeSize                int
 					)
 
 					BeforeEach(func() {
 						volumeSize = 20
 
-						infrastructureStatus = makeInfrastructureStatus(resourceGroupName, vnetName, subnetName, true, &vnetResourceGroupName, &availabilitySetID, &identityID)
+						infrastructureStatus = makeInfrastructureStatus(resourceGroupName, vnetName, subnetName, true, &vnetResourceGroupName, nil, &identityID)
 						infrastructureStatus.Networks = apisazure.NetworkStatus{
 							Layout: apisazure.NetworkLayoutMultipleSubnet,
 							Subnets: []apisazure.Subnet{
@@ -756,12 +788,13 @@ var _ = Describe("Machines", func() {
 						}
 
 						poolZones = extensionsv1alpha1.WorkerPool{
-							Name:           namePoolZones,
-							Minimum:        minPoolZones,
-							Maximum:        maxPoolZones,
-							MaxSurge:       maxSurgePoolZones,
-							MaxUnavailable: maxUnavailablePoolZones,
-							MachineType:    machineType,
+							Name:              namePoolZones,
+							Minimum:           minPoolZones,
+							Maximum:           maxPoolZones,
+							MaxSurge:          maxSurgePoolZones,
+							MaxUnavailable:    maxUnavailablePoolZones,
+							MachineType:       machineType,
+							KubernetesVersion: ptr.To(shootVersion),
 							MachineImage: extensionsv1alpha1.MachineImage{
 								Name:    machineImageName,
 								Version: machineImageVersionID,
@@ -777,18 +810,29 @@ var _ = Describe("Machines", func() {
 							Zones:  []string{zone1, zone2},
 						}
 
-						w = makeWorker(namespace, region, &sshKey, infrastructureStatus, poolZones)
+						poolInPlace = poolZones
+						poolInPlace.Name = "pool-in-place"
+						poolInPlace.UpdateStrategy = ptr.To(gardencorev1beta1.AutoInPlaceUpdate)
+
+						w = makeWorker(namespace, region, &sshKey, infrastructureStatus, poolZones, poolInPlace)
 
 						additionalHashDataZ1 := []string{identityID}
 						additionalHashDataZ2 := []string{identityID, subnet2}
 						workerPoolHashZ1, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster, additionalHashDataZ1, additionalHashDataZ1, nil)
 						workerPoolHashZ2, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster, additionalHashDataZ2, additionalHashDataZ2, nil)
+						workerPoolHashZ3, _ = worker.WorkerPoolHash(w.Spec.Pools[1], cluster, additionalHashDataZ1, additionalHashDataZ1, nil)
+						workerPoolHashZ4, _ = worker.WorkerPoolHash(w.Spec.Pools[1], cluster, additionalHashDataZ2, additionalHashDataZ2, nil)
 
 						basename := fmt.Sprintf("%s-%s", namespace, namePoolZones)
+						basenameInPlace := fmt.Sprintf("%s-%s", namespace, poolInPlace.Name)
 						machineClassNamePool1 = fmt.Sprintf("%s-z%s", basename, zone1)
 						machineClassNamePool2 = fmt.Sprintf("%s-z%s", basename, zone2)
+						machineClassNamePool3 = fmt.Sprintf("%s-z%s", basenameInPlace, zone1)
+						machineClassNamePool4 = fmt.Sprintf("%s-z%s", basenameInPlace, zone2)
 						machineClassWithHashPool1 = fmt.Sprintf("%s-%s-z%s", basename, workerPoolHashZ1, zone1)
 						machineClassWithHashPool2 = fmt.Sprintf("%s-%s-z%s", basename, workerPoolHashZ2, zone2)
+						machineClassWithHashPool3 = fmt.Sprintf("%s-%s-z%s", basenameInPlace, workerPoolHashZ3, zone1)
+						machineClassWithHashPool4 = fmt.Sprintf("%s-%s-z%s", basenameInPlace, workerPoolHashZ4, zone2)
 						labelsPool1 := utils.MergeStringMaps(labels, map[string]string{azureCSIDiskDriverTopologyKey: region + "-" + zone1})
 						labelsPool2 := utils.MergeStringMaps(labels, map[string]string{azureCSIDiskDriverTopologyKey: region + "-" + zone2})
 
@@ -824,6 +868,46 @@ var _ = Describe("Machines", func() {
 											MaxSurge:       &maxSurgePoolZones,
 											MaxUnavailable: &maxUnavailablePoolZones,
 										},
+									},
+								},
+								Labels:               labelsPool2,
+								MachineConfiguration: &machinev1alpha1.MachineConfiguration{},
+							},
+							{
+								Name:       machineClassNamePool3,
+								PoolName:   poolInPlace.Name,
+								ClassName:  machineClassWithHashPool3,
+								SecretName: machineClassWithHashPool3,
+								Minimum:    minPoolZones,
+								Maximum:    maxPoolZones,
+								Strategy: machinev1alpha1.MachineDeploymentStrategy{
+									Type: machinev1alpha1.InPlaceUpdateMachineDeploymentStrategyType,
+									InPlaceUpdate: &machinev1alpha1.InPlaceUpdateMachineDeployment{
+										UpdateConfiguration: machinev1alpha1.UpdateConfiguration{
+											MaxSurge:       &maxSurgePoolZones,
+											MaxUnavailable: &maxUnavailablePoolZones,
+										},
+										OrchestrationType: machinev1alpha1.OrchestrationTypeAuto,
+									},
+								},
+								Labels:               labelsPool1,
+								MachineConfiguration: &machinev1alpha1.MachineConfiguration{},
+							},
+							{
+								Name:       machineClassNamePool4,
+								PoolName:   poolInPlace.Name,
+								ClassName:  machineClassWithHashPool4,
+								SecretName: machineClassWithHashPool4,
+								Minimum:    minPoolZones,
+								Maximum:    maxPoolZones,
+								Strategy: machinev1alpha1.MachineDeploymentStrategy{
+									Type: machinev1alpha1.InPlaceUpdateMachineDeploymentStrategyType,
+									InPlaceUpdate: &machinev1alpha1.InPlaceUpdateMachineDeployment{
+										UpdateConfiguration: machinev1alpha1.UpdateConfiguration{
+											MaxSurge:       &maxSurgePoolZones,
+											MaxUnavailable: &maxUnavailablePoolZones,
+										},
+										OrchestrationType: machinev1alpha1.OrchestrationTypeAuto,
 									},
 								},
 								Labels:               labelsPool2,

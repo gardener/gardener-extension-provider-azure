@@ -12,6 +12,8 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
 	"github.com/gardener/gardener/pkg/utils"
 	"k8s.io/utils/ptr"
 
@@ -160,7 +162,11 @@ func cleanupOrphanVMODependencies(ctx context.Context, client azureclient.Vmss, 
 	return nil
 }
 
-func (w *workerDelegate) determineWorkerPoolVmoDependency(ctx context.Context, infrastructureStatus *azureapi.InfrastructureStatus, workerStatus *azureapi.WorkerStatus, workerPoolName string) (*azureapi.VmoDependency, error) {
+func (w *workerDelegate) determineWorkerPoolVmoDependency(ctx context.Context, infrastructureStatus *azureapi.InfrastructureStatus, workerStatus *azureapi.WorkerStatus, workerPoolName string, updateStrategy *gardencorev1beta1.MachineUpdateStrategy) (*azureapi.VmoDependency, error) {
+	if infrastructureStatus != nil && len(infrastructureStatus.AvailabilitySets) > 0 && gardencorev1beta1helper.IsUpdateStrategyInPlace(updateStrategy) {
+		return nil, gardencorev1beta1helper.NewErrorWithCodes(fmt.Errorf("worker pools with in-place update strategy is not supported when availability sets are used"), gardencorev1beta1.ErrorConfigurationProblem)
+	}
+
 	if !azureapihelper.IsVmoRequired(infrastructureStatus) {
 		return nil, nil
 	}
