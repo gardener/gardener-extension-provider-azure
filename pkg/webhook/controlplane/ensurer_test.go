@@ -60,12 +60,12 @@ var _ = Describe("Ensurer", func() {
 		mgr     *mockmanager.MockManager
 
 		dummyContext   = gcontext.NewGardenContext(nil, nil)
-		eContextK8s127 = gcontext.NewInternalGardenContext(
+		eContextK8s129 = gcontext.NewInternalGardenContext(
 			&extensionscontroller.Cluster{
 				Shoot: &gardencorev1beta1.Shoot{
 					Spec: gardencorev1beta1.ShootSpec{
 						Kubernetes: gardencorev1beta1.Kubernetes{
-							Version: "1.27.1",
+							Version: "1.29.0",
 						},
 					},
 					Status: gardencorev1beta1.ShootStatus{
@@ -141,10 +141,10 @@ var _ = Describe("Ensurer", func() {
 		})
 
 		It("should add missing elements to kube-apiserver deployment (k8s < 1.30)", func() {
-			err := ensurer.EnsureKubeAPIServerDeployment(ctx, eContextK8s127, dep, nil)
+			err := ensurer.EnsureKubeAPIServerDeployment(ctx, eContextK8s129, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
 
-			checkKubeAPIServerDeployment(dep, "1.27.1")
+			checkKubeAPIServerDeployment(dep, "1.29.0")
 		})
 
 		It("should add missing elements to kube-apiserver deployment (k8s = 1.30)", func() {
@@ -215,10 +215,10 @@ var _ = Describe("Ensurer", func() {
 		})
 
 		It("should add missing elements to kube-controller-manager deployment (k8s < 1.30)", func() {
-			err := ensurer.EnsureKubeControllerManagerDeployment(ctx, eContextK8s127, dep, nil)
+			err := ensurer.EnsureKubeControllerManagerDeployment(ctx, eContextK8s129, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
 
-			checkKubeControllerManagerDeployment(dep, "1.27.1")
+			checkKubeControllerManagerDeployment(dep, "1.29.0")
 		})
 
 		It("should add missing elements to kube-controller-manager deployment (k8s = 1.30)", func() {
@@ -283,10 +283,10 @@ var _ = Describe("Ensurer", func() {
 		})
 
 		It("should add missing elements to kube-scheduler deployment (k8s < 1.30)", func() {
-			err := ensurer.EnsureKubeSchedulerDeployment(ctx, eContextK8s127, dep, nil)
+			err := ensurer.EnsureKubeSchedulerDeployment(ctx, eContextK8s129, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
 
-			checkKubeSchedulerDeployment(dep, "1.27.1")
+			checkKubeSchedulerDeployment(dep, "1.29.0")
 		})
 
 		It("should add missing elements to kube-scheduler deployment (k8s = 1.30)", func() {
@@ -325,10 +325,10 @@ var _ = Describe("Ensurer", func() {
 		})
 
 		It("should add missing elements to cluster-autoscaler deployment (k8s < 1.30)", func() {
-			err := ensurer.EnsureClusterAutoscalerDeployment(ctx, eContextK8s127, dep, nil)
+			err := ensurer.EnsureClusterAutoscalerDeployment(ctx, eContextK8s129, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
 
-			checkClusterAutoscalerDeployment(dep, "1.27.1")
+			checkClusterAutoscalerDeployment(dep, "1.29.0")
 		})
 
 		It("should add missing elements to cluster-autoscaler deployment (k8s = 1.30)", func() {
@@ -385,7 +385,7 @@ var _ = Describe("Ensurer", func() {
 			newUnitOptions[0].Value += ` \
     --azure-container-registry-config=/var/lib/kubelet/acr.conf`
 
-			opts, err := ensurer.EnsureKubeletServiceUnitOptions(ctx, eContextK8s127, nil, oldUnitOptions, nil)
+			opts, err := ensurer.EnsureKubeletServiceUnitOptions(ctx, eContextK8s129, nil, oldUnitOptions, nil)
 			Expect(err).To(Not(HaveOccurred()))
 			Expect(opts).To(Equal(newUnitOptions))
 		})
@@ -422,8 +422,8 @@ var _ = Describe("Ensurer", func() {
 			},
 
 			Entry("kubelet k8s < 1.30",
-				eContextK8s127,
-				semver.MustParse("1.27.0"),
+				eContextK8s129,
+				semver.MustParse("1.29.0"),
 				map[string]bool{
 					"CSIMigrationAzureFile":           true,
 					"InTreePluginAzureDiskUnregister": true,
@@ -448,7 +448,7 @@ var _ = Describe("Ensurer", func() {
 
 	Describe("#ShouldProvisionKubeletCloudProviderConfig", func() {
 		It("should return false ", func() {
-			Expect(ensurer.ShouldProvisionKubeletCloudProviderConfig(ctx, eContextK8s127, semver.MustParse("1.27.0"))).To(BeFalse())
+			Expect(ensurer.ShouldProvisionKubeletCloudProviderConfig(ctx, eContextK8s129, semver.MustParse("1.29.0"))).To(BeFalse())
 		})
 	})
 
