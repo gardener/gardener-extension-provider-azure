@@ -12,7 +12,6 @@ provisioner: disk.csi.azure.com
 parameters:
   skuName: StandardSSD_LRS
   kind: managed
-  cachingMode: ReadOnly
 volumeBindingMode: WaitForFirstConsumer
 allowVolumeExpansion: true
 ---
