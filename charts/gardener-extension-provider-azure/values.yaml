@@ -76,8 +76,11 @@ config:
     storage:
       className: gardener.cloud-fast
       capacity: 33Gi
-      provisioner: kubernetes.io/azure-disk
+      provisioner: disk.csi.azure.com
       volumeBindingMode: WaitForFirstConsumer
+      parameters:
+        storageaccounttype: Premium_LRS
+        kind: managed
   featureGates:
     disableRemedyController: false
     enableImmutableBuckets: false
