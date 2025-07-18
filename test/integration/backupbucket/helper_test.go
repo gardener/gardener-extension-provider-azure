@@ -8,20 +8,24 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/extensions"
 	"github.com/gardener/gardener/pkg/logger"
 	gardenerutils "github.com/gardener/gardener/pkg/utils"
+	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -33,6 +37,7 @@ import (
 	azurev1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	azurebackupbucket "github.com/gardener/gardener-extension-provider-azure/pkg/controller/backupbucket"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/features"
 )
 
 type azureClientSet struct {
@@ -112,6 +117,12 @@ func validateFlags() {
 	}
 }
 
+func enableFeatureGate() {
+	err := features.ExtensionFeatureGate.Set("EnableImmutableBuckets=true")
+	Expect(err).NotTo(HaveOccurred(), "Failed to enable feature gate EnableImmutableBuckets")
+	Expect(features.ExtensionFeatureGate.Enabled(features.EnableImmutableBuckets)).To(BeTrue(), "EnableImmutableBuckets feature gate should be enabled")
+}
+
 func createNamespace(ctx context.Context, c client.Client, namespace *corev1.Namespace) {
 	log.Info("Creating namespace", "namespace", namespace.Name)
 	Expect(c.Create(ctx, namespace)).To(Succeed(), "Failed to create namespace: %s", namespace.Name)
@@ -161,7 +172,7 @@ func createResourceGroup(ctx context.Context, azClientSet *azureClientSet, resou
 	_, err := azClientSet.resourceGroups.CreateOrUpdate(ctx, resourceGroupName, armresources.ResourceGroup{
 		Location: ptr.To(region),
 	}, nil)
-	Expect(err).NotTo(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred(), "Failed to create Azure resource group %s in region %s. Error: %v", resourceGroupName, region, err)
 }
 
 func deleteResourceGroup(ctx context.Context, azClientSet *azureClientSet, resourceGroupName string) {
@@ -196,7 +207,19 @@ func isNotFoundError(err error) bool {
 
 func createBackupBucket(ctx context.Context, c client.Client, backupBucket *extensionsv1alpha1.BackupBucket) {
 	log.Info("Creating backupBucket", "backupBucket", backupBucket)
-	Expect(c.Create(ctx, backupBucket)).To(Succeed())
+	Expect(c.Create(ctx, backupBucket)).To(Succeed(), "Failed to create backupBucket: %s", backupBucket.Name)
+}
+
+func updateBackupBucket(ctx context.Context, c client.Client, backupBucket *extensionsv1alpha1.BackupBucket) {
+	log.Info("Updating backupBucket", "backupBucket", backupBucket)
+	Expect(c.Update(ctx, backupBucket)).To(Succeed(), "Failed to update backupBucket: %s", backupBucket.Name)
+}
+
+func fetchBackupBucket(ctx context.Context, c client.Client, name string) *extensionsv1alpha1.BackupBucket {
+	backupBucket := &extensionsv1alpha1.BackupBucket{}
+	err := c.Get(ctx, client.ObjectKey{Name: name}, backupBucket)
+	Expect(err).NotTo(HaveOccurred(), "Failed to fetch backupBucket from the cluster")
+	return backupBucket
 }
 
 func deleteBackupBucket(ctx context.Context, c client.Client, backupBucket *extensionsv1alpha1.BackupBucket) {
@@ -232,57 +255,11 @@ func waitUntilBackupBucketDeleted(ctx context.Context, c client.Client, backupBu
 	log.Info("BackupBucket successfully deleted", "backupBucket", backupBucket)
 }
 
-func getBackupBucketAndVerifyStatus(ctx context.Context, c client.Client, backupBucket *extensionsv1alpha1.BackupBucket) {
-	log.Info("Verifying backupBucket", "backupBucket", backupBucket)
-	Expect(c.Get(ctx, client.ObjectKey{Name: backupBucket.Name}, backupBucket)).To(Succeed())
-
-	By("verifying LastOperation state")
-	Expect(backupBucket.Status.LastOperation).NotTo(BeNil(), "LastOperation should not be nil")
-	Expect(backupBucket.Status.LastOperation.State).To(Equal(gardencorev1beta1.LastOperationStateSucceeded), "LastOperation state should be Succeeded")
-	Expect(backupBucket.Status.LastOperation.Type).To(Equal(gardencorev1beta1.LastOperationTypeCreate), "LastOperation type should be Create")
-
-	By("verifying GeneratedSecretRef")
-	if backupBucket.Status.GeneratedSecretRef != nil {
-		Expect(backupBucket.Status.GeneratedSecretRef.Name).NotTo(BeEmpty(), "GeneratedSecretRef name should not be empty")
-		Expect(backupBucket.Status.GeneratedSecretRef.Namespace).NotTo(BeEmpty(), "GeneratedSecretRef namespace should not be empty")
-	}
-}
-
-func verifyBackupBucket(ctx context.Context, azClientSet *azureClientSet, testName string, backupBucket *extensionsv1alpha1.BackupBucket) {
-	storageAccountName := azurebackupbucket.GenerateStorageAccountName(backupBucket.Name)
-	containerName := backupBucket.Name
-	log.Info("Verifying backupBucket on Azure", "storageAccountName", storageAccountName, "containerName", containerName)
-
-	By("verifying Azure storage account")
-	storageAccount, err := azClientSet.storageAccounts.GetProperties(ctx, testName, storageAccountName, nil)
-	Expect(err).NotTo(HaveOccurred(), "Failed to get Azure Storage Account properties")
-	Expect(storageAccount).NotTo(BeNil(), "Azure Storage Account should exist")
-	Expect(storageAccount.Properties).NotTo(BeNil(), "Storage Account properties should not be nil")
-
-	By("verifying Azure blob container")
-	blobContainer, err := azClientSet.blobContainers.Get(ctx, testName, storageAccountName, containerName, nil)
-	Expect(err).NotTo(HaveOccurred(), "Failed to get Azure Blob Container properties")
-	Expect(blobContainer).NotTo(BeNil(), "Azure Blob Container should exist")
-	Expect(blobContainer.ContainerProperties).NotTo(BeNil(), "Blob Container properties should not be nil")
-}
-
-func verifyBackupBucketDeleted(ctx context.Context, azClientSet *azureClientSet, backupBucket *extensionsv1alpha1.BackupBucket) {
-	storageAccountName := azurebackupbucket.GenerateStorageAccountName(backupBucket.Name)
-	containerName := backupBucket.Name
-	log.Info("Verifying backupBucket deletion on Azure", "storageAccountName", storageAccountName, "containerName", containerName)
-
-	By("verifying Azure blob container deletion")
-	_, err := azClientSet.blobContainers.Get(ctx, backupBucket.Spec.Region, storageAccountName, containerName, nil)
-	Expect(err).To(HaveOccurred(), "Expected blob container to be deleted, but it still exists")
-
-	By("verifying Azure storage account deletion")
-	_, err = azClientSet.storageAccounts.GetProperties(ctx, backupBucket.Spec.Region, storageAccountName, nil)
-	Expect(err).To(HaveOccurred(), "Expected storage account to be deleted, but it still exists")
-}
-
 func newBackupBucket(name, region string, providerConfig *azurev1alpha1.BackupBucketConfig) *extensionsv1alpha1.BackupBucket {
 	var providerConfigRaw *runtime.RawExtension
 	if providerConfig != nil {
+		providerConfig.APIVersion = "azure.provider.extensions.gardener.cloud/v1alpha1"
+		providerConfig.Kind = "BackupBucketConfig"
 		providerConfigJSON, err := json.Marshal(providerConfig)
 		Expect(err).NotTo(HaveOccurred(), "Failed to marshal providerConfig to JSON")
 		providerConfigRaw = &runtime.RawExtension{
@@ -295,6 +272,10 @@ func newBackupBucket(name, region string, providerConfig *azurev1alpha1.BackupBu
 	}
 
 	return &extensionsv1alpha1.BackupBucket{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "extensions.gardener.cloud/v1alpha1",
+			Kind:       "BackupBucket",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
@@ -317,4 +298,225 @@ func randomString() string {
 	Expect(err).NotTo(HaveOccurred(), "Failed to generate random string")
 	log.Info("Generated random string", "randomString", rs)
 	return rs
+}
+
+// functions for verification
+func verifyBackupBucketAndStatus(ctx context.Context, c client.Client, azClientSet *azureClientSet, backupBucket *extensionsv1alpha1.BackupBucket) {
+	By("getting backupbucket and verifying its status")
+	verifyBackupBucketStatus(ctx, c, backupBucket)
+
+	By("verifying that the Azure storage account and container exist and match backupbucket")
+	verifyBackupBucket(ctx, azClientSet, backupBucket)
+}
+
+func verifyBackupBucketStatus(ctx context.Context, c client.Client, backupBucket *extensionsv1alpha1.BackupBucket) {
+	log.Info("Verifying backupBucket", "backupBucket", backupBucket)
+	By("fetching backupBucket from the cluster")
+	backupBucket = fetchBackupBucket(ctx, c, backupBucket.Name)
+
+	By("verifying LastOperation state")
+	Expect(backupBucket.Status.LastOperation).NotTo(BeNil(), "LastOperation should not be nil")
+	Expect(backupBucket.Status.LastOperation.State).To(Equal(gardencorev1beta1.LastOperationStateSucceeded), "LastOperation state should be Succeeded")
+	Expect(backupBucket.Status.LastOperation.Type).To(Equal(gardencorev1beta1.LastOperationTypeCreate), "LastOperation type should be Create")
+
+	By("verifying GeneratedSecretRef")
+	if backupBucket.Status.GeneratedSecretRef != nil {
+		Expect(backupBucket.Status.GeneratedSecretRef.Name).NotTo(BeEmpty(), "GeneratedSecretRef name should not be empty")
+		Expect(backupBucket.Status.GeneratedSecretRef.Namespace).NotTo(BeEmpty(), "GeneratedSecretRef namespace should not be empty")
+	}
+}
+
+func verifyBackupBucket(ctx context.Context, azClientSet *azureClientSet, backupBucket *extensionsv1alpha1.BackupBucket) {
+	storageAccountName := azurebackupbucket.GenerateStorageAccountName(backupBucket.Name)
+	resourceGroupName, containerName := backupBucket.Name, backupBucket.Name
+	log.Info("Verifying backupBucket on Azure", "storageAccountName", storageAccountName, "containerName", containerName)
+
+	By("verifying Azure storage account")
+	storageAccount, err := azClientSet.storageAccounts.GetProperties(ctx, resourceGroupName, storageAccountName, nil)
+	Expect(err).NotTo(HaveOccurred(), "Failed to get Azure Storage Account properties")
+	Expect(storageAccount).NotTo(BeNil(), "Azure Storage Account should exist")
+	Expect(storageAccount.Properties).NotTo(BeNil(), "Storage Account properties should not be nil")
+
+	By("verifying Azure blob container")
+	blobContainer, err := azClientSet.blobContainers.Get(ctx, resourceGroupName, storageAccountName, containerName, nil)
+	Expect(err).NotTo(HaveOccurred(), "Failed to get Azure Blob Container properties")
+	Expect(blobContainer).NotTo(BeNil(), "Azure Blob Container should exist")
+	Expect(blobContainer.ContainerProperties).NotTo(BeNil(), "Blob Container properties should not be nil")
+}
+
+func verifyBackupBucketDeleted(ctx context.Context, azClientSet *azureClientSet, backupBucket *extensionsv1alpha1.BackupBucket) {
+	storageAccountName := azurebackupbucket.GenerateStorageAccountName(backupBucket.Name)
+	containerName := backupBucket.Name
+	log.Info("Verifying backupBucket deletion on Azure", "storageAccountName", storageAccountName, "containerName", containerName)
+
+	By("verifying Azure blob container deletion")
+	_, err := azClientSet.blobContainers.Get(ctx, backupBucket.Spec.Region, storageAccountName, containerName, nil)
+	Expect(err).To(HaveOccurred(), "Expected blob container to be deleted, but it still exists")
+
+	By("verifying Azure storage account deletion")
+	_, err = azClientSet.storageAccounts.GetProperties(ctx, backupBucket.Spec.Region, storageAccountName, nil)
+	Expect(err).To(HaveOccurred(), "Expected storage account to be deleted, but it still exists")
+}
+
+func verifyImmutabilityPolicy(ctx context.Context, azClientSet *azureClientSet, backupBucket *extensionsv1alpha1.BackupBucket, immutabilityConfig *azurev1alpha1.ImmutableConfig) {
+	storageAccountName := azurebackupbucket.GenerateStorageAccountName(backupBucket.Name)
+	resourceGroupName, containerName := backupBucket.Name, backupBucket.Name
+
+	By("fetching immutability policy from Azure")
+	policy, err := azClientSet.blobContainers.GetImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, containerName, nil)
+	Expect(err).NotTo(HaveOccurred(), "Failed to fetch immutability policy from Azure")
+
+	By("verifying immutability policy configuration")
+	Expect(*policy.Properties.ImmutabilityPeriodSinceCreationInDays).To(Equal(int32(immutabilityConfig.RetentionPeriod.Hours()/24)), "Retention period mismatch")
+	Expect(*policy.Properties.State).To(Equal(armstorage.ImmutabilityPolicyStateUnlocked), "Immutability policy state mismatch")
+}
+
+func verifyContainerImmutability(ctx context.Context, c client.Client, azClientSet *azureClientSet, backupBucket *extensionsv1alpha1.BackupBucket) {
+	storageAccountName := azurebackupbucket.GenerateStorageAccountName(backupBucket.Name)
+	resourceGroupName, containerName := backupBucket.Name, backupBucket.Name
+
+	defer func() {
+		// delete immutability policy to ensure backupbucket can be deleted in cleanup
+		By("deleting immutability policy on blob container")
+		policy, err := azClientSet.blobContainers.GetImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, containerName, nil)
+		Expect(err).NotTo(HaveOccurred(), "Failed to fetch immutability policy")
+		_, err = azClientSet.blobContainers.DeleteImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, containerName, *policy.Etag, nil)
+		Expect(err).NotTo(HaveOccurred(), "Failed to delete immutability policy on blob container")
+
+		By("deleting immutability policy on backupBucket")
+		backupBucket = fetchBackupBucket(ctx, c, backupBucket.Name)
+		backupBucket.Spec.ProviderConfig = nil
+		updateBackupBucket(ctx, c, backupBucket)
+	}()
+
+	By("creating block blob client")
+	// create clients: azblobClient -> containerClient -> blockBlobClient
+	// get storage account key to create azblob client
+	response, err := azClientSet.storageAccounts.ListKeys(ctx, resourceGroupName, storageAccountName, nil)
+	Expect(err).NotTo(HaveOccurred(), "Failed to list storage account keys")
+	connectionString := fmt.Sprintf("DefaultEndpointsProtocol=https;AccountName=%s;AccountKey=%s;EndpointSuffix=%s", storageAccountName, *response.Keys[0].Value, strings.TrimPrefix(azure.AzureBlobStorageDomain, "blob."))
+
+	azblobClient, err := azblob.NewClientFromConnectionString(connectionString, nil)
+	Expect(err).NotTo(HaveOccurred(), "Failed to create Azure Blob client")
+
+	containerClient := azblobClient.ServiceClient().NewContainerClient(containerName)
+
+	blockBlobClient := containerClient.NewBlockBlobClient(containerName)
+
+	By("writing an object to the bucket")
+	_, err = blockBlobClient.UploadBuffer(ctx, []byte("test data"), nil)
+	Expect(err).NotTo(HaveOccurred(), "Failed to upload buffer to blob")
+
+	By("attempting to overwrite the block blob")
+	_, err = blockBlobClient.UploadBuffer(ctx, []byte("new data"), nil)
+	Expect(err).To(HaveOccurred(), "Expected error when overwriting a blob with immutability policy enabled")
+	log.Info("Expected error when overwriting a blob with immutability policy enabled", "error", err)
+
+	By("attempting to delete the block blob")
+	_, err = blockBlobClient.Delete(ctx, nil)
+	Expect(err).To(HaveOccurred(), "Expected error when deleting a blob with immutability policy enabled")
+	log.Info("Expected error when deleting a blob with immutability policy enabled", "error", err)
+}
+
+func verifyLockedImmutabilityPolicy(ctx context.Context, azClientSet *azureClientSet, backupBucket *extensionsv1alpha1.BackupBucket) {
+	storageAccountName := azurebackupbucket.GenerateStorageAccountName(backupBucket.Name)
+	resourceGroupName, containerName := backupBucket.Name, backupBucket.Name
+
+	By("attempting to delete the immutability policy on blob container")
+	policy, err := azClientSet.blobContainers.GetImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, containerName, nil)
+	Expect(err).NotTo(HaveOccurred(), "Failed to fetch immutability policy")
+	_, err = azClientSet.blobContainers.DeleteImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, containerName, *policy.Etag, nil)
+	Expect(err).To(HaveOccurred(), "Expected error when deleting a locked immutability policy")
+	log.Info("Expected error when deleting a locked immutability policy", "error", err)
+
+	By("attempting to mutate the immutability policy on blob container")
+	options := &armstorage.BlobContainersClientCreateOrUpdateImmutabilityPolicyOptions{
+		IfMatch: policy.Etag,
+		Parameters: &armstorage.ImmutabilityPolicy{
+			Properties: &armstorage.ImmutabilityPolicyProperty{
+				// decreasing immutability period to 0 days (increasing is allowed for a locked immutability policy)
+				ImmutabilityPeriodSinceCreationInDays: ptr.To(int32(0)),
+			},
+		},
+	}
+	_, err = azClientSet.blobContainers.CreateOrUpdateImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, containerName, options)
+	Expect(err).To(HaveOccurred(), "Expected error when trying to mutate a locked immutability policy")
+	log.Info("Expected error when trying to mutate a locked immutability policy", "error", err)
+}
+
+func verifyKeyRotationPolicy(ctx context.Context, azClientSet *azureClientSet, backupBucket *extensionsv1alpha1.BackupBucket, rotationConfig *azurev1alpha1.RotationConfig) {
+	resourceGroupName := backupBucket.Name
+	storageAccountName := azurebackupbucket.GenerateStorageAccountName(backupBucket.Name)
+
+	By("verifying number of storage account keys")
+	response, err := azClientSet.storageAccounts.ListKeys(ctx, resourceGroupName, storageAccountName, nil)
+	Expect(err).NotTo(HaveOccurred(), "Failed to fetch storage account keys from Azure")
+	Expect(response.Keys).To(HaveLen(2), "Expected two storage account keys")
+
+	By("verifying key creation times")
+	for _, key := range response.Keys {
+		Expect(key.CreationTime).NotTo(BeNil(), "Key creation time should not be nil")
+		Expect(time.Since(*key.CreationTime)).To(BeNumerically("<", time.Duration(rotationConfig.RotationPeriodDays)*24*time.Hour), "Key age should not exceed rotation period")
+	}
+
+	By("verifying key rotation policy configuration")
+	properties, err := azClientSet.storageAccounts.GetProperties(ctx, resourceGroupName, storageAccountName, nil)
+	Expect(err).NotTo(HaveOccurred(), "Failed to get storage account properties")
+	Expect(properties.Account.Properties.KeyPolicy.KeyExpirationPeriodInDays).To(Equal(rotationConfig.ExpirationPeriodDays), "Key expiration period mismatch")
+}
+
+func verifyKeyRotation(ctx context.Context, c client.Client, azClientSet *azureClientSet, backupBucket *extensionsv1alpha1.BackupBucket) {
+	resourceGroupName := backupBucket.Name
+	storageAccountName := azurebackupbucket.GenerateStorageAccountName(backupBucket.Name)
+
+	By("getting current storage account keys")
+	responseBeforeRotation, err := azClientSet.storageAccounts.ListKeys(ctx, resourceGroupName, storageAccountName, nil)
+	Expect(err).NotTo(HaveOccurred(), "Failed to fetch storage account keys from Azure before rotation")
+	Expect(responseBeforeRotation.Keys).To(HaveLen(2), "Expected two storage account keys")
+
+	By("adding key rotation annotation to backupBucket")
+	backupBucket = fetchBackupBucket(ctx, c, backupBucket.Name)
+	backupBucketPatch := client.MergeFrom(backupBucket.DeepCopy())
+	if backupBucket.Annotations == nil {
+		backupBucket.Annotations = make(map[string]string)
+	}
+	backupBucket.Annotations[azure.StorageAccountKeyMustRotate] = "true"
+	backupBucket.Annotations["gardener.cloud/operation"] = "reconcile"
+	err = c.Patch(ctx, backupBucket, backupBucketPatch)
+	Expect(err).NotTo(HaveOccurred(), "Failed to add key rotation annotation to backupBucket")
+
+	By("waiting for backupBucket reconciliation to be ready")
+	waitUntilBackupBucketReady(ctx, c, backupBucket)
+
+	By("ensuring keys are rotated")
+	responseAfterRotation, err := azClientSet.storageAccounts.ListKeys(ctx, resourceGroupName, storageAccountName, nil)
+	Expect(err).NotTo(HaveOccurred(), "Failed to fetch storage account keys from Azure after rotation")
+	Expect(responseAfterRotation.Keys).To(HaveLen(2), "Expected two storage account keys after rotation")
+	oldKeys := azurebackupbucket.SortKeysByAge(responseBeforeRotation.Keys)
+	newKeys := azurebackupbucket.SortKeysByAge(responseAfterRotation.Keys)
+	Expect(newKeys[1].Value).To(Equal(oldKeys[0].Value), "Expected the newest key to be the oldest key after rotation")
+	Expect(newKeys[0].Value).NotTo(Equal(oldKeys[0].Value), "Expected rotated key not be the same as the newest key before rotation")
+	Expect(newKeys[0].Value).NotTo(Equal(oldKeys[1].Value), "Expected rotated key not to be the same as the oldest key before rotation")
+
+	By("ensuring BackupBucket's GeneratedSecretRef is updated")
+	backupBucket = fetchBackupBucket(ctx, c, backupBucket.Name)
+	Expect(backupBucket.Status.GeneratedSecretRef).NotTo(BeNil(), "GeneratedSecretRef should not be nil after key rotation")
+	secret, err := kutil.GetSecretByReference(ctx, c, backupBucket.Status.GeneratedSecretRef)
+	Expect(err).NotTo(HaveOccurred(), "Failed to fetch generated secret after key rotation")
+	Expect(secret.Data[azure.StorageAccount]).To(Equal([]byte(storageAccountName)), "Storage account name in generated secret should match")
+	Expect(secret.Data[azure.StorageKey]).To(Equal([]byte(*newKeys[0].Value)), "Storage key in generated secret should match the new key")
+}
+
+func verifyImmutabilityAndKeyRotation(ctx context.Context, c client.Client, azClientSet *azureClientSet, backupBucket *extensionsv1alpha1.BackupBucket, providerConfig *azurev1alpha1.BackupBucketConfig) {
+	By("verifying key rotation policy")
+	verifyKeyRotationPolicy(ctx, azClientSet, backupBucket, providerConfig.RotationConfig)
+
+	By("verifying key rotation")
+	verifyKeyRotation(ctx, c, azClientSet, backupBucket)
+
+	By("verifying immutability policy")
+	verifyImmutabilityPolicy(ctx, azClientSet, backupBucket, providerConfig.Immutability)
+
+	By("verifying container immutability")
+	verifyContainerImmutability(ctx, c, azClientSet, backupBucket)
 }
