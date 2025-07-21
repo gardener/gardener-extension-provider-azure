@@ -1,3 +1,10 @@
+labels:
+  - name: cloud.gardener.cnudie/responsibles
+    value:
+    - type: githubTeam
+      teamname: gardener/gardener-extension-provider-azure-maintainers
+      github_hostname: github.com
+
 main-source:
   labels:
     - name: cloud.gardener.cnudie/dso/scanning-hints/source_analysis/v1
