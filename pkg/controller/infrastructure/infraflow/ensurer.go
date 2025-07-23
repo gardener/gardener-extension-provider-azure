@@ -8,6 +8,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
+	"strconv"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
@@ -348,7 +350,163 @@ func (fctx *FlowContext) ensureSecurityGroup(ctx context.Context) (*armnetwork.S
 	return sg, nil
 }
 
+func (fctx *FlowContext) EnsureLoadBalancer(ctx context.Context) error {
+	log := shared.LogFromContext(ctx)
+	c, err := fctx.factory.LoadBalancer()
+	if err != nil {
+		return err
+	}
+
+	lbCfg, needsLB := fctx.adapter.LoadBalancerConfig()
+	lb, err := c.Get(ctx, lbCfg.ResourceGroup, lbCfg.Name)
+	if err != nil {
+		return err
+	}
+
+	// reconcile the LB in case the NAT Gateway is configured.
+	if !needsLB {
+		if lb == nil {
+			return nil
+		}
+
+		// rescinding control over the load balancer to CCM. If there are not k8s service of type LoadBalancer the CCM will delete the LB on it's own.
+		if lb.Tags != nil {
+			if ok, _ := strconv.ParseBool(ptr.Deref(lb.Tags[TagManagedByGardener], "")); ok {
+				delete(lb.Tags, TagManagedByGardener)
+				if lb.Properties != nil && lb.Properties.BackendAddressPools != nil {
+					lb.Properties.BackendAddressPools = slices.DeleteFunc(lb.Properties.BackendAddressPools, func(b *armnetwork.BackendAddressPool) bool {
+						return ptr.Deref(b.Name, "") == fctx.adapter.BackendAddressPoolName()
+					})
+				}
+				lb, err = c.CreateOrUpdate(ctx, lbCfg.ResourceGroup, lbCfg.Name, *lb)
+				if err != nil {
+					return err
+				}
+				fctx.inventory.Delete(*lb.ID)
+				fctx.inventory.Delete(GetIdFromTemplateWithParent(TemplateBackendAddressPool, fctx.auth.SubscriptionID, lbCfg.ResourceGroup, lbCfg.Name, fctx.adapter.BackendAddressPoolName()))
+			}
+		}
+		return nil
+	}
+
+	if lb != nil {
+		if location := ptr.Deref(lb.Location, ""); location != lbCfg.Location {
+			return NewSpecMismatchError(lbCfg.AzureResourceMetadata, "location", lbCfg.Location, location,
+				to.Ptr("the location of the load balancer does not match expected location"))
+		}
+	}
+
+	lb = lbCfg.ToProvider(lb)
+	log.Info("reconciling load balancer", "name", lbCfg.Name)
+	log.V(1).Info("reconciling load balancer with spec", "spec", *lb)
+
+	fipcs := ToMap(lb.Properties.FrontendIPConfigurations, func(fipc *armnetwork.FrontendIPConfiguration) string {
+		if fipc == nil || fipc.Name == nil {
+			return ""
+		}
+		return *fipc.Name
+	})
+	for _, ip := range fctx.adapter.IpConfigs() {
+		if !ip.UsedByLB {
+			continue
+		}
+		if fipc, found := fipcs[ip.Name]; !found {
+			fipcs[ip.Name] = &armnetwork.FrontendIPConfiguration{
+				Name: to.Ptr(ip.Name),
+				Properties: &armnetwork.FrontendIPConfigurationPropertiesFormat{
+					PrivateIPAllocationMethod: ptr.To(armnetwork.IPAllocationMethodDynamic),
+					PublicIPAddress:           &armnetwork.PublicIPAddress{ID: to.Ptr(GetIdFromTemplate(TemplatePublicIP, fctx.auth.SubscriptionID, ip.ResourceGroup, ip.Name))},
+				},
+				// Zones: to.SliceOfPtrs(ip.Zones...),
+			}
+		} else {
+			if fipc.Properties == nil {
+				fipc.Properties = &armnetwork.FrontendIPConfigurationPropertiesFormat{}
+			}
+			fipc.Properties.PublicIPAddress = &armnetwork.PublicIPAddress{ID: to.Ptr(GetIdFromTemplate(TemplatePublicIP, fctx.auth.SubscriptionID, ip.ResourceGroup, ip.Name))}
+			fipcs[ip.Name] = fipc
+		}
+	}
+	lb.Properties.FrontendIPConfigurations = make([]*armnetwork.FrontendIPConfiguration, 0, len(fipcs))
+	for _, fipc := range fipcs {
+		lb.Properties.FrontendIPConfigurations = append(lb.Properties.FrontendIPConfigurations, fipc)
+	}
+
+	bap := fctx.adapter.BackendAddressPoolConfig().ToProvider(nil)
+	// bap.Properties.VirtualNetwork = &armnetwork.SubResource{
+	// 	ID: to.Ptr(GetIdFromTemplate(TemplateVirtualNetwork, fctx.auth.SubscriptionID, lbCfg.ResourceGroup, fctx.adapter.VirtualNetworkConfig().Name)),
+	// }
+	found := false
+	for _, bap := range lb.Properties.BackendAddressPools {
+		if ptr.Deref(bap.Name, "") == fctx.adapter.BackendAddressPoolName() {
+			found = true
+			break
+		}
+	}
+	if !found {
+		lb.Properties.BackendAddressPools = append(lb.Properties.BackendAddressPools, bap)
+	}
+
+	lb, err = c.CreateOrUpdate(ctx, lbCfg.ResourceGroup, lbCfg.Name, *lb)
+	if err != nil {
+		return err
+	}
+
+	err = fctx.inventory.Insert(*lb.ID)
+	if err != nil {
+		return err
+	}
+	fctx.whiteboard.GetChild(ChildKeyIDs).Set(KindLoadBalancer.String(), *lb.ID)
+
+	// bap = fctx.adapter.BackendAddressPoolConfig().ToProvider(bap)
+	// bap, err = bapClient.CreateOrUpdate(ctx, lbCfg.ResourceGroup, lbCfg.Name, *bap.Name, *bap)
+	// if err != nil {
+	// 	return err
+	// }
+
+	var outboundRule *armnetwork.OutboundRule
+	for _, rule := range lb.Properties.OutboundRules {
+		if ptr.Deref(rule.Name, "") == lbCfg.ManagedBackendAddressPool {
+			outboundRule = rule
+			break
+		}
+	}
+	if outboundRule == nil {
+		outboundRule = &armnetwork.OutboundRule{
+			Name:       to.Ptr(lbCfg.ManagedBackendAddressPool),
+			Properties: &armnetwork.OutboundRulePropertiesFormat{},
+		}
+		lb.Properties.OutboundRules = append(lb.Properties.OutboundRules, outboundRule)
+	}
+	outboundRule.Properties.BackendAddressPool = &armnetwork.SubResource{ID: ptr.To(GetIdFromTemplateWithParent(TemplateBackendAddressPool, fctx.auth.SubscriptionID, lbCfg.ResourceGroup, lbCfg.Name, fctx.adapter.BackendAddressPoolName()))}
+	// outboundRule.Properties.BackendAddressPool = &armnetwork.SubResource{ID: bap.ID}
+	outboundRule.Properties.FrontendIPConfigurations = make([]*armnetwork.SubResource, 0, len(fctx.adapter.lbIPConfigs))
+	outboundRule.Properties.Protocol = ptr.To(armnetwork.LoadBalancerOutboundRuleProtocolAll)
+
+	for _, ip := range fctx.adapter.lbIPConfigs {
+		for _, fipc := range lb.Properties.FrontendIPConfigurations {
+			if fipc.Name != nil && *fipc.Name == ip.Name {
+				outboundRule.Properties.FrontendIPConfigurations = append(outboundRule.Properties.FrontendIPConfigurations, &armnetwork.SubResource{
+					ID: fipc.ID,
+				})
+			}
+		}
+	}
+	// for _, fipc := range lb.Properties.FrontendIPConfigurations {
+	// 	if outboundRule.Properties.FrontendIPConfigurations == nil {
+	// 		outboundRule.Properties.FrontendIPConfigurations = make([]*armnetwork.SubResource, 0)
+	// 	}
+	// 	outboundRule.Properties.FrontendIPConfigurations = append(outboundRule.Properties.FrontendIPConfigurations, &armnetwork.SubResource{ID: fipc.ID})
+	// }
+	_, err = c.CreateOrUpdate(ctx, lbCfg.ResourceGroup, lbCfg.Name, *lb)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // EnsurePublicIps reconciles the public IPs for the shoot.
+
 func (fctx *FlowContext) EnsurePublicIps(ctx context.Context) error {
 	return errors.Join(fctx.ensurePublicIps(ctx), fctx.ensureUserPublicIps(ctx))
 }
@@ -359,25 +517,33 @@ func (fctx *FlowContext) ensureUserPublicIps(ctx context.Context) error {
 		return err
 	}
 
+	var resErr error
+	egressCIDRs := GetObject[[]string](fctx.whiteboard, "EgressCIDRs")
 	for _, ipFromConfig := range fctx.adapter.IpConfigs() {
-		if !ipFromConfig.Managed {
+		if ipFromConfig.Managed {
 			continue
 		}
-		err = errors.Join(err, fctx.ensureUserPublicIp(ctx, c, ipFromConfig))
+
+		if pip, err := fctx.ensureUserPublicIp(ctx, c, ipFromConfig); err != nil {
+			resErr = errors.Join(resErr, err)
+		} else {
+			egressCIDRs = append(egressCIDRs, ptr.Deref(pip.Properties.IPAddress, ""))
+		}
 	}
+	fctx.whiteboard.SetObject("EgressCIDRs", egressCIDRs)
 	return err
 }
 
-func (fctx *FlowContext) ensureUserPublicIp(ctx context.Context, c client.PublicIP, ipCfg PublicIPConfig) error {
+func (fctx *FlowContext) ensureUserPublicIp(ctx context.Context, c client.PublicIP, ipCfg PublicIPConfig) (*armnetwork.PublicIPAddress, error) {
 	userIP, err := c.Get(ctx, ipCfg.ResourceGroup, ipCfg.Name, nil)
 	if err != nil {
-		return err
+		return nil, err
 	} else if userIP == nil {
-		return fmt.Errorf("failed to locate user public IP: %s, %s", ipCfg.ResourceGroup, ipCfg.Name)
+		return nil, fmt.Errorf("failed to locate user public IP: %s, %s", ipCfg.ResourceGroup, ipCfg.Name)
 	}
 
 	fctx.whiteboard.GetChild(ChildKeyIDs).GetChild(ipCfg.ResourceGroup).GetChild(KindPublicIP.String()).Set(ipCfg.Name, *userIP.ID)
-	return nil
+	return userIP, nil
 }
 
 func (fctx *FlowContext) ensurePublicIps(ctx context.Context) error {
@@ -414,6 +580,7 @@ func (fctx *FlowContext) ensurePublicIps(ctx context.Context) error {
 	}
 
 	for _, resource := range fctx.inventory.ByKind(KindPublicIP) {
+
 		if _, ok := nameToCurrentIps[resource.Name]; !ok {
 			log.Info("Removing public IP from inventory", "id", resource.String())
 			fctx.inventory.Delete(resource.String())
@@ -460,6 +627,7 @@ func (fctx *FlowContext) ensurePublicIps(ctx context.Context) error {
 		return joinError
 	}
 
+	egressCIDRs := GetObject[[]string](fctx.whiteboard, "EgressCIDRs")
 	for ipName, ip := range toReconcile {
 		ip, err = c.CreateOrUpdate(ctx, fctx.adapter.ResourceGroupName(), ipName, *ip)
 		if err != nil {
@@ -471,7 +639,9 @@ func (fctx *FlowContext) ensurePublicIps(ctx context.Context) error {
 			return err
 		}
 		fctx.whiteboard.GetChild(KindPublicIP.String()).GetChild(fctx.adapter.ResourceGroupName()).Set(ipName, *ip.ID)
+		egressCIDRs = append(egressCIDRs, ptr.Deref(ip.Properties.IPAddress, ""))
 	}
+	fctx.whiteboard.SetObject("EgressCIDRs", egressCIDRs)
 
 	return joinError
 }
@@ -588,8 +758,6 @@ func (fctx *FlowContext) ensureNatGateways(ctx context.Context) error {
 			}
 		}
 	}
-
-	fctx.whiteboard.GetChild(KindNatGateway.String()).SetObject(KeyPublicIPAddresses, ipAddresses)
 
 	return joinError
 }
@@ -908,6 +1076,15 @@ func (fctx *FlowContext) GetInfrastructureStatus(_ context.Context) (*v1alpha1.I
 		}
 	}
 
+	if _, ok := fctx.adapter.LoadBalancerConfig(); ok {
+		lbCfg, _ := fctx.adapter.LoadBalancerConfig()
+		status.Networks.OutboundAccessType = v1alpha1.OutboundAccessTypeLoadBalancer
+		status.Networks.LoadBalancer = &v1alpha1.LoadBalancerStatus{
+			Name:                 lbCfg.Name,
+			BackendAddressPoolID: GetIdFromTemplateWithParent(TemplateBackendAddressPool, fctx.auth.SubscriptionID, lbCfg.ResourceGroup, lbCfg.Name, fctx.adapter.BackendAddressPoolName()),
+		}
+	}
+
 	return status, nil
 }
 
@@ -933,18 +1110,15 @@ func (fctx *FlowContext) GetInfrastructureState() *runtime.RawExtension {
 
 // GetEgressIpCidrs retrieves the CIDRs of the IP ranges used for egress from the FlowContext
 func (fctx *FlowContext) GetEgressIpCidrs() []string {
-	if fctx.whiteboard.HasChild(KindNatGateway.String()) && fctx.whiteboard.GetChild(KindNatGateway.String()).HasObject(KeyPublicIPAddresses) {
-		ipAddresses, ok := fctx.whiteboard.GetChild(KindNatGateway.String()).GetObject(KeyPublicIPAddresses).([]string)
-		if !ok {
-			return nil
+	egressCIDRs := slices.Clone(GetObject[[]string](fctx.whiteboard, "EgressCIDRs"))
+	if egressCIDRs != nil {
+		for idx := range egressCIDRs {
+			if egressCIDRs[idx] != "" {
+				egressCIDRs[idx] = egressCIDRs[idx] + "/32"
+			}
 		}
-		cidrs := []string{}
-		for _, address := range ipAddresses {
-			cidrs = append(cidrs, address+"/32")
-		}
-		return cidrs
 	}
-	return nil
+	return egressCIDRs
 }
 
 // DeleteResourceGroup deletes the shoot's resource group.
