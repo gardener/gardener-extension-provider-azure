@@ -41,6 +41,16 @@ type NetworkConfig struct {
 	ServiceEndpoints []string
 	// Zones is a list of zones with their respective configuration.
 	Zones []Zone
+	// LoadBalancer is the configuration for the load balancer.
+	LoadBalancer *LoadBalancerConfig
+}
+
+// LoadBalancerConfig contains configuration for the load balancer and the attached resources.
+type LoadBalancerConfig struct {
+	// ManagedPublicIPAddresses is the number of managed public IP addresses that should be created for the load balancer.
+	ManagedPublicIPAddresses int
+	// IPAddresses is a list of ip addresses which should be assigned to the load balancer.
+	IPAddresses []PublicIPReference
 }
 
 // NatGatewayConfig contains configuration for the NAT gateway and the attached resources.
@@ -120,6 +130,11 @@ type InfrastructureStatus struct {
 	Zoned bool
 }
 
+type LoadBalancerStatus struct {
+	Name                 string
+	BackendAddressPoolID string
+}
+
 // NetworkStatus is the current status of the infrastructure networks.
 type NetworkStatus struct {
 	// VNet states the name of the infrastructure VNet.
@@ -130,6 +145,8 @@ type NetworkStatus struct {
 	Layout NetworkLayout
 	// OutboundAccessType is the type of outbound access configured for the shoot. It indicates how egress traffic flows outside the shoot.
 	OutboundAccessType OutboundAccessType
+	// LoadBalancer is the status of the load balancer.
+	LoadBalancer *LoadBalancerStatus
 }
 
 // Purpose is a purpose of a subnet.

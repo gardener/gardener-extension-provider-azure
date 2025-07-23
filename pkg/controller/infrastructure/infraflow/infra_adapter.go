@@ -14,6 +14,7 @@ import (
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils"
+	"k8s.io/utils/ptr"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
@@ -34,7 +35,9 @@ type InfrastructureAdapter struct {
 	// cached configuration
 	vnetConfig  VirtualNetworkConfig
 	avSetConfig *AvailabilitySetConfig
+	lbConfig    *LoadBalancerConfig
 	zoneConfigs []ZoneConfig
+	lbIPConfigs []PublicIPConfig
 }
 
 // NewInfrastructureAdapter returns a new instance of the InfrastructureAdapter.
@@ -60,6 +63,7 @@ func NewInfrastructureAdapter(
 	ia.avSetConfig = avset
 
 	ia.zoneConfigs = ia.zonesConfig()
+	ia.lbIPConfigs = ia.lbIPConfig()
 	return ia, nil
 }
 
@@ -258,6 +262,7 @@ type PublicIPConfig struct {
 	Zones    []string
 	Location string
 	Managed  bool
+	UsedByLB bool
 }
 
 // NatGatewayConfig contains configuration for a NAT Gateway.
@@ -327,8 +332,12 @@ func (ia *InfrastructureAdapter) IsOwnSubnetName(name *string) bool {
 	return false
 }
 
-func (ia *InfrastructureAdapter) publicIPName(natName string) string {
+func (ia *InfrastructureAdapter) natGatewayPublicIPName(natName string) string {
 	return fmt.Sprintf("%s-ip", natName)
+}
+
+func (ia *InfrastructureAdapter) loadbalancerPublicIPName(base string, num int) string {
+	return fmt.Sprintf("%s-ip-%d", base, num)
 }
 
 // Zones returns the target specification for the zones that need to be reconciled.
@@ -403,7 +412,7 @@ func (ia *InfrastructureAdapter) zonesConfig() []ZoneConfig {
 					},
 					AzureResourceMetadata: AzureResourceMetadata{
 						ResourceGroup: ia.ResourceGroupName(),
-						Name:          ia.publicIPName(ngw.Name),
+						Name:          ia.natGatewayPublicIPName(ngw.Name),
 						Kind:          KindPublicIP,
 					},
 					Managed:  true,
@@ -474,7 +483,7 @@ func (ia *InfrastructureAdapter) defaultZone() []ZoneConfig {
 			},
 			AzureResourceMetadata: AzureResourceMetadata{
 				ResourceGroup: ia.ResourceGroupName(),
-				Name:          ia.publicIPName(ngw.Name),
+				Name:          ia.natGatewayPublicIPName(ngw.Name),
 				Kind:          KindPublicIP,
 			},
 			Managed:  true,
@@ -488,6 +497,57 @@ func (ia *InfrastructureAdapter) defaultZone() []ZoneConfig {
 	z.NatGateway = ngw
 
 	return []ZoneConfig{z}
+}
+
+func (ia *InfrastructureAdapter) lbIPConfig() []PublicIPConfig {
+	var res []PublicIPConfig
+	if ia.config.Networks.LoadBalancer == nil {
+		return res
+	}
+
+	var zones []string
+	for _, r := range ia.cluster.CloudProfile.Spec.Regions {
+		if r.Name == ia.Region() {
+			for _, z := range r.Zones {
+				zones = append(zones, z.Name)
+			}
+			break
+		}
+	}
+	for idx := 0; idx < ia.config.Networks.LoadBalancer.ManagedPublicIPAddresses; idx++ {
+		res = append(res, PublicIPConfig{
+			ShootInfo: ShootInfo{
+				ShootName: ia.TechnicalName(),
+			},
+			AzureResourceMetadata: AzureResourceMetadata{
+				ResourceGroup: ia.ResourceGroupName(),
+				Name:          ia.loadbalancerPublicIPName(ia.TechnicalName(), idx),
+				Kind:          KindPublicIP,
+			},
+			Managed:  true,
+			Zones:    zones,
+			Location: ia.Region(),
+			UsedByLB: true,
+		})
+
+	}
+	for _, ip := range ia.config.Networks.LoadBalancer.IPAddresses {
+		res = append(res, PublicIPConfig{
+			ShootInfo: ShootInfo{
+				ShootName: ia.TechnicalName(),
+			},
+			AzureResourceMetadata: AzureResourceMetadata{
+				ResourceGroup: ip.ResourceGroup,
+				Name:          ip.Name,
+				Kind:          KindPublicIP,
+			},
+			Managed:  false,
+			Location: ia.Region(),
+			UsedByLB: true,
+		})
+	}
+
+	return res
 }
 
 // ManagedIpConfigs returns a filtered list of only the public IPs that are managed by gardener.
@@ -506,6 +566,12 @@ func (ia *InfrastructureAdapter) ManagedIpConfigs() map[string]PublicIPConfig {
 		}
 	}
 
+	for _, ips := range ia.lbIPConfigs {
+		if ips.Managed {
+			res[ips.Name] = ips
+		}
+	}
+
 	return res
 }
 
@@ -517,6 +583,10 @@ func (ia *InfrastructureAdapter) IpConfigs() []PublicIPConfig {
 			continue
 		}
 		res = append(res, z.NatGateway.PublicIPList...)
+	}
+
+	for _, ips := range ia.lbIPConfigs {
+		res = append(res, ips)
 	}
 
 	return res
@@ -536,6 +606,14 @@ func (ia *InfrastructureAdapter) IsPublicIPPinned(name string) bool {
 			if ip.ResourceGroup == ia.ResourceGroupName() && ip.Name == name {
 				return true
 			}
+		}
+	}
+	for _, ip := range ia.lbIPConfigs {
+		if ip.Managed {
+			continue
+		}
+		if ip.ResourceGroup == ia.ResourceGroupName() && ip.Name == name {
+			return true
 		}
 	}
 
@@ -640,6 +718,7 @@ func (s *SubnetConfig) ToProvider(base *armnetwork.Subnet) *armnetwork.Subnet {
 		target.Properties.DefaultOutboundAccess = base.Properties.DefaultOutboundAccess
 		// For now, use whatever is already existing in the remote object. We will later overwrite them with what we consider appropriate.
 		target.Properties.NatGateway = base.Properties.NatGateway
+		// target.Properties.DefaultOutboundAccess = to.Ptr(false)
 		target.Properties.NetworkSecurityGroup = base.Properties.NetworkSecurityGroup
 		target.Properties.RouteTable = base.Properties.RouteTable
 
@@ -711,4 +790,87 @@ func (r *RouteTableConfig) ToProvider(base *armnetwork.RouteTable) *armnetwork.R
 	}
 
 	return desired
+}
+
+type LoadBalancerConfig struct {
+	AzureResourceMetadata
+	Location string
+	// Managed is true if the load balancer is managed by gardener. If false, it is managed by the cloud-controller-manager.
+	Managed bool
+	// ManagedBackendAddressPool is the name of the backend pool used for outbound connections.
+	ManagedBackendAddressPool string
+}
+
+func (ia *InfrastructureAdapter) LoadBalancerConfig() (LoadBalancerConfig, bool) {
+	rg := ia.ResourceGroupName()
+	lbc := LoadBalancerConfig{
+		AzureResourceMetadata: AzureResourceMetadata{
+			Name:          ia.LoadBalancerName(),
+			ResourceGroup: rg,
+			Kind:          KindLoadBalancer,
+		},
+		Location:                  ia.Region(),
+		Managed:                   ia.config.Networks.LoadBalancer != nil,
+		ManagedBackendAddressPool: ia.BackendAddressPoolName(),
+	}
+
+	return lbc, ia.config.Networks.LoadBalancer != nil
+}
+
+func (ia *InfrastructureAdapter) LoadBalancerName() string {
+	return ia.TechnicalName()
+}
+
+type BackendAddressPoolConfig struct {
+	AzureResourceMetadata
+	Location string
+	Name     string
+}
+
+func (l *LoadBalancerConfig) ToProvider(base *armnetwork.LoadBalancer) *armnetwork.LoadBalancer {
+	if base == nil {
+		base = &armnetwork.LoadBalancer{
+			Location:   ptr.To(l.Location),
+			Properties: &armnetwork.LoadBalancerPropertiesFormat{},
+			SKU: &armnetwork.LoadBalancerSKU{
+				Name: ptr.To(armnetwork.LoadBalancerSKUNameStandard),
+				Tier: ptr.To(armnetwork.LoadBalancerSKUTierRegional),
+			},
+		}
+	}
+	target := *base
+	target.Tags = utils.MergeStringMaps(base.Tags, map[string]*string{
+		TagManagedByGardener: to.Ptr("true"),
+	})
+	return &target
+}
+
+func (ia *InfrastructureAdapter) BackendAddressPoolName() string {
+	// The backend address pool name is the same as the load balancer name.
+	return fmt.Sprintf("%s-outbound", ia.TechnicalName())
+}
+
+func (ia *InfrastructureAdapter) BackendAddressPoolConfig() *BackendAddressPoolConfig {
+	name := ia.BackendAddressPoolName()
+	rg := ia.ResourceGroupName()
+	return &BackendAddressPoolConfig{
+		AzureResourceMetadata: AzureResourceMetadata{
+			Name:          name,
+			ResourceGroup: rg,
+		},
+		Location: ia.Region(),
+		Name:     name,
+	}
+}
+
+func (b *BackendAddressPoolConfig) ToProvider(bap *armnetwork.BackendAddressPool) *armnetwork.BackendAddressPool {
+	if bap == nil {
+		bap = &armnetwork.BackendAddressPool{
+			Name: ptr.To(b.Name),
+			Properties: &armnetwork.BackendAddressPoolPropertiesFormat{
+				// SyncMode: ptr.To(armnetwork.SyncModeAutomatic),
+			},
+		}
+	}
+	return bap
 }

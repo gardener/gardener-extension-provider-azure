@@ -47,6 +47,16 @@ type NetworkConfig struct {
 	ServiceEndpoints []string `json:"serviceEndpoints,omitempty"`
 	// Zones is a list of zones with their respective configuration.
 	Zones []Zone `json:"zones,omitempty"`
+	// LoadBalancer is the configuration for the load balancer.
+	LoadBalancer *LoadBalancerConfig `json:"loadBalancer,omitempty"`
+}
+
+// LoadBalancerConfig contains configuration for the load balancer and the attached resources.
+type LoadBalancerConfig struct {
+	// ManagedPublicIPAddresses is the number of managed public IP addresses that should be created for the load balancer.
+	ManagedPublicIPAddresses int `json:"managedPublicIPAddresses"`
+	// IPAddresses is a list of ip addresses which should be assigned to the load balancer.
+	IPAddresses []PublicIPReference `json:"ipAddresses,omitempty"`
 }
 
 // NatGatewayConfig contains configuration for the NAT gateway and the attached resources.
@@ -135,6 +145,13 @@ type InfrastructureStatus struct {
 	Zoned bool `json:"zoned,omitempty"`
 }
 
+// LoadBalancerStatus contains information about the load balancer and the attached resources.
+type LoadBalancerStatus struct {
+	// Name is the name of the load balancer.
+	Name                 string `json:"name"`
+	BackendAddressPoolID string `json:"backendAddressPoolID"`
+}
+
 // NetworkStatus is the current status of the infrastructure networks.
 type NetworkStatus struct {
 	// VNetStatus states the name of the infrastructure VNet.
@@ -148,6 +165,9 @@ type NetworkStatus struct {
 
 	// OutboundAccessType is the type of outbound access configured for the shoot. It indicates how egress traffic flows outside the shoot.
 	OutboundAccessType OutboundAccessType `json:"outboundAccessType"`
+
+	// LoadBalancer is the status of the load balancer.
+	LoadBalancer *LoadBalancerStatus `json:"loadBalancer,omitempty"`
 }
 
 // Purpose is a purpose of a subnet.

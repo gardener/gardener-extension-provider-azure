@@ -337,6 +337,9 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				}
 			}
 
+			if infrastructureStatus.Networks.LoadBalancer != nil {
+				machineClassSpec["backendAddressPoolID"] = infrastructureStatus.Networks.LoadBalancer.BackendAddressPoolID
+			}
 			machineDeployment.ClusterAutoscalerAnnotations = extensionsv1alpha1helper.GetMachineDeploymentClusterAutoscalerAnnotations(pool.ClusterAutoscaler)
 
 			return machineDeployment, machineClassSpec

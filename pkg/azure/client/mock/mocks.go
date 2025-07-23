@@ -235,6 +235,21 @@ func (mr *MockFactoryMockRecorder) AvailabilitySet() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AvailabilitySet", reflect.TypeOf((*MockFactory)(nil).AvailabilitySet))
 }
 
+// BackendAddressPool mocks base method.
+func (m *MockFactory) BackendAddressPool() (client.BackendAddressPool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BackendAddressPool")
+	ret0, _ := ret[0].(client.BackendAddressPool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// BackendAddressPool indicates an expected call of BackendAddressPool.
+func (mr *MockFactoryMockRecorder) BackendAddressPool() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BackendAddressPool", reflect.TypeOf((*MockFactory)(nil).BackendAddressPool))
+}
+
 // BlobContainers mocks base method.
 func (m *MockFactory) BlobContainers() (client.BlobContainers, error) {
 	m.ctrl.T.Helper()
