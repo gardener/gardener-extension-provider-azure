@@ -47,7 +47,6 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/features"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
 // Object names
@@ -304,7 +303,7 @@ func (vp *valuesProvider) GetConfigChartValues(ctx context.Context, cp *extensio
 	}
 
 	// Get client auth
-	auth, _, err := internal.GetClientAuthData(ctx, vp.client, cp.Spec.SecretRef, false)
+	auth, _, err := azureclient.GetClientAuthData(ctx, vp.client, cp.Spec.SecretRef, false)
 	if err != nil {
 		return nil, fmt.Errorf("could not get service account from secret '%s/%s': %w", cp.Spec.SecretRef.Namespace, cp.Spec.SecretRef.Name, err)
 	}
@@ -425,7 +424,7 @@ func (vp *valuesProvider) removeAcrConfig(ctx context.Context, namespace string)
 }
 
 // getConfigChartValues collects and returns the configuration chart values.
-func getConfigChartValues(infraStatus *apisazure.InfrastructureStatus, cp *extensionsv1alpha1.ControlPlane, cluster *extensionscontroller.Cluster, ca *internal.ClientAuth) (map[string]interface{}, error) {
+func getConfigChartValues(infraStatus *apisazure.InfrastructureStatus, cp *extensionsv1alpha1.ControlPlane, cluster *extensionscontroller.Cluster, ca *azureclient.ClientAuth) (map[string]interface{}, error) {
 	subnetName, routeTableName, securityGroupName, err := getInfraNames(infraStatus)
 	if err != nil {
 		return nil, fmt.Errorf("could not determine subnet, availability set, route table or security group name from infrastructureStatus of controlplane '%s': %w", k8sclient.ObjectKeyFromObject(cp), err)

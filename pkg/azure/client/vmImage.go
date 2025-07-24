@@ -10,8 +10,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
-
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
 var _ VirtualMachineImages = &VirtualMachineImageClient{}
@@ -22,7 +20,7 @@ type VirtualMachineImageClient struct {
 }
 
 // NewVirtualMachineImagesClient creates a new VirtualMachineImagesClient client.
-func NewVirtualMachineImagesClient(auth *internal.ClientAuth, tc azcore.TokenCredential, opts *policy.ClientOptions) (*VirtualMachineImageClient, error) {
+func NewVirtualMachineImagesClient(auth *ClientAuth, tc azcore.TokenCredential, opts *policy.ClientOptions) (*VirtualMachineImageClient, error) {
 	client, err := armcompute.NewVirtualMachineImagesClient(auth.SubscriptionID, tc, opts)
 	return &VirtualMachineImageClient{client}, err
 }

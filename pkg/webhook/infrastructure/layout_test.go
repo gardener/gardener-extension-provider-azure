@@ -21,7 +21,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azurev1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
+	infrastructurecontroller "github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure"
 )
 
 const (
@@ -170,7 +170,7 @@ var _ = Describe("Mutate", func() {
 				marshalled, err := json.Marshal(status)
 				Expect(err).ToNot(HaveOccurred())
 
-				state := &infrastructure.InfrastructureState{
+				state := &infrastructurecontroller.TerraformInfrastructureState{
 					SavedProviderStatus: &runtime.RawExtension{
 						Raw: marshalled,
 					},

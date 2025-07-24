@@ -49,9 +49,6 @@ spec:
           - name: REGION
             type: env
             value: westeurope
-          - name: RECONCILER
-            type: env
-            value: tf
     - name: backupbucket-test
       definition:
         name: backupbucket-test
@@ -65,26 +62,6 @@ spec:
           - name: USE_EXISTING_CLUSTER
             type: env
             value: "true"
-    - name: infra-flow-test
-      definition:
-        name: infrastructure-test
-        config:
-          - name: REGION
-            type: env
-            value: westeurope
-          - name: RECONCILER
-            type: env
-            value: flow
-    - name: infra-flow-migration-test
-      definition:
-        name: infrastructure-test
-        config:
-          - name: REGION
-            type: env
-            value: westeurope
-          - name: RECONCILER
-            type: env
-            value: migrate
     - name: bastion-test
       definition:
         name: bastion-test

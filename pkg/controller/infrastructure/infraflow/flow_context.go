@@ -20,7 +20,6 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow/shared"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 	infrainternal "github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 )
 
@@ -43,7 +42,7 @@ type FlowContext struct {
 	client         k8sclient.Client
 	cfg            *azure.InfrastructureConfig
 	factory        client.Factory
-	auth           *internal.ClientAuth
+	auth           *client.ClientAuth
 	infra          *extensionsv1alpha1.Infrastructure
 	state          *azure.InfrastructureState
 	status         *azure.InfrastructureStatus
@@ -60,7 +59,7 @@ type FlowContext struct {
 type Opts struct {
 	Client  k8sclient.Client
 	Factory client.Factory
-	Auth    *internal.ClientAuth
+	Auth    *client.ClientAuth
 	Logger  logr.Logger
 	Infra   *extensionsv1alpha1.Infrastructure
 	Cluster *controller.Cluster

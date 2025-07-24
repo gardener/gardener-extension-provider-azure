@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package internal_test
+package client_test
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	. "github.com/gardener/gardener-extension-provider-azure/pkg/internal"
+	. "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
 
 var _ = Describe("Azure Auth", func() {
