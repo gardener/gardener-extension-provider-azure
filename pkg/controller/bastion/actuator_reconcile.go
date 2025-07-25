@@ -46,7 +46,7 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 		return err
 	}
 
-	opt, err := DetermineOptions(bastion, cluster, infrastructureStatus.ResourceGroup.Name)
+	opts, err := NewOpts(bastion, cluster, infrastructureStatus.ResourceGroup.Name, log)
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 		cloudConfiguration = cloudProfile.CloudConfiguration
 	}
 
-	azCloudConfiguration, err := azureclient.AzureCloudConfiguration(cloudConfiguration, &opt.Location)
+	azCloudConfiguration, err := azureclient.AzureCloudConfiguration(cloudConfiguration, &opts.Location)
 	if err != nil {
 		return err
 	}
@@ -69,7 +69,7 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 	clientFactory, err := azureclient.NewAzureClientFactoryFromSecret(
 		ctx,
 		a.client,
-		opt.SecretReference,
+		opts.SecretReference,
 		false,
 		azureclient.WithCloudConfiguration(azCloudConfiguration),
 	)
@@ -77,35 +77,35 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 		return err
 	}
 
-	publicIP, err := ensurePublicIPAddress(ctx, log, clientFactory, opt)
+	publicIP, err := ensurePublicIPAddress(ctx, clientFactory, opts)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}
 
-	nic, err := ensureNic(ctx, log, clientFactory, infrastructureStatus, opt, publicIP)
+	nic, err := ensureNic(ctx, clientFactory, infrastructureStatus, opts, publicIP)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}
 
-	opt.NicID = *nic.ID
+	opts.NicID = *nic.ID
 
 	// assume it's not possible to not have an ipv4 address
-	opt.PrivateIPAddressV4, err = getPrivateIPv4Address(nic)
+	opts.PrivateIPAddressV4, err = getPrivateIPv4Address(nic)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}
 
-	opt.PrivateIPAddressV6, err = getPrivateIPv6Address(nic)
+	opts.PrivateIPAddressV6, err = getPrivateIPv6Address(nic)
 	if err != nil {
 		log.Info(err.Error())
 	}
 
-	err = ensureNetworkSecurityGroups(ctx, log, clientFactory, opt)
+	err = ensureNetworkSecurityGroups(ctx, clientFactory, opts)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}
 
-	err = ensureComputeInstance(ctx, log, bastion, clientFactory, opt)
+	err = ensureComputeInstance(ctx, bastion, clientFactory, opts)
 	if err != nil {
 		return util.DetermineError(err, helper.KnownCodes)
 	}
@@ -202,9 +202,9 @@ func getPrivateIPv6Address(nic *armnetwork.Interface) (string, error) {
 	return "", fmt.Errorf("no IPv6 PrivateIPAddress found on nic %s", *nic.ID)
 }
 
-func ensureNetworkSecurityGroups(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) error {
-	expectedNSGRuleList := prepareNSGRules(opt)
-	networkSecGroupResp, err := getNetworkSecurityGroup(ctx, log, factory, opt)
+func ensureNetworkSecurityGroups(ctx context.Context, factory azureclient.Factory, opts Options) error {
+	expectedNSGRuleList := prepareNSGRules(opts)
+	networkSecGroupResp, err := getNetworkSecurityGroup(ctx, factory, opts.BaseOptions)
 	if err != nil {
 		return err
 	}
@@ -215,26 +215,26 @@ func ensureNetworkSecurityGroups(ctx context.Context, log logr.Logger, factory a
 
 	networkSecGroupResp.Properties.SecurityRules = addOrReplaceNsgRulesDefinition(networkSecGroupResp.Properties.SecurityRules, expectedNSGRuleList)
 
-	if err := createOrUpdateNetworkSecGroup(ctx, factory, opt, networkSecGroupResp); err != nil {
+	if err := createOrUpdateNetworkSecGroup(ctx, factory, opts.BaseOptions, networkSecGroupResp); err != nil {
 		return err
 	}
 
-	log.Info("created or updated bastion security rules of network security group",
-		"nsg", opt.SecurityGroupName,
+	opts.Logr.Info("created or updated bastion security rules of network security group",
+		"nsg", opts.SecurityGroupName,
 		"rules", networkSecGroupResp.Properties.SecurityRules,
 	)
 
 	return nil
 }
 
-func prepareNSGRules(opt *Options) []*armnetwork.SecurityRule {
+func prepareNSGRules(opts Options) []*armnetwork.SecurityRule {
 	res := make([]*armnetwork.SecurityRule, 0)
-	res = append(res, nsgEgressDenyAllIPv4(opt))
-	res = append(res, nsgEgressAllowSSHToWorkerIPv4(opt))
+	res = append(res, nsgEgressDenyAllIPv4(opts))
+	res = append(res, nsgEgressAllowSSHToWorkerIPv4(opts))
 
 	ipv4cidr := make([]string, 0)
 	ipv6cidr := make([]string, 0)
-	for _, cidr := range opt.CIDRs {
+	for _, cidr := range opts.CIDRs {
 		ip, _, _ := net.ParseCIDR(cidr)
 		if len(ip.To4()) == net.IPv4len {
 			ipv4cidr = append(ipv4cidr, cidr)
@@ -243,19 +243,19 @@ func prepareNSGRules(opt *Options) []*armnetwork.SecurityRule {
 		}
 	}
 
-	ipv4Name := NSGIngressAllowSSHResourceNameIPv4(opt.BastionInstanceName)
-	res = append(res, nsgIngressAllowSSH(ipv4Name, opt.PrivateIPAddressV4, ipv4cidr))
+	ipv4Name := NSGIngressAllowSSHResourceNameIPv4(opts.BastionInstanceName)
+	res = append(res, nsgIngressAllowSSH(ipv4Name, opts.PrivateIPAddressV4, ipv4cidr))
 
-	if len(ipv6cidr) > 0 && opt.PrivateIPAddressV6 != "" {
-		ipv6Name := NSGIngressAllowSSHResourceNameIPv6(opt.BastionInstanceName)
-		res = append(res, nsgIngressAllowSSH(ipv6Name, opt.PrivateIPAddressV6, ipv6cidr))
+	if len(ipv6cidr) > 0 && opts.PrivateIPAddressV6 != "" {
+		ipv6Name := NSGIngressAllowSSHResourceNameIPv6(opts.BastionInstanceName)
+		res = append(res, nsgIngressAllowSSH(ipv6Name, opts.PrivateIPAddressV6, ipv6cidr))
 	}
 
 	return res
 }
 
-func ensurePublicIPAddress(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*armnetwork.PublicIPAddress, error) {
-	publicIP, err := getPublicIP(ctx, log, factory, opt)
+func ensurePublicIPAddress(ctx context.Context, factory azureclient.Factory, opts Options) (*armnetwork.PublicIPAddress, error) {
+	publicIP, err := getPublicIP(ctx, factory, opts.BaseOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -266,19 +266,19 @@ func ensurePublicIPAddress(ctx context.Context, log logr.Logger, factory azurecl
 		return publicIP, nil
 	}
 
-	parameters := publicIPAddressDefine(opt)
+	parameters := publicIPAddressDefine(opts)
 
-	publicIP, err = createOrUpdatePublicIP(ctx, factory, opt, parameters)
+	publicIP, err = createOrUpdatePublicIP(ctx, factory, opts.BaseOptions, parameters)
 	if err != nil {
 		return nil, err
 	}
 
-	log.Info("bastion compute instance public ip address created", "publicIP", *publicIP.Properties.IPAddress)
+	opts.Logr.Info("bastion compute instance public ip address created", "publicIP", *publicIP.Properties.IPAddress)
 	return publicIP, nil
 }
 
-func ensureComputeInstance(ctx context.Context, log logr.Logger, bastion *extensionsv1alpha1.Bastion, factory azureclient.Factory, opt *Options) error {
-	instance, err := getBastionInstance(ctx, log, factory, opt)
+func ensureComputeInstance(ctx context.Context, bastion *extensionsv1alpha1.Bastion, factory azureclient.Factory, opts Options) error {
+	instance, err := getBastionInstance(ctx, factory, opts.BaseOptions)
 	if err != nil {
 		return err
 	}
@@ -294,24 +294,24 @@ func ensureComputeInstance(ctx context.Context, log logr.Logger, bastion *extens
 		}
 	}
 
-	log.Info("creating new bastion compute instance")
+	opts.Logr.Info("creating new bastion compute instance")
 
 	publickey, err := createSSHPublicKey()
 	if err != nil {
 		return err
 	}
 
-	parameters := computeInstanceDefine(opt, bastion, publickey)
+	parameters := computeInstanceDefine(opts, bastion, publickey)
 
-	_, err = createBastionInstance(ctx, factory, opt, parameters)
+	_, err = createBastionInstance(ctx, factory, opts, parameters)
 	if err != nil {
 		return fmt.Errorf("failed to create bastion compute instance: %w", err)
 	}
 	return nil
 }
 
-func ensureNic(ctx context.Context, log logr.Logger, factory azureclient.Factory, infrastructureStatus *azure.InfrastructureStatus, opt *Options, publicIP *armnetwork.PublicIPAddress) (*armnetwork.Interface, error) {
-	nic, err := getNic(ctx, log, factory, opt)
+func ensureNic(ctx context.Context, factory azureclient.Factory, infrastructureStatus *azure.InfrastructureStatus, opts Options, publicIP *armnetwork.PublicIPAddress) (*armnetwork.Interface, error) {
+	nic, err := getNic(ctx, factory, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -322,9 +322,9 @@ func ensureNic(ctx context.Context, log logr.Logger, factory azureclient.Factory
 		return nic, nil
 	}
 
-	log.Info("create new bastion compute instance nic")
+	opts.Logr.Info("create new bastion compute instance nic")
 
-	subnet, err := getSubnet(ctx, log, factory, infrastructureStatus, opt)
+	subnet, err := getSubnet(ctx, factory, infrastructureStatus, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -333,14 +333,14 @@ func ensureNic(ctx context.Context, log logr.Logger, factory azureclient.Factory
 		return nil, errors.New("virtual network subnet must be not empty")
 	}
 
-	parameters := nicDefine(opt, publicIP, subnet)
+	parameters := nicDefine(opts, publicIP, subnet)
 
 	nicClient, err := factory.NetworkInterface()
 	if err != nil {
 		return nil, err
 	}
 
-	nic, err = nicClient.CreateOrUpdate(ctx, opt.ResourceGroupName, opt.NicName, *parameters)
+	nic, err = nicClient.CreateOrUpdate(ctx, opts.ResourceGroupName, opts.NicName, *parameters)
 	if err != nil || nic == nil {
 		return nil, fmt.Errorf("failed to create bastion compute nic: %w", err)
 	}

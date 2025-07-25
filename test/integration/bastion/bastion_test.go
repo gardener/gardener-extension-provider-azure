@@ -156,7 +156,7 @@ var (
 	worker            *extensionsv1alpha1.Worker
 	bastion           *extensionsv1alpha1.Bastion
 	controllercluster *controller.Cluster
-	options           *bastionctrl.Options
+	options           bastionctrl.Options
 	secret            *corev1.Secret
 
 	testEnv    *envtest.Environment
@@ -492,7 +492,7 @@ func teardownShootEnvironment(ctx context.Context, c client.Client, namespace *c
 	Expect(client.IgnoreNotFound(c.Delete(ctx, namespace))).To(Succeed())
 }
 
-func createBastion(cluster *controller.Cluster, name string) (*extensionsv1alpha1.Bastion, *bastionctrl.Options) {
+func createBastion(cluster *controller.Cluster, name string) (*extensionsv1alpha1.Bastion, bastionctrl.Options) {
 	bastion := &extensionsv1alpha1.Bastion{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name + "-bastion",
@@ -511,7 +511,7 @@ func createBastion(cluster *controller.Cluster, name string) (*extensionsv1alpha
 		},
 	}
 
-	options, err := bastionctrl.DetermineOptions(bastion, cluster, name)
+	options, err := bastionctrl.NewOpts(bastion, cluster, name, log)
 	Expect(err).NotTo(HaveOccurred())
 
 	return bastion, options
@@ -675,9 +675,9 @@ func teardownBastion(ctx context.Context, log logr.Logger, c client.Client, bast
 	Expect(err).NotTo(HaveOccurred())
 }
 
-func verifyDeletion(ctx context.Context, az *azureClientSet, options *bastionctrl.Options) {
+func verifyDeletion(ctx context.Context, az *azureClientSet, options bastionctrl.Options) {
 	// bastion public ip should be gone
-	_, err := az.pubIp.Get(ctx, options.ResourceGroupName, options.BastionPublicIPName, nil)
+	_, err := az.pubIp.Get(ctx, options.ResourceGroupName, options.PublicIPName, nil)
 	Expect(ignoreAzureNotFoundError(err)).To(Succeed())
 
 	// bastion network interface should be gone
@@ -699,7 +699,7 @@ func verifyDeletion(ctx context.Context, az *azureClientSet, options *bastionctr
 	Expect(ignoreAzureNotFoundError(err)).To(Succeed())
 }
 
-func checkSecurityRuleDoesNotExist(ctx context.Context, az *azureClientSet, options *bastionctrl.Options, securityRuleName string) {
+func checkSecurityRuleDoesNotExist(ctx context.Context, az *azureClientSet, options bastionctrl.Options, securityRuleName string) {
 	// does not have authorization to performsecurityRules get due to global rule. use security group to check it.
 	sg, err := az.securityGroups.Get(ctx, options.ResourceGroupName, securityRuleName, nil)
 	if IsNotFound(err) {
@@ -726,7 +726,7 @@ func ruleExist(ruleName *string, rules []*armnetwork.SecurityRule) bool {
 	return false
 }
 
-func verifyCreation(ctx context.Context, az *azureClientSet, options *bastionctrl.Options) {
+func verifyCreation(ctx context.Context, az *azureClientSet, options bastionctrl.Options) {
 	By("RuleExist")
 	// does not have authorization to performsecurityRules get due to global rule. use security group to check it.
 	sg, err := az.securityGroups.Get(ctx, options.ResourceGroupName, options.SecurityGroupName, nil)
@@ -752,7 +752,7 @@ func verifyCreation(ctx context.Context, az *azureClientSet, options *bastionctr
 	Expect(err).NotTo(HaveOccurred())
 	internalIP := *(nic.Properties.IPConfigurations[0]).Properties.PrivateIPAddress
 
-	publicIp, err := az.pubIp.Get(ctx, options.ResourceGroupName, options.BastionPublicIPName, nil)
+	publicIp, err := az.pubIp.Get(ctx, options.ResourceGroupName, options.PublicIPName, nil)
 	Expect(err).NotTo(HaveOccurred())
 	externalIP := publicIp.PublicIPAddress
 

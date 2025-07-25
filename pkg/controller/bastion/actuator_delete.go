@@ -28,7 +28,7 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensi
 		return err
 	}
 
-	opt, err := DetermineOptions(bastion, cluster, infrastructureStatus.ResourceGroup.Name)
+	opts, err := NewBaseOpts(bastion, cluster, infrastructureStatus.ResourceGroup.Name, log)
 	if err != nil {
 		return err
 	}
@@ -52,7 +52,7 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensi
 	factory, err := azureclient.NewAzureClientFactoryFromSecret(
 		ctx,
 		a.client,
-		opt.SecretReference,
+		opts.SecretReference,
 		false,
 		azureclient.WithCloudConfiguration(azCloudConfiguration),
 	)
@@ -60,12 +60,12 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensi
 		return err
 	}
 
-	err = removeBastionInstance(ctx, log, factory, opt)
+	err = removeBastionInstance(ctx, factory, opts)
 	if err != nil {
 		return util.DetermineError(fmt.Errorf("failed to remove bastion instance: %w", err), helper.KnownCodes)
 	}
 
-	deleted, err := isInstanceDeleted(ctx, log, factory, opt)
+	deleted, err := isInstanceDeleted(ctx, factory, opts)
 	if err != nil {
 		return util.DetermineError(fmt.Errorf("failed to check for bastion instance: %w", err), helper.KnownCodes)
 	}
@@ -77,22 +77,22 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensi
 		}
 	}
 
-	err = removeNic(ctx, log, factory, opt)
+	err = removeNic(ctx, factory, opts)
 	if err != nil {
 		return util.DetermineError(fmt.Errorf("failed to remove nic: %w", err), helper.KnownCodes)
 	}
 
-	err = removePublicIP(ctx, log, factory, opt)
+	err = removePublicIP(ctx, factory, opts)
 	if err != nil {
 		return util.DetermineError(fmt.Errorf("failed to remove public ip: %w", err), helper.KnownCodes)
 	}
 
-	err = removeDisk(ctx, log, factory, opt)
+	err = removeDisk(ctx, factory, opts)
 	if err != nil {
 		return util.DetermineError(fmt.Errorf("failed to remove disk: %w", err), helper.KnownCodes)
 	}
 
-	err = removeNSGRule(ctx, log, factory, opt)
+	err = removeNSGRule(ctx, factory, opts)
 	if err != nil {
 		return util.DetermineError(fmt.Errorf("failed to remove nsg rules: %w", err), helper.KnownCodes)
 	}
@@ -104,17 +104,17 @@ func (a *actuator) ForceDelete(_ context.Context, _ logr.Logger, _ *extensionsv1
 	return nil
 }
 
-func removeNSGRule(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) error {
-	securityGroupResp, err := getNetworkSecurityGroup(ctx, log, factory, opt)
+func removeNSGRule(ctx context.Context, factory azureclient.Factory, opts BaseOptions) error {
+	securityGroupResp, err := getNetworkSecurityGroup(ctx, factory, opts)
 	if err != nil {
 		return err
 	}
 
 	rules := []string{
-		NSGIngressAllowSSHResourceNameIPv4(opt.BastionInstanceName),
-		NSGIngressAllowSSHResourceNameIPv6(opt.BastionInstanceName),
-		NSGEgressDenyAllResourceName(opt.BastionInstanceName),
-		NSGEgressAllowOnlyResourceName(opt.BastionInstanceName),
+		NSGIngressAllowSSHResourceNameIPv4(opts.BastionInstanceName),
+		NSGIngressAllowSSHResourceNameIPv6(opts.BastionInstanceName),
+		NSGEgressDenyAllResourceName(opts.BastionInstanceName),
+		NSGEgressAllowOnlyResourceName(opts.BastionInstanceName),
 	}
 
 	modifiedRules, rulesWereDeleted := deleteSecurityRuleDefinitionsByName(securityGroupResp.Properties.SecurityRules, rules...)
@@ -123,74 +123,74 @@ func removeNSGRule(ctx context.Context, log logr.Logger, factory azureclient.Fac
 		return nil
 	}
 
-	err = createOrUpdateNetworkSecGroup(ctx, factory, opt, securityGroupResp)
+	err = createOrUpdateNetworkSecGroup(ctx, factory, opts, securityGroupResp)
 	if err != nil {
 		return err
 	}
 
-	log.Info("bastion network security group rules removed: ", "rules", rules)
+	opts.Logr.Info("bastion network security group rules removed: ", "rules", rules)
 	return nil
 }
 
-func removePublicIP(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) error {
+func removePublicIP(ctx context.Context, factory azureclient.Factory, opts BaseOptions) error {
 	publicClient, err := factory.PublicIP()
 	if err != nil {
 		return err
 	}
 
-	err = publicClient.Delete(ctx, opt.ResourceGroupName, opt.BastionPublicIPName)
+	err = publicClient.Delete(ctx, opts.ResourceGroupName, opts.PublicIPName)
 	if err != nil {
 		return fmt.Errorf("failed to delete Public IP: %w", err)
 	}
 
-	log.Info("Public IP removed", "ip", opt.BastionPublicIPName)
+	opts.Logr.Info("Public IP removed", "ip", opts.PublicIPName)
 	return nil
 }
 
-func removeNic(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) error {
+func removeNic(ctx context.Context, factory azureclient.Factory, opts BaseOptions) error {
 	nicClient, err := factory.NetworkInterface()
 	if err != nil {
 		return err
 	}
 
-	err = nicClient.Delete(ctx, opt.ResourceGroupName, opt.NicName)
+	err = nicClient.Delete(ctx, opts.ResourceGroupName, opts.NicName)
 	if err != nil {
 		return fmt.Errorf("failed to delete Nic: %w", err)
 	}
 
-	log.Info("Nic removed", "nic", opt.NicName)
+	opts.Logr.Info("Nic removed", "nic", opts.NicName)
 	return nil
 }
 
-func removeDisk(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) error {
+func removeDisk(ctx context.Context, factory azureclient.Factory, opts BaseOptions) error {
 	diskClient, err := factory.Disk()
 	if err != nil {
 		return err
 	}
-	err = diskClient.Delete(ctx, opt.ResourceGroupName, opt.DiskName)
+	err = diskClient.Delete(ctx, opts.ResourceGroupName, opts.DiskName)
 	if err != nil {
 		return fmt.Errorf("failed to delete disk: %w", err)
 	}
 
-	log.Info("Disk removed", "disk", opt.DiskName)
+	opts.Logr.Info("Disk removed", "disk", opts.DiskName)
 	return nil
 }
 
-func removeBastionInstance(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) error {
+func removeBastionInstance(ctx context.Context, factory azureclient.Factory, opts BaseOptions) error {
 	vmClient, err := factory.VirtualMachine()
 	if err != nil {
 		return err
 	}
 
-	if err = vmClient.Delete(ctx, opt.ResourceGroupName, opt.BastionInstanceName, ptr.To(false)); err != nil {
+	if err = vmClient.Delete(ctx, opts.ResourceGroupName, opts.BastionInstanceName, ptr.To(false)); err != nil {
 		return fmt.Errorf("failed to terminate bastion instance: %w", err)
 	}
-	log.Info("Instance removed", "instance", opt.BastionInstanceName)
+	opts.Logr.Info("Instance removed", "instance", opts.BastionInstanceName)
 	return nil
 }
 
-func isInstanceDeleted(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (bool, error) {
-	instance, err := getBastionInstance(ctx, log, factory, opt)
+func isInstanceDeleted(ctx context.Context, factory azureclient.Factory, opts BaseOptions) (bool, error) {
+	instance, err := getBastionInstance(ctx, factory, opts)
 	if err != nil {
 		return false, err
 	}

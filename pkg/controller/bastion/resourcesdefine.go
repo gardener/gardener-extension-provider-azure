@@ -14,10 +14,10 @@ import (
 	"k8s.io/utils/ptr"
 )
 
-func nicDefine(opt *Options, publicIP *armnetwork.PublicIPAddress, subnet *armnetwork.Subnet) *armnetwork.Interface {
+func nicDefine(opts Options, publicIP *armnetwork.PublicIPAddress, subnet *armnetwork.Subnet) *armnetwork.Interface {
 	return &armnetwork.Interface{
-		Name:     &opt.NicName,
-		Location: &opt.Location,
+		Name:     &opts.NicName,
+		Location: &opts.Location,
 		Properties: &armnetwork.InterfacePropertiesFormat{
 			IPConfigurations: []*armnetwork.InterfaceIPConfiguration{
 				{
@@ -32,13 +32,13 @@ func nicDefine(opt *Options, publicIP *armnetwork.PublicIPAddress, subnet *armne
 				},
 			},
 		},
-		Tags: opt.Tags,
+		Tags: opts.Tags,
 	}
 }
 
-func publicIPAddressDefine(opt *Options) *armnetwork.PublicIPAddress {
+func publicIPAddressDefine(opt Options) *armnetwork.PublicIPAddress {
 	return &armnetwork.PublicIPAddress{
-		Name:     &opt.BastionPublicIPName,
+		Name:     &opt.PublicIPName,
 		Location: &opt.Location,
 		SKU: &armnetwork.PublicIPAddressSKU{
 			Name: to.Ptr(armnetwork.PublicIPAddressSKUNameStandard),
@@ -51,23 +51,23 @@ func publicIPAddressDefine(opt *Options) *armnetwork.PublicIPAddress {
 	}
 }
 
-func computeInstanceDefine(opt *Options, bastion *extensionsv1alpha1.Bastion, publickey string) armcompute.VirtualMachine {
+func computeInstanceDefine(opts Options, bastion *extensionsv1alpha1.Bastion, publickey string) armcompute.VirtualMachine {
 	return armcompute.VirtualMachine{
-		Location: &opt.Location,
+		Location: &opts.Location,
 		Properties: &armcompute.VirtualMachineProperties{
 			HardwareProfile: &armcompute.HardwareProfile{
-				VMSize: ptr.To(armcompute.VirtualMachineSizeTypes(opt.MachineType)),
+				VMSize: ptr.To(armcompute.VirtualMachineSizeTypes(opts.MachineType)),
 			},
 			StorageProfile: &armcompute.StorageProfile{
-				ImageReference: opt.ImageRef,
+				ImageReference: opts.ImageRef,
 				OSDisk: &armcompute.OSDisk{
 					CreateOption: to.Ptr(armcompute.DiskCreateOptionTypesFromImage),
 					DiskSizeGB:   to.Ptr(int32(32)),
-					Name:         &opt.DiskName,
+					Name:         &opts.DiskName,
 				},
 			},
 			OSProfile: &armcompute.OSProfile{
-				ComputerName:  &opt.BastionInstanceName,
+				ComputerName:  &opts.BastionInstanceName,
 				AdminUsername: to.Ptr("gardener"),
 				LinuxConfiguration: &armcompute.LinuxConfiguration{
 					DisablePasswordAuthentication: to.Ptr(true),
@@ -87,7 +87,7 @@ func computeInstanceDefine(opt *Options, bastion *extensionsv1alpha1.Bastion, pu
 			NetworkProfile: &armcompute.NetworkProfile{
 				NetworkInterfaces: []*armcompute.NetworkInterfaceReference{
 					{
-						ID: &opt.NicID,
+						ID: &opts.NicID,
 						Properties: &armcompute.NetworkInterfaceReferenceProperties{
 							Primary: to.Ptr(true),
 						},
@@ -95,7 +95,7 @@ func computeInstanceDefine(opt *Options, bastion *extensionsv1alpha1.Bastion, pu
 				},
 			},
 		},
-		Tags: opt.Tags,
+		Tags: opts.Tags,
 	}
 }
 
@@ -116,12 +116,12 @@ func nsgIngressAllowSSH(ruleName string, destinationAddress string, sourceAddres
 	}
 }
 
-func nsgEgressDenyAllIPv4(opt *Options) *armnetwork.SecurityRule {
+func nsgEgressDenyAllIPv4(opts Options) *armnetwork.SecurityRule {
 	return &armnetwork.SecurityRule{
-		Name: to.Ptr(NSGEgressDenyAllResourceName(opt.BastionInstanceName)),
+		Name: to.Ptr(NSGEgressDenyAllResourceName(opts.BastionInstanceName)),
 		Properties: &armnetwork.SecurityRulePropertiesFormat{
 			Protocol:                 to.Ptr(armnetwork.SecurityRuleProtocolAsterisk),
-			SourceAddressPrefix:      &opt.PrivateIPAddressV4,
+			SourceAddressPrefix:      &opts.PrivateIPAddressV4,
 			SourcePortRange:          to.Ptr("*"),
 			DestinationAddressPrefix: to.Ptr("*"),
 			DestinationPortRange:     to.Ptr("*"),
@@ -133,14 +133,14 @@ func nsgEgressDenyAllIPv4(opt *Options) *armnetwork.SecurityRule {
 	}
 }
 
-func nsgEgressAllowSSHToWorkerIPv4(opt *Options) *armnetwork.SecurityRule {
+func nsgEgressAllowSSHToWorkerIPv4(opts Options) *armnetwork.SecurityRule {
 	return &armnetwork.SecurityRule{
-		Name: to.Ptr(NSGEgressAllowOnlyResourceName(opt.BastionInstanceName)),
+		Name: to.Ptr(NSGEgressAllowOnlyResourceName(opts.BastionInstanceName)),
 		Properties: &armnetwork.SecurityRulePropertiesFormat{
 			Protocol:                   to.Ptr(armnetwork.SecurityRuleProtocolTCP),
-			SourceAddressPrefix:        &opt.PrivateIPAddressV4,
+			SourceAddressPrefix:        &opts.PrivateIPAddressV4,
 			SourcePortRange:            to.Ptr("*"),
-			DestinationAddressPrefixes: to.SliceOfPtrs(opt.WorkersCIDR...),
+			DestinationAddressPrefixes: to.SliceOfPtrs(opts.WorkersCIDR...),
 			DestinationPortRange:       to.Ptr(SSHPort),
 			Access:                     to.Ptr(armnetwork.SecurityRuleAccessAllow),
 			Direction:                  to.Ptr(armnetwork.SecurityRuleDirectionOutbound),
