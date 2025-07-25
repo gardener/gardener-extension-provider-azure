@@ -15,8 +15,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/dns/armdns"
 	"k8s.io/utils/ptr"
-
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
 var _ DNSRecordSet = &DNSRecordSetClient{}
@@ -27,7 +25,7 @@ type DNSRecordSetClient struct {
 }
 
 // NewDnsRecordSetClient creates a new DnsRecordSetClient
-func NewDnsRecordSetClient(auth *internal.ClientAuth, tc azcore.TokenCredential, opts *policy.ClientOptions) (*DNSRecordSetClient, error) {
+func NewDnsRecordSetClient(auth *ClientAuth, tc azcore.TokenCredential, opts *policy.ClientOptions) (*DNSRecordSetClient, error) {
 	client, err := armdns.NewRecordSetsClient(auth.SubscriptionID, tc, opts)
 	return &DNSRecordSetClient{client}, err
 }

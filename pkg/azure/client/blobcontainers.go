@@ -11,8 +11,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage"
 	"k8s.io/utils/ptr"
-
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
 var _ BlobContainers = &BlobContainersClient{}
@@ -23,7 +21,7 @@ type BlobContainersClient struct {
 }
 
 // NewBlobContainersClient creates a blob container client. Returns the client and the error.
-func NewBlobContainersClient(auth *internal.ClientAuth, tc azcore.TokenCredential, opts *policy.ClientOptions) (*BlobContainersClient, error) {
+func NewBlobContainersClient(auth *ClientAuth, tc azcore.TokenCredential, opts *policy.ClientOptions) (*BlobContainersClient, error) {
 	client, err := armstorage.NewBlobContainersClient(auth.SubscriptionID, tc, opts)
 	return &BlobContainersClient{client: client}, err
 }

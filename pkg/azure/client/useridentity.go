@@ -10,8 +10,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi"
-
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
 var _ ManagedUserIdentity = &ManagedUserIdentityClient{}
@@ -22,7 +20,7 @@ type ManagedUserIdentityClient struct {
 }
 
 // NewManagedUserIdentityClient creates a new ManagedUserIdentityClient
-func NewManagedUserIdentityClient(auth *internal.ClientAuth, tc azcore.TokenCredential, opts *policy.ClientOptions) (*ManagedUserIdentityClient, error) {
+func NewManagedUserIdentityClient(auth *ClientAuth, tc azcore.TokenCredential, opts *policy.ClientOptions) (*ManagedUserIdentityClient, error) {
 	client, err := armmsi.NewUserAssignedIdentitiesClient(auth.SubscriptionID, tc, opts)
 	return &ManagedUserIdentityClient{client}, err
 }

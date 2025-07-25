@@ -11,8 +11,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage"
 	"k8s.io/utils/ptr"
-
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
 var _ StorageAccount = &StorageAccountClient{}
@@ -23,7 +21,7 @@ type StorageAccountClient struct {
 }
 
 // NewStorageAccountClient creates a new StorageAccountClient
-func NewStorageAccountClient(auth *internal.ClientAuth, tc azcore.TokenCredential, opts *policy.ClientOptions) (*StorageAccountClient, error) {
+func NewStorageAccountClient(auth *ClientAuth, tc azcore.TokenCredential, opts *policy.ClientOptions) (*StorageAccountClient, error) {
 	client, err := armstorage.NewAccountsClient(auth.SubscriptionID, tc, opts)
 	return &StorageAccountClient{client}, err
 }

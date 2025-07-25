@@ -58,10 +58,7 @@ import (
 )
 
 const (
-	CountDomain                = 1
-	reconcilerUseTF     string = "tf"
-	reconcilerMigrateTF string = "migrate"
-	reconcilerUseFlow   string = "flow"
+	CountDomain = 1
 )
 
 var (
@@ -75,7 +72,6 @@ var (
 	subscriptionId = flag.String("subscription-id", "", "Azure subscription ID")
 	tenantId       = flag.String("tenant-id", "", "Azure tenant ID")
 	region         = flag.String("region", "", "Azure region")
-	reconciler     = flag.String("reconciler", reconcilerUseTF, "Set annotation to use flow for reconciliation")
 
 	testId = string(uuid.NewUUID())
 )
@@ -666,29 +662,6 @@ func runTest(
 		return err
 	}
 
-	if *reconciler == reconcilerMigrateTF {
-		By("verifying terraform migration")
-		infraCopy := infra.DeepCopy()
-		metav1.SetMetaDataAnnotation(&infra.ObjectMeta, "gardener.cloud/operation", "reconcile")
-		metav1.SetMetaDataAnnotation(&infra.ObjectMeta, azure.AnnotationKeyUseFlow, "true")
-		Expect(c.Patch(ctx, infra, client.MergeFrom(infraCopy))).To(Succeed())
-
-		By("wait until infrastructure is reconciled")
-		if err := extensions.WaitUntilExtensionObjectReady(
-			ctx,
-			c,
-			log,
-			infra,
-			"Infrastructure",
-			10*time.Second,
-			30*time.Second,
-			16*time.Minute,
-			nil,
-		); err != nil {
-			return err
-		}
-	}
-
 	By("decode infrastructure status")
 	if err := c.Get(ctx, client.ObjectKey{Namespace: infra.Namespace, Name: infra.Name}, infra); err != nil {
 		return err
@@ -847,10 +820,6 @@ func newInfrastructure(namespace string, providerConfig *azurev1alpha1.Infrastru
 		},
 	}
 
-	if *reconciler == reconcilerUseFlow {
-		log.Info("creating infrastructure with flow annotation")
-		metav1.SetMetaDataAnnotation(&infra.ObjectMeta, azure.AnnotationKeyUseFlow, "true")
-	}
 	return infra, nil
 }
 

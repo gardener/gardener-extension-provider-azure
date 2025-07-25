@@ -10,8 +10,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
-
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
 var _ NetworkInterface = &NetworkInterfaceClient{}
@@ -22,7 +20,7 @@ type NetworkInterfaceClient struct {
 }
 
 // NewNetworkInterfaceClient creates a new NetworkInterfaceClient
-func NewNetworkInterfaceClient(auth internal.ClientAuth, tc azcore.TokenCredential, opts *arm.ClientOptions) (*NetworkInterfaceClient, error) {
+func NewNetworkInterfaceClient(auth ClientAuth, tc azcore.TokenCredential, opts *arm.ClientOptions) (*NetworkInterfaceClient, error) {
 	client, err := armnetwork.NewInterfacesClient(auth.SubscriptionID, tc, opts)
 	return &NetworkInterfaceClient{client}, err
 }

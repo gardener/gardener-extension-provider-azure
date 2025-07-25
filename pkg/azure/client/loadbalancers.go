@@ -10,8 +10,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
-
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
 // LoadBalancersClient implements the interface for the LoadBalancers client.
@@ -20,7 +18,7 @@ type LoadBalancersClient struct {
 }
 
 // NewLoadBalancersClient creates a new client for the LoadBalancers API.
-func NewLoadBalancersClient(auth internal.ClientAuth, tc azcore.TokenCredential, opts *arm.ClientOptions) (*LoadBalancersClient, error) {
+func NewLoadBalancersClient(auth ClientAuth, tc azcore.TokenCredential, opts *arm.ClientOptions) (*LoadBalancersClient, error) {
 	client, err := armnetwork.NewLoadBalancersClient(auth.SubscriptionID, tc, opts)
 	return &LoadBalancersClient{client}, err
 }

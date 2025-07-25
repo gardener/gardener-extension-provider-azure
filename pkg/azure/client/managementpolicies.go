@@ -9,7 +9,6 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
 var _ ManagementPolicies = &ManagementPoliciesClient{}
@@ -21,7 +20,7 @@ type ManagementPoliciesClient struct {
 
 // NewManagementPoliciesClient creates a management policy client. This client is used to
 // manage lifecycle policies on storage accounts. Returns the client and the error.
-func NewManagementPoliciesClient(auth *internal.ClientAuth, tc azcore.TokenCredential, opts *policy.ClientOptions) (*ManagementPoliciesClient, error) {
+func NewManagementPoliciesClient(auth *ClientAuth, tc azcore.TokenCredential, opts *policy.ClientOptions) (*ManagementPoliciesClient, error) {
 	client, err := armstorage.NewManagementPoliciesClient(auth.SubscriptionID, tc, opts)
 	return &ManagementPoliciesClient{client}, err
 }

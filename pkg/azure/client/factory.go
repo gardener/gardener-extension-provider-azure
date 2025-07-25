@@ -12,8 +12,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
 // AzureFactoryOption represents an option for the AzureFactory constructor.
@@ -28,7 +26,7 @@ func WithCloudConfiguration(cloudConfiguration cloud.Configuration) AzureFactory
 
 // AzureFactory is an implementation of Factory to produce clients for various Azure services.
 type azureFactory struct {
-	auth            *internal.ClientAuth
+	auth            *ClientAuth
 	tokenCredential azcore.TokenCredential
 	clientOpts      *policy.ClientOptions
 }
@@ -41,7 +39,7 @@ func NewAzureClientFactoryFromSecret(
 	isDNSSecret bool,
 	options ...AzureFactoryOption,
 ) (Factory, error) {
-	auth, secret, err := internal.GetClientAuthData(ctx, client, secretRef, isDNSSecret)
+	auth, secret, err := GetClientAuthData(ctx, client, secretRef, isDNSSecret)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +55,7 @@ func NewAzureClientFactoryFromSecret(
 }
 
 // NewAzureClientFactory constructs a new factory using the provided Credentials and applying the provided options.
-func NewAzureClientFactory(authCredentials *internal.ClientAuth, options ...AzureFactoryOption) (Factory, error) {
+func NewAzureClientFactory(authCredentials *ClientAuth, options ...AzureFactoryOption) (Factory, error) {
 	// prepare tokenCredential for more convenient access later on
 	cred, err := authCredentials.GetAzClientCredentials()
 	if err != nil {

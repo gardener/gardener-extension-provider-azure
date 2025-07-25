@@ -19,7 +19,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azuretypes "github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
+	infrastructurecontroller "github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure"
 )
 
 type layoutMutator struct {
@@ -171,7 +171,7 @@ func addMigratedZoneAnnotationDuringRestore(infra *extensionsv1alpha1.Infrastruc
 		return nil
 	}
 
-	infraState := &infrastructure.InfrastructureState{}
+	infraState := &infrastructurecontroller.TerraformInfrastructureState{}
 	if err := json.Unmarshal(infra.Status.State.Raw, infraState); err != nil {
 		return err
 	}

@@ -38,7 +38,6 @@ func AddToManager(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 	handler, err := extensionswebhook.NewBuilder(mgr, logger).
 		WithMutator(NewInfraMutator([]extensionswebhook.Mutator{
 			newLayoutMutator(logger),
-			newFlowMutator(mgr, logger),
 		}), types...).
 		Build()
 	if err != nil {

@@ -10,8 +10,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
-
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
 var _ ResourceGroup = &ResourceGroupClient{}
@@ -22,7 +20,7 @@ type ResourceGroupClient struct {
 }
 
 // NewResourceGroupsClient creates a new ResourceGroupClient
-func NewResourceGroupsClient(auth *internal.ClientAuth, tc azcore.TokenCredential, opts *arm.ClientOptions) (*ResourceGroupClient, error) {
+func NewResourceGroupsClient(auth *ClientAuth, tc azcore.TokenCredential, opts *arm.ClientOptions) (*ResourceGroupClient, error) {
 	client, err := armresources.NewResourceGroupsClient(auth.SubscriptionID, tc, opts)
 	return &ResourceGroupClient{client}, err
 }

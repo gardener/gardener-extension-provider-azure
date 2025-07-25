@@ -46,8 +46,7 @@ const (
 	CSILivenessProbeImageName = "csi-liveness-probe"
 	// MachineControllerManagerProviderAzureImageName is the name of the MachineController Azure image.
 	MachineControllerManagerProviderAzureImageName = "machine-controller-manager-provider-azure"
-	// TerraformerImageName is the name of the Terraformer image.
-	TerraformerImageName = "terraformer"
+
 	// RemedyControllerImageName is the name of the remedy-controller image.
 	RemedyControllerImageName = "remedy-controller-azure"
 
@@ -142,15 +141,6 @@ const (
 	// that hold service principal information to a corresponding AD tenant.
 	ExtensionPurposeServicePrincipalSecret = "tenant-service-principal-secret"
 
-	// GlobalAnnotationKeyUseFlow is the annotation key used to enable reconciliation with flow.
-	GlobalAnnotationKeyUseFlow = "provider.extensions.gardener.cloud/use-flow"
-	// AnnotationKeyUseFlow is the annotation key used to enable reconciliation with flow.
-	AnnotationKeyUseFlow = "azure.provider.extensions.gardener.cloud/use-flow"
-	// SeedAnnotationKeyUseFlow is the label for seeds to enable flow reconciliation for all of its shoots if value is `true`
-	// or for new shoots only with value `new`
-	SeedAnnotationKeyUseFlow = AnnotationKeyUseFlow
-	// SeedAnnotationUseFlowValueNew is the value to restrict flow reconciliation to new shoot clusters
-	SeedAnnotationUseFlowValueNew = "new"
 	// AnnotationEnableVolumeAttributesClass is the annotation to use on shoots to enable VolumeAttributesClasses
 	AnnotationEnableVolumeAttributesClass = "azure.provider.extensions.gardener.cloud/enable-volume-attributes-class"
 
@@ -178,8 +168,7 @@ const (
 
 // UsernamePrefix is a constant for the username prefix of components deployed by Azure.
 var (
-	UsernamePrefix       = extensionsv1alpha1.SchemeGroupVersion.Group + ":" + Name + ":"
-	ValidFlowAnnotations = []string{AnnotationKeyUseFlow, GlobalAnnotationKeyUseFlow}
+	UsernamePrefix = extensionsv1alpha1.SchemeGroupVersion.Group + ":" + Name + ":"
 
 	// ConfidentialVMFamilyPrefixes is a list of known families that are used for confidential VMs.
 	ConfidentialVMFamilyPrefixes = []string{
