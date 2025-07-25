@@ -16,7 +16,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/bastion"
-	"github.com/go-logr/logr"
 	"golang.org/x/crypto/ssh"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -40,35 +39,35 @@ func newActuator(mgr manager.Manager) bastion.Actuator {
 	}
 }
 
-func createBastionInstance(ctx context.Context, factory azureclient.Factory, opt *Options, parameters armcompute.VirtualMachine) (*armcompute.VirtualMachine, error) {
+func createBastionInstance(ctx context.Context, factory azureclient.Factory, opts Options, parameters armcompute.VirtualMachine) (*armcompute.VirtualMachine, error) {
 	vmClient, err := factory.VirtualMachine()
 	if err != nil {
 		return nil, err
 	}
 
-	instance, err := vmClient.CreateOrUpdate(ctx, opt.ResourceGroupName, opt.BastionInstanceName, parameters)
+	instance, err := vmClient.CreateOrUpdate(ctx, opts.ResourceGroupName, opts.BastionInstanceName, parameters)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create VM instance %s: %w", opt.BastionInstanceName, err)
+		return nil, fmt.Errorf("unable to create VM instance %s: %w", opts.BastionInstanceName, err)
 	}
 	return instance, nil
 }
 
-func createOrUpdatePublicIP(ctx context.Context, factory azureclient.Factory, opt *Options, parameters *armnetwork.PublicIPAddress) (*armnetwork.PublicIPAddress, error) {
+func createOrUpdatePublicIP(ctx context.Context, factory azureclient.Factory, opts BaseOptions, parameters *armnetwork.PublicIPAddress) (*armnetwork.PublicIPAddress, error) {
 	publicClient, err := factory.PublicIP()
 	if err != nil {
 		return nil, err
 	}
 
-	ip, err := publicClient.CreateOrUpdate(ctx, opt.ResourceGroupName, opt.BastionPublicIPName, *parameters)
+	ip, err := publicClient.CreateOrUpdate(ctx, opts.ResourceGroupName, opts.PublicIPName, *parameters)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create or update Public IP address %s: %w", opt.BastionPublicIPName, err)
+		return nil, fmt.Errorf("unable to create or update Public IP address %s: %w", opts.PublicIPName, err)
 	}
 	return ip, nil
 }
 
-func createOrUpdateNetworkSecGroup(ctx context.Context, factory azureclient.Factory, opt *Options, parameters *armnetwork.SecurityGroup) error {
+func createOrUpdateNetworkSecGroup(ctx context.Context, factory azureclient.Factory, opts BaseOptions, parameters *armnetwork.SecurityGroup) error {
 	if parameters == nil || parameters.Properties.SecurityRules == nil {
-		return fmt.Errorf("network security group nor SecurityRules can't be nil, securityGroupName: %s", opt.SecurityGroupName)
+		return fmt.Errorf("network security group nor SecurityRules can't be nil, securityGroupName: %s", opts.SecurityGroupName)
 	}
 
 	nsgClient, err := factory.NetworkSecurityGroup()
@@ -76,23 +75,23 @@ func createOrUpdateNetworkSecGroup(ctx context.Context, factory azureclient.Fact
 		return err
 	}
 
-	_, err = nsgClient.CreateOrUpdate(ctx, opt.ResourceGroupName, opt.SecurityGroupName, *parameters)
+	_, err = nsgClient.CreateOrUpdate(ctx, opts.ResourceGroupName, opts.SecurityGroupName, *parameters)
 	if err != nil {
-		return fmt.Errorf("can't update Network Security Group %s: %w", opt.SecurityGroupName, err)
+		return fmt.Errorf("can't update Network Security Group %s: %w", opts.SecurityGroupName, err)
 	}
 	return nil
 }
 
-func getBastionInstance(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*armcompute.VirtualMachine, error) {
+func getBastionInstance(ctx context.Context, factory azureclient.Factory, opts BaseOptions) (*armcompute.VirtualMachine, error) {
 	vmClient, err := factory.VirtualMachine()
 	if err != nil {
 		return nil, err
 	}
 
-	instance, err := vmClient.Get(ctx, opt.ResourceGroupName, opt.BastionInstanceName, to.Ptr(armcompute.InstanceViewTypesInstanceView))
+	instance, err := vmClient.Get(ctx, opts.ResourceGroupName, opts.BastionInstanceName, to.Ptr(armcompute.InstanceViewTypesInstanceView))
 	if err != nil {
 		if azureclient.IsAzureAPINotFoundError(err) {
-			log.Info("Instance not found,", "instance_name", opt.BastionInstanceName)
+			opts.Logr.Info("Instance not found,", "instance_name", opts.BastionInstanceName)
 			return nil, nil
 		}
 		return nil, err
@@ -100,16 +99,16 @@ func getBastionInstance(ctx context.Context, log logr.Logger, factory azureclien
 	return instance, nil
 }
 
-func getNic(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*armnetwork.Interface, error) {
+func getNic(ctx context.Context, factory azureclient.Factory, opts Options) (*armnetwork.Interface, error) {
 	nicClient, err := factory.NetworkInterface()
 	if err != nil {
 		return nil, err
 	}
 
-	nic, err := nicClient.Get(ctx, opt.ResourceGroupName, opt.NicName)
+	nic, err := nicClient.Get(ctx, opts.ResourceGroupName, opts.NicName)
 	if err != nil {
 		if azureclient.IsAzureAPINotFoundError(err) {
-			log.Info("Nic not found,", "nic_name", opt.NicName)
+			opts.Logr.Info("Nic not found,", "nic_name", opts.NicName)
 			return nil, nil
 		}
 		return nil, err
@@ -118,16 +117,16 @@ func getNic(ctx context.Context, log logr.Logger, factory azureclient.Factory, o
 	return nic, nil
 }
 
-func getNetworkSecurityGroup(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*armnetwork.SecurityGroup, error) {
+func getNetworkSecurityGroup(ctx context.Context, factory azureclient.Factory, opts BaseOptions) (*armnetwork.SecurityGroup, error) {
 	nsgClient, err := factory.NetworkSecurityGroup()
 	if err != nil {
 		return nil, err
 	}
 
-	nsgResp, err := nsgClient.Get(ctx, opt.ResourceGroupName, opt.SecurityGroupName)
+	nsgResp, err := nsgClient.Get(ctx, opts.ResourceGroupName, opts.SecurityGroupName)
 	if err != nil {
 		if azureclient.IsAzureAPINotFoundError(err) {
-			log.Error(err, "Network Security Group not found, test environment?", "nsg_name", opt.SecurityGroupName)
+			opts.Logr.Error(err, "Network Security Group not found, test environment?", "nsg_name", opts.SecurityGroupName)
 			return nil, err
 		}
 		return nil, err
@@ -156,16 +155,16 @@ func getWorkersCIDR(cluster *controller.Cluster) ([]string, error) {
 	return nil, fmt.Errorf("InfrastructureConfig.Networks.Workers is nil")
 }
 
-func getPublicIP(ctx context.Context, log logr.Logger, factory azureclient.Factory, opt *Options) (*armnetwork.PublicIPAddress, error) {
+func getPublicIP(ctx context.Context, factory azureclient.Factory, opts BaseOptions) (*armnetwork.PublicIPAddress, error) {
 	ipClient, err := factory.PublicIP()
 	if err != nil {
 		return nil, err
 	}
 
-	ip, err := ipClient.Get(ctx, opt.ResourceGroupName, opt.BastionPublicIPName, nil)
+	ip, err := ipClient.Get(ctx, opts.ResourceGroupName, opts.PublicIPName, nil)
 	if err != nil {
 		if azureclient.IsAzureAPINotFoundError(err) {
-			log.Info("public IP not found,", "publicIP_name", opt.BastionPublicIPName)
+			opts.Logr.Info("public IP not found,", "publicIP_name", opts.PublicIPName)
 			return nil, nil
 		}
 		return nil, err
@@ -173,7 +172,7 @@ func getPublicIP(ctx context.Context, log logr.Logger, factory azureclient.Facto
 	return ip, nil
 }
 
-func getSubnet(ctx context.Context, log logr.Logger, factory azureclient.Factory, infrastructureStatus *azure.InfrastructureStatus, opt *Options) (*armnetwork.Subnet, error) {
+func getSubnet(ctx context.Context, factory azureclient.Factory, infrastructureStatus *azure.InfrastructureStatus, opts Options) (*armnetwork.Subnet, error) {
 	var sg string
 	subnetClient, err := factory.Subnet()
 	if err != nil {
@@ -183,7 +182,7 @@ func getSubnet(ctx context.Context, log logr.Logger, factory azureclient.Factory
 	if infrastructureStatus.Networks.VNet.ResourceGroup != nil {
 		sg = *infrastructureStatus.Networks.VNet.ResourceGroup
 	} else {
-		sg = opt.ResourceGroupName
+		sg = opts.ResourceGroupName
 	}
 
 	subnet, err := subnetClient.Get(ctx, sg, infrastructureStatus.Networks.VNet.Name, infrastructureStatus.Networks.Subnets[0].Name, nil)
@@ -192,7 +191,7 @@ func getSubnet(ctx context.Context, log logr.Logger, factory azureclient.Factory
 	}
 
 	if subnet == nil {
-		log.Info("subnet not found,", "subnet_name", infrastructureStatus.Networks.Subnets[0].Name)
+		opts.Logr.Info("subnet not found,", "subnet_name", infrastructureStatus.Networks.Subnets[0].Name)
 		return nil, nil
 	}
 

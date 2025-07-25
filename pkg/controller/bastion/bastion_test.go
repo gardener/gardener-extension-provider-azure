@@ -24,6 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 )
@@ -49,6 +50,7 @@ var _ = Describe("Bastion test", func() {
 	var (
 		cluster *extensions.Cluster
 		bastion *extensionsv1alpha1.Bastion
+		log     = logf.Log.WithName("bastion-test")
 
 		ctrl                 *gomock.Controller
 		maxLengthForResource int
@@ -69,20 +71,20 @@ var _ = Describe("Bastion test", func() {
 
 	Describe("Testing prepared set of rules based on provided CIDRs", func() {
 		It("should return 4 rules", func() {
-			opt := &Options{
+			opts := Options{
 				PrivateIPAddressV4: "1.1.1.1",
 				PrivateIPAddressV6: "::2.2.2.2",
 				CIDRs:              []string{"213.69.151.131/32", "2001:db8:3333:4444:5555:6666:7777:8888/128"},
 			}
-			rules := prepareNSGRules(opt)
+			rules := prepareNSGRules(opts)
 			Expect(rules).Should(HaveLen(4))
 		})
 		It("should return 2 rules without ipv6", func() {
-			opt := &Options{
+			opts := Options{
 				PrivateIPAddressV4: "1.1.1.1",
 				CIDRs:              []string{"213.69.151.131/32", "2001:db8:3333:4444:5555:6666:7777:8888/128"},
 			}
-			rules := prepareNSGRules(opt)
+			rules := prepareNSGRules(opts)
 			Expect(rules).Should(HaveLen(3))
 		})
 	})
@@ -149,11 +151,11 @@ var _ = Describe("Bastion test", func() {
 
 	Describe("Determine options", func() {
 		It("should return options", func() {
-			options, err := DetermineOptions(bastion, cluster, "cluster1")
+			options, err := NewOpts(bastion, cluster, "cluster1", log)
 			Expect(err).To(Not(HaveOccurred()))
 
 			Expect(options.BastionInstanceName).To(Equal("cluster1-bastionName1-bastion-1cdc8"))
-			Expect(options.BastionPublicIPName).To(Equal("cluster1-bastionName1-bastion-1cdc8-public-ip"))
+			Expect(options.PublicIPName).To(Equal("cluster1-bastionName1-bastion-1cdc8-public-ip"))
 			Expect(options.SecretReference).To(Equal(corev1.SecretReference{
 				Namespace: "cluster1",
 				Name:      "cloudprovider",
