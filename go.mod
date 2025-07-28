@@ -3,12 +3,6 @@ module github.com/gardener/gardener-extension-provider-azure
 // minimum version of Go required
 go 1.24.0
 
-exclude (
-	cloud.google.com/go/compute/metadata v0.3.0
-	cloud.google.com/go/compute/metadata v0.5.2
-	cloud.google.com/go/compute/metadata v0.6.0
-)
-
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.18.0
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.9.0
@@ -56,6 +50,7 @@ require (
 
 require (
 	cel.dev/expr v0.23.1 // indirect
+	cloud.google.com/go/compute/metadata v0.5.2 // indirect
 	dario.cat/mergo v1.0.1 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.11.1 // indirect
 	github.com/BurntSushi/toml v1.5.0 // indirect
