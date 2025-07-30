@@ -78,8 +78,8 @@ spec:
   kubernetes:
     versions:
     - version: 1.32.0
-    - version: 1.23.8
-      expirationDate: "2022-10-31T23:59:59Z"
+    - version: 1.31.1
+      expirationDate: "2025-10-28T23:59:59Z"
   machineImages:
   - name: coreos
     versions:
