@@ -40,12 +40,10 @@ var _ = Describe("Actuator", func() {
 
 		gracefulDeletionTimeout      time.Duration
 		gracefulDeletionWaitInterval time.Duration
-		newControlPlane              = func(purpose *extensionsv1alpha1.Purpose) *extensionsv1alpha1.ControlPlane {
+		newControlPlane              = func() *extensionsv1alpha1.ControlPlane {
 			return &extensionsv1alpha1.ControlPlane{
 				ObjectMeta: metav1.ObjectMeta{Name: "control-plane", Namespace: namespace},
-				Spec: extensionsv1alpha1.ControlPlaneSpec{
-					Purpose: purpose,
-				},
+				Spec:       extensionsv1alpha1.ControlPlaneSpec{},
 			}
 		}
 		cluster = &extensionscontroller.Cluster{
@@ -96,7 +94,7 @@ var _ = Describe("Actuator", func() {
 
 	Describe("#Delete", func() {
 		It("should successfully delete controlplane if there are no remedy controller resources", func() {
-			cp := newControlPlane(nil)
+			cp := newControlPlane()
 			time := metav1.Now()
 			cp.DeletionTimestamp = &time
 			c.EXPECT().List(gomock.Any(), &azurev1alpha1.PublicIPAddressList{}, client.InNamespace(namespace)).
@@ -120,7 +118,7 @@ var _ = Describe("Actuator", func() {
 		})
 
 		It("should return RequeueAfterError if there are publicipaddresses remaining and timeout is not yet reached", func() {
-			cp := newControlPlane(nil)
+			cp := newControlPlane()
 			time := metav1.Now()
 			cp.DeletionTimestamp = &time
 
@@ -139,7 +137,7 @@ var _ = Describe("Actuator", func() {
 		})
 
 		It("should forcefully remove remedy controller resources after grace period timeout has been reached", func() {
-			cp := newControlPlane(nil)
+			cp := newControlPlane()
 			time := metav1.NewTime(time.Now().Add(-2 * gracefulDeletionTimeout))
 			cp.DeletionTimestamp = &time
 
@@ -175,7 +173,7 @@ var _ = Describe("Actuator", func() {
 
 	Describe("#Migrate", func() {
 		It("should remove finalizers from remedy controller resources and then delete them", func() {
-			cp := newControlPlane(nil)
+			cp := newControlPlane()
 			a.EXPECT().Migrate(ctx, logger, cp, cluster).Return(nil)
 
 			pubip := newPubip(nil)
@@ -199,15 +197,6 @@ var _ = Describe("Actuator", func() {
 				})
 			test.EXPECTPatchWithOptimisticLock(ctx, c, vm, vmWithFinalizers, types.MergePatchType)
 			c.EXPECT().DeleteAllOf(ctx, &azurev1alpha1.VirtualMachine{}, client.InNamespace(namespace)).Return(nil)
-
-			err := actuator.Migrate(ctx, logger, cp, cluster)
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		It("should neither remove finalizers from remaining remedy controller resources nor delete them for controlplane with purpose exposure", func() {
-			exposure := extensionsv1alpha1.Exposure
-			cp := newControlPlane(&exposure)
-			a.EXPECT().Migrate(ctx, logger, cp, cluster).Return(nil)
 
 			err := actuator.Migrate(ctx, logger, cp, cluster)
 			Expect(err).NotTo(HaveOccurred())
