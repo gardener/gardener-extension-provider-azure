@@ -570,11 +570,10 @@ func getCCMChartValues(
 	}
 
 	values := map[string]interface{}{
-		"enabled":           true,
-		"replicas":          extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
-		"clusterName":       cp.Namespace,
-		"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
-		"podNetwork":        strings.Join(extensionscontroller.GetPodNetwork(cluster), ","),
+		"enabled":     true,
+		"replicas":    extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
+		"clusterName": cp.Namespace,
+		"podNetwork":  strings.Join(extensionscontroller.GetPodNetwork(cluster), ","),
 		"podAnnotations": map[string]interface{}{
 			"checksum/secret-" + v1beta1constants.SecretNameCloudProvider: checksums[v1beta1constants.SecretNameCloudProvider],
 			"checksum/secret-" + azure.CloudProviderConfigName:            checksums[azure.CloudProviderConfigName],
@@ -713,8 +712,7 @@ func getControlPlaneShootChartValues(
 			"vpaEnabled": gardencorev1beta1helper.ShootWantsVerticalPodAutoscaler(cluster.Shoot),
 		},
 		azure.CSINodeName: map[string]interface{}{
-			"enabled":           true,
-			"kubernetesVersion": cluster.Shoot.Spec.Kubernetes.Version,
+			"enabled": true,
 			"podAnnotations": map[string]interface{}{
 				"checksum/configmap-" + azure.CloudProviderDiskConfigName: cloudProviderDiskConfigChecksum,
 			},
