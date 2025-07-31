@@ -17,6 +17,5 @@ spec:
       --client-id=${CLIENT_ID}
       --client-secret=${CLIENT_SECRET}
       --region=${REGION}
-      --reconciler=${RECONCILER}
 
   image: golang:1.24

@@ -13,8 +13,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/dns/armdns"
-
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
 var _ DNSZone = &DNSZoneClient{}
@@ -26,7 +24,7 @@ type DNSZoneClient struct {
 }
 
 // NewDnsZoneClient creates a new DnsZoneClient
-func NewDnsZoneClient(auth *internal.ClientAuth, tc azcore.TokenCredential, opts *policy.ClientOptions) (*DNSZoneClient, error) {
+func NewDnsZoneClient(auth *ClientAuth, tc azcore.TokenCredential, opts *policy.ClientOptions) (*DNSZoneClient, error) {
 	client, err := armdns.NewZonesClient(auth.SubscriptionID, tc, opts)
 	return &DNSZoneClient{client}, err
 }

@@ -11,8 +11,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
-
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
 var _ RouteTables = &RouteTablesClient{}
@@ -23,7 +21,7 @@ type RouteTablesClient struct {
 }
 
 // NewRouteTablesClient creates a new RouteTables client.
-func NewRouteTablesClient(auth internal.ClientAuth, tc azcore.TokenCredential, opts *arm.ClientOptions) (*RouteTablesClient, error) {
+func NewRouteTablesClient(auth ClientAuth, tc azcore.TokenCredential, opts *arm.ClientOptions) (*RouteTablesClient, error) {
 	client, err := armnetwork.NewRouteTablesClient(auth.SubscriptionID, tc, opts)
 	return &RouteTablesClient{client}, err
 }

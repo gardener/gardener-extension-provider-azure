@@ -19,6 +19,7 @@ import (
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -28,7 +29,6 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow/shared"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
 )
 
 // EnsureResourceGroup creates or updates the shoot's resource group.
@@ -828,7 +828,10 @@ func (fctx *FlowContext) MigrateAvailabilitySet(ctx context.Context) error {
 // GetInfrastructureStatus returns the infrastructure status.
 func (fctx *FlowContext) GetInfrastructureStatus(_ context.Context) (*v1alpha1.InfrastructureStatus, error) {
 	status := &v1alpha1.InfrastructureStatus{
-		TypeMeta: infrastructure.StatusTypeMeta,
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "InfrastructureStatus",
+			APIVersion: v1alpha1.SchemeGroupVersion.String(),
+		},
 		Networks: v1alpha1.NetworkStatus{
 			VNet: v1alpha1.VNetStatus{
 				Name: fctx.adapter.VirtualNetworkConfig().Name,

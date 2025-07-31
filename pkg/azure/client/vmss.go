@@ -10,8 +10,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
-
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
 var _ Vmss = &VmssClient{}
@@ -22,7 +20,7 @@ type VmssClient struct {
 }
 
 // NewVmssClient creates a new VmssClient
-func NewVmssClient(auth internal.ClientAuth, tc azcore.TokenCredential, opts *arm.ClientOptions) (Vmss, error) {
+func NewVmssClient(auth ClientAuth, tc azcore.TokenCredential, opts *arm.ClientOptions) (Vmss, error) {
 	client, err := armcompute.NewVirtualMachineScaleSetsClient(auth.SubscriptionID, tc, opts)
 	return &VmssClient{client}, err
 }

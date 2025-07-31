@@ -10,8 +10,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
-
-	"github.com/gardener/gardener-extension-provider-azure/pkg/internal"
 )
 
 var _ NetworkSecurityGroup = &NetworkSecurityGroupClient{}
@@ -22,7 +20,7 @@ type NetworkSecurityGroupClient struct {
 }
 
 // NewSecurityGroupClient creates a new SecurityGroupClient
-func NewSecurityGroupClient(auth internal.ClientAuth, tc azcore.TokenCredential, opts *arm.ClientOptions) (*NetworkSecurityGroupClient, error) {
+func NewSecurityGroupClient(auth ClientAuth, tc azcore.TokenCredential, opts *arm.ClientOptions) (*NetworkSecurityGroupClient, error) {
 	client, err := armnetwork.NewSecurityGroupsClient(auth.SubscriptionID, tc, opts)
 	return &NetworkSecurityGroupClient{client}, err
 }
