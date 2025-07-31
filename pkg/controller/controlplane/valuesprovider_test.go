@@ -116,7 +116,7 @@ var _ = Describe("ValuesProvider", func() {
 		cidr                    = "10.250.0.0/19"
 		cloudProviderConfigData = "foo"
 
-		k8sVersion = "1.28.2"
+		k8sVersion = "1.32.0"
 
 		enabledTrue    = map[string]interface{}{"enabled": true}
 		enabledFalse   = map[string]interface{}{"enabled": false}
@@ -308,10 +308,9 @@ var _ = Describe("ValuesProvider", func() {
 			}
 
 			ccmChartValues = utils.MergeMaps(enabledTrue, map[string]interface{}{
-				"replicas":          1,
-				"clusterName":       namespace,
-				"kubernetesVersion": k8sVersion,
-				"podNetwork":        cidr,
+				"replicas":    1,
+				"clusterName": namespace,
+				"podNetwork":  cidr,
 				"podAnnotations": map[string]interface{}{
 					"checksum/secret-cloudprovider":         "8bafb35ff1ac60275d62e1cbd495aceb511fb354f74a20f7d06ecb48b3a68432",
 					"checksum/secret-cloud-provider-config": "77627eb2343b9f2dc2fca3cce35f2f9eec55783aa5f7dac21c473019e5825de2",
@@ -372,7 +371,6 @@ var _ = Describe("ValuesProvider", func() {
 					"genericTokenKubeconfigSecretName": genericTokenKubeconfigSecretName,
 				},
 				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
-					"kubernetesVersion":   cluster.Shoot.Spec.Kubernetes.Version,
 					"useWorkloadIdentity": false,
 				}),
 				azure.CSIControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
@@ -408,7 +406,6 @@ var _ = Describe("ValuesProvider", func() {
 					"genericTokenKubeconfigSecretName": genericTokenKubeconfigSecretName,
 				},
 				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
-					"kubernetesVersion":   cluster.Shoot.Spec.Kubernetes.Version,
 					"useWorkloadIdentity": false,
 				}),
 				azure.CSIControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
@@ -447,7 +444,6 @@ var _ = Describe("ValuesProvider", func() {
 					"genericTokenKubeconfigSecretName": genericTokenKubeconfigSecretName,
 				},
 				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
-					"kubernetesVersion":   cluster.Shoot.Spec.Kubernetes.Version,
 					"useWorkloadIdentity": false,
 				}),
 				azure.CSIControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
@@ -516,7 +512,6 @@ var _ = Describe("ValuesProvider", func() {
 					"checksum/configmap-" + azure.CloudProviderDiskConfigName: checksums[azure.CloudProviderDiskConfigName],
 				},
 				"cloudProviderConfig": cloudProviderConfigData,
-				"kubernetesVersion":   "1.28.2",
 			})
 			cloudControllerManager = map[string]interface{}{
 				"enabled":    true,
