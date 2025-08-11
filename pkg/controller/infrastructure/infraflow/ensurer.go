@@ -29,6 +29,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow/shared"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/features"
 )
 
 // EnsureResourceGroup creates or updates the shoot's resource group.
@@ -757,7 +758,7 @@ func (fctx *FlowContext) MigrateAvailabilitySet(ctx context.Context) error {
 	}
 
 	// IF VMOs are not needed, or the migration is already done, return early.
-	if !helper.HasShootVmoMigrationAnnotation(fctx.cluster.Shoot.GetAnnotations()) {
+	if !helper.HasShootVmoMigrationAnnotation(fctx.cluster.Shoot.GetAnnotations()) && !features.ExtensionFeatureGate.Enabled(features.ForceAvailabilitySetMigration) {
 		return nil
 	}
 
