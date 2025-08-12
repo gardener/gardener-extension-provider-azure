@@ -227,6 +227,28 @@ func deleteBackupBucket(ctx context.Context, c client.Client, backupBucket *exte
 	Expect(client.IgnoreNotFound(c.Delete(ctx, backupBucket))).To(Succeed())
 }
 
+func waitForObservedGeneration(ctx context.Context, c client.Client, backupBucket *extensionsv1alpha1.BackupBucket) {
+	generation := backupBucket.Generation
+	Eventually(func() bool {
+		updated := &extensionsv1alpha1.BackupBucket{}
+		if err := c.Get(ctx, client.ObjectKey{Name: backupBucket.Name}, updated); err != nil {
+			return false
+		}
+		return updated.Status.ObservedGeneration == generation
+	}, 2*time.Minute, 2*time.Second).Should(BeTrue(), "BackupBucket's observedGeneration did not match generation")
+}
+
+func waitForRotationAnnotationRemoval(ctx context.Context, c client.Client, backupBucketName string) {
+	Eventually(func() bool {
+		bb := &extensionsv1alpha1.BackupBucket{}
+		if err := c.Get(ctx, client.ObjectKey{Name: backupBucketName}, bb); err != nil {
+			return false
+		}
+		_, exists := bb.Annotations[azure.StorageAccountKeyMustRotate]
+		return !exists
+	}, 2*time.Minute, 2*time.Second).Should(BeTrue(), "Rotation annotation was not removed")
+}
+
 func waitUntilBackupBucketReady(ctx context.Context, c client.Client, backupBucket *extensionsv1alpha1.BackupBucket) {
 	Expect(extensions.WaitUntilExtensionObjectReady(
 		ctx,
@@ -485,8 +507,11 @@ func verifyKeyRotation(ctx context.Context, c client.Client, azClientSet *azureC
 	err = c.Patch(ctx, backupBucket, backupBucketPatch)
 	Expect(err).NotTo(HaveOccurred(), "Failed to add key rotation annotation to backupBucket")
 
-	By("waiting for backupBucket reconciliation to be ready")
-	waitUntilBackupBucketReady(ctx, c, backupBucket)
+	By("waiting for observed generation to match backupBucket generation")
+	waitForObservedGeneration(ctx, c, backupBucket)
+
+	By("waiting for rotation annotation to be removed from the backupBucket")
+	waitForRotationAnnotationRemoval(ctx, c, backupBucket.Name)
 
 	By("ensuring keys are rotated")
 	responseAfterRotation, err := azClientSet.storageAccounts.ListKeys(ctx, resourceGroupName, storageAccountName, nil)
