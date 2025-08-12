@@ -22,6 +22,10 @@ const (
 	// NetworkLayoutZoneMigrationAnnotation is used when migrating from a single subnet network layout to a multiple subnet network layout to indicate the zone that the existing subnet should be assigned to.
 	NetworkLayoutZoneMigrationAnnotation = "migration.azure.provider.extensions.gardener.cloud/zone"
 
+	// DisableDefaultOutboundAccessAnnotation is used to disable the default outbound access for the shoot's subnet.
+	// Deprecated: This annotation is deprecated and will only used for testing until the deprecation by Azure.
+	DisableDefaultOutboundAccessAnnotation = "azure.provider.extensions.gardener.cloud/disable-default-outbound-access"
+
 	// CloudControllerManagerImageName is the name of the cloud-controller-manager image.
 	CloudControllerManagerImageName = "cloud-controller-manager"
 	// CloudNodeManagerImageName is the name of the cloud-node-manager image.

@@ -272,9 +272,10 @@ type NatGatewayConfig struct {
 // SubnetConfig is the specification for a subnet
 type SubnetConfig struct {
 	AzureResourceMetadata
-	cidr            string
-	serviceEndpoint []string
-	zone            *string
+	cidr                         string
+	serviceEndpoint              []string
+	zone                         *string
+	disableDefaultOutboundAccess bool
 }
 
 // ZoneConfig is the specification for a zone.
@@ -335,6 +336,11 @@ func (ia *InfrastructureAdapter) Zones() []ZoneConfig {
 	return ia.zoneConfigs
 }
 
+func (ia *InfrastructureAdapter) hasSubnetDefaultOutBoundAccessAnnotation() bool {
+	ok, _ := strconv.ParseBool(ia.infra.Annotations[consts.DisableDefaultOutboundAccessAnnotation])
+	return ok
+}
+
 func (ia *InfrastructureAdapter) zonesConfig() []ZoneConfig {
 	if len(ia.config.Networks.Zones) == 0 {
 		return ia.defaultZone()
@@ -353,9 +359,10 @@ func (ia *InfrastructureAdapter) zonesConfig() []ZoneConfig {
 					Parent:        ia.vnetConfig.Name,
 					Kind:          KindSubnet,
 				},
-				cidr:            configZone.CIDR,
-				serviceEndpoint: configZone.ServiceEndpoints,
-				zone:            &zoneString,
+				cidr:                         configZone.CIDR,
+				serviceEndpoint:              configZone.ServiceEndpoints,
+				zone:                         &zoneString,
+				disableDefaultOutboundAccess: ia.hasSubnetDefaultOutBoundAccessAnnotation(),
 			},
 			Migrated: isMigratedZone,
 		}
@@ -616,7 +623,8 @@ func (s *SubnetConfig) ToProvider(base *armnetwork.Subnet) *armnetwork.Subnet {
 	target := &armnetwork.Subnet{
 		Name: to.Ptr(s.Name),
 		Properties: &armnetwork.SubnetPropertiesFormat{
-			AddressPrefix: to.Ptr(s.cidr),
+			AddressPrefix:         to.Ptr(s.cidr),
+			DefaultOutboundAccess: to.Ptr(s.disableDefaultOutboundAccess),
 		},
 		Etag: nil,
 	}
@@ -629,7 +637,7 @@ func (s *SubnetConfig) ToProvider(base *armnetwork.Subnet) *armnetwork.Subnet {
 	// inherited from base
 	if base != nil {
 		target.ID = base.ID
-
+		target.Properties.DefaultOutboundAccess = base.Properties.DefaultOutboundAccess
 		// For now, use whatever is already existing in the remote object. We will later overwrite them with what we consider appropriate.
 		target.Properties.NatGateway = base.Properties.NatGateway
 		target.Properties.NetworkSecurityGroup = base.Properties.NetworkSecurityGroup

@@ -719,6 +719,12 @@ There is a way for users to disable the deployment of these additional LBs by us
 Disabling the system Load Balancers may affect the outbound of your shoot.
 Before disabling them, users are highly advised to have created at least one Load Balancer for **TCP and UDP** or forward outbound traffic via a different route.
 
+### Disabling default outbound access for the subnet
+
+Using the `azure.provider.extensions.gardener.cloud/disable-default-outbound-access="true"` annotation on the shoot, users can disable the default outbound traffic for the worker subnet. This can be used to ensure what the shoot is unaffected by the deprecation of the default outbound traffic for nodes [see the official announcement](https://azure.microsoft.com/en-us/updates?id=default-outbound-access-for-vms-in-azure-will-be-retired-transition-to-a-new-method-of-internet-access).
+
+This annotation is should only be used for testing and not production shoots. It will be removed in a future release shortly after the deprecation date by Azure.
+
 ### Support for VolumeAttributesClasses (Beta in k8s 1.31)
 
 To have the CSI-driver configured to support the necessary features for [VolumeAttributesClasses](https://kubernetes.io/docs/concepts/storage/volume-attributes-classes/) on Azure for shoots with a k8s-version greater than 1.31, use the `azure.provider.extensions.gardener.cloud/enable-volume-attributes-class` annotation on the shoot. Keep in mind to also enable the required feature flags and runtime-config on the common kubernetes controllers (as outlined in the link above) in the shoot-spec.
