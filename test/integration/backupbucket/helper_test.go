@@ -210,11 +210,6 @@ func createBackupBucket(ctx context.Context, c client.Client, backupBucket *exte
 	Expect(c.Create(ctx, backupBucket)).To(Succeed(), "Failed to create backupBucket: %s", backupBucket.Name)
 }
 
-func updateBackupBucket(ctx context.Context, c client.Client, backupBucket *extensionsv1alpha1.BackupBucket) {
-	log.Info("Updating backupBucket", "backupBucket", backupBucket)
-	Expect(c.Update(ctx, backupBucket)).To(Succeed(), "Failed to update backupBucket: %s", backupBucket.Name)
-}
-
 func fetchBackupBucket(ctx context.Context, c client.Client, name string) *extensionsv1alpha1.BackupBucket {
 	backupBucket := &extensionsv1alpha1.BackupBucket{}
 	err := c.Get(ctx, client.ObjectKey{Name: name}, backupBucket)
@@ -225,6 +220,41 @@ func fetchBackupBucket(ctx context.Context, c client.Client, name string) *exten
 func deleteBackupBucket(ctx context.Context, c client.Client, backupBucket *extensionsv1alpha1.BackupBucket) {
 	log.Info("Deleting backupBucket", "backupBucket", backupBucket)
 	Expect(client.IgnoreNotFound(c.Delete(ctx, backupBucket))).To(Succeed())
+}
+
+func waitForObservedGeneration(ctx context.Context, c client.Client, backupBucket *extensionsv1alpha1.BackupBucket) {
+	generation := backupBucket.Generation
+	Eventually(func() bool {
+		updated := &extensionsv1alpha1.BackupBucket{}
+		if err := c.Get(ctx, client.ObjectKey{Name: backupBucket.Name}, updated); err != nil {
+			return false
+		}
+		return updated.Status.ObservedGeneration == generation
+	}, 2*time.Minute, 2*time.Second).Should(BeTrue(), "BackupBucket's observedGeneration did not match generation")
+}
+
+func waitForRotationAnnotationRemoval(ctx context.Context, c client.Client, backupBucketName string) {
+	Eventually(func() bool {
+		bb := &extensionsv1alpha1.BackupBucket{}
+		if err := c.Get(ctx, client.ObjectKey{Name: backupBucketName}, bb); err != nil {
+			return false
+		}
+		_, exists := bb.Annotations[azure.StorageAccountKeyMustRotate]
+		return !exists
+	}, 2*time.Minute, 2*time.Second).Should(BeTrue(), "Rotation annotation was not removed")
+}
+
+func waitForImmutabilityPolicyRemoval(ctx context.Context, azClientSet *azureClientSet, resourceGroupName, storageAccountName, containerName string) {
+	Eventually(func() bool {
+		policy, err := azClientSet.blobContainers.GetImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, containerName, nil)
+		if err != nil {
+			if isNotFoundError(err) {
+				return true
+			}
+			return false
+		}
+		return policy.Etag == nil || *policy.Etag == ""
+	}, 2*time.Minute, 2*time.Second).Should(BeTrue(), "Immutability policy was not removed from blob container")
 }
 
 func waitUntilBackupBucketReady(ctx context.Context, c client.Client, backupBucket *extensionsv1alpha1.BackupBucket) {
@@ -376,17 +406,25 @@ func verifyContainerImmutability(ctx context.Context, c client.Client, azClientS
 	resourceGroupName, containerName := backupBucket.Name, backupBucket.Name
 
 	defer func() {
-		// delete immutability policy to ensure backupbucket can be deleted in cleanup
-		By("deleting immutability policy on blob container")
-		policy, err := azClientSet.blobContainers.GetImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, containerName, nil)
-		Expect(err).NotTo(HaveOccurred(), "Failed to fetch immutability policy")
-		_, err = azClientSet.blobContainers.DeleteImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, containerName, *policy.Etag, nil)
-		Expect(err).NotTo(HaveOccurred(), "Failed to delete immutability policy on blob container")
-
 		By("deleting immutability policy on backupBucket")
 		backupBucket = fetchBackupBucket(ctx, c, backupBucket.Name)
+		backupBucketPatch := client.MergeFrom(backupBucket.DeepCopy())
+		if backupBucket.Annotations == nil {
+			backupBucket.Annotations = make(map[string]string)
+		}
+		backupBucket.Annotations["gardener.cloud/operation"] = "reconcile"
 		backupBucket.Spec.ProviderConfig = nil
-		updateBackupBucket(ctx, c, backupBucket)
+		err := c.Patch(ctx, backupBucket, backupBucketPatch)
+		Expect(err).NotTo(HaveOccurred(), "failed to patch backupBucket to remove immutability policy")
+
+		By("waiting for observed generation to match backupBucket generation")
+		waitForObservedGeneration(ctx, c, backupBucket)
+
+		By("waiting for backupBucket to become ready")
+		waitUntilBackupBucketReady(ctx, c, backupBucket)
+
+		By("waiting for immutability policy to be removed")
+		waitForImmutabilityPolicyRemoval(ctx, azClientSet, resourceGroupName, storageAccountName, containerName)
 	}()
 
 	By("creating block blob client")
@@ -485,8 +523,11 @@ func verifyKeyRotation(ctx context.Context, c client.Client, azClientSet *azureC
 	err = c.Patch(ctx, backupBucket, backupBucketPatch)
 	Expect(err).NotTo(HaveOccurred(), "Failed to add key rotation annotation to backupBucket")
 
-	By("waiting for backupBucket reconciliation to be ready")
-	waitUntilBackupBucketReady(ctx, c, backupBucket)
+	By("waiting for observed generation to match backupBucket generation")
+	waitForObservedGeneration(ctx, c, backupBucket)
+
+	By("waiting for rotation annotation to be removed from the backupBucket")
+	waitForRotationAnnotationRemoval(ctx, c, backupBucket.Name)
 
 	By("ensuring keys are rotated")
 	responseAfterRotation, err := azClientSet.storageAccounts.ListKeys(ctx, resourceGroupName, storageAccountName, nil)
