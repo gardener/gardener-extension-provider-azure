@@ -62,20 +62,18 @@ func (a *actuator) Delete(
 	cp *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
 ) error {
-	if cp.Spec.Purpose == nil || *cp.Spec.Purpose == extensionsv1alpha1.Normal {
-		list := &azurev1alpha1.PublicIPAddressList{}
-		if err := a.client.List(ctx, list, client.InNamespace(cp.Namespace)); err != nil {
-			return err
-		}
-		if meta.LenList(list) != 0 {
-			if time.Since(cp.DeletionTimestamp.Time) <= a.gracefulDeletionTimeout {
-				log.Info("Some publicipaddresses still exist. Deletion will be retried ...")
-				return &reconcilerutils.RequeueAfterError{
-					RequeueAfter: a.gracefulDeletionWaitInterval,
-				}
-			} else {
-				log.Info("The timeout for waiting for publicipaddresses to be gracefully deleted has expired. They will be forcefully removed.")
+	list := &azurev1alpha1.PublicIPAddressList{}
+	if err := a.client.List(ctx, list, client.InNamespace(cp.Namespace)); err != nil {
+		return err
+	}
+	if meta.LenList(list) != 0 {
+		if time.Since(cp.DeletionTimestamp.Time) <= a.gracefulDeletionTimeout {
+			log.Info("Some publicipaddresses still exist. Deletion will be retried ...")
+			return &reconcilerutils.RequeueAfterError{
+				RequeueAfter: a.gracefulDeletionWaitInterval,
 			}
+		} else {
+			log.Info("The timeout for waiting for publicipaddresses to be gracefully deleted has expired. They will be forcefully removed.")
 		}
 	}
 
@@ -83,12 +81,8 @@ func (a *actuator) Delete(
 	if err := a.Actuator.Delete(ctx, log, cp, cluster); err != nil {
 		return err
 	}
-
-	if cp.Spec.Purpose == nil || *cp.Spec.Purpose == extensionsv1alpha1.Normal {
-		// Delete all remaining remedy controller resources
-		return a.forceDeleteRemedyControllerResources(ctx, log, cp)
-	}
-	return nil
+	// Delete all remaining remedy controller resources
+	return a.forceDeleteRemedyControllerResources(ctx, log, cp)
 }
 
 // ForceDelete forcefully deletes the controlplane.
@@ -102,12 +96,8 @@ func (a *actuator) ForceDelete(
 	if err := a.Actuator.Delete(ctx, log, cp, cluster); err != nil {
 		return err
 	}
-
-	if cp.Spec.Purpose == nil || *cp.Spec.Purpose == extensionsv1alpha1.Normal {
-		// Delete all remaining remedy controller resources
-		return a.forceDeleteRemedyControllerResources(ctx, log, cp)
-	}
-	return nil
+	// Delete all remaining remedy controller resources
+	return a.forceDeleteRemedyControllerResources(ctx, log, cp)
 }
 
 // Migrate reconciles the given controlplane and cluster, migrating the additional
@@ -124,11 +114,8 @@ func (a *actuator) Migrate(
 	if err := a.Actuator.Migrate(ctx, log, cp, cluster); err != nil {
 		return err
 	}
-	if cp.Spec.Purpose == nil || *cp.Spec.Purpose == extensionsv1alpha1.Normal {
-		// Delete all remaining remedy controller resources
-		return a.forceDeleteRemedyControllerResources(ctx, log, cp)
-	}
-	return nil
+	// Delete all remaining remedy controller resources
+	return a.forceDeleteRemedyControllerResources(ctx, log, cp)
 }
 
 func (a *actuator) forceDeleteRemedyControllerResources(ctx context.Context, log logr.Logger, cp *extensionsv1alpha1.ControlPlane) error {

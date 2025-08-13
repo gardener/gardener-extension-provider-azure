@@ -248,10 +248,7 @@ func waitForImmutabilityPolicyRemoval(ctx context.Context, azClientSet *azureCli
 	Eventually(func() bool {
 		policy, err := azClientSet.blobContainers.GetImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, containerName, nil)
 		if err != nil {
-			if isNotFoundError(err) {
-				return true
-			}
-			return false
+			return isNotFoundError(err)
 		}
 		return policy.Etag == nil || *policy.Etag == ""
 	}, 2*time.Minute, 2*time.Second).Should(BeTrue(), "Immutability policy was not removed from blob container")
