@@ -12,6 +12,9 @@ const (
 	// EnableImmutableBuckets controls whether the controller would react to immutable bucket configuration. Extra permissions from Azure are necessary for this feature to work.
 	// alpha: v1.52.0
 	EnableImmutableBuckets featuregate.Feature = "EnableImmutableBuckets"
+	// ForceAvailabilitySetMigration controls whether the controller will force the migration of existing availability sets to virtual machine scale sets.
+	// alpha: v1.54.0
+	ForceAvailabilitySetMigration featuregate.Feature = "ForceAvailabilitySetMigration"
 )
 
 // ExtensionFeatureGate is the feature gate for the extension controllers.
@@ -28,5 +31,8 @@ func RegisterExtensionFeatureGate() {
 	}))
 	runtime.Must(ExtensionFeatureGate.Add(map[featuregate.Feature]featuregate.FeatureSpec{
 		EnableImmutableBuckets: {Default: false, PreRelease: featuregate.Alpha},
+	}))
+	runtime.Must(ExtensionFeatureGate.Add(map[featuregate.Feature]featuregate.FeatureSpec{
+		ForceAvailabilitySetMigration: {Default: false, PreRelease: featuregate.Alpha},
 	}))
 }
