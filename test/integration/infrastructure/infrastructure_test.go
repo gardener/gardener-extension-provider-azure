@@ -1128,6 +1128,8 @@ func verifyNAT(az *azureClientSet, zone, timeout *int32, ngName string, ipNames 
 	Expect(err).ToNot(HaveOccurred())
 
 	natGateway := response.NatGateway
+	Expect(natGateway.Properties).To(Not(BeNil()))
+	Expect(natGateway.Properties.ProvisioningState).To(PointTo(Equal(armnetwork.ProvisioningStateSucceeded)))
 	Expect(natGateway.Location).To(PointTo(Equal(*region)))
 	Expect(*natGateway.SKU.Name).To(Equal(armnetwork.NatGatewaySKUNameStandard))
 
