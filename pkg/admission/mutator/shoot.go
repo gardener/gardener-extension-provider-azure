@@ -18,6 +18,8 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 )
 
 // NewShootMutator returns a new instance of a shoot mutator.
@@ -79,34 +81,14 @@ func (s *shoot) Mutate(_ context.Context, newObj, oldObj client.Object) error {
 		return nil
 	}
 
-	if shoot.Spec.Networking != nil {
-		networkConfig, err := s.decodeNetworkConfig(shoot.Spec.Networking.ProviderConfig)
-		if err != nil {
-			return err
-		}
+	err := s.mutateNetworkConfig(shoot, oldShoot)
+	if err != nil {
+		return err
+	}
 
-		if oldShoot == nil && networkConfig[overlayKey] == nil {
-			networkConfig[overlayKey] = map[string]interface{}{enabledKey: false}
-		}
-
-		if oldShoot != nil && networkConfig[overlayKey] == nil {
-			oldNetworkConfig, err := s.decodeNetworkConfig(oldShoot.Spec.Networking.ProviderConfig)
-			if err != nil {
-				return err
-			}
-
-			if oldNetworkConfig[overlayKey] != nil {
-				networkConfig[overlayKey] = oldNetworkConfig[overlayKey]
-			}
-		}
-
-		modifiedJSON, err := json.Marshal(networkConfig)
-		if err != nil {
-			return err
-		}
-		shoot.Spec.Networking.ProviderConfig = &runtime.RawExtension{
-			Raw: modifiedJSON,
-		}
+	err = s.mutateInfrastructureConfig(shoot, oldShoot)
+	if err != nil {
+		return err
 	}
 
 	// Disable TCP to upstream DNS queries by default on Azure. DNS over TCP may cause performance issues on larger clusters.
@@ -120,6 +102,82 @@ func (s *shoot) Mutate(_ context.Context, newObj, oldObj client.Object) error {
 		}
 	}
 
+	return nil
+}
+
+func (s *shoot) mutateInfrastructureConfig(shoot, oldShoot *gardencorev1beta1.Shoot) error {
+	if shoot.Spec.Provider.InfrastructureConfig == nil {
+		return nil
+	}
+
+	infraConfig := &azure.InfrastructureConfig{}
+	_, _, err := s.decoder.Decode(shoot.Spec.Provider.InfrastructureConfig.Raw, nil, infraConfig)
+	if err != nil {
+		return err
+	}
+
+	// force NAT-Gateway to be enabled if it is not explicitly disabled
+	if oldShoot == nil && len(infraConfig.Networks.Zones) == 0 && infraConfig.Networks.NatGateway == nil {
+		infraConfig.Networks.NatGateway = &azure.NatGatewayConfig{
+			Enabled: true,
+		}
+		// need to set the zoned flag to true if NatGateway is enabled
+		infraConfig.Zoned = true
+	}
+
+	// force NAT-Gateway to be enabled in zoned setup if it is not explicitly disabled
+	if oldShoot == nil && len(infraConfig.Networks.Zones) != 0 {
+		for idx, zone := range infraConfig.Networks.Zones {
+			if zone.NatGateway == nil {
+				infraConfig.Networks.Zones[idx].NatGateway = &azure.ZonedNatGatewayConfig{
+					Enabled: true,
+				}
+			}
+		}
+	}
+
+	modifiedJSON, err := json.Marshal(infraConfig)
+	if err != nil {
+		return err
+	}
+	shoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{
+		Raw: modifiedJSON,
+	}
+	return nil
+}
+
+func (s *shoot) mutateNetworkConfig(shoot, oldShoot *gardencorev1beta1.Shoot) error {
+	if shoot.Spec.Networking == nil {
+		return nil
+	}
+
+	networkConfig, err := s.decodeNetworkConfig(shoot.Spec.Networking.ProviderConfig)
+	if err != nil {
+		return err
+	}
+
+	if oldShoot == nil && networkConfig[overlayKey] == nil {
+		networkConfig[overlayKey] = map[string]interface{}{enabledKey: false}
+	}
+
+	if oldShoot != nil && networkConfig[overlayKey] == nil {
+		oldNetworkConfig, err := s.decodeNetworkConfig(oldShoot.Spec.Networking.ProviderConfig)
+		if err != nil {
+			return err
+		}
+
+		if oldNetworkConfig[overlayKey] != nil {
+			networkConfig[overlayKey] = oldNetworkConfig[overlayKey]
+		}
+	}
+
+	modifiedJSON, err := json.Marshal(networkConfig)
+	if err != nil {
+		return err
+	}
+	shoot.Spec.Networking.ProviderConfig = &runtime.RawExtension{
+		Raw: modifiedJSON,
+	}
 	return nil
 }
 
