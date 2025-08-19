@@ -205,7 +205,8 @@ You can freely choose this CIDR and it is your responsibility to properly design
 In the `networks.serviceEndpoints[]` list you can specify the list of Azure service endpoints which shall be associated with the worker subnet. All available service endpoints and their technical names can be found in the (Azure Service Endpoint documentation](https://docs.microsoft.com/en-us/azure/virtual-network/virtual-network-service-endpoints-overview).
 
 The `networks.natGateway` section contains configuration for the Azure NatGateway which can be attached to the worker subnet of a Shoot cluster. Here are some key information about the usage of the NatGateway for a Shoot cluster:
-- NatGateway usage is optional and can be enabled or disabled via `.networks.natGateway.enabled`.
+- Starting with September 2025 NatGateway usage is no longer optional. If not set it is automatically enabled.
+- The NatGateway can can still be disabled via `.networks.natGateway.enabled`. However, doing so will prevent workers from registering with the control plane, causing reconciliation to fail unless manual intervention is performed.
 - If the NatGateway is not used then the egress connections initiated within the Shoot cluster will be nated via the LoadBalancer of the clusters (default Azure behaviour, see [here](https://docs.microsoft.com/en-us/azure/load-balancer/load-balancer-outbound-connections#scenarios)).
 - NatGateway is only available for zonal clusters `.zoned=true`.
 - The NatGateway is currently **not** zone redundantly deployed. That mean the NatGateway of a Shoot cluster will always be in just one zone. This zone can be optionally selected via `.networks.natGateway.zone`.
