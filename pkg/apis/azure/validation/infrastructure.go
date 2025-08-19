@@ -401,6 +401,21 @@ func ValidateInfrastructureConfigUpdate(oldConfig, newConfig *apisazure.Infrastr
 
 	allErrs = append(allErrs, apivalidation.ValidateImmutableField(oldConfig.Zoned, newConfig.Zoned, providerPath.Child("zoned"))...)
 	allErrs = append(allErrs, validateVnetConfigUpdate(&oldConfig.Networks, &newConfig.Networks, providerPath.Child("networks"))...)
+	allErrs = append(allErrs, validateNatForbidDisable(oldConfig.Networks, newConfig.Networks, providerPath.Child("networks", "natGateway"))...)
+
+	return allErrs
+}
+
+func validateNatForbidDisable(oldNetworkConfig, newNetworkConfig apisazure.NetworkConfig, natConfigPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	oldNat := oldNetworkConfig.NatGateway
+	newNat := newNetworkConfig.NatGateway
+
+	if oldNat != nil && oldNat.Enabled && newNat != nil && !newNat.Enabled {
+		// if the old nat gateway is enabled and the new one is disabled, we forbid this transition
+		allErrs = append(allErrs, field.Forbidden(natConfigPath, "disabling the NAT gateway is not allowed"))
+	}
 
 	return allErrs
 }
