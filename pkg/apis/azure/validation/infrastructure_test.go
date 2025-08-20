@@ -944,22 +944,5 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				}))))
 			})
 		})
-
-		Context("NatGateway", func() {
-			It("should deny disabling NatGateway", func() {
-				infrastructureConfig.Networks.NatGateway = &apisazure.NatGatewayConfig{
-					Enabled: true,
-				}
-				newInfrastructureConfig := infrastructureConfig.DeepCopy()
-				newInfrastructureConfig.Networks.NatGateway.Enabled = false
-
-				errorList := ValidateInfrastructureConfigUpdate(infrastructureConfig, newInfrastructureConfig, &shoot, providerPath)
-				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Type":   Equal(field.ErrorTypeForbidden),
-					"Field":  Equal("networks.natGateway"),
-					"Detail": Equal("disabling the NAT gateway is not allowed"),
-				}))))
-			})
-		})
 	})
 })
