@@ -15,6 +15,10 @@ const (
 	// ForceAvailabilitySetMigration controls whether the controller will force the migration of existing availability sets to virtual machine scale sets.
 	// alpha: v1.54.0
 	ForceAvailabilitySetMigration featuregate.Feature = "ForceAvailabilitySetMigration"
+	// ForceNatGateway controls whether the controller will force the creation of a NAT gateway for the cluster if the NAT-Gateway is not explicitly set.
+	// Necessary because Azure deprecated default outbound access https://azure.microsoft.com/en-us/updates?id=default-outbound-access-for-vms-in-azure-will-be-retired-transition-to-a-new-method-of-internet-access
+	// alpha: v1.54.0
+	ForceNatGateway featuregate.Feature = "ForceNatGateway"
 )
 
 // ExtensionFeatureGate is the feature gate for the extension controllers.
@@ -34,5 +38,8 @@ func RegisterExtensionFeatureGate() {
 	}))
 	runtime.Must(ExtensionFeatureGate.Add(map[featuregate.Feature]featuregate.FeatureSpec{
 		ForceAvailabilitySetMigration: {Default: false, PreRelease: featuregate.Alpha},
+	}))
+	runtime.Must(ExtensionFeatureGate.Add(map[featuregate.Feature]featuregate.FeatureSpec{
+		ForceNatGateway: {Default: false, PreRelease: featuregate.Alpha},
 	}))
 }

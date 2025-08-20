@@ -7,6 +7,7 @@ package mutator_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
@@ -23,6 +24,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/admission/mutator"
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/features"
 )
 
 var _ = Describe("Shoot mutator", func() {
@@ -221,13 +223,19 @@ var _ = Describe("Shoot mutator", func() {
 		})
 
 		Context("Mutate shoot infrastructure config", func() {
+			var infraConfig *apisazure.InfrastructureConfig
+
 			Context("NAT-Gateway", func() {
-				It("should not mutate existing shoots", func() {
-					infraConfig := &apisazure.InfrastructureConfig{
-						Networks: apisazure.NetworkConfig{
-							NatGateway: nil,
-						},
+				BeforeEach(func() {
+					infraConfig = &apisazure.InfrastructureConfig{
+						Networks: apisazure.NetworkConfig{},
 					}
+					err := features.ExtensionFeatureGate.Set(fmt.Sprintf("%s=%s", features.ForceNatGateway, "true"))
+					Expect(err).NotTo(HaveOccurred(), "Failed to enable feature gate")
+				})
+
+				It("should not mutate existing shoots", func() {
+					infraConfig.Networks.NatGateway = nil
 					shoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{
 						Raw: encode(infraConfig),
 					}
@@ -237,12 +245,8 @@ var _ = Describe("Shoot mutator", func() {
 				})
 
 				It("should mutate if NAT-Gateway is nil", func() {
-					infraConfig := &apisazure.InfrastructureConfig{
-						Networks: apisazure.NetworkConfig{
-							NatGateway: nil,
-						},
-						Zoned: false,
-					}
+					infraConfig.Networks.NatGateway = nil
+					infraConfig.Zoned = false
 					mutatedInfraConfig := &apisazure.InfrastructureConfig{
 						Networks: apisazure.NetworkConfig{
 							NatGateway: &apisazure.NatGatewayConfig{
@@ -259,14 +263,25 @@ var _ = Describe("Shoot mutator", func() {
 					Expect(shoot.Spec.Provider.InfrastructureConfig.Raw).To(Equal(encode(mutatedInfraConfig)))
 				})
 
-				It("should not mutate if NAT-Gateway is disabled", func() {
-					infraConfig := &apisazure.InfrastructureConfig{
-						Networks: apisazure.NetworkConfig{
-							NatGateway: &apisazure.NatGatewayConfig{
-								Enabled: false,
-							},
-						},
+				It("should not mutate if feature gate is disabled", func() {
+					err := features.ExtensionFeatureGate.Set(fmt.Sprintf("%s=%s", features.ForceNatGateway, "false"))
+					Expect(err).NotTo(HaveOccurred(), "Failed to enable feature gate")
+					infraConfig.Networks.NatGateway = nil
+					infraConfig.Zoned = false
+					mutatedInfraConfig := &apisazure.InfrastructureConfig{}
+					shoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{
+						Raw: encode(infraConfig),
 					}
+					err = shootMutator.Mutate(ctx, shoot, nil)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(shoot.Spec.Provider.InfrastructureConfig.Raw).To(Equal(encode(mutatedInfraConfig)))
+				})
+
+				It("should not mutate if NAT-Gateway is disabled", func() {
+					infraConfig.Networks.NatGateway = &apisazure.NatGatewayConfig{
+						Enabled: false,
+					}
+					infraConfig.Zoned = false
 					mutatedInfraConfig := &apisazure.InfrastructureConfig{
 						Networks: apisazure.NetworkConfig{
 							NatGateway: &apisazure.NatGatewayConfig{
@@ -284,16 +299,12 @@ var _ = Describe("Shoot mutator", func() {
 				})
 
 				It("should mutate if NAT-Gateway is nil in a multi zones setup", func() {
-					infraConfig := &apisazure.InfrastructureConfig{
-						Networks: apisazure.NetworkConfig{
-							Zones: []apisazure.Zone{
-								{
-									Name: 1,
-								},
-								{
-									Name: 2,
-								},
-							},
+					infraConfig.Networks.Zones = []apisazure.Zone{
+						{
+							Name: 1,
+						},
+						{
+							Name: 2,
 						},
 					}
 					mutatedInfraConfig := &apisazure.InfrastructureConfig{
@@ -323,21 +334,17 @@ var _ = Describe("Shoot mutator", func() {
 				})
 
 				It("should not mutate if NAT-Gateway is disabled in a multi zones setup", func() {
-					infraConfig := &apisazure.InfrastructureConfig{
-						Networks: apisazure.NetworkConfig{
-							Zones: []apisazure.Zone{
-								{
-									Name: 1,
-									NatGateway: &apisazure.ZonedNatGatewayConfig{
-										Enabled: false,
-									},
-								},
-								{
-									Name: 2,
-									NatGateway: &apisazure.ZonedNatGatewayConfig{
-										Enabled: false,
-									},
-								},
+					infraConfig.Networks.Zones = []apisazure.Zone{
+						{
+							Name: 1,
+							NatGateway: &apisazure.ZonedNatGatewayConfig{
+								Enabled: false,
+							},
+						},
+						{
+							Name: 2,
+							NatGateway: &apisazure.ZonedNatGatewayConfig{
+								Enabled: false,
 							},
 						},
 					}
