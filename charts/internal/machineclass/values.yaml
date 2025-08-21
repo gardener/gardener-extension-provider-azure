@@ -46,6 +46,7 @@ machineClasses:
       #securityEncryptionType: VMGuestStateOnly
       #uefiSettings:
         #vtpmEnabled: false
+    caching: None
   sshPublicKey: ssh-rsa AAAAB3...
 - name: class-3-vmo
   region: westeurope

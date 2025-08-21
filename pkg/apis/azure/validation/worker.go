@@ -9,6 +9,7 @@ import (
 	"slices"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
 	"github.com/gardener/gardener/pkg/apis/core"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -35,7 +36,8 @@ func ValidateWorkerConfig(workerConfig *apiazure.WorkerConfig, dataVolumes []cor
 	}
 
 	allErrs = append(allErrs, validateNodeTemplate(workerConfig.NodeTemplate, fldPath.Child("nodeTemplate"))...)
-	allErrs = append(allErrs, validateDataVolumeConf(workerConfig.DataVolumes, dataVolumes, fldPath)...)
+	allErrs = append(allErrs, validateDataVolumeConf(workerConfig.DataVolumes, dataVolumes, fldPath.Child("dataVolumes"))...)
+	allErrs = append(allErrs, validateRootDisk(workerConfig.RootDisk, fldPath.Child("rootDisk"))...)
 
 	return allErrs
 }
@@ -74,7 +76,7 @@ func validateDataVolumeConf(dataVolumeConfigs []apiazure.DataVolume, dataVolumes
 	}
 
 	for idx, dataVolumeConf := range dataVolumeConfigs {
-		dvPath := fldPath.Child("dataVolumes").Index(idx)
+		dvPath := fldPath.Index(idx)
 		imgRefPath := dvPath.Child("imageRef")
 
 		if imgRef := dataVolumeConf.ImageRef; imgRef != nil {
@@ -104,6 +106,37 @@ func validateDataVolumeConf(dataVolumeConfigs []apiazure.DataVolume, dataVolumes
 			}
 		}
 	}
+	return allErrs
+}
+
+func validateRootDisk(rootDisk *apiazure.RootDisk, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if rootDisk == nil {
+		return nil
+	}
+
+	allErrs = append(allErrs, validateOsDiskCaching(rootDisk.Caching, fldPath.Child("osDiskCaching"))...)
+
+	return allErrs
+}
+
+func validateOsDiskCaching(cachingType *string, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if cachingType == nil {
+		return nil
+	}
+
+	validCachingTypes := []string{
+		string(armcompute.CachingTypesNone),
+		string(armcompute.CachingTypesReadOnly),
+		string(armcompute.CachingTypesReadWrite),
+	}
+	if !slices.Contains(validCachingTypes, *cachingType) {
+		allErrs = append(allErrs, field.NotSupported(fldPath, *cachingType, validCachingTypes))
+	}
+
 	return allErrs
 }
 

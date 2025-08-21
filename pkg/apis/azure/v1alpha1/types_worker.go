@@ -24,6 +24,10 @@ type WorkerConfig struct {
 	// +optional
 	DiagnosticsProfile *DiagnosticsProfile `json:"diagnosticsProfile,omitempty"`
 
+	// RootDisk contains configuration for the root (os) disk of a VM.
+	// +optional
+	RootDisk *RootDisk `json:"rootDisk,omitempty"`
+
 	// DataVolumes contains configuration for the additional disks attached to VMs.
 	// +optional
 	DataVolumes []DataVolume `json:"dataVolumes,omitempty"`
@@ -110,4 +114,12 @@ type DataVolume struct {
 	// ImageRef defines the dataVolume source image.
 	// +optional
 	ImageRef *Image `json:"imageRef,omitempty"`
+}
+
+// RootDisk contains configuration for the root disk of a VM.
+type RootDisk struct {
+	// Caching specifies the caching type for the OS disk.
+	// Valid values are 'None', 'ReadOnly', and 'ReadWrite'.
+	// +optional
+	Caching *string `json:"caching,omitempty"`
 }
