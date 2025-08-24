@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
 	"github.com/gardener/gardener/pkg/apis/core"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -22,8 +23,9 @@ func ValidateWorkerConfig(workerConfig *apiazure.WorkerConfig, dataVolumes []cor
 	allErrs := field.ErrorList{}
 
 	if workerConfig != nil {
-		allErrs = append(allErrs, validateNodeTemplate(workerConfig.NodeTemplate, fldPath)...)
-		allErrs = append(allErrs, validateDataVolumeConf(workerConfig.DataVolumes, dataVolumes, fldPath)...)
+		allErrs = append(allErrs, validateNodeTemplate(workerConfig.NodeTemplate, fldPath.Child("nodeTemplate"))...)
+		allErrs = append(allErrs, validateDataVolumeConf(workerConfig.DataVolumes, dataVolumes, fldPath.Child("dataVolumes"))...)
+		allErrs = append(allErrs, validateRootDisk(workerConfig.RootDisk, fldPath.Child("rootDisk"))...)
 	}
 
 	return allErrs
@@ -38,10 +40,10 @@ func validateNodeTemplate(nodeTemplate *extensionsv1alpha1.NodeTemplate, fldPath
 	for _, capacityAttribute := range []corev1.ResourceName{corev1.ResourceCPU, "gpu", corev1.ResourceMemory} {
 		value, ok := nodeTemplate.Capacity[capacityAttribute]
 		if !ok {
-			allErrs = append(allErrs, field.Required(fldPath.Child("nodeTemplate").Child("capacity"), fmt.Sprintf("%s is a mandatory field", capacityAttribute)))
+			allErrs = append(allErrs, field.Required(fldPath.Child("capacity"), fmt.Sprintf("%s is a mandatory field", capacityAttribute)))
 			continue
 		}
-		allErrs = append(allErrs, validateResourceQuantityValue(capacityAttribute, value, fldPath.Child("nodeTemplate").Child("capacity").Child(string(capacityAttribute)))...)
+		allErrs = append(allErrs, validateResourceQuantityValue(capacityAttribute, value, fldPath.Child("capacity").Child(string(capacityAttribute)))...)
 	}
 
 	return allErrs
@@ -49,8 +51,8 @@ func validateNodeTemplate(nodeTemplate *extensionsv1alpha1.NodeTemplate, fldPath
 
 func validateDataVolumeConf(dataVolumeConfigs []apiazure.DataVolume, dataVolumes []core.DataVolume, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
-	imageRefPath := fldPath.Child("dataVolumes").Child("ImageRef")
-	namePath := fldPath.Child("dataVolumes").Child("Name")
+	imageRefPath := fldPath.Child("ImageRef")
+	namePath := fldPath.Child("Name")
 	var dataVolumeNames []string
 
 	for _, dataVolume := range dataVolumes {
@@ -64,6 +66,37 @@ func validateDataVolumeConf(dataVolumeConfigs []apiazure.DataVolume, dataVolumes
 		if !slices.Contains(dataVolumeNames, dataVolumeConf.Name) {
 			allErrs = append(allErrs, field.Invalid(namePath, dataVolumeConf.Name, "no dataVolume with this name exists"))
 		}
+	}
+
+	return allErrs
+}
+
+func validateRootDisk(rootDisk *apiazure.RootDisk, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if rootDisk == nil {
+		return nil
+	}
+
+	allErrs = append(allErrs, validateOsDiskCaching(rootDisk.Caching, fldPath.Child("osDiskCaching"))...)
+
+	return allErrs
+}
+
+func validateOsDiskCaching(cachingType *string, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if cachingType == nil {
+		return nil
+	}
+
+	validCachingTypes := []string{
+		string(armcompute.CachingTypesNone),
+		string(armcompute.CachingTypesReadOnly),
+		string(armcompute.CachingTypesReadWrite),
+	}
+	if !slices.Contains(validCachingTypes, *cachingType) {
+		allErrs = append(allErrs, field.NotSupported(fldPath, *cachingType, validCachingTypes))
 	}
 
 	return allErrs

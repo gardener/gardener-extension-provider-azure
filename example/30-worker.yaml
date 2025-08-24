@@ -120,3 +120,5 @@ spec:
   #   diagnosticsProfile:
   #     enabled: false
   #     storageURI: https://<storage-account-name>.blob.core.windows.net/
+  #   rootDisk:
+  #     caching: None
