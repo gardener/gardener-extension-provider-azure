@@ -68,6 +68,10 @@ func getAzureClientOpts() *arm.ClientOptions {
 				Transport: getTransport(),
 			},
 			Cloud: cloud.AzurePublic,
+			Telemetry: policy.TelemetryOptions{
+				ApplicationID: "GardenerExtProviderAzure", // Limited to 24 chars, no spaces.
+				Disabled:      false,
+			},
 		},
 	}
 }
