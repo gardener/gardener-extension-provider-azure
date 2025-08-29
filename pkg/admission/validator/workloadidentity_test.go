@@ -12,7 +12,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/admission/validator"
 	azureapi "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
@@ -50,7 +49,7 @@ subscriptionID: "33333c4e-db61-17fa-a141-ed39b34aa561"
 			Expect(azureapi.AddToScheme(scheme)).To(Succeed())
 			Expect(azureapiv1alpha1.AddToScheme(scheme)).To(Succeed())
 
-			workloadIdentityValidator = validator.NewWorkloadIdentityValidator(serializer.NewCodecFactory(scheme, serializer.EnableStrict).UniversalDecoder())
+			workloadIdentityValidator = validator.NewWorkloadIdentityValidator()
 		})
 
 		It("should skip validation if workload identity is not of type 'gcp'", func() {
