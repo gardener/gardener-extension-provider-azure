@@ -73,27 +73,94 @@ var _ = Describe("Azure Auth", func() {
 	})
 
 	Describe("#NewClientAuthDataFromSecret", func() {
-		It("should read the client auth data from the secret", func() {
-			actual, err := NewClientAuthDataFromSecret(secret, false)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(actual).To(Equal(clientAuth))
+		Describe("Static Credentials", func() {
+			It("should read the client auth data from the secret", func() {
+				actual, err := NewClientAuthDataFromSecret(secret, false)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(actual).To(Equal(clientAuth))
+			})
 		})
 
-		It("should read the client auth data from the secret when workload identity is enabled", func() {
-			secret.Labels = map[string]string{
-				"security.gardener.cloud/purpose": "workload-identity-token-requestor",
-			}
-			secret.Data["token"] = []byte("foo")
-			actual, err := NewClientAuthDataFromSecret(secret, false)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(actual.SubscriptionID).To(Equal(clientAuth.SubscriptionID))
-			Expect(actual.TenantID).To(Equal(clientAuth.TenantID))
-			Expect(actual.ClientID).To(Equal(clientAuth.ClientID))
-			Expect(actual.ClientSecret).To(Equal(""))
+		Describe("WorkloadIdentity", func() {
+			It("should read the client auth when secret is ensured", func() {
+				secret.Labels = map[string]string{
+					"security.gardener.cloud/purpose": "workload-identity-token-requestor",
+				}
+				secret.Data["token"] = []byte("foo")
+				actual, err := NewClientAuthDataFromSecret(secret, false)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(actual.SubscriptionID).To(Equal(clientAuth.SubscriptionID))
+				Expect(actual.TenantID).To(Equal(clientAuth.TenantID))
+				Expect(actual.ClientID).To(Equal(clientAuth.ClientID))
+				Expect(actual.ClientSecret).To(Equal(""))
 
-			token, err := actual.TokenRetriever(context.TODO())
-			Expect(err).NotTo(HaveOccurred())
-			Expect(token).To(Equal("foo"))
+				token, err := actual.TokenRetriever(context.TODO())
+				Expect(err).NotTo(HaveOccurred())
+				Expect(token).To(Equal("foo"))
+			})
+
+			It("should read the client auth from the config field when secret is not ensured", func() {
+				secret.Labels = map[string]string{"security.gardener.cloud/purpose": "workload-identity-token-requestor"}
+				secret.Data["token"] = []byte("foo")
+				secret.Data["config"] = []byte(`{
+					"apiVersion":"azure.provider.extensions.gardener.cloud/v1alpha1",
+					"kind":"WorkloadIdentityConfig",
+					"clientID":"client-2",
+					"tenantID":"tenant-2",
+					"subscriptionID":"subscription-2"
+				}`)
+
+				delete(secret.Data, "clientSecret")
+				delete(secret.Data, "tokenID")
+				delete(secret.Data, "subscriptionID")
+
+				actual, err := NewClientAuthDataFromSecret(secret, false)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(actual.SubscriptionID).To(Equal("subscription-2"))
+				Expect(actual.TenantID).To(Equal("tenant-2"))
+				Expect(actual.ClientID).To(Equal("client-2"))
+				Expect(actual.ClientSecret).To(BeEmpty())
+
+				token, err := actual.TokenRetriever(context.TODO())
+				Expect(err).NotTo(HaveOccurred())
+				Expect(token).To(Equal("foo"))
+			})
+
+			It("should fail to read the client auth data when secret is not ensured and config field is not set", func() {
+				secret.Labels = map[string]string{"security.gardener.cloud/purpose": "workload-identity-token-requestor"}
+				secret.SetNamespace("foo")
+				secret.SetName("bar")
+
+				delete(secret.Data, "config")
+				delete(secret.Data, "clientSecret")
+				delete(secret.Data, "tokenID")
+				delete(secret.Data, "subscriptionID")
+
+				actual, err := NewClientAuthDataFromSecret(secret, false)
+				Expect(err).To(And(
+					HaveOccurred(),
+					MatchError(ContainSubstring("secret \"foo/bar\" is missing a 'config' data key")),
+				))
+				Expect(actual).To(BeNil())
+			})
+
+			It("should fail to read the client auth data when secret is not ensured and config field is invalid", func() {
+				secret.Labels = map[string]string{"security.gardener.cloud/purpose": "workload-identity-token-requestor"}
+				secret.Data["config"] = []byte("invalid-json")
+				secret.SetNamespace("foo")
+				secret.SetName("bar")
+
+				delete(secret.Data, "clientSecret")
+				delete(secret.Data, "tokenID")
+				delete(secret.Data, "subscriptionID")
+
+				actual, err := NewClientAuthDataFromSecret(secret, false)
+				Expect(err).To(And(
+					HaveOccurred(),
+					MatchError(ContainSubstring("could not decode 'config' as WorkloadIdentityConfig")),
+				))
+				Expect(actual).To(BeNil())
+			})
 		})
 	})
 
