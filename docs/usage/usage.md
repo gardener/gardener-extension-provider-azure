@@ -102,7 +102,7 @@ As a second step users should configure [Workload Identity Federation](https://l
 In the shown example a `WorkloadIdentity` with name `azure` with id `00000000-0000-0000-0000-000000000000` from the `garden-myproj` namespace will be trusted by the Azure application.
 
 > [!IMPORTANT]
-> You should replace the subject indentifier in the example below with the subject that is populated in the status of the `WorkloadIdentity`, obtained in a previous step.
+> You should replace the subject identifier in the example below with the subject that is populated in the status of the `WorkloadIdentity`, obtained in a previous step.
 
 ![Federated Credential](images/federated_credential.png)
 
@@ -192,7 +192,7 @@ The `networks.vnet` section describes whether you want to create the shoot clust
 * If `networks.vnet.name` and `networks.vnet.resourceGroup` are given then you have to specify the VNet name and VNet resource group name of the existing VNet that was created by other means (manually, other tooling, ...).
 * If `networks.vnet.cidr` is given then you have to specify the VNet CIDR of a new VNet that will be created during shoot creation.
 You can freely choose a private CIDR range.
-* Either `networks.vnet.name` and `neworks.vnet.resourceGroup` or `networks.vnet.cidr` must be present, but not both at the same time.
+* Either `networks.vnet.name` and `networks.vnet.resourceGroup` or `networks.vnet.cidr` must be present, but not both at the same time.
 * The `networks.vnet.ddosProtectionPlanID` field can be used to specify the id of a ddos protection plan which should be assigned to the VNet. This will only work for a VNet managed by Gardener. For externally managed VNets the ddos protection plan must be assigned by other means.
 * If a vnet name is given and cilium shoot clusters are created without a network overlay within one vnet make sure that the pod CIDR specified in `shoot.spec.networking.pods` is not overlapping with any other pod CIDR used in that vnet.
 Overlapping pod CIDRs will lead to disfunctional shoot clusters.
@@ -752,16 +752,16 @@ Some key facts about VMSS Flex based clusters:
 
 ### Migrating AvailabilitySet shoots to VMSS Flex
 
-Azure plans to deprecate `Basic` SKU public IP addresses. 
-See the [official announcement](https://azure.microsoft.com/en-us/updates?id=upgrade-to-standard-sku-public-ip-addresses-in-azure-by-30-september-2025-basic-sku-will-be-retired). 
+Azure plans to deprecate `Basic` SKU public IP addresses.
+See the [official announcement](https://azure.microsoft.com/en-us/updates?id=upgrade-to-standard-sku-public-ip-addresses-in-azure-by-30-september-2025-basic-sku-will-be-retired).
 This will create issues with existing legacy non-zonal clusters since their existing LoadBalancers are using `Basic` SKU and they can't directly migrate to `Standard` SKU.
 
 Provider-azure is offering a migration path from availability sets to VMSS Flex.
-You have to annotate your shoot with the following annotation: `migration.azure.provider.extensions.gardener.cloud/vmo='true'` and trigger the shoot `Maintenance`. 
+You have to annotate your shoot with the following annotation: `migration.azure.provider.extensions.gardener.cloud/vmo='true'` and trigger the shoot `Maintenance`.
 The process for the migration closely traces the process [outlined by Azure](https://learn.microsoft.com/en-us/azure/virtual-network/ip-services/public-ip-basic-upgrade-guidance)
 This **will allow you to preserve your public IPs** during the migration.
 
-During this process there will be downtime that users need to plan.  
-For the transition the Loadbalancer will have to be deleted and recreated. 
+During this process there will be downtime that users need to plan.
+For the transition the Loadbalancer will have to be deleted and recreated.
 Also **all nodes will have to roll out to the VMSS flex workers**.
 The rollout is controlled by the worker's MCM settings, but it is suggested that you speed up this process so that traffic to your cluster is restored as quickly as possible (for example by using higher `maxUnavailable` values)
