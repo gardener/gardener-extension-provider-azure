@@ -44,6 +44,8 @@ var _ = Describe("Scheme", func() {
 		},
 		Entry("when config is empty", []byte{}, nil, true),
 		Entry("when config is invalid json", []byte(`invalid-json`), nil, true),
+		Entry("when config is valid but has wrong apiVersion", []byte(`{"apiVersion":"azure.provider.extensions.gardener.cloud/v0","kind":"WorkloadIdentityConfig"}`), &api.WorkloadIdentityConfig{}, true),
+		Entry("when config is valid but has wrong kind", []byte(`{"apiVersion":"azure.provider.extensions.gardener.cloud/v1alpha1","kind":"WorkloadIdentityConfiguration"}`), &api.WorkloadIdentityConfig{}, true),
 		Entry("when config is valid but missing required fields", []byte(`{"apiVersion":"azure.provider.extensions.gardener.cloud/v1alpha1","kind":"WorkloadIdentityConfig"}`), &api.WorkloadIdentityConfig{}, false),
 		Entry("when config is valid with all fields", []byte(`{
 			"apiVersion":"azure.provider.extensions.gardener.cloud/v1alpha1",
@@ -56,5 +58,21 @@ var _ = Describe("Scheme", func() {
 			TenantID:       "tenant-id-456",
 			SubscriptionID: "subscription-id-789",
 		}, false),
+	)
+
+	DescribeTable("#WorkloadIdentityConfigFromRaw",
+		func(raw *runtime.RawExtension, expectedConfig *api.WorkloadIdentityConfig, expectedErr bool) {
+			result, err := WorkloadIdentityConfigFromRaw(raw)
+			if expectedErr {
+				Expect(err).To(HaveOccurred())
+				Expect(result).To(BeNil())
+			} else {
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(Equal(expectedConfig))
+			}
+		},
+		Entry("when raw is nil", nil, nil, true),
+		Entry("when raw.Raw is nil", &runtime.RawExtension{Raw: nil}, nil, true),
+		Entry("when raw is valid", &runtime.RawExtension{Raw: []byte(`{"apiVersion":"azure.provider.extensions.gardener.cloud/v1alpha1","kind":"WorkloadIdentityConfig"}`)}, &api.WorkloadIdentityConfig{}, false),
 	)
 })

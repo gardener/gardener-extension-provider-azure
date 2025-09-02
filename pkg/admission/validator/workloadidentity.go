@@ -37,7 +37,7 @@ func (wi *workloadIdentity) Validate(_ context.Context, newObj, oldObj client.Ob
 		return errors.New("the new target system is missing configuration")
 	}
 
-	newConfig, err := helper.WorkloadIdentityConfigFromBytes(workloadIdentity.Spec.TargetSystem.ProviderConfig.Raw)
+	newConfig, err := helper.WorkloadIdentityConfigFromRaw(workloadIdentity.Spec.TargetSystem.ProviderConfig)
 	if err != nil {
 		return fmt.Errorf("cannot decode the new target system's configuration: %w", err)
 	}
@@ -49,7 +49,7 @@ func (wi *workloadIdentity) Validate(_ context.Context, newObj, oldObj client.Ob
 			return fmt.Errorf("wrong object type %T for old object", oldObj)
 		}
 
-		oldConfig, err := helper.WorkloadIdentityConfigFromBytes(oldWorkloadIdentity.Spec.TargetSystem.ProviderConfig.Raw)
+		oldConfig, err := helper.WorkloadIdentityConfigFromRaw(oldWorkloadIdentity.Spec.TargetSystem.ProviderConfig)
 		if err != nil {
 			return fmt.Errorf("cannot decode the old target system's configuration: %w", err)
 		}

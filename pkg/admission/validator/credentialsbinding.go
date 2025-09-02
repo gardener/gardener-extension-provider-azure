@@ -70,7 +70,7 @@ func (cb *credentialsBinding) Validate(ctx context.Context, newObj, oldObj clien
 			return errors.New("the target system is missing configuration")
 		}
 
-		workloadIdentityConfig, err := helper.WorkloadIdentityConfigFromBytes(workloadIdentity.Spec.TargetSystem.ProviderConfig.Raw)
+		workloadIdentityConfig, err := helper.WorkloadIdentityConfigFromRaw(workloadIdentity.Spec.TargetSystem.ProviderConfig)
 		if err != nil {
 			return fmt.Errorf("target system's configuration is not valid: %w", err)
 		}
