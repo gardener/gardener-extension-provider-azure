@@ -13,13 +13,15 @@ import (
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
+	gutils "github.com/gardener/gardener/pkg/utils"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/features"
 )
 
@@ -87,11 +89,9 @@ func (s *shoot) Mutate(_ context.Context, newObj, oldObj client.Object) error {
 		return err
 	}
 
-	if features.ExtensionFeatureGate.Enabled(features.ForceNatGateway) {
-		err = s.mutateInfrastructureNatConfig(shoot, oldShoot)
-		if err != nil {
-			return err
-		}
+	err = s.mutateInfrastructureNatConfig(shoot, oldShoot)
+	if err != nil {
+		return err
 	}
 
 	// Disable TCP to upstream DNS queries by default on Azure. DNS over TCP may cause performance issues on larger clusters.
@@ -109,64 +109,32 @@ func (s *shoot) Mutate(_ context.Context, newObj, oldObj client.Object) error {
 }
 
 func (s *shoot) mutateInfrastructureNatConfig(shoot, oldShoot *gardencorev1beta1.Shoot) error {
-	if shoot.Spec.Provider.InfrastructureConfig == nil {
+	if !shouldMutateNatGateway(oldShoot) || shoot.Spec.Provider.InfrastructureConfig == nil {
 		return nil
 	}
 
-	infraConfig := &azure.InfrastructureConfig{}
+	// add annotation for new shoot OR preserve annotation if it was already set
+	shoot.Annotations = gutils.MergeStringMaps(shoot.Annotations, map[string]string{
+		azure.ShootMutateNatConfig: "true",
+	})
+
+	infraConfig := &apisazure.InfrastructureConfig{}
 	if _, _, err := s.decoder.Decode(shoot.Spec.Provider.InfrastructureConfig.Raw, nil, infraConfig); err != nil {
 		return fmt.Errorf("failed to decode InfrastructureConfig: %w", err)
 	}
+
 	nat := infraConfig.Networks.NatGateway
 	zones := infraConfig.Networks.Zones
 
-	// force enable NAT-Gateway for new shoots only
-	if oldShoot == nil {
-		// Case 1: Non-zoned setup → enable NAT-Gateway if not explicitly set
-		if len(zones) == 0 && nat == nil {
-			infraConfig.Networks.NatGateway = &azure.NatGatewayConfig{Enabled: true}
-			infraConfig.Zoned = true // required if NAT-Gateway is enabled
-		}
-
-		// Case 2: Zoned setup → enable NAT-Gateway per zone if not explicitly set
-		for i := range zones {
-			if zones[i].NatGateway == nil {
-				zones[i].NatGateway = &azure.ZonedNatGatewayConfig{Enabled: true}
-			}
-		}
+	// Case 1: Non-zoned setup → enable NAT-Gateway if not explicitly set
+	if len(zones) == 0 && nat == nil {
+		infraConfig.Networks.NatGateway = &apisazure.NatGatewayConfig{Enabled: true}
 	}
 
-	// prevent unsetting the NAT-Gateway if it was explicitly set before - to prevent unwanted configuration
-	if oldShoot != nil && oldShoot.Spec.Provider.InfrastructureConfig != nil {
-		oldInfraConfig := &azure.InfrastructureConfig{}
-		if _, _, err := s.decoder.Decode(oldShoot.Spec.Provider.InfrastructureConfig.Raw, nil, oldInfraConfig); err != nil {
-			return fmt.Errorf("failed to decode InfrastructureConfig: %w", err)
-		}
-		oldNat := oldInfraConfig.Networks.NatGateway
-		oldZones := oldInfraConfig.Networks.Zones
-
-		// do nothing if switching to multi-zone setup
-		if len(oldZones) > 0 && len(zones) == 0 {
-			return nil
-		}
-
-		// do nothing if switching to non-multi-zone setup
-		if len(zones) > 0 && len(oldZones) == 0 {
-			return nil
-		}
-
-		// prevent unsetting the NAT-Gateway for non-multi-zone shoots
-		if oldNat != nil && nat == nil {
-			infraConfig.Networks.NatGateway = oldNat
-		}
-
-		// prevent unsetting the NAT-Gateway for multi-zone shoots
-		if len(oldZones) > 0 && len(zones) > 0 {
-			for i := range zones {
-				if oldZones[i].NatGateway != nil && zones[i].NatGateway == nil {
-					zones[i].NatGateway = oldZones[i].NatGateway
-				}
-			}
+	// Case 2: Zoned setup → enable NAT-Gateway per zone if not explicitly set
+	for i := range zones {
+		if zones[i].NatGateway == nil {
+			zones[i].NatGateway = &apisazure.ZonedNatGatewayConfig{Enabled: true}
 		}
 	}
 
@@ -176,6 +144,12 @@ func (s *shoot) mutateInfrastructureNatConfig(shoot, oldShoot *gardencorev1beta1
 	}
 	shoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{Raw: modifiedJSON}
 	return nil
+}
+
+func shouldMutateNatGateway(oldShoot *gardencorev1beta1.Shoot) bool {
+	return features.ExtensionFeatureGate.Enabled(features.ForceNatGateway) &&
+		(oldShoot == nil ||
+			(oldShoot.Annotations != nil && oldShoot.Annotations[azure.ShootMutateNatConfig] == "true"))
 }
 
 func (s *shoot) mutateNetworkConfig(shoot, oldShoot *gardencorev1beta1.Shoot) error {

@@ -234,24 +234,34 @@ var _ = Describe("Shoot mutator", func() {
 					Expect(err).NotTo(HaveOccurred(), "Failed to enable feature gate")
 				})
 
-				It("should not mutate existing shoots", func() {
+				It("should prevent removing annotation", func() {
+					oldShoot.Annotations = map[string]string{azure.ShootMutateNatConfig: "true"}
+					shoot.Annotations = nil
+					shoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{Raw: encode(infraConfig)}
+					err := shootMutator.Mutate(ctx, shoot, oldShoot)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(shoot.Annotations).To(Equal(oldShoot.Annotations))
+				})
+
+				It("should not mutate infrastructure config or annotations when old shoot is provided", func() {
 					infraConfig.Networks.NatGateway = nil
 					shoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{Raw: encode(infraConfig)}
 					err := shootMutator.Mutate(ctx, shoot, shoot)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(shoot.Spec.Provider.InfrastructureConfig.Raw).To(Equal(encode(infraConfig)))
+					Expect(shoot.Annotations).To(BeNil())
 				})
 
-				It("should mutate if NAT-Gateway is nil", func() {
+				It("should mutate new shoot if NAT-Gateway is nil", func() {
 					infraConfig.Networks.NatGateway = nil
-					infraConfig.Zoned = false
 					mutatedInfraConfig := infraConfig.DeepCopy()
 					mutatedInfraConfig.Networks.NatGateway = &apisazure.NatGatewayConfig{Enabled: true}
-					mutatedInfraConfig.Zoned = true
 					shoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{Raw: encode(infraConfig)}
 					err := shootMutator.Mutate(ctx, shoot, nil)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(shoot.Spec.Provider.InfrastructureConfig.Raw).To(Equal(encode(mutatedInfraConfig)))
+					Expect(shoot.Annotations).To(Not(BeNil()))
+					Expect(shoot.Annotations[azure.ShootMutateNatConfig]).To(Equal("true"))
 				})
 
 				It("should not mutate if feature gate is disabled", func() {
@@ -262,15 +272,17 @@ var _ = Describe("Shoot mutator", func() {
 					err = shootMutator.Mutate(ctx, shoot, nil)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(shoot.Spec.Provider.InfrastructureConfig.Raw).To(Equal(encode(infraConfig)))
+					Expect(shoot.Annotations).To(BeNil())
 				})
 
 				It("should not mutate if NAT-Gateway is disabled", func() {
 					infraConfig.Networks.NatGateway = &apisazure.NatGatewayConfig{Enabled: false}
-					infraConfig.Zoned = false
 					shoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{Raw: encode(infraConfig)}
 					err := shootMutator.Mutate(ctx, shoot, nil)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(shoot.Spec.Provider.InfrastructureConfig.Raw).To(Equal(encode(infraConfig)))
+					Expect(shoot.Annotations).ToNot(BeNil())
+					Expect(shoot.Annotations[azure.ShootMutateNatConfig]).To(Equal("true"))
 				})
 
 				It("should mutate if NAT-Gateway is nil in a multi zones setup", func() {
@@ -289,6 +301,7 @@ var _ = Describe("Shoot mutator", func() {
 					err := shootMutator.Mutate(ctx, shoot, nil)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(shoot.Spec.Provider.InfrastructureConfig.Raw).To(Equal(encode(mutatedInfraConfig)))
+					Expect(shoot.Annotations[azure.ShootMutateNatConfig]).To(Equal("true"))
 				})
 
 				It("should not mutate if NAT-Gateway is explicitly disabled in a multi zones setup", func() {
@@ -310,10 +323,12 @@ var _ = Describe("Shoot mutator", func() {
 					err := shootMutator.Mutate(ctx, shoot, nil)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(shoot.Spec.Provider.InfrastructureConfig.Raw).To(Equal(encode(infraConfig)))
+					Expect(shoot.Annotations[azure.ShootMutateNatConfig]).To(Equal("true"))
 				})
 
 				Context("Prevent unsetting NAT-Gateway", func() {
-					It("should keep old nat when trying to remove explicit NAT-Gateway", func() {
+					It("should keep old nat when trying to remove explicit NAT-Gateway and annotation is set", func() {
+						oldShoot.Annotations = map[string]string{azure.ShootMutateNatConfig: "true"}
 						oldInfra := infraConfig.DeepCopy()
 						oldInfra.Networks.NatGateway = &apisazure.NatGatewayConfig{Enabled: true}
 						infraConfig.Networks.NatGateway = nil
@@ -324,7 +339,20 @@ var _ = Describe("Shoot mutator", func() {
 						Expect(shoot.Spec.Provider.InfrastructureConfig.Raw).To(Equal(encode(oldInfra)))
 					})
 
+					It("should be able to unset nat if force-nat-annotation is not set", func() {
+						oldInfra := infraConfig.DeepCopy()
+						oldInfra.Networks.NatGateway = &apisazure.NatGatewayConfig{Enabled: true}
+						infraConfig.Networks.NatGateway = nil
+						shoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{Raw: encode(infraConfig)}
+						oldShoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{Raw: encode(oldInfra)}
+						err := shootMutator.Mutate(ctx, shoot, oldShoot)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(shoot.Spec.Provider.InfrastructureConfig.Raw).To(Equal(encode(infraConfig)))
+						Expect(shoot.Annotations).To(BeNil())
+					})
+
 					It("should keep old explicitly set nats when trying to remove them in multi-zone setup", func() {
+						oldShoot.Annotations = map[string]string{azure.ShootMutateNatConfig: "true"}
 						infraConfig.Networks.Zones = []apisazure.Zone{{
 							Name:       1,
 							NatGateway: nil,
@@ -336,6 +364,21 @@ var _ = Describe("Shoot mutator", func() {
 						err := shootMutator.Mutate(ctx, shoot, oldShoot)
 						Expect(err).NotTo(HaveOccurred())
 						Expect(shoot.Spec.Provider.InfrastructureConfig.Raw).To(Equal(encode(oldInfra)))
+					})
+
+					It("should allow unsetting NAT in multi zone setup if force-nat-annotation is not set", func() {
+						infraConfig.Networks.Zones = []apisazure.Zone{{
+							Name:       1,
+							NatGateway: nil,
+						}}
+						oldInfra := infraConfig.DeepCopy()
+						oldInfra.Networks.Zones[0].NatGateway = &apisazure.ZonedNatGatewayConfig{Enabled: true}
+						shoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{Raw: encode(infraConfig)}
+						oldShoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{Raw: encode(oldInfra)}
+						err := shootMutator.Mutate(ctx, shoot, oldShoot)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(shoot.Spec.Provider.InfrastructureConfig.Raw).To(Equal(encode(infraConfig)))
+						Expect(shoot.Annotations).To(BeNil())
 					})
 
 					It("should allow removing nat if switching to multi-zone setup", func() {
