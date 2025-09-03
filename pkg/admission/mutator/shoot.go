@@ -108,6 +108,8 @@ func (s *shoot) Mutate(_ context.Context, newObj, oldObj client.Object) error {
 	return nil
 }
 
+// mutateInfrastructureNatConfig mutates the InfrastructureConfig to enable NAT-Gateway
+// preserves nat config if it was already set
 func (s *shoot) mutateInfrastructureNatConfig(shoot, oldShoot *gardencorev1beta1.Shoot) error {
 	if !shouldMutateNatGateway(oldShoot) || shoot.Spec.Provider.InfrastructureConfig == nil {
 		return nil
@@ -146,6 +148,8 @@ func (s *shoot) mutateInfrastructureNatConfig(shoot, oldShoot *gardencorev1beta1
 	return nil
 }
 
+// shouldMutateNatGateway returns true if ForceNatGateway is enabled and either it's a
+// new shoot or the old shoot has the annotation to mutate nat config.
 func shouldMutateNatGateway(oldShoot *gardencorev1beta1.Shoot) bool {
 	return features.ExtensionFeatureGate.Enabled(features.ForceNatGateway) &&
 		(oldShoot == nil ||

@@ -28,7 +28,7 @@ const (
 
 	// ShootMutateNatConfig is an annotation assigned to Shoots that are created while the ForceNatGateway feature gate is enabled.
 	// It indicates that the NAT configuration should be mutated to add a NAT gateway.
-	ShootMutateNatConfig = "azure.provider.extensions.gardener.cloud/mutate-nat-config"
+	ShootMutateNatConfig = "azure.provider.extensions.gardener.cloud/nat-gateway-default-outbound"
 
 	// CloudControllerManagerImageName is the name of the cloud-controller-manager image.
 	CloudControllerManagerImageName = "cloud-controller-manager"
