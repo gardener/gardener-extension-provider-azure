@@ -111,7 +111,7 @@ func (s *shoot) Mutate(_ context.Context, newObj, oldObj client.Object) error {
 // mutateInfrastructureNatConfig mutates the InfrastructureConfig to enable NAT-Gateway
 // preserves nat config if it was already set
 func (s *shoot) mutateInfrastructureNatConfig(shoot, oldShoot *gardencorev1beta1.Shoot) error {
-	if shoot.Spec.Provider.InfrastructureConfig == nil {
+	if shoot.Spec.Provider.InfrastructureConfig == nil || shoot.Spec.Provider.InfrastructureConfig.Raw != nil {
 		return nil
 	}
 
