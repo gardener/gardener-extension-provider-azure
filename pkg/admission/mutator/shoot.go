@@ -13,7 +13,7 @@ import (
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
-	gutils "github.com/gardener/gardener/pkg/utils"
+	"github.com/gardener/gardener/pkg/utils"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/utils/ptr"
@@ -115,8 +115,8 @@ func (s *shoot) mutateInfrastructureNatConfig(shoot, oldShoot *gardencorev1beta1
 		return nil
 	}
 
-	infraConfig := &apisazure.InfrastructureConfig{}
-	if _, _, err := s.decoder.Decode(shoot.Spec.Provider.InfrastructureConfig.Raw, nil, infraConfig); err != nil {
+	infraConfig := apisazure.InfrastructureConfig{}
+	if _, _, err := s.decoder.Decode(shoot.Spec.Provider.InfrastructureConfig.Raw, nil, &infraConfig); err != nil {
 		return fmt.Errorf("failed to decode InfrastructureConfig: %w", err)
 	}
 
@@ -125,7 +125,7 @@ func (s *shoot) mutateInfrastructureNatConfig(shoot, oldShoot *gardencorev1beta1
 	}
 
 	// add annotation for new shoot OR preserve annotation if it was already set
-	shoot.Annotations = gutils.MergeStringMaps(shoot.Annotations, map[string]string{
+	shoot.Annotations = utils.MergeStringMaps(shoot.Annotations, map[string]string{
 		azure.ShootMutateNatConfig: "true",
 	})
 
@@ -154,7 +154,7 @@ func (s *shoot) mutateInfrastructureNatConfig(shoot, oldShoot *gardencorev1beta1
 
 // shouldMutateNatGateway returns true if ForceNatGateway is enabled and either it's a
 // new shoot or the old shoot has the annotation to mutate nat config.
-func shouldMutateNatGateway(newInfraConfig *apisazure.InfrastructureConfig, oldShoot *gardencorev1beta1.Shoot) bool {
+func shouldMutateNatGateway(newInfraConfig apisazure.InfrastructureConfig, oldShoot *gardencorev1beta1.Shoot) bool {
 	if !features.ExtensionFeatureGate.Enabled(features.ForceNatGateway) {
 		return false
 	}
