@@ -197,7 +197,7 @@ You can freely choose a private CIDR range.
 * If a vnet name is given and cilium shoot clusters are created without a network overlay within one vnet make sure that the pod CIDR specified in `shoot.spec.networking.pods` is not overlapping with any other pod CIDR used in that vnet.
 Overlapping pod CIDRs will lead to disfunctional shoot clusters.
 * It's possible to place multiple shoot cluster into the same vnet
-* **Important**: [As announced by AZURE](https://azure.microsoft.com/en-us/updates?id=default-outbound-access-for-vms-in-azure-will-be-retired-transition-to-a-new-method-of-internet-access), starting September 30th, 2025, **new** virtual networks will require explicitly configured outbound connectivity.
+* **Important**: [As announced by Azure](https://azure.microsoft.com/en-us/updates?id=default-outbound-access-for-vms-in-azure-will-be-retired-transition-to-a-new-method-of-internet-access), starting September 30th, 2025, **new** virtual networks will require explicitly configured outbound connectivity.
 
 The `networks.workers` section describes the CIDR for a subnet that is used for all shoot worker nodes, i.e., VMs which later run your applications.
 The specified CIDR range must be contained in the VNet CIDR specified above, or the VNet CIDR of your already existing VNet.
