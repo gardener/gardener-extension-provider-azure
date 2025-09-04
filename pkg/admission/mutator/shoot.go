@@ -111,7 +111,16 @@ func (s *shoot) Mutate(_ context.Context, newObj, oldObj client.Object) error {
 // mutateInfrastructureNatConfig mutates the InfrastructureConfig to enable NAT-Gateway
 // preserves nat config if it was already set
 func (s *shoot) mutateInfrastructureNatConfig(shoot, oldShoot *gardencorev1beta1.Shoot) error {
-	if !shouldMutateNatGateway(oldShoot) || shoot.Spec.Provider.InfrastructureConfig == nil {
+	if shoot.Spec.Provider.InfrastructureConfig == nil {
+		return nil
+	}
+
+	infraConfig := &apisazure.InfrastructureConfig{}
+	if _, _, err := s.decoder.Decode(shoot.Spec.Provider.InfrastructureConfig.Raw, nil, infraConfig); err != nil {
+		return fmt.Errorf("failed to decode InfrastructureConfig: %w", err)
+	}
+
+	if !shouldMutateNatGateway(infraConfig, oldShoot) {
 		return nil
 	}
 
@@ -119,11 +128,6 @@ func (s *shoot) mutateInfrastructureNatConfig(shoot, oldShoot *gardencorev1beta1
 	shoot.Annotations = gutils.MergeStringMaps(shoot.Annotations, map[string]string{
 		azure.ShootMutateNatConfig: "true",
 	})
-
-	infraConfig := &apisazure.InfrastructureConfig{}
-	if _, _, err := s.decoder.Decode(shoot.Spec.Provider.InfrastructureConfig.Raw, nil, infraConfig); err != nil {
-		return fmt.Errorf("failed to decode InfrastructureConfig: %w", err)
-	}
 
 	nat := infraConfig.Networks.NatGateway
 	zones := infraConfig.Networks.Zones
@@ -150,10 +154,16 @@ func (s *shoot) mutateInfrastructureNatConfig(shoot, oldShoot *gardencorev1beta1
 
 // shouldMutateNatGateway returns true if ForceNatGateway is enabled and either it's a
 // new shoot or the old shoot has the annotation to mutate nat config.
-func shouldMutateNatGateway(oldShoot *gardencorev1beta1.Shoot) bool {
-	return features.ExtensionFeatureGate.Enabled(features.ForceNatGateway) &&
-		(oldShoot == nil ||
-			(oldShoot.Annotations != nil && oldShoot.Annotations[azure.ShootMutateNatConfig] == "true"))
+func shouldMutateNatGateway(newInfraConfig *apisazure.InfrastructureConfig, oldShoot *gardencorev1beta1.Shoot) bool {
+	if !features.ExtensionFeatureGate.Enabled(features.ForceNatGateway) {
+		return false
+	}
+	// don't mutate shoots with existing VNet
+	if newInfraConfig.Networks.VNet.Name != nil && newInfraConfig.Networks.VNet.ResourceGroup != nil {
+		return false
+	}
+	return oldShoot == nil ||
+		(oldShoot.Annotations != nil && oldShoot.Annotations[azure.ShootMutateNatConfig] == "true")
 }
 
 func (s *shoot) mutateNetworkConfig(shoot, oldShoot *gardencorev1beta1.Shoot) error {

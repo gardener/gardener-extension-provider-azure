@@ -243,6 +243,17 @@ var _ = Describe("Shoot mutator", func() {
 					Expect(shoot.Annotations).To(Equal(oldShoot.Annotations))
 				})
 
+				It("should not mutate if user brings VNET", func() {
+					infraConfig.Networks.NatGateway = nil
+					infraConfig.Networks.VNet.Name = ptr.To("my-vnet")
+					infraConfig.Networks.VNet.ResourceGroup = ptr.To("resource-group")
+					shoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{Raw: encode(infraConfig)}
+					err := shootMutator.Mutate(ctx, shoot, nil)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(shoot.Spec.Provider.InfrastructureConfig.Raw).To(Equal(encode(infraConfig)))
+					Expect(shoot.Annotations).To(BeNil())
+				})
+
 				It("should not mutate infrastructure config or annotations when old shoot is provided", func() {
 					infraConfig.Networks.NatGateway = nil
 					shoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{Raw: encode(infraConfig)}
