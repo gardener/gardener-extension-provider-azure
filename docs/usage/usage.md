@@ -197,6 +197,7 @@ You can freely choose a private CIDR range.
 * If a vnet name is given and cilium shoot clusters are created without a network overlay within one vnet make sure that the pod CIDR specified in `shoot.spec.networking.pods` is not overlapping with any other pod CIDR used in that vnet.
 Overlapping pod CIDRs will lead to disfunctional shoot clusters.
 * It's possible to place multiple shoot cluster into the same vnet
+* **Important**: [As announced by Azure](https://azure.microsoft.com/en-us/updates?id=default-outbound-access-for-vms-in-azure-will-be-retired-transition-to-a-new-method-of-internet-access), starting September 30th, 2025, **new** virtual networks will require explicitly configured outbound connectivity.
 
 The `networks.workers` section describes the CIDR for a subnet that is used for all shoot worker nodes, i.e., VMs which later run your applications.
 The specified CIDR range must be contained in the VNet CIDR specified above, or the VNet CIDR of your already existing VNet.
@@ -205,9 +206,9 @@ You can freely choose this CIDR and it is your responsibility to properly design
 In the `networks.serviceEndpoints[]` list you can specify the list of Azure service endpoints which shall be associated with the worker subnet. All available service endpoints and their technical names can be found in the (Azure Service Endpoint documentation](https://docs.microsoft.com/en-us/azure/virtual-network/virtual-network-service-endpoints-overview).
 
 The `networks.natGateway` section contains configuration for the Azure NatGateway which can be attached to the worker subnet of a Shoot cluster. Here are some key information about the usage of the NatGateway for a Shoot cluster:
-- NatGateway usage is optional and can be enabled or disabled via `.networks.natGateway.enabled`.
+- Starting with September 2025 NatGateway usage is no longer optional for **new** shoots. If not set it is automatically enabled. An exception is the case if you bring your own VNet, then it is your responsibility to ensure outbound access.
+- The NatGateway can can still be disabled via `.networks.natGateway.enabled`. However, doing so only makes sense if there is an alternative way available to reach the control plane.
 - If the NatGateway is not used then the egress connections initiated within the Shoot cluster will be nated via the LoadBalancer of the clusters (default Azure behaviour, see [here](https://docs.microsoft.com/en-us/azure/load-balancer/load-balancer-outbound-connections#scenarios)).
-- NatGateway is only available for zonal clusters `.zoned=true`.
 - The NatGateway is currently **not** zone redundantly deployed. That mean the NatGateway of a Shoot cluster will always be in just one zone. This zone can be optionally selected via `.networks.natGateway.zone`.
 - **Caution:** Modifying the `.networks.natGateway.zone` setting requires a recreation of the NatGateway and the managed public ip (automatically used if no own public ip is specified, see below). That mean you will most likely get a different public ip for egress connections.
 - It is possible to bring own zonal public ip(s) via `networks.natGateway.ipAddresses`. Those public ip(s) need to be in the same zone as the NatGateway (see `networks.natGateway.zone`) and be of SKU `standard`. For each public ip the `name`, the `resourceGroup` and the `zone` need to be specified.
