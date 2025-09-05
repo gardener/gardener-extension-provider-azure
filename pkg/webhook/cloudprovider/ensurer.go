@@ -9,34 +9,29 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gardener/gardener/extensions/pkg/util"
 	"github.com/gardener/gardener/extensions/pkg/webhook/cloudprovider"
 	gcontext "github.com/gardener/gardener/extensions/pkg/webhook/context"
 	securityv1alpha1constants "github.com/gardener/gardener/pkg/apis/security/v1alpha1/constants"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	apiazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 // NewEnsurer creates cloudprovider ensurer.
 func NewEnsurer(mgr manager.Manager, logger logr.Logger) cloudprovider.Ensurer {
 	return &ensurer{
-		client:  mgr.GetClient(),
-		logger:  logger,
-		decoder: serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder(),
+		client: mgr.GetClient(),
+		logger: logger,
 	}
 }
 
 type ensurer struct {
-	logger  logr.Logger
-	client  client.Client
-	decoder runtime.Decoder
+	logger logr.Logger
+	client client.Client
 }
 
 // EnsureCloudProviderSecret ensures that cloudprovider secret contain
@@ -44,11 +39,13 @@ type ensurer struct {
 // to a corresponding tenantID.
 func (e *ensurer) EnsureCloudProviderSecret(ctx context.Context, _ gcontext.GardenContext, newSecret, _ *corev1.Secret) error {
 	if newSecret.Labels != nil && newSecret.Labels[securityv1alpha1constants.LabelWorkloadIdentityProvider] == "azure" {
-		if _, ok := newSecret.Data[securityv1alpha1constants.DataKeyConfig]; !ok {
+		config, ok := newSecret.Data[securityv1alpha1constants.DataKeyConfig]
+		if !ok {
 			return errors.New("cloudprovider secret is missing a 'config' data key")
 		}
-		workloadIdentityConfig := &apiazure.WorkloadIdentityConfig{}
-		if err := util.Decode(e.decoder, newSecret.Data[securityv1alpha1constants.DataKeyConfig], workloadIdentityConfig); err != nil {
+
+		workloadIdentityConfig, err := helper.WorkloadIdentityConfigFromBytes(config)
+		if err != nil {
 			return fmt.Errorf("could not decode 'config' as WorkloadIdentityConfig: %w", err)
 		}
 

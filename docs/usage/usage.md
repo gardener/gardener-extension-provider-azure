@@ -102,7 +102,7 @@ As a second step users should configure [Workload Identity Federation](https://l
 In the shown example a `WorkloadIdentity` with name `azure` with id `00000000-0000-0000-0000-000000000000` from the `garden-myproj` namespace will be trusted by the Azure application.
 
 > [!IMPORTANT]
-> You should replace the subject indentifier in the example below with the subject that is populated in the status of the `WorkloadIdentity`, obtained in a previous step.
+> You should replace the subject identifier in the example below with the subject that is populated in the status of the `WorkloadIdentity`, obtained in a previous step.
 
 ![Federated Credential](images/federated_credential.png)
 
@@ -192,7 +192,7 @@ The `networks.vnet` section describes whether you want to create the shoot clust
 * If `networks.vnet.name` and `networks.vnet.resourceGroup` are given then you have to specify the VNet name and VNet resource group name of the existing VNet that was created by other means (manually, other tooling, ...).
 * If `networks.vnet.cidr` is given then you have to specify the VNet CIDR of a new VNet that will be created during shoot creation.
 You can freely choose a private CIDR range.
-* Either `networks.vnet.name` and `neworks.vnet.resourceGroup` or `networks.vnet.cidr` must be present, but not both at the same time.
+* Either `networks.vnet.name` and `networks.vnet.resourceGroup` or `networks.vnet.cidr` must be present, but not both at the same time.
 * The `networks.vnet.ddosProtectionPlanID` field can be used to specify the id of a ddos protection plan which should be assigned to the VNet. This will only work for a VNet managed by Gardener. For externally managed VNets the ddos protection plan must be assigned by other means.
 * If a vnet name is given and cilium shoot clusters are created without a network overlay within one vnet make sure that the pod CIDR specified in `shoot.spec.networking.pods` is not overlapping with any other pod CIDR used in that vnet.
 Overlapping pod CIDRs will lead to disfunctional shoot clusters.
@@ -752,106 +752,16 @@ Some key facts about VMSS Flex based clusters:
 
 ### Migrating AvailabilitySet shoots to VMSS Flex
 
-Azure plans to deprecate `Basic` SKU public IP addresses. 
-See the [official announcement](https://azure.microsoft.com/en-us/updates?id=upgrade-to-standard-sku-public-ip-addresses-in-azure-by-30-september-2025-basic-sku-will-be-retired). 
+Azure plans to deprecate `Basic` SKU public IP addresses.
+See the [official announcement](https://azure.microsoft.com/en-us/updates?id=upgrade-to-standard-sku-public-ip-addresses-in-azure-by-30-september-2025-basic-sku-will-be-retired).
 This will create issues with existing legacy non-zonal clusters since their existing LoadBalancers are using `Basic` SKU and they can't directly migrate to `Standard` SKU.
 
 Provider-azure is offering a migration path from availability sets to VMSS Flex.
-You have to annotate your shoot with the following annotation: `migration.azure.provider.extensions.gardener.cloud/vmo='true'` and trigger the shoot `Maintenance`. 
+You have to annotate your shoot with the following annotation: `migration.azure.provider.extensions.gardener.cloud/vmo='true'` and trigger the shoot `Maintenance`.
 The process for the migration closely traces the process [outlined by Azure](https://learn.microsoft.com/en-us/azure/virtual-network/ip-services/public-ip-basic-upgrade-guidance)
 This **will allow you to preserve your public IPs** during the migration.
 
-During this process there will be downtime that users need to plan.  
-For the transition the Loadbalancer will have to be deleted and recreated. 
+During this process there will be downtime that users need to plan.
+For the transition the Loadbalancer will have to be deleted and recreated.
 Also **all nodes will have to roll out to the VMSS flex workers**.
 The rollout is controlled by the worker's MCM settings, but it is suggested that you speed up this process so that traffic to your cluster is restored as quickly as possible (for example by using higher `maxUnavailable` values)
-
-## BackupBucketConfig
-
-### Immutable Buckets
-
-The extension provides a gated feature currently in alpha called `enableImmutableBuckets`.
-To make use of this feature, and enable the extension to react to the configuration below, you will need to set `config.featureGates.enableImmutableBuckets: true` in your helm charts' `values.yaml`. See [values.yaml](../../charts/gardener-extension-provider-azure/values.yaml) for an example.
-Before enabling this feature, you will need to add additional permissions to your Azure credential. Please check the linked section in [docs/usage/azure-permissions.md](/docs/usage/azure-permissions.md#microsoftstorage).
-
-`BackupBucketConfig` describes the configuration that needs to be passed over for creation of the backup bucket infrastructure. Configuration like immutability (WORM, i.e. write-once-read-many) that can be set on the bucket are specified here. Objects in the bucket will inherit the immutability duration which is set on the bucket, and they can not be modified or deleted for that duration.
-
-This extension supports creating (and migrating already existing buckets if enabled) to use [container-level WORM policies](https://learn.microsoft.com/en-us/azure/storage/blobs/immutable-container-level-worm-policies).
-
-Example:
-
-```yaml
-apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
-kind: BackupBucketConfig
-immutability:
-  retentionType: "bucket"
-  retentionPeriod: 24h
-  locked: false
-```
-
-Options: 
-
-- **`retentionType`**: Specifies the type of retention policy. The allowed value is `bucket`, which applies the retention policy to the entire bucket. See the [documentation](https://learn.microsoft.com/en-us/azure/storage/blobs/immutable-container-level-worm-policies).
-- **`retentionPeriod`**: Defines the duration for which objects in the bucket will remain immutable. Azure Blob Storage only supports immutability durations in days, therefore this field must be set as multiples of 24h.
-- **`locked`**: A boolean indicating whether the retention policy is locked. Once locked, the policy cannot be removed or shortened, ensuring immutability. Learn more about locking policies [here](https://learn.microsoft.com/en-us/azure/storage/blobs/immutable-policy-configure-container-scope?tabs=azure-portal#lock-a-time-based-retention-policy).
-
-To configure a `BackupBucket` with immutability, include the `BackupBucketConfig` in the `ProviderConfig` of the `BackupBucket` resource. If the `locked` field is set to `true`, the retention policy will be locked, preventing further changes. However, the retention interval can be lengthened for a locked policy up to five times, but it can't be shortened.
-
-Here is an example of configuring a `BackupBucket` with immutability:
-
-```yaml
-apiVersion: extensions.gardener.cloud/v1alpha1
-kind: BackupBucket
-metadata:
-  name: my-backup-bucket
-spec:
-  region: westeurope
-  secretRef:
-    name: my-azure-secret
-    namespace: my-namespace
-  providerConfig:
-    apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
-    kind: BackupBucketConfig
-    immutability:
-      retentionType: "bucket"
-      retentionPeriod: 24h
-      locked: true
-```
-
-### Storage Account Key Rotation
-
-Here is an example of configuring a `BackupBucket` configured with key rotation:
-
-```yaml
-apiVersion: extensions.gardener.cloud/v1alpha1
-kind: BackupBucket
-metadata:
-  name: my-backup-bucket
-spec:
-  region: westeurope
-  secretRef:
-    name: my-azure-secret
-    namespace: my-namespace
-  providerConfig:
-    apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
-    kind: BackupBucketConfig
-    rotationConfig:
-      rotationPeriodDays:  2
-      expirationPeriodDays: 10
-```
-
-Storage account key rotation is only enabled when the `rotationConfig` is configured.
-
-A storage account in Azure is always created with 2 different keys.
-Every triggered rotation by the `BackupBucket` controller will rotate the key **that is not currently in use**, and update the `BackupBucket` referenced secret to the new key.
-
-In addition *operators* can annotate a `BackupBucket` with `azure.provider.extensions.gardener.cloud/rotate=true` to trigger a key rotation on the **next reconciliation**, regardless of the key's age.
-
-Options:
-- **`rotationPeriodDays`**: Defines the period after its creation that an `storage account key` should be rotated.
-- **`expirationPeriodDays`**: When specified it will install an expiration policy for keys in the Azure storage account.
-
-> [!WARNING]
-> A full rotation (a rotation of both storage account keys) is completed after 2*`rotationPeriod`.
-> It is suggested that the `rotationPeriod` is configured at least twice the maintenance interval of the shoots. 
-> This will ensure that at least one active key is currently used by the etcd-backup pods.
