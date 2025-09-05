@@ -10,8 +10,6 @@ import (
 
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	"github.com/gardener/gardener/pkg/apis/core"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -24,18 +22,14 @@ import (
 // seedValidator validates create and update operations on Seed resources,
 // validating the immutability settings passed through the backup configuration.
 type seedValidator struct {
-	client         client.Client
-	decoder        runtime.Decoder
-	lenientDecoder runtime.Decoder
+	client client.Client
 }
 
 // NewSeedValidator returns a new Validator for Seed resources,
 // ensuring backup configuration immutability according to policy.
 func NewSeedValidator(mgr manager.Manager) extensionswebhook.Validator {
 	return &seedValidator{
-		client:         mgr.GetClient(),
-		decoder:        serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder(),
-		lenientDecoder: serializer.NewCodecFactory(mgr.GetScheme()).UniversalDecoder(),
+		client: mgr.GetClient(),
 	}
 }
 
