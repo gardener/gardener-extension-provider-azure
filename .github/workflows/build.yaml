@@ -51,7 +51,7 @@ jobs:
                 integrity_requirement: high
                 availability_requirement: high
           - name: gardener-extension-admission-azure
-            target: gardener-extension-provider-azure
+            target: gardener-extension-admission-azure
             oci-repository: gardener/extensions/admission-azure
             ocm-labels:
               name: gardener.cloud/cve-categorisation
