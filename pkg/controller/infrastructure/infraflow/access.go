@@ -22,8 +22,8 @@ var _ Access = &access{}
 type Access interface {
 	// DeletePublicIP deletes a public IP after disassociating it from the NAT Gateway if necessary.
 	DeletePublicIP(ctx context.Context, rgName, pipName string) error
-	// DisassociatePublicIP from the NAT Gateway it is attached.
-	DisassociatePublicIP(ctx context.Context, rgName, natName, pipId string) error
+	// DisassociatePublicIPFromNAT from the NAT Gateway it is attached.
+	DisassociatePublicIPFromNAT(ctx context.Context, rgName, natName, pipId string) error
 	// DeleteNatGateway deletes a NAT Gateway after disassociating from all subnets attached to it.
 	DeleteNatGateway(ctx context.Context, rgName, natName string) error
 	// DisassociateNatGateway disassociates the NAT Gateway from attached subnets.
@@ -47,9 +47,93 @@ func (p *access) DeletePublicIP(ctx context.Context, rgName, pipName string) err
 	}
 
 	if pip.Properties.NatGateway != nil && pip.Properties.NatGateway.Name != nil {
-		err := p.DisassociatePublicIP(ctx, rgName, *pip.Properties.NatGateway.Name, *pip.ID)
+		err := p.DisassociatePublicIPFromNAT(ctx, rgName, *pip.Properties.NatGateway.Name, *pip.ID)
 		if err != nil {
 			return err
+		}
+	}
+	if pip.Properties.IPConfiguration != nil && pip.Properties.IPConfiguration.ID != nil {
+		ipcResource, err := arm.ParseResourceID(*pip.Properties.IPConfiguration.ID)
+		if err != nil {
+			return err
+		}
+		lbName := ipcResource.Parent.Name
+		lbClient, err := p.f.LoadBalancer()
+		if err != nil {
+			return err
+		}
+		lb, err := lbClient.Get(ctx, rgName, lbName)
+		if err != nil {
+			return err
+		}
+
+		frontendIPConfigurations := make([]*armnetwork.FrontendIPConfiguration, 0)
+		modifiedLB := false
+		for _, frontend := range lb.Properties.FrontendIPConfigurations {
+			if frontend == nil || frontend.Properties == nil || frontend.Properties.PublicIPAddress == nil ||
+				frontend.Properties.PublicIPAddress.ID == nil || *frontend.Properties.PublicIPAddress.ID != *pip.ID {
+				frontendIPConfigurations = append(frontendIPConfigurations, frontend)
+				continue
+			}
+
+			modifiedLB = true
+
+			// modifiedOR := false
+			lbOutboundRules := make([]*armnetwork.OutboundRule, 0)
+			for _, ob := range lb.Properties.OutboundRules {
+				if ob.Properties.FrontendIPConfigurations != nil {
+					var outboundRuleFrontendConfigs []*armnetwork.SubResource
+					for _, fic := range ob.Properties.FrontendIPConfigurations {
+						if fic != nil && fic.ID != nil && *fic.ID == *frontend.ID {
+							continue // Skip the frontend config that is being removed
+						}
+						outboundRuleFrontendConfigs = append(outboundRuleFrontendConfigs, fic)
+					}
+					ob.Properties.FrontendIPConfigurations = outboundRuleFrontendConfigs
+				}
+				if len(ob.Properties.FrontendIPConfigurations) != 0 {
+					lbOutboundRules = append(lbOutboundRules, ob)
+					// } else {
+					// 	modifiedOR = true
+				}
+			}
+			lb.Properties.OutboundRules = lbOutboundRules
+			// if modifiedOR {
+			// 	lb, err = lbClient.CreateOrUpdate(ctx, rgName, lbName, *lb)
+			// 	if err != nil {
+			// 		return err
+			// 	}
+			// }
+
+			// if frontend != nil && frontend.Properties != nil && frontend.Properties.PublicIPAddress != nil &&
+			// 	frontend.Properties.PublicIPAddress.ID != nil && *frontend.Properties.PublicIPAddress.ID == *pip.ID {
+			// 	// Remove the PublicIPConfig from the FrontendIPConfiguration
+			// 	lb.Properties.FrontendIPConfigurations = append(lb.Properties.FrontendIPConfigurations[:i], lb.Properties.FrontendIPConfigurations[i+1:]...)
+			//
+			// 	for _, ob := range lb.Properties.OutboundRules {
+			// 		if ob.Properties.FrontendIPConfigurations != nil {
+			// 			var updatedFrontendConfigs []*armnetwork.SubResource
+			// 			for _, fic := range ob.Properties.FrontendIPConfigurations {
+			// 				if fic != nil && fic.ID != nil && *fic.ID == *frontend.ID
+			// 					continue // Skip the frontend config that is being removed
+			// 				}
+			// 				updatedFrontendConfigs = append(updatedFrontendConfigs, fic)
+			// 			}
+			// 			ob.Properties.FrontendIPConfigurations = updatedFrontendConfigs
+			// 		}
+			// 	}
+			// break
+		}
+		lb.Properties.FrontendIPConfigurations = frontendIPConfigurations
+		if len(lb.Properties.FrontendIPConfigurations) == 0 {
+			if err := lbClient.Delete(ctx, rgName, lbName); err != nil {
+				return err
+			}
+		} else if modifiedLB {
+			// Update the LoadBalancer to remove the PublicIPConfig
+			if _, err = lbClient.CreateOrUpdate(ctx, rgName, lbName, *lb); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -57,7 +141,7 @@ func (p *access) DeletePublicIP(ctx context.Context, rgName, pipName string) err
 }
 
 // DisassociatePublicIP disassociates a PublicIPConfig from it's attached NAT Gateway.
-func (p *access) DisassociatePublicIP(ctx context.Context, rgName, natName, pipId string) error {
+func (p *access) DisassociatePublicIPFromNAT(ctx context.Context, rgName, natName, pipId string) error {
 	natClient, err := p.f.NatGateway()
 	if err != nil {
 		return err

@@ -1245,6 +1245,79 @@ bool
 </tr>
 </tbody>
 </table>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.LoadBalancerConfig">LoadBalancerConfig
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.NetworkConfig">NetworkConfig</a>)
+</p>
+<p>
+<p>LoadBalancerConfig contains configuration for the load balancer and the attached resources.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>managedPublicIPAddresses</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<p>ManagedPublicIPAddresses is the number of managed public IP addresses that should be created for the load balancer.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ipAddresses</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.PublicIPReference">
+[]PublicIPReference
+</a>
+</em>
+</td>
+<td>
+<p>IPAddresses is a list of ip addresses which should be assigned to the load balancer.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.LoadBalancerStatus">LoadBalancerStatus
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.NetworkStatus">NetworkStatus</a>)
+</p>
+<p>
+<p>LoadBalancerStatus contains information about the load balancer and the attached resources.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name is the name of the load balancer.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.MachineImage">MachineImage
 </h3>
 <p>
@@ -1686,6 +1759,19 @@ NatGatewayConfig
 <p>Zones is a list of zones with their respective configuration.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>loadBalancer</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.LoadBalancerConfig">
+LoadBalancerConfig
+</a>
+</em>
+</td>
+<td>
+<p>LoadBalancer is the configuration for the load balancer.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.NetworkLayout">NetworkLayout
@@ -1766,6 +1852,19 @@ OutboundAccessType
 <p>OutboundAccessType is the type of outbound access configured for the shoot. It indicates how egress traffic flows outside the shoot.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>loadBalancer</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.LoadBalancerStatus">
+LoadBalancerStatus
+</a>
+</em>
+</td>
+<td>
+<p>LoadBalancer is the status of the load balancer.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.OutboundAccessType">OutboundAccessType
@@ -1782,6 +1881,7 @@ See <a href="https://learn.microsoft.com/en-us/azure/load-balancer/load-balancer
 </h3>
 <p>
 (<em>Appears on:</em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.LoadBalancerConfig">LoadBalancerConfig</a>, 
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.NatGatewayConfig">NatGatewayConfig</a>)
 </p>
 <p>

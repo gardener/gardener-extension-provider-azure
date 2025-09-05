@@ -28,6 +28,7 @@ type Factory interface {
 	NetworkSecurityGroup() (NetworkSecurityGroup, error)
 	Subnet() (Subnet, error)
 	LoadBalancer() (LoadBalancer, error)
+	BackendAddressPool() (BackendAddressPool, error)
 	PublicIP() (PublicIP, error)
 	Vnet() (VirtualNetwork, error)
 	RouteTables() (RouteTables, error)
@@ -128,9 +129,16 @@ type Subnet interface {
 
 // LoadBalancer represents an Azure LoadBalancer k8sClient.
 type LoadBalancer interface {
+	CreateOrUpdateFunc[armnetwork.LoadBalancer]
 	GetFunc[armnetwork.LoadBalancer]
 	ListFunc[armnetwork.LoadBalancer]
 	DeleteFunc[armnetwork.LoadBalancer]
+}
+
+type BackendAddressPool interface {
+	SubResourceGetFunc[armnetwork.BackendAddressPool]
+	SubResourceCreateOrUpdateFunc[armnetwork.BackendAddressPool]
+	SubResourceDeleteFunc[armnetwork.BackendAddressPool]
 }
 
 // VirtualNetwork represents an Azure Virtual Network k8sClient.
