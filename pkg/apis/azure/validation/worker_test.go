@@ -20,9 +20,6 @@ import (
 
 var _ = Describe("ValidateWorkerConfig", func() {
 	Describe("#ValidateWorkerConfig", func() {
-		var (
-			fldPath = field.NewPath("config")
-		)
 
 		Describe("NodeTemplate", func() {
 			It("should return no errors for a valid nodetemplate configuration", func() {
@@ -33,7 +30,7 @@ var _ = Describe("ValidateWorkerConfig", func() {
 						"gpu":                 resource.MustParse("0"),
 					},
 				}
-				Expect(validateNodeTemplate(nodeTemplate, fldPath)).To(BeEmpty())
+				Expect(validateNodeTemplate(nodeTemplate, nil)).To(BeEmpty())
 			})
 
 			It("should return error when all resources not specified", func() {
@@ -43,14 +40,14 @@ var _ = Describe("ValidateWorkerConfig", func() {
 					},
 				}
 
-				Expect(validateNodeTemplate(nodeTemplate, fldPath)).To(ConsistOf(
+				Expect(validateNodeTemplate(nodeTemplate, nil)).To(ConsistOf(
 					PointTo(MatchFields(IgnoreExtras, Fields{
 						"Type":  Equal(field.ErrorTypeRequired),
-						"Field": Equal("config.nodeTemplate.capacity"),
+						"Field": Equal("capacity"),
 					})),
 					PointTo(MatchFields(IgnoreExtras, Fields{
 						"Type":  Equal(field.ErrorTypeRequired),
-						"Field": Equal("config.nodeTemplate.capacity"),
+						"Field": Equal("capacity"),
 					})),
 				))
 			})
@@ -64,10 +61,10 @@ var _ = Describe("ValidateWorkerConfig", func() {
 					},
 				}
 
-				Expect(validateNodeTemplate(nodeTemplate, fldPath)).To(ConsistOf(
+				Expect(validateNodeTemplate(nodeTemplate, nil)).To(ConsistOf(
 					PointTo(MatchFields(IgnoreExtras, Fields{
 						"Type":  Equal(field.ErrorTypeInvalid),
-						"Field": Equal("config.nodeTemplate.capacity.memory"),
+						"Field": Equal("capacity.memory"),
 					})),
 				))
 			})
@@ -85,7 +82,7 @@ var _ = Describe("ValidateWorkerConfig", func() {
 					},
 				}}
 
-				Expect(validateDataVolumeConf(dataVolumeConfigs, dataVolumes, fldPath)).To(BeEmpty())
+				Expect(validateDataVolumeConf(dataVolumeConfigs, dataVolumes, nil)).To(BeEmpty())
 			})
 
 			It("should forbid config of none existing DataVolume", func() {
@@ -97,10 +94,10 @@ var _ = Describe("ValidateWorkerConfig", func() {
 					},
 				}}
 
-				Expect(validateDataVolumeConf(dataVolumeConfigs, dataVolumes, fldPath)).To(ConsistOf(
+				Expect(validateDataVolumeConf(dataVolumeConfigs, dataVolumes, nil)).To(ConsistOf(
 					PointTo(MatchFields(IgnoreExtras, Fields{
 						"Type":  Equal(field.ErrorTypeInvalid),
-						"Field": Equal("config.dataVolumes.Name"),
+						"Field": Equal("Name"),
 					})),
 				))
 			})
@@ -114,10 +111,10 @@ var _ = Describe("ValidateWorkerConfig", func() {
 					ImageRef: &apisazure.Image{},
 				}}
 
-				Expect(validateDataVolumeConf(dataVolumeConfigs, dataVolumes, fldPath)).To(ConsistOf(
+				Expect(validateDataVolumeConf(dataVolumeConfigs, dataVolumes, nil)).To(ConsistOf(
 					PointTo(MatchFields(IgnoreExtras, Fields{
 						"Type":  Equal(field.ErrorTypeInvalid),
-						"Field": Equal("config.dataVolumes.ImageRef"),
+						"Field": Equal("ImageRef"),
 					})),
 				))
 			})
