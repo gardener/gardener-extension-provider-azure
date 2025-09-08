@@ -1,0 +1,29 @@
+name: AI-assisted
+on:
+  pull_request_target:
+    types: [opened, synchronize, label]
+
+jobs:
+  summary:
+    name: PR Summary
+    runs-on: [ubuntu-latest]
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: SAP/ai-assisted-github-actions/pr-summary@v3
+        with:
+          aicore-service-key: ${{ secrets.AICORE_SERVICE_KEY }}
+          model: gemini-2.5-pro
+          exclude-files: package-lock.json
+  review:
+    if: ${{ github.event.label.name == 'ai/review' }}
+    name: PR Review
+    runs-on: [ubuntu-latest]
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: SAP/ai-assisted-github-actions/pr-review@v3
+        with:
+          aicore-service-key: ${{ secrets.AICORE_SERVICE_KEY }}
+          model: gemini-2.5-pro
+          exclude-files: package-lock.json
