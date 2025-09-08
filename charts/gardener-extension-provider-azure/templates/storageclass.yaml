@@ -11,8 +11,7 @@ allowVolumeExpansion: true
 provisioner: {{ .Values.config.etcd.storage.provisioner }}
 volumeBindingMode: {{ .Values.config.etcd.storage.volumeBindingMode }}
 parameters:
-  storageaccounttype: Premium_LRS
   {{- if .Values.config.etcd.storage.parameters }}
-    {{ .Values.config.etcd.storage.parameters | toYaml | indent 4 }}
+{{ .Values.config.etcd.storage.parameters | toYaml | indent 2 }}
   {{- end }}
 {{- end }}
