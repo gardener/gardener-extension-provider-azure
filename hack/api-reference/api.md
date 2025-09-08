@@ -1316,6 +1316,16 @@ string
 <p>Name is the name of the load balancer.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>backendAddressPoolID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.MachineImage">MachineImage

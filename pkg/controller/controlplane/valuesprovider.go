@@ -49,8 +49,6 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/features"
 )
 
-// Object names
-
 const (
 	caNameControlPlane               = "ca-" + azure.Name + "-controlplane"
 	cloudControllerManagerServerName = azure.CloudControllerManagerName + "-server"

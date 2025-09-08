@@ -13,9 +13,9 @@ import (
 	context "context"
 	reflect "reflect"
 
-	armcompute "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
+	armcompute "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v7"
 	armmsi "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi"
-	armnetwork "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
+	armnetwork "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v7"
 	armresources "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	armstorage "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage"
 	client "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
@@ -233,21 +233,6 @@ func (m *MockFactory) AvailabilitySet() (client.AvailabilitySet, error) {
 func (mr *MockFactoryMockRecorder) AvailabilitySet() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AvailabilitySet", reflect.TypeOf((*MockFactory)(nil).AvailabilitySet))
-}
-
-// BackendAddressPool mocks base method.
-func (m *MockFactory) BackendAddressPool() (client.BackendAddressPool, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "BackendAddressPool")
-	ret0, _ := ret[0].(client.BackendAddressPool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// BackendAddressPool indicates an expected call of BackendAddressPool.
-func (mr *MockFactoryMockRecorder) BackendAddressPool() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BackendAddressPool", reflect.TypeOf((*MockFactory)(nil).BackendAddressPool))
 }
 
 // BlobContainers mocks base method.

@@ -7,9 +7,9 @@ package client
 import (
 	"context"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v7"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v7"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage"
 )
@@ -28,7 +28,6 @@ type Factory interface {
 	NetworkSecurityGroup() (NetworkSecurityGroup, error)
 	Subnet() (Subnet, error)
 	LoadBalancer() (LoadBalancer, error)
-	BackendAddressPool() (BackendAddressPool, error)
 	PublicIP() (PublicIP, error)
 	Vnet() (VirtualNetwork, error)
 	RouteTables() (RouteTables, error)
@@ -133,12 +132,6 @@ type LoadBalancer interface {
 	GetFunc[armnetwork.LoadBalancer]
 	ListFunc[armnetwork.LoadBalancer]
 	DeleteFunc[armnetwork.LoadBalancer]
-}
-
-type BackendAddressPool interface {
-	SubResourceGetFunc[armnetwork.BackendAddressPool]
-	SubResourceCreateOrUpdateFunc[armnetwork.BackendAddressPool]
-	SubResourceDeleteFunc[armnetwork.BackendAddressPool]
 }
 
 // VirtualNetwork represents an Azure Virtual Network k8sClient.

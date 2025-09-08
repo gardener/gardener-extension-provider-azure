@@ -894,6 +894,7 @@ func Convert_azure_LoadBalancerConfig_To_v1alpha1_LoadBalancerConfig(in *azure.L
 
 func autoConvert_v1alpha1_LoadBalancerStatus_To_azure_LoadBalancerStatus(in *LoadBalancerStatus, out *azure.LoadBalancerStatus, s conversion.Scope) error {
 	out.Name = in.Name
+	out.BackendAddressPoolID = in.BackendAddressPoolID
 	return nil
 }
 
@@ -904,6 +905,7 @@ func Convert_v1alpha1_LoadBalancerStatus_To_azure_LoadBalancerStatus(in *LoadBal
 
 func autoConvert_azure_LoadBalancerStatus_To_v1alpha1_LoadBalancerStatus(in *azure.LoadBalancerStatus, out *LoadBalancerStatus, s conversion.Scope) error {
 	out.Name = in.Name
+	out.BackendAddressPoolID = in.BackendAddressPoolID
 	return nil
 }
 

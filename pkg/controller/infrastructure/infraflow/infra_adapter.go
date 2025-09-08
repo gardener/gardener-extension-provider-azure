@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
+	armnetwork "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v7"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils"
@@ -529,8 +529,8 @@ func (ia *InfrastructureAdapter) lbIPConfig() []PublicIPConfig {
 			Location: ia.Region(),
 			UsedByLB: true,
 		})
-
 	}
+
 	for _, ip := range ia.config.Networks.LoadBalancer.IPAddresses {
 		res = append(res, PublicIPConfig{
 			ShootInfo: ShootInfo{
@@ -866,7 +866,7 @@ func (ia *InfrastructureAdapter) BackendAddressPoolConfig() *BackendAddressPoolC
 func (b *BackendAddressPoolConfig) ToProvider(bap *armnetwork.BackendAddressPool) *armnetwork.BackendAddressPool {
 	if bap == nil {
 		bap = &armnetwork.BackendAddressPool{
-			Name: ptr.To(b.Name),
+			Name:       ptr.To(b.Name),
 			Properties: &armnetwork.BackendAddressPoolPropertiesFormat{
 				// SyncMode: ptr.To(armnetwork.SyncModeAutomatic),
 			},

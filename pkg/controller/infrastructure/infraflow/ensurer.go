@@ -14,8 +14,8 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v7"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v7"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/gardener/gardener/pkg/utils/flow"
 	"github.com/go-logr/logr"
@@ -253,7 +253,7 @@ func (fctx *FlowContext) ensureAvailabilitySet(ctx context.Context, log logr.Log
 			PlatformFaultDomainCount:  avsetCfg.CountFaultDomains,
 			PlatformUpdateDomainCount: avsetCfg.CountUpdateDomains,
 		},
-		SKU: &armcompute.SKU{Name: to.Ptr(string(armcompute.AvailabilitySetSKUTypesAligned))}, // equal to managed = True in tf
+		SKU: &armcompute.SKU{Name: to.Ptr("Aligned")}, // equal to managed = True in tf
 	}
 	log.Info("reconciling availability set", "name", avset.Name)
 	log.V(1).Info("reconciling availability set", "spec", *avset)

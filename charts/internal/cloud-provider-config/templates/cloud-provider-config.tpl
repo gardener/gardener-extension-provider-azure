@@ -29,7 +29,7 @@ cloudProviderRateLimitBucket: {{ ( max .Values.maxNodes 100 ) }}
 cloudProviderRateLimitQPSWrite: {{ ( max .Values.maxNodes 10 ) }}
 cloudProviderRateLimitBucketWrite: {{ ( max .Values.maxNodes 100 ) }}
 {{- if hasKey .Values "loadBalancer" }}
-loadBalancerName: "{{ .Values.loadBalancer.resourceGroup }}"
+loadBalancerName: "{{ .Values.loadBalancer.name}}"
 loadBalancerResourceGroup: "{{ .Values.loadBalancer.resourceGroup }}"
 disableOutboundSNAT: true
 {{- end -}}
