@@ -110,7 +110,6 @@ var _ = Describe("Seed Validator", func() {
 
 				Expect(seedValidator.Validate(ctx, seed, nil)).To(Succeed())
 			})
-
 		})
 
 		Context("Update", func() {
