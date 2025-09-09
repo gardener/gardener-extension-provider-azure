@@ -166,5 +166,6 @@ func NewAdmissionCommand(ctx context.Context) *cobra.Command {
 	verflag.AddFlags(cmd.Flags())
 	aggOption.AddFlags(cmd.Flags())
 	features.ExtensionFeatureGate.AddFlag(cmd.Flags())
+
 	return cmd
 }
