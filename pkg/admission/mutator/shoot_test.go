@@ -22,7 +22,7 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/admission/mutator"
-	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/features"
 )
@@ -223,12 +223,12 @@ var _ = Describe("Shoot mutator", func() {
 		})
 
 		Context("Mutate shoot infrastructure config", func() {
-			var infraConfig *apisazure.InfrastructureConfig
+			var infraConfig *v1alpha1.InfrastructureConfig
 
 			Context("NAT-Gateway", func() {
 				BeforeEach(func() {
-					infraConfig = &apisazure.InfrastructureConfig{
-						Networks: apisazure.NetworkConfig{},
+					infraConfig = &v1alpha1.InfrastructureConfig{
+						Networks: v1alpha1.NetworkConfig{},
 					}
 					err := features.ExtensionFeatureGate.Set(fmt.Sprintf("%s=%s", features.ForceNatGateway, "true"))
 					Expect(err).NotTo(HaveOccurred(), "Failed to enable feature gate")
@@ -266,7 +266,7 @@ var _ = Describe("Shoot mutator", func() {
 				It("should mutate new shoot if NAT-Gateway is nil", func() {
 					infraConfig.Networks.NatGateway = nil
 					mutatedInfraConfig := infraConfig.DeepCopy()
-					mutatedInfraConfig.Networks.NatGateway = &apisazure.NatGatewayConfig{Enabled: true}
+					mutatedInfraConfig.Networks.NatGateway = &v1alpha1.NatGatewayConfig{Enabled: true}
 					shoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{Raw: encode(infraConfig)}
 					err := shootMutator.Mutate(ctx, shoot, nil)
 					Expect(err).NotTo(HaveOccurred())
@@ -287,7 +287,7 @@ var _ = Describe("Shoot mutator", func() {
 				})
 
 				It("should not mutate if NAT-Gateway is disabled", func() {
-					infraConfig.Networks.NatGateway = &apisazure.NatGatewayConfig{Enabled: false}
+					infraConfig.Networks.NatGateway = &v1alpha1.NatGatewayConfig{Enabled: false}
 					shoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{Raw: encode(infraConfig)}
 					err := shootMutator.Mutate(ctx, shoot, nil)
 					Expect(err).NotTo(HaveOccurred())
@@ -297,7 +297,7 @@ var _ = Describe("Shoot mutator", func() {
 				})
 
 				It("should mutate if NAT-Gateway is nil in a multi zones setup", func() {
-					infraConfig.Networks.Zones = []apisazure.Zone{
+					infraConfig.Networks.Zones = []v1alpha1.Zone{
 						{
 							Name: 1,
 						},
@@ -306,8 +306,8 @@ var _ = Describe("Shoot mutator", func() {
 						},
 					}
 					mutatedInfraConfig := infraConfig.DeepCopy()
-					mutatedInfraConfig.Networks.Zones[0].NatGateway = &apisazure.ZonedNatGatewayConfig{Enabled: true}
-					mutatedInfraConfig.Networks.Zones[1].NatGateway = &apisazure.ZonedNatGatewayConfig{Enabled: true}
+					mutatedInfraConfig.Networks.Zones[0].NatGateway = &v1alpha1.ZonedNatGatewayConfig{Enabled: true}
+					mutatedInfraConfig.Networks.Zones[1].NatGateway = &v1alpha1.ZonedNatGatewayConfig{Enabled: true}
 					shoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{Raw: encode(infraConfig)}
 					err := shootMutator.Mutate(ctx, shoot, nil)
 					Expect(err).NotTo(HaveOccurred())
@@ -316,16 +316,16 @@ var _ = Describe("Shoot mutator", func() {
 				})
 
 				It("should not mutate if NAT-Gateway is explicitly disabled in a multi zones setup", func() {
-					infraConfig.Networks.Zones = []apisazure.Zone{
+					infraConfig.Networks.Zones = []v1alpha1.Zone{
 						{
 							Name: 1,
-							NatGateway: &apisazure.ZonedNatGatewayConfig{
+							NatGateway: &v1alpha1.ZonedNatGatewayConfig{
 								Enabled: false,
 							},
 						},
 						{
 							Name: 2,
-							NatGateway: &apisazure.ZonedNatGatewayConfig{
+							NatGateway: &v1alpha1.ZonedNatGatewayConfig{
 								Enabled: false,
 							},
 						},
@@ -341,7 +341,7 @@ var _ = Describe("Shoot mutator", func() {
 					It("should keep old nat when trying to remove explicit NAT-Gateway and annotation is set", func() {
 						oldShoot.Annotations = map[string]string{azure.ShootMutateNatConfig: "true"}
 						oldInfra := infraConfig.DeepCopy()
-						oldInfra.Networks.NatGateway = &apisazure.NatGatewayConfig{Enabled: true}
+						oldInfra.Networks.NatGateway = &v1alpha1.NatGatewayConfig{Enabled: true}
 						infraConfig.Networks.NatGateway = nil
 						shoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{Raw: encode(infraConfig)}
 						oldShoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{Raw: encode(oldInfra)}
@@ -352,7 +352,7 @@ var _ = Describe("Shoot mutator", func() {
 
 					It("should be able to unset nat if force-nat-annotation is not set", func() {
 						oldInfra := infraConfig.DeepCopy()
-						oldInfra.Networks.NatGateway = &apisazure.NatGatewayConfig{Enabled: true}
+						oldInfra.Networks.NatGateway = &v1alpha1.NatGatewayConfig{Enabled: true}
 						infraConfig.Networks.NatGateway = nil
 						shoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{Raw: encode(infraConfig)}
 						oldShoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{Raw: encode(oldInfra)}
@@ -364,12 +364,12 @@ var _ = Describe("Shoot mutator", func() {
 
 					It("should keep old explicitly set nats when trying to remove them in multi-zone setup", func() {
 						oldShoot.Annotations = map[string]string{azure.ShootMutateNatConfig: "true"}
-						infraConfig.Networks.Zones = []apisazure.Zone{{
+						infraConfig.Networks.Zones = []v1alpha1.Zone{{
 							Name:       1,
 							NatGateway: nil,
 						}}
 						oldInfra := infraConfig.DeepCopy()
-						oldInfra.Networks.Zones[0].NatGateway = &apisazure.ZonedNatGatewayConfig{Enabled: true}
+						oldInfra.Networks.Zones[0].NatGateway = &v1alpha1.ZonedNatGatewayConfig{Enabled: true}
 						shoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{Raw: encode(infraConfig)}
 						oldShoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{Raw: encode(oldInfra)}
 						err := shootMutator.Mutate(ctx, shoot, oldShoot)
@@ -378,12 +378,12 @@ var _ = Describe("Shoot mutator", func() {
 					})
 
 					It("should allow unsetting NAT in multi zone setup if force-nat-annotation is not set", func() {
-						infraConfig.Networks.Zones = []apisazure.Zone{{
+						infraConfig.Networks.Zones = []v1alpha1.Zone{{
 							Name:       1,
 							NatGateway: nil,
 						}}
 						oldInfra := infraConfig.DeepCopy()
-						oldInfra.Networks.Zones[0].NatGateway = &apisazure.ZonedNatGatewayConfig{Enabled: true}
+						oldInfra.Networks.Zones[0].NatGateway = &v1alpha1.ZonedNatGatewayConfig{Enabled: true}
 						shoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{Raw: encode(infraConfig)}
 						oldShoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{Raw: encode(oldInfra)}
 						err := shootMutator.Mutate(ctx, shoot, oldShoot)
@@ -394,12 +394,12 @@ var _ = Describe("Shoot mutator", func() {
 
 					It("should allow removing nat if switching to multi-zone setup", func() {
 						oldInfra := infraConfig.DeepCopy()
-						oldInfra.Networks.NatGateway = &apisazure.NatGatewayConfig{Enabled: true}
-						oldInfra.Networks.Zones = []apisazure.Zone{}
+						oldInfra.Networks.NatGateway = &v1alpha1.NatGatewayConfig{Enabled: true}
+						oldInfra.Networks.Zones = []v1alpha1.Zone{}
 						infraConfig.Networks.NatGateway = nil
-						infraConfig.Networks.Zones = []apisazure.Zone{{
+						infraConfig.Networks.Zones = []v1alpha1.Zone{{
 							Name:       1,
-							NatGateway: &apisazure.ZonedNatGatewayConfig{Enabled: true},
+							NatGateway: &v1alpha1.ZonedNatGatewayConfig{Enabled: true},
 						}}
 						shoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{Raw: encode(infraConfig)}
 						oldShoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{Raw: encode(oldInfra)}
@@ -412,12 +412,12 @@ var _ = Describe("Shoot mutator", func() {
 						oldInfra := infraConfig.DeepCopy()
 						oldInfra.Networks.NatGateway = nil
 						oldInfra.Zoned = true
-						oldInfra.Networks.Zones = []apisazure.Zone{{
+						oldInfra.Networks.Zones = []v1alpha1.Zone{{
 							Name:       1,
-							NatGateway: &apisazure.ZonedNatGatewayConfig{Enabled: true},
+							NatGateway: &v1alpha1.ZonedNatGatewayConfig{Enabled: true},
 						}}
-						infraConfig.Networks.NatGateway = &apisazure.NatGatewayConfig{Enabled: true}
-						infraConfig.Networks.Zones = []apisazure.Zone{}
+						infraConfig.Networks.NatGateway = &v1alpha1.NatGatewayConfig{Enabled: true}
+						infraConfig.Networks.Zones = []v1alpha1.Zone{}
 						infraConfig.Zoned = true
 						shoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{Raw: encode(infraConfig)}
 						oldShoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{Raw: encode(oldInfra)}

@@ -34,3 +34,6 @@ gardener:
   #     namespace: kube-system
   runtimeCluster: {}
 #   priorityClassName: gardener-garden-system-400
+
+#featureGates:
+  #ForceNatGateway: false

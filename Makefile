@@ -79,6 +79,7 @@ start-admission:
 	@LEADER_ELECTION_NAMESPACE=$(EXTENSION_NAMESPACE) go run \
 		-ldflags $(LD_FLAGS) \
 		./cmd/$(EXTENSION_PREFIX)-$(ADMISSION_NAME) \
+		--leader-election=$(LEADER_ELECTION) \
 		--webhook-config-server-host=0.0.0.0 \
 		--webhook-config-server-port=$(WEBHOOK_CONFIG_PORT) \
 		--leader-election-namespace=garden \

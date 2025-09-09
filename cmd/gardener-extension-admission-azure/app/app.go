@@ -30,6 +30,7 @@ import (
 	admissioncmd "github.com/gardener/gardener-extension-provider-azure/pkg/admission/cmd"
 	azureinstall "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/install"
 	providerazure "github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/features"
 )
 
 // AdmissionName is the name of the admission component.
@@ -164,6 +165,7 @@ func NewAdmissionCommand(ctx context.Context) *cobra.Command {
 
 	verflag.AddFlags(cmd.Flags())
 	aggOption.AddFlags(cmd.Flags())
+	features.ExtensionFeatureGate.AddFlag(cmd.Flags())
 
 	return cmd
 }
