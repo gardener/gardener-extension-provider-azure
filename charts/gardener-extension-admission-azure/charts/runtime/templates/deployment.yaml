@@ -37,6 +37,7 @@ spec:
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         command:
         - /gardener-extension-admission-azure
+        - --force-nat-gateway={{.Values.forceNatGateway}}
         - --webhook-config-server-port={{ .Values.webhookConfig.serverPort }}
         {{- if .Values.gardener.virtualCluster.enabled }}
         - --webhook-config-mode=url
