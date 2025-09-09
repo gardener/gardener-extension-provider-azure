@@ -163,7 +163,6 @@ func NewAdmissionCommand(ctx context.Context) *cobra.Command {
 		},
 	}
 
-	// cmd.Flags().BoolVar(&forceNatGatewayFlag, "force-nat-gateway", false, "Force the usage of NAT Gateways")
 	verflag.AddFlags(cmd.Flags())
 	aggOption.AddFlags(cmd.Flags())
 	features.ExtensionFeatureGate.AddFlag(cmd.Flags())

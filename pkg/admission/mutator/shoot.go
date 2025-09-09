@@ -111,7 +111,6 @@ func (s *shoot) mutateInfrastructureNatConfig(shoot, oldShoot *gardencorev1beta1
 		return nil
 	}
 
-	fmt.Printf("\nFOOOOOOO %v\n", string(shoot.Spec.Provider.InfrastructureConfig.Raw))
 	infraConfig := v1alpha1.InfrastructureConfig{}
 	if _, _, err := s.decoder.Decode(shoot.Spec.Provider.InfrastructureConfig.Raw, nil, &infraConfig); err != nil {
 		return fmt.Errorf("failed to decode InfrastructureConfig: %w", err)
@@ -141,21 +140,12 @@ func (s *shoot) mutateInfrastructureNatConfig(shoot, oldShoot *gardencorev1beta1
 		}
 	}
 
-	// az := &v1alpha1.InfrastructureConfig{
-	// 	TypeMeta: metav1.TypeMeta{
-	// 		APIVersion: v1alpha1.SchemeGroupVersion.String(),
-	// 		Kind:       "InfrastructureConfig",
-	// 	},
-	// }
-	// shoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{Object: az}
-
 	modifiedJSON, err := json.Marshal(infraConfig)
 	if err != nil {
 		return fmt.Errorf("failed to marshal modified InfrastructureConfig: %w", err)
 	}
 	shoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{Raw: modifiedJSON}
 
-	// fmt.Printf("FOOOOOOO %v\n", string(shoot.Spec.Provider.InfrastructureConfig.Raw))
 	return nil
 }
 
@@ -174,11 +164,7 @@ func shouldMutateNatGateway(newInfraConfig v1alpha1.InfrastructureConfig, oldSho
 }
 
 func (s *shoot) mutateNetworkConfig(shoot, oldShoot *gardencorev1beta1.Shoot) error {
-	if shoot.Spec.Networking == nil {
-		return nil
-	}
-
-	if shoot.Spec.Networking != nil && shoot.Spec.Networking.Type != nil && *shoot.Spec.Networking.Type != "cilium" {
+	if shoot.Spec.Networking == nil || (shoot.Spec.Networking.Type != nil && *shoot.Spec.Networking.Type != "cilium") {
 		return nil
 	}
 
