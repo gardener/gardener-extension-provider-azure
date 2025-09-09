@@ -60,7 +60,7 @@ spec:
         - --health-bind-address=:{{ .Values.healthPort }}
         - --leader-election-id={{ include "leaderelectionid" . }}
         {{- if .Values.featureGates }}
-        - --feature-gates={{ .Values.featureGates | join "," }}
+        - --feature-gates={{- range $key, $value := .Values.featureGates }}{{ $key }}={{ $value }},{{- end }}
         {{- end }}
         securityContext:
           allowPrivilegeEscalation: false

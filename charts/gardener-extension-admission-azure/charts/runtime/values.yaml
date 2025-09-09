@@ -35,5 +35,5 @@ gardener:
   runtimeCluster: {}
 #   priorityClassName: gardener-garden-system-400
 
-# featureGates:
-  #forceNatGateway: false
+#featureGates:
+  #ForceNatGateway: false
