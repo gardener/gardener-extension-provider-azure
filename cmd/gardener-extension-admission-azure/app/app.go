@@ -36,8 +36,6 @@ import (
 // AdmissionName is the name of the admission component.
 const AdmissionName = "admission-azure"
 
-var forceNatGatewayFlag bool
-
 var log = logf.Log.WithName("gardener-extension-admission-azure")
 
 // NewAdmissionCommand creates a new command for running an Azure validator.
@@ -79,13 +77,6 @@ func NewAdmissionCommand(ctx context.Context) *cobra.Command {
 
 		RunE: func(_ *cobra.Command, _ []string) error {
 			verflag.PrintAndExitIfRequested()
-
-			if forceNatGatewayFlag {
-				err := features.ExtensionFeatureGate.Set(fmt.Sprintf("%s=%s", features.ForceNatGateway, "true"))
-				if err != nil {
-					return err
-				}
-			}
 
 			if gardenKubeconfig := os.Getenv("GARDEN_KUBECONFIG"); gardenKubeconfig != "" {
 				log.Info("Getting rest config for garden from GARDEN_KUBECONFIG", "path", gardenKubeconfig)
@@ -172,9 +163,9 @@ func NewAdmissionCommand(ctx context.Context) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().BoolVar(&forceNatGatewayFlag, "force-nat-gateway", false, "Force the usage of NAT Gateways")
+	// cmd.Flags().BoolVar(&forceNatGatewayFlag, "force-nat-gateway", false, "Force the usage of NAT Gateways")
 	verflag.AddFlags(cmd.Flags())
 	aggOption.AddFlags(cmd.Flags())
-
+	features.ExtensionFeatureGate.AddFlag(cmd.Flags())
 	return cmd
 }

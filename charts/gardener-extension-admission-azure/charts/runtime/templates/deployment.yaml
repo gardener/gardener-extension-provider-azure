@@ -37,7 +37,7 @@ spec:
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         command:
         - /gardener-extension-admission-azure
-        - --force-nat-gateway={{.Values.forceNatGateway}}
+{{/*        - --force-nat-gateway={{ .Values.forceNatGateway }}*/}}
         - --webhook-config-server-port={{ .Values.webhookConfig.serverPort }}
         {{- if .Values.gardener.virtualCluster.enabled }}
         - --webhook-config-mode=url
@@ -60,6 +60,9 @@ spec:
         {{- end }}
         - --health-bind-address=:{{ .Values.healthPort }}
         - --leader-election-id={{ include "leaderelectionid" . }}
+        {{- if .Values.featureGates }}
+        - --feature-gates={{ .Values.featureGates | join "," }}
+        {{- end }}
         securityContext:
           allowPrivilegeEscalation: false
         livenessProbe:

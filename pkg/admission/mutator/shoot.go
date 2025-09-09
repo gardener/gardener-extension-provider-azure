@@ -20,7 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/features"
 )
@@ -50,10 +50,6 @@ func (s *shoot) Mutate(_ context.Context, newObj, oldObj client.Object) error {
 
 	// skip validation if it's a workerless Shoot
 	if gardencorev1beta1helper.IsWorkerless(shoot) {
-		return nil
-	}
-
-	if shoot.Spec.Networking != nil && shoot.Spec.Networking.Type != nil && *shoot.Spec.Networking.Type != "cilium" {
 		return nil
 	}
 
@@ -115,7 +111,8 @@ func (s *shoot) mutateInfrastructureNatConfig(shoot, oldShoot *gardencorev1beta1
 		return nil
 	}
 
-	infraConfig := apisazure.InfrastructureConfig{}
+	fmt.Printf("\nFOOOOOOO %v\n", string(shoot.Spec.Provider.InfrastructureConfig.Raw))
+	infraConfig := v1alpha1.InfrastructureConfig{}
 	if _, _, err := s.decoder.Decode(shoot.Spec.Provider.InfrastructureConfig.Raw, nil, &infraConfig); err != nil {
 		return fmt.Errorf("failed to decode InfrastructureConfig: %w", err)
 	}
@@ -134,27 +131,37 @@ func (s *shoot) mutateInfrastructureNatConfig(shoot, oldShoot *gardencorev1beta1
 
 	// Case 1: Non-zoned setup → enable NAT-Gateway if not explicitly set
 	if len(zones) == 0 && nat == nil {
-		infraConfig.Networks.NatGateway = &apisazure.NatGatewayConfig{Enabled: true}
+		infraConfig.Networks.NatGateway = &v1alpha1.NatGatewayConfig{Enabled: true}
 	}
 
 	// Case 2: Zoned setup → enable NAT-Gateway per zone if not explicitly set
 	for i := range zones {
 		if zones[i].NatGateway == nil {
-			zones[i].NatGateway = &apisazure.ZonedNatGatewayConfig{Enabled: true}
+			zones[i].NatGateway = &v1alpha1.ZonedNatGatewayConfig{Enabled: true}
 		}
 	}
+
+	// az := &v1alpha1.InfrastructureConfig{
+	// 	TypeMeta: metav1.TypeMeta{
+	// 		APIVersion: v1alpha1.SchemeGroupVersion.String(),
+	// 		Kind:       "InfrastructureConfig",
+	// 	},
+	// }
+	// shoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{Object: az}
 
 	modifiedJSON, err := json.Marshal(infraConfig)
 	if err != nil {
 		return fmt.Errorf("failed to marshal modified InfrastructureConfig: %w", err)
 	}
 	shoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{Raw: modifiedJSON}
+
+	// fmt.Printf("FOOOOOOO %v\n", string(shoot.Spec.Provider.InfrastructureConfig.Raw))
 	return nil
 }
 
 // shouldMutateNatGateway returns true if ForceNatGateway is enabled and either it's a
 // new shoot or the old shoot has the annotation to mutate nat config.
-func shouldMutateNatGateway(newInfraConfig apisazure.InfrastructureConfig, oldShoot *gardencorev1beta1.Shoot) bool {
+func shouldMutateNatGateway(newInfraConfig v1alpha1.InfrastructureConfig, oldShoot *gardencorev1beta1.Shoot) bool {
 	if !features.ExtensionFeatureGate.Enabled(features.ForceNatGateway) {
 		return false
 	}
@@ -168,6 +175,10 @@ func shouldMutateNatGateway(newInfraConfig apisazure.InfrastructureConfig, oldSh
 
 func (s *shoot) mutateNetworkConfig(shoot, oldShoot *gardencorev1beta1.Shoot) error {
 	if shoot.Spec.Networking == nil {
+		return nil
+	}
+
+	if shoot.Spec.Networking != nil && shoot.Spec.Networking.Type != nil && *shoot.Spec.Networking.Type != "cilium" {
 		return nil
 	}
 

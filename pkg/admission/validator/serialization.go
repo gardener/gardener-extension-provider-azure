@@ -5,6 +5,8 @@
 package validator
 
 import (
+	"fmt"
+
 	"github.com/gardener/gardener/extensions/pkg/util"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -37,6 +39,7 @@ func decodeControlPlaneConfig(decoder runtime.Decoder, cp *runtime.RawExtension)
 func decodeInfrastructureConfig(decoder runtime.Decoder, infra *runtime.RawExtension) (*azure.InfrastructureConfig, error) {
 	infraConfig := &azure.InfrastructureConfig{}
 	if err := util.Decode(decoder, infra.Raw, infraConfig); err != nil {
+		fmt.Printf("could not decode infrastructureConfig: %s", infra.Raw)
 		return nil, err
 	}
 
