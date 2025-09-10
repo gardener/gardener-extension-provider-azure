@@ -234,10 +234,11 @@ var _ = Describe("Shoot mutator", func() {
 					Expect(err).NotTo(HaveOccurred(), "Failed to enable feature gate")
 				})
 
-				It("should prevent removing annotation", func() {
+				It("should prevent removing nat annotation", func() {
+					oldShoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{Raw: encode(infraConfig)}
 					oldShoot.Annotations = map[string]string{azure.ShootMutateNatConfig: "true"}
-					shoot.Annotations = nil
 					shoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{Raw: encode(infraConfig)}
+					shoot.Annotations = nil
 					err := shootMutator.Mutate(ctx, shoot, oldShoot)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(shoot.Annotations).To(Equal(oldShoot.Annotations))
