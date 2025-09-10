@@ -7,7 +7,6 @@ package validator
 import (
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	"github.com/gardener/gardener/pkg/apis/core"
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"github.com/gardener/gardener/pkg/apis/security"
 	securityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -43,7 +42,7 @@ func New(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 			NewCredentialsBindingValidator(mgr):     {{Obj: &security.CredentialsBinding{}}},
 			NewWorkloadIdentityValidator():          {{Obj: &securityv1alpha1.WorkloadIdentity{}}},
 			NewSeedValidator():                      {{Obj: &core.Seed{}}},
-			NewBackupBucketValidator():              {{Obj: &gardencorev1beta1.BackupBucket{}}},
+			NewBackupBucketValidator():              {{Obj: &core.BackupBucket{}}},
 		},
 		Target: extensionswebhook.TargetSeed,
 		ObjectSelector: &metav1.LabelSelector{
