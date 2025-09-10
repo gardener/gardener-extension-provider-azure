@@ -70,8 +70,8 @@ func (s *shoot) Mutate(_ context.Context, newObj, oldObj client.Object) error {
 		return nil
 	}
 
-	// Skip if specs are matching
-	if oldShoot != nil && reflect.DeepEqual(shoot.Spec, oldShoot.Spec) {
+	// Skip if specs and annotations are matching
+	if oldShoot != nil && reflect.DeepEqual(shoot.Spec, oldShoot.Spec) && reflect.DeepEqual(shoot.Annotations, oldShoot.Annotations) {
 		return nil
 	}
 
@@ -159,11 +159,23 @@ func shouldMutateNatGateway(newInfraConfig v1alpha1.InfrastructureConfig, oldSho
 	if newInfraConfig.Networks.VNet.Name != nil && newInfraConfig.Networks.VNet.ResourceGroup != nil {
 		return false
 	}
-	return oldShoot == nil ||
-		(oldShoot.Annotations != nil && oldShoot.Annotations[azure.ShootMutateNatConfig] == "true")
+	return oldShoot == nil || mutateNatConfigAnnotationExists(oldShoot)
+}
+
+func mutateNatConfigAnnotationExists(shoot *gardencorev1beta1.Shoot) bool {
+	if shoot.Annotations == nil {
+		return false
+	}
+	_, exists := shoot.Annotations[azure.ShootMutateNatConfig]
+	return exists
 }
 
 func (s *shoot) mutateNetworkConfig(shoot, oldShoot *gardencorev1beta1.Shoot) error {
+	// Skip if specs are matching
+	if oldShoot != nil && reflect.DeepEqual(shoot.Spec, oldShoot.Spec) {
+		return nil
+	}
+
 	if shoot.Spec.Networking == nil || (shoot.Spec.Networking.Type != nil && *shoot.Spec.Networking.Type != "cilium") {
 		return nil
 	}
