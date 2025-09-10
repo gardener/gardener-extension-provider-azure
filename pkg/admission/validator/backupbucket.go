@@ -9,7 +9,7 @@ import (
 	"fmt"
 
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	gardencore "github.com/gardener/gardener/pkg/apis/core"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -27,13 +27,13 @@ func NewBackupBucketValidator() extensionswebhook.Validator {
 
 // Validate validates the BackupBucket resource during create or update operations.
 func (s *backupBucketValidator) Validate(_ context.Context, newObj, oldObj client.Object) error {
-	newBackupBucket, ok := newObj.(*gardencorev1beta1.BackupBucket)
+	newBackupBucket, ok := newObj.(*gardencore.BackupBucket)
 	if !ok {
 		return fmt.Errorf("wrong object type %T for new object", newObj)
 	}
 
 	if oldObj != nil {
-		oldBackupBucket, ok := oldObj.(*gardencorev1beta1.BackupBucket)
+		oldBackupBucket, ok := oldObj.(*gardencore.BackupBucket)
 		if !ok {
 			return fmt.Errorf("wrong object type %T for old object", oldObj)
 		}
@@ -44,7 +44,7 @@ func (s *backupBucketValidator) Validate(_ context.Context, newObj, oldObj clien
 }
 
 // validateCreate validates the BackupBucket object upon creation.
-func (b *backupBucketValidator) validateCreate(backupBucket *gardencorev1beta1.BackupBucket) field.ErrorList {
+func (b *backupBucketValidator) validateCreate(backupBucket *gardencore.BackupBucket) field.ErrorList {
 	var (
 		allErrs               = field.ErrorList{}
 		providerConfigfldPath = field.NewPath("spec", "providerConfig")
@@ -62,7 +62,7 @@ func (b *backupBucketValidator) validateCreate(backupBucket *gardencorev1beta1.B
 }
 
 // validateUpdate validates updates to the BackupBucket resource.
-func (b *backupBucketValidator) validateUpdate(oldBackupBucket, backupBucket *gardencorev1beta1.BackupBucket) field.ErrorList {
+func (b *backupBucketValidator) validateUpdate(oldBackupBucket, backupBucket *gardencore.BackupBucket) field.ErrorList {
 	var (
 		allErrs            = field.ErrorList{}
 		providerConfigPath = field.NewPath("spec", "providerConfig")
