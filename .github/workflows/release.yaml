@@ -13,7 +13,7 @@ on:
         type: choice
         options:
           - noop
-          - finalize
+          - set-prerelease
 
 jobs:
   build:
