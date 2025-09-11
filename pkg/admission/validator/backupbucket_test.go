@@ -36,13 +36,13 @@ var _ = Describe("BackupBucket Validator", func() {
 			backupBucketValidator = validator.NewBackupBucketValidator()
 		})
 
-		It("should return err when obj is not a core.gardener.cloud/.BackupBucket", func() {
+		It("should return err when obj is not a gardencore.BackupBucket", func() {
 			err := backupBucketValidator.Validate(ctx, &corev1.Secret{}, nil)
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError("wrong object type *v1.Secret for new object"))
 		})
 
-		It("should return err when oldObj is not a core.gardener.cloud/.BackupBucket", func() {
+		It("should return err when oldObj is not a gardencore.BackupBucket", func() {
 			err := backupBucketValidator.Validate(ctx, &gardencore.BackupBucket{}, &corev1.Secret{})
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError("wrong object type *v1.Secret for old object"))
@@ -94,7 +94,7 @@ var _ = Describe("BackupBucket Validator", func() {
 
 				err := backupBucketValidator.Validate(ctx, newBackupBucket, backupBucket)
 				Expect(err).To(HaveOccurred())
-				Expect(err).To(MatchError(ContainSubstring(`failed to decode provider config: `)))
+				Expect(err).To(MatchError(ContainSubstring(`failed to decode new provider config: `)))
 			})
 
 			It("should succeed when BackupBucket is updated with valid spec and old had unset providerConfig", func() {
@@ -124,7 +124,7 @@ var _ = Describe("BackupBucket Validator", func() {
 				}
 
 				newBackupBucket := backupBucket.DeepCopy()
-				newBackupBucket.Spec.CredentialsRef = nil
+				newBackupBucket.Spec.ProviderConfig.Raw = []byte(`{"apiVersion": "azure.provider.extensions.gardener.cloud/v1alpha1", "kind": "BackupBucketConfig"}`)
 
 				err := backupBucketValidator.Validate(ctx, newBackupBucket, backupBucket)
 				Expect(err).To(HaveOccurred())
