@@ -46,18 +46,17 @@ func (s *backupBucketValidator) Validate(_ context.Context, newObj, oldObj clien
 // validateCreate validates the BackupBucket object upon creation.
 func (b *backupBucketValidator) validateCreate(backupBucket *gardencore.BackupBucket) field.ErrorList {
 	var (
-		allErrs               = field.ErrorList{}
-		providerConfigfldPath = field.NewPath("spec", "providerConfig")
+		allErrs            = field.ErrorList{}
+		providerConfigPath = field.NewPath("spec", "providerConfig")
 	)
 
 	config, err := helper.BackupConfigFromProviderConfig(backupBucket.Spec.ProviderConfig)
 	if err != nil {
-		return append(allErrs, field.InternalError(providerConfigfldPath, fmt.Errorf("failed to decode provider config: %w", err)))
+		return append(allErrs, field.Invalid(providerConfigPath, rawExtensionToString(backupBucket.Spec.ProviderConfig), fmt.Sprintf("failed to decode provider config: %s", err.Error())))
 	}
 
-	allErrs = append(allErrs, azurevalidation.ValidateBackupBucketConfig(&config, providerConfigfldPath)...)
+	allErrs = append(allErrs, azurevalidation.ValidateBackupBucketConfig(&config, providerConfigPath)...)
 	allErrs = append(allErrs, azurevalidation.ValidateBackupBucketCredentialsRef(backupBucket.Spec.CredentialsRef, field.NewPath("spec", "credentialsRef"))...)
-
 	return allErrs
 }
 
@@ -68,22 +67,22 @@ func (b *backupBucketValidator) validateUpdate(oldBackupBucket, backupBucket *ga
 		providerConfigPath = field.NewPath("spec", "providerConfig")
 	)
 
-	if oldBackupBucket.Spec.ProviderConfig == nil {
-		return b.validateCreate(backupBucket)
-	}
-
-	oldConfig, err := helper.BackupConfigFromProviderConfig(oldBackupBucket.Spec.ProviderConfig)
-	if err != nil {
-		return append(allErrs, field.InternalError(providerConfigPath, fmt.Errorf("failed to decode old provider config: %W", err)))
-	}
-
 	config, err := helper.BackupConfigFromProviderConfig(backupBucket.Spec.ProviderConfig)
 	if err != nil {
-		return append(allErrs, field.InternalError(providerConfigPath, fmt.Errorf("failed to decode new provider config: %W", err)))
+		return append(allErrs, field.Invalid(providerConfigPath, rawExtensionToString(backupBucket.Spec.ProviderConfig), fmt.Sprintf("failed to decode new provider config: %s", err.Error())))
 	}
 
-	allErrs = append(allErrs, azurevalidation.ValidateBackupBucketConfigUpdate(&oldConfig, &config, providerConfigPath)...)
+	allErrs = append(allErrs, azurevalidation.ValidateBackupBucketConfig(&config, providerConfigPath)...)
 	allErrs = append(allErrs, azurevalidation.ValidateBackupBucketCredentialsRef(backupBucket.Spec.CredentialsRef, field.NewPath("spec", "credentialsRef"))...)
+
+	if oldBackupBucket.Spec.ProviderConfig != nil {
+		oldConfig, err := helper.BackupConfigFromProviderConfig(oldBackupBucket.Spec.ProviderConfig)
+		if err != nil {
+			return append(allErrs, field.Invalid(providerConfigPath, rawExtensionToString(oldBackupBucket.Spec.ProviderConfig), fmt.Sprintf("failed to decode old provider config: %s", err.Error())))
+		}
+
+		allErrs = append(allErrs, azurevalidation.ValidateBackupBucketConfigUpdate(&oldConfig, &config, providerConfigPath)...)
+	}
 
 	return allErrs
 }

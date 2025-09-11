@@ -17,6 +17,14 @@ import (
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 )
 
+var (
+	secretGVK           = corev1.SchemeGroupVersion.WithKind("Secret")
+	workloadIdentityGVK = securityv1alpha1.SchemeGroupVersion.WithKind("WorkloadIdentity")
+
+	allowedGVKs = sets.New(secretGVK, workloadIdentityGVK)
+	validGVKs   = []string{secretGVK.String(), workloadIdentityGVK.String()}
+)
+
 // ValidateBackupBucketConfig validates a BackupBucketConfig object.
 func ValidateBackupBucketConfig(backupBucketConfig *apisazure.BackupBucketConfig, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
@@ -110,14 +118,6 @@ func ValidateBackupBucketCredentialsRef(credentialsRef *corev1.ObjectReference, 
 	if credentialsRef == nil {
 		return append(allErrs, field.Required(fldPath, "must be set"))
 	}
-
-	var (
-		secretGVK           = corev1.SchemeGroupVersion.WithKind("Secret")
-		workloadIdentityGVK = securityv1alpha1.SchemeGroupVersion.WithKind("WorkloadIdentity")
-
-		allowedGVKs = sets.New(secretGVK, workloadIdentityGVK)
-		validGVKs   = []string{secretGVK.String(), workloadIdentityGVK.String()}
-	)
 
 	if !allowedGVKs.Has(credentialsRef.GroupVersionKind()) {
 		allErrs = append(allErrs, field.NotSupported(fldPath, credentialsRef.String(), validGVKs))
