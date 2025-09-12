@@ -272,10 +272,10 @@ type NatGatewayConfig struct {
 // SubnetConfig is the specification for a subnet
 type SubnetConfig struct {
 	AzureResourceMetadata
-	cidr                         string
-	serviceEndpoint              []string
-	zone                         *string
-	disableDefaultOutboundAccess bool
+	cidr                  string
+	serviceEndpoint       []string
+	zone                  *string
+	defaultOutboundAccess bool
 }
 
 // ZoneConfig is the specification for a zone.
@@ -336,8 +336,8 @@ func (ia *InfrastructureAdapter) Zones() []ZoneConfig {
 	return ia.zoneConfigs
 }
 
-func (ia *InfrastructureAdapter) hasSubnetDefaultOutBoundAccessAnnotation() bool {
-	ok, _ := strconv.ParseBool(ia.infra.Annotations[consts.DisableDefaultOutboundAccessAnnotation])
+func (ia *InfrastructureAdapter) hasDisableDefaultOutBoundAccessAnnotation() bool {
+	ok, _ := strconv.ParseBool(ia.cluster.Shoot.Annotations[consts.DisableDefaultOutboundAccessAnnotation])
 	return ok
 }
 
@@ -359,10 +359,10 @@ func (ia *InfrastructureAdapter) zonesConfig() []ZoneConfig {
 					Parent:        ia.vnetConfig.Name,
 					Kind:          KindSubnet,
 				},
-				cidr:                         configZone.CIDR,
-				serviceEndpoint:              configZone.ServiceEndpoints,
-				zone:                         &zoneString,
-				disableDefaultOutboundAccess: ia.hasSubnetDefaultOutBoundAccessAnnotation(),
+				cidr:                  configZone.CIDR,
+				serviceEndpoint:       configZone.ServiceEndpoints,
+				zone:                  &zoneString,
+				defaultOutboundAccess: !ia.hasDisableDefaultOutBoundAccessAnnotation(),
 			},
 			Migrated: isMigratedZone,
 		}
@@ -429,8 +429,9 @@ func (ia *InfrastructureAdapter) defaultZone() []ZoneConfig {
 				Parent:        ia.vnetConfig.Name,
 				Kind:          KindSubnet,
 			},
-			cidr:            *config.Networks.Workers,
-			serviceEndpoint: config.Networks.ServiceEndpoints,
+			cidr:                  *config.Networks.Workers,
+			serviceEndpoint:       config.Networks.ServiceEndpoints,
+			defaultOutboundAccess: !ia.hasDisableDefaultOutBoundAccessAnnotation(),
 		},
 		Migrated: false,
 	}
@@ -624,7 +625,7 @@ func (s *SubnetConfig) ToProvider(base *armnetwork.Subnet) *armnetwork.Subnet {
 		Name: to.Ptr(s.Name),
 		Properties: &armnetwork.SubnetPropertiesFormat{
 			AddressPrefix:         to.Ptr(s.cidr),
-			DefaultOutboundAccess: to.Ptr(s.disableDefaultOutboundAccess),
+			DefaultOutboundAccess: to.Ptr(s.defaultOutboundAccess),
 		},
 		Etag: nil,
 	}
@@ -637,7 +638,10 @@ func (s *SubnetConfig) ToProvider(base *armnetwork.Subnet) *armnetwork.Subnet {
 	// inherited from base
 	if base != nil {
 		target.ID = base.ID
-		target.Properties.DefaultOutboundAccess = base.Properties.DefaultOutboundAccess
+		// Code comments suggest that the option to set DefaultOutboundAccess is only applicable during shoot creation.
+		// However, the API does not enforce this restriction, and it can be updated later as well.
+		// target.Properties.DefaultOutboundAccess = base.Properties.DefaultOutboundAccess
+
 		// For now, use whatever is already existing in the remote object. We will later overwrite them with what we consider appropriate.
 		target.Properties.NatGateway = base.Properties.NatGateway
 		target.Properties.NetworkSecurityGroup = base.Properties.NetworkSecurityGroup
