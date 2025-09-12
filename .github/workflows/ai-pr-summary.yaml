@@ -15,6 +15,7 @@ jobs:
           aicore-service-key: ${{ secrets.AICORE_SERVICE_KEY }}
           model: gemini-2.5-pro
           exclude-files: package-lock.json
+          display-mode: comment-delta
   review:
     if: ${{ github.event.label.name == 'ai/review' }}
     name: PR Review
