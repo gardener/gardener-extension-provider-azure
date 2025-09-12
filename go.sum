@@ -183,8 +183,8 @@ github.com/fxamacker/cbor/v2 v2.8.0 h1:fFtUGXUzXPHTIUdne5+zzMPTfffl3RD5qYnkY40vt
 github.com/fxamacker/cbor/v2 v2.8.0/go.mod h1:vM4b+DJCtHn+zz7h3FFp/hDAI9WNWCsZj23V5ytsSxQ=
 github.com/gardener/cert-management v0.17.8 h1:G2vfNtWGgyWQn0e2RWEGiKo1sAgF0t6U7LPvI+faV7Q=
 github.com/gardener/cert-management v0.17.8/go.mod h1:wl4YqTM/evCPITOj//sJsGiSebww7ofAtlsi5/RhbjQ=
-github.com/gardener/etcd-druid/api v0.31.0 h1:iH800fQOTeTAwQzaUQ8jxKFlSI8shZtpNfCTpsm3EyA=
-github.com/gardener/etcd-druid/api v0.31.0/go.mod h1:usOvhSOpqlrlnr/DTugq8VDoZRCU2YmwyDfiy6hRVO8=
+github.com/gardener/etcd-druid/api v0.32.0 h1:B3MEBe9q3+Q0jjFb/BhMigde05mYkVjWzVHgFd0/WuA=
+github.com/gardener/etcd-druid/api v0.32.0/go.mod h1:Qpl1PDJ+bKa6OPWk4o7WBzvjPqZc/CxIXbiTkdRhCrg=
 github.com/gardener/gardener v1.126.0 h1:ohn/YqK+HOFWov309WkxBFi8VSAuthpP0mgXf5kJHaY=
 github.com/gardener/gardener v1.126.0/go.mod h1:tJ4zF+B3GlseYTPJSnZaXd2K+CKHsoLfele8T1gHJJs=
 github.com/gardener/machine-controller-manager v0.59.2 h1:CSDKoNFzn8MdG+gJDp7ntsiuc7c57u82YYHLEbVdyOA=
