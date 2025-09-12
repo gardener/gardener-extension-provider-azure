@@ -1,7 +1,7 @@
 name: AI-assisted
 on:
   pull_request_target:
-    types: [opened, synchronize, labeled]
+    types: [opened, synchronize]
 
 jobs:
   summary:
@@ -15,7 +15,8 @@ jobs:
           aicore-service-key: ${{ secrets.AICORE_SERVICE_KEY }}
           model: gemini-2.5-pro
           exclude-files: package-lock.json
-          display-mode: comment-delta
+          display-mode: comment
+          previous-results: delete
   review:
     if: ${{ github.event.label.name == 'ai/review' }}
     name: PR Review
