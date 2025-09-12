@@ -120,6 +120,10 @@ providerSpec:
     vnetResourceGroup: {{ $machineClass.network.vnetResourceGroup}}
     {{- end }}
     subnetName: {{ $machineClass.network.subnet }}
+{{- if $machineClass.backendAddressPoolID }}
+  backendAddressPoolConfig:
+    id: {{ $machineClass.backendAddressPoolID }}
+{{- end }}
 {{- if $machineClass.tags }}
   tags:
 {{ toYaml $machineClass.tags | indent 4 }}
