@@ -1,7 +1,7 @@
 name: AI-assisted review
 on:
   pull_request_target:
-    types: [labeled]
+    types: [labeled, synchronize]
 
 jobs:
   review:
