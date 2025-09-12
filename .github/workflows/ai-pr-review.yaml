@@ -1,7 +1,7 @@
 name: AI-assisted PR review
 on:
   pull_request_target:
-    types: [labeled, synchronize]
+    types: [labeled]
 
 jobs:
   review:
