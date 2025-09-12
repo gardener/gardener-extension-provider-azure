@@ -1,4 +1,4 @@
-name: AI-assisted
+name: AI-assisted PR Summary
 on:
   pull_request_target:
     types: [opened, synchronize]

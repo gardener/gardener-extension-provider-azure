@@ -1,4 +1,4 @@
-name: AI-assisted review
+name: AI-assisted PR review
 on:
   pull_request_target:
     types: [labeled, synchronize]
