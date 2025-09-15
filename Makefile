@@ -18,12 +18,11 @@ LEADER_ELECTION             := false
 IGNORE_OPERATION_ANNOTATION := true
 PLATFORM 					:= linux/amd64
 TEST_RECONCILER             := tf
-EXTENSION_NAMESPACE			:= garden
+EXTENSION_NAMESPACE         := garden
 
 WEBHOOK_CONFIG_PORT	:= 8443
 WEBHOOK_CONFIG_MODE	:= url
 WEBHOOK_CONFIG_URL	:= host.docker.internal:$(WEBHOOK_CONFIG_PORT)
-EXTENSION_NAMESPACE	:=
 GARDEN_KUBECONFIG 	?=
 
 WEBHOOK_PARAM := --webhook-config-url=$(WEBHOOK_CONFIG_URL)
@@ -85,7 +84,6 @@ start-admission:
 		./cmd/$(EXTENSION_PREFIX)-$(ADMISSION_NAME) \
 		--webhook-config-server-host=0.0.0.0 \
 		--webhook-config-server-port=$(WEBHOOK_CONFIG_PORT) \
-		--leader-election-namespace=garden \
         --webhook-config-mode=$(WEBHOOK_CONFIG_MODE) \
         $(WEBHOOK_PARAM)
 
