@@ -258,7 +258,7 @@ Before enabling this feature, you will need to add additional permissions to you
 
 `BackupBucketConfig` describes the configuration that needs to be passed over for creation of the backup bucket infrastructure. Configuration like immutability (WORM, i.e. write-once-read-many) that can be set on the bucket are specified here. Objects in the bucket will inherit the immutability duration which is set on the bucket, and they can not be modified or deleted for that duration.
 
-This extension supports creating (and migrating already existing buckets if enabled) to use [container-level WORM policies](https://learn.microsoft.com/en-us/azure/storage/blobs/immutable-container-level-worm-policies).
+This extension supports creating buckets (and migrating already existing buckets if enabled) to use [container-level WORM policies](https://learn.microsoft.com/en-us/azure/storage/blobs/immutable-container-level-worm-policies).
 
 Example:
 
@@ -330,7 +330,7 @@ Every triggered rotation by the `BackupBucket` controller will rotate the key **
 In addition *operators* can annotate a `BackupBucket` with `azure.provider.extensions.gardener.cloud/rotate=true` to trigger a key rotation on the **next reconciliation**, regardless of the key's age.
 
 Options:
-- **`rotationPeriodDays`**: Defines the period after its creation that an `storage account key` should be rotated.
+- **`rotationPeriodDays`**: Defines the period after its creation that a `storage account key` should be rotated.
 - **`expirationPeriodDays`**: When specified it will install an expiration policy for keys in the Azure storage account.
 
 > [!WARNING]

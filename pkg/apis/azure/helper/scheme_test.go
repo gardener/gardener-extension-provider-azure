@@ -44,8 +44,8 @@ var _ = Describe("Scheme", func() {
 		},
 		Entry("when config is empty", []byte{}, nil, true),
 		Entry("when config is invalid json", []byte(`invalid-json`), nil, true),
-		Entry("when config is valid but has wrong apiVersion", []byte(`{"apiVersion":"azure.provider.extensions.gardener.cloud/v0","kind":"WorkloadIdentityConfig"}`), &api.WorkloadIdentityConfig{}, true),
-		Entry("when config is valid but has wrong kind", []byte(`{"apiVersion":"azure.provider.extensions.gardener.cloud/v1alpha1","kind":"WorkloadIdentityConfiguration"}`), &api.WorkloadIdentityConfig{}, true),
+		Entry("when config is valid but has wrong apiVersion", []byte(`{"apiVersion":"azure.provider.extensions.gardener.cloud/v0","kind":"WorkloadIdentityConfig"}`), nil, true),
+		Entry("when config is valid but has wrong kind", []byte(`{"apiVersion":"azure.provider.extensions.gardener.cloud/v1alpha1","kind":"WorkloadIdentityConfiguration"}`), nil, true),
 		Entry("when config is valid but missing required fields", []byte(`{"apiVersion":"azure.provider.extensions.gardener.cloud/v1alpha1","kind":"WorkloadIdentityConfig"}`), &api.WorkloadIdentityConfig{}, false),
 		Entry("when config is valid with all fields", []byte(`{
 			"apiVersion":"azure.provider.extensions.gardener.cloud/v1alpha1",

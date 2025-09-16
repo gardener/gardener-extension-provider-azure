@@ -71,7 +71,7 @@ func NewClientAuthDataFromSecret(secret *corev1.Secret, allowDNSKeys bool) (*Cli
 
 		if subscriptionID == "" || tenantID == "" || clientID == "" {
 			// only shoot's `cloudprovider` secret has these data keys injected,
-			// other workload identity secrets needs to retrieve them from the `config` data key.
+			// other workload identity secrets need to retrieve them from the `config` data key.
 			config, ok := secret.Data[securityv1alpha1constants.DataKeyConfig]
 			if !ok {
 				return nil, fmt.Errorf("secret %q is missing a 'config' data key", client.ObjectKeyFromObject(secret).String())
