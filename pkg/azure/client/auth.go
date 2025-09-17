@@ -16,6 +16,7 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
@@ -62,10 +63,34 @@ func GetClientAuthData(ctx context.Context, c client.Client, secretRef corev1.Se
 // NewClientAuthDataFromSecret reads the client auth details from the given secret.
 func NewClientAuthDataFromSecret(secret *corev1.Secret, allowDNSKeys bool) (*ClientAuth, error) {
 	if secret.Labels != nil && secret.Labels[securityv1alpha1constants.LabelPurpose] == securityv1alpha1constants.LabelPurposeWorkloadIdentityTokenRequestor {
+		var (
+			subscriptionID = string(secret.Data[azure.SubscriptionIDKey])
+			tenantID       = string(secret.Data[azure.TenantIDKey])
+			clientID       = string(secret.Data[azure.ClientIDKey])
+		)
+
+		if subscriptionID == "" || tenantID == "" || clientID == "" {
+			// only shoot's `cloudprovider` secret has these data keys injected,
+			// other workload identity secrets need to retrieve them from the `config` data key.
+			config, ok := secret.Data[securityv1alpha1constants.DataKeyConfig]
+			if !ok {
+				return nil, fmt.Errorf("secret %q is missing a 'config' data key", client.ObjectKeyFromObject(secret).String())
+			}
+
+			workloadIdentityConfig, err := helper.WorkloadIdentityConfigFromBytes(config)
+			if err != nil {
+				return nil, fmt.Errorf("could not decode 'config' as WorkloadIdentityConfig: %w", err)
+			}
+
+			subscriptionID = workloadIdentityConfig.SubscriptionID
+			tenantID = workloadIdentityConfig.TenantID
+			clientID = workloadIdentityConfig.ClientID
+		}
+
 		return &ClientAuth{
-			SubscriptionID: string(secret.Data[azure.SubscriptionIDKey]),
-			TenantID:       string(secret.Data[azure.TenantIDKey]),
-			ClientID:       string(secret.Data[azure.ClientIDKey]),
+			SubscriptionID: subscriptionID,
+			TenantID:       tenantID,
+			ClientID:       clientID,
 			TokenRetriever: func(_ context.Context) (string, error) {
 				return string(secret.Data[securityv1alpha1constants.DataKeyToken]), nil
 			},

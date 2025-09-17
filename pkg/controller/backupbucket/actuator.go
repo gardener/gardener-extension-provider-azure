@@ -27,9 +27,10 @@ import (
 var DefaultAzureClientFactoryFunc = azureclient.NewAzureClientFactoryFromSecret
 
 type actuator struct {
-	backupbucket.Actuator
 	client client.Client
 }
+
+var _ backupbucket.Actuator = (*actuator)(nil)
 
 // NewActuator creates a new Actuator that manages BackupBucket resources.
 func NewActuator(mgr manager.Manager) backupbucket.Actuator {
@@ -40,6 +41,7 @@ func NewActuator(mgr manager.Manager) backupbucket.Actuator {
 func (a *actuator) Reconcile(ctx context.Context, logger logr.Logger, backupBucket *extensionsv1alpha1.BackupBucket) error {
 	return util.DetermineError(a.reconcile(ctx, logger, backupBucket), helper.KnownCodes)
 }
+
 func (a *actuator) reconcile(ctx context.Context, logger logr.Logger, backupBucket *extensionsv1alpha1.BackupBucket) error {
 	backupBucketConfig, err := helper.BackupConfigFromBackupBucket(backupBucket)
 	if err != nil {

@@ -6,9 +6,11 @@ package helper
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
+	"github.com/gardener/gardener/extensions/pkg/util"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -22,8 +24,8 @@ import (
 )
 
 var (
-	// Scheme is a scheme with the types relevant for Azure actuators.
-	Scheme *runtime.Scheme
+	// scheme is a scheme with the types relevant for Azure actuators.
+	scheme *runtime.Scheme
 
 	decoder runtime.Decoder
 
@@ -38,11 +40,11 @@ var (
 )
 
 func init() {
-	Scheme = runtime.NewScheme()
-	utilruntime.Must(install.AddToScheme(Scheme))
+	scheme = runtime.NewScheme()
+	utilruntime.Must(install.AddToScheme(scheme))
 
-	decoder = serializer.NewCodecFactory(Scheme, serializer.EnableStrict).UniversalDecoder()
-	lenientDecoder = serializer.NewCodecFactory(Scheme).UniversalDecoder()
+	decoder = serializer.NewCodecFactory(scheme, serializer.EnableStrict).UniversalDecoder()
+	lenientDecoder = serializer.NewCodecFactory(scheme).UniversalDecoder()
 }
 
 // InfrastructureConfigFromInfrastructure extracts the InfrastructureConfig from the
@@ -162,4 +164,24 @@ func InfrastructureStatusFromInfrastructure(infra *extensionsv1alpha1.Infrastruc
 		return InfrastructureStatusFromRaw(infra.Status.ProviderStatus)
 	}
 	return status, nil
+}
+
+// WorkloadIdentityConfigFromRaw extracts WorkloadIdentityConfig from the provided [runtime.RawExtension].
+func WorkloadIdentityConfigFromRaw(raw *runtime.RawExtension) (*api.WorkloadIdentityConfig, error) {
+	if raw == nil || raw.Raw == nil {
+		return nil, errors.New("cannot parse WorkloadIdentityConfig from empty RawExtension")
+	}
+	return WorkloadIdentityConfigFromBytes(raw.Raw)
+}
+
+// WorkloadIdentityConfigFromBytes extracts WorkloadIdentityConfig from the provided byte array.
+func WorkloadIdentityConfigFromBytes(config []byte) (*api.WorkloadIdentityConfig, error) {
+	if len(config) == 0 {
+		return nil, fmt.Errorf("cannot parse WorkloadIdentityConfig from empty config")
+	}
+	workloadIdentityConfig := &api.WorkloadIdentityConfig{}
+	if err := util.Decode(decoder, config, workloadIdentityConfig); err != nil {
+		return nil, err
+	}
+	return workloadIdentityConfig, nil
 }

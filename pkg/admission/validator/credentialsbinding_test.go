@@ -62,8 +62,6 @@ var _ = Describe("CredentialsBinding validator", func() {
 			Expect(azureapi.AddToScheme(scheme)).To(Succeed())
 			Expect(azureapiv1alpha1.AddToScheme(scheme)).To(Succeed())
 
-			mgr.EXPECT().GetScheme().Return(scheme)
-
 			credentialsBindingValidator = validator.NewCredentialsBindingValidator(mgr)
 
 			credentialsBindingSecret = &security.CredentialsBinding{

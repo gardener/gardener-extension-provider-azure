@@ -68,7 +68,6 @@ var _ = Describe("Ensurer", func() {
 		mgr.EXPECT().GetClient().Return(c)
 		scheme := kubernetes.SeedScheme
 		Expect(install.AddToScheme(scheme)).To(Succeed())
-		mgr.EXPECT().GetScheme().Return(scheme)
 
 		ensurer = NewEnsurer(mgr, logger)
 	})

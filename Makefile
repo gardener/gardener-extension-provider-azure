@@ -18,12 +18,12 @@ LEADER_ELECTION             := false
 IGNORE_OPERATION_ANNOTATION := true
 PLATFORM 					:= linux/amd64
 TEST_RECONCILER             := tf
-EXTENSION_NAMESPACE			:= garden
+EXTENSION_NAMESPACE         := garden
 
 WEBHOOK_CONFIG_PORT	:= 8443
 WEBHOOK_CONFIG_MODE	:= url
 WEBHOOK_CONFIG_URL	:= host.docker.internal:$(WEBHOOK_CONFIG_PORT)
-EXTENSION_NAMESPACE	:=
+GARDEN_KUBECONFIG 	?=
 
 WEBHOOK_PARAM := --webhook-config-url=$(WEBHOOK_CONFIG_URL)
 ifeq ($(WEBHOOK_CONFIG_MODE), service)
@@ -55,7 +55,10 @@ include $(GARDENER_HACK_DIR)/tools.mk
 
 .PHONY: start
 start:
-	@LEADER_ELECTION_NAMESPACE=$(EXTENSION_NAMESPACE) go run \
+	@LEADER_ELECTION_NAMESPACE=$(EXTENSION_NAMESPACE) \
+		GARDEN_KUBECONFIG=$(GARDEN_KUBECONFIG) \
+		GARDENER_SHOOT_CLIENT="external" \
+		go run \
 		-ldflags $(LD_FLAGS) \
 		./cmd/$(EXTENSION_PREFIX)-$(NAME) \
 		--config-file=./example/00-componentconfig.yaml \
@@ -82,13 +85,12 @@ start-admission:
 		--leader-election=$(LEADER_ELECTION) \
 		--webhook-config-server-host=0.0.0.0 \
 		--webhook-config-server-port=$(WEBHOOK_CONFIG_PORT) \
-		--leader-election-namespace=garden \
         --webhook-config-mode=$(WEBHOOK_CONFIG_MODE) \
         $(WEBHOOK_PARAM)
 
 .PHONY: hook-me
 hook-me: $(KUBECTL)
-	bash $(GARDENER_HACK_DIR)/hook-me.sh $(EXTENSION_NAMESPACE) $$(kubectl get namespace -o custom-columns=NAME:.metadata.name | grep $(NAME) | head -n1) $(WEBHOOK_CONFIG_PORT)
+	bash $(GARDENER_HACK_DIR)/hook-me.sh $(EXTENSION_PREFIX)-$(NAME) $$(kubectl get namespace -o custom-columns=NAME:.metadata.name | grep $(NAME) | head -n1) $(WEBHOOK_CONFIG_PORT)
 
 #################################################################
 # Rules related to binary build, Docker image build and release #
