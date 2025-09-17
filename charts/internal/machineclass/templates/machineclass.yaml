@@ -98,7 +98,7 @@ providerSpec:
         {{- end }}
 {{- end }}
       osDisk:
-        caching: None
+        caching: {{ $machineClass.osDisk.caching }}
         diskSizeGB: {{ $machineClass.osDisk.size }}
         managedDisk:
         {{- if hasKey $machineClass.osDisk "type" }}
