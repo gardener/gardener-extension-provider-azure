@@ -161,12 +161,12 @@ var _ = Describe("Seed Validator", func() {
 					},
 				}
 
-				newseed := seed.DeepCopy()
-				newseed.Spec.Backup.ProviderConfig = &runtime.RawExtension{
+				newSeed := seed.DeepCopy()
+				newSeed.Spec.Backup.ProviderConfig = &runtime.RawExtension{
 					Raw: []byte(`{"apiVersion": "azure.provider.extensions.gardener.cloud/v1alpha1", "kind": "BackupBucketConfig"}`),
 				}
 
-				err := seedValidator.Validate(ctx, newseed, seed)
+				err := seedValidator.Validate(ctx, newSeed, seed)
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(MatchError(ContainSubstring("failed to decode old provider config: ")))
 			})
@@ -183,12 +183,12 @@ var _ = Describe("Seed Validator", func() {
 					},
 				}
 
-				newseed := seed.DeepCopy()
-				newseed.Spec.Backup.ProviderConfig = &runtime.RawExtension{
+				newSeed := seed.DeepCopy()
+				newSeed.Spec.Backup.ProviderConfig = &runtime.RawExtension{
 					Raw: []byte(`{"apiVersion": "azure.provider.extensions.gardener.cloud/v1alpha1", "kind": "invalid"}`),
 				}
 
-				err := seedValidator.Validate(ctx, newseed, seed)
+				err := seedValidator.Validate(ctx, newSeed, seed)
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(MatchError(ContainSubstring("failed to decode new provider config: ")))
 			})
