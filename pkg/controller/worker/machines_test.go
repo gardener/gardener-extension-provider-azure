@@ -368,7 +368,7 @@ var _ = Describe("Machines", func() {
 					Name:              namePool2,
 					Minimum:           minPool2,
 					Maximum:           maxPool2,
-					Priority:          ptr.To(priorityPool2),
+					Priority:          priorityPool2,
 					MaxSurge:          maxSurgePool2,
 					Architecture:      ptr.To(archAMD),
 					MaxUnavailable:    maxUnavailablePool2,
@@ -654,7 +654,7 @@ var _ = Describe("Machines", func() {
 							SecretName: machineClassWithHashPool2,
 							Minimum:    minPool2,
 							Maximum:    maxPool2,
-							Priority:   ptr.To(priorityPool2),
+							Priority:   priorityPool2,
 							Strategy: machinev1alpha1.MachineDeploymentStrategy{
 								Type: machinev1alpha1.RollingUpdateMachineDeploymentStrategyType,
 								RollingUpdate: &machinev1alpha1.RollingUpdateMachineDeployment{
