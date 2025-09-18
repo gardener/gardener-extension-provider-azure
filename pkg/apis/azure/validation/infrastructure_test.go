@@ -53,19 +53,115 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				},
 			},
 		}
-		ddosProtectionPlanID = "/subscriptions/test/resourceGroups/test/providers/Microsoft.Network/ddosProtectionPlans/test-ddos-protection-plan"
+		ddosProtectionPlanID = "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/test/providers/Microsoft.Network/ddosProtectionPlans/test-ddos-protection-plan"
 	})
 
 	Describe("#ValidateInfrastructureConfig", func() {
+		Describe("ValidateInput", func() {
+			It("should forbid specifying an invalid resource group name", func() {
+				infrastructureConfig.ResourceGroup = &apisazure.ResourceGroup{
+					Name: "invalid-resource-group-name[[]]",
+				}
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)
+				Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras,
+					Fields{
+						"Type":   Equal(field.ErrorTypeInvalid),
+						"Field":  Equal("resourceGroup.name"),
+						"Detail": ContainSubstring("does not match expected regex"),
+					},
+				))))
+			})
+			It("should forbid specifying an invalid vnet input", func() {
+				infrastructureConfig.Networks.VNet = apisazure.VNet{
+					Name:          ptr.To("invalid-vnet-name[[]]"),
+					ResourceGroup: ptr.To("invalid-resource-group-name[[]]"),
+				}
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)
+				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.vnet.resourceGroup"),
+					"Detail": ContainSubstring("does not match expected regex"),
+				})), PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.vnet.name"),
+					"Detail": ContainSubstring("does not match expected regex"),
+				}))))
+			})
+			It("should forbid specifying a vnet with less characters", func() {
+				infrastructureConfig.Networks.VNet = apisazure.VNet{
+					Name:          ptr.To("v"),
+					ResourceGroup: ptr.To("resource-group"),
+				}
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)
+				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.vnet.name"),
+					"Detail": ContainSubstring("does not match expected regex"),
+				})), PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.vnet.name"),
+					"Detail": ContainSubstring("must not be fewer"),
+				}))))
+			})
+			It("should forbid specifying an invalid vnet ddosProtectionPlan", func() {
+				infrastructureConfig.Networks.VNet.DDosProtectionPlanID = ptr.To("invalid-ddos")
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)
+				Expect(errorList).To(ConsistOfFields(
+					Fields{
+						"Type":   Equal(field.ErrorTypeInvalid),
+						"Field":  Equal("networks.vnet.ddosProtectionPlanID"),
+						"Detail": ContainSubstring("invalid resource ID"),
+					}))
+			})
+			It("should forbid specifying an invalid managed identity", func() {
+				infrastructureConfig.Identity = &apisazure.IdentityConfig{
+					Name:          "invalid-name{{}}",
+					ResourceGroup: "invalid resource group name",
+				}
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("identity.resourceGroup"),
+					"Detail": ContainSubstring("does not match expected regex"),
+				}, Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("identity.name"),
+					"Detail": ContainSubstring("does not match expected regex"),
+				}))
+			})
+			It("should forbid specifying invalid service endpoints", func() {
+				infrastructureConfig.Networks.ServiceEndpoints = []string{
+					"foo",
+					"Microsoft.Storage",
+					"GCP.Storage",
+				}
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)
+				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.serviceEndpoints[0]"),
+					"Detail": ContainSubstring("does not match expected regex"),
+				})), PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.serviceEndpoints[0]"),
+					"Detail": ContainSubstring("must not be fewer"),
+				})), PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.serviceEndpoints[2]"),
+					"Detail": ContainSubstring("does not match expected regex"),
+				}))))
+			})
+		})
+
 		It("should forbid specifying a resource group configuration", func() {
 			infrastructureConfig.ResourceGroup = &apisazure.ResourceGroup{}
 
 			errorList := ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)
-
-			Expect(errorList).To(ConsistOfFields(Fields{
-				"Type":  Equal(field.ErrorTypeInvalid),
-				"Field": Equal("resourceGroup"),
-			}))
+			Expect(errorList).To(ConsistOfFields(
+				Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("resourceGroup"),
+					"Detail": ContainSubstring("specifying an existing resource group is not supported yet"),
+				}))
 		})
 
 		Context("vnet", func() {
@@ -90,7 +186,6 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					ResourceGroup: &vnetGroup,
 				}
 				errorList := ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)
-
 				Expect(errorList).To(ConsistOfFields(
 					Fields{
 						"Type":   Equal(field.ErrorTypeInvalid),
@@ -106,17 +201,15 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				}
 				errorList := ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)
 
-				Expect(errorList).To(ConsistOfFields(
-					Fields{
-						"Type":   Equal(field.ErrorTypeRequired),
-						"Field":  Equal("networks.vnet.name"),
-						"Detail": Equal("the vnet name must not be empty"),
-					},
-					Fields{
-						"Type":   Equal(field.ErrorTypeRequired),
-						"Field":  Equal("networks.vnet.resourceGroup"),
-						"Detail": Equal("the vnet resource group must not be empty"),
-					}))
+				Expect(errorList).To(ContainElements(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":   Equal(field.ErrorTypeRequired),
+					"Field":  Equal("networks.vnet.name"),
+					"Detail": Equal("the vnet name must not be empty if specifying an existing vnet"),
+				})), PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":   Equal(field.ErrorTypeRequired),
+					"Field":  Equal("networks.vnet.resourceGroup"),
+					"Detail": Equal("the vnet resource group must not be empty if specifying an existing vnet"),
+				}))))
 			})
 
 			It("should forbid specifying existing vnet plus a vnet cidr", func() {
@@ -322,7 +415,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 
 			It("should return errors because no name or resource group is given", func() {
 				infrastructureConfig.Identity = &apisazure.IdentityConfig{
-					Name: "test-identiy",
+					Name: "test-identity",
 				}
 				errorList := ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)
 				Expect(errorList).To(ConsistOfFields(Fields{
@@ -411,7 +504,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					Expect(errorList).To(ConsistOfFields(Fields{
 						"Type":   Equal(field.ErrorTypeRequired),
 						"Field":  Equal("networks.natGateway.ipAddresses[0].resourceGroup"),
-						"Detail": Equal("ResourceGroup for NatGateway public ip resouce is required"),
+						"Detail": Equal("ResourceGroup for NatGateway public ip resource is required"),
 					}))
 				})
 			})

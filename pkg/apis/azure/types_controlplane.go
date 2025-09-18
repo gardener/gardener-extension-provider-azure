@@ -20,7 +20,7 @@ type ControlPlaneConfig struct {
 
 	// Storage contains configuration for storage in the cluster.
 	// +optional
-	Storage *Storage `json:"storage,omitempty"`
+	Storage *Storage
 }
 
 // CloudControllerManagerConfig contains configuration settings for the cloud-controller-manager.

@@ -8,11 +8,14 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/gardener/gardener/pkg/apis/core"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/utils/ptr"
 
 	apiazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 )
@@ -21,10 +24,18 @@ import (
 func ValidateWorkerConfig(workerConfig *apiazure.WorkerConfig, dataVolumes []core.DataVolume, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	if workerConfig != nil {
-		allErrs = append(allErrs, validateNodeTemplate(workerConfig.NodeTemplate, fldPath)...)
-		allErrs = append(allErrs, validateDataVolumeConf(workerConfig.DataVolumes, dataVolumes, fldPath)...)
+	if workerConfig == nil {
+		return allErrs
 	}
+
+	if diagnosticsProfile := workerConfig.DiagnosticsProfile; diagnosticsProfile != nil {
+		if diagnosticsProfile.StorageURI != nil {
+			allErrs = append(allErrs, storageURIValidation(*diagnosticsProfile.StorageURI, fldPath.Child("diagnosticsProfile").Child("storageURI"))...)
+		}
+	}
+
+	allErrs = append(allErrs, validateNodeTemplate(workerConfig.NodeTemplate, fldPath.Child("nodeTemplate"))...)
+	allErrs = append(allErrs, validateDataVolumeConf(workerConfig.DataVolumes, dataVolumes, fldPath)...)
 
 	return allErrs
 }
@@ -35,13 +46,20 @@ func validateNodeTemplate(nodeTemplate *extensionsv1alpha1.NodeTemplate, fldPath
 	if nodeTemplate == nil {
 		return nil
 	}
-	for _, capacityAttribute := range []corev1.ResourceName{corev1.ResourceCPU, "gpu", corev1.ResourceMemory} {
+	resources := []corev1.ResourceName{corev1.ResourceCPU, "gpu", corev1.ResourceMemory, corev1.ResourceStorage, corev1.ResourceEphemeralStorage}
+	resourceSet := sets.New[corev1.ResourceName](resources...)
+	for resourceName := range nodeTemplate.Capacity {
+		if !resourceSet.Has(resourceName) {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("capacity").Child(string(resourceName)), resourceName, fmt.Sprintf("%s is an unsupported resource name. Valid values are: %v", resourceName, resourceSet.UnsortedList())))
+		}
+	}
+
+	for _, capacityAttribute := range resources {
 		value, ok := nodeTemplate.Capacity[capacityAttribute]
 		if !ok {
-			allErrs = append(allErrs, field.Required(fldPath.Child("nodeTemplate").Child("capacity"), fmt.Sprintf("%s is a mandatory field", capacityAttribute)))
 			continue
 		}
-		allErrs = append(allErrs, validateResourceQuantityValue(capacityAttribute, value, fldPath.Child("nodeTemplate").Child("capacity").Child(string(capacityAttribute)))...)
+		allErrs = append(allErrs, validateResourceQuantityValue(capacityAttribute, value, fldPath.Child("capacity").Child(string(capacityAttribute)))...)
 	}
 
 	return allErrs
@@ -49,23 +67,43 @@ func validateNodeTemplate(nodeTemplate *extensionsv1alpha1.NodeTemplate, fldPath
 
 func validateDataVolumeConf(dataVolumeConfigs []apiazure.DataVolume, dataVolumes []core.DataVolume, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
-	imageRefPath := fldPath.Child("dataVolumes").Child("ImageRef")
-	namePath := fldPath.Child("dataVolumes").Child("Name")
 	var dataVolumeNames []string
 
 	for _, dataVolume := range dataVolumes {
 		dataVolumeNames = append(dataVolumeNames, dataVolume.Name)
 	}
 
-	for _, dataVolumeConf := range dataVolumeConfigs {
-		if dataVolumeConf.ImageRef != nil && *dataVolumeConf.ImageRef == (apiazure.Image{}) {
-			allErrs = append(allErrs, field.Invalid(imageRefPath, dataVolumeConf.ImageRef, "imageRef is defined but empty"))
-		}
-		if !slices.Contains(dataVolumeNames, dataVolumeConf.Name) {
-			allErrs = append(allErrs, field.Invalid(namePath, dataVolumeConf.Name, "no dataVolume with this name exists"))
+	for idx, dataVolumeConf := range dataVolumeConfigs {
+		dvPath := fldPath.Child("dataVolumes").Index(idx)
+		imgRefPath := dvPath.Child("imageRef")
+
+		if imgRef := dataVolumeConf.ImageRef; imgRef != nil {
+			if !slices.Contains(dataVolumeNames, dataVolumeConf.Name) {
+				allErrs = append(allErrs, field.Invalid(dvPath.Child("name"), dataVolumeConf.Name, "no dataVolume with this name exists"))
+			}
+
+			if *imgRef == (apiazure.Image{}) {
+				allErrs = append(allErrs, field.Invalid(imgRefPath, dataVolumeConf.ImageRef, "imageRef is defined but empty"))
+			}
+			if imgRef.URN != nil {
+				allErrs = append(allErrs, urnValidation(*imgRef.URN, imgRefPath.Child("urn"))...)
+			}
+			if imgRef.CommunityGalleryImageID != nil {
+				allErrs = append(allErrs, communityGalleryImageIDValidation(*imgRef.CommunityGalleryImageID, imgRefPath.Child("communityGalleryImageID"))...)
+			}
+			if imgRef.SharedGalleryImageID != nil {
+				allErrs = append(allErrs, sharedGalleryImageIDValidation(*imgRef.SharedGalleryImageID, imgRefPath.Child("sharedGalleryImageID"))...)
+			}
+			if imgRef.ID != nil {
+				resourceID, err := arm.ParseResourceID(*imgRef.ID)
+				if err != nil {
+					return append(allErrs, field.Invalid(imgRefPath.Child("id"), *imgRef.ID, fmt.Sprintf("invalid image ID: %v", err)))
+				}
+
+				allErrs = append(allErrs, validateResourceID(resourceID, ptr.To("images"), imgRefPath.Child("images"))...)
+			}
 		}
 	}
-
 	return allErrs
 }
 
