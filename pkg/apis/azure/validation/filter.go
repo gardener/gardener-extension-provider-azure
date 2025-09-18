@@ -68,8 +68,8 @@ func regex(regex string) validateFunc[string] {
 func minLength(min int) validateFunc[string] {
 	return func(name string, fld *field.Path) field.ErrorList {
 		var allErrs field.ErrorList
-		if utf8.RuneCountInString(name) < min {
-			return field.ErrorList{field.Invalid(fld, name, fmt.Sprintf("must not be fewer than %d characters, got %d", min, len(name)))}
+		if l := utf8.RuneCountInString(name); l < min {
+			return field.ErrorList{field.Invalid(fld, name, fmt.Sprintf("must not be fewer than %d characters, got %d", min, l))}
 		}
 		return allErrs
 	}
@@ -85,8 +85,8 @@ func notEmpty(name string, fld *field.Path) field.ErrorList {
 func maxLength(max int) validateFunc[string] {
 	return func(name string, fld *field.Path) field.ErrorList {
 		var allErrs field.ErrorList
-		if utf8.RuneCountInString(name) > max {
-			return field.ErrorList{field.Invalid(fld, name, fmt.Sprintf("must not be more than %d characters, got %d", max, len(name)))}
+		if l := utf8.RuneCountInString(name); l > max {
+			return field.ErrorList{field.Invalid(fld, name, fmt.Sprintf("must not be more than %d characters, got %d", max, l))}
 		}
 		return allErrs
 	}

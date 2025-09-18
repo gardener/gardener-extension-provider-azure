@@ -46,7 +46,7 @@ func validateNodeTemplate(nodeTemplate *extensionsv1alpha1.NodeTemplate, fldPath
 	if nodeTemplate == nil {
 		return nil
 	}
-	resources := []corev1.ResourceName{corev1.ResourceCPU, "gpu", corev1.ResourceMemory, corev1.ResourceEphemeralStorage, corev1.ResourceEphemeralStorage}
+	resources := []corev1.ResourceName{corev1.ResourceCPU, "gpu", corev1.ResourceMemory, corev1.ResourceStorage, corev1.ResourceEphemeralStorage}
 	resourceSet := sets.New[corev1.ResourceName](resources...)
 	for resourceName := range nodeTemplate.Capacity {
 		if !resourceSet.Has(resourceName) {
@@ -97,7 +97,7 @@ func validateDataVolumeConf(dataVolumeConfigs []apiazure.DataVolume, dataVolumes
 			if imgRef.ID != nil {
 				resourceID, err := arm.ParseResourceID(*imgRef.ID)
 				if err != nil {
-					return append(allErrs, field.Invalid(fldPath, imgRefPath.Child("id"), fmt.Sprintf("invalid image ID: %v", err)))
+					return append(allErrs, field.Invalid(imgRefPath.Child("id"), *imgRef.ID, fmt.Sprintf("invalid image ID: %v", err)))
 				}
 
 				allErrs = append(allErrs, validateResourceID(resourceID, ptr.To("images"), imgRefPath.Child("images"))...)

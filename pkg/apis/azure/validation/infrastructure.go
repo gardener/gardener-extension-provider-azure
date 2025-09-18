@@ -289,8 +289,8 @@ func validateZones(zones []apisazure.Zone, nodes, pods, services cidrvalidation.
 		allErrs = append(allErrs, cidrvalidation.ValidateCIDRIsCanonical(zoneCIDR.GetFieldPath(), zoneCIDR.GetCIDR())...)
 
 		// service endpoint validation
-		for _, se := range zone.ServiceEndpoints {
-			allErrs = append(validateServiceEndpoint(se, fld.Child("serviceEndpoints")), allErrs...)
+		for idx, se := range zone.ServiceEndpoints {
+			allErrs = append(allErrs, validateServiceEndpoint(se, fld.Child("serviceEndpoints").Index(idx))...)
 		}
 
 		// NAT validation
