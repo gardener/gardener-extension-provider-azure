@@ -27,10 +27,10 @@ var (
 	communityGalleryImageIDRegex = `^/CommunityGalleries/[\w-]+/Images/[\w-]+/Versions/[\w.-]+$`
 
 	validateServiceEndpoint           = combineValidationFuncs(regex(serviceEndpointsRegex), minLength(9), maxLength(120))
-	validateResourceGroup             = combineValidationFuncs(regex(resourceGroupNameRegex), maxLength(90))
+	validateResourceGroupName         = combineValidationFuncs(regex(resourceGroupNameRegex), notEmpty, maxLength(90))
 	validateVnetName                  = combineValidationFuncs(regex(vnetNameRegex), minLength(2), maxLength(64))
 	validateGenericName               = combineValidationFuncs(regex(genericAzureNameRegex), minLength(3), maxLength(120))
-	validatePublicIP                  = combineValidationFuncs(regex(genericAzureNameRegex), maxLength(80))
+	validatePublicIPName              = combineValidationFuncs(regex(genericAzureNameRegex), notEmpty, maxLength(80))
 	storageURIValidation              = combineValidationFuncs(urlFilter, regex(storageURIRegex), notEmpty)
 	urnValidation                     = combineValidationFuncs(regex(urnRegex), notEmpty, maxLength(256))
 	sharedGalleryImageIDValidation    = combineValidationFuncs(regex(sharedGalleryImageIDRegex), notEmpty, maxLength(512))
@@ -77,7 +77,7 @@ func minLength(min int) validateFunc[string] {
 
 func notEmpty(name string, fld *field.Path) field.ErrorList {
 	if utf8.RuneCountInString(name) == 0 {
-		return field.ErrorList{field.Required(fld, name)}
+		return field.ErrorList{field.Required(fld, "must not be empty")}
 	}
 	return nil
 }
@@ -113,7 +113,7 @@ func validateResourceID(rid *arm.ResourceID, resourceType *string, fld *field.Pa
 	}
 
 	if rid.ResourceGroupName != "" {
-		allErrs = append(allErrs, validateResourceGroup(rid.ResourceGroupName, fld.Child("resourceGroupName"))...)
+		allErrs = append(allErrs, validateResourceGroupName(rid.ResourceGroupName, fld.Child("resourceGroupName"))...)
 	}
 	if resourceType != nil {
 		allErrs = append(allErrs, validateGenericName(*resourceType, fld.Child("resourceType"))...)
