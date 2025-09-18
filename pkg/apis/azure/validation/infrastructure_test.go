@@ -153,7 +153,9 @@ var _ = Describe("InfrastructureConfig validation", func() {
 		})
 
 		It("should forbid specifying a resource group configuration", func() {
-			infrastructureConfig.ResourceGroup = &apisazure.ResourceGroup{}
+			infrastructureConfig.ResourceGroup = &apisazure.ResourceGroup{
+				Name: resourceGroup,
+			}
 
 			errorList := ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)
 			Expect(errorList).To(ConsistOfFields(
@@ -419,8 +421,8 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				}
 				errorList := ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)
 				Expect(errorList).To(ConsistOfFields(Fields{
-					"Type":  Equal(field.ErrorTypeInvalid),
-					"Field": Equal("identity"),
+					"Type":  Equal(field.ErrorTypeRequired),
+					"Field": Equal("identity.resourceGroup"),
 				}))
 			})
 		})
@@ -494,7 +496,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					Expect(errorList).To(ConsistOfFields(Fields{
 						"Type":   Equal(field.ErrorTypeRequired),
 						"Field":  Equal("networks.natGateway.ipAddresses[0].name"),
-						"Detail": Equal("Name for NatGateway public ip resource is required"),
+						"Detail": Equal("must not be empty"),
 					}))
 				})
 
@@ -504,7 +506,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					Expect(errorList).To(ConsistOfFields(Fields{
 						"Type":   Equal(field.ErrorTypeRequired),
 						"Field":  Equal("networks.natGateway.ipAddresses[0].resourceGroup"),
-						"Detail": Equal("ResourceGroup for NatGateway public ip resource is required"),
+						"Detail": Equal("must not be empty"),
 					}))
 				})
 			})
