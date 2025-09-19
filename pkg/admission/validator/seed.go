@@ -12,7 +12,6 @@ import (
 	"github.com/gardener/gardener/pkg/apis/core"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
@@ -21,16 +20,12 @@ import (
 
 // seedValidator validates create and update operations on Seed resources,
 // validating the immutability settings passed through the backup configuration.
-type seedValidator struct {
-	client client.Client
-}
+type seedValidator struct{}
 
 // NewSeedValidator returns a new Validator for Seed resources,
 // ensuring backup configuration immutability according to policy.
-func NewSeedValidator(mgr manager.Manager) extensionswebhook.Validator {
-	return &seedValidator{
-		client: mgr.GetClient(),
-	}
+func NewSeedValidator() extensionswebhook.Validator {
+	return &seedValidator{}
 }
 
 // Validate validates the Seed resource during create or update operations.
@@ -59,49 +54,57 @@ func (s *seedValidator) Validate(_ context.Context, newObj, oldObj client.Object
 // validateCreate validates the Seed object before creation.
 // It validates the `spec.backup.immutability` configuration passed.
 func (s *seedValidator) validateCreate(seed *core.Seed) field.ErrorList {
-	var (
-		allErrs               = field.ErrorList{}
-		providerConfigfldPath = field.NewPath("spec", "backup", "providerConfig")
-	)
+	allErrs := field.ErrorList{}
 
-	if seed.Spec.Backup == nil || seed.Spec.Backup.ProviderConfig == nil {
-		return allErrs
-	}
+	if seed.Spec.Backup != nil {
+		backupPath := field.NewPath("spec", "backup")
+		allErrs = append(allErrs, azurevalidation.ValidateBackupBucketCredentialsRef(seed.Spec.Backup.CredentialsRef, backupPath.Child("credentialsRef"))...)
 
-	backupBucketConfig, err := helper.BackupConfigFromProviderConfig(seed.Spec.Backup.ProviderConfig)
-	if err != nil {
-		return append(allErrs, field.Invalid(providerConfigfldPath, seed.Spec.Backup.ProviderConfig, fmt.Errorf("failed to decode new provider config: %v", err).Error()))
-	}
-
-	return append(allErrs, azurevalidation.ValidateBackupBucketConfig(&backupBucketConfig, providerConfigfldPath)...)
-}
-
-func (s *seedValidator) validateUpdate(oldSeed, newSeed *core.Seed) field.ErrorList {
-	var (
-		allErrs               = field.ErrorList{}
-		providerConfigfldPath = field.NewPath("spec", "backup", "providerConfig")
-	)
-
-	// create validations need to run if the old seed did not have backups/immutable backups
-	if oldSeed.Spec.Backup == nil || oldSeed.Spec.Backup.ProviderConfig == nil {
-		return s.validateCreate(newSeed)
-	}
-
-	oldBackupBucketConfig, err := helper.BackupConfigFromProviderConfig(oldSeed.Spec.Backup.ProviderConfig)
-	if err != nil {
-		return append(allErrs, field.Invalid(providerConfigfldPath, oldSeed.Spec.Backup.ProviderConfig, fmt.Errorf("failed to decode old provider config: %v", err).Error()))
-	}
-
-	var newBackupBucketConfig azure.BackupBucketConfig
-	if newSeed != nil && newSeed.Spec.Backup != nil && newSeed.Spec.Backup.ProviderConfig != nil {
-		newBackupBucketConfig, err = helper.BackupConfigFromProviderConfig(newSeed.Spec.Backup.ProviderConfig)
-		if err != nil {
-			return append(allErrs, field.Invalid(providerConfigfldPath, newSeed.Spec.Backup.ProviderConfig, fmt.Errorf("failed to decode new provider config: %v", err).Error()))
+		if seed.Spec.Backup.ProviderConfig != nil {
+			providerConfigPath := backupPath.Child("providerConfig")
+			backupBucketConfig, err := helper.BackupConfigFromProviderConfig(seed.Spec.Backup.ProviderConfig)
+			if err != nil {
+				allErrs = append(allErrs, field.Invalid(providerConfigPath, rawExtensionToString(seed.Spec.Backup.ProviderConfig), fmt.Errorf("failed to decode provider config: %w", err).Error()))
+			} else {
+				allErrs = append(allErrs, azurevalidation.ValidateBackupBucketConfig(&backupBucketConfig, providerConfigPath)...)
+			}
 		}
 	}
 
-	allErrs = append(allErrs, azurevalidation.ValidateBackupBucketConfig(&newBackupBucketConfig, providerConfigfldPath)...)
-	allErrs = append(allErrs, azurevalidation.ValidateBackupBucketConfigUpdate(&oldBackupBucketConfig, &newBackupBucketConfig, providerConfigfldPath)...)
+	return allErrs
+}
+
+// validateUpdate validates updates to the Seed resource.
+func (s *seedValidator) validateUpdate(oldSeed, newSeed *core.Seed) field.ErrorList {
+	var (
+		allErrs                                         = field.ErrorList{}
+		backupPath                                      = field.NewPath("spec", "backup")
+		providerConfigPath                              = backupPath.Child("providerConfig")
+		newBackupBucketConfig *azure.BackupBucketConfig = nil
+	)
+
+	if newSeed.Spec.Backup != nil {
+		allErrs = append(allErrs, azurevalidation.ValidateBackupBucketCredentialsRef(newSeed.Spec.Backup.CredentialsRef, backupPath.Child("credentialsRef"))...)
+
+		if newSeed.Spec.Backup.ProviderConfig != nil {
+			config, err := helper.BackupConfigFromProviderConfig(newSeed.Spec.Backup.ProviderConfig)
+			if err != nil {
+				return append(allErrs, field.Invalid(providerConfigPath, rawExtensionToString(newSeed.Spec.Backup.ProviderConfig), fmt.Sprintf("failed to decode new provider config: %s", err.Error())))
+			}
+			newBackupBucketConfig = &config
+		}
+
+		allErrs = append(allErrs, azurevalidation.ValidateBackupBucketConfig(newBackupBucketConfig, providerConfigPath)...)
+	}
+
+	if oldSeed.Spec.Backup != nil && oldSeed.Spec.Backup.ProviderConfig != nil {
+		oldBackupBucketConfig, err := helper.BackupConfigFromProviderConfig(oldSeed.Spec.Backup.ProviderConfig)
+		if err != nil {
+			return append(allErrs, field.Invalid(providerConfigPath, rawExtensionToString(oldSeed.Spec.Backup.ProviderConfig), fmt.Sprintf("failed to decode old provider config: %s", err.Error())))
+		}
+
+		allErrs = append(allErrs, azurevalidation.ValidateBackupBucketConfigUpdate(&oldBackupBucketConfig, newBackupBucketConfig, providerConfigPath)...)
+	}
 
 	return allErrs
 }
