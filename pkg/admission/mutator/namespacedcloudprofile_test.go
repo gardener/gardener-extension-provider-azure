@@ -103,14 +103,70 @@ var _ = Describe("NamespacedCloudProfile Mutator", func() {
 					MatchFields(IgnoreExtras, Fields{
 						"Name": Equal("image-1"),
 						"Versions": ContainElements(
-							api.MachineImageVersion{Version: "1.0", ID: ptr.To("local/image:1.0"), Architecture: ptr.To("amd64")},
-							api.MachineImageVersion{Version: "1.0", ID: ptr.To("local/image:1.0"), Architecture: ptr.To("arm64")},
-							api.MachineImageVersion{Version: "1.1", ID: ptr.To("local/image:1.1"), Architecture: ptr.To("amd64")},
+							api.MachineImageVersion{Version: "1.0", Image: api.Image{ID: ptr.To("local/image:1.0")}, Architecture: ptr.To("amd64")},
+							api.MachineImageVersion{Version: "1.0", Image: api.Image{ID: ptr.To("local/image:1.0")}, Architecture: ptr.To("arm64")},
+							api.MachineImageVersion{Version: "1.1", Image: api.Image{ID: ptr.To("local/image:1.1")}, Architecture: ptr.To("amd64")},
 						),
 					}),
 					MatchFields(IgnoreExtras, Fields{
 						"Name":     Equal("image-2"),
-						"Versions": ContainElements(api.MachineImageVersion{Version: "2.0", ID: ptr.To("local/image:2.0"), Architecture: ptr.To("amd64")}),
+						"Versions": ContainElements(api.MachineImageVersion{Version: "2.0", Image: api.Image{ID: ptr.To("local/image:2.0")}, Architecture: ptr.To("amd64")}),
+					}),
+				))
+			})
+			It("should correctly merge extended machineImages using capabilities ", func() {
+				namespacedCloudProfile.Status.CloudProfileSpec.MachineCapabilities = []v1beta1.CapabilityDefinition{{
+					Name:   "architecture",
+					Values: []string{"amd64", "arm64"},
+				}}
+				namespacedCloudProfile.Status.CloudProfileSpec.ProviderConfig = &runtime.RawExtension{Raw: []byte(`{
+"apiVersion":"azure.provider.extensions.gardener.cloud/v1alpha1",
+"kind":"CloudProfileConfig",
+"machineImages":[
+  {"name":"image-1","versions":[{"version":"1.0","capabilityFlavors":[
+{"capabilities":{"architecture":["amd64"]},"id":"local/image:1.0"}
+]}]}
+]}`)}
+				namespacedCloudProfile.Spec.ProviderConfig = &runtime.RawExtension{Raw: []byte(`{
+"apiVersion":"azure.provider.extensions.gardener.cloud/v1alpha1",
+"kind":"CloudProfileConfig",
+"machineImages":[
+  {"name":"image-1","versions":[{"version":"1.1","capabilityFlavors":[
+{"capabilities":{"architecture":["amd64"]},"id":"local/image:1.1"}
+]}]},
+  {"name":"image-2","versions":[{"version":"2.0","capabilityFlavors":[
+{"capabilities":{"architecture":["amd64"]},"id":"local/image:2.0"}
+]}]}
+]}`)}
+
+				Expect(namespacedCloudProfileMutator.Mutate(ctx, namespacedCloudProfile, nil)).To(Succeed())
+
+				mergedConfig, err := decodeCloudProfileConfig(decoder, namespacedCloudProfile.Status.CloudProfileSpec.ProviderConfig)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mergedConfig.MachineImages).To(ConsistOf(
+					MatchFields(IgnoreExtras, Fields{
+						"Name": Equal("image-1"),
+						"Versions": ContainElements(
+							api.MachineImageVersion{Version: "1.0",
+								CapabilityFlavors: []api.MachineImageFlavor{{
+									Capabilities: v1beta1.Capabilities{"architecture": []string{"amd64"}},
+									Image:        api.Image{ID: ptr.To("local/image:1.0")}}},
+							},
+							api.MachineImageVersion{Version: "1.1",
+								CapabilityFlavors: []api.MachineImageFlavor{{
+									Capabilities: v1beta1.Capabilities{"architecture": []string{"amd64"}},
+									Image:        api.Image{ID: ptr.To("local/image:1.1")}}},
+							},
+						),
+					}),
+					MatchFields(IgnoreExtras, Fields{
+						"Name": Equal("image-2"),
+						"Versions": ContainElements(
+							api.MachineImageVersion{Version: "2.0",
+								CapabilityFlavors: []api.MachineImageFlavor{{
+									Capabilities: v1beta1.Capabilities{"architecture": []string{"amd64"}},
+									Image:        api.Image{ID: ptr.To("local/image:2.0")}}},
+							}),
 					}),
 				))
 			})

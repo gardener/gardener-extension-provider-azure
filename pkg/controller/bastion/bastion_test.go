@@ -331,7 +331,9 @@ var _ = Describe("Bastion test", func() {
 
 		It("should succeed for existing communityGallery image", func() {
 			providerImages = createTestProviderConfig(api.MachineImageVersion{
-				CommunityGalleryImageID: ptr.To("/CommunityGalleries/gardenlinux-1.2.3"),
+				Image: api.Image{
+					CommunityGalleryImageID: ptr.To("/CommunityGalleries/gardenlinux-1.2.3"),
+				},
 			}).MachineImages
 			imageRef, err := getProviderSpecificImage(providerImages, desiredVM)
 			Expect(err).ToNot(HaveOccurred())
@@ -340,7 +342,9 @@ var _ = Describe("Bastion test", func() {
 
 		It("should succeed for existing sharedGallery image", func() {
 			providerImages = createTestProviderConfig(api.MachineImageVersion{
-				SharedGalleryImageID: ptr.To("/SharedGalleryImageID/gardenlinux-1.2.3"),
+				Image: api.Image{
+					SharedGalleryImageID: ptr.To("/SharedGalleryImageID/gardenlinux-1.2.3"),
+				},
 			}).MachineImages
 			imageRef, err := getProviderSpecificImage(providerImages, desiredVM)
 			Expect(err).ToNot(HaveOccurred())
@@ -355,7 +359,9 @@ var _ = Describe("Bastion test", func() {
 				Version:   ptr.To("1.2.3"),
 			}
 			providerImages = createTestProviderConfig(api.MachineImageVersion{
-				URN: ptr.To("publisher:offer:sku:1.2.3"),
+				Image: api.Image{
+					URN: ptr.To("publisher:offer:sku:1.2.3"),
+				},
 			}).MachineImages
 			imageRefRes, err := getProviderSpecificImage(providerImages, desiredVM)
 			Expect(err).ToNot(HaveOccurred())
@@ -415,7 +421,9 @@ func createAzureTestCluster(vNet api.VNet) *extensions.Cluster {
 				MachineTypes:  createTestMachineTypes(),
 				ProviderConfig: &runtime.RawExtension{
 					Raw: mustEncode(createTestProviderConfig(api.MachineImageVersion{
-						CommunityGalleryImageID: ptr.To("/CommunityGalleries/gardenlinux-1.2.3"),
+						Image: api.Image{
+							CommunityGalleryImageID: ptr.To("/CommunityGalleries/gardenlinux-1.2.3"),
+						},
 					})),
 				},
 			},

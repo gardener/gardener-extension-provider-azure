@@ -5,6 +5,7 @@
 package v1alpha1
 
 import (
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -58,12 +59,45 @@ type MachineImages struct {
 type MachineImageVersion struct {
 	// Version is the version of the image.
 	Version string `json:"version"`
-	// URN is the uniform resource name of the image, it has the format 'publisher:offer:sku:version'.
-	// +optional
-	URN *string `json:"urn,omitempty"`
+	// TODO @Roncossek add "// deprecated" once aws cloudprofiles are migrated to use CapabilityFlavors
+
 	// SkipMarketplaceAgreement skips the marketplace agreement check when enabled.
 	// +optional
 	SkipMarketplaceAgreement *bool `json:"skipMarketplaceAgreement,omitempty"`
+	// TODO @Roncossek add "// deprecated" once aws cloudprofiles are migrated to use CapabilityFlavors
+
+	// AcceleratedNetworking is an indicator if the image supports Azure accelerated networking.
+	// +optional
+	AcceleratedNetworking *bool `json:"acceleratedNetworking,omitempty"`
+	// TODO @Roncossek add "// deprecated" once aws cloudprofiles are migrated to use CapabilityFlavors
+
+	// Architecture is the CPU architecture of the machine image.
+	// +optional
+	Architecture *string `json:"architecture,omitempty"`
+	// CapabilityFlavors is a collection of all images for that version with capabilities.
+	CapabilityFlavors []MachineImageFlavor `json:"capabilityFlavors"`
+	// TODO @Roncossek add "// deprecated" once aws cloudprofiles are migrated to use CapabilityFlavors
+
+	// Image identifies the azure image.
+	Image `json:",inline"`
+}
+
+// MachineImageFlavor is a flavor of the machine image version that supports a specific set of capabilities.
+type MachineImageFlavor struct {
+	// SkipMarketplaceAgreement skips the marketplace agreement check when enabled.
+	// +optional
+	SkipMarketplaceAgreement *bool `json:"skipMarketplaceAgreement,omitempty"`
+	// Capabilities is the set of capabilities that are supported by the image in this set.
+	Capabilities gardencorev1beta1.Capabilities `json:"capabilities,omitempty"`
+	// Image identifies the azure image.
+	Image `json:",inline"`
+}
+
+// Image identifies the azure image.
+type Image struct {
+	// URN is the uniform resource name of the image, it has the format 'publisher:offer:sku:version'.
+	// +optional
+	URN *string `json:"urn,omitempty"`
 	// ID is the Shared Image Gallery image id.
 	// +optional
 	ID *string `json:"id,omitempty"`
@@ -73,12 +107,6 @@ type MachineImageVersion struct {
 	// SharedGalleryImageID is the Shared Image Gallery image id, it has the format '/SharedGalleries/sharedGalleryName/Images/sharedGalleryImageName/Versions/sharedGalleryImageVersionName'
 	// +optional
 	SharedGalleryImageID *string `json:"sharedGalleryImageID,omitempty"`
-	// AcceleratedNetworking is an indicator if the image supports Azure accelerated networking.
-	// +optional
-	AcceleratedNetworking *bool `json:"acceleratedNetworking,omitempty"`
-	// Architecture is the CPU architecture of the machine image.
-	// +optional
-	Architecture *string `json:"architecture,omitempty"`
 }
 
 // MachineType contains provider specific information to a machine type.

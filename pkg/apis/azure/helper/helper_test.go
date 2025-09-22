@@ -146,23 +146,32 @@ func makeProfileMachineImages(name, urnVersion, idVersion, communityGalleryImage
 			Versions: []api.MachineImageVersion{
 				{
 					Version:      urnVersion,
-					URN:          &profileURN,
 					Architecture: architecture,
+					Image: api.Image{
+						URN: &profileURN,
+					},
 				},
 				{
 					Version:      idVersion,
-					ID:           &profileID,
 					Architecture: architecture,
+					Image: api.Image{
+						ID: &profileID,
+					},
 				},
 				{
-					Version:                 communityGalleryImageIdVersion,
-					CommunityGalleryImageID: &profileCommunityImageId,
-					Architecture:            architecture,
+					Version:      communityGalleryImageIdVersion,
+					Architecture: architecture,
+					Image: api.Image{
+						CommunityGalleryImageID: &profileCommunityImageId,
+					},
 				},
 				{
-					Version:              sharedGalleryImageIdVersion,
-					SharedGalleryImageID: &profileSharedImageId,
-					Architecture:         architecture,
+					Version:      sharedGalleryImageIdVersion,
+					Architecture: architecture,
+
+					Image: api.Image{
+						SharedGalleryImageID: &profileSharedImageId,
+					},
 				},
 			},
 		},
@@ -176,12 +185,14 @@ func makeProfileMachineImageWithURNandIDandCommunityGalleryIDandSharedGalleryIma
 			Name: name,
 			Versions: []api.MachineImageVersion{
 				{
-					Version:                 version,
-					URN:                     urn,
-					ID:                      id,
-					CommunityGalleryImageID: communityGalleryImageID,
-					SharedGalleryImageID:    sharedGalleryImageID,
-					Architecture:            architecture,
+					Version:      version,
+					Architecture: architecture,
+					Image: api.Image{
+						URN:                     urn,
+						ID:                      id,
+						CommunityGalleryImageID: communityGalleryImageID,
+						SharedGalleryImageID:    sharedGalleryImageID,
+					},
 				},
 			},
 		},

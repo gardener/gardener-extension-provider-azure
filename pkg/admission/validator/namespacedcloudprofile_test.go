@@ -6,10 +6,12 @@ package validator_test
 
 import (
 	"context"
+	"fmt"
 
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	"github.com/gardener/gardener/pkg/apis/core"
 	"github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"github.com/gardener/gardener/pkg/utils/test"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -27,7 +29,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/install"
 )
 
-var _ = Describe("NamespacedCloudProfile Validator", func() {
+var _ = DescribeTableSubtree("NamespacedCloudProfile Validator", func(isCapabilitiesCloudProfile bool) {
 	var (
 		fakeClient  client.Client
 		fakeManager manager.Manager
@@ -37,9 +39,15 @@ var _ = Describe("NamespacedCloudProfile Validator", func() {
 		namespacedCloudProfileValidator extensionswebhook.Validator
 		namespacedCloudProfile          *core.NamespacedCloudProfile
 		cloudProfile                    *v1beta1.CloudProfile
+		capabilityDefinitions           []v1beta1.CapabilityDefinition
 	)
 
 	BeforeEach(func() {
+		if isCapabilitiesCloudProfile {
+			capabilityDefinitions = []v1beta1.CapabilityDefinition{
+				{Name: v1beta1constants.ArchitectureName, Values: []string{"amd64"}},
+			}
+		}
 		scheme := runtime.NewScheme()
 		utilruntime.Must(install.AddToScheme(scheme))
 		utilruntime.Must(v1beta1.AddToScheme(scheme))
@@ -67,6 +75,9 @@ var _ = Describe("NamespacedCloudProfile Validator", func() {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "cloud-profile",
 			},
+			Spec: v1beta1.CloudProfileSpec{
+				MachineCapabilities: capabilityDefinitions,
+			},
 		}
 	})
 
@@ -89,15 +100,19 @@ var _ = Describe("NamespacedCloudProfile Validator", func() {
 "machineImages":[{"name":"image-1","versions":[{"version":"1.0"}]}],
 "machineTypes":[{"name":"type-1"}]
 }`)}
-			namespacedCloudProfile.Spec.ProviderConfig = &runtime.RawExtension{Raw: []byte(`{
+
+			imageVersions := `  {"name":"image-1","versions":[{"version":"1.1","id":"image-1-1-1"}]},
+  {"name":"image-2","versions":[{"version":"2.0","id":"image-2-1-0"}]}`
+			if isCapabilitiesCloudProfile {
+				imageVersions = `  {"name":"image-1","versions":[{"version":"1.1","capabilityFlavors":[{"id":"image-1-1-1"}]}]},
+  {"name":"image-2","versions":[{"version":"2.0","capabilityFlavors":[{"id":"image-2-1-10"}]}]}`
+			}
+			namespacedCloudProfile.Spec.ProviderConfig = &runtime.RawExtension{Raw: []byte(fmt.Sprintf(`{
 "apiVersion":"azure.provider.extensions.gardener.cloud/v1alpha1",
 "kind":"CloudProfileConfig",
-"machineImages":[
-  {"name":"image-1","versions":[{"version":"1.1","id":"image-1-1-1"}]},
-  {"name":"image-2","versions":[{"version":"2.0","id":"image-2-1-0"}]}
-],
+"machineImages":[%s],
 "machineTypes":[{"name":"type-2"}]
-}`)}
+}`, imageVersions))}
 			namespacedCloudProfile.Spec.MachineImages = []core.MachineImage{
 				{
 					Name:     "image-1",
@@ -135,14 +150,18 @@ var _ = Describe("NamespacedCloudProfile Validator", func() {
 			}
 			cloudProfile.Spec.MachineTypes = []v1beta1.MachineType{{Name: "type-1"}}
 
-			namespacedCloudProfile.Spec.ProviderConfig = &runtime.RawExtension{Raw: []byte(`{
+			imageVersions := `{"version":"1.0","id":"image-1-1-0"}`
+			if isCapabilitiesCloudProfile {
+				imageVersions = `{"version":"1.0","capabilityFlavors":[{"id":"image-1-1-0"}]}`
+			}
+			namespacedCloudProfile.Spec.ProviderConfig = &runtime.RawExtension{Raw: []byte(fmt.Sprintf(`{
 "apiVersion":"azure.provider.extensions.gardener.cloud/v1alpha1",
 "kind":"CloudProfileConfig",
 "machineImages":[
-  {"name":"image-1","versions":[{"version":"1.0","id":"image-1-1-0"}]}
+  {"name":"image-1","versions":[%s]}
 ],
 "machineTypes":[{"name":"type-1"}]
-}`)}
+}`, imageVersions))}
 			namespacedCloudProfile.Spec.MachineImages = []core.MachineImage{
 				{
 					Name: "image-1",
@@ -168,13 +187,18 @@ var _ = Describe("NamespacedCloudProfile Validator", func() {
 		})
 
 		It("should fail for NamespacedCloudProfile specifying provider config without the according version in the spec.machineImages", func() {
-			namespacedCloudProfile.Spec.ProviderConfig = &runtime.RawExtension{Raw: []byte(`{
+			imageVersions := `{"version":"1.1","id":"image-1-1-1"}`
+			if isCapabilitiesCloudProfile {
+				imageVersions = `{"version":"1.1","capabilityFlavors":[{"id":"image-1-1-1"}]}`
+			}
+
+			namespacedCloudProfile.Spec.ProviderConfig = &runtime.RawExtension{Raw: []byte(fmt.Sprintf(`{
 "apiVersion":"azure.provider.extensions.gardener.cloud/v1alpha1",
 "kind":"CloudProfileConfig",
 "machineImages":[
-  {"name":"image-1","versions":[{"version":"1.1","id":"image-1-1-1"}]}
+  {"name":"image-1","versions":[%s]}
 ]
-}`)}
+}`, imageVersions))}
 			namespacedCloudProfile.Spec.MachineImages = []core.MachineImage{
 				{
 					Name: "image-1",
@@ -196,11 +220,8 @@ var _ = Describe("NamespacedCloudProfile Validator", func() {
 				"Field":    Equal("spec.providerConfig.machineImages[0].versions[0]"),
 				"BadValue": Equal("image-1@1.1"),
 				"Detail":   Equal("machine image version is not defined in the NamespacedCloudProfile"),
-			})), PointTo(MatchFields(IgnoreExtras, Fields{
-				"Type":   Equal(field.ErrorTypeForbidden),
-				"Field":  Equal("spec.providerConfig.machineImages"),
-				"Detail": Equal("machine image version image-1@1.1 has an excess entry for architecture \"amd64\", which is not defined in the machineImages spec"),
 			}))))
+
 		})
 
 		It("should fail for NamespacedCloudProfile specifying provider config without the according version in the spec.machineTypes", func() {
@@ -245,24 +266,48 @@ var _ = Describe("NamespacedCloudProfile Validator", func() {
 		})
 
 		It("should fail for NamespacedCloudProfile specifying new spec.machineImages without the according version and architecture entries in the provider config", func() {
-			namespacedCloudProfile.Spec.ProviderConfig = &runtime.RawExtension{Raw: []byte(`{
+			imageVersions := `{"version":"1.1","id":"image-id-1","architecture":"arm64"},
+	{"version":"1.1","id":"image-id-2","architecture":"amd64"},
+    {"version":"1.1-fallback","id":"image-id-3"}`
+
+			if isCapabilitiesCloudProfile {
+				imageVersions = `
+  {"version":"1.1","capabilityFlavors":[
+    {"capabilities":{"architecture":["arm64"]},"id":"image-id-1"},
+    {"capabilities":{"architecture":["amd64"]},"id":"image-id-2"}
+  ]},
+  {"version":"1.1-fallback","capabilityFlavors":[
+    {"capabilities":{"architecture":["amd64"]},"id":"image-id-3"}
+  ]}`
+				cloudProfile.Spec.MachineCapabilities[0].Values = []string{"amd64", "arm64"}
+			}
+
+			namespacedCloudProfile.Spec.ProviderConfig = &runtime.RawExtension{Raw: []byte(fmt.Sprintf(`{
 "apiVersion":"azure.provider.extensions.gardener.cloud/v1alpha1",
 "kind":"CloudProfileConfig",
 "machineImages":[
   {"name":"image-1","versions":[
-	{"version":"1.1","id":"image-id-1","architecture":"arm64"},
-	{"version":"1.1","id":"image-id-2","architecture":"amd64"},
-    {"version":"1.1-fallback","id":"image-id-3"}
+%s
   ]}
 ]
-}`)}
+}`, imageVersions))}
 			namespacedCloudProfile.Spec.MachineImages = []core.MachineImage{
 				{
 					Name: "image-1",
 					Versions: []core.MachineImageVersion{
-						{ExpirableVersion: core.ExpirableVersion{Version: "1.1"}, Architectures: []string{"amd64", "arm64"}},
-						{ExpirableVersion: core.ExpirableVersion{Version: "1.1-fallback"}, Architectures: []string{"arm64"}},
-						{ExpirableVersion: core.ExpirableVersion{Version: "1.1-missing"}, Architectures: []string{"arm64"}},
+						{ExpirableVersion: core.ExpirableVersion{Version: "1.1"}, Architectures: []string{"amd64", "arm64"},
+							CapabilityFlavors: []core.MachineImageFlavor{
+								{Capabilities: core.Capabilities{v1beta1constants.ArchitectureName: []string{"amd64"}}},
+								{Capabilities: core.Capabilities{v1beta1constants.ArchitectureName: []string{"arm64"}}},
+							}},
+						{ExpirableVersion: core.ExpirableVersion{Version: "1.1-fallback"}, Architectures: []string{"arm64"},
+							CapabilityFlavors: []core.MachineImageFlavor{
+								{Capabilities: core.Capabilities{v1beta1constants.ArchitectureName: []string{"arm64"}}},
+							}},
+						{ExpirableVersion: core.ExpirableVersion{Version: "1.1-missing"}, Architectures: []string{"arm64"},
+							CapabilityFlavors: []core.MachineImageFlavor{
+								{Capabilities: core.Capabilities{v1beta1constants.ArchitectureName: []string{"arm64"}}},
+							}},
 					},
 				},
 			}
@@ -270,19 +315,35 @@ var _ = Describe("NamespacedCloudProfile Validator", func() {
 			Expect(fakeClient.Create(ctx, cloudProfile)).To(Succeed())
 
 			err := namespacedCloudProfileValidator.Validate(ctx, namespacedCloudProfile, nil)
-			Expect(err).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Type":   Equal(field.ErrorTypeForbidden),
-				"Field":  Equal("spec.providerConfig.machineImages"),
-				"Detail": Equal("machine image version image-1@1.1-fallback has an excess entry for architecture \"amd64\", which is not defined in the machineImages spec"),
-			})), PointTo(MatchFields(IgnoreExtras, Fields{
-				"Type":   Equal(field.ErrorTypeRequired),
-				"Field":  Equal("spec.providerConfig.machineImages"),
-				"Detail": Equal("machine image version image-1@1.1-fallback is not defined in the NamespacedCloudProfile providerConfig"),
-			})), PointTo(MatchFields(IgnoreExtras, Fields{
-				"Type":   Equal(field.ErrorTypeRequired),
-				"Field":  Equal("spec.providerConfig.machineImages"),
-				"Detail": Equal("machine image version image-1@1.1-missing is not defined in the NamespacedCloudProfile providerConfig"),
-			}))))
+			if !isCapabilitiesCloudProfile {
+				Expect(err).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":   Equal(field.ErrorTypeForbidden),
+					"Field":  Equal("spec.providerConfig.machineImages"),
+					"Detail": Equal("machine image version image-1@1.1-fallback has an excess entry for architecture \"amd64\", which is not defined in the machineImages spec"),
+				})), PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":   Equal(field.ErrorTypeRequired),
+					"Field":  Equal("spec.providerConfig.machineImages"),
+					"Detail": Equal("machine image version image-1@1.1-fallback is not defined in the NamespacedCloudProfile providerConfig"),
+				})), PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":   Equal(field.ErrorTypeRequired),
+					"Field":  Equal("spec.providerConfig.machineImages"),
+					"Detail": Equal("machine image version image-1@1.1-missing is not defined in the NamespacedCloudProfile providerConfig"),
+				}))))
+			} else {
+				Expect(err).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":   Equal(field.ErrorTypeForbidden),
+					"Field":  Equal("spec.providerConfig.machineImages"),
+					"Detail": Equal("machine image version image-1@1.1-fallback has an excess capabilityFlavor map[architecture:[amd64]], which is not defined in the machineImages spec"),
+				})), PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":   Equal(field.ErrorTypeRequired),
+					"Field":  Equal("spec.providerConfig.machineImages"),
+					"Detail": Equal("machine image version image-1@1.1-fallback has a capabilityFlavor map[architecture:[arm64]] not defined in the NamespacedCloudProfile providerConfig"),
+				})), PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":   Equal(field.ErrorTypeRequired),
+					"Field":  Equal("spec.providerConfig.machineImages"),
+					"Detail": Equal("machine image version image-1@1.1-missing is not defined in the NamespacedCloudProfile providerConfig"),
+				}))))
+			}
 		})
 
 		It("should succeed for NamespacedCloudProfile specifying new spec.machineTypes without an according entry in the provider config", func() {
@@ -305,4 +366,7 @@ var _ = Describe("NamespacedCloudProfile Validator", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
-})
+},
+	Entry("CloudProfile uses NO capabilities", false),
+	Entry("CloudProfile uses capabilities", true),
+)

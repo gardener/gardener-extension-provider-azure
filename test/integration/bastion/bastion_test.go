@@ -591,9 +591,11 @@ func createCloudProfile() *gardencorev1beta1.CloudProfile {
 	profileConfig := &apisazure.CloudProfileConfig{MachineImages: []apisazure.MachineImages{{
 		Name: "gardenlinux",
 		Versions: []apisazure.MachineImageVersion{{
-			Version:                 "1443.10.0",
-			CommunityGalleryImageID: ptr.To(CommunityGalleryImageID),
-			Architecture:            ptr.To("amd64"),
+			Version:      "1443.10.0",
+			Architecture: ptr.To("amd64"),
+			Image: apisazure.Image{
+				CommunityGalleryImageID: ptr.To(CommunityGalleryImageID),
+			},
 		}},
 	}}}
 

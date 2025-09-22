@@ -306,23 +306,31 @@ var _ = Describe("Machines", func() {
 						Name: machineImageName,
 						Versions: []apiv1alpha1.MachineImageVersion{
 							{
-								Version:               machineImageVersion,
-								URN:                   &machineImageURN,
+								Version: machineImageVersion,
+								Image: apiv1alpha1.Image{
+									URN: &machineImageURN,
+								},
 								AcceleratedNetworking: ptr.To(true),
 							},
 							{
 								Version: machineImageVersionID,
-								ID:      &machineImageID,
+								Image: apiv1alpha1.Image{
+									ID: &machineImageID,
+								},
 							},
 							{
-								Version:                 machineImageVersionCommunityID,
-								CommunityGalleryImageID: &machineImageCommunityID,
-								Architecture:            ptr.To(archARM),
+								Version:      machineImageVersionCommunityID,
+								Architecture: ptr.To(archARM),
+								Image: apiv1alpha1.Image{
+									CommunityGalleryImageID: &machineImageCommunityID,
+								},
 							},
 							{
-								Version:              machineImageVersionSharedID,
-								SharedGalleryImageID: &machineImageSharedID,
-								Architecture:         ptr.To(archARM),
+								Version:      machineImageVersionSharedID,
+								Architecture: ptr.To(archARM),
+								Image: apiv1alpha1.Image{
+									SharedGalleryImageID: &machineImageSharedID,
+								},
 							},
 						},
 					},
