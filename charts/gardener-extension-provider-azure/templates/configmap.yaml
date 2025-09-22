@@ -24,12 +24,10 @@ data:
 {{- if .Values.config.etcd.backup }}
 {{ toYaml .Values.config.etcd.backup | indent 6 }}
 {{- end }}
+
 {{- if .Values.config.featureGates }}
     featureGates:
-{{- if .Values.config.featureGates.disableRemedyController }}
-      DisableRemedyController: {{ .Values.config.featureGates.disableRemedyController }}
-{{- end }}
-{{- if .Values.config.featureGates.enableImmutableBuckets }}
-      EnableImmutableBuckets: {{ .Values.config.featureGates.enableImmutableBuckets }}
-{{- end }}
+      {{- range $key, $value := .Values.config.featureGates }}
+      {{ $key }}: {{ $value }}
+      {{- end }}
 {{- end }}
