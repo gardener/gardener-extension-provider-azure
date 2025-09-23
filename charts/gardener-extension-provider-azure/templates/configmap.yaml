@@ -27,7 +27,7 @@ data:
 
 {{- if .Values.config.featureGates }}
     featureGates:
-      {{- range $key, $value := .Values.config.featureGates }}
-      {{ $key }}: {{ $value }}
+      {{- range $key := (.Values.config.featureGates | keys | uniq | sortAlpha) }}
+      {{ $key }}: {{ index $.Values.config.featureGates $key }}
       {{- end }}
 {{- end }}

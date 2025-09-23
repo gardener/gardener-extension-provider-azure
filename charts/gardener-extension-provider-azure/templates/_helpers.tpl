@@ -27,7 +27,7 @@ apps/v1
 {{- end -}}
 
 {{- define "topologyAwareRouting.enabled" -}}
-{{- if ((((((.Values.gardener).seed).spec).settings).topologyAwareRouting).enabled) -}}
+{{- if dig "seed" "spec" "settings" "topologyAwareRouting" "enabled" false .Values.gardener }}
 true
 {{- end -}}
 {{- end -}}
