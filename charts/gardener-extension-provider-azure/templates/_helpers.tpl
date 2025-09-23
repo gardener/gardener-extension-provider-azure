@@ -27,7 +27,7 @@ apps/v1
 {{- end -}}
 
 {{- define "topologyAwareRouting.enabled" -}}
-{{- if and .Values.gardener.seed .Values.gardener.seed.spec.settings.topologyAwareRouting.enabled }}
+{{- if dig "seed" "spec" "settings" "topologyAwareRouting" "enabled" false .Values.gardener }}
 true
 {{- end -}}
 {{- end -}}
@@ -41,7 +41,7 @@ true
 {{- end -}}
 
 {{- define "runtimeCluster.enabled" -}}
-{{- if and .Values.gardener.runtimeCluster .Values.gardener.runtimeCluster.enabled }}
+{{- if (((.Values.gardener).runtimeCluster).enabled) }}
 true
 {{- end }}
 {{- end -}}
