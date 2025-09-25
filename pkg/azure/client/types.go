@@ -32,7 +32,6 @@ type Factory interface {
 	Vnet() (VirtualNetwork, error)
 	RouteTables() (RouteTables, error)
 	NatGateway() (NatGateway, error)
-	AvailabilitySet() (AvailabilitySet, error)
 	ManagedUserIdentity() (ManagedUserIdentity, error)
 	VirtualMachineImages() (VirtualMachineImages, error)
 	BlobContainers() (BlobContainers, error)
@@ -45,13 +44,6 @@ type ResourceGroup interface {
 	ContainerDeleteFunc[armresources.ResourceGroup]
 	ContainerGetFunc[armresources.ResourceGroup]
 	ContainerCheckExistenceFunc[armresources.ResourceGroup]
-}
-
-// AvailabilitySet is an interface for the Azure AvailabilitySet service.
-type AvailabilitySet interface {
-	GetFunc[armcompute.AvailabilitySet]
-	CreateOrUpdateFunc[armcompute.AvailabilitySet]
-	DeleteFunc[armcompute.AvailabilitySet]
 }
 
 // NatGateway is an interface for the Azure NatGateway service.

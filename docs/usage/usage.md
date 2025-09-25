@@ -184,8 +184,8 @@ Currently, it's not yet possible to deploy into existing resource groups.
 The `.resourceGroup.name` field will allow specifying the name of an already existing resource group that the shoot cluster and all infrastructure resources will be deployed to.
 
 Via the `.zoned` boolean you can tell whether you want to use Azure availability zones or not.
-If you didn't use zones in the past then an availability set was created and only basic load balancers were used.
-Now VMSS-FLex (VMO) has become the default also for non-zonal clusters and only standard load balancers are used.
+When `.zoned` is set to false, the cluster will use VMSS-Flex as the backend of the worker nodes.
+You can read more about VMSS Flex in the [Azure Virtual Machine ScaleSet with flexible orchestration page](https://docs.microsoft.com/en-us/azure/virtual-machine-scale-sets/virtual-machine-scale-sets-orchestration-modes#scale-sets-with-flexible-orchestration).
 
 The `networks.vnet` section describes whether you want to create the shoot cluster in an already existing VNet or whether to create a new one:
 
@@ -214,7 +214,7 @@ The `networks.natGateway` section contains configuration for the Azure NatGatewa
 In the `identity` section you can specify an [Azure user-assigned managed identity](https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/overview#how-does-the-managed-identities-for-azure-resources-work) which should be attached to all cluster worker machines. With `identity.name` you can specify the name of the identity and with `identity.resourceGroup` you can specify the resource group which contains the identity resource on Azure. The identity need to be created by the user upfront (manually, other tooling, ...). Gardener/Azure Extension will only use the referenced one and won't create an identity. Furthermore the identity have to be in the same subscription as the Shoot cluster. Via the `identity.acrAccess` you can configure the worker machines to use the passed identity for pulling from an [Azure Container Registry (ACR)](https://docs.microsoft.com/en-us/azure/container-registry/container-registry-intro).
 **Caution:** Adding, exchanging or removing the identity will require a rolling update of all worker machines in the Shoot cluster.
 
-Apart from the VNet and the worker subnet the Azure extension will also create a dedicated resource group, route tables, security groups, and an availability set (if not using zoned clusters).
+Apart from the VNet and the worker subnet the Azure extension will also create a dedicated resource group, route tables, security groups and a VMSS-Flex group depending on the configuration.
 
 ### InfrastructureConfig with dedicated subnets per zone
 
@@ -682,8 +682,7 @@ This extension supports `gardener/gardener`'s `ShootCARotation` and `ShootSARota
 ### Azure Accelerated Networking
 
 All worker machines of the cluster will be automatically configured to use [Azure Accelerated Networking](https://docs.microsoft.com/en-us/azure/virtual-network/create-vm-accelerated-networking-cli) if the prerequisites are fulfilled.
-The prerequisites are that the cluster must be zoned, and the used machine type and operating system image version are compatible for Accelerated Networking.
-`Availability Set` based shoot clusters will not be enabled for accelerated networking even if the machine type and operating system support it, this is necessary because all machines from the availability set must be scheduled on special hardware, more details can be found [here](https://github.com/MicrosoftDocs/azure-docs/issues/10536).
+The prerequisites are that the used machine type and operating system image version are compatible for Accelerated Networking.
 Supported machine types are listed in the CloudProfile in `.spec.providerConfig.machineTypes[].acceleratedNetworking` and the supported operating system image versions are defined in `.spec.providerConfig.machineImages[].versions[].acceleratedNetworking`.
 
 ### Support for other Azure instances
@@ -728,37 +727,3 @@ This annotation is should only be used for testing and not production shoots. It
 To have the CSI-driver configured to support the necessary features for [VolumeAttributesClasses](https://kubernetes.io/docs/concepts/storage/volume-attributes-classes/) on Azure for shoots with a k8s-version greater than 1.31, use the `azure.provider.extensions.gardener.cloud/enable-volume-attributes-class` annotation on the shoot. Keep in mind to also enable the required feature flags and runtime-config on the common kubernetes controllers (as outlined in the link above) in the shoot-spec.
 
 For more information and examples on how to configure the volume attributes class, see [example](https://github.com/kubernetes-sigs/azuredisk-csi-driver/blob/release-1.31/deploy/example/modifyvolume/README.md) provided in the the azuredisk-csi-driver repository.
-
-
-### Shoot clusters with VMSS Flexible Orchestration (VMSS Flex/VMO)
-
-The machines of an Azure cluster can be created while being attached to an [Azure Virtual Machine ScaleSet with flexible orchestration](https://docs.microsoft.com/en-us/azure/virtual-machine-scale-sets/virtual-machine-scale-sets-orchestration-modes#scale-sets-with-flexible-orchestration).
-
-Azure VMSS Flex is the replacement of Azure AvailabilitySet for non-zoned Azure Shoot clusters as VMSS Flex come with less disadvantages like no blocking machine operations or compatibility with `Standard` SKU loadbalancer etc.
-
-Now, Azure Shoot clusters are using VMSS Flex by default for non-zoned clusters.
-In the past you used to need to do the following:
-- The `InfrastructureConfig` of the Shoot configuration need to contain `.zoned=false`
-
-Some key facts about VMSS Flex based clusters:
-- Unlike regular non-zonal Azure Shoot clusters, which have a primary AvailabilitySet which is shared between all machines in all worker pools of a Shoot cluster, a VMSS Flex based cluster has an own VMSS for each workerpool
-- In case the configuration of the VMSS will change (e.g. amount of fault domains in a region change; configured in the CloudProfile) all machines of the worker pool need to be rolled
-- It is not possible to migrate an existing primary AvailabilitySet based Shoot cluster to VMSS Flex based Shoot cluster and vice versa
-- VMSS Flex based clusters are using `Standard` SKU LoadBalancers instead of `Basic` SKU LoadBalancers for AvailabilitySet based Shoot clusters
-
-
-### Migrating AvailabilitySet shoots to VMSS Flex
-
-Azure plans to deprecate `Basic` SKU public IP addresses.
-See the [official announcement](https://azure.microsoft.com/en-us/updates?id=upgrade-to-standard-sku-public-ip-addresses-in-azure-by-30-september-2025-basic-sku-will-be-retired).
-This will create issues with existing legacy non-zonal clusters since their existing LoadBalancers are using `Basic` SKU and they can't directly migrate to `Standard` SKU.
-
-Provider-azure is offering a migration path from availability sets to VMSS Flex.
-You have to annotate your shoot with the following annotation: `migration.azure.provider.extensions.gardener.cloud/vmo='true'` and trigger the shoot `Maintenance`.
-The process for the migration closely traces the process [outlined by Azure](https://learn.microsoft.com/en-us/azure/virtual-network/ip-services/public-ip-basic-upgrade-guidance)
-This **will allow you to preserve your public IPs** during the migration.
-
-During this process there will be downtime that users need to plan.
-For the transition the Loadbalancer will have to be deleted and recreated.
-Also **all nodes will have to roll out to the VMSS flex workers**.
-The rollout is controlled by the worker's MCM settings, but it is suggested that you speed up this process so that traffic to your cluster is restored as quickly as possible (for example by using higher `maxUnavailable` values)

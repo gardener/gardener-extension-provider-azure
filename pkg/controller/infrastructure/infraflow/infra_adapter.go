@@ -33,7 +33,6 @@ type InfrastructureAdapter struct {
 
 	// cached configuration
 	vnetConfig  VirtualNetworkConfig
-	avSetConfig *AvailabilitySetConfig
 	zoneConfigs []ZoneConfig
 }
 
@@ -53,12 +52,6 @@ func NewInfrastructureAdapter(
 		status:  status,
 	}
 	ia.vnetConfig = ia.virtualNetworkConfig()
-	avset, err := ia.availabilitySetConfig()
-	if err != nil {
-		return nil, err
-	}
-	ia.avSetConfig = avset
-
 	ia.zoneConfigs = ia.zonesConfig()
 	return ia, nil
 }
@@ -150,69 +143,6 @@ func (ia *InfrastructureAdapter) virtualNetworkConfig() VirtualNetworkConfig {
 // isGardenerManagedVirtualNetwork returns true if gardener manages the shoot's virtual network.
 func (ia *InfrastructureAdapter) isGardenerManagedVirtualNetwork() bool {
 	return ia.config.Networks.VNet.ResourceGroup == nil
-}
-
-// AvailabilitySetConfig contains the configuration for the shoot's availability set.
-type AvailabilitySetConfig struct {
-	AzureResourceMetadata
-	// countFaultDomains is the fault domain count for the AV set.
-	CountFaultDomains *int32
-	// countFaultDomains is the update domain count for the AV set.
-	CountUpdateDomains *int32
-	Location           string
-}
-
-// IsAvailabilitySetReconciliationRequired returns true if gardener should create an availability set for the shoot.
-func (ia *InfrastructureAdapter) IsAvailabilitySetReconciliationRequired() bool {
-	if ia.config.Zoned {
-		return false
-	}
-	// If the infrastructureStatus already exists that means the Infrastructure is already created.
-	if len(ia.status.AvailabilitySets) > 0 {
-		if _, err := helper.FindAvailabilitySetByPurpose(ia.status.AvailabilitySets, azure.PurposeNodes); err == nil {
-			return true
-		}
-	}
-	return false
-}
-
-// AvailabilitySetConfig returns the configuration for the shoot's availability set.
-func (ia *InfrastructureAdapter) AvailabilitySetConfig() *AvailabilitySetConfig {
-	return ia.avSetConfig
-}
-
-// AvailabilitySetName is the name of the availability set of the shoot.
-func (ia *InfrastructureAdapter) AvailabilitySetName() string {
-	return fmt.Sprintf("%s-avset-workers", ia.TechnicalName())
-}
-
-// AvailabilitySetConfig returns the availability set's configuration.
-func (ia *InfrastructureAdapter) availabilitySetConfig() (*AvailabilitySetConfig, error) {
-	asc := &AvailabilitySetConfig{
-		AzureResourceMetadata: AzureResourceMetadata{
-			ResourceGroup: ia.ResourceGroupName(),
-			Name:          ia.AvailabilitySetName(),
-			Kind:          KindAvailabilitySet,
-		},
-		Location: ia.Region(),
-	}
-
-	if asc.CountFaultDomains == nil {
-		count, err := helper.FindDomainCountByRegion(ia.profile.CountFaultDomains, ia.Region())
-		if err != nil {
-			return nil, err
-		}
-		asc.CountFaultDomains = to.Ptr(count)
-	}
-	if asc.CountUpdateDomains == nil {
-		count, err := helper.FindDomainCountByRegion(ia.profile.CountUpdateDomains, ia.Region())
-		if err != nil {
-			return nil, err
-		}
-		asc.CountUpdateDomains = to.Ptr(count)
-	}
-
-	return asc, nil
 }
 
 // RouteTableConfig is the desired configuration for a route table.

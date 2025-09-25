@@ -9,12 +9,7 @@ vnetName: "{{ .Values.vnetName }}"
 {{- if hasKey .Values "vnetResourceGroup" }}
 vnetResourceGroup: "{{ .Values.vnetResourceGroup }}"
 {{- end }}
-{{- if hasKey .Values "availabilitySetName" }}
-primaryAvailabilitySetName: "{{ .Values.availabilitySetName }}"
-loadBalancerSku: "basic"
-{{- else }}
 loadBalancerSku: "standard"
-{{- end }}
 {{- if hasKey .Values "vmType" }}
 vmType: "{{ .Values.vmType }}"
 {{- end }}

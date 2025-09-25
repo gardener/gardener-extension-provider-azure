@@ -88,7 +88,7 @@ var _ = Describe("Machines", func() {
 				vnetResourceGroupName string
 				vnetName              string
 				subnetName            string
-				availabilitySetID     string
+				vmoID                 string
 				identityID            string
 				machineType           string
 				userData              []byte
@@ -179,7 +179,7 @@ var _ = Describe("Machines", func() {
 				vnetResourceGroupName = "my-vnet-rg"
 				vnetName = "my-vnet"
 				subnetName = "subnet-1234"
-				availabilitySetID = "av-1234"
+				vmoID = "vmo-1234"
 				machineType = "large"
 				userData = []byte("some-user-data")
 				userDataSecretName = "userdata-secret-name"
@@ -199,7 +199,7 @@ var _ = Describe("Machines", func() {
 				minPool1 = 5
 				maxPool1 = 10
 				maxSurgePool1 = intstr.FromInt(3)
-				maxUnavailablePool1 = intstr.FromInt(2)
+				maxUnavailablePool1 = intstr.FromInt32(2)
 
 				labels = map[string]string{"component": "TiDB"}
 
@@ -267,20 +267,20 @@ var _ = Describe("Machines", func() {
 				minPool2 = 30
 				maxPool2 = 45
 				priorityPool2 = 100
-				maxSurgePool2 = intstr.FromInt(10)
-				maxUnavailablePool2 = intstr.FromInt(15)
+				maxSurgePool2 = intstr.FromInt32(10)
+				maxUnavailablePool2 = intstr.FromInt32(15)
 
 				namePool3 = "pool-3"
 				minPool3 = 1
 				maxPool3 = 5
-				maxSurgePool3 = intstr.FromInt(2)
-				maxUnavailablePool3 = intstr.FromInt(2)
+				maxSurgePool3 = intstr.FromInt32(2)
+				maxUnavailablePool3 = intstr.FromInt32(2)
 
 				namePool4 = "pool-4"
 				minPool4 = 2
 				maxPool4 = 6
-				maxSurgePool4 = intstr.FromInt(1)
-				maxUnavailablePool4 = intstr.FromInt(2)
+				maxSurgePool4 = intstr.FromInt32(1)
+				maxUnavailablePool4 = intstr.FromInt32(2)
 
 				shootVersionMajorMinor = "1.32"
 				shootVersion = shootVersionMajorMinor + ".0"
@@ -447,7 +447,7 @@ var _ = Describe("Machines", func() {
 				}
 
 				cluster = makeCluster(shootVersion, region, machineTypes, machineImages, 0)
-				infrastructureStatus = makeInfrastructureStatus(resourceGroupName, vnetName, subnetName, false, &vnetResourceGroupName, &availabilitySetID, &identityID)
+				infrastructureStatus = makeInfrastructureStatus(resourceGroupName, vnetName, subnetName, false, &vnetResourceGroupName, &identityID)
 				w = makeWorker(namespace, region, &sshKey, infrastructureStatus, pool1, pool2, pool3, pool4)
 			})
 
@@ -496,8 +496,8 @@ var _ = Describe("Machines", func() {
 							"vnetResourceGroup": vnetResourceGroupName,
 						},
 						"machineSet": map[string]interface{}{
-							"id":   availabilitySetID,
-							"kind": "availabilityset",
+							"id":   vmoID,
+							"kind": "vmo",
 						},
 						"tags": vmTags,
 						"secret": map[string]interface{}{
@@ -743,8 +743,8 @@ var _ = Describe("Machines", func() {
 				})
 
 				Describe("wokrers with in-place updates strategy", func() {
-					It("should return error if there is worker pool with inplace update strategy and shoot uses availability set", func() {
-						infrastructureStatus = makeInfrastructureStatus(resourceGroupName, vnetName, subnetName, false, &vnetResourceGroupName, &availabilitySetID, &identityID)
+					It("should return error if there is worker pool with inplace update strategy and shoot uses VMSS Flex", func() {
+						infrastructureStatus = makeInfrastructureStatus(resourceGroupName, vnetName, subnetName, false, &vnetResourceGroupName, &identityID)
 						pool3.UpdateStrategy = ptr.To(gardencorev1beta1.AutoInPlaceUpdate)
 						pool4.UpdateStrategy = ptr.To(gardencorev1beta1.ManualInPlaceUpdate)
 						w = makeWorker(namespace, region, &sshKey, infrastructureStatus, pool1, pool2, pool3, pool4)
@@ -756,7 +756,7 @@ var _ = Describe("Machines", func() {
 						// Test workerDelegate.DeployMachineClasses()
 						err := workerDelegate.DeployMachineClasses(ctx)
 						Expect(err).To(HaveOccurred())
-						Expect(err.Error()).To(ContainSubstring("worker pools with in-place update strategy is not supported when availability sets are used"))
+						Expect(err.Error()).To(ContainSubstring("worker pools with in-place update strategy is not supported when VMSS Flex are used"))
 					})
 				})
 
@@ -783,7 +783,7 @@ var _ = Describe("Machines", func() {
 					BeforeEach(func() {
 						volumeSize = 20
 
-						infrastructureStatus = makeInfrastructureStatus(resourceGroupName, vnetName, subnetName, true, &vnetResourceGroupName, nil, &identityID)
+						infrastructureStatus = makeInfrastructureStatus(resourceGroupName, vnetName, subnetName, true, &vnetResourceGroupName, &identityID)
 						infrastructureStatus.Networks = apisazure.NetworkStatus{
 							Layout: apisazure.NetworkLayoutMultipleSubnet,
 							Subnets: []apisazure.Subnet{
@@ -1022,31 +1022,6 @@ var _ = Describe("Machines", func() {
 					Raw: encode(&apisazure.InfrastructureStatus{}),
 				}
 				workerDelegate := wrapNewWorkerDelegate(c, chartApplier, w, cluster, nil)
-
-				result, err := workerDelegate.GenerateMachineDeployments(ctx)
-				Expect(err).To(HaveOccurred())
-				Expect(result).To(BeNil())
-			})
-
-			It("should fail because the nodes availability set cannot be found", func() {
-				w.Spec.InfrastructureProviderStatus = &runtime.RawExtension{
-					Raw: encode(&apisazure.InfrastructureStatus{
-						Networks: apisazure.NetworkStatus{
-							Subnets: []apisazure.Subnet{
-								{
-									Purpose: apisazure.PurposeNodes,
-									Name:    subnetName,
-								},
-							},
-						},
-						AvailabilitySets: []apisazure.AvailabilitySet{
-							{Purpose: "not-nodes"},
-						},
-					}),
-				}
-				workerDelegate := wrapNewWorkerDelegate(c, chartApplier, w, cluster, nil)
-
-				expectedUserDataSecretRefRead()
 
 				result, err := workerDelegate.GenerateMachineDeployments(ctx)
 				Expect(err).To(HaveOccurred())

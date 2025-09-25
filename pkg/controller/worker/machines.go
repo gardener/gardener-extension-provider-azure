@@ -358,26 +358,6 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			continue
 		}
 
-		// AvailabilitySet
-		if !infrastructureStatus.Zoned {
-			nodesAvailabilitySet, err := azureapihelper.FindAvailabilitySetByPurpose(infrastructureStatus.AvailabilitySets, azureapi.PurposeNodes)
-			if err != nil {
-				return err
-			}
-
-			// Do not enable accelerated networking for AvSet cluster.
-			// This is necessary to avoid `ExistingAvailabilitySetWasNotDeployedOnAcceleratedNetworkingEnabledCluster` error.
-			acceleratedNetworkAllowed = false
-
-			machineDeployment, machineClassSpec := generateMachineClassAndDeployment(nil, &machineSetInfo{
-				id:   nodesAvailabilitySet.ID,
-				kind: "availabilityset",
-			}, nodesSubnet.Name, workerPoolHash, &workerConfig)
-			machineDeployments = append(machineDeployments, machineDeployment)
-			machineClasses = append(machineClasses, machineClassSpec)
-			continue
-		}
-
 		// Availability Zones
 		zoneCount := len(pool.Zones)
 		for zoneIndex, zone := range pool.Zones {

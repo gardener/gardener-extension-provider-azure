@@ -139,7 +139,8 @@ string
 </em>
 </td>
 <td>
-<p>CountUpdateDomains is list of update domain counts for each region.</p>
+<p>CountUpdateDomains is list of update domain counts for each region.
+Deprecated: VMSS does not allow specifying update domain count. With the deprecation of Availability Sets, only CountFaultDomains is required.</p>
 </td>
 </tr>
 <tr>
@@ -540,84 +541,6 @@ string
 </td>
 <td>
 <p>SubscriptionID is the ID of the subscription.</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.AvailabilitySet">AvailabilitySet
-</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.InfrastructureStatus">InfrastructureStatus</a>)
-</p>
-<p>
-<p>AvailabilitySet contains information about the azure availability set</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>purpose</code></br>
-<em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.Purpose">
-Purpose
-</a>
-</em>
-</td>
-<td>
-<p>Purpose is the purpose of the availability set</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>id</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>ID is the id of the availability set</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>name</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Name is the name of the availability set</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>countFaultDomains</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>CountFaultDomains is the count of fault domains.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>countUpdateDomains</code></br>
-<em>
-int32
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>CountUpdateDomains is the count of update domains.</p>
 </td>
 </tr>
 </tbody>
@@ -1163,32 +1086,6 @@ ResourceGroup
 </td>
 <td>
 <p>ResourceGroup is azure resource group</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>availabilitySets</code></br>
-<em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.AvailabilitySet">
-[]AvailabilitySet
-</a>
-</em>
-</td>
-<td>
-<p>AvailabilitySets is a list of created availability sets
-Deprecated: Will be removed in future versions.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>migratingToVMO</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<p>MigratingToVMO indicates whether the infrastructure controller has prepared the migration from Availability set.
-Deprecated: Will be removed in future versions.</p>
 </td>
 </tr>
 <tr>
@@ -1834,7 +1731,6 @@ int32
 (<code>string</code> alias)</p></h3>
 <p>
 (<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.AvailabilitySet">AvailabilitySet</a>, 
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.RouteTable">RouteTable</a>, 
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.SecurityGroup">SecurityGroup</a>, 
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.Subnet">Subnet</a>)
