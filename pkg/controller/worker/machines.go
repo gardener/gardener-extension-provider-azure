@@ -12,7 +12,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v7"
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
 	genericworkeractuator "github.com/gardener/gardener/extensions/pkg/controller/worker/genericactuator"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
@@ -337,6 +337,9 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				}
 			}
 
+			if infrastructureStatus.Networks.LoadBalancer != nil {
+				machineClassSpec["backendAddressPoolID"] = infrastructureStatus.Networks.LoadBalancer.BackendAddressPoolID
+			}
 			machineDeployment.ClusterAutoscalerAnnotations = extensionsv1alpha1helper.GetMachineDeploymentClusterAutoscalerAnnotations(pool.ClusterAutoscaler)
 
 			return machineDeployment, machineClassSpec
