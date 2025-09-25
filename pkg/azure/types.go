@@ -12,10 +12,6 @@ const (
 	// Name is the name of the Azure provider.
 	Name = "provider-azure"
 
-	// ShootVmoUsageAnnotation is an annotation assigned to the Shoot resource which indicates if VMO should be used.
-	ShootVmoUsageAnnotation = "alpha.azure.provider.extensions.gardener.cloud/vmo"
-	// ShootVmoMigrationAnnotation is an annotation assigned to the Shoot resource which indicates if the availability set shoot, should be migrated to a VMO shoot.
-	ShootVmoMigrationAnnotation = "migration.azure.provider.extensions.gardener.cloud/vmo"
 	// ShootSkipAllowEgressDeployment skips the deployment of AllowEgress chart. The annotation exposes an option for shoot owners to override the automated behavior of Gardener.
 	ShootSkipAllowEgressDeployment = "azure.provider.extensions.gardener.cloud/skip-allow-egress"
 
@@ -92,6 +88,9 @@ const (
 
 	// MachineSetTagKey is the name of the infrastructure resource tag for machine sets.
 	MachineSetTagKey = "machineset.azure.extensions.gardener.cloud"
+	// MachineSetWorkerNameTagKey is the name of the worker corresponding to the worker's machine set.
+	// The tag names 'machineset.azure.extensions.gardener.cloud/worker' have reserved characters '<,>,%,&,\\,?,/' or control characters
+	MachineSetWorkerNameTagKey = MachineSetTagKey + ".worker-name"
 
 	// AllowEgressName is the name of the service for allowing egress traffic.
 	AllowEgressName = "allow-egress"

@@ -20,7 +20,6 @@ import (
 
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
-	azuretypes "github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 const (
@@ -111,7 +110,7 @@ func ValidateInfrastructureConfig(infra *apisazure.InfrastructureConfig, shoot *
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("resourceGroup"), infra.ResourceGroup, "specifying an existing resource group is not supported yet"))
 	}
 
-	allErrs = append(allErrs, validateNetworkConfig(shoot, infra, nodes, pods, services, fldPath)...)
+	allErrs = append(allErrs, validateNetworkConfig(infra, nodes, pods, services, fldPath)...)
 
 	if infra.Identity != nil {
 		path := fldPath.Child("identity")
@@ -123,7 +122,6 @@ func ValidateInfrastructureConfig(infra *apisazure.InfrastructureConfig, shoot *
 }
 
 func validateNetworkConfig(
-	shoot *core.Shoot,
 	infra *apisazure.InfrastructureConfig,
 	nodes cidrvalidation.CIDR,
 	pods cidrvalidation.CIDR,
@@ -167,7 +165,7 @@ func validateNetworkConfig(
 			allErrs = append(allErrs, nodes.ValidateSubset(workerCIDR)...)
 		}
 
-		allErrs = append(allErrs, validateNatGatewayConfig(config.NatGateway, helper.HasShootVmoMigrationAnnotation(shoot.GetAnnotations()), networksPath.Child("natGateway"))...)
+		allErrs = append(allErrs, validateNatGatewayConfig(config.NatGateway, networksPath.Child("natGateway"))...)
 
 		for idx := range config.ServiceEndpoints {
 			allErrs = append(allErrs, validateServiceEndpoint(config.ServiceEndpoints[idx], networksPath.Child("serviceEndpoints").Index(idx))...)
@@ -309,7 +307,7 @@ func validateZones(zones []apisazure.Zone, nodes, pods, services cidrvalidation.
 	return allErrs
 }
 
-func validateNatGatewayConfig(natGatewayConfig *apisazure.NatGatewayConfig, hasShootVmoMigrationAnnotation bool, natGatewayPath *field.Path) field.ErrorList {
+func validateNatGatewayConfig(natGatewayConfig *apisazure.NatGatewayConfig, natGatewayPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if natGatewayConfig == nil {
@@ -321,10 +319,6 @@ func validateNatGatewayConfig(natGatewayConfig *apisazure.NatGatewayConfig, hasS
 			return append(allErrs, field.Invalid(natGatewayPath, natGatewayConfig, "NatGateway is disabled but additional NatGateway config is passed"))
 		}
 		return nil
-	}
-
-	if hasShootVmoMigrationAnnotation {
-		allErrs = append(allErrs, field.Forbidden(natGatewayPath.Child("enabled"), fmt.Sprintf("natGateway cannot be enabled with the annotation %s", azuretypes.ShootVmoMigrationAnnotation)))
 	}
 
 	if natGatewayConfig.IdleConnectionTimeoutMinutes != nil && (*natGatewayConfig.IdleConnectionTimeoutMinutes < natGatewayMinTimeoutInMinutes || *natGatewayConfig.IdleConnectionTimeoutMinutes > natGatewayMaxTimeoutInMinutes) {

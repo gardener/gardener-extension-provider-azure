@@ -19,8 +19,6 @@ func (a AzureResourceKind) String() string {
 }
 
 const (
-	// KindAvailabilitySet is the kind for an availability set.
-	KindAvailabilitySet AzureResourceKind = "Microsoft.Compute/availabilitySets"
 	// KindNatGateway is the kind for a NAT Gateway.
 	KindNatGateway AzureResourceKind = "Microsoft.Network/natGateways"
 	// KindPublicIP is the kind for a public ip.
@@ -43,8 +41,6 @@ const (
 )
 
 const (
-	// TemplateAvailabilitySet the template for the ID of an availability set.
-	TemplateAvailabilitySet = "/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Compute/availabilitySets/%s"
 	// TemplateNatGateway the template for the id of a NAT Gateway.
 	TemplateNatGateway = "/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Network/natGateways/%s"
 	// TemplatePublicIP the template for the id of a public IP.

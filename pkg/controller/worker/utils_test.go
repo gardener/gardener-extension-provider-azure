@@ -139,7 +139,7 @@ func makeCluster(shootVersion, region string, machineTypes []v1alpha1.MachineTyp
 	}
 }
 
-func makeInfrastructureStatus(resourceGroupName, vnetName, subnetName string, zoned bool, vnetrg, availabilitySetID, identityID *string) *apiazure.InfrastructureStatus {
+func makeInfrastructureStatus(resourceGroupName, vnetName, subnetName string, zoned bool, vnetrg, identityID *string) *apiazure.InfrastructureStatus {
 	infrastructureStatus := apiazure.InfrastructureStatus{
 		ResourceGroup: apiazure.ResourceGroup{
 			Name: resourceGroupName,
@@ -158,15 +158,11 @@ func makeInfrastructureStatus(resourceGroupName, vnetName, subnetName string, zo
 		},
 		Zoned: zoned,
 	}
+
 	if vnetrg != nil {
 		infrastructureStatus.Networks.VNet.ResourceGroup = vnetrg
 	}
-	if availabilitySetID != nil {
-		infrastructureStatus.AvailabilitySets = []apiazure.AvailabilitySet{{
-			Purpose: apiazure.PurposeNodes,
-			ID:      *availabilitySetID,
-		}}
-	}
+
 	if identityID != nil {
 		infrastructureStatus.Identity = &apiazure.IdentityStatus{
 			ID: *identityID,

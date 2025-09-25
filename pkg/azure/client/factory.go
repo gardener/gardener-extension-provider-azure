@@ -155,11 +155,6 @@ func (f azureFactory) NatGateway() (NatGateway, error) {
 	return NewNatGatewaysClient(*f.auth, f.tokenCredential, f.clientOpts)
 }
 
-// AvailabilitySet returns an AvailabilitySet client.
-func (f azureFactory) AvailabilitySet() (AvailabilitySet, error) {
-	return NewAvailabilitySetClient(*f.auth, f.tokenCredential, f.clientOpts)
-}
-
 // ManagedUserIdentity returns a ManagedUserIdentity client.
 func (f azureFactory) ManagedUserIdentity() (ManagedUserIdentity, error) {
 	return NewManagedUserIdentityClient(f.auth, f.tokenCredential, f.clientOpts)
