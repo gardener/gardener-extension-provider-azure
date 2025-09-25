@@ -84,6 +84,7 @@ config:
   featureGates:
     disableRemedyController: false
     enableImmutableBuckets: false
+    forceAvailabilitySetMigration: false
 
 gardener:
   version: ""

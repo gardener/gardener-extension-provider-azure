@@ -32,4 +32,7 @@ data:
 {{- if .Values.config.featureGates.enableImmutableBuckets }}
       EnableImmutableBuckets: {{ .Values.config.featureGates.enableImmutableBuckets }}
 {{- end }}
+{{- if .Values.config.featureGates.forceAvailabilitySetMigration }}
+      ForceAvailabilitySetMigration: {{ .Values.config.featureGates.forceAvailabilitySetMigration }}
+{{- end }}
 {{- end }}
