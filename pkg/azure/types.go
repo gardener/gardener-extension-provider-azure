@@ -26,10 +26,6 @@ const (
 	// Deprecated: This annotation is deprecated and will only used for testing until the deprecation by Azure.
 	DisableDefaultOutboundAccessAnnotation = "azure.provider.extensions.gardener.cloud/disable-default-outbound-access"
 
-	// ShootMutateNatConfig is an annotation assigned to Shoots that are created while the ForceNatGateway feature gate is enabled.
-	// It indicates that the NAT configuration should be mutated to add a NAT gateway.
-	ShootMutateNatConfig = "azure.provider.extensions.gardener.cloud/nat-gateway-default-outbound"
-
 	// CloudControllerManagerImageName is the name of the cloud-controller-manager image.
 	CloudControllerManagerImageName = "cloud-controller-manager"
 	// CloudNodeManagerImageName is the name of the cloud-node-manager image.

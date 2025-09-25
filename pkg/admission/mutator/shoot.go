@@ -13,16 +13,11 @@ import (
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
-	"github.com/gardener/gardener/pkg/utils"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/features"
 )
 
 // NewShootMutator returns a new instance of a shoot mutator.
@@ -85,11 +80,6 @@ func (s *shoot) Mutate(_ context.Context, newObj, oldObj client.Object) error {
 		return err
 	}
 
-	err = s.mutateInfrastructureNatConfig(shoot, oldShoot)
-	if err != nil {
-		return err
-	}
-
 	// Disable TCP to upstream DNS queries by default on Azure. DNS over TCP may cause performance issues on larger clusters.
 	if shoot.Spec.SystemComponents != nil {
 		if shoot.Spec.SystemComponents.NodeLocalDNS != nil {
@@ -102,72 +92,6 @@ func (s *shoot) Mutate(_ context.Context, newObj, oldObj client.Object) error {
 	}
 
 	return nil
-}
-
-// mutateInfrastructureNatConfig mutates the InfrastructureConfig to enable NAT-Gateway
-// preserves nat config if it was already set
-func (s *shoot) mutateInfrastructureNatConfig(shoot, oldShoot *gardencorev1beta1.Shoot) error {
-	if shoot.Spec.Provider.InfrastructureConfig == nil || shoot.Spec.Provider.InfrastructureConfig.Raw == nil {
-		return nil
-	}
-
-	infraConfig := v1alpha1.InfrastructureConfig{}
-	if _, _, err := s.decoder.Decode(shoot.Spec.Provider.InfrastructureConfig.Raw, nil, &infraConfig); err != nil {
-		return fmt.Errorf("failed to decode InfrastructureConfig: %w", err)
-	}
-
-	if !shouldMutateNatGateway(infraConfig, oldShoot) {
-		return nil
-	}
-
-	// add annotation for new shoot OR preserve annotation if it was already set
-	shoot.Annotations = utils.MergeStringMaps(shoot.Annotations, map[string]string{
-		azure.ShootMutateNatConfig: "true",
-	})
-
-	nat := infraConfig.Networks.NatGateway
-	zones := infraConfig.Networks.Zones
-
-	// Case 1: Non-zoned setup → enable NAT-Gateway if not explicitly set
-	if len(zones) == 0 && nat == nil {
-		infraConfig.Networks.NatGateway = &v1alpha1.NatGatewayConfig{Enabled: true}
-	}
-
-	// Case 2: Zoned setup → enable NAT-Gateway per zone if not explicitly set
-	for i := range zones {
-		if zones[i].NatGateway == nil {
-			zones[i].NatGateway = &v1alpha1.ZonedNatGatewayConfig{Enabled: true}
-		}
-	}
-
-	modifiedJSON, err := json.Marshal(infraConfig)
-	if err != nil {
-		return fmt.Errorf("failed to marshal modified InfrastructureConfig: %w", err)
-	}
-	shoot.Spec.Provider.InfrastructureConfig = &runtime.RawExtension{Raw: modifiedJSON}
-
-	return nil
-}
-
-// shouldMutateNatGateway returns true if ForceNatGateway is enabled and either it's a
-// new shoot or the old shoot has the annotation to mutate nat config.
-func shouldMutateNatGateway(newInfraConfig v1alpha1.InfrastructureConfig, oldShoot *gardencorev1beta1.Shoot) bool {
-	if !features.ExtensionFeatureGate.Enabled(features.ForceNatGateway) {
-		return false
-	}
-	// don't mutate shoots with existing VNet
-	if newInfraConfig.Networks.VNet.Name != nil && newInfraConfig.Networks.VNet.ResourceGroup != nil {
-		return false
-	}
-	return oldShoot == nil || mutateNatConfigAnnotationExists(oldShoot)
-}
-
-func mutateNatConfigAnnotationExists(shoot *gardencorev1beta1.Shoot) bool {
-	if shoot.Annotations == nil {
-		return false
-	}
-	_, exists := shoot.Annotations[azure.ShootMutateNatConfig]
-	return exists
 }
 
 func (s *shoot) mutateNetworkConfig(shoot, oldShoot *gardencorev1beta1.Shoot) error {
