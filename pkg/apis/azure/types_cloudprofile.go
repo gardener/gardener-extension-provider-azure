@@ -86,6 +86,11 @@ type MachineImageFlavor struct {
 	Image
 }
 
+// GetCapabilities returns the Capabilities of a MachineImageFlavor
+func (cs MachineImageFlavor) GetCapabilities() gardencorev1beta1.Capabilities {
+	return cs.Capabilities
+}
+
 // Image identifies the azure image.
 type Image struct {
 	// URN is the uniform resource name of the image, it has the format 'publisher:offer:sku:version'.

@@ -7,10 +7,14 @@ package helper
 import (
 	"fmt"
 
+	"github.com/gardener/gardener/extensions/pkg/controller/worker"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
 	"k8s.io/utils/ptr"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 )
 
 // FindSubnetByPurposeAndZone takes a list of subnets and tries to find the first entry whose purpose matches with the given purpose.
@@ -78,6 +82,93 @@ func FindDomainCountByRegion(domainCounts []api.DomainCount, region string) (int
 		}
 	}
 	return 0, fmt.Errorf("could not find a domain count for region %s", region)
+}
+
+// FindImageInCloudProfile takes a list of machine images and tries to find the first entry
+// whose name, version, architecture, capabilities and zone matches with the given ones. If no such entry is
+// found then an error will be returned.
+func FindImageInCloudProfile(
+	cloudProfileConfig *api.CloudProfileConfig,
+	name, version string,
+	arch *string,
+	machineCapabilities gardencorev1beta1.Capabilities,
+	capabilityDefinitions []gardencorev1beta1.CapabilityDefinition,
+) (*api.MachineImageFlavor, *api.MachineImageVersion, error) {
+	if cloudProfileConfig == nil {
+		return nil, nil, fmt.Errorf("cloud profile config is nil")
+	}
+	machineImages := cloudProfileConfig.MachineImages
+
+	imageFlavor, imageVersion, err := findMachineImageFlavor(machineImages, name, version, arch, machineCapabilities, capabilityDefinitions)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not find an image %q, version %q that supports %v: %w", name, version, machineCapabilities, err)
+	}
+
+	if imageFlavor != nil || imageVersion != nil {
+		return imageFlavor, imageVersion, nil
+	}
+
+	return nil, nil, fmt.Errorf("no machine image found with name %q, and version %q that supports %v", name, version, machineCapabilities)
+}
+
+// FindImageInWorkerStatus takes a list of machine images from the worker status and tries to find the first entry
+// whose name, version, architecture, capabilities and zone matches with the given ones. If no such entry is
+// found then an error will be returned.
+func FindImageInWorkerStatus(machineImages []api.MachineImage, name string, version string, architecture *string, machineCapabilities gardencorev1beta1.Capabilities, capabilityDefinitions []gardencorev1beta1.CapabilityDefinition) (*api.MachineImage, error) {
+	// If no capabilityDefinitions are specified, return the (legacy) architecture format field as no Capabilities are used.
+	if len(capabilityDefinitions) == 0 {
+		for _, statusMachineImage := range machineImages {
+			if statusMachineImage.Architecture == nil {
+				statusMachineImage.Architecture = ptr.To(v1beta1constants.ArchitectureAMD64)
+			}
+			if statusMachineImage.Name == name && statusMachineImage.Version == version && ptr.Equal(architecture, statusMachineImage.Architecture) {
+				return &statusMachineImage, nil
+			}
+		}
+		return nil, worker.ErrorMachineImageNotFound(name, version, *architecture)
+	}
+
+	// If capabilityDefinitions are specified, we need to find the best matching capability set.
+	for _, statusMachineImage := range machineImages {
+		var statusMachineImageV1alpha1 v1alpha1.MachineImage
+		if err := v1alpha1.Convert_azure_MachineImage_To_v1alpha1_MachineImage(&statusMachineImage, &statusMachineImageV1alpha1, nil); err != nil {
+			return nil, fmt.Errorf("failed to convert machine image: %w", err)
+		}
+		if statusMachineImage.Name == name && statusMachineImage.Version == version && gardencorev1beta1helper.AreCapabilitiesCompatible(statusMachineImageV1alpha1.Capabilities, machineCapabilities, capabilityDefinitions) {
+			return &statusMachineImage, nil
+		}
+	}
+	return nil, fmt.Errorf("no machine image found for image %q with version %q and capabilities %v", name, version, machineCapabilities)
+}
+func findMachineImageFlavor(
+	machineImages []api.MachineImages,
+	imageName, imageVersion string,
+	arch *string,
+	machineCapabilities gardencorev1beta1.Capabilities,
+	capabilityDefinitions []gardencorev1beta1.CapabilityDefinition,
+) (*api.MachineImageFlavor, *api.MachineImageVersion, error) {
+	for _, machineImage := range machineImages {
+		if machineImage.Name != imageName {
+			continue
+		}
+		for _, version := range machineImage.Versions {
+			if imageVersion != version.Version {
+				continue
+			}
+
+			if len(capabilityDefinitions) == 0 && ptr.Equal(arch, version.Architecture) {
+				return nil, &version, nil
+			}
+
+			bestMatch, err := worker.FindBestImageFlavor(version.CapabilityFlavors, machineCapabilities, capabilityDefinitions)
+			if err != nil {
+				return nil, nil, fmt.Errorf("could not determine best flavor %w", err)
+			}
+
+			return &bestMatch, nil, nil
+		}
+	}
+	return nil, nil, nil
 }
 
 // FindImageFromCloudProfile takes a list of machine images, and the desired image name and version. It tries

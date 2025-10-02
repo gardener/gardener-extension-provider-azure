@@ -103,7 +103,13 @@ func makeWorker(namespace string, region string, sshKey *string, infrastructureS
 	}
 }
 
-func makeCluster(technicalID, shootVersion, region string, machineTypes []v1alpha1.MachineType, machineImages []v1alpha1.MachineImages, faultDomainCount int32) *extensionscontroller.Cluster {
+func makeCluster(technicalID,shootVersion, region string, machineTypes []v1alpha1.MachineType, machineImages []v1alpha1.MachineImages, faultDomainCount int32) *extensionscontroller.Cluster {
+	coreMachineTypes := []gardencorev1beta1.MachineType{}
+
+	for _, mt := range machineTypes {
+		coreMachineTypes = append(coreMachineTypes, gardencorev1beta1.MachineType{Name: mt.Name})
+	}
+
 	cloudProfileConfig := &v1alpha1.CloudProfileConfig{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: v1alpha1.SchemeGroupVersion.String(),
@@ -127,6 +133,7 @@ func makeCluster(technicalID, shootVersion, region string, machineTypes []v1alph
 				ProviderConfig: &runtime.RawExtension{
 					Raw: cloudProfileConfigJSON,
 				},
+				MachineTypes: coreMachineTypes,
 			},
 		},
 		Shoot: &gardencorev1beta1.Shoot{
