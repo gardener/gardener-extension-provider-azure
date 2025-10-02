@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -205,8 +206,21 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			if infrastructureStatus.Networks.VNet.ResourceGroup != nil {
 				networkConfig["vnetResourceGroup"] = *infrastructureStatus.Networks.VNet.ResourceGroup
 			}
-			if ptr.Deref(machineImage.AcceleratedNetworking, false) && w.isMachineTypeSupportingAcceleratedNetworking(pool.MachineType) && acceleratedNetworkAllowed {
-				networkConfig["acceleratedNetworking"] = true
+
+			if acceleratedNetworkAllowed {
+				if len(w.cluster.CloudProfile.Spec.MachineCapabilities) > 0 {
+					defaultedMachineTypeCapabilities := gardencorev1beta1helper.GetCapabilitiesWithAppliedDefaults(machineTypeFromCloudProfile.Capabilities, w.cluster.CloudProfile.Spec.MachineCapabilities)
+					defaultedImageCapabilities := gardencorev1beta1helper.GetCapabilitiesWithAppliedDefaults(machineImage.Capabilities, w.cluster.CloudProfile.Spec.MachineCapabilities)
+					machineTypeSupportsAcceleratedNetworking := slices.Contains(defaultedMachineTypeCapabilities[azure.CapabilityNetworkName], azure.CapabilityNetworkAccelerated)
+					machineImageSupportsAcceleratedNetworking := slices.Contains(defaultedImageCapabilities[azure.CapabilityNetworkName], azure.CapabilityNetworkAccelerated)
+					if machineTypeSupportsAcceleratedNetworking && machineImageSupportsAcceleratedNetworking {
+						networkConfig["acceleratedNetworking"] = true
+					}
+				} else {
+					if ptr.Deref(machineImage.AcceleratedNetworking, false) && w.isMachineTypeSupportingAcceleratedNetworking(pool.MachineType) {
+						networkConfig["acceleratedNetworking"] = true
+					}
+				}
 			}
 			machineClassSpec["network"] = networkConfig
 

@@ -168,9 +168,15 @@ const (
 	BlobDeletionLifecyclePolicyName = "delete-backupentry"
 	// BlobMarkedForDeletionTagKey is the tag to be added to objects to delete them after their immutability expires.
 	BlobMarkedForDeletionTagKey = "blob-marked-for-deletion"
-
 	// StorageAccountKeyMustRotate is an annotation to indicate that the storageAccountKey has to be rotated.
 	StorageAccountKeyMustRotate = "azure.provider.extensions.gardener.cloud/rotate"
+
+	// CapabilityNetworkName is the name for the Azure specific capability networking.
+	CapabilityNetworkName = "networking"
+	// CapabilityNetworkAccelerated is a constant for the accelerated networking capability.
+	CapabilityNetworkAccelerated = "accelerated"
+	// CapabilityNetworkStandard is a constant for the standard networking capability.
+	CapabilityNetworkStandard = "standard"
 )
 
 // UsernamePrefix is a constant for the username prefix of components deployed by Azure.
