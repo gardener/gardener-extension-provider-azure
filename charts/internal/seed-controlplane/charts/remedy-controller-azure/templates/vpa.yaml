@@ -9,4 +9,4 @@ spec:
     kind: Deployment
     name: remedy-controller-azure
   updatePolicy:
-    updateMode: Auto
+    updateMode: Recreate
