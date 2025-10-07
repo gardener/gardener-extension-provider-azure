@@ -153,8 +153,11 @@ func findMachineImageFlavor(
 				continue
 			}
 
-			if len(capabilityDefinitions) == 0 && ptr.Equal(arch, version.Architecture) {
-				return nil, &version, nil
+			if len(capabilityDefinitions) == 0 {
+				if ptr.Equal(arch, version.Architecture) {
+					return nil, &version, nil
+				}
+				continue
 			}
 
 			bestMatch, err := worker.FindBestImageFlavor(version.CapabilityFlavors, machineCapabilities, capabilityDefinitions)

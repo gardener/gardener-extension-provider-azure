@@ -7,8 +7,8 @@ package bastion
 import (
 	"crypto/sha256"
 	"fmt"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"net"
-	"slices"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
@@ -115,7 +115,7 @@ func NewOpts(bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster, r
 		return Options{}, fmt.Errorf("failed to extract cloud provider config from cluster: %w", err)
 	}
 
-	imageRef, err := getProviderSpecificImage(cloudProfileConfig.MachineImages, machineSpec)
+	imageRef, err := getProviderSpecificImage(cloudProfileConfig, machineSpec, cluster.CloudProfile.Spec.MachineCapabilities)
 	if err != nil {
 		return Options{}, fmt.Errorf("failed to extract image from provider config: %w", err)
 	}
@@ -174,26 +174,23 @@ func ingressPermissions(bastion *extensionsv1alpha1.Bastion) ([]string, error) {
 }
 
 // getProviderSpecificImage returns the provider specific MachineImageVersion that matches with the given MachineSpec
-func getProviderSpecificImage(images []azure.MachineImages, vm extensionsbastion.MachineSpec) (*armcompute.ImageReference, error) {
-	imageIndex := slices.IndexFunc(images, func(image azure.MachineImages) bool {
-		return strings.EqualFold(image.Name, vm.ImageBaseName)
-	})
+func getProviderSpecificImage(
+	cloudProfileConfig *azure.CloudProfileConfig,
+	vm extensionsbastion.MachineSpec,
+	capabilityDefinitions []gardencorev1beta1.CapabilityDefinition,
+) (*armcompute.ImageReference, error) {
 
-	if imageIndex == -1 {
-		return nil, fmt.Errorf("machine image with name %s not found in cloudProfileConfig", vm.ImageBaseName)
+	imageFlavor, imageVersion, err := helper.FindImageInCloudProfile(cloudProfileConfig, vm.ImageBaseName, vm.ImageVersion, &vm.Architecture, vm.MachineTypeCapabilities, capabilityDefinitions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find machine image in CloudProfileConfig: %w", err)
 	}
 
-	versions := images[imageIndex].Versions
-	versionIndex := slices.IndexFunc(versions, func(version azure.MachineImageVersion) bool {
-		return version.Version == vm.ImageVersion
-	})
-
-	if versionIndex == -1 {
-		return nil, fmt.Errorf("version %s for arch %s of image %s not found in cloudProfileConfig",
-			vm.ImageVersion, vm.Architecture, vm.ImageBaseName)
+	var image azure.Image
+	if imageFlavor != nil {
+		image = imageFlavor.Image
+	} else if imageVersion != nil {
+		image = imageVersion.Image
 	}
-
-	image := versions[versionIndex]
 
 	var (
 		publisher *string

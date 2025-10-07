@@ -48,19 +48,16 @@ func createRuleWithPriority(name string, priority int32) *armnetwork.SecurityRul
 
 var _ = Describe("Bastion test", func() {
 	var (
-		cluster *extensions.Cluster
-		bastion *extensionsv1alpha1.Bastion
-		log     = logf.Log.WithName("bastion-test")
-
+		bastion              *extensionsv1alpha1.Bastion
+		vNetCIDR             api.VNet
+		log                  = logf.Log.WithName("bastion-test")
 		ctrl                 *gomock.Controller
 		maxLengthForResource int
-		providerImages       []api.MachineImages
 	)
 	BeforeEach(func() {
-		vNetCIDR := api.VNet{
+		vNetCIDR = api.VNet{
 			CIDR: ptr.To("10.0.0.1/32"),
 		}
-		cluster = createAzureTestCluster(vNetCIDR)
 		bastion = createTestBastion()
 		ctrl = gomock.NewController(GinkgoT())
 		maxLengthForResource = 63
@@ -143,6 +140,8 @@ var _ = Describe("Bastion test", func() {
 
 	Describe("getWorkersCIDR", func() {
 		It("getWorkersCIDR", func() {
+			// no second tests without capabilities is required as the function does not depend on cloudprofile
+			cluster := createAzureTestCluster(vNetCIDR, true)
 			cidr, err := getWorkersCIDR(cluster)
 			Expect(err).To(Not(HaveOccurred()))
 			Expect(cidr).To(Equal([]string{"10.250.0.0/16"}))
@@ -150,7 +149,9 @@ var _ = Describe("Bastion test", func() {
 	})
 
 	Describe("Determine options", func() {
-		It("should return options", func() {
+		DescribeTable("should return options", func(isCapabilityCloudProfile bool) {
+			cluster := createAzureTestCluster(vNetCIDR, isCapabilityCloudProfile)
+
 			options, err := NewOpts(bastion, cluster, "cluster1", log)
 			Expect(err).To(Not(HaveOccurred()))
 
@@ -173,7 +174,10 @@ var _ = Describe("Bastion test", func() {
 			Expect(options.SecurityGroupName).To(Equal("cluster1-workers"))
 			Expect(options.MachineType).To(Equal("machineName"))
 			Expect(*options.ImageRef.CommunityGalleryImageID).To(Equal("/CommunityGalleries/gardenlinux-1.2.3"))
-		})
+		},
+			Entry("cloudProfile without capabilities", false),
+			Entry("cloudProfile with capabilities", true),
+		)
 	})
 
 	Describe("check Names generations", func() {
@@ -321,7 +325,11 @@ var _ = Describe("Bastion test", func() {
 		})
 	})
 
-	Describe("#getProviderSpecificImage", func() {
+	DescribeTableSubtree("#getProviderSpecificImage", func(isCapabilityCloudProfile bool) {
+		var (
+			machineCapabilities []gardencorev1beta1.CapabilityDefinition
+			cloudProfileConfig  *api.CloudProfileConfig
+		)
 		var desiredVM = extensionsbastion.MachineSpec{
 			MachineTypeName: "machineName",
 			Architecture:    "amd64",
@@ -329,24 +337,58 @@ var _ = Describe("Bastion test", func() {
 			ImageVersion:    "1.2.3",
 		}
 
+		BeforeEach(func() {
+			if isCapabilityCloudProfile {
+				machineCapabilities = []gardencorev1beta1.CapabilityDefinition{
+					{Name: "architecture", Values: []string{"amd64", "arm64"}},
+					{Name: "someCap", Values: []string{"value1", "value2", "value3"}},
+				}
+				desiredVM.MachineTypeCapabilities = gardencorev1beta1.Capabilities{
+					"architecture": []string{"amd64"},
+					"someCap":      []string{"value2"},
+				}
+			}
+		})
+
 		It("should succeed for existing communityGallery image", func() {
-			providerImages = createTestProviderConfig(api.MachineImageVersion{
-				Image: api.Image{
-					CommunityGalleryImageID: ptr.To("/CommunityGalleries/gardenlinux-1.2.3"),
-				},
-			}).MachineImages
-			imageRef, err := getProviderSpecificImage(providerImages, desiredVM)
+			cloudProfileConfig = createTestProviderConfig(api.MachineImageVersion{
+				CapabilityFlavors: []api.MachineImageFlavor{{
+					Image: api.Image{
+						CommunityGalleryImageID: ptr.To("/CommunityGalleries/gardenlinux-1.2.3"),
+					},
+				}},
+			})
+			if !isCapabilityCloudProfile {
+				cloudProfileConfig = createTestProviderConfig(api.MachineImageVersion{
+					Architecture: ptr.To("amd64"),
+					Image: api.Image{
+						CommunityGalleryImageID: ptr.To("/CommunityGalleries/gardenlinux-1.2.3"),
+					},
+				})
+			}
+
+			imageRef, err := getProviderSpecificImage(cloudProfileConfig, desiredVM, machineCapabilities)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(*imageRef.CommunityGalleryImageID).To(Equal("/CommunityGalleries/gardenlinux-1.2.3"))
 		})
 
 		It("should succeed for existing sharedGallery image", func() {
-			providerImages = createTestProviderConfig(api.MachineImageVersion{
-				Image: api.Image{
-					SharedGalleryImageID: ptr.To("/SharedGalleryImageID/gardenlinux-1.2.3"),
-				},
-			}).MachineImages
-			imageRef, err := getProviderSpecificImage(providerImages, desiredVM)
+			cloudProfileConfig = createTestProviderConfig(api.MachineImageVersion{
+				CapabilityFlavors: []api.MachineImageFlavor{{
+					Image: api.Image{
+						SharedGalleryImageID: ptr.To("/SharedGalleryImageID/gardenlinux-1.2.3"),
+					},
+				}},
+			})
+			if !isCapabilityCloudProfile {
+				cloudProfileConfig = createTestProviderConfig(api.MachineImageVersion{
+					Architecture: ptr.To("amd64"),
+					Image: api.Image{
+						SharedGalleryImageID: ptr.To("/SharedGalleryImageID/gardenlinux-1.2.3"),
+					},
+				})
+			}
+			imageRef, err := getProviderSpecificImage(cloudProfileConfig, desiredVM, machineCapabilities)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(*imageRef.SharedGalleryImageID).To(Equal("/SharedGalleryImageID/gardenlinux-1.2.3"))
 		})
@@ -358,28 +400,65 @@ var _ = Describe("Bastion test", func() {
 				SKU:       ptr.To("sku"),
 				Version:   ptr.To("1.2.3"),
 			}
-			providerImages = createTestProviderConfig(api.MachineImageVersion{
-				Image: api.Image{
-					URN: ptr.To("publisher:offer:sku:1.2.3"),
-				},
-			}).MachineImages
-			imageRefRes, err := getProviderSpecificImage(providerImages, desiredVM)
+			cloudProfileConfig = createTestProviderConfig(api.MachineImageVersion{
+				CapabilityFlavors: []api.MachineImageFlavor{{
+					Image: api.Image{
+						URN: ptr.To("publisher:offer:sku:1.2.3"),
+					},
+				}},
+			})
+			if !isCapabilityCloudProfile {
+				cloudProfileConfig = createTestProviderConfig(api.MachineImageVersion{
+					Architecture: ptr.To("amd64"),
+					Image: api.Image{
+						URN: ptr.To("publisher:offer:sku:1.2.3"),
+					},
+				})
+			}
+			imageRefRes, err := getProviderSpecificImage(cloudProfileConfig, desiredVM, machineCapabilities)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(*imageRefRes).To(Equal(desiredImageRef))
 		})
 
 		It("fail if image name does not exist", func() {
 			desiredVM.ImageBaseName = "unknown"
-			_, err := getProviderSpecificImage(providerImages, desiredVM)
+			cloudProfileConfig = &api.CloudProfileConfig{MachineImages: []api.MachineImages{{Name: "gardenlinux"}}}
+			_, err := getProviderSpecificImage(cloudProfileConfig, desiredVM, machineCapabilities)
 			Expect(err).To(HaveOccurred())
 		})
 
 		It("fail if image version does not exist", func() {
 			desiredVM.ImageVersion = "6.6.6"
-			_, err := getProviderSpecificImage(providerImages, desiredVM)
+			cloudProfileConfig = &api.CloudProfileConfig{MachineImages: []api.MachineImages{{
+				Name: "gardenlinux",
+				Versions: []api.MachineImageVersion{{
+					Version: "1.2.3",
+				}},
+			}}}
+			_, err := getProviderSpecificImage(cloudProfileConfig, desiredVM, machineCapabilities)
 			Expect(err).To(HaveOccurred())
 		})
-	})
+
+		It("should fail if no matching capabilities exist", func() {
+			if !isCapabilityCloudProfile {
+				return
+			}
+
+			cloudProfileConfig = createTestProviderConfig(api.MachineImageVersion{
+				CapabilityFlavors: []api.MachineImageFlavor{{
+					Capabilities: gardencorev1beta1.Capabilities{
+						"architecture": []string{"arm64"},
+						"someCap":      []string{"value1"},
+					},
+				}},
+			})
+			_, err := getProviderSpecificImage(cloudProfileConfig, desiredVM, machineCapabilities)
+			Expect(err).To(HaveOccurred())
+		})
+	},
+		Entry("with old format cloudprofile", false),
+		Entry("with capability based cloudprofile", true),
+	)
 })
 
 func createShootTestStruct(vNet api.VNet) *gardencorev1beta1.Shoot {
@@ -408,23 +487,52 @@ func createShootTestStruct(vNet api.VNet) *gardencorev1beta1.Shoot {
 	}
 }
 
-func createAzureTestCluster(vNet api.VNet) *extensions.Cluster {
+func createAzureTestCluster(vNet api.VNet, isCapabilitiesCloudProfile bool) *extensions.Cluster {
+	capabilityDefinitions := []gardencorev1beta1.CapabilityDefinition{
+		{Name: "architecture", Values: []string{"amd64", "arm64"}},
+		{Name: "someCap", Values: []string{"value1", "value2", "value3"}},
+	}
+	cloudProfileConfig := createTestProviderConfig(api.MachineImageVersion{
+		CapabilityFlavors: []api.MachineImageFlavor{{
+			Image: api.Image{
+				CommunityGalleryImageID: ptr.To("/CommunityGalleries/gardenlinux-1.2.3"),
+			},
+		}},
+	})
+
+	machineTypes := []gardencorev1beta1.MachineType{{
+		CPU:  resource.MustParse("4"),
+		Name: "machineName",
+		Capabilities: gardencorev1beta1.Capabilities{
+			"architecture": []string{"amd64"},
+		},
+	}}
+
+	if !isCapabilitiesCloudProfile {
+		capabilityDefinitions = nil
+		cloudProfileConfig = createTestProviderConfig(api.MachineImageVersion{
+			Architecture: ptr.To("amd64"),
+			Image: api.Image{
+				CommunityGalleryImageID: ptr.To("/CommunityGalleries/gardenlinux-1.2.3"),
+			},
+		})
+		machineTypes[0].Capabilities = nil
+		machineTypes[0].Architecture = ptr.To("amd64")
+	}
+
 	return &controller.Cluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "cluster1"},
 		Shoot:      createShootTestStruct(vNet),
 		CloudProfile: &gardencorev1beta1.CloudProfile{
 			Spec: gardencorev1beta1.CloudProfileSpec{
+				MachineCapabilities: capabilityDefinitions,
 				Regions: []gardencorev1beta1.Region{
 					{Name: "westeurope"},
 				},
 				MachineImages: createTestMachineImages(),
-				MachineTypes:  createTestMachineTypes(),
+				MachineTypes:  machineTypes,
 				ProviderConfig: &runtime.RawExtension{
-					Raw: mustEncode(createTestProviderConfig(api.MachineImageVersion{
-						Image: api.Image{
-							CommunityGalleryImageID: ptr.To("/CommunityGalleries/gardenlinux-1.2.3"),
-						},
-					})),
+					Raw: mustEncode(cloudProfileConfig),
 				},
 			},
 		},
@@ -450,14 +558,6 @@ func createTestProviderConfig(imageVersion api.MachineImageVersion) *api.CloudPr
 		Name:     "gardenlinux",
 		Versions: []api.MachineImageVersion{imageVersion},
 	}}}
-}
-
-func createTestMachineTypes() []gardencorev1beta1.MachineType {
-	return []gardencorev1beta1.MachineType{{
-		CPU:          resource.MustParse("4"),
-		Name:         "machineName",
-		Architecture: ptr.To("amd64"),
-	}}
 }
 
 func createTestBastion() *extensionsv1alpha1.Bastion {
