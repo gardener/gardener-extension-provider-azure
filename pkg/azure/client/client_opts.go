@@ -83,5 +83,6 @@ func getRetriableStatusCode() []int {
 		http.StatusBadGateway,          // 502
 		http.StatusServiceUnavailable,  // 503
 		http.StatusGatewayTimeout,      // 504
+		http.StatusTooManyRequests,     // 429
 	}
 }
