@@ -115,5 +115,5 @@ spec:
     kind: DaemonSet
     name: cloud-node-manager
   updatePolicy:
-    updateMode: "Auto"
+    updateMode: "Recreate"
 {{- end }}

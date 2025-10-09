@@ -25,5 +25,5 @@ spec:
     kind: Deployment
     name: csi-driver-controller-{{ .role }}
   updatePolicy:
-    updateMode: Auto
+    updateMode: Recreate
 {{- end -}}
