@@ -137,6 +137,7 @@ func FindImageInWorkerStatus(machineImages []api.MachineImage, name string, vers
 	}
 	return nil, fmt.Errorf("no machine image found for image %q with version %q and capabilities %v", name, version, machineCapabilities)
 }
+
 func findMachineImageFlavor(
 	machineImages []api.MachineImages,
 	imageName, imageVersion string,

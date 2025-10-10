@@ -122,7 +122,6 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 
 		machineImage, err := w.selectMachineImageForWorkerPool(pool.MachineImage.Name, pool.MachineImage.Version, &arch, machineTypeFromCloudProfile.Capabilities)
 
-		//machineImage, err := w.findMachineImage(pool.MachineImage.Name, pool.MachineImage.Version, &arch)
 		if err != nil {
 			return err
 		}

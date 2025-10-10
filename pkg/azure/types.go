@@ -175,8 +175,8 @@ const (
 	CapabilityNetworkName = "networking"
 	// CapabilityNetworkAccelerated is a constant for the accelerated networking capability.
 	CapabilityNetworkAccelerated = "accelerated"
-	// CapabilityNetworkStandard is a constant for the standard networking capability.
-	CapabilityNetworkStandard = "standard"
+	// CapabilityNetworkBasic is a constant for the standard networking capability.
+	CapabilityNetworkBasic = "basic"
 )
 
 // UsernamePrefix is a constant for the username prefix of components deployed by Azure.

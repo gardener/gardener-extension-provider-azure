@@ -7,13 +7,13 @@ package bastion
 import (
 	"crypto/sha256"
 	"fmt"
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"net"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
 	extensionsbastion "github.com/gardener/gardener/extensions/pkg/bastion"
 	"github.com/gardener/gardener/extensions/pkg/controller"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/go-logr/logr"
@@ -179,7 +179,6 @@ func getProviderSpecificImage(
 	vm extensionsbastion.MachineSpec,
 	capabilityDefinitions []gardencorev1beta1.CapabilityDefinition,
 ) (*armcompute.ImageReference, error) {
-
 	imageFlavor, imageVersion, err := helper.FindImageInCloudProfile(cloudProfileConfig, vm.ImageBaseName, vm.ImageVersion, &vm.Architecture, vm.MachineTypeCapabilities, capabilityDefinitions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find machine image in CloudProfileConfig: %w", err)

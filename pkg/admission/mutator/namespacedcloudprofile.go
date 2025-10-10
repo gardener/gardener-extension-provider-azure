@@ -57,6 +57,7 @@ func (p *namespacedCloudProfile) Mutate(_ context.Context, newObj, _ client.Obje
 		return fmt.Errorf("could not decode providerConfig of namespacedCloudProfile status for '%s': %w", profile.Name, err)
 	}
 
+	// ensure that nspc types are in the same format as parent
 	statusConfig.MachineImages = mergeMachineImages(specConfig.MachineImages, statusConfig.MachineImages)
 	statusConfig.MachineTypes = mergeMachineTypes(specConfig.MachineTypes, statusConfig.MachineTypes)
 
