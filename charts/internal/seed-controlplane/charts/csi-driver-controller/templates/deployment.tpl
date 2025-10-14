@@ -127,6 +127,8 @@ spec:
         {{- if ((.Values.csiProvisioner).featureGates) }}
         - --feature-gates={{ range $feature, $enabled := .Values.csiProvisioner.featureGates }}{{ $feature }}={{ $enabled }},{{ end }}
         {{- end }}
+        - --kube-api-qps=100
+        - --kube-api-burst=200
         - --v=5
         securityContext:
           allowPrivilegeEscalation: false
@@ -155,8 +157,8 @@ spec:
         - --v=5
         - --timeout=1200s
         - --worker-threads=500
-        - --kube-api-qps=50
-        - --kube-api-burst=100
+        - --kube-api-qps=100
+        - --kube-api-burst=200
         securityContext:
           allowPrivilegeEscalation: false
         env:
@@ -182,6 +184,8 @@ spec:
         - --leader-election
         - --leader-election-namespace=kube-system
         - --snapshot-name-prefix={{ .Release.Namespace }}
+        - --kube-api-qps=100
+        - --kube-api-burst=200
         securityContext:
           allowPrivilegeEscalation: false
         env:
@@ -206,6 +210,8 @@ spec:
         - --kubeconfig=/var/run/secrets/gardener.cloud/shoot/generic-kubeconfig/kubeconfig
         - --leader-election=true
         - --leader-election-namespace=kube-system
+        - --kube-api-qps=100
+        - --kube-api-burst=200
         - --v=5
         - --handle-volume-inuse-error=false
         {{- if ((.Values.csiResizer).featureGates) }}
