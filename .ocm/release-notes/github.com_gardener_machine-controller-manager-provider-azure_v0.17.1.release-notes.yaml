@@ -1,0 +1,26 @@
+ocm:
+  component_name: github.com/gardener/machine-controller-manager-provider-azure
+  component_version: v0.17.1
+release_notes:
+- audience: operator
+  author:
+    hostname: github.com
+    type: githubUser
+    username: gagan16k
+  category: bugfix
+  contents: Fixed an issue in the orphan safety controller where orphaned VM instances
+    were not fully cleaned up in large Azure clusters due to missing pagination in
+    Azure Resource Graph queries.
+  mimetype: text/markdown
+  reference: '[#211](https://github.com/gardener/machine-controller-manager-provider-azure/pull/211)'
+  type: standard
+- audience: operator
+  author:
+    hostname: github.com
+    type: githubUser
+    username: aaronfern
+  category: improvement
+  contents: Update build workflow to now also build arm64 images
+  mimetype: text/markdown
+  reference: '[#211](https://github.com/gardener/machine-controller-manager-provider-azure/pull/211)'
+  type: standard
