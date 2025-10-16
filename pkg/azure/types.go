@@ -86,6 +86,9 @@ const (
 	// AzureUSGovBlobStorageDomain is the host name for azure blob storage service for the US Government regions.
 	AzureUSGovBlobStorageDomain = "blob.core.usgovcloudapi.net"
 
+	// AzureCSIDiskDriverTopologyKey is the topology key for the Azure CSI Disk Driver.
+	AzureCSIDiskDriverTopologyKey = "topology.disk.csi.azure.com/zone"
+
 	// MachineSetTagKey is the name of the infrastructure resource tag for machine sets.
 	MachineSetTagKey = "machineset.azure.extensions.gardener.cloud"
 	// MachineSetWorkerNameTagKey is the name of the worker corresponding to the worker's machine set.

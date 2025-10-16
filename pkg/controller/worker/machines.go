@@ -32,8 +32,6 @@ import (
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
 
-const azureCSIDiskDriverTopologyKey = "topology.disk.csi.azure.com/zone"
-
 var tagRegex = regexp.MustCompile(`[<>%\\&?/ ]`)
 
 // MachineClassKind yields the name of machine class kind used by Azure provider.
@@ -499,7 +497,7 @@ func SanitizeAzureVMTag(label string) string {
 
 func addTopologyLabel(labels map[string]string, region string, zone *zoneInfo) map[string]string {
 	if zone != nil {
-		return utils.MergeStringMaps(labels, map[string]string{azureCSIDiskDriverTopologyKey: region + "-" + zone.name})
+		return utils.MergeStringMaps(labels, map[string]string{azure.AzureCSIDiskDriverTopologyKey: region + "-" + zone.name})
 	}
 	return labels
 }
