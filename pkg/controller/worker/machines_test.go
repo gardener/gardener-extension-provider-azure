@@ -37,6 +37,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/charts"
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	apiv1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
+	azuretypes "github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	. "github.com/gardener/gardener-extension-provider-azure/pkg/controller/worker"
 )
 
@@ -78,8 +79,6 @@ var _ = Describe("Machines", func() {
 
 	Context("workerDelegate", func() {
 		Describe("#GenerateMachineDeployments, #DeployMachineClasses", func() {
-			const azureCSIDiskDriverTopologyKey = "topology.disk.csi.azure.com/zone"
-
 			var (
 				machineImageName               string
 				machineImageVersion            string
@@ -203,8 +202,8 @@ var _ = Describe("Machines", func() {
 				maxUnavailablePool1 = intstr.FromInt32(2)
 
 				labels = map[string]string{"component": "TiDB"}
-				zone1Labels = utils.MergeStringMaps(labels, map[string]string{"topology.disk.csi.azure.com/zone": regionAndZone1})
-				zone2Labels = utils.MergeStringMaps(labels, map[string]string{"topology.disk.csi.azure.com/zone": regionAndZone2})
+				zone1Labels = utils.MergeStringMaps(labels, map[string]string{azuretypes.AzureCSIDiskDriverTopologyKey: regionAndZone1})
+				zone2Labels = utils.MergeStringMaps(labels, map[string]string{azuretypes.AzureCSIDiskDriverTopologyKey: regionAndZone2})
 
 				nodeCapacity = corev1.ResourceList{
 					"cpu":    resource.MustParse("8"),
