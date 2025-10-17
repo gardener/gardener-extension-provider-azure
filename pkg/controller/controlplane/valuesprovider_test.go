@@ -127,16 +127,7 @@ var _ = Describe("ValuesProvider", func() {
 			ObjectMeta: metav1.ObjectMeta{Name: azure.CloudProviderAcrConfigName, Namespace: namespace},
 		}
 		errorAzureContainerRegistryConfigMapNotFound = apierrors.NewNotFound(schema.GroupResource{}, azure.CloudProviderAcrConfigName)
-
-		// Primary AvailabilitySet
-		primaryAvailabilitySetName = "primary-availability-set"
-		primaryAvailabilitySet     = v1alpha1.AvailabilitySet{
-			Name:    primaryAvailabilitySetName,
-			Purpose: "nodes",
-			ID:      "/my/azure/id",
-		}
-
-		checksums = map[string]string{
+		checksums                                    = map[string]string{
 			v1beta1constants.SecretNameCloudProvider: "8bafb35ff1ac60275d62e1cbd495aceb511fb354f74a20f7d06ecb48b3a68432",
 			azure.CloudProviderDiskConfigName:        "77627eb2343b9f2dc2fca3cce35f2f9eec55783aa5f7dac21c473019e5825de2",
 		}
@@ -237,22 +228,6 @@ var _ = Describe("ValuesProvider", func() {
 		})
 
 		Context("Generate config chart values", func() {
-			It("should return correct config chart values for a cluster with primary availabilityset (non zoned)", func() {
-				c.EXPECT().Delete(ctx, azureContainerRegistryConfigMap).Return(errorAzureContainerRegistryConfigMapNotFound)
-
-				infrastructureStatus.Zoned = false
-				infrastructureStatus.AvailabilitySets = []v1alpha1.AvailabilitySet{primaryAvailabilitySet}
-				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-
-				values, err := vp.GetConfigChartValues(ctx, cp, cluster)
-				Expect(err).NotTo(HaveOccurred())
-				maps.Copy(ControlPlaneChartValues, map[string]interface{}{
-					"availabilitySetName": primaryAvailabilitySetName,
-					"maxNodes":            maxNodes,
-				})
-				Expect(values).To(Equal(ControlPlaneChartValues))
-			})
-
 			It("should return correct config chart valued for cluser with vmo (non-zoned)", func() {
 				c.EXPECT().Delete(ctx, azureContainerRegistryConfigMap).Return(errorAzureContainerRegistryConfigMapNotFound)
 
@@ -561,38 +536,6 @@ var _ = Describe("ValuesProvider", func() {
 			}))
 		})
 
-		It("should return correct control plane shoot chart values for cluster with primary availabilityset (non zoned)", func() {
-			infrastructureStatus.Zoned = false
-			infrastructureStatus.AvailabilitySets = []v1alpha1.AvailabilitySet{primaryAvailabilitySet}
-			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-			csiNode := csiNodeEnabled
-
-			values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(values).To(Equal(map[string]interface{}{
-				azure.AllowEgressName:            enabledFalse,
-				azure.CloudControllerManagerName: cloudControllerManager,
-				azure.CSINodeName:                csiNode,
-				azure.RemedyControllerName:       enabledTrue,
-			}))
-		})
-
-		It("should return correct control plane shoot chart values for cluster with vmss flex (vmo, non zoned)", func() {
-			infrastructureStatus.Zoned = false
-			infrastructureStatus.AvailabilitySets = []v1alpha1.AvailabilitySet{}
-			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-			csiNode := csiNodeEnabled
-
-			values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(values).To(Equal(map[string]interface{}{
-				azure.AllowEgressName:            enabledTrue,
-				azure.CloudControllerManagerName: cloudControllerManager,
-				azure.CSINodeName:                csiNode,
-				azure.RemedyControllerName:       enabledTrue,
-			}))
-		})
-
 		It("should return false if allowEgress behavior is overwritten by user", func() {
 			infrastructureStatus.Zoned = true
 			cluster.Shoot.GetAnnotations()[azure.ShootSkipAllowEgressDeployment] = "true"
@@ -625,22 +568,6 @@ var _ = Describe("ValuesProvider", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values).To(Equal(map[string]interface{}{
 					azure.AllowEgressName:            enabledTrue,
-					azure.CloudControllerManagerName: cloudControllerManagerWithVPADisabled,
-					azure.CSINodeName:                csiNode,
-					azure.RemedyControllerName:       enabledFalse,
-				}))
-			})
-
-			It("should return correct control plane shoot chart values for a cluster with primary availabilityset (non zoned)", func() {
-				infrastructureStatus.Zoned = false
-				infrastructureStatus.AvailabilitySets = []v1alpha1.AvailabilitySet{primaryAvailabilitySet}
-				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-				csiNode := csiNodeEnabled
-
-				values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(values).To(Equal(map[string]interface{}{
-					azure.AllowEgressName:            enabledFalse,
 					azure.CloudControllerManagerName: cloudControllerManagerWithVPADisabled,
 					azure.CSINodeName:                csiNode,
 					azure.RemedyControllerName:       enabledFalse,

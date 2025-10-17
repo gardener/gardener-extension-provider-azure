@@ -157,10 +157,6 @@ func (fctx *FlowContext) buildReconcileGraph() *flow.Graph {
 	vnet := fctx.AddTask(g, "ensure vnet",
 		fctx.EnsureVirtualNetwork, shared.Timeout(defaultTimeout), shared.Dependencies(resourceGroup))
 
-	_ = fctx.AddTask(g, "ensure availability set",
-		fctx.EnsureAvailabilitySet,
-		shared.Timeout(defaultTimeout), shared.Dependencies(resourceGroup), shared.DoIf(fctx.adapter.IsAvailabilitySetReconciliationRequired()))
-
 	_ = fctx.AddTask(g, "ensure managed identity",
 		fctx.EnsureManagedIdentity, shared.DoIf(fctx.cfg.Identity != nil))
 
@@ -175,15 +171,8 @@ func (fctx *FlowContext) buildReconcileGraph() *flow.Graph {
 	nat := fctx.AddTask(g, "ensure nats",
 		fctx.EnsureNatGateways, shared.Timeout(defaultLongTimeout), shared.Dependencies(resourceGroup, ip))
 
-	subnet := fctx.AddTask(g, "ensure subnets", fctx.EnsureSubnets,
+	_ = fctx.AddTask(g, "ensure subnets", fctx.EnsureSubnets,
 		shared.Timeout(defaultLongTimeout), shared.Dependencies(vnet, routeTable, securityGroup, nat))
-
-	// a sync point for when the "normal" reconciliation is finished. Currently, it ends with the subnet reconciliation.
-	reconciliationFinishedPoint := flow.NewTaskIDs(subnet)
-
-	_ = fctx.AddTask(g, "availability set migration", fctx.MigrateAvailabilitySet,
-		shared.Timeout(defaultLongTimeout), shared.Dependencies(reconciliationFinishedPoint),
-		shared.DoIf(!fctx.cfg.Zoned))
 	return g
 }
 

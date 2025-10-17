@@ -17,10 +17,9 @@ const (
 	KeyManagedIdentityClientId = "managed_identity_client_id"
 	// KeyManagedIdentityId is a key for the MI's identity ID.
 	KeyManagedIdentityId = "managed_identity_id"
+
 	// ChildKeyMigration is the prefix key for data stored during migrations.
 	ChildKeyMigration = "migration"
-	// ChildKeyComplete is a key to indicate whether a task is complete.
-	ChildKeyComplete = "complete"
 
 	// TagManagedByGardener is the tag used to mark resources managed by Gardener.
 	TagManagedByGardener = "managed-by-gardener"

@@ -76,10 +76,6 @@ spec:
       subnets:
       - purpose: nodes
         name: subnet-acbd1234
-    availabilitySets:
-    - id: /example/id
-      name: azure-avset-workers
-      purpose: nodes
     routeTables:
     - name: route-table
       purpose: nodes

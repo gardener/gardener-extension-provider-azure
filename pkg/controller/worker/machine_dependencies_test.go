@@ -83,7 +83,7 @@ var _ = Describe("MachinesDependencies", func() {
 
 			faultDomainCount = 3
 			cluster = makeCluster("", "westeurope", nil, nil, faultDomainCount)
-			infrastructureStatus = makeInfrastructureStatus(resourceGroupName, "vnet-name", "subnet-name", false, nil, nil, nil)
+			infrastructureStatus = makeInfrastructureStatus(resourceGroupName, "vnet-name", "subnet-name", false, nil, nil)
 			pool = extensionsv1alpha1.WorkerPool{
 				Name: "my-pool",
 			}

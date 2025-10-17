@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
@@ -77,16 +76,15 @@ var (
 )
 
 type azureClientSet struct {
-	groups           *armresources.ResourceGroupsClient
-	vnet             *armnetwork.VirtualNetworksClient
-	subnets          *armnetwork.SubnetsClient
-	interfaces       *armnetwork.InterfacesClient
-	securityGroups   *armnetwork.SecurityGroupsClient
-	availabilitySets *armcompute.AvailabilitySetsClient
-	routeTable       *armnetwork.RouteTablesClient
-	nat              *armnetwork.NatGatewaysClient
-	pubIp            *armnetwork.PublicIPAddressesClient
-	msi              *armmsi.UserAssignedIdentitiesClient
+	groups         *armresources.ResourceGroupsClient
+	vnet           *armnetwork.VirtualNetworksClient
+	subnets        *armnetwork.SubnetsClient
+	interfaces     *armnetwork.InterfacesClient
+	securityGroups *armnetwork.SecurityGroupsClient
+	routeTable     *armnetwork.RouteTablesClient
+	nat            *armnetwork.NatGatewaysClient
+	pubIp          *armnetwork.PublicIPAddressesClient
+	msi            *armmsi.UserAssignedIdentitiesClient
 }
 
 type pubIpRef struct {
@@ -123,11 +121,6 @@ func newAzureClientSet(subscriptionId, tenantId, clientId, clientSecret string) 
 		return nil, err
 	}
 
-	availabilitySetsClient, err := armcompute.NewAvailabilitySetsClient(subscriptionId, credential, nil)
-	if err != nil {
-		return nil, err
-	}
-
 	tablesClient, err := armnetwork.NewRouteTablesClient(subscriptionId, credential, nil)
 	if err != nil {
 		return nil, err
@@ -149,16 +142,15 @@ func newAzureClientSet(subscriptionId, tenantId, clientId, clientSecret string) 
 	}
 
 	return &azureClientSet{
-		groups:           groupsClient,
-		vnet:             vnetClient,
-		subnets:          subnetClient,
-		interfaces:       interfacesClient,
-		securityGroups:   securityGroupsClient,
-		availabilitySets: availabilitySetsClient,
-		routeTable:       tablesClient,
-		nat:              natClient,
-		pubIp:            pubIpClient,
-		msi:              msiClient,
+		groups:         groupsClient,
+		vnet:           vnetClient,
+		subnets:        subnetClient,
+		interfaces:     interfacesClient,
+		securityGroups: securityGroupsClient,
+		routeTable:     tablesClient,
+		nat:            natClient,
+		pubIp:          pubIpClient,
+		msi:            msiClient,
 	}, nil
 }
 
@@ -1056,17 +1048,6 @@ func verifyCreation(
 			Expect(status.Networks.OutboundAccessType).To(Equal(azurev1alpha1.OutboundAccessTypeNatGateway))
 		} else {
 			Expect(status.Networks.OutboundAccessType).To(Equal(azurev1alpha1.OutboundAccessTypeLoadBalancer))
-		}
-	}
-
-	// availabilitySets
-	if len(status.AvailabilitySets) != 0 {
-		for _, avset := range status.AvailabilitySets {
-			as, err := az.availabilitySets.Get(ctx, status.ResourceGroup.Name, avset.Name, nil)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(as.Location).To(PointTo(Equal(*region)))
-			Expect(as.Properties.PlatformFaultDomainCount).To(PointTo(Equal(int32(CountDomain))))
-			Expect(as.Properties.PlatformUpdateDomainCount).To(PointTo(Equal(int32(CountDomain))))
 		}
 	}
 

@@ -71,18 +71,6 @@ var _ = Describe("Helper", func() {
 		Entry("entry exists", []api.RouteTable{{Name: "bar", Purpose: purpose}}, purpose, &api.RouteTable{Name: "bar", Purpose: purpose}, false),
 	)
 
-	DescribeTable("#FindAvailabilitySetByPurpose",
-		func(availabilitySets []api.AvailabilitySet, purpose api.Purpose, expectedAvailabilitySet *api.AvailabilitySet, expectErr bool) {
-			availabilitySet, err := FindAvailabilitySetByPurpose(availabilitySets, purpose)
-			expectResults(availabilitySet, expectedAvailabilitySet, err, expectErr)
-		},
-
-		Entry("list is nil", nil, purpose, nil, true),
-		Entry("empty list", []api.AvailabilitySet{}, purpose, nil, true),
-		Entry("entry not found", []api.AvailabilitySet{{ID: "bar", Purpose: purposeWrong}}, purpose, nil, true),
-		Entry("entry exists", []api.AvailabilitySet{{ID: "bar", Purpose: purpose}}, purpose, &api.AvailabilitySet{ID: "bar", Purpose: purpose}, false),
-	)
-
 	DescribeTable("#FindMachineImage",
 		func(machineImages []api.MachineImage, name, version string, architecture *string, expectedMachineImage *api.MachineImage, expectErr bool) {
 			machineImage, err := FindMachineImage(machineImages, name, version, architecture)
@@ -148,32 +136,6 @@ var _ = Describe("Helper", func() {
 			"ubuntu", "1", ptr.To("foo"), &api.MachineImage{Name: "ubuntu", Version: "1", Image: api.Image{CommunityGalleryImageID: &profileCommunityImageId}, Architecture: ptr.To("foo")}),
 		Entry("valid image reference, only sharedGalleryImageID", makeProfileMachineImageWithURNandIDandCommunityGalleryIDandSharedGalleryImageID("ubuntu", "1", nil, nil, nil, &profileSharedImageId, ptr.To("foo")),
 			"ubuntu", "1", ptr.To("foo"), &api.MachineImage{Name: "ubuntu", Version: "1", Image: api.Image{SharedGalleryImageID: &profileSharedImageId}, Architecture: ptr.To("foo")}),
-	)
-
-	DescribeTable("#IsVmoRequiredForInfrastructure",
-		func(zoned bool, availabilitySet *api.AvailabilitySet, migrateToVMO bool, expectedVmoRequired bool) {
-			var infrastructureStatus = &api.InfrastructureStatus{
-				Zoned: zoned,
-			}
-			if availabilitySet != nil {
-				infrastructureStatus.AvailabilitySets = append(infrastructureStatus.AvailabilitySets, *availabilitySet)
-			}
-			infrastructureStatus.MigratingToVMO = migrateToVMO
-
-			Expect(IsVmoRequired(infrastructureStatus)).To(Equal(expectedVmoRequired))
-		},
-		Entry("should require a VMO", false, nil, false, true),
-		Entry("should not require VMO for zoned cluster", true, nil, false, false),
-		Entry("should not require VMO for a cluster with primary availabilityset (non zoned)", false, &api.AvailabilitySet{
-			ID:      "/my/azure/availabilityset/id",
-			Name:    "my-availabilityset",
-			Purpose: api.PurposeNodes,
-		}, false, false),
-		Entry("should require VMO for a cluster with primary availabilityset with migration to VMO", false, &api.AvailabilitySet{
-			ID:      "/my/azure/availabilityset/id",
-			Name:    "my-availabilityset",
-			Purpose: api.PurposeNodes,
-		}, true, true),
 	)
 })
 
