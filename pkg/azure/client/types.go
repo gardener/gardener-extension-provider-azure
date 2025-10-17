@@ -7,9 +7,9 @@ package client
 import (
 	"context"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v7"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v7"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage"
 )
@@ -128,6 +128,7 @@ type Subnet interface {
 
 // LoadBalancer represents an Azure LoadBalancer k8sClient.
 type LoadBalancer interface {
+	CreateOrUpdateFunc[armnetwork.LoadBalancer]
 	GetFunc[armnetwork.LoadBalancer]
 	ListFunc[armnetwork.LoadBalancer]
 	DeleteFunc[armnetwork.LoadBalancer]

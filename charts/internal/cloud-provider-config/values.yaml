@@ -12,5 +12,9 @@ routeTableName: rtname
 securityGroupName: sgname
 region: location
 maxNodes: 0
+preConfiguredLoadBalancer: false
+# loadBalancer:
+#   name: name
+#   resourceGroup: resourceGroup
 # acrIdentityClientId: identityClientID
 # vmType: standard
