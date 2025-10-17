@@ -514,7 +514,7 @@ func applyWorkerConfig(diskName string, dataDisk map[string]interface{}, dataVol
 // SanitizeAzureVMTag will sanitize the tag base on the azure tag Restrictions
 // refer: https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/tag-resources#limitations
 func SanitizeAzureVMTag(label string) string {
-	return tagRegex.ReplaceAllString(strings.ToLower(label), "_")
+	return tagRegex.ReplaceAllString(label, "_")
 }
 
 func addTopologyLabel(labels map[string]string, region string, zone *zoneInfo) map[string]string {
