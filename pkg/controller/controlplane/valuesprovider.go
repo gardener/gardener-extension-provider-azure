@@ -49,8 +49,6 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/features"
 )
 
-// Object names
-
 const (
 	caNameControlPlane               = "ca-" + azure.Name + "-controlplane"
 	cloudControllerManagerServerName = azure.CloudControllerManagerName + "-server"
@@ -471,6 +469,13 @@ func getConfigChartValues(infraStatus *apisazure.InfrastructureStatus, cp *exten
 		values["acrIdentityClientId"] = infraStatus.Identity.ClientID
 	}
 
+	if infraStatus.Networks.LoadBalancer != nil {
+		values["loadBalancer"] = map[string]interface{}{
+			"name":          infraStatus.Networks.LoadBalancer.Name,
+			"resourceGroup": infraStatus.ResourceGroup.Name,
+		}
+	}
+
 	return appendMachineSetValues(values, infraStatus), nil
 }
 
@@ -531,7 +536,7 @@ func getControlPlaneChartValues(
 	map[string]interface{},
 	error,
 ) {
-	ccm, err := getCCMChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown, useWorkloadIdentity)
+	ccm, err := getCCMChartValues(cpConfig, cp, cluster, infraStatus, secretsReader, checksums, scaledDown, useWorkloadIdentity)
 	if err != nil {
 		return nil, err
 	}
@@ -558,6 +563,7 @@ func getCCMChartValues(
 	cpConfig *apisazure.ControlPlaneConfig,
 	cp *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
+	infrastructureStatus *apisazure.InfrastructureStatus,
 	secretsReader secretsmanager.Reader,
 	checksums map[string]string,
 	scaledDown bool,
@@ -747,5 +753,5 @@ func deployAllowEgressChart(shoot *v1beta1.Shoot, infraStatus *apisazure.Infrast
 		return false
 	}
 
-	return (infraStatus.Zoned || azureapihelper.IsVmoRequired(infraStatus)) && infraStatus.Networks.OutboundAccessType == apisazure.OutboundAccessTypeLoadBalancer
+	return (infraStatus.Zoned || azureapihelper.IsVmoRequired(infraStatus)) && infraStatus.Networks.OutboundAccessType == apisazure.OutboundAccessTypeLoadBalancer && infraStatus.Networks.LoadBalancer == nil
 }
