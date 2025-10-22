@@ -57,6 +57,7 @@ func (p *namespacedCloudProfile) Mutate(_ context.Context, newObj, _ client.Obje
 		return fmt.Errorf("could not decode providerConfig of namespacedCloudProfile status for '%s': %w", profile.Name, err)
 	}
 
+	// ensure that nspc types are in the same format as parent
 	statusConfig.MachineImages = mergeMachineImages(specConfig.MachineImages, statusConfig.MachineImages)
 	statusConfig.MachineTypes = mergeMachineTypes(specConfig.MachineTypes, statusConfig.MachineTypes)
 
@@ -92,12 +93,12 @@ func mergeMachineImages(specMachineImages, statusMachineImages []v1alpha1.Machin
 }
 
 func mergeMachineTypes(specMachineTypes, statusMachineTypes []v1alpha1.MachineType) []v1alpha1.MachineType {
-	specImages := utils.CreateMapFromSlice(specMachineTypes, func(mi v1alpha1.MachineType) string { return mi.Name })
-	statusImages := utils.CreateMapFromSlice(statusMachineTypes, func(mi v1alpha1.MachineType) string { return mi.Name })
-	for _, specMachineImage := range specImages {
-		if _, exists := statusImages[specMachineImage.Name]; !exists {
-			statusImages[specMachineImage.Name] = specMachineImage
+	specTypes := utils.CreateMapFromSlice(specMachineTypes, func(mi v1alpha1.MachineType) string { return mi.Name })
+	statusTypes := utils.CreateMapFromSlice(statusMachineTypes, func(mi v1alpha1.MachineType) string { return mi.Name })
+	for _, specMachineType := range specTypes {
+		if _, exists := statusTypes[specMachineType.Name]; !exists {
+			statusTypes[specMachineType.Name] = specMachineType
 		}
 	}
-	return slices.Collect(maps.Values(statusImages))
+	return slices.Collect(maps.Values(statusTypes))
 }

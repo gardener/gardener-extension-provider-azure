@@ -113,7 +113,7 @@ var _ = Describe("Machines", func() {
 				namePool2           string
 				minPool2            int32
 				maxPool2            int32
-				priorityPool2       int32
+				priorityPool2       *int32
 				maxSurgePool2       intstr.IntOrString
 				maxUnavailablePool2 intstr.IntOrString
 
@@ -266,7 +266,7 @@ var _ = Describe("Machines", func() {
 				namePool2 = "pool-zones"
 				minPool2 = 30
 				maxPool2 = 45
-				priorityPool2 = 100
+				priorityPool2 = ptr.To(int32(100))
 				maxSurgePool2 = intstr.FromInt(10)
 				maxUnavailablePool2 = intstr.FromInt(15)
 
@@ -290,23 +290,31 @@ var _ = Describe("Machines", func() {
 						Name: machineImageName,
 						Versions: []apiv1alpha1.MachineImageVersion{
 							{
-								Version:               machineImageVersion,
-								URN:                   &machineImageURN,
+								Version: machineImageVersion,
+								Image: apiv1alpha1.Image{
+									URN: &machineImageURN,
+								},
 								AcceleratedNetworking: ptr.To(true),
 							},
 							{
 								Version: machineImageVersionID,
-								ID:      &machineImageID,
+								Image: apiv1alpha1.Image{
+									ID: &machineImageID,
+								},
 							},
 							{
-								Version:                 machineImageVersionCommunityID,
-								CommunityGalleryImageID: &machineImageCommunityID,
-								Architecture:            ptr.To(archARM),
+								Version:      machineImageVersionCommunityID,
+								Architecture: ptr.To(archARM),
+								Image: apiv1alpha1.Image{
+									CommunityGalleryImageID: &machineImageCommunityID,
+								},
 							},
 							{
-								Version:              machineImageVersionSharedID,
-								SharedGalleryImageID: &machineImageSharedID,
-								Architecture:         ptr.To(archARM),
+								Version:      machineImageVersionSharedID,
+								Architecture: ptr.To(archARM),
+								Image: apiv1alpha1.Image{
+									SharedGalleryImageID: &machineImageSharedID,
+								},
 							},
 						},
 					},
@@ -991,7 +999,7 @@ var _ = Describe("Machines", func() {
 			})
 
 			It("should fail because the version is invalid", func() {
-				cluster = makeCluster("invalid", region, nil, nil, 0)
+				cluster = makeCluster("invalid", region, machineTypes, nil, 0)
 				workerDelegate := wrapNewWorkerDelegate(c, chartApplier, w, cluster, nil)
 
 				result, err := workerDelegate.GenerateMachineDeployments(ctx)
@@ -1054,7 +1062,7 @@ var _ = Describe("Machines", func() {
 			})
 
 			It("should fail because the machine image information cannot be found", func() {
-				cluster = makeCluster(shootVersion, region, nil, nil, 0)
+				cluster = makeCluster(shootVersion, region, machineTypes, nil, 0)
 				workerDelegate := wrapNewWorkerDelegate(c, chartApplier, w, cluster, nil)
 
 				result, err := workerDelegate.GenerateMachineDeployments(ctx)
