@@ -83,10 +83,10 @@ func appendMachineImage(machineImages []api.MachineImage, machineImage api.Machi
 		return append(machineImages, machineImage)
 	}
 
-	defaultedCapabilities := gardencorev1beta1helper.GetCapabilitiesWithAppliedDefaults(machineImage.Capabilities, capabilityDefinitions)
+	defaultedCapabilities := gardencorev1beta1.GetCapabilitiesWithAppliedDefaults(machineImage.Capabilities, capabilityDefinitions)
 
 	for _, existingMachineImage := range machineImages {
-		existingDefaultedCapabilities := gardencorev1beta1helper.GetCapabilitiesWithAppliedDefaults(existingMachineImage.Capabilities, capabilityDefinitions)
+		existingDefaultedCapabilities := gardencorev1beta1.GetCapabilitiesWithAppliedDefaults(existingMachineImage.Capabilities, capabilityDefinitions)
 		if existingMachineImage.Name == machineImage.Name && existingMachineImage.Version == machineImage.Version && gardencorev1beta1helper.AreCapabilitiesEqual(defaultedCapabilities, existingDefaultedCapabilities) {
 			// If the image already exists with the same capabilities return the existing list.
 			return machineImages

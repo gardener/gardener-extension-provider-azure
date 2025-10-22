@@ -25,6 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/validation"
 )
 
@@ -67,6 +68,11 @@ func (p *namespacedCloudProfile) Validate(ctx context.Context, newObj, _ client.
 	}
 	parentProfile := &gardencorev1beta1.CloudProfile{}
 	if err := p.client.Get(ctx, client.ObjectKey{Name: parentCloudProfile.Name}, parentProfile); err != nil {
+		return err
+	}
+
+	// TODO(Roncossek): Remove TransformSpecToParentFormat once all CloudProfiles have been migrated to use CapabilityFlavors and the Architecture fields are effectively forbidden or have been removed.
+	if err := helper.SimulateTransformToParentFormat(cpConfig, cloudProfile, parentProfile.Spec.MachineCapabilities); err != nil {
 		return err
 	}
 
@@ -152,7 +158,7 @@ func (p *namespacedCloudProfile) validateMachineImages(providerConfig *api.Cloud
 				for _, expectedCapabilityFlavor := range defaultedCapabilityFlavors {
 					isFound := false
 					for _, capabilityFlavor := range providerImageVersion.CapabilityFlavors {
-						defaultedProviderCapabilities := gardencorev1beta1helper.GetCapabilitiesWithAppliedDefaults(capabilityFlavor.Capabilities, parentSpec.MachineCapabilities)
+						defaultedProviderCapabilities := gardencorev1beta1.GetCapabilitiesWithAppliedDefaults(capabilityFlavor.Capabilities, parentSpec.MachineCapabilities)
 						if gardencorev1beta1helper.AreCapabilitiesEqual(expectedCapabilityFlavor.Capabilities, defaultedProviderCapabilities) {
 							isFound = true
 						}
@@ -216,7 +222,7 @@ func (p *namespacedCloudProfile) validateMachineImages(providerConfig *api.Cloud
 				providerImageVersion, _ := providerImages.GetImageVersion(machineImage.Name, version.Version)
 
 				for _, capabilityFlavor := range providerImageVersion.CapabilityFlavors {
-					defaultedProviderCapabilities := gardencorev1beta1helper.GetCapabilitiesWithAppliedDefaults(capabilityFlavor.Capabilities, parentSpec.MachineCapabilities)
+					defaultedProviderCapabilities := gardencorev1beta1.GetCapabilitiesWithAppliedDefaults(capabilityFlavor.Capabilities, parentSpec.MachineCapabilities)
 					isFound := false
 
 					for _, coreDefaultedCapabilityFlavor := range defaultedCapabilityFlavors {

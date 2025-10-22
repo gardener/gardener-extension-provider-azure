@@ -132,7 +132,8 @@ var _ = Describe("NamespacedCloudProfile Mutator", func() {
 "kind":"CloudProfileConfig",
 "machineImages":[
   {"name":"image-1","versions":[{"version":"1.1","capabilityFlavors":[
-{"capabilities":{"architecture":["amd64"]},"id":"local/image:1.1"}
+{"capabilities":{"architecture":["amd64"]},"id":"local/image:1.1"},
+{"capabilities":{"architecture":["arm64"]},"id":"local/image:1.1"}
 ]}]},
   {"name":"image-2","versions":[{"version":"2.0","capabilityFlavors":[
 {"capabilities":{"architecture":["amd64"]},"id":"local/image:2.0"}
@@ -153,9 +154,16 @@ var _ = Describe("NamespacedCloudProfile Mutator", func() {
 									Image:        api.Image{ID: ptr.To("local/image:1.0")}}},
 							},
 							api.MachineImageVersion{Version: "1.1",
-								CapabilityFlavors: []api.MachineImageFlavor{{
-									Capabilities: v1beta1.Capabilities{"architecture": []string{"amd64"}},
-									Image:        api.Image{ID: ptr.To("local/image:1.1")}}},
+								CapabilityFlavors: []api.MachineImageFlavor{
+									{
+										Capabilities: v1beta1.Capabilities{"architecture": []string{"amd64"}},
+										Image:        api.Image{ID: ptr.To("local/image:1.1")},
+									},
+									{
+										Capabilities: v1beta1.Capabilities{"architecture": []string{"arm64"}},
+										Image:        api.Image{ID: ptr.To("local/image:1.1")},
+									},
+								},
 							},
 						),
 					}),

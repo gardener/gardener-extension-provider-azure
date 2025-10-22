@@ -20,6 +20,7 @@ import (
 	"k8s.io/utils/strings/slices"
 
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 // ValidateCloudProfileConfig validates a CloudProfileConfig object.
@@ -166,11 +167,11 @@ func validateCapabilityFlavors(version apisazure.MachineImageVersion, capability
 	}
 
 	// Validate each flavor's capabilities and regions
-	for k, capabilitySet := range version.CapabilityFlavors {
+	for k, capabilityFlavor := range version.CapabilityFlavors {
 		kdxPath := idxPath.Child("capabilityFlavors").Index(k)
-		allErrs = append(allErrs, gutil.ValidateCapabilities(capabilitySet.Capabilities, capabilityDefinitions, kdxPath.Child("capabilities"))...)
-		allErrs = append(allErrs, validateProvidedImageIdCount(capabilitySet.Image, kdxPath)...)
-		allErrs = append(allErrs, validateProviderImageId(capabilitySet.Image, kdxPath)...)
+		allErrs = append(allErrs, gutil.ValidateCapabilities(capabilityFlavor.Capabilities, capabilityDefinitions, kdxPath.Child("capabilities"))...)
+		allErrs = append(allErrs, validateProvidedImageIdCount(capabilityFlavor.Image, kdxPath)...)
+		allErrs = append(allErrs, validateProviderImageId(capabilityFlavor.Image, kdxPath)...)
 	}
 
 	return allErrs
@@ -204,7 +205,7 @@ func validateProviderImagesMapping(cpConfigImages []apisazure.MachineImages, mac
 					))
 					continue
 				}
-				// validate that for each version and capabilitySet of an image in the cloud profile a
+				// validate that for each version and capabilityFlavor of an image in the cloud profile a
 				// corresponding provider specific image in the cloud profile config exists
 				allErrs = append(allErrs, validateImageFlavorMapping(machineImage, version, imageVersionPath, capabilityDefinitions, imageVersion)...)
 			} else {
@@ -284,19 +285,19 @@ func validateImageFlavorMapping(machineImage core.MachineImage, version core.Mac
 
 	defaultedCapabilityFlavors := gardencorev1beta1helper.GetImageFlavorsWithAppliedDefaults(v1beta1Version.CapabilityFlavors, capabilityDefinitions)
 
-	for idxCapability, defaultedCapabilitySet := range defaultedCapabilityFlavors {
+	for idxCapability, defaultedCapabilityFlavor := range defaultedCapabilityFlavors {
 		isFound := false
 		// search for the corresponding imageVersion.MachineImageFlavor
-		for _, providerCapabilitySet := range imageVersion.CapabilityFlavors {
-			providerDefaultedCapabilities := gardencorev1beta1helper.GetCapabilitiesWithAppliedDefaults(providerCapabilitySet.Capabilities, capabilityDefinitions)
-			if gardencorev1beta1helper.AreCapabilitiesEqual(defaultedCapabilitySet.Capabilities, providerDefaultedCapabilities) {
+		for _, providerCapabilityFlavor := range imageVersion.CapabilityFlavors {
+			providerDefaultedCapabilities := gardencorev1beta1.GetCapabilitiesWithAppliedDefaults(providerCapabilityFlavor.Capabilities, capabilityDefinitions)
+			if gardencorev1beta1helper.AreCapabilitiesEqual(defaultedCapabilityFlavor.Capabilities, providerDefaultedCapabilities) {
 				isFound = true
 				break
 			}
 		}
 		if !isFound {
 			allErrs = append(allErrs, field.Required(imageVersionPath.Child("capabilityFlavors").Index(idxCapability),
-				fmt.Sprintf("missing providerConfig mapping for machine image version %s@%s and capabilitySet %v", machineImage.Name, version.Version, defaultedCapabilitySet.Capabilities)))
+				fmt.Sprintf("missing providerConfig mapping for machine image version %s@%s and capabilityFlavor %v", machineImage.Name, version.Version, defaultedCapabilityFlavor.Capabilities)))
 		}
 	}
 	return allErrs
@@ -329,4 +330,25 @@ func NewProviderImagesContext(providerImages []apisazure.MachineImages) *gutil.I
 			return utils.CreateMapFromSlice(mi.Versions, func(v apisazure.MachineImageVersion) string { return v.Version })
 		},
 	)
+}
+
+// RestrictToArchitectureAndNetworkingCapability ensures that for the transition period from the deprecated architecture fields to the capabilities format only the `architecture` capability is used to support automatic transformation and migration.
+// TODO(Roncossek): Delete this function once the dedicated architecture fields on MachineType and MachineImageVersion have been removed.
+func RestrictToArchitectureAndNetworkingCapability(capabilityDefinitions []gardencorev1beta1.CapabilityDefinition, child *field.Path) error {
+	allErrs := field.ErrorList{}
+	for i, def := range capabilityDefinitions {
+		idxPath := child.Index(i)
+		if def.Name != v1beta1constants.ArchitectureName && def.Name != azure.CapabilityNetworkName {
+			allErrs = append(allErrs, field.NotSupported(idxPath.Child("name"), def.Name, []string{v1beta1constants.ArchitectureName, azure.CapabilityNetworkName}))
+		}
+		if def.Name == azure.CapabilityNetworkName {
+			for j, val := range def.Values {
+				jdxPath := idxPath.Child("values").Index(j)
+				if val != azure.CapabilityNetworkAccelerated && val != azure.CapabilityNetworkBasic {
+					allErrs = append(allErrs, field.NotSupported(jdxPath, val, []string{azure.CapabilityNetworkAccelerated, azure.CapabilityNetworkBasic}))
+				}
+			}
+		}
+	}
+	return allErrs.ToAggregate()
 }

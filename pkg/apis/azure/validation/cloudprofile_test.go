@@ -17,6 +17,7 @@ import (
 
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	. "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/validation"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 var (
@@ -414,7 +415,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 
 					Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 						"Type":   Equal(field.ErrorTypeRequired),
-						"Detail": Equal("missing providerConfig mapping for machine image version ubuntu@Version and capabilitySet map[architecture:[arm64]]"),
+						"Detail": Equal("missing providerConfig mapping for machine image version ubuntu@Version and capabilityFlavor map[architecture:[arm64]]"),
 						"Field":  Equal("spec.machineImages[0].versions[0].capabilityFlavors[1]"),
 					}))))
 				} else {
@@ -497,4 +498,90 @@ var _ = Describe("CloudProfileConfig validation", func() {
 		Entry("CloudProfile without capabilities", false),
 		Entry("CloudProfile uses capabilities", true),
 	)
+
+	Describe("#RestrictToArchitectureAndNetworkingCapability", func() {
+		var (
+			fldPath *field.Path
+		)
+
+		BeforeEach(func() {
+			fldPath = field.NewPath("capabilityDefinitions")
+		})
+
+		It("should pass with only architecture capability", func() {
+			capabilityDefinitions := []v1beta1.CapabilityDefinition{
+				{
+					Name:   v1beta1constants.ArchitectureName,
+					Values: []string{"amd64", "arm64"},
+				},
+			}
+
+			err := RestrictToArchitectureAndNetworkingCapability(capabilityDefinitions, fldPath)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should pass with both architecture and networking capabilities", func() {
+			capabilityDefinitions := []v1beta1.CapabilityDefinition{
+				{
+					Name:   v1beta1constants.ArchitectureName,
+					Values: []string{"amd64"},
+				},
+				{
+					Name:   azure.CapabilityNetworkName,
+					Values: []string{azure.CapabilityNetworkBasic},
+				},
+			}
+
+			err := RestrictToArchitectureAndNetworkingCapability(capabilityDefinitions, fldPath)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should pass with empty capability definitions", func() {
+			var capabilityDefinitions []v1beta1.CapabilityDefinition
+
+			err := RestrictToArchitectureAndNetworkingCapability(capabilityDefinitions, fldPath)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should fail with invalid capability names", func() {
+			capabilityDefinitions := []v1beta1.CapabilityDefinition{
+				{
+					Name:   v1beta1constants.ArchitectureName,
+					Values: []string{"amd64"},
+				},
+				{
+					Name:   "invalid",
+					Values: []string{"X"},
+				},
+				{
+					Name:   "another-invalid",
+					Values: []string{"AI"},
+				},
+			}
+
+			err := RestrictToArchitectureAndNetworkingCapability(capabilityDefinitions, fldPath)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("capabilityDefinitions[1].name"))
+			Expect(err.Error()).To(ContainSubstring("capabilityDefinitions[2].name"))
+			Expect(err.Error()).To(ContainSubstring("invalid"))
+			Expect(err.Error()).To(ContainSubstring("another-invalid"))
+			Expect(err.Error()).NotTo(ContainSubstring("capabilityDefinitions[0].name"))
+		})
+
+		It("should fail with invalid networking capability values", func() {
+			capabilityDefinitions := []v1beta1.CapabilityDefinition{
+				{
+					Name:   azure.CapabilityNetworkName,
+					Values: []string{azure.CapabilityNetworkBasic, "invalid", "another-invalid"},
+				},
+			}
+
+			err := RestrictToArchitectureAndNetworkingCapability(capabilityDefinitions, fldPath)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("capabilityDefinitions[0].values[1]"))
+			Expect(err.Error()).To(ContainSubstring("capabilityDefinitions[0].values[2]"))
+			Expect(err.Error()).To(ContainSubstring("invalid"))
+			Expect(err.Error()).To(ContainSubstring("another-invalid"))
+		})
+	})
 })
