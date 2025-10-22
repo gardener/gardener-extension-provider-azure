@@ -11,7 +11,6 @@ import (
 	"k8s.io/utils/ptr"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 // FindSubnetByPurposeAndZone takes a list of subnets and tries to find the first entry whose purpose matches with the given purpose.
@@ -54,18 +53,6 @@ func FindRouteTableByPurpose(routeTables []api.RouteTable, purpose api.Purpose) 
 		}
 	}
 	return nil, fmt.Errorf("cannot find route table with purpose %q", purpose)
-}
-
-// FindAvailabilitySetByPurpose takes a list of availability sets and tries to find the first entry
-// whose purpose matches with the given purpose. If no such entry is found then an error will be
-// returned.
-func FindAvailabilitySetByPurpose(availabilitySets []api.AvailabilitySet, purpose api.Purpose) (*api.AvailabilitySet, error) {
-	for _, availabilitySet := range availabilitySets {
-		if availabilitySet.Purpose == purpose {
-			return &availabilitySet, nil
-		}
-	}
-	return nil, fmt.Errorf("cannot find availability set with purpose %q", purpose)
 }
 
 // FindMachineImage takes a list of machine images and tries to find the first entry
@@ -125,28 +112,9 @@ func FindImageFromCloudProfile(cloudProfileConfig *api.CloudProfileConfig, image
 	return nil, fmt.Errorf("no machine image found with name %q, architecture %q and version %q", imageName, *architecture, imageVersion)
 }
 
-// IsVmoRequired determines if VMO is required. It is different from the condition in the infrastructure as this one depends on whether the infra controller
-// has finished migrating the Availability sets.
+// IsVmoRequired determines if VMO is required.
 func IsVmoRequired(infrastructureStatus *api.InfrastructureStatus) bool {
-	return !infrastructureStatus.Zoned && (len(infrastructureStatus.AvailabilitySets) == 0 || infrastructureStatus.MigratingToVMO)
-}
-
-// HasShootVmoMigrationAnnotation determines if the passed Shoot annotations contain instruction to use VMO.
-func HasShootVmoMigrationAnnotation(shootAnnotations map[string]string) bool {
-	value, exists := shootAnnotations[azure.ShootVmoMigrationAnnotation]
-	if exists && value == "true" {
-		return true
-	}
-	return false
-}
-
-// HasShootVmoAlphaAnnotation determines if the passed Shoot annotations contain instruction to use VMO.
-func HasShootVmoAlphaAnnotation(shootAnnotations map[string]string) bool {
-	value, exists := shootAnnotations[azure.ShootVmoUsageAnnotation]
-	if exists && value == "true" {
-		return true
-	}
-	return false
+	return !infrastructureStatus.Zoned
 }
 
 // InfrastructureZoneToString translates the zone from the string format used in Gardener core objects to the int32 format used by the Azure provider extension.

@@ -163,12 +163,13 @@ func cleanupOrphanVMODependencies(ctx context.Context, client azureclient.Vmss, 
 }
 
 func (w *workerDelegate) determineWorkerPoolVmoDependency(ctx context.Context, infrastructureStatus *azureapi.InfrastructureStatus, workerStatus *azureapi.WorkerStatus, workerPoolName string, updateStrategy *gardencorev1beta1.MachineUpdateStrategy) (*azureapi.VmoDependency, error) {
-	if infrastructureStatus != nil && len(infrastructureStatus.AvailabilitySets) > 0 && gardencorev1beta1helper.IsUpdateStrategyInPlace(updateStrategy) {
-		return nil, gardencorev1beta1helper.NewErrorWithCodes(fmt.Errorf("worker pools with in-place update strategy is not supported when availability sets are used"), gardencorev1beta1.ErrorConfigurationProblem)
-	}
-
 	if !azureapihelper.IsVmoRequired(infrastructureStatus) {
 		return nil, nil
+	}
+
+	if gardencorev1beta1helper.IsUpdateStrategyInPlace(updateStrategy) {
+		// TODO(KA): Remove when support for in-place update strategy with VMSS Flex is added.
+		return nil, gardencorev1beta1helper.NewErrorWithCodes(fmt.Errorf("worker pools with in-place update strategy is not supported when VMSS Flex are used"), gardencorev1beta1.ErrorConfigurationProblem)
 	}
 
 	// First: Lookup the vmo dependency for the worker pool in the worker status.
@@ -236,7 +237,6 @@ func (w *workerDelegate) determineWorkerPoolVmoDependency(ctx context.Context, i
 }
 
 // VMO Helper
-
 func generateAndCreateVmo(ctx context.Context, client azureclient.Vmss, workerPoolName, resourceGroupName, region string, faultDomainCount int32) (*azureapi.VmoDependency, error) {
 	var properties = armcompute.VirtualMachineScaleSet{
 		Location: &region,
@@ -245,7 +245,8 @@ func generateAndCreateVmo(ctx context.Context, client azureclient.Vmss, workerPo
 			PlatformFaultDomainCount: &faultDomainCount,
 		},
 		Tags: map[string]*string{
-			azure.MachineSetTagKey: ptr.To("1"),
+			azure.MachineSetTagKey:           ptr.To("1"),
+			azure.MachineSetWorkerNameTagKey: ptr.To(workerPoolName),
 		},
 	}
 

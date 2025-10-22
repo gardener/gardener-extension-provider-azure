@@ -117,12 +117,6 @@ type InfrastructureStatus struct {
 	Networks NetworkStatus `json:"networks"`
 	// ResourceGroup is azure resource group
 	ResourceGroup ResourceGroup `json:"resourceGroup"`
-	// AvailabilitySets is a list of created availability sets
-	// Deprecated: Will be removed in future versions.
-	AvailabilitySets []AvailabilitySet `json:"availabilitySets"`
-	// MigratingToVMO indicates whether the infrastructure controller has prepared the migration from Availability set.
-	// Deprecated: Will be removed in future versions.
-	MigratingToVMO bool `json:"migratingToVMO,omitempty"`
 	// RouteTables is a list of created route tables
 	RouteTables []RouteTable `json:"routeTables"`
 	// SecurityGroups is a list of created security groups
@@ -197,22 +191,6 @@ type Subnet struct {
 	// NatGatewayID is the ID of the NATGateway associated with the subnet.
 	// +optional
 	NatGatewayID *string `json:"natGatewayId,omitempty"`
-}
-
-// AvailabilitySet contains information about the azure availability set
-type AvailabilitySet struct {
-	// Purpose is the purpose of the availability set
-	Purpose Purpose `json:"purpose"`
-	// ID is the id of the availability set
-	ID string `json:"id"`
-	// Name is the name of the availability set
-	Name string `json:"name"`
-	// CountFaultDomains is the count of fault domains.
-	// +optional
-	CountFaultDomains *int32 `json:"countFaultDomains,omitempty"`
-	// CountUpdateDomains is the count of update domains.
-	// +optional
-	CountUpdateDomains *int32 `json:"countUpdateDomains,omitempty"`
 }
 
 // RouteTable is the azure route table

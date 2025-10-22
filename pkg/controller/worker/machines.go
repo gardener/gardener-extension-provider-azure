@@ -32,8 +32,6 @@ import (
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
 
-const azureCSIDiskDriverTopologyKey = "topology.disk.csi.azure.com/zone"
-
 var tagRegex = regexp.MustCompile(`[<>%\\&?/ ]`)
 
 // MachineClassKind yields the name of machine class kind used by Azure provider.
@@ -358,26 +356,6 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			continue
 		}
 
-		// AvailabilitySet
-		if !infrastructureStatus.Zoned {
-			nodesAvailabilitySet, err := azureapihelper.FindAvailabilitySetByPurpose(infrastructureStatus.AvailabilitySets, azureapi.PurposeNodes)
-			if err != nil {
-				return err
-			}
-
-			// Do not enable accelerated networking for AvSet cluster.
-			// This is necessary to avoid `ExistingAvailabilitySetWasNotDeployedOnAcceleratedNetworkingEnabledCluster` error.
-			acceleratedNetworkAllowed = false
-
-			machineDeployment, machineClassSpec := generateMachineClassAndDeployment(nil, &machineSetInfo{
-				id:   nodesAvailabilitySet.ID,
-				kind: "availabilityset",
-			}, nodesSubnet.Name, workerPoolHash, &workerConfig)
-			machineDeployments = append(machineDeployments, machineDeployment)
-			machineClasses = append(machineClasses, machineClassSpec)
-			continue
-		}
-
 		// Availability Zones
 		zoneCount := len(pool.Zones)
 		for zoneIndex, zone := range pool.Zones {
@@ -519,7 +497,7 @@ func SanitizeAzureVMTag(label string) string {
 
 func addTopologyLabel(labels map[string]string, region string, zone *zoneInfo) map[string]string {
 	if zone != nil {
-		return utils.MergeStringMaps(labels, map[string]string{azureCSIDiskDriverTopologyKey: region + "-" + zone.name})
+		return utils.MergeStringMaps(labels, map[string]string{azure.AzureCSIDiskDriverTopologyKey: region + "-" + zone.name})
 	}
 	return labels
 }

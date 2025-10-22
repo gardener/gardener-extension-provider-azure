@@ -6,11 +6,6 @@ Be aware some actions are just required if particular deployment scenarios or fe
 
 ## `Microsoft.Compute`
 ```
-# Required if a non zonal cluster based on Availability Set should be used.
-Microsoft.Compute/availabilitySets/delete
-Microsoft.Compute/availabilitySets/read
-Microsoft.Compute/availabilitySets/write
-
 # Required to let Kubernetes manage Azure disks.
 Microsoft.Compute/disks/delete
 Microsoft.Compute/disks/read
@@ -32,7 +27,7 @@ Microsoft.Compute/virtualMachines/read
 Microsoft.Compute/virtualMachines/start/action
 Microsoft.Compute/virtualMachines/write
 
-# Required if a non zonal cluster based on VMSS Flex (VMO) should be used.
+# Required for non-zonal clusters.
 Microsoft.Compute/virtualMachineScaleSets/delete
 Microsoft.Compute/virtualMachineScaleSets/read
 Microsoft.Compute/virtualMachineScaleSets/write

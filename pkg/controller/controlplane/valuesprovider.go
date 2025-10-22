@@ -427,7 +427,7 @@ func (vp *valuesProvider) removeAcrConfig(ctx context.Context, namespace string)
 func getConfigChartValues(infraStatus *apisazure.InfrastructureStatus, cp *extensionsv1alpha1.ControlPlane, cluster *extensionscontroller.Cluster, ca *azureclient.ClientAuth) (map[string]interface{}, error) {
 	subnetName, routeTableName, securityGroupName, err := getInfraNames(infraStatus)
 	if err != nil {
-		return nil, fmt.Errorf("could not determine subnet, availability set, route table or security group name from infrastructureStatus of controlplane '%s': %w", k8sclient.ObjectKeyFromObject(cp), err)
+		return nil, fmt.Errorf("could not determine subnet, route table or security group name from infrastructureStatus of controlplane '%s': %w", k8sclient.ObjectKeyFromObject(cp), err)
 	}
 
 	var maxNodes int32
@@ -490,10 +490,6 @@ func appendMachineSetValues(values map[string]interface{}, infraStatus *apisazur
 	if azureapihelper.IsVmoRequired(infraStatus) {
 		values["vmType"] = "vmss"
 		return values
-	}
-
-	if primaryAvailabilitySet, err := azureapihelper.FindAvailabilitySetByPurpose(infraStatus.AvailabilitySets, apisazure.PurposeNodes); err == nil {
-		values["availabilitySetName"] = primaryAvailabilitySet.Name
 	}
 
 	return values
