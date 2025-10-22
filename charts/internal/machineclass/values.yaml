@@ -47,37 +47,6 @@ machineClasses:
       #uefiSettings:
         #vtpmEnabled: false
   sshPublicKey: ssh-rsa AAAAB3...
-- name: class-2-availability-set
-  region: westeurope
-  resourceGroup: my-resource-group
-  network:
-    vnet: my-vnet
-    subnet: my-subnet-in-my-vnet
-  tags:
-    Name: shoot-crazy-botany
-    kubernetes.io-cluster-shoot-crazy-botany: "1"
-    kubernetes.io-role-node: "1"
-  secret:
-    cloudConfig: abc
-  credentialsSecretRef:
-    name: cloudprovider
-    namespace: shoot-namespace
-  machineType: Standard_DS1_V2
-  image:
-    #urn: "CoreOS:CoreOS:Stable:1576.5.0"
-    id: "/subscriptions/<subscription ID where the gallery is located>/resourceGroups/myGalleryRG/providers/Microsoft.Compute/galleries/myGallery/images/myImageDefinition/versions/1.0.0"
-    #communityGalleryImageID: "/CommunityGalleries/<community gallery id>/Images/myImageDefinition/versions/1.0.0"
-    #sharedGalleryImageID: "/SharedGalleries/<sharedGalleryName>/Images/<sharedGalleryImageName>/Versions/<sharedGalleryImageVersionName>"
-  osDisk:
-    size: 50
-    type: Standard_LRS
-# dataDisks:
-# - lun: 0
-#   caching: None
-#   diskSizeGB: 100
-#   storageAccountType: Standard_LRS
-#   name: sdb
-  sshPublicKey: ssh-rsa AAAAB3...
 - name: class-3-vmo
   region: westeurope
   resourceGroup: my-resource-group

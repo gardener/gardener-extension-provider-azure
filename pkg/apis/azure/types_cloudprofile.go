@@ -15,7 +15,7 @@ import (
 type CloudProfileConfig struct {
 	metav1.TypeMeta
 	// CountUpdateDomains is list of update domain counts for each region.
-	// Deprecated: VMSS does not allow specifying update domain count. With the deprecation of ets, only CountFaultDomains is required.
+	// Deprecated: VMSS does not allow specifying update domain count. With the deprecation of Availability Sets, only CountFaultDomains is required.
 	CountUpdateDomains []DomainCount
 	// CountFaultDomains is list of fault domain counts for each region.
 	CountFaultDomains []DomainCount

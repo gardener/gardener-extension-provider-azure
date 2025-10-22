@@ -27,7 +27,7 @@ Microsoft.Compute/virtualMachines/read
 Microsoft.Compute/virtualMachines/start/action
 Microsoft.Compute/virtualMachines/write
 
-# Required if a non zonal cluster based.
+# Required for non-zonal clusters.
 Microsoft.Compute/virtualMachineScaleSets/delete
 Microsoft.Compute/virtualMachineScaleSets/read
 Microsoft.Compute/virtualMachineScaleSets/write
