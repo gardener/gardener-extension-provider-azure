@@ -271,6 +271,15 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 					return fmt.Errorf("error adding terraformer migrations: %w", err)
 				}
 			}
+			if features.ExtensionFeatureGate.Enabled(features.DisableRemedyController) {
+				// TODO (kon-angelo): Remove after the release of version 1.60.0
+				// TODO (kon-angelo): Follow-up: Remove the CRDs
+				if err := mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
+					return purgeSeedRemedyControllerResources(ctx, mgr.GetClient(), log)
+				})); err != nil {
+					return fmt.Errorf("error adding remedy controller migrations: %w", err)
+				}
+			}
 
 			if err := mgr.Start(ctx); err != nil {
 				return fmt.Errorf("error running manager: %w", err)
