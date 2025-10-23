@@ -292,7 +292,7 @@ images:
 - name: remedy-controller-azure
   sourceRepository: github.com/gardener/remedy-controller
   repository: europe-docker.pkg.dev/gardener-project/releases/gardener/remedy-controller/remedy-controller-azure
-  tag: v0.12.0
+  tag: "v0.13.0"
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
