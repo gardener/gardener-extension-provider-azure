@@ -82,7 +82,10 @@ var _ = Describe("NamespacedCloudProfile Mutator", func() {
 "apiVersion":"azure.provider.extensions.gardener.cloud/v1alpha1",
 "kind":"CloudProfileConfig",
 "machineImages":[
-  {"name":"image-1","versions":[{"version":"1.0","id":"local/image:1.0"}]}
+  {"name":"image-1","versions":[
+		{"version":"1.0","id":"local/image:1.0"},
+		{"version":"1.0","architecture": "arm64", "id":"local/image:1.0"}
+]}
 ]}`)}
 				namespacedCloudProfile.Spec.ProviderConfig = &runtime.RawExtension{Raw: []byte(`{
 "apiVersion":"azure.provider.extensions.gardener.cloud/v1alpha1",
@@ -101,6 +104,7 @@ var _ = Describe("NamespacedCloudProfile Mutator", func() {
 						"Name": Equal("image-1"),
 						"Versions": ContainElements(
 							api.MachineImageVersion{Version: "1.0", ID: ptr.To("local/image:1.0"), Architecture: ptr.To("amd64")},
+							api.MachineImageVersion{Version: "1.0", ID: ptr.To("local/image:1.0"), Architecture: ptr.To("arm64")},
 							api.MachineImageVersion{Version: "1.1", ID: ptr.To("local/image:1.1"), Architecture: ptr.To("amd64")},
 						),
 					}),
