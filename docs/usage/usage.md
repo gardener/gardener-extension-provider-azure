@@ -453,7 +453,7 @@ dataVolumes:
       # sharedGalleryImageID: /SharedGalleries/82fc46df-cc38-4306-9880-504e872cee18-VSMP_MEMORYONE_GALLERY/Images/vSMP_MemoryONE/Versions/1062800168.0.0
       # id: /Subscriptions/2ebd38b6-270b-48a2-8e0b-2077106dc615/Providers/Microsoft.Compute/Locations/westeurope/Publishers/sap/ArtifactTypes/VMImage/Offers/gardenlinux/Skus/greatest/Versions/1443.10.0
       # urn: sap:gardenlinux:greatest:1443.10.0
-rootDisk:
+volume:
   cachingType: ReadWrite
 ```
 
@@ -473,9 +473,9 @@ To specify an image source for the dataVolume either use `communityGalleryImageI
 However, users have to make sure that the image really exists, there's yet no check in place.
 If the image does not exist the machine will get stuck in creation.
 
-The `.rootDisk` field is used to add provider specific configurations for a rootDisk.
-The root disk is the disk that contains the operating system and is mounted as `/` in the machine.
-You can configure the caching type by specifying `.rootDisk.cachingType`.
+The `.volume` field is used to add provider specific configurations for a osDisk.
+The OS disk is the disk that contains the operating system and is mounted as `/` in the machine.
+You can configure the caching type by specifying `.volume.cachingType`.
 
 ## Example `Shoot` manifest (non-zoned)
 

@@ -37,7 +37,7 @@ func ValidateWorkerConfig(workerConfig *apiazure.WorkerConfig, dataVolumes []cor
 
 	allErrs = append(allErrs, validateNodeTemplate(workerConfig.NodeTemplate, fldPath.Child("nodeTemplate"))...)
 	allErrs = append(allErrs, validateDataVolumeConf(workerConfig.DataVolumes, dataVolumes, fldPath.Child("dataVolumes"))...)
-	allErrs = append(allErrs, validateRootDisk(workerConfig.RootDisk, fldPath.Child("rootDisk"))...)
+	allErrs = append(allErrs, validateOSDiskConf(workerConfig.Volume, fldPath.Child("volume"))...)
 
 	return allErrs
 }
@@ -109,14 +109,14 @@ func validateDataVolumeConf(dataVolumeConfigs []apiazure.DataVolume, dataVolumes
 	return allErrs
 }
 
-func validateRootDisk(rootDisk *apiazure.RootDisk, fldPath *field.Path) field.ErrorList {
+func validateOSDiskConf(osDiskConf *apiazure.Volume, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	if rootDisk == nil {
+	if osDiskConf == nil {
 		return nil
 	}
 
-	allErrs = append(allErrs, validateOsDiskCaching(rootDisk.Caching, fldPath.Child("osDiskCaching"))...)
+	allErrs = append(allErrs, validateOsDiskCaching(osDiskConf.Caching, fldPath.Child("caching"))...)
 
 	return allErrs
 }

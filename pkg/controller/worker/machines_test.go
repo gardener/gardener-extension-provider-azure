@@ -145,7 +145,7 @@ var _ = Describe("Machines", func() {
 				archAMD string
 				archARM string
 
-				rootDisk          apiv1alpha1.RootDisk
+				osDiskConfig      apiv1alpha1.Volume
 				diagnosticProfile apiv1alpha1.DiagnosticsProfile
 				providerConfig    *runtime.RawExtension
 				workerConfig      apiv1alpha1.WorkerConfig
@@ -226,7 +226,7 @@ var _ = Describe("Machines", func() {
 						Kind:       "WorkerConfig",
 					},
 					DiagnosticsProfile: &diagnosticProfile,
-					RootDisk:           &rootDisk,
+					Volume:             &osDiskConfig,
 				}
 
 				marshalledWorkerConfig, err := json.Marshal(workerConfig)
@@ -598,7 +598,7 @@ var _ = Describe("Machines", func() {
 					}
 					machineClassPool1["osDisk"] = map[string]interface{}{
 						"size":    volumeSize,
-						"caching": *rootDisk.Caching,
+						"caching": *osDiskConfig.Caching,
 					}
 					machineClassPool2["osDisk"] = map[string]interface{}{
 						"size": volumeSize,

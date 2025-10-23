@@ -402,16 +402,16 @@ DiagnosticsProfile
 </tr>
 <tr>
 <td>
-<code>rootDisk</code></br>
+<code>volume</code></br>
 <em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.RootDisk">
-RootDisk
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.Volume">
+Volume
 </a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>RootDisk contains configuration for the root (os) disk of a VM.</p>
+<p>Volume contains configuration for the root (OS) disk of a VM.</p>
 </td>
 </tr>
 <tr>
@@ -1792,38 +1792,6 @@ string
 <p>
 <p>RetentionType defines the level at which immutability properties are obtained by objects</p>
 </p>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.RootDisk">RootDisk
-</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig</a>)
-</p>
-<p>
-<p>RootDisk contains configuration for the root disk of a VM.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>caching</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Caching specifies the caching type for the OS disk.
-Valid values are &lsquo;None&rsquo;, &lsquo;ReadOnly&rsquo;, and &lsquo;ReadWrite&rsquo;.</p>
-</td>
-</tr>
-</tbody>
-</table>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.RotationConfig">RotationConfig
 </h3>
 <p>
@@ -2234,6 +2202,38 @@ string
 </td>
 <td>
 <p>Name is the name of the VMO resource on Azure.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.Volume">Volume
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig</a>)
+</p>
+<p>
+<p>Volume contains configuration for the root disk of a VM.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>caching</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Caching specifies the caching type for the OS disk.
+Valid values are &lsquo;None&rsquo;, &lsquo;ReadOnly&rsquo;, and &lsquo;ReadWrite&rsquo;.</p>
 </td>
 </tr>
 </tbody>

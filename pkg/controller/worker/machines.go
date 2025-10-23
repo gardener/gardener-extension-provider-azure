@@ -152,7 +152,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			}
 		}
 
-		disks, err := computeDisks(pool, workerConfig.DataVolumes, workerConfig.RootDisk)
+		disks, err := computeDisks(pool, workerConfig.DataVolumes, workerConfig.Volume)
 		if err != nil {
 			return err
 		}
@@ -417,7 +417,7 @@ func (w *workerDelegate) getVMTags(pool extensionsv1alpha1.WorkerPool) map[strin
 	return vmTags
 }
 
-func computeDisks(pool extensionsv1alpha1.WorkerPool, dataVolumesConfig []azureapi.DataVolume, rootDisk *azureapi.RootDisk) (map[string]interface{}, error) {
+func computeDisks(pool extensionsv1alpha1.WorkerPool, dataVolumesConfig []azureapi.DataVolume, osDiskConfig *azureapi.Volume) (map[string]interface{}, error) {
 	// handle root disk
 	volumeSize, err := worker.DiskSize(pool.Volume.Size)
 	if err != nil {
@@ -436,8 +436,8 @@ func computeDisks(pool extensionsv1alpha1.WorkerPool, dataVolumesConfig []azurea
 		}
 	}
 
-	if rootDisk != nil && rootDisk.Caching != nil {
-		osDisk["caching"] = *rootDisk.Caching
+	if osDiskConfig != nil && osDiskConfig.Caching != nil {
+		osDisk["caching"] = *osDiskConfig.Caching
 	}
 
 	disks := map[string]interface{}{
