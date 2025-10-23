@@ -128,13 +128,8 @@ func validateOsDiskCaching(cachingType *string, fldPath *field.Path) field.Error
 		return nil
 	}
 
-	validCachingTypes := []string{
-		string(armcompute.CachingTypesNone),
-		string(armcompute.CachingTypesReadOnly),
-		string(armcompute.CachingTypesReadWrite),
-	}
-	if !slices.Contains(validCachingTypes, *cachingType) {
-		allErrs = append(allErrs, field.NotSupported(fldPath, *cachingType, validCachingTypes))
+	if !slices.Contains(armcompute.PossibleCachingTypesValues(), armcompute.CachingTypes(*cachingType)) {
+		allErrs = append(allErrs, field.NotSupported(fldPath, *cachingType, armcompute.PossibleCachingTypesValues()))
 	}
 
 	return allErrs
