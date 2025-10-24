@@ -152,7 +152,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			}
 		}
 
-		disks, err := computeDisks(pool, workerConfig.DataVolumes)
+		disks, err := computeDisks(pool, workerConfig.DataVolumes, workerConfig.Volume)
 		if err != nil {
 			return err
 		}
@@ -417,7 +417,7 @@ func (w *workerDelegate) getVMTags(pool extensionsv1alpha1.WorkerPool) map[strin
 	return vmTags
 }
 
-func computeDisks(pool extensionsv1alpha1.WorkerPool, dataVolumesConfig []azureapi.DataVolume) (map[string]interface{}, error) {
+func computeDisks(pool extensionsv1alpha1.WorkerPool, dataVolumesConfig []azureapi.DataVolume, osDiskConfig *azureapi.Volume) (map[string]interface{}, error) {
 	// handle root disk
 	volumeSize, err := worker.DiskSize(pool.Volume.Size)
 	if err != nil {
@@ -425,6 +425,9 @@ func computeDisks(pool extensionsv1alpha1.WorkerPool, dataVolumesConfig []azurea
 	}
 	osDisk := map[string]interface{}{
 		"size": volumeSize,
+		// TODO: undo setting cachingTypeNone after MCM supports passing nil as caching type to trigger defaults
+		// https://github.com/gardener/machine-controller-manager-provider-azure/issues/214
+		"caching": string(armcompute.CachingTypesNone),
 	}
 	if pool.Volume != nil && pool.Volume.Type != nil {
 		osDisk["type"] = *pool.Volume.Type
@@ -434,6 +437,10 @@ func computeDisks(pool extensionsv1alpha1.WorkerPool, dataVolumesConfig []azurea
 		osDisk["securityProfile"] = map[string]interface{}{
 			"securityEncryptionType": string(armcompute.SecurityEncryptionTypesVMGuestStateOnly),
 		}
+	}
+
+	if osDiskConfig != nil && osDiskConfig.Caching != nil {
+		osDisk["caching"] = *osDiskConfig.Caching
 	}
 
 	disks := map[string]interface{}{

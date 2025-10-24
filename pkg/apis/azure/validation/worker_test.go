@@ -127,7 +127,7 @@ var _ = Describe("ValidateWorkerConfig", func() {
 				},
 			}}
 
-			Expect(validateDataVolumeConf(dataVolumeConfigs, dataVolumes, fldPath)).To(ConsistOf(
+			Expect(validateDataVolumeConf(dataVolumeConfigs, dataVolumes, fldPath.Child("dataVolumes"))).To(ConsistOf(
 				PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
 					"Field":  Equal("config.dataVolumes[0].name"),
@@ -145,7 +145,7 @@ var _ = Describe("ValidateWorkerConfig", func() {
 				ImageRef: &apisazure.Image{},
 			}}
 
-			Expect(validateDataVolumeConf(dataVolumeConfigs, dataVolumes, fldPath)).To(ConsistOf(
+			Expect(validateDataVolumeConf(dataVolumeConfigs, dataVolumes, fldPath.Child("dataVolumes"))).To(ConsistOf(
 				PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
 					"Field":  Equal("config.dataVolumes[0].imageRef"),
@@ -165,7 +165,7 @@ var _ = Describe("ValidateWorkerConfig", func() {
 				},
 			}}
 
-			Expect(validateDataVolumeConf(dataVolumeConfigs, dataVolumes, fldPath)).To(ConsistOf(
+			Expect(validateDataVolumeConf(dataVolumeConfigs, dataVolumes, fldPath.Child("dataVolumes"))).To(ConsistOf(
 				PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeInvalid),
 					"Field": Equal("config.dataVolumes[0].imageRef.urn"),
@@ -198,7 +198,7 @@ var _ = Describe("ValidateWorkerConfig", func() {
 				},
 			}}
 
-			Expect(validateDataVolumeConf(dataVolumeConfigs, dataVolumes, fldPath)).To(ConsistOf(
+			Expect(validateDataVolumeConf(dataVolumeConfigs, dataVolumes, fldPath.Child("dataVolumes"))).To(ConsistOf(
 				PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeInvalid),
 					"Field": Equal("config.dataVolumes[0].imageRef.communityGalleryImageID"),
@@ -218,6 +218,29 @@ var _ = Describe("ValidateWorkerConfig", func() {
 			}}
 
 			Expect(validateDataVolumeConf(dataVolumeConfigs, dataVolumes, fldPath)).To(BeEmpty())
+		})
+	})
+
+	Describe("Volume", func() {
+		It("should deny invalid caching option", func() {
+			osDiskConf := &apisazure.Volume{
+				Caching: ptr.To("unknown"),
+			}
+
+			Expect(validateOSDiskConf(osDiskConf, nil)).To(ConsistOf(
+				PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeNotSupported),
+					"Field": Equal("caching"),
+				})),
+			))
+		})
+
+		It("should allow valid caching option", func() {
+			osDiskConf := &apisazure.Volume{
+				Caching: ptr.To(string(corev1.AzureDataDiskCachingNone)),
+			}
+
+			Expect(validateOSDiskConf(osDiskConf, nil)).To(BeEmpty())
 		})
 	})
 })
