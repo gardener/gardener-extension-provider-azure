@@ -46,7 +46,7 @@ machineClasses:
       #securityEncryptionType: VMGuestStateOnly
       #uefiSettings:
         #vtpmEnabled: false
-    caching: None
+    caching: None # TODO remove default after https://github.com/gardener/machine-controller-manager-provider-azure/issues/214
   sshPublicKey: ssh-rsa AAAAB3...
 - name: class-3-vmo
   region: westeurope

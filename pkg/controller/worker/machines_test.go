@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -214,6 +215,10 @@ var _ = Describe("Machines", func() {
 
 				archAMD = "amd64"
 				archARM = "arm64"
+
+				osDiskConfig = apiv1alpha1.Volume{
+					Caching: ptr.To(string(armcompute.CachingTypesReadOnly)),
+				}
 
 				diagnosticProfile = apiv1alpha1.DiagnosticsProfile{
 					Enabled:    true,
@@ -476,7 +481,8 @@ var _ = Describe("Machines", func() {
 					},
 					"machineType": machineType,
 					"osDisk": map[string]interface{}{
-						"size": volumeSize,
+						"caching": "None",
+						"size":    volumeSize,
 					},
 					"sshPublicKey": sshKey,
 					"identityID":   identityID,
@@ -533,9 +539,6 @@ var _ = Describe("Machines", func() {
 					}
 
 					sharedGalleryImageIDMachineClass = copyMachineClass(defaultMachineClass)
-					// sharedGalleryImageIDMachineClass["image"] = map[string]interface{}{
-					// 	"sharedGalleryImageID": machineImageSharedID,
-					// }
 
 					workerPoolHash1AdditionalData := []string{fmt.Sprintf("%dGi", dataVolume2Size), dataVolume2Type, fmt.Sprintf("%dGi", dataVolume1Size), identityID}
 					additionalData := []string{identityID}
@@ -601,16 +604,19 @@ var _ = Describe("Machines", func() {
 						"caching": *osDiskConfig.Caching,
 					}
 					machineClassPool2["osDisk"] = map[string]interface{}{
-						"size": volumeSize,
-						"type": volumeType,
+						"size":    volumeSize,
+						"type":    volumeType,
+						"caching": "None",
 					}
 					machineClassPool3["osDisk"] = map[string]interface{}{
-						"size": volumeSize,
-						"type": volumeType,
+						"size":    volumeSize,
+						"type":    volumeType,
+						"caching": "None",
 					}
 					machineClassPool4["osDisk"] = map[string]interface{}{
-						"size": volumeSize,
-						"type": volumeType,
+						"size":    volumeSize,
+						"type":    volumeType,
+						"caching": "None",
 					}
 
 					machineClassPool1["operatingSystem"] = map[string]interface{}{

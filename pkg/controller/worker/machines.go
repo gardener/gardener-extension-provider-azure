@@ -425,6 +425,9 @@ func computeDisks(pool extensionsv1alpha1.WorkerPool, dataVolumesConfig []azurea
 	}
 	osDisk := map[string]interface{}{
 		"size": volumeSize,
+		// TODO: undo setting cachingTypeNone after MCM supports passing nil as caching type to trigger defaults
+		// https://github.com/gardener/machine-controller-manager-provider-azure/issues/214
+		"caching": string(armcompute.CachingTypesNone),
 	}
 	if pool.Volume != nil && pool.Volume.Type != nil {
 		osDisk["type"] = *pool.Volume.Type
