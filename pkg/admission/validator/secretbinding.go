@@ -12,6 +12,7 @@ import (
 	"github.com/gardener/gardener/pkg/apis/core"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
@@ -58,5 +59,9 @@ func (sb *secretBinding) Validate(ctx context.Context, newObj, oldObj client.Obj
 		return err
 	}
 
-	return azurevalidation.ValidateCloudProviderSecret(secret, nil)
+	secretPath := field.NewPath("secret")
+	if errs := azurevalidation.ValidateCloudProviderSecret(secret, nil, secretPath); len(errs) > 0 {
+		return errs.ToAggregate()
+	}
+	return nil
 }

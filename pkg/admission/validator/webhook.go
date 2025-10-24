@@ -51,7 +51,7 @@ func New(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 	})
 }
 
-// NewSecretsWebhook creates a new validation webhook for Secrets.
+// NewSecretsWebhook creates a new validation webhook for infrastructure secrets.
 func NewSecretsWebhook(mgr manager.Manager) (*extensionswebhook.Webhook, error) {
 	logger.Info("Setting up webhook", "name", SecretsValidatorName)
 
