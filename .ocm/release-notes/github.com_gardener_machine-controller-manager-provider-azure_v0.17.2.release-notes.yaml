@@ -1,0 +1,15 @@
+ocm:
+  component_name: github.com/gardener/machine-controller-manager-provider-azure
+  component_version: v0.17.2
+release_notes:
+- audience: user
+  author:
+    hostname: github.com
+    type: githubUser
+    username: aaronfern
+  category: bugfix
+  contents: Clean up any partially created resources when VM creation fails due to
+    `ResourceExhausted` error
+  mimetype: text/markdown
+  reference: '[#216](https://github.com/gardener/machine-controller-manager-provider-azure/pull/216)'
+  type: standard
