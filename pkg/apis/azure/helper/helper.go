@@ -59,18 +59,6 @@ func FindRouteTableByPurpose(routeTables []api.RouteTable, purpose api.Purpose) 
 	return nil, fmt.Errorf("cannot find route table with purpose %q", purpose)
 }
 
-// FindAvailabilitySetByPurpose takes a list of availability sets and tries to find the first entry
-// whose purpose matches with the given purpose. If no such entry is found then an error will be
-// returned.
-func FindAvailabilitySetByPurpose(availabilitySets []api.AvailabilitySet, purpose api.Purpose) (*api.AvailabilitySet, error) {
-	for _, availabilitySet := range availabilitySets {
-		if availabilitySet.Purpose == purpose {
-			return &availabilitySet, nil
-		}
-	}
-	return nil, fmt.Errorf("cannot find availability set with purpose %q", purpose)
-}
-
 // FindDomainCountByRegion takes a region and the domain counts and finds the count for the given region.
 func FindDomainCountByRegion(domainCounts []api.DomainCount, region string) (int32, error) {
 	for _, domainCount := range domainCounts {

@@ -103,7 +103,7 @@ func makeWorker(namespace string, region string, sshKey *string, infrastructureS
 	}
 }
 
-func makeCluster(technicalID,shootVersion, region string, machineTypes []v1alpha1.MachineType, machineImages []v1alpha1.MachineImages, faultDomainCount int32) *extensionscontroller.Cluster {
+func makeCluster(technicalID, shootVersion, region string, machineTypes []v1alpha1.MachineType, machineImages []v1alpha1.MachineImages, faultDomainCount int32) *extensionscontroller.Cluster {
 	coreMachineTypes := []gardencorev1beta1.MachineType{}
 
 	for _, mt := range machineTypes {

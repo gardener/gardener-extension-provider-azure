@@ -126,7 +126,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			return err
 		}
 
-		machineImages = EnsureUniformMachineImages(machineImages, w.cluster.CloudProfile.Spec.MachineCapabilities)
+		machineImages = ensureUniformMachineImages(machineImages, w.cluster.CloudProfile.Spec.MachineCapabilities)
 		machineImages = appendMachineImage(machineImages, *machineImage, w.cluster.CloudProfile.Spec.MachineCapabilities)
 
 		image := map[string]any{}
@@ -586,8 +586,8 @@ func isConfidentialVM(pool extensionsv1alpha1.WorkerPool) bool {
 	return false
 }
 
-// EnsureUniformMachineImages ensures that all machine images are in the same format, either with or without Capabilities.
-func EnsureUniformMachineImages(images []azureapi.MachineImage, definitions []gardencorev1beta1.CapabilityDefinition) []azureapi.MachineImage {
+// ensureUniformMachineImages ensures that all machine images are in the same format, either with or without Capabilities.
+func ensureUniformMachineImages(images []azureapi.MachineImage, definitions []gardencorev1beta1.CapabilityDefinition) []azureapi.MachineImage {
 	var uniformMachineImages []azureapi.MachineImage
 
 	if len(definitions) == 0 {

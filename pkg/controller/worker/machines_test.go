@@ -1134,7 +1134,7 @@ var _ = Describe("Machines", func() {
 			})
 
 			It("should fail because the version is invalid", func() {
-				cluster = makeCluster(technicalID, region, machineTypes, nil, 0)
+				cluster = makeCluster(technicalID, "invalid", region, nil, machineImages, 0)
 				workerDelegate := wrapNewWorkerDelegate(c, chartApplier, w, cluster, nil)
 
 				result, err := workerDelegate.GenerateMachineDeployments(ctx)

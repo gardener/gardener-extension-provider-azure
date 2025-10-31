@@ -149,10 +149,9 @@ func transformMachineImages(images []v1alpha1.MachineImages, capabilityDefinitio
 	result := make([]v1alpha1.MachineImages, 0, len(images))
 
 	for _, img := range images {
-		transformedVersions := transformImageVersions(img.Versions, capabilityDefinitions)
 		result = append(result, v1alpha1.MachineImages{
 			Name:     img.Name,
-			Versions: transformedVersions,
+			Versions: transformImageVersions(img.Versions, capabilityDefinitions),
 		})
 	}
 

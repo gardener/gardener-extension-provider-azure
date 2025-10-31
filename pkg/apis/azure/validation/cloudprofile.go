@@ -20,7 +20,6 @@ import (
 	"k8s.io/utils/strings/slices"
 
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 // ValidateCloudProfileConfig validates a CloudProfileConfig object.
@@ -109,7 +108,7 @@ func validateLegacyProvidedImage(version apisazure.MachineImageVersion, jdxPath 
 	}
 
 	if len(version.CapabilityFlavors) != 0 {
-		allErrs = append(allErrs, field.Forbidden(jdxPath.Child("capabilityFlavors"), "capabilityFlavors must not be set when cloudprofile are not using capabilities"))
+		allErrs = append(allErrs, field.Forbidden(jdxPath.Child("capabilityFlavors"), "capabilityFlavors must not be set when cloudprofile is not using capabilities"))
 	}
 	return allErrs
 }
@@ -330,25 +329,4 @@ func NewProviderImagesContext(providerImages []apisazure.MachineImages) *gutil.I
 			return utils.CreateMapFromSlice(mi.Versions, func(v apisazure.MachineImageVersion) string { return v.Version })
 		},
 	)
-}
-
-// RestrictToArchitectureAndNetworkingCapability ensures that for the transition period from the deprecated architecture fields to the capabilities format only the `architecture` capability is used to support automatic transformation and migration.
-// TODO(Roncossek): Delete this function once the dedicated architecture fields on MachineType and MachineImageVersion have been removed.
-func RestrictToArchitectureAndNetworkingCapability(capabilityDefinitions []gardencorev1beta1.CapabilityDefinition, child *field.Path) error {
-	allErrs := field.ErrorList{}
-	for i, def := range capabilityDefinitions {
-		idxPath := child.Index(i)
-		if def.Name != v1beta1constants.ArchitectureName && def.Name != azure.CapabilityNetworkName {
-			allErrs = append(allErrs, field.NotSupported(idxPath.Child("name"), def.Name, []string{v1beta1constants.ArchitectureName, azure.CapabilityNetworkName}))
-		}
-		if def.Name == azure.CapabilityNetworkName {
-			for j, val := range def.Values {
-				jdxPath := idxPath.Child("values").Index(j)
-				if val != azure.CapabilityNetworkAccelerated && val != azure.CapabilityNetworkBasic {
-					allErrs = append(allErrs, field.NotSupported(jdxPath, val, []string{azure.CapabilityNetworkAccelerated, azure.CapabilityNetworkBasic}))
-				}
-			}
-		}
-	}
-	return allErrs.ToAggregate()
 }
