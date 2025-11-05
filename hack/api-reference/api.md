@@ -300,7 +300,8 @@ ResourceGroup
 </td>
 <td>
 <em>(Optional)</em>
-<p>ResourceGroup is azure resource group.</p>
+<p>ResourceGroup is azure resource group.
+Deprecated: This feature is no longer supported and will be removed in a future release.</p>
 </td>
 </tr>
 <tr>

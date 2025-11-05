@@ -14,6 +14,7 @@ import (
 type InfrastructureConfig struct {
 	metav1.TypeMeta
 	// ResourceGroup is azure resource group
+	// Deprecated: This feature is no longer supported and will be removed in a future release.
 	ResourceGroup *ResourceGroup
 	// Networks is the network configuration (VNets, subnets, etc.)
 	Networks NetworkConfig
