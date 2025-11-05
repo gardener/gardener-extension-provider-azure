@@ -83,5 +83,3 @@ spec:
     #   serviceEndpoints:
     #   - entry1
     zoned: false
-  # resourceGroup:
-  #   name: mygroup

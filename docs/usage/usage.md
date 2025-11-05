@@ -172,16 +172,13 @@ networks:
   #   natGateway:
   #     enabled: false
 zoned: false
-# resourceGroup:
-#   name: mygroup
 #identity:
 #  name: my-identity-name
 #  resourceGroup: my-identity-resource-group
 #  acrAccess: true
 ```
 
-Currently, it's not yet possible to deploy into existing resource groups.
-The `.resourceGroup.name` field will allow specifying the name of an already existing resource group that the shoot cluster and all infrastructure resources will be deployed to.
+It is **not** possible to deploy **all** infrastructure resources into an existing resource group.
 
 Via the `.zoned` boolean you can tell whether you want to use Azure availability zones or not.
 When `.zoned` is set to false, the cluster will use VMSS-Flex as the backend of the worker nodes.
