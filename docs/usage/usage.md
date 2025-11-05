@@ -190,6 +190,7 @@ You can read more about VMSS Flex in the [Azure Virtual Machine ScaleSet with fl
 The `networks.vnet` section describes whether you want to create the shoot cluster in an already existing VNet or whether to create a new one:
 
 * If `networks.vnet.name` and `networks.vnet.resourceGroup` are given then you have to specify the VNet name and VNet resource group name of the existing VNet that was created by other means (manually, other tooling, ...).
+Ensure that both `networks.workers` and `networking.nodes` are within the CIDR range of your created VNet, but do not overlap with the default subnet automatically created by Azure during VNet creation.
 * If `networks.vnet.cidr` is given then you have to specify the VNet CIDR of a new VNet that will be created during shoot creation.
 You can freely choose a private CIDR range.
 * Either `networks.vnet.name` and `networks.vnet.resourceGroup` or `networks.vnet.cidr` must be present, but not both at the same time.
