@@ -10,7 +10,7 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - uses: SAP/ai-assisted-github-actions/pr-summary@v3
+      - uses: gardener/cc-utils/.github/workflows/prepare.yaml@master
         with:
           aicore-service-key: ${{ secrets.AICORE_SERVICE_KEY }}
           model: anthropic--claude-4-sonnet
