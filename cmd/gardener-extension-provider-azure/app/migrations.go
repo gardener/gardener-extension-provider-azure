@@ -9,17 +9,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gardener/gardener/pkg/controllerutils"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
-	azurev1alpha1 "github.com/gardener/remedy-controller/pkg/apis/azure/v1alpha1"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 func purgeSeedRemedyControllerResources(ctx context.Context, c client.Client, log logr.Logger) error {
@@ -42,47 +38,40 @@ func purgeSeedRemedyControllerResources(ctx context.Context, c client.Client, lo
 		}
 	}
 
-	shootNamespaces := sets.New[string]()
-	pubipList := &azurev1alpha1.PublicIPAddressList{}
-	if err := c.List(ctx, pubipList); err != nil {
-		return fmt.Errorf("could not list publicipaddresses: %w", err)
-	}
-	for _, pubip := range pubipList.Items {
-		shootNamespaces.Insert(pubip.Namespace)
-		finalizerString := "azure.remedy.gardener.cloud/publicipaddress"
-		if controllerutil.ContainsFinalizer(&pubip, finalizerString) {
-			if err := controllerutils.RemoveFinalizers(ctx, c, &pubip, finalizerString); err != nil {
-				return fmt.Errorf("could not remove finalizers from publicipaddress: %w", err)
-			}
-		}
-	}
+	// pubipList := &azurev1alpha1.PublicIPAddressList{}
+	// if err := c.List(ctx, pubipList); err != nil {
+	// 	return fmt.Errorf("could not list publicipaddresses: %w", err)
+	// }
+	// if len(pubipList.Items) == 0 {
+	// 	log.Info("No publicipaddress resources found. Will delete CRDs if they exist.")
+	// 	crd := &apiextensionsv1.CustomResourceDefinition{
+	// 		ObjectMeta: metav1.ObjectMeta{
+	// 			Name: "publicipaddresses.azure.remedy.gardener.cloud",
+	// 		},
+	// 	}
+	// 	if err := client.IgnoreNotFound(c.Delete(ctx, crd)); err != nil {
+	// 		return fmt.Errorf("failed to delete publicipaddresses CRD: %w", err)
+	// 	}
+	// }
 
-	virtualMachineList := &azurev1alpha1.VirtualMachineList{}
-	if err := c.List(ctx, virtualMachineList); err != nil {
-		return fmt.Errorf("could not list virtualmachines: %w", err)
-	}
-	for _, virtualMachine := range virtualMachineList.Items {
-		shootNamespaces.Insert(virtualMachine.Namespace)
-		finalizerString := "azure.remedy.gardener.cloud/virtualmachine"
-		if controllerutil.ContainsFinalizer(&virtualMachine, finalizerString) {
-			if err := controllerutils.RemoveFinalizers(ctx, c, &virtualMachine, finalizerString); err != nil {
-				return fmt.Errorf("could not remove finalizers from virtualmachine: %w", err)
-			}
-		}
-	}
+	// virtualMachineList := &azurev1alpha1.VirtualMachineList{}
+	// if err := c.List(ctx, virtualMachineList); err != nil {
+	// 	return fmt.Errorf("could not list virtualmachines: %w", err)
+	// }
+	//
+	// if len(virtualMachineList.Items) == 0 {
+	// 	log.Info("No virtualmachines resources found. Will delete CRDs if they exist.")
+	// 	crd := &apiextensionsv1.CustomResourceDefinition{
+	// 		ObjectMeta: metav1.ObjectMeta{
+	// 			Name: "virtualmachines.azure.remedy.gardener.cloud",
+	// 		},
+	// 	}
+	// 	if err := client.IgnoreNotFound(c.Delete(ctx, crd)); err != nil {
+	// 		return fmt.Errorf("failed to delete virtualmachine CRD: %w", err)
+	// 	}
+	// }
 
-	log.Info("Deleting all remaining remedy controller resources")
-	for _, ns := range shootNamespaces.UnsortedList() {
-		if err := c.DeleteAllOf(ctx, &azurev1alpha1.PublicIPAddress{}, client.InNamespace(ns)); err != nil {
-			return fmt.Errorf("could not delete publicipaddress resources: %w", err)
-		}
-		if err := c.DeleteAllOf(ctx, &azurev1alpha1.VirtualMachine{}, client.InNamespace(ns)); err != nil {
-			return fmt.Errorf("could not delete virtualmachine resources: %w", err)
-		}
-	}
-
-	log.Info("Successfully removed remedy controller resources")
-
+	log.Info("Successfully removed remedy controller deployments")
 	return nil
 }
 
