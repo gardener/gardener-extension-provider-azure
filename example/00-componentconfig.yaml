@@ -15,5 +15,5 @@ etcd:
 #healthCheckConfig:
 #  syncPeriod: 30s
 featureGates:
-  DisableRemedyController: false
+  DisableRemedyController: true
   EnableImmutableBuckets: false

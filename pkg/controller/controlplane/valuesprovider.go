@@ -645,10 +645,14 @@ func getRemedyControllerChartValues(
 	scaledDown bool,
 	useWorkloadIdentity bool,
 ) map[string]interface{} {
-	disableRemedyController :=
-		cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] == "true" ||
-			features.ExtensionFeatureGate.Enabled(features.DisableRemedyController)
+	if features.ExtensionFeatureGate.Enabled(features.DisableRemedyController) {
+		return map[string]interface{}{
+			"enabled": false,
+		}
+	}
 
+	// disable remedy controller for the shoot by annotation. In this case, only set the replicas to 0.
+	disableRemedyController := cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] == "true"
 	if disableRemedyController {
 		return map[string]interface{}{"enabled": true, "replicas": 0}
 	}
