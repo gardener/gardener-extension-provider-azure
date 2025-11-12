@@ -77,7 +77,7 @@ func (a *actuator) Reconcile(
 
 	// Nothing to do if the feature is disabled
 	if features.ExtensionFeatureGate.Enabled(features.DisableRemedyController) {
-		return ok, a.forceDeleteShootRemedyControllerResources(ctx, log, cp.Namespace, cluster)
+		return ok, a.forceDeleteRemedyControllerResources(ctx, log, cp.GetNamespace(), cluster)
 	}
 	return ok, nil
 }
@@ -110,8 +110,12 @@ func (a *actuator) Delete(
 	if err := a.Actuator.Delete(ctx, log, cp, cluster); err != nil {
 		return err
 	}
+
+	if features.ExtensionFeatureGate.Enabled(features.DisableRemedyController) {
+		return a.forceDeleteRemedyControllerResources(ctx, log, cp.GetNamespace(), cluster)
+	}
 	// Delete all remaining remedy controller resources
-	return a.forceDeleteSeedRemedyControllerResources(ctx, log, cp)
+	return a.forceDeleteSeedRemedyControllerResources(ctx, log, cp.GetNamespace())
 }
 
 // ForceDelete forcefully deletes the controlplane.
@@ -126,7 +130,7 @@ func (a *actuator) ForceDelete(
 		return err
 	}
 	// Delete all remaining remedy controller resources
-	return a.forceDeleteSeedRemedyControllerResources(ctx, log, cp)
+	return a.forceDeleteSeedRemedyControllerResources(ctx, log, cp.GetNamespace())
 }
 
 // Migrate reconciles the given controlplane and cluster, migrating the additional
@@ -143,14 +147,17 @@ func (a *actuator) Migrate(
 	if err := a.Actuator.Migrate(ctx, log, cp, cluster); err != nil {
 		return err
 	}
+	if features.ExtensionFeatureGate.Enabled(features.DisableRemedyController) {
+		return a.forceDeleteRemedyControllerResources(ctx, log, cp.GetNamespace(), cluster)
+	}
 	// Delete all remaining remedy controller resources
-	return a.forceDeleteSeedRemedyControllerResources(ctx, log, cp)
+	return a.forceDeleteSeedRemedyControllerResources(ctx, log, cp.GetNamespace())
 }
 
-func (a *actuator) forceDeleteSeedRemedyControllerResources(ctx context.Context, log logr.Logger, cp *extensionsv1alpha1.ControlPlane) error {
+func (a *actuator) forceDeleteSeedRemedyControllerResources(ctx context.Context, log logr.Logger, namespace string) error {
 	log.Info("Removing finalizers from remedy controller resources")
 	pubipList := &azurev1alpha1.PublicIPAddressList{}
-	if err := a.client.List(ctx, pubipList, client.InNamespace(cp.Namespace)); err != nil {
+	if err := a.client.List(ctx, pubipList, client.InNamespace(namespace)); err != nil {
 		return fmt.Errorf("could not list publicipaddresses: %w", err)
 	}
 	for _, pubip := range pubipList.Items {
@@ -162,7 +169,7 @@ func (a *actuator) forceDeleteSeedRemedyControllerResources(ctx context.Context,
 	}
 
 	virtualMachineList := &azurev1alpha1.VirtualMachineList{}
-	if err := a.client.List(ctx, virtualMachineList, client.InNamespace(cp.Namespace)); err != nil {
+	if err := a.client.List(ctx, virtualMachineList, client.InNamespace(namespace)); err != nil {
 		return fmt.Errorf("could not list virtualmachines: %w", err)
 	}
 	for _, virtualMachine := range virtualMachineList.Items {
@@ -174,10 +181,10 @@ func (a *actuator) forceDeleteSeedRemedyControllerResources(ctx context.Context,
 	}
 
 	log.Info("Deleting all remaining remedy controller resources")
-	if err := a.client.DeleteAllOf(ctx, &azurev1alpha1.PublicIPAddress{}, client.InNamespace(cp.Namespace)); err != nil {
+	if err := a.client.DeleteAllOf(ctx, &azurev1alpha1.PublicIPAddress{}, client.InNamespace(namespace)); err != nil {
 		return fmt.Errorf("could not delete publicipaddress resources: %w", err)
 	}
-	if err := a.client.DeleteAllOf(ctx, &azurev1alpha1.VirtualMachine{}, client.InNamespace(cp.Namespace)); err != nil {
+	if err := a.client.DeleteAllOf(ctx, &azurev1alpha1.VirtualMachine{}, client.InNamespace(namespace)); err != nil {
 		return fmt.Errorf("could not delete virtualmachine resources: %w", err)
 	}
 
@@ -196,81 +203,57 @@ func (a *actuator) forceDeleteShootRemedyControllerResources(ctx context.Context
 	}
 
 	log.Info("Removing finalizers from publicipaddresses")
-	for _, pubip := range pubipList.Items {
-		if controllerutil.ContainsFinalizer(&pubip, publicIpFinalizerString) {
-			if err := controllerutils.RemoveFinalizers(ctx, a.client, &pubip, publicIpFinalizerString); err != nil {
-				return fmt.Errorf("could not remove finalizers from publicipaddress: %w", err)
-			}
-		}
+	if len(pubipList.Items) == 0 {
+		return nil
 	}
 
-	if len(pubipList.Items) > 0 {
-		_, shootClient, err := util.NewClientForShoot(ctx, a.client, cluster.ObjectMeta.Name, client.Options{}, extensionsconfigv1alpha1.RESTOptions{})
-		if err != nil {
-			// No need to report the error as this is anyway only best effort. Some scenarios, e.g. autonomous shoot clusters,
-			// might not have the gardener secret and hence cannot construct the shoot client here.
-			log.Info("Could not create shoot client to check for existing remedy controller resources", "error", err.Error())
+	_, shootClient, err := util.NewClientForShoot(ctx, a.client, cluster.Shoot.GetName(), client.Options{}, extensionsconfigv1alpha1.RESTOptions{})
+	if err != nil {
+		// No need to report the error as this is anyway only best effort. Some scenarios, e.g. autonomous shoot clusters,
+		// might not have the gardener secret and hence cannot construct the shoot client here.
+		log.Info("Could not create shoot client to check for existing remedy controller resources", "error", err.Error())
+		return err
+	}
+
+	lbs := &corev1.ServiceList{}
+	var errs error
+
+	for {
+		if err := shootClient.List(ctx, lbs, client.Limit(100), client.Continue(lbs.GetContinue())); err != nil {
+			log.Info("Could not list services in shoot cluster to check for existing remedy controller resources", "error", err)
 			return err
 		}
 
-		lbs := &corev1.ServiceList{}
-		var errs error
-
-		for {
-			if err := shootClient.List(ctx, lbs, client.Limit(100), client.Continue(lbs.GetContinue())); err != nil {
-				log.Info("Could not list services in shoot cluster to check for existing remedy controller resources", "error", err)
-				return err
+		for _, lb := range lbs.Items {
+			if lb.Spec.Type != corev1.ServiceTypeLoadBalancer {
+				continue
 			}
-
-			for _, lb := range lbs.Items {
-				if lb.Spec.Type != corev1.ServiceTypeLoadBalancer {
+			if controllerutil.ContainsFinalizer(&lb, serviceFinalizerName) {
+				if retryErr := retry.RetryOnConflict(retry.DefaultRetry,
+					func() error {
+						err := shootClient.Get(ctx, client.ObjectKey{Namespace: lb.Namespace, Name: lb.Name}, &lb)
+						if err != nil {
+							return err
+						}
+						return controllerutils.RemoveFinalizers(ctx, shootClient, &lb, serviceFinalizerName)
+					}); retryErr != nil {
+					log.Info("Could not remove remedy finalizer from service", "namespace", lb.Namespace, "name", lb.Name, "error", retryErr)
+					errs = errors.Join(errs, retryErr)
 					continue
 				}
-				if controllerutil.ContainsFinalizer(&lb, serviceFinalizerName) {
-					if retryErr := retry.RetryOnConflict(retry.DefaultRetry,
-						func() error {
-							err := shootClient.Get(ctx, client.ObjectKey{Namespace: lb.Namespace, Name: lb.Name}, &lb)
-							if err != nil {
-								return err
-							}
-							return controllerutils.RemoveFinalizers(ctx, shootClient, &lb, serviceFinalizerName)
-						}); retryErr != nil {
-						log.Info("Could not remove remedy finalizer from service", "namespace", lb.Namespace, "name", lb.Name, "error", retryErr)
-						errs = errors.Join(errs, err)
-						continue
-					}
-				}
-			}
-			if lbs.GetContinue() == "" {
-				break
 			}
 		}
-		if errs != nil {
-			return errs
-		}
-
-		if err := a.client.DeleteAllOf(ctx, &azurev1alpha1.PublicIPAddress{}, client.InNamespace(namespace)); err != nil {
-			return fmt.Errorf("could not delete publicipaddress resources: %w", err)
+		if lbs.GetContinue() == "" {
+			break
 		}
 	}
+	return errs
+}
 
-	log.Info("Removing finalizers from virtualmachines")
-	virtualMachineList := &azurev1alpha1.VirtualMachineList{}
-	if err := a.client.List(ctx, virtualMachineList, client.InNamespace(namespace)); err != nil {
-		return fmt.Errorf("could not list virtualmachines: %w", err)
+func (a *actuator) forceDeleteRemedyControllerResources(ctx context.Context, log logr.Logger, namespace string, cluster *extensionscontroller.Cluster) error {
+	err := a.forceDeleteShootRemedyControllerResources(ctx, log, namespace, cluster)
+	if err != nil {
+		return err
 	}
-
-	log.Info("Deleting all remaining remedy controller resources")
-	for _, virtualMachine := range virtualMachineList.Items {
-		if controllerutil.ContainsFinalizer(&virtualMachine, virtualMachineFinalizerString) {
-			if err := controllerutils.RemoveFinalizers(ctx, a.client, &virtualMachine, virtualMachineFinalizerString); err != nil {
-				return fmt.Errorf("could not remove finalizers from virtualmachine: %w", err)
-			}
-		}
-	}
-	if len(virtualMachineList.Items) == 0 {
-		return a.client.DeleteAllOf(ctx, &azurev1alpha1.VirtualMachine{}, client.InNamespace(namespace))
-	}
-
-	return nil
+	return a.forceDeleteSeedRemedyControllerResources(ctx, log, namespace)
 }
