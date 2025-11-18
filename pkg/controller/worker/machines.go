@@ -335,6 +335,16 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				}
 			}
 
+			if capacityReservation := workerConfig.CapacityReservation; capacityReservation != nil {
+				capacityReservationConfig := map[string]any{}
+
+				if capacityReservationGroup := capacityReservation.CapacityReservationGroup; capacityReservationGroup != nil {
+					capacityReservationConfig["capacityReservationGroup"] = *capacityReservationGroup
+				}
+
+				machineClassSpec["capacityReservation"] = capacityReservationConfig
+			}
+
 			machineDeployment.ClusterAutoscalerAnnotations = extensionsv1alpha1helper.GetMachineDeploymentClusterAutoscalerAnnotations(pool.ClusterAutoscaler)
 
 			return machineDeployment, machineClassSpec

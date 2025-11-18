@@ -39,6 +39,10 @@ func ValidateWorkerConfig(workerConfig *apiazure.WorkerConfig, dataVolumes []cor
 	allErrs = append(allErrs, validateDataVolumeConf(workerConfig.DataVolumes, dataVolumes, fldPath.Child("dataVolumes"))...)
 	allErrs = append(allErrs, validateOSDiskConf(workerConfig.Volume, fldPath.Child("volume"))...)
 
+	if capacityReservationConfig := workerConfig.CapacityReservation; capacityReservationConfig != nil {
+		allErrs = append(allErrs, validateCapacityReservationConfig(capacityReservationConfig, fldPath.Child("capacityReservation"))...)
+	}
+
 	return allErrs
 }
 
@@ -140,6 +144,16 @@ func validateResourceQuantityValue(key corev1.ResourceName, value resource.Quant
 
 	if value.Cmp(resource.Quantity{}) < 0 {
 		allErrs = append(allErrs, field.Invalid(fldPath, value.String(), fmt.Sprintf("%s value must not be negative", key)))
+	}
+
+	return allErrs
+}
+
+func validateCapacityReservationConfig(capacityReservationConfig *apiazure.CapacityReservation, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if capacityReservationGroup := capacityReservationConfig.CapacityReservationGroup; capacityReservationGroup != nil {
+		allErrs = append(allErrs, capacityReservationGroupIDValidation(*capacityReservationConfig.CapacityReservationGroup, fldPath.Child("capacityReservationGroup"))...)
 	}
 
 	return allErrs

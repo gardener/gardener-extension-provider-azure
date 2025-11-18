@@ -113,6 +113,13 @@ providerSpec:
       dataDisks:
 {{ toYaml $machineClass.dataDisks | indent 6 }}
 {{- end }}
+    {{/* TODO: Make indentation in this doc make sense */}}
+    {{- if $machineClass.capacityReservation }}
+    capacityReservation:
+      {{- if $machineClass.capacityReservation.capacityReservationGroup }}
+      capacityReservationGroup: {{ $machineClass.capacityReservation.capacityReservationGroup }}
+      {{- end }}
+    {{- end }}
   resourceGroup: {{ $machineClass.resourceGroup }}
   subnetInfo:
     vnetName: {{ $machineClass.network.vnet }}

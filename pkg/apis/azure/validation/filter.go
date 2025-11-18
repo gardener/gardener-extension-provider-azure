@@ -17,24 +17,26 @@ import (
 
 // There is no enum for Azure Service Endpoints, so we use a regex to validate the names.
 var (
-	resourceGroupNameRegex       = `^[A-Za-z0-9_().-]{1,89}[A-Za-z0-9_()-]$`
-	vnetNameRegex                = `^[A-Za-z0-9][\w.-]*[\w]$`
-	genericAzureNameRegex        = `^[A-Za-z0-9][\w-]*$`
-	serviceEndpointsRegex        = `^Microsoft\.[A-Za-z0-9.]+$`
-	storageURIRegex              = `^https://[a-z0-9-]{3,24}\.blob\.core[^\s]+/[^\s]+$`
-	urnRegex                     = `^[\w-]+:[\w-]+:[\w.-]+:[\w.-]+$`
-	sharedGalleryImageIDRegex    = `^/SharedGalleries/[\w-]+/Images/[\w-]+/Versions/[\w.-]+$`
-	communityGalleryImageIDRegex = `^/CommunityGalleries/[\w-]+/Images/[\w-]+/Versions/[\w.-]+$`
+	resourceGroupNameRegex          = `^[A-Za-z0-9_().-]{1,89}[A-Za-z0-9_()-]$`
+	vnetNameRegex                   = `^[A-Za-z0-9][\w.-]*[\w]$`
+	genericAzureNameRegex           = `^[A-Za-z0-9][\w-]*$`
+	serviceEndpointsRegex           = `^Microsoft\.[A-Za-z0-9.]+$`
+	storageURIRegex                 = `^https://[a-z0-9-]{3,24}\.blob\.core[^\s]+/[^\s]+$`
+	urnRegex                        = `^[\w-]+:[\w-]+:[\w.-]+:[\w.-]+$`
+	sharedGalleryImageIDRegex       = `^/SharedGalleries/[\w-]+/Images/[\w-]+/Versions/[\w.-]+$`
+	communityGalleryImageIDRegex    = `^/CommunityGalleries/[\w-]+/Images/[\w-]+/Versions/[\w.-]+$`
+	capacityReservationGroupIDRegex = `^/subscriptions/[\w-]+/resourceGroups/[\w\/.-]+/capacityReservationGroups/[\w.-]+$` // e.g. /subscriptions/<id>/resourceGroups/<resource group>/providers/Microsoft.Compute/capacityReservationGroups/<group id>
 
-	validateServiceEndpoint           = combineValidationFuncs(regex(serviceEndpointsRegex), minLength(9), maxLength(120))
-	validateResourceGroupName         = combineValidationFuncs(regex(resourceGroupNameRegex), notEmpty, maxLength(90))
-	validateVnetName                  = combineValidationFuncs(regex(vnetNameRegex), minLength(2), maxLength(64))
-	validateGenericName               = combineValidationFuncs(regex(genericAzureNameRegex), minLength(3), maxLength(120))
-	validatePublicIPName              = combineValidationFuncs(regex(genericAzureNameRegex), notEmpty, maxLength(80))
-	storageURIValidation              = combineValidationFuncs(urlFilter, regex(storageURIRegex), notEmpty)
-	urnValidation                     = combineValidationFuncs(regex(urnRegex), notEmpty, maxLength(256))
-	sharedGalleryImageIDValidation    = combineValidationFuncs(regex(sharedGalleryImageIDRegex), notEmpty, maxLength(512))
-	communityGalleryImageIDValidation = combineValidationFuncs(regex(communityGalleryImageIDRegex), notEmpty, maxLength(512))
+	validateServiceEndpoint              = combineValidationFuncs(regex(serviceEndpointsRegex), minLength(9), maxLength(120))
+	validateResourceGroupName            = combineValidationFuncs(regex(resourceGroupNameRegex), notEmpty, maxLength(90))
+	validateVnetName                     = combineValidationFuncs(regex(vnetNameRegex), minLength(2), maxLength(64))
+	validateGenericName                  = combineValidationFuncs(regex(genericAzureNameRegex), minLength(3), maxLength(120))
+	validatePublicIPName                 = combineValidationFuncs(regex(genericAzureNameRegex), notEmpty, maxLength(80))
+	storageURIValidation                 = combineValidationFuncs(urlFilter, regex(storageURIRegex), notEmpty)
+	urnValidation                        = combineValidationFuncs(regex(urnRegex), notEmpty, maxLength(256))
+	sharedGalleryImageIDValidation       = combineValidationFuncs(regex(sharedGalleryImageIDRegex), notEmpty, maxLength(512))
+	communityGalleryImageIDValidation    = combineValidationFuncs(regex(communityGalleryImageIDRegex), notEmpty, maxLength(512))
+	capacityReservationGroupIDValidation = combineValidationFuncs(regex(capacityReservationGroupIDRegex), notEmpty, maxLength(512))
 )
 
 type validateFunc[T any] func(T, *field.Path) field.ErrorList
