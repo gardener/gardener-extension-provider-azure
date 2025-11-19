@@ -176,7 +176,6 @@ func (e *ensurer) EnsureKubeControllerManagerDeployment(
 		ensureKubeControllerManagerVolumeMounts(c, cluster.Shoot.Spec.Kubernetes.Version)
 	}
 
-	ensureKubeControllerManagerLabels(template)
 	ensureKubeControllerManagerVolumes(ps, cluster.Shoot.Spec.Kubernetes.Version)
 	return e.ensureChecksumAnnotations(&newDeployment.Spec.Template)
 }
@@ -293,14 +292,6 @@ func ensureClusterAutoscalerCommandLineArgs(c *corev1.Container, k8sVersion *sem
 		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 			"InTreePluginAzureFileUnregister=true", ",")
 	}
-}
-
-func ensureKubeControllerManagerLabels(t *corev1.PodTemplateSpec) {
-	// TODO: This can be removed in a future version.
-	delete(t.Labels, v1beta1constants.LabelNetworkPolicyToBlockedCIDRs)
-
-	delete(t.Labels, v1beta1constants.LabelNetworkPolicyToPublicNetworks)
-	delete(t.Labels, v1beta1constants.LabelNetworkPolicyToPrivateNetworks)
 }
 
 var (
