@@ -26,7 +26,7 @@ type WorkerConfig struct {
 	// DataVolumes contains configuration for the additional disks attached to VMs.
 	DataVolumes []DataVolume
 
-	// CapacityReservation
+	// CapacityReservation represents the configuration for capacity reservations on Azure.
 	CapacityReservation *CapacityReservation
 }
 
@@ -110,8 +110,8 @@ type Volume struct {
 	Caching *string
 }
 
-// CapacityReservation represents the configuration for Capacity Reservations on Azure.
+// CapacityReservation represents the configuration for capacity reservations on Azure.
 type CapacityReservation struct {
-	// CapacityReservationGroup is the Azure resource ID of the CapacityReservationGroup to use.
-	CapacityReservationGroup *string
+	// CapacityReservationGroupID is the resource ID of the capacity reservation group to use.
+	CapacityReservationGroupID *string
 }

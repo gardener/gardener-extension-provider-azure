@@ -440,7 +440,7 @@ CapacityReservation
 </td>
 <td>
 <em>(Optional)</em>
-<p>CapacityReservation represents the configuration for Capacity Reservations on Azure.</p>
+<p>CapacityReservation represents the configuration for capacity reservations on Azure.</p>
 </td>
 </tr>
 </tbody>
@@ -622,7 +622,7 @@ string
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig</a>)
 </p>
 <p>
-<p>CapacityReservation represents the configuration for Capacity Reservations on Azure.</p>
+<p>CapacityReservation represents the configuration for capacity reservations on Azure.</p>
 </p>
 <table>
 <thead>
@@ -634,15 +634,13 @@ string
 <tbody>
 <tr>
 <td>
-<code>capacityReservationGroup</code></br>
+<code>capacityReservationGroupID</code></br>
 <em>
 string
 </em>
 </td>
 <td>
-<p>CapacityReservationGroup is the Azure resource ID of the CapacityReservationGroup to use.
-TODO: Currently, Azure api models this its own type (CapacityReservation) with exactly one field, ID.
-Maybe use struct instead of string for futureproofing? Could be handled by API Versioning in future, though. Not sure.</p>
+<p>CapacityReservationGroupID is the resource ID of the capacity reservation group to use.</p>
 </td>
 </tr>
 </tbody>

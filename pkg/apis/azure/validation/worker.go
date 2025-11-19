@@ -152,8 +152,13 @@ func validateResourceQuantityValue(key corev1.ResourceName, value resource.Quant
 func validateCapacityReservationConfig(capacityReservationConfig *apiazure.CapacityReservation, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	if capacityReservationGroup := capacityReservationConfig.CapacityReservationGroup; capacityReservationGroup != nil {
-		allErrs = append(allErrs, capacityReservationGroupIDValidation(*capacityReservationConfig.CapacityReservationGroup, fldPath.Child("capacityReservationGroup"))...)
+	if capacityReservationGroupID := capacityReservationConfig.CapacityReservationGroupID; capacityReservationGroupID != nil {
+		resourceID, err := arm.ParseResourceID(*capacityReservationGroupID)
+		if err != nil {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("capacityReservationGroupID"), *capacityReservationGroupID, fmt.Sprintf("invalid Azure resource ID: %v", err)))
+		} else if resourceID.ResourceType.Type != "CapacityReservationGroups" {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("capacityReservationGroupID"), *capacityReservationGroupID, "provided resource ID must be of a capacity reservation group"))
+		}
 	}
 
 	return allErrs

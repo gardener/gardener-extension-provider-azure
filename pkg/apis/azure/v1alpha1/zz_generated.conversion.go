@@ -485,7 +485,7 @@ func Convert_azure_BackupBucketConfig_To_v1alpha1_BackupBucketConfig(in *azure.B
 }
 
 func autoConvert_v1alpha1_CapacityReservation_To_azure_CapacityReservation(in *CapacityReservation, out *azure.CapacityReservation, s conversion.Scope) error {
-	out.CapacityReservationGroup = (*string)(unsafe.Pointer(in.CapacityReservationGroup))
+	out.CapacityReservationGroupID = (*string)(unsafe.Pointer(in.CapacityReservationGroupID))
 	return nil
 }
 
@@ -495,7 +495,7 @@ func Convert_v1alpha1_CapacityReservation_To_azure_CapacityReservation(in *Capac
 }
 
 func autoConvert_azure_CapacityReservation_To_v1alpha1_CapacityReservation(in *azure.CapacityReservation, out *CapacityReservation, s conversion.Scope) error {
-	out.CapacityReservationGroup = (*string)(unsafe.Pointer(in.CapacityReservationGroup))
+	out.CapacityReservationGroupID = (*string)(unsafe.Pointer(in.CapacityReservationGroupID))
 	return nil
 }
 

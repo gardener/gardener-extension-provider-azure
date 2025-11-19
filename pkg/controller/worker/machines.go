@@ -338,8 +338,8 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			if capacityReservation := workerConfig.CapacityReservation; capacityReservation != nil {
 				capacityReservationConfig := map[string]any{}
 
-				if capacityReservationGroup := capacityReservation.CapacityReservationGroup; capacityReservationGroup != nil {
-					capacityReservationConfig["capacityReservationGroup"] = *capacityReservationGroup
+				if capacityReservationGroupID := capacityReservation.CapacityReservationGroupID; capacityReservationGroupID != nil {
+					capacityReservationConfig["capacityReservationGroupID"] = *capacityReservationGroupID
 				}
 
 				machineClassSpec["capacityReservation"] = capacityReservationConfig

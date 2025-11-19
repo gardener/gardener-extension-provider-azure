@@ -32,7 +32,7 @@ type WorkerConfig struct {
 	// +optional
 	DataVolumes []DataVolume `json:"dataVolumes,omitempty"`
 
-	// CapacityReservation represents the configuration for Capacity Reservations on Azure.
+	// CapacityReservation represents the configuration for capacity reservations on Azure.
 	// +optional
 	CapacityReservation *CapacityReservation `json:"capacityReservation,omitempty"`
 }
@@ -128,10 +128,8 @@ type Volume struct {
 	Caching *string `json:"caching,omitempty"`
 }
 
-// CapacityReservation represents the configuration for Capacity Reservations on Azure.
+// CapacityReservation represents the configuration for capacity reservations on Azure.
 type CapacityReservation struct {
-	// CapacityReservationGroup is the Azure resource ID of the CapacityReservationGroup to use.
-	// TODO: Currently, Azure api models this its own type (CapacityReservation) with exactly one field, ID.
-	// Maybe use struct instead of string for futureproofing? Could be handled by API Versioning in future, though. Not sure.
-	CapacityReservationGroup *string `json:"capacityReservationGroup,omitempty"` // TODO: CapacityReservationGroupID?
+	// CapacityReservationGroupID is the resource ID of the capacity reservation group to use.
+	CapacityReservationGroupID *string `json:"capacityReservationGroupID,omitempty"`
 }
