@@ -25,6 +25,7 @@ import (
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/features"
 )
 
 var (
@@ -45,7 +46,7 @@ var (
 // HealthChecks are grouped by extension (e.g worker), extension.type (e.g azure) and  Health Check Type (e.g SystemComponentsHealthy)
 func RegisterHealthChecks(_ context.Context, mgr manager.Manager, opts healthcheck.DefaultAddArgs) error {
 	remedyControllerPreCheckFunc := func(_ context.Context, _ client.Client, _ client.Object, cluster *extensionscontroller.Cluster) bool {
-		return cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] != "true"
+		return !features.ExtensionFeatureGate.Enabled(features.DisableRemedyController) && cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] != "true"
 	}
 
 	if err := healthcheck.DefaultRegistration(
