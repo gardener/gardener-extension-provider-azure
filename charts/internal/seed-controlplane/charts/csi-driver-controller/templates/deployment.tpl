@@ -51,6 +51,9 @@ spec:
         - --disable-avset-nodes=false
         {{- end }}
         {{- end }}
+        {{- if .Values.diskConfig.convertRWCachingModeForInTreePV  }}
+        - --convert-rw-caching-mode-for-intree-pv=true
+        {{- end }}
         {{- end }}
         {{- if eq .role "file" }}
         - --nodeid=dummy

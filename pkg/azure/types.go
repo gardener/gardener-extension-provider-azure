@@ -14,7 +14,8 @@ const (
 
 	// ShootSkipAllowEgressDeployment skips the deployment of AllowEgress chart. The annotation exposes an option for shoot owners to override the automated behavior of Gardener.
 	ShootSkipAllowEgressDeployment = "azure.provider.extensions.gardener.cloud/skip-allow-egress"
-
+	// ShootDiskConvertRWCachingModeAnnotation is used to convert the caching mode of existing in-tree PVs to ReadOnly when attached to nodes.
+	ShootDiskConvertRWCachingModeAnnotation = "azure.provider.extensions.gardener.cloud/convert-rw-caching-mode-for-intree-pv"
 	// NetworkLayoutZoneMigrationAnnotation is used when migrating from a single subnet network layout to a multiple subnet network layout to indicate the zone that the existing subnet should be assigned to.
 	NetworkLayoutZoneMigrationAnnotation = "migration.azure.provider.extensions.gardener.cloud/zone"
 

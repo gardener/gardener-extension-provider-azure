@@ -435,6 +435,45 @@ var _ = Describe("ValuesProvider", func() {
 				azure.RemedyControllerName: remedyDisabled,
 			}))
 		})
+		It("should return correct control plane chart values when forcing read cache for in-tree PVs", func() {
+			shootAnnotations := map[string]string{
+				azure.ShootDiskConvertRWCachingModeAnnotation: "true",
+			}
+			cluster = generateCluster(cidr, k8sVersion, false, shootAnnotations, nil, &gardencorev1beta1.Seed{})
+
+			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, fakeSecretsManager, checksums, false)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(map[string]interface{}{
+				"global": map[string]interface{}{
+					"genericTokenKubeconfigSecretName": genericTokenKubeconfigSecretName,
+				},
+				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
+					"useWorkloadIdentity": false,
+				}),
+				azure.CSIControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
+					"diskConfig": map[string]interface{}{
+						"convertRWCachingModeForInTreePV": true,
+					},
+					"replicas": 1,
+					"vmType":   "standard",
+					"podAnnotations": map[string]interface{}{
+						"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
+					},
+					"csiSnapshotController": map[string]interface{}{
+						"replicas": 1,
+					},
+					"useWorkloadIdentity": false,
+				}),
+				azure.RemedyControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
+					"replicas": 1,
+					"podAnnotations": map[string]interface{}{
+						"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
+					},
+					"useWorkloadIdentity": false,
+				})}))
+		})
 
 		DescribeTable("topologyAwareRoutingEnabled value",
 			func(seedSettings *gardencorev1beta1.SeedSettings, shootControlPlane *gardencorev1beta1.ControlPlane) {

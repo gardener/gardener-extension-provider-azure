@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
@@ -608,6 +609,12 @@ func getCSIControllerChartValues(
 			"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
 		},
 		"useWorkloadIdentity": useWorkloadIdentity,
+	}
+	convertRWCachingModeForInTreePV, _ := strconv.ParseBool(cluster.Shoot.Annotations[azure.ShootDiskConvertRWCachingModeAnnotation])
+	if convertRWCachingModeForInTreePV {
+		values["diskConfig"] = map[string]interface{}{
+			"convertRWCachingModeForInTreePV": convertRWCachingModeForInTreePV,
+		}
 	}
 
 	k8sVersion, err := semver.NewVersion(cluster.Shoot.Spec.Kubernetes.Version)
