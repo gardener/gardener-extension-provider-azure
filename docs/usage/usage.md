@@ -742,7 +742,7 @@ You can have your VMs deployed in existing capacity reservations that are part o
         apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
         kind: WorkerConfig
         capacityReservation:
-          capacityReservationGroup: <capacity reservation group ID>
+          capacityReservationGroupID: <capacity reservation group ID>
         …
       …
 
