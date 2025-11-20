@@ -146,10 +146,11 @@ var _ = Describe("Machines", func() {
 				archAMD string
 				archARM string
 
-				osDiskConfig      apiv1alpha1.Volume
-				diagnosticProfile apiv1alpha1.DiagnosticsProfile
-				providerConfig    *runtime.RawExtension
-				workerConfig      apiv1alpha1.WorkerConfig
+				capacityReservationConfig apiv1alpha1.CapacityReservation
+				osDiskConfig              apiv1alpha1.Volume
+				diagnosticProfile         apiv1alpha1.DiagnosticsProfile
+				providerConfig            *runtime.RawExtension
+				workerConfig              apiv1alpha1.WorkerConfig
 
 				shootVersionMajorMinor string
 				shootVersion           string
@@ -216,6 +217,10 @@ var _ = Describe("Machines", func() {
 				archAMD = "amd64"
 				archARM = "arm64"
 
+				capacityReservationConfig = apiv1alpha1.CapacityReservation{
+					CapacityReservationGroupID: ptr.To("/foo/bar/test-1234"),
+				}
+
 				osDiskConfig = apiv1alpha1.Volume{
 					Caching: ptr.To(string(armcompute.CachingTypesReadOnly)),
 				}
@@ -230,8 +235,9 @@ var _ = Describe("Machines", func() {
 						APIVersion: apiv1alpha1.SchemeGroupVersion.String(),
 						Kind:       "WorkerConfig",
 					},
-					DiagnosticsProfile: &diagnosticProfile,
-					Volume:             &osDiskConfig,
+					DiagnosticsProfile:  &diagnosticProfile,
+					Volume:              &osDiskConfig,
+					CapacityReservation: &capacityReservationConfig,
 				}
 
 				marshalledWorkerConfig, err := json.Marshal(workerConfig)
@@ -634,6 +640,10 @@ var _ = Describe("Machines", func() {
 					machineClassPool4["operatingSystem"] = map[string]interface{}{
 						"operatingSystemName":    machineImageName,
 						"operatingSystemVersion": strings.ReplaceAll(machineImageVersionSharedID, "+", "_"),
+					}
+
+					machineClassPool1["capacityReservation"] = map[string]any{
+						"capacityReservationGroupID": capacityReservationConfig.CapacityReservationGroupID,
 					}
 
 					machineClasses = map[string]interface{}{"machineClasses": []map[string]interface{}{
