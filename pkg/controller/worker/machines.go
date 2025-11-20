@@ -302,7 +302,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			}
 
 			var (
-				deploymentName = fmt.Sprintf("%s-%s", w.worker.Namespace, pool.Name)
+				deploymentName = fmt.Sprintf("%s-%s", w.cluster.Shoot.Status.TechnicalID, pool.Name)
 				className      = fmt.Sprintf("%s-%s", deploymentName, workerPoolHash)
 			)
 
@@ -407,9 +407,9 @@ func (w *workerDelegate) isMachineTypeSupportingAcceleratedNetworking(machineTyp
 // getVMTags returns a map of vm tags
 func (w *workerDelegate) getVMTags(pool extensionsv1alpha1.WorkerPool) map[string]string {
 	vmTags := map[string]string{
-		"Name": w.worker.Namespace,
-		SanitizeAzureVMTag(fmt.Sprintf("kubernetes.io-cluster-%s", w.worker.Namespace)): "1",
-		SanitizeAzureVMTag("kubernetes.io-role-node"):                                   "1",
+		"Name": w.cluster.Shoot.Status.TechnicalID,
+		SanitizeAzureVMTag(fmt.Sprintf("kubernetes.io-cluster-%s", w.cluster.Shoot.Status.TechnicalID)): "1",
+		SanitizeAzureVMTag("kubernetes.io-role-node"):                                                   "1",
 	}
 	for k, v := range pool.Labels {
 		vmTags[SanitizeAzureVMTag(k)] = v

@@ -103,7 +103,7 @@ func makeWorker(namespace string, region string, sshKey *string, infrastructureS
 	}
 }
 
-func makeCluster(shootVersion, region string, machineTypes []v1alpha1.MachineType, machineImages []v1alpha1.MachineImages, faultDomainCount int32) *extensionscontroller.Cluster {
+func makeCluster(technicalID, shootVersion, region string, machineTypes []v1alpha1.MachineType, machineImages []v1alpha1.MachineImages, faultDomainCount int32) *extensionscontroller.Cluster {
 	cloudProfileConfig := &v1alpha1.CloudProfileConfig{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: v1alpha1.SchemeGroupVersion.String(),
@@ -134,6 +134,9 @@ func makeCluster(shootVersion, region string, machineTypes []v1alpha1.MachineTyp
 				Kubernetes: gardencorev1beta1.Kubernetes{
 					Version: shootVersion,
 				},
+			},
+			Status: gardencorev1beta1.ShootStatus{
+				TechnicalID: technicalID,
 			},
 		},
 	}

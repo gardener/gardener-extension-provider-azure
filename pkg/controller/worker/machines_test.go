@@ -51,7 +51,7 @@ var _ = Describe("Machines", func() {
 		statusWriter *mockclient.MockStatusWriter
 		chartApplier *mockkubernetes.MockChartApplier
 
-		namespace, region              string
+		namespace, technicalID, region string
 		zone1, zone2                   string
 		regionAndZone1, regionAndZone2 string
 	)
@@ -66,7 +66,8 @@ var _ = Describe("Machines", func() {
 		// Let the seed client always the mocked status writer when Status() is called.
 		c.EXPECT().Status().AnyTimes().Return(statusWriter)
 
-		namespace = "shoot--foobar--azure"
+		namespace = "control-plane-namespace"
+		technicalID = "shoot--foobar--azure"
 		region = "westeurope"
 		zone1 = "1"
 		zone2 = "2"
@@ -460,9 +461,9 @@ var _ = Describe("Machines", func() {
 				}
 
 				vmTags := map[string]string{
-					"Name": namespace,
-					SanitizeAzureVMTag(fmt.Sprintf("kubernetes.io-cluster-%s", namespace)): "1",
-					SanitizeAzureVMTag("kubernetes.io-role-node"):                          "1",
+					"Name": technicalID,
+					SanitizeAzureVMTag(fmt.Sprintf("kubernetes.io-cluster-%s", technicalID)): "1",
+					SanitizeAzureVMTag("kubernetes.io-role-node"):                            "1",
 				}
 				for k, v := range labels {
 					vmTags[SanitizeAzureVMTag(k)] = v
@@ -495,7 +496,7 @@ var _ = Describe("Machines", func() {
 					},
 				}
 
-				cluster = makeCluster(shootVersion, region, machineTypes, machineImages, 0)
+				cluster = makeCluster(technicalID, shootVersion, region, machineTypes, machineImages, 0)
 				infrastructureStatus = makeInfrastructureStatus(resourceGroupName, vnetName, subnetName, true, &vnetResourceGroupName, &identityID)
 				w = makeWorker(namespace, region, &sshKey, infrastructureStatus, pool1, pool2, pool3, pool4)
 			})
@@ -554,15 +555,15 @@ var _ = Describe("Machines", func() {
 						machineClassPool3 = copyMachineClass(communityGalleryImageIDMachineClass)
 						machineClassPool4 = copyMachineClass(sharedGalleryImageIDMachineClass)
 
-						machineClassNamePool1 = fmt.Sprintf("%s-%s", namespace, namePool1)
-						machineClassNamePool2 = fmt.Sprintf("%s-%s", namespace, namePool2)
-						machineClassNamePool3 = fmt.Sprintf("%s-%s", namespace, namePool3)
-						machineClassNamePool4 = fmt.Sprintf("%s-%s", namespace, namePool4)
+						machineClassNamePool1 = fmt.Sprintf("%s-%s", technicalID, namePool1)
+						machineClassNamePool2 = fmt.Sprintf("%s-%s", technicalID, namePool2)
+						machineClassNamePool3 = fmt.Sprintf("%s-%s", technicalID, namePool3)
+						machineClassNamePool4 = fmt.Sprintf("%s-%s", technicalID, namePool4)
 
-						machineDeploymentNamePool1 = fmt.Sprintf("%s-%s-z%s", namespace, namePool1, zone1)
-						machineDeploymentNamePool2 = fmt.Sprintf("%s-%s-z%s", namespace, namePool2, zone1)
-						machineDeploymentNamePool3 = fmt.Sprintf("%s-%s-z%s", namespace, namePool3, zone1)
-						machineDeploymentNamePool4 = fmt.Sprintf("%s-%s-z%s", namespace, namePool4, zone1)
+						machineDeploymentNamePool1 = fmt.Sprintf("%s-%s-z%s", technicalID, namePool1, zone1)
+						machineDeploymentNamePool2 = fmt.Sprintf("%s-%s-z%s", technicalID, namePool2, zone1)
+						machineDeploymentNamePool3 = fmt.Sprintf("%s-%s-z%s", technicalID, namePool3, zone1)
+						machineDeploymentNamePool4 = fmt.Sprintf("%s-%s-z%s", technicalID, namePool4, zone1)
 
 						machineClassWithHashPool1 = fmt.Sprintf("%s-%s-z%s", machineClassNamePool1, workerPoolHash1, zone1)
 						machineClassWithHashPool2 = fmt.Sprintf("%s-%s-z%s", machineClassNamePool2, workerPoolHash2, zone1)
@@ -879,8 +880,8 @@ var _ = Describe("Machines", func() {
 					additionalData := []string{identityID}
 					workerPoolHash1, _ := worker.WorkerPoolHash(w.Spec.Pools[0], cluster, additionalData, additionalData, nil)
 					workerPoolHash2, _ := worker.WorkerPoolHash(w.Spec.Pools[0], cluster, append(additionalData, subnet2), append(additionalData, subnet2), nil)
-					machineClassNamePool1 := fmt.Sprintf("%s-%s", namespace, poolZones.Name)
-					machineClassNamePool2 := fmt.Sprintf("%s-%s", namespace, poolZones.Name)
+					machineClassNamePool1 := fmt.Sprintf("%s-%s", technicalID, poolZones.Name)
+					machineClassNamePool2 := fmt.Sprintf("%s-%s", technicalID, poolZones.Name)
 					machineDeploymentNamePool1 := fmt.Sprintf("%s-z%s", machineClassNamePool1, zone1)
 					machineDeploymentNamePool2 := fmt.Sprintf("%s-z%s", machineClassNamePool2, zone2)
 					machineClassWithHashPool1 := fmt.Sprintf("%s-%s-z%s", machineClassNamePool1, workerPoolHash1, zone1)
@@ -1056,7 +1057,7 @@ var _ = Describe("Machines", func() {
 					machineClassPool["nodeTemplate"] = nodeTemplateZone4
 					additionalData := []string{identityID}
 					workerPoolHash, _ := worker.WorkerPoolHash(w.Spec.Pools[0], cluster, additionalData, additionalData, nil)
-					machineClassNamePool := fmt.Sprintf("%s-%s", namespace, poolInPlace.Name)
+					machineClassNamePool := fmt.Sprintf("%s-%s", technicalID, poolInPlace.Name)
 					machineClassWithHashPool := fmt.Sprintf("%s-%s-z%s", machineClassNamePool, workerPoolHash, zone1)
 					machineDeploymentNamePool := fmt.Sprintf("%s-z%s", machineClassNamePool, zone1)
 					machineDeployments = worker.MachineDeployments{
@@ -1115,7 +1116,7 @@ var _ = Describe("Machines", func() {
 			})
 
 			It("should fail because the version is invalid", func() {
-				cluster = makeCluster("invalid", region, nil, nil, 0)
+				cluster = makeCluster(technicalID, "invalid", region, nil, nil, 0)
 				workerDelegate := wrapNewWorkerDelegate(c, chartApplier, w, cluster, nil)
 
 				result, err := workerDelegate.GenerateMachineDeployments(ctx)
@@ -1153,7 +1154,7 @@ var _ = Describe("Machines", func() {
 			})
 
 			It("should fail because the machine image information cannot be found", func() {
-				cluster = makeCluster(shootVersion, region, nil, nil, 0)
+				cluster = makeCluster(technicalID, shootVersion, region, nil, nil, 0)
 				workerDelegate := wrapNewWorkerDelegate(c, chartApplier, w, cluster, nil)
 
 				result, err := workerDelegate.GenerateMachineDeployments(ctx)
