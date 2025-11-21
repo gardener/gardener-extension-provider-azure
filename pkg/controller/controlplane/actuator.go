@@ -209,7 +209,7 @@ func (a *actuator) forceDeleteShootRemedyControllerResources(ctx context.Context
 
 	_, shootClient, err := util.NewClientForShoot(ctx, a.client, cluster.Shoot.GetName(), client.Options{}, extensionsconfigv1alpha1.RESTOptions{})
 	if err != nil {
-		// No need to report the error as this is anyway only best effort. Some scenarios, e.g. autonomous shoot clusters,
+		// No need to report the error as this is anyway only best effort. Some scenarios, e.g. self hosted shoot clusters,
 		// might not have the gardener secret and hence cannot construct the shoot client here.
 		log.Info("Could not create shoot client to check for existing remedy controller resources", "error", err.Error())
 		return err

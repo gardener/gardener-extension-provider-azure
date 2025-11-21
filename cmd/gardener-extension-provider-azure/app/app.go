@@ -233,14 +233,14 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			reconcileOpts.Completed().Apply(&azurednsrecord.DefaultAddOptions.IgnoreOperationAnnotation, &azurednsrecord.DefaultAddOptions.ExtensionClass)
 			workerCtrlOpts.Completed().Apply(&azureworker.DefaultAddOptions.Controller)
 			azureworker.DefaultAddOptions.GardenCluster = gardenCluster
-			azureworker.DefaultAddOptions.AutonomousShootCluster = generalOpts.Completed().AutonomousShootCluster
+			azureworker.DefaultAddOptions.SelfHostedShootCluster = generalOpts.Completed().SelfHostedShootCluster
 
 			topology.SeedRegion = seedOptions.Completed().Region
 			topology.SeedProvider = seedOptions.Completed().Provider
 			haNamespace.SeedRegion = seedOptions.Completed().Region
 			haNamespace.SeedProvider = seedOptions.Completed().Provider
 
-			shootWebhookConfig, err := webhookOptions.Completed().AddToManager(ctx, mgr, nil, generalOpts.Completed().AutonomousShootCluster)
+			shootWebhookConfig, err := webhookOptions.Completed().AddToManager(ctx, mgr, nil, generalOpts.Completed().SelfHostedShootCluster)
 			if err != nil {
 				return fmt.Errorf("could not add webhooks to manager: %w", err)
 			}
