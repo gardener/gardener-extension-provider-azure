@@ -474,7 +474,8 @@ If the image does not exist the machine will get stuck in creation.
 
 The `.volume` field is used to add provider specific configurations for a osDisk.
 The OS disk is the disk that contains the operating system and is mounted as `/` in the machine.
-You can configure the caching type by specifying `.volume.cachingType`.
+You can configure the host caching type by specifying `.volume.caching` in the workerConfig.
+The default value is `None`, current supported values are `None`, `ReadOnly`, `ReadWrite`.
 
 ## Example `Shoot` manifest (non-zoned)
 
