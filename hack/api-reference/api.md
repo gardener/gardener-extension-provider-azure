@@ -429,6 +429,20 @@ Volume
 <p>DataVolumes contains configuration for the additional disks attached to VMs.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>capacityReservation</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.CapacityReservation">
+CapacityReservation
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CapacityReservation represents the configuration for capacity reservations on Azure.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.WorkerStatus">WorkerStatus
@@ -597,6 +611,36 @@ string
 </td>
 <td>
 <p>ID is the ID of the resource.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.CapacityReservation">CapacityReservation
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig</a>)
+</p>
+<p>
+<p>CapacityReservation represents the configuration for capacity reservations on Azure.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>capacityReservationGroupID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>CapacityReservationGroupID is the resource ID of the capacity reservation group to use.</p>
 </td>
 </tr>
 </tbody>

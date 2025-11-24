@@ -7,6 +7,7 @@ package validation
 import (
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
@@ -38,6 +39,10 @@ func ValidateWorkerConfig(workerConfig *apiazure.WorkerConfig, dataVolumes []cor
 	allErrs = append(allErrs, validateNodeTemplate(workerConfig.NodeTemplate, fldPath.Child("nodeTemplate"))...)
 	allErrs = append(allErrs, validateDataVolumeConf(workerConfig.DataVolumes, dataVolumes, fldPath.Child("dataVolumes"))...)
 	allErrs = append(allErrs, validateOSDiskConf(workerConfig.Volume, fldPath.Child("volume"))...)
+
+	if capacityReservationConfig := workerConfig.CapacityReservation; capacityReservationConfig != nil {
+		allErrs = append(allErrs, validateCapacityReservationConfig(capacityReservationConfig, fldPath.Child("capacityReservation"))...)
+	}
 
 	return allErrs
 }
@@ -140,6 +145,36 @@ func validateResourceQuantityValue(key corev1.ResourceName, value resource.Quant
 
 	if value.Cmp(resource.Quantity{}) < 0 {
 		allErrs = append(allErrs, field.Invalid(fldPath, value.String(), fmt.Sprintf("%s value must not be negative", key)))
+	}
+
+	return allErrs
+}
+
+func validateCapacityReservationConfig(capacityReservationConfig *apiazure.CapacityReservation, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if capacityReservationGroupID := capacityReservationConfig.CapacityReservationGroupID; capacityReservationGroupID != nil {
+		resourceID, err := arm.ParseResourceID(*capacityReservationGroupID)
+		if err != nil {
+			allErrs = append(
+				allErrs,
+				field.Invalid(
+					fldPath.Child("capacityReservationGroupID"),
+					*capacityReservationGroupID,
+					fmt.Sprintf("invalid Azure resource ID: %v", err),
+				),
+			)
+		} else if resourceType := resourceID.ResourceType.Type; !strings.EqualFold(resourceType, "CapacityReservationGroups") {
+			allErrs = append(
+				allErrs,
+				field.Invalid(
+					fldPath.Child(
+						"capacityReservationGroupID"),
+					*capacityReservationGroupID,
+					fmt.Sprintf("provided resource ID must be of type 'CapacityReservationGroups', got '%s'", resourceType),
+				),
+			)
+		}
 	}
 
 	return allErrs

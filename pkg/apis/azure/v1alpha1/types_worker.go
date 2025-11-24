@@ -31,6 +31,10 @@ type WorkerConfig struct {
 	// DataVolumes contains configuration for the additional disks attached to VMs.
 	// +optional
 	DataVolumes []DataVolume `json:"dataVolumes,omitempty"`
+
+	// CapacityReservation represents the configuration for capacity reservations on Azure.
+	// +optional
+	CapacityReservation *CapacityReservation `json:"capacityReservation,omitempty"`
 }
 
 // +genclient
@@ -122,4 +126,10 @@ type Volume struct {
 	// Valid values are 'None', 'ReadOnly', and 'ReadWrite'.
 	// +optional
 	Caching *string `json:"caching,omitempty"`
+}
+
+// CapacityReservation represents the configuration for capacity reservations on Azure.
+type CapacityReservation struct {
+	// CapacityReservationGroupID is the resource ID of the capacity reservation group to use.
+	CapacityReservationGroupID *string `json:"capacityReservationGroupID,omitempty"`
 }

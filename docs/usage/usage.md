@@ -733,3 +733,25 @@ This annotation is should only be used for testing and not production shoots. It
 To have the CSI-driver configured to support the necessary features for [VolumeAttributesClasses](https://kubernetes.io/docs/concepts/storage/volume-attributes-classes/) on Azure for shoots with a k8s-version greater than 1.31, use the `azure.provider.extensions.gardener.cloud/enable-volume-attributes-class` annotation on the shoot. Keep in mind to also enable the required feature flags and runtime-config on the common kubernetes controllers (as outlined in the link above) in the shoot-spec.
 
 For more information and examples on how to configure the volume attributes class, see [example](https://github.com/kubernetes-sigs/azuredisk-csi-driver/blob/release-1.31/deploy/example/modifyvolume/README.md) provided in the azuredisk-csi-driver repository.
+
+### Support for on-demand capacity reservation
+
+You can have your VMs deployed in existing capacity reservations that are part of a capacity reservation group. Setting this up is as simple as specifying the capacity reservation group's ID as part of the worker group's provider-config:
+
+```yaml
+    workers:
+    - name: Foo
+      providerConfig:
+        apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+        kind: WorkerConfig
+        capacityReservation:
+          capacityReservationGroupID: <capacity reservation group ID>
+        …
+      …
+
+```
+
+[!NOTE]
+Make sure the capacity reservations and the capacity reservation groups are configured appropriately for your shoot's workers. For zonal shoots that means that the configured capacity reservation group _must_ be zonal as well, and have a capacity reservation in each zone where a machine is to be deployed.
+
+Please also see the [official documentation](https://learn.microsoft.com/en-us/azure/virtual-machines/capacity-reservation-overview).

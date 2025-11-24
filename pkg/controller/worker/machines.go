@@ -57,7 +57,7 @@ func (w *workerDelegate) DeployMachineClasses(ctx context.Context) error {
 		}
 	}
 
-	return w.seedChartApplier.ApplyFromEmbeddedFS(ctx, charts.InternalChart, filepath.Join("internal", "machineclass"), w.worker.Namespace, "machineclass", kubernetes.Values(map[string]interface{}{"machineClasses": w.machineClasses}))
+	return w.seedChartApplier.ApplyFromEmbeddedFS(ctx, charts.InternalChart, filepath.Join("internal", "machineclass"), w.worker.Namespace, "machineclass", kubernetes.Values(map[string]any{"machineClasses": w.machineClasses}))
 }
 
 // GenerateMachineDeployments generates the configuration for the desired machine deployments.
@@ -85,7 +85,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 	var (
 		acceleratedNetworkAllowed = true
 		machineDeployments        = worker.MachineDeployments{}
-		machineClasses            []map[string]interface{}
+		machineClasses            []map[string]any
 		machineImages             []azureapi.MachineImage
 	)
 
@@ -131,7 +131,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			},
 		})
 
-		image := map[string]interface{}{}
+		image := map[string]any{}
 		if machineImage.URN != nil {
 			image["urn"] = *machineImage.URN
 			if ok := ptr.Deref(machineImage.SkipMarketplaceAgreement, false); ok {
@@ -162,7 +162,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			return err
 		}
 
-		generateMachineClassAndDeployment := func(zone *zoneInfo, machineSet *machineSetInfo, subnetName, workerPoolHash string, workerConfig *azureapi.WorkerConfig) (worker.MachineDeployment, map[string]interface{}) {
+		generateMachineClassAndDeployment := func(zone *zoneInfo, machineSet *machineSetInfo, subnetName, workerPoolHash string, workerConfig *azureapi.WorkerConfig) (worker.MachineDeployment, map[string]any) {
 			var (
 				machineDeployment = worker.MachineDeployment{
 					PoolName:             pool.Name,
@@ -175,14 +175,14 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 					MachineConfiguration: genericworkeractuator.ReadMachineConfiguration(pool),
 				}
 
-				machineClassSpec = utils.MergeMaps(map[string]interface{}{
+				machineClassSpec = utils.MergeMaps(map[string]any{
 					"region":        w.worker.Spec.Region,
 					"resourceGroup": infrastructureStatus.ResourceGroup.Name,
 					"tags":          w.getVMTags(pool),
-					"secret": map[string]interface{}{
+					"secret": map[string]any{
 						"cloudConfig": string(userData),
 					},
-					"credentialsSecretRef": map[string]interface{}{
+					"credentialsSecretRef": map[string]any{
 						"name":      w.worker.Spec.SecretRef.Name,
 						"namespace": w.worker.Spec.SecretRef.Namespace,
 					},
@@ -192,14 +192,14 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				}, disks)
 			)
 
-			networkConfig := map[string]interface{}{
+			networkConfig := map[string]any{
 				"vnet":   infrastructureStatus.Networks.VNet.Name,
 				"subnet": subnetName,
 			}
 
 			cloudConfiguration, err := azureclient.CloudConfiguration(nil, &w.worker.Spec.Region)
 			if err == nil {
-				machineClassSpec["cloudConfiguration"] = map[string]interface{}{
+				machineClassSpec["cloudConfiguration"] = map[string]any{
 					"name": cloudConfiguration.Name,
 				}
 			}
@@ -251,7 +251,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			machineDeployment.Strategy = machineDeploymentStrategy
 
 			if workerConfig.DiagnosticsProfile != nil {
-				diagnosticProfile := map[string]interface{}{
+				diagnosticProfile := map[string]any{
 					"enabled": workerConfig.DiagnosticsProfile.Enabled,
 				}
 				if workerConfig.DiagnosticsProfile.StorageURI != nil {
@@ -291,7 +291,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			}
 
 			if machineSet != nil {
-				machineClassSpec["machineSet"] = map[string]interface{}{
+				machineClassSpec["machineSet"] = map[string]any{
 					"kind": machineSet.kind,
 					"id":   machineSet.id,
 				}
@@ -319,7 +319,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			machineClassSpec["labels"] = map[string]string{v1beta1constants.GardenerPurpose: v1beta1constants.GardenPurposeMachineClass}
 
 			if pool.MachineImage.Name != "" && pool.MachineImage.Version != "" {
-				machineClassSpec["operatingSystem"] = map[string]interface{}{
+				machineClassSpec["operatingSystem"] = map[string]any{
 					"operatingSystemName":    pool.MachineImage.Name,
 					"operatingSystemVersion": strings.ReplaceAll(pool.MachineImage.Version, "+", "_"),
 				}
@@ -327,12 +327,22 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 
 			// special processing of CVMs.
 			if isConfidentialVM(pool) {
-				machineClassSpec["securityProfile"] = map[string]interface{}{
+				machineClassSpec["securityProfile"] = map[string]any{
 					"securityType": string(armcompute.SecurityTypesConfidentialVM),
-					"uefiSettings": map[string]interface{}{
+					"uefiSettings": map[string]any{
 						"vtpmEnabled": true,
 					},
 				}
+			}
+
+			if capacityReservation := workerConfig.CapacityReservation; capacityReservation != nil {
+				capacityReservationConfig := map[string]any{}
+
+				if capacityReservationGroupID := capacityReservation.CapacityReservationGroupID; capacityReservationGroupID != nil {
+					capacityReservationConfig["capacityReservationGroupID"] = *capacityReservationGroupID
+				}
+
+				machineClassSpec["capacityReservation"] = capacityReservationConfig
 			}
 
 			machineDeployment.ClusterAutoscalerAnnotations = extensionsv1alpha1helper.GetMachineDeploymentClusterAutoscalerAnnotations(pool.ClusterAutoscaler)
@@ -417,13 +427,13 @@ func (w *workerDelegate) getVMTags(pool extensionsv1alpha1.WorkerPool) map[strin
 	return vmTags
 }
 
-func computeDisks(pool extensionsv1alpha1.WorkerPool, dataVolumesConfig []azureapi.DataVolume, osDiskConfig *azureapi.Volume) (map[string]interface{}, error) {
+func computeDisks(pool extensionsv1alpha1.WorkerPool, dataVolumesConfig []azureapi.DataVolume, osDiskConfig *azureapi.Volume) (map[string]any, error) {
 	// handle root disk
 	volumeSize, err := worker.DiskSize(pool.Volume.Size)
 	if err != nil {
 		return nil, err
 	}
-	osDisk := map[string]interface{}{
+	osDisk := map[string]any{
 		"size": volumeSize,
 		// TODO: undo setting cachingTypeNone after MCM supports passing nil as caching type to trigger defaults
 		// https://github.com/gardener/machine-controller-manager-provider-azure/issues/214
@@ -434,7 +444,7 @@ func computeDisks(pool extensionsv1alpha1.WorkerPool, dataVolumesConfig []azurea
 	}
 
 	if isConfidentialVM(pool) {
-		osDisk["securityProfile"] = map[string]interface{}{
+		osDisk["securityProfile"] = map[string]any{
 			"securityEncryptionType": string(armcompute.SecurityEncryptionTypesVMGuestStateOnly),
 		}
 	}
@@ -443,12 +453,12 @@ func computeDisks(pool extensionsv1alpha1.WorkerPool, dataVolumesConfig []azurea
 		osDisk["caching"] = *osDiskConfig.Caching
 	}
 
-	disks := map[string]interface{}{
+	disks := map[string]any{
 		"osDisk": osDisk,
 	}
 
 	// handle data disks
-	var dataDisks []map[string]interface{}
+	var dataDisks []map[string]any
 	if dataVolumes := pool.DataVolumes; len(dataVolumes) > 0 {
 		// sort data volumes for consistent device naming
 		sort.Slice(dataVolumes, func(i, j int) bool {
@@ -460,7 +470,7 @@ func computeDisks(pool extensionsv1alpha1.WorkerPool, dataVolumesConfig []azurea
 			if err != nil {
 				return nil, err
 			}
-			disk := map[string]interface{}{
+			disk := map[string]any{
 				"name":       volume.Name,
 				"lun":        int32(i), // #nosec: G115 - There is a disk validation for lun < 0 in mcm.
 				"diskSizeGB": volumeSize,
@@ -479,18 +489,18 @@ func computeDisks(pool extensionsv1alpha1.WorkerPool, dataVolumesConfig []azurea
 	return disks, nil
 }
 
-func applyWorkerConfig(diskName string, dataDisk map[string]interface{}, dataVolumeConfigs []azureapi.DataVolume) {
+func applyWorkerConfig(diskName string, dataDisk map[string]any, dataVolumeConfigs []azureapi.DataVolume) {
 	for _, config := range dataVolumeConfigs {
 		imageRef := config.ImageRef
 		if imageRef != nil && config.Name == diskName {
 			if imageRef.URN != nil {
-				dataDisk["imageRef"] = map[string]interface{}{"urn": *imageRef.URN}
+				dataDisk["imageRef"] = map[string]any{"urn": *imageRef.URN}
 			} else if imageRef.CommunityGalleryImageID != nil {
-				dataDisk["imageRef"] = map[string]interface{}{"communityGalleryImageID": *imageRef.CommunityGalleryImageID}
+				dataDisk["imageRef"] = map[string]any{"communityGalleryImageID": *imageRef.CommunityGalleryImageID}
 			} else if imageRef.SharedGalleryImageID != nil {
-				dataDisk["imageRef"] = map[string]interface{}{"sharedGalleryImageID": *imageRef.SharedGalleryImageID}
+				dataDisk["imageRef"] = map[string]any{"sharedGalleryImageID": *imageRef.SharedGalleryImageID}
 			} else if imageRef.ID != nil {
-				dataDisk["imageRef"] = map[string]interface{}{"id": imageRef.ID}
+				dataDisk["imageRef"] = map[string]any{"id": imageRef.ID}
 			}
 		}
 	}

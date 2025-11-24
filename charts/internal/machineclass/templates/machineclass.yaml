@@ -6,8 +6,7 @@ metadata:
   name: {{ $machineClass.name }}
   namespace: {{ $.Release.Namespace }}
 {{- if $machineClass.labels }}
-  labels:
-{{ toYaml $machineClass.labels | indent 4 }}
+  labels: {{- toYaml $machineClass.labels | nindent 4 }}
 {{- end }}
 type: Opaque
 data:
@@ -18,61 +17,58 @@ kind: MachineClass
 metadata:
   name: {{ $machineClass.name }}
   namespace: {{ $.Release.Namespace }}
-  labels:
-    {{- if $machineClass.operatingSystem }}
-{{ toYaml $machineClass.operatingSystem | indent 4 }}
-    {{- end }}
-    {{- if $machineClass.labels }}
-{{ toYaml $machineClass.labels | indent 4 }}
-    {{- end }}
+{{- if and $machineClass.operatingSystem $machineClass.labels }}
+  labels: {{- merge $machineClass.operatingSystem $machineClass.labels | toYaml | nindent 4 }}
+{{- else if $machineClass.operatingSystem }}
+  labels: {{- toYaml $machineClass.operatingSystem | nindent 4 }}
+{{- else if $machineClass.labels }}
+  labels: {{- toYaml $machineClass.labels | nindent 4 }}
+{{- end }}
 {{- if $machineClass.nodeTemplate }}
 nodeTemplate:
   architecture: {{ $machineClass.nodeTemplate.architecture }}
-  capacity:
-{{ toYaml $machineClass.nodeTemplate.capacity | indent 4 }}
+  capacity: {{- toYaml $machineClass.nodeTemplate.capacity | nindent 4 }}
   instanceType: {{ $machineClass.nodeTemplate.instanceType }}
   region: {{ $machineClass.nodeTemplate.region }}
   zone: {{ $machineClass.nodeTemplate.zone }}
 {{- end }}
 providerSpec:
-  {{- if hasKey $machineClass "cloudConfiguration" }}
-  cloudConfiguration:
-{{ toYaml $machineClass.cloudConfiguration | indent 4 }}
-  {{- end }}
+{{- if hasKey $machineClass "cloudConfiguration" }}
+  cloudConfiguration: {{- toYaml $machineClass.cloudConfiguration | nindent 4 }}
+{{- end }}
   location: {{ $machineClass.region }}
   properties:
-    {{- if $machineClass.securityProfile }}
+{{- if $machineClass.securityProfile }}
     securityProfile:
-      {{- if hasKey $machineClass.securityProfile "securityType" }}
+  {{- if hasKey $machineClass.securityProfile "securityType" }}
       securityType: {{ $machineClass.securityProfile.securityType }}
-      {{- end }}
-      {{- if hasKey $machineClass.securityProfile "uefiSettings" }}
-      uefiSettings:
-{{ toYaml $machineClass.securityProfile.uefiSettings | indent 8 }}
-      {{- end }}
-    {{- end }}
-    {{- if hasKey $machineClass "zone" }}
+  {{- end }}
+  {{- if hasKey $machineClass.securityProfile "uefiSettings" }}
+      uefiSettings: {{- toYaml $machineClass.securityProfile.uefiSettings | nindent 8 }}
+  {{- end }}
+{{- end }}
+{{- if hasKey $machineClass "zone" }}
     zone: {{ $machineClass.zone }}
-    {{- end }}
-    {{- if hasKey $machineClass "machineSet" }}
+{{- end }}
+{{- if hasKey $machineClass "machineSet" }}
     machineSet:
       id: {{ $machineClass.machineSet.id }}
       kind: {{ $machineClass.machineSet.kind }}
-    {{- end }}
-    {{- if hasKey $machineClass "identityID" }}
+{{- end }}
+{{- if hasKey $machineClass "identityID" }}
     identityID: {{ $machineClass.identityID }}
-    {{- end }}
-    {{- if hasKey $machineClass.network "acceleratedNetworking" }}
+{{- end }}
+{{- if hasKey $machineClass.network "acceleratedNetworking" }}
     networkProfile:
       acceleratedNetworking: {{ $machineClass.network.acceleratedNetworking }}
-    {{- end }}
-    {{- if hasKey $machineClass "diagnosticsProfile" }}
+{{- end }}
+{{- if hasKey $machineClass "diagnosticsProfile" }}
     diagnosticsProfile:
       enabled: {{ $machineClass.diagnosticsProfile.enabled }}
-      {{- if hasKey $machineClass.diagnosticsProfile "storageURI" }}
+  {{- if hasKey $machineClass.diagnosticsProfile "storageURI" }}
       storageURI: {{ $machineClass.diagnosticsProfile.storageURI }}
-      {{- end }}
-    {{- end }}
+  {{- end }}
+{{- end }}
     hardwareProfile:
       vmSize: {{ $machineClass.machineType }}
     osProfile:
@@ -93,36 +89,40 @@ providerSpec:
         sharedGalleryImageID: {{ $machineClass.image.sharedGalleryImageID }}
 {{- else }}
         urn: {{ $machineClass.image.urn }}
-        {{- if $machineClass.image.skipMarketplaceAgreement}}
+  {{- if $machineClass.image.skipMarketplaceAgreement}}
         skipMarketPlaceAgreement: true
-        {{- end }}
+  {{- end }}
 {{- end }}
       osDisk:
         caching: {{ $machineClass.osDisk.caching }}
         diskSizeGB: {{ $machineClass.osDisk.size }}
         managedDisk:
-        {{- if hasKey $machineClass.osDisk "type" }}
+{{- if hasKey $machineClass.osDisk "type" }}
           storageAccountType: {{ $machineClass.osDisk.type }}
-        {{- end }}
-        {{- if hasKey $machineClass.osDisk "securityProfile" }}
+{{- end }}
+{{- if hasKey $machineClass.osDisk "securityProfile" }}
           securityProfile:
             securityEncryptionType: {{ $machineClass.osDisk.securityProfile.securityEncryptionType }}
-        {{- end }}
+{{- end }}
         createOption: FromImage
 {{- if $machineClass.dataDisks }}
-      dataDisks:
-{{ toYaml $machineClass.dataDisks | indent 6 }}
+      dataDisks: {{- toYaml $machineClass.dataDisks | nindent 6 }}
+{{- end }}
+{{- if $machineClass.capacityReservation }}
+    capacityReservation:
+  {{- if $machineClass.capacityReservation.capacityReservationGroupID }}
+      capacityReservationGroupID: {{ $machineClass.capacityReservation.capacityReservationGroupID }}
+  {{- end }}
 {{- end }}
   resourceGroup: {{ $machineClass.resourceGroup }}
   subnetInfo:
     vnetName: {{ $machineClass.network.vnet }}
-    {{- if hasKey $machineClass.network "vnetResourceGroup" }}
+{{- if hasKey $machineClass.network "vnetResourceGroup" }}
     vnetResourceGroup: {{ $machineClass.network.vnetResourceGroup}}
-    {{- end }}
+{{- end }}
     subnetName: {{ $machineClass.network.subnet }}
 {{- if $machineClass.tags }}
-  tags:
-{{ toYaml $machineClass.tags | indent 4 }}
+  tags: {{- toYaml $machineClass.tags | nindent 4 }}
 {{- end }}
 secretRef:
   name: {{ $machineClass.name }}
