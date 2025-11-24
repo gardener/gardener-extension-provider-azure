@@ -20,17 +20,13 @@ webhookConfig:
 resources:
   csiDriverDisk:
     requests:
-      cpu: 20m
       memory: 50Mi
   csiDriverFile:
     requests:
-      cpu: 20m
       memory: 50Mi
   nodeDriverRegistrar:
     requests:
-      cpu: 11m
       memory: 32Mi
   livenessProbe:
     requests:
-      cpu: 11m
       memory: 32Mi

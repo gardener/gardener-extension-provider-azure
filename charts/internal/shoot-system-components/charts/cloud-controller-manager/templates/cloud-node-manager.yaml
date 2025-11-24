@@ -95,7 +95,6 @@ spec:
               fieldPath: spec.nodeName
         resources:
           requests:
-            cpu: 50m
             memory: 50Mi
 
 {{- if .Values.vpaEnabled }}
