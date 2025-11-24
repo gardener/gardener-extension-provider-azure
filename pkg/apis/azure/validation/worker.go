@@ -7,6 +7,7 @@ package validation
 import (
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
@@ -155,9 +156,24 @@ func validateCapacityReservationConfig(capacityReservationConfig *apiazure.Capac
 	if capacityReservationGroupID := capacityReservationConfig.CapacityReservationGroupID; capacityReservationGroupID != nil {
 		resourceID, err := arm.ParseResourceID(*capacityReservationGroupID)
 		if err != nil {
-			allErrs = append(allErrs, field.Invalid(fldPath.Child("capacityReservationGroupID"), *capacityReservationGroupID, fmt.Sprintf("invalid Azure resource ID: %v", err)))
-		} else if resourceID.ResourceType.Type != "CapacityReservationGroups" {
-			allErrs = append(allErrs, field.Invalid(fldPath.Child("capacityReservationGroupID"), *capacityReservationGroupID, "provided resource ID must be of a capacity reservation group"))
+			allErrs = append(
+				allErrs,
+				field.Invalid(
+					fldPath.Child("capacityReservationGroupID"),
+					*capacityReservationGroupID,
+					fmt.Sprintf("invalid Azure resource ID: %v", err),
+				),
+			)
+		} else if resourceType := resourceID.ResourceType.Type; !strings.EqualFold(resourceType, "CapacityReservationGroups") {
+			allErrs = append(
+				allErrs,
+				field.Invalid(
+					fldPath.Child(
+						"capacityReservationGroupID"),
+					*capacityReservationGroupID,
+					fmt.Sprintf("provided resource ID must be of type 'CapacityReservationGroups', got '%s'", resourceType),
+				),
+			)
 		}
 	}
 
