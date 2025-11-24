@@ -159,7 +159,7 @@ var _ = Describe("Machines", func() {
 
 				machineImages       []apiv1alpha1.MachineImages
 				machineTypes        []apiv1alpha1.MachineType
-				defaultMachineClass map[string]interface{}
+				defaultMachineClass map[string]any
 
 				pool1, pool2, pool3, pool4 extensionsv1alpha1.WorkerPool
 				infrastructureStatus       *apisazure.InfrastructureStatus
@@ -473,30 +473,30 @@ var _ = Describe("Machines", func() {
 				for k, v := range labels {
 					vmTags[SanitizeAzureVMTag(k)] = v
 				}
-				defaultMachineClass = map[string]interface{}{
+				defaultMachineClass = map[string]any{
 					"region":        region,
 					"resourceGroup": resourceGroupName,
-					"network": map[string]interface{}{
+					"network": map[string]any{
 						"vnet":              vnetName,
 						"subnet":            subnetName,
 						"vnetResourceGroup": vnetResourceGroupName,
 					},
 					"tags": vmTags,
-					"secret": map[string]interface{}{
+					"secret": map[string]any{
 						"cloudConfig": string(userData),
 					},
 					"machineType": machineType,
-					"osDisk": map[string]interface{}{
+					"osDisk": map[string]any{
 						"caching": "None",
 						"size":    volumeSize,
 					},
 					"sshPublicKey": sshKey,
 					"identityID":   identityID,
-					"cloudConfiguration": map[string]interface{}{
+					"cloudConfiguration": map[string]any{
 						"name": apisazure.AzurePublicCloudName,
 					},
 					"zone": zone1,
-					"image": map[string]interface{}{
+					"image": map[string]any{
 						"sharedGalleryImageID": machineImageSharedID,
 					},
 				}
@@ -517,12 +517,12 @@ var _ = Describe("Machines", func() {
 
 			Describe("machine images", func() {
 				var (
-					urnMachineClass                     map[string]interface{}
-					imageIDMachineClass                 map[string]interface{}
-					communityGalleryImageIDMachineClass map[string]interface{}
-					sharedGalleryImageIDMachineClass    map[string]interface{}
+					urnMachineClass                     map[string]any
+					imageIDMachineClass                 map[string]any
+					communityGalleryImageIDMachineClass map[string]any
+					sharedGalleryImageIDMachineClass    map[string]any
 					machineDeployments                  worker.MachineDeployments
-					machineClasses                      map[string]interface{}
+					machineClasses                      map[string]any
 
 					workerPoolHash1, workerPoolHash2, workerPoolHash3, workerPoolHash4 string
 					volumeSize                                                         int
@@ -530,17 +530,17 @@ var _ = Describe("Machines", func() {
 
 				BeforeEach(func() {
 					urnMachineClass = copyMachineClass(defaultMachineClass)
-					urnMachineClass["image"] = map[string]interface{}{
+					urnMachineClass["image"] = map[string]any{
 						"urn": machineImageURN,
 					}
 
 					imageIDMachineClass = copyMachineClass(defaultMachineClass)
-					imageIDMachineClass["image"] = map[string]interface{}{
+					imageIDMachineClass["image"] = map[string]any{
 						"id": machineImageID,
 					}
 
 					communityGalleryImageIDMachineClass = copyMachineClass(defaultMachineClass)
-					communityGalleryImageIDMachineClass["image"] = map[string]interface{}{
+					communityGalleryImageIDMachineClass["image"] = map[string]any{
 						"communityGalleryImageID": machineImageCommunityID,
 					}
 
@@ -585,12 +585,12 @@ var _ = Describe("Machines", func() {
 					machineClassPool3["nodeTemplate"] = nodeTemplateZone3
 					machineClassPool4["nodeTemplate"] = nodeTemplateZone4
 
-					machineClassPool1["diagnosticsProfile"] = map[string]interface{}{
+					machineClassPool1["diagnosticsProfile"] = map[string]any{
 						"enabled":    diagnosticProfile.Enabled,
 						"storageURI": diagnosticProfile.StorageURI,
 					}
 
-					machineClassPool1["dataDisks"] = []map[string]interface{}{
+					machineClassPool1["dataDisks"] = []map[string]any{
 						{
 							"name":               dataVolume2Name,
 							"lun":                int32(0),
@@ -605,39 +605,39 @@ var _ = Describe("Machines", func() {
 							"caching":    "None",
 						},
 					}
-					machineClassPool1["osDisk"] = map[string]interface{}{
+					machineClassPool1["osDisk"] = map[string]any{
 						"size":    volumeSize,
 						"caching": *osDiskConfig.Caching,
 					}
-					machineClassPool2["osDisk"] = map[string]interface{}{
+					machineClassPool2["osDisk"] = map[string]any{
 						"size":    volumeSize,
 						"type":    volumeType,
 						"caching": "None",
 					}
-					machineClassPool3["osDisk"] = map[string]interface{}{
+					machineClassPool3["osDisk"] = map[string]any{
 						"size":    volumeSize,
 						"type":    volumeType,
 						"caching": "None",
 					}
-					machineClassPool4["osDisk"] = map[string]interface{}{
+					machineClassPool4["osDisk"] = map[string]any{
 						"size":    volumeSize,
 						"type":    volumeType,
 						"caching": "None",
 					}
 
-					machineClassPool1["operatingSystem"] = map[string]interface{}{
+					machineClassPool1["operatingSystem"] = map[string]any{
 						"operatingSystemName":    machineImageName,
 						"operatingSystemVersion": strings.ReplaceAll(machineImageVersion, "+", "_"),
 					}
-					machineClassPool2["operatingSystem"] = map[string]interface{}{
+					machineClassPool2["operatingSystem"] = map[string]any{
 						"operatingSystemName":    machineImageName,
 						"operatingSystemVersion": strings.ReplaceAll(machineImageVersionID, "+", "_"),
 					}
-					machineClassPool3["operatingSystem"] = map[string]interface{}{
+					machineClassPool3["operatingSystem"] = map[string]any{
 						"operatingSystemName":    machineImageName,
 						"operatingSystemVersion": strings.ReplaceAll(machineImageVersionCommunityID, "+", "_"),
 					}
-					machineClassPool4["operatingSystem"] = map[string]interface{}{
+					machineClassPool4["operatingSystem"] = map[string]any{
 						"operatingSystemName":    machineImageName,
 						"operatingSystemVersion": strings.ReplaceAll(machineImageVersionSharedID, "+", "_"),
 					}
@@ -646,7 +646,7 @@ var _ = Describe("Machines", func() {
 						"capacityReservationGroupID": capacityReservationConfig.CapacityReservationGroupID,
 					}
 
-					machineClasses = map[string]interface{}{"machineClasses": []map[string]interface{}{
+					machineClasses = map[string]any{"machineClasses": []map[string]any{
 						machineClassPool1,
 						machineClassPool2,
 						machineClassPool3,
@@ -795,7 +795,7 @@ var _ = Describe("Machines", func() {
 					maxUnavailablePoolZones intstr.IntOrString
 
 					machineDeployments worker.MachineDeployments
-					machineClasses     map[string]interface{}
+					machineClasses     map[string]any
 
 					subnet1, subnet2 string
 					poolZones        extensionsv1alpha1.WorkerPool
@@ -858,31 +858,31 @@ var _ = Describe("Machines", func() {
 					w = makeWorker(namespace, region, &sshKey, infrastructureStatus, poolZones)
 
 					machineClassPool1 := copyMachineClass(defaultMachineClass)
-					machineClassPool1["operatingSystem"] = map[string]interface{}{
+					machineClassPool1["operatingSystem"] = map[string]any{
 						"operatingSystemName":    machineImageName,
 						"operatingSystemVersion": strings.ReplaceAll(machineImageVersionSharedID, "+", "_"),
 					}
-					machineClassPool1["image"] = map[string]interface{}{
+					machineClassPool1["image"] = map[string]any{
 						"sharedGalleryImageID": machineImageSharedID,
 					}
 					machineClassPool1["nodeTemplate"] = nodeTemplateZone4
-					machineClassPool1["network"].(map[string]interface{})["subnet"] = subnet1
+					machineClassPool1["network"].(map[string]any)["subnet"] = subnet1
 
 					machineClassPool2 := copyMachineClass(defaultMachineClass)
 					machineClassPool2["zone"] = zone2
-					machineClassPool2["operatingSystem"] = map[string]interface{}{
+					machineClassPool2["operatingSystem"] = map[string]any{
 						"operatingSystemName":    machineImageName,
 						"operatingSystemVersion": strings.ReplaceAll(machineImageVersionSharedID, "+", "_"),
 					}
-					machineClassPool2["image"] = map[string]interface{}{
+					machineClassPool2["image"] = map[string]any{
 						"sharedGalleryImageID": machineImageSharedID,
 					}
 
 					nodeTemplateZone4.Zone = regionAndZone2
 					machineClassPool2["nodeTemplate"] = nodeTemplateZone4
-					machineClassPool2["network"] = maps.Clone(machineClassPool1["network"].(map[string]interface{}))
-					machineClassPool2["network"].(map[string]interface{})["subnet"] = subnet2
-					machineClasses = map[string]interface{}{"machineClasses": []map[string]interface{}{
+					machineClassPool2["network"] = maps.Clone(machineClassPool1["network"].(map[string]any))
+					machineClassPool2["network"].(map[string]any)["subnet"] = subnet2
+					machineClasses = map[string]any{"machineClasses": []map[string]any{
 						machineClassPool1,
 						machineClassPool2,
 					}}
@@ -1056,11 +1056,11 @@ var _ = Describe("Machines", func() {
 					w = makeWorker(namespace, region, &sshKey, infrastructureStatus, poolInPlace)
 
 					machineClassPool := copyMachineClass(defaultMachineClass)
-					machineClassPool["operatingSystem"] = map[string]interface{}{
+					machineClassPool["operatingSystem"] = map[string]any{
 						"operatingSystemName":    machineImageName,
 						"operatingSystemVersion": strings.ReplaceAll(machineImageVersionSharedID, "+", "_"),
 					}
-					machineClassPool["image"] = map[string]interface{}{
+					machineClassPool["image"] = map[string]any{
 						"sharedGalleryImageID": machineImageSharedID,
 					}
 					machineClassPool["nodeTemplate"] = nodeTemplateZone4
@@ -1222,8 +1222,8 @@ var _ = Describe("Machines", func() {
 	})
 })
 
-func copyMachineClass(def map[string]interface{}) map[string]interface{} {
-	out := make(map[string]interface{}, len(def))
+func copyMachineClass(def map[string]any) map[string]any {
+	out := make(map[string]any, len(def))
 
 	for k, v := range def {
 		out[k] = v
@@ -1232,9 +1232,9 @@ func copyMachineClass(def map[string]interface{}) map[string]interface{} {
 	return out
 }
 
-func addNameAndSecretsToMachineClass(class map[string]interface{}, name string, credentialsSecretRef corev1.SecretReference) {
+func addNameAndSecretsToMachineClass(class map[string]any, name string, credentialsSecretRef corev1.SecretReference) {
 	class["name"] = name
-	class["credentialsSecretRef"] = map[string]interface{}{
+	class["credentialsSecretRef"] = map[string]any{
 		"name":      credentialsSecretRef.Name,
 		"namespace": credentialsSecretRef.Namespace,
 	}
