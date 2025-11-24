@@ -14,3 +14,4 @@ spec:
     containerPolicies:
     - containerName: azure-cloud-controller-manager
       controlledValues: RequestsOnly
+      controlledResources: ["memory"]
