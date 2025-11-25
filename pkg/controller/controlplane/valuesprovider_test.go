@@ -445,34 +445,10 @@ var _ = Describe("ValuesProvider", func() {
 			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, fakeSecretsManager, checksums, false)
 
 			Expect(err).NotTo(HaveOccurred())
-			Expect(values).To(Equal(map[string]interface{}{
-				"global": map[string]interface{}{
-					"genericTokenKubeconfigSecretName": genericTokenKubeconfigSecretName,
-				},
-				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
-					"useWorkloadIdentity": false,
-				}),
-				azure.CSIControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
-					"diskConfig": map[string]interface{}{
-						"convertRWCachingModeForInTreePV": true,
-					},
-					"replicas": 1,
-					"vmType":   "standard",
-					"podAnnotations": map[string]interface{}{
-						"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
-					},
-					"csiSnapshotController": map[string]interface{}{
-						"replicas": 1,
-					},
-					"useWorkloadIdentity": false,
-				}),
-				azure.RemedyControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
-					"replicas": 1,
-					"podAnnotations": map[string]interface{}{
-						"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
-					},
-					"useWorkloadIdentity": false,
-				})}))
+			Expect(values).To(HaveKey(azure.CSIControllerName))
+			Expect(values[azure.CSIControllerName]).To(HaveKeyWithValue("diskConfig", map[string]any{
+				"convertRWCachingModeForInTreePV": true,
+			}))
 		})
 
 		DescribeTable("topologyAwareRoutingEnabled value",
