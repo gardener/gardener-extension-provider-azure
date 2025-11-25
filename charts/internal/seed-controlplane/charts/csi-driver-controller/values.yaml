@@ -13,6 +13,9 @@ images:
 
 socketPath: /var/lib/csi/sockets/pluginproxy
 
+diskConfig:
+  convertRWCachingModeForInTreePV: false
+
 resources:
   csiDriverDisk:
     requests:

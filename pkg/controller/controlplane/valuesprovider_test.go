@@ -435,6 +435,21 @@ var _ = Describe("ValuesProvider", func() {
 				azure.RemedyControllerName: remedyDisabled,
 			}))
 		})
+		It("should return correct control plane chart values when forcing read cache for in-tree PVs", func() {
+			shootAnnotations := map[string]string{
+				azure.ShootDiskConvertRWCachingModeAnnotation: "true",
+			}
+			cluster = generateCluster(cidr, k8sVersion, false, shootAnnotations, nil, &gardencorev1beta1.Seed{})
+
+			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, fakeSecretsManager, checksums, false)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(HaveKey(azure.CSIControllerName))
+			Expect(values[azure.CSIControllerName]).To(HaveKeyWithValue("diskConfig", map[string]any{
+				"convertRWCachingModeForInTreePV": true,
+			}))
+		})
 
 		DescribeTable("topologyAwareRoutingEnabled value",
 			func(seedSettings *gardencorev1beta1.SeedSettings, shootControlPlane *gardencorev1beta1.ControlPlane) {

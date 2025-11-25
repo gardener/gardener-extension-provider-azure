@@ -755,3 +755,9 @@ You can have your VMs deployed in existing capacity reservations that are part o
 Make sure the capacity reservations and the capacity reservation groups are configured appropriately for your shoot's workers. For zonal shoots that means that the configured capacity reservation group _must_ be zonal as well, and have a capacity reservation in each zone where a machine is to be deployed.
 
 Please also see the [official documentation](https://learn.microsoft.com/en-us/azure/virtual-machines/capacity-reservation-overview).
+
+
+### Force ReadCache caching mode for in-tree Azure Disk PVs
+
+To have the in-tree Azure Disk PVs use ReadCache caching mode, use the `azure.provider.extensions.gardener.cloud/convert-rw-caching-mode-for-intree-pv="true"` annotation on the shoot.
+This will force the Azure Disk in-tree PVs to use ReadCache caching mode instead of the default ReadWrite caching mode when they get attached to a node, irrespective of the caching mode defined in the PV.

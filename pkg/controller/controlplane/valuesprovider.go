@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
@@ -597,17 +598,23 @@ func getCSIControllerChartValues(
 	infraStatus *apisazure.InfrastructureStatus,
 	checksums map[string]string,
 	useWorkloadIdentity bool,
-) (map[string]interface{}, error) {
-	values := map[string]interface{}{
+) (map[string]any, error) {
+	values := map[string]any{
 		"enabled": true,
-		"podAnnotations": map[string]interface{}{
+		"podAnnotations": map[string]any{
 			"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
 		},
 		"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
-		"csiSnapshotController": map[string]interface{}{
+		"csiSnapshotController": map[string]any{
 			"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
 		},
 		"useWorkloadIdentity": useWorkloadIdentity,
+	}
+	convertRWCachingModeForInTreePV, _ := strconv.ParseBool(cluster.Shoot.Annotations[azure.ShootDiskConvertRWCachingModeAnnotation])
+	if convertRWCachingModeForInTreePV {
+		values["diskConfig"] = map[string]any{
+			"convertRWCachingModeForInTreePV": convertRWCachingModeForInTreePV,
+		}
 	}
 
 	k8sVersion, err := semver.NewVersion(cluster.Shoot.Spec.Kubernetes.Version)
@@ -616,12 +623,12 @@ func getCSIControllerChartValues(
 	}
 	if versionutils.ConstraintK8sGreaterEqual131.Check(k8sVersion) {
 		if _, ok := cluster.Shoot.Annotations[azure.AnnotationEnableVolumeAttributesClass]; ok {
-			values["csiResizer"] = map[string]interface{}{
+			values["csiResizer"] = map[string]any{
 				"featureGates": map[string]string{
 					"VolumeAttributesClass": "true",
 				},
 			}
-			values["csiProvisioner"] = map[string]interface{}{
+			values["csiProvisioner"] = map[string]any{
 				"featureGates": map[string]string{
 					"VolumeAttributesClass": "true",
 				},
