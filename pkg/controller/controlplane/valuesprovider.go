@@ -598,7 +598,7 @@ func getCSIControllerChartValues(
 	infraStatus *apisazure.InfrastructureStatus,
 	checksums map[string]string,
 	useWorkloadIdentity bool,
-) (map[string]interface{}, error) {
+) (map[string]any, error) {
 	values := map[string]any{
 		"enabled": true,
 		"podAnnotations": map[string]any{
