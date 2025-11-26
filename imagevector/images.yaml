@@ -209,7 +209,7 @@ images:
     signing: false
 - name: csi-driver-file
   sourceRepository: github.com/kubernetes-sigs/azurefile-csi-driver
-  repository: mcr.microsoft.com/oss/kubernetes-csi/azurefile-csi
+  repository: mcr.microsoft.com/oss/v2/kubernetes-csi/azurefile-csi
   tag: v1.33.3
   labels:
   - name: gardener.cloud/cve-categorisation
