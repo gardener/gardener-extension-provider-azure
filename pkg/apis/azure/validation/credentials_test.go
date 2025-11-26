@@ -29,9 +29,9 @@ var _ = Describe("Credential validation helpers", func() {
 		regionValue                  = "westeurope"
 		subscriptionIDWithWhitespace = " a6ad693a-028a-422c-b064-d76a4586f2b3 "
 		invalidGUIDValue             = "invalid-guid"
-		oldSubscriptionIDValue       = "old-subscription"
-		oldTenantIDValue             = "old-tenant"
-		newSubscriptionIDValue       = "new-subscription"
+		oldSubscriptionIDValue       = "11111111-2222-3333-4444-555555555555"
+		oldTenantIDValue             = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+		newSubscriptionIDValue       = "99999999-8888-7777-6666-555555555555"
 		testFieldAllowedValue        = "value2"
 		testFieldInvalidValue        = "invalid-value"
 	)
@@ -45,46 +45,65 @@ var _ = Describe("Credential validation helpers", func() {
 			Data: make(map[string][]byte),
 		}
 		oldSecret = nil
-		fldPath = field.NewPath("data")
+		fldPath = field.NewPath("secret")
 		mapping = CredentialMapping{
-			RequiredFields: map[string]string{
-				"subscriptionID": "SUBSCRIPTION_ID",
-				"tenantID":       "TENANT_ID",
-			},
-			OptionalFields: map[string]string{
-				"clientID":     "CLIENT_ID",
-				"clientSecret": "CLIENT_SECRET",
-				"region":       "REGION",
-			},
-			GUIDFields: map[string]string{
-				"subscriptionID": "SUBSCRIPTION_ID",
-				"tenantID":       "TENANT_ID",
-				"clientID":       "CLIENT_ID",
-			},
-			ImmutableFields: map[string]string{
-				"subscriptionID": "SUBSCRIPTION_ID",
-				"tenantID":       "TENANT_ID",
+			Fields: map[string]FieldSpec{
+				"SUBSCRIPTION_ID": {
+					Required:    true,
+					IsGUID:      true,
+					IsImmutable: true,
+				},
+				"TENANT_ID": {
+					Required:    true,
+					IsGUID:      true,
+					IsImmutable: true,
+				},
+				"CLIENT_ID": {
+					Required:    false,
+					IsGUID:      true,
+					IsImmutable: false,
+				},
+				"CLIENT_SECRET": {
+					Required:    false,
+					IsGUID:      false,
+					IsImmutable: false,
+				},
+				"REGION": {
+					Required:    false,
+					IsGUID:      false,
+					IsImmutable: false,
+				},
 			},
 		}
 	})
 
-	Describe("validateRequiredCredentials", func() {
-		It("should pass when all required fields are present and non-empty", func() {
+	Describe("#Validate", func() {
+		It("should pass with valid required and optional fields", func() {
+			secret.Data["SUBSCRIPTION_ID"] = []byte(subscriptionIDValue)
+			secret.Data["TENANT_ID"] = []byte(tenantIDValue)
+			secret.Data["CLIENT_ID"] = []byte(clientIDValue)
+			secret.Data["REGION"] = []byte(regionValue)
+
+			errs := mapping.Validate(secret, nil, fldPath, "test resources")
+			Expect(errs).To(BeEmpty())
+		})
+
+		It("should pass when optional fields are missing", func() {
 			secret.Data["SUBSCRIPTION_ID"] = []byte(subscriptionIDValue)
 			secret.Data["TENANT_ID"] = []byte(tenantIDValue)
 
-			errs := ValidateRequiredCredentials(secret, mapping, fldPath)
+			errs := mapping.Validate(secret, nil, fldPath, "test resources")
 			Expect(errs).To(BeEmpty())
 		})
 
 		It("should return error when required field is missing", func() {
 			secret.Data["TENANT_ID"] = []byte(tenantIDValue)
 
-			errs := ValidateRequiredCredentials(secret, mapping, fldPath)
+			errs := mapping.Validate(secret, nil, fldPath, "test resources")
 			Expect(errs).To(HaveLen(1))
-			expectedDetail := fmt.Sprintf("missing required field subscriptionID in secret %v/%v", secret.Namespace, secret.Name)
+			expectedDetail := fmt.Sprintf("missing required field %q in secret %v/%v", "SUBSCRIPTION_ID", secret.Namespace, secret.Name)
 			Expect(errs[0].Type).To(Equal(field.ErrorTypeRequired))
-			Expect(errs[0].Field).To(Equal("data[SUBSCRIPTION_ID]"))
+			Expect(errs[0].Field).To(Equal("secret.data[SUBSCRIPTION_ID]"))
 			Expect(errs[0].Detail).To(Equal(expectedDetail))
 		})
 
@@ -92,137 +111,95 @@ var _ = Describe("Credential validation helpers", func() {
 			secret.Data["SUBSCRIPTION_ID"] = []byte("")
 			secret.Data["TENANT_ID"] = []byte(tenantIDValue)
 
-			errs := ValidateRequiredCredentials(secret, mapping, fldPath)
+			errs := mapping.Validate(secret, nil, fldPath, "test resources")
 			Expect(errs).To(HaveLen(1))
-			expectedDetail := fmt.Sprintf("field subscriptionID cannot be empty in secret %v/%v", secret.Namespace, secret.Name)
+			expectedDetail := fmt.Sprintf("field %q cannot be empty in secret %v/%v", "SUBSCRIPTION_ID", secret.Namespace, secret.Name)
 			Expect(errs[0].Type).To(Equal(field.ErrorTypeInvalid))
-			Expect(errs[0].Field).To(Equal("data[SUBSCRIPTION_ID]"))
+			Expect(errs[0].Field).To(Equal("secret.data[SUBSCRIPTION_ID]"))
 			Expect(errs[0].Detail).To(Equal(expectedDetail))
-		})
-	})
-
-	Describe("validateOptionalCredentials", func() {
-		It("should pass when optional fields are present and non-empty", func() {
-			secret.Data["CLIENT_ID"] = []byte(clientIDValue)
-			secret.Data["REGION"] = []byte(regionValue)
-
-			errs := ValidateOptionalCredentials(secret, mapping, fldPath)
-			Expect(errs).To(BeEmpty())
-		})
-
-		It("should pass when optional fields are missing", func() {
-			errs := ValidateOptionalCredentials(secret, mapping, fldPath)
-			Expect(errs).To(BeEmpty())
-		})
-
-		It("should return error when optional field is empty", func() {
-			secret.Data["CLIENT_ID"] = []byte("")
-
-			errs := ValidateOptionalCredentials(secret, mapping, fldPath)
-			Expect(errs).To(HaveLen(1))
-			expectedDetail := fmt.Sprintf("field clientID cannot be empty if specified in secret %v/%v", secret.Namespace, secret.Name)
-			Expect(errs[0].Type).To(Equal(field.ErrorTypeInvalid))
-			Expect(errs[0].Detail).To(Equal(expectedDetail))
-		})
-	})
-
-	Describe("validateCredentialFormats", func() {
-		It("should pass when GUID fields have valid format", func() {
-			secret.Data["SUBSCRIPTION_ID"] = []byte(subscriptionIDValue)
-			secret.Data["TENANT_ID"] = []byte(tenantIDValue)
-			secret.Data["CLIENT_ID"] = []byte(clientIDValue)
-
-			errs := ValidateCredentialFormats(secret, mapping, fldPath)
-			Expect(errs).To(BeEmpty())
 		})
 
 		It("should return error when GUID field has invalid format", func() {
 			secret.Data["SUBSCRIPTION_ID"] = []byte(invalidGUIDValue)
+			secret.Data["TENANT_ID"] = []byte(tenantIDValue)
 
-			errs := ValidateCredentialFormats(secret, mapping, fldPath)
+			errs := mapping.Validate(secret, nil, fldPath, "test resources")
 			Expect(errs).To(HaveLen(1))
-			expectedDetail := fmt.Sprintf("field subscriptionID must be a valid GUID in secret %v/%v", secret.Namespace, secret.Name)
+			expectedDetail := fmt.Sprintf("field %q must be a valid GUID in secret %v/%v", "SUBSCRIPTION_ID", secret.Namespace, secret.Name)
 			Expect(errs[0].Type).To(Equal(field.ErrorTypeInvalid))
-			Expect(errs[0].Field).To(Equal("data[SUBSCRIPTION_ID]"))
+			Expect(errs[0].Field).To(Equal("secret.data[SUBSCRIPTION_ID]"))
 			Expect(errs[0].BadValue).To(Equal("(hidden)"))
 			Expect(errs[0].Detail).To(Equal(expectedDetail))
 		})
 
 		It("should return error when field contains leading/trailing whitespace", func() {
 			secret.Data["SUBSCRIPTION_ID"] = []byte(subscriptionIDWithWhitespace)
+			secret.Data["TENANT_ID"] = []byte(tenantIDValue)
 
-			errs := ValidateCredentialFormats(secret, mapping, fldPath)
+			errs := mapping.Validate(secret, nil, fldPath, "test resources")
 			Expect(errs).To(HaveLen(2))
-			expectedDetailGUID := fmt.Sprintf("field subscriptionID must be a valid GUID in secret %v/%v", secret.Namespace, secret.Name)
-			expectedDetailWhitespace := fmt.Sprintf("field subscriptionID must not contain leading or trailing whitespace in secret %v/%v", secret.Namespace, secret.Name)
+			expectedDetailGUID := fmt.Sprintf("field %q must be a valid GUID in secret %v/%v", "SUBSCRIPTION_ID", secret.Namespace, secret.Name)
+			expectedDetailWhitespace := fmt.Sprintf("field %q must not contain leading or trailing whitespace in secret %v/%v", "SUBSCRIPTION_ID", secret.Namespace, secret.Name)
 			Expect(errs[0].Detail).To(Equal(expectedDetailGUID))
 			Expect(errs[1].Type).To(Equal(field.ErrorTypeInvalid))
-			Expect(errs[1].Field).To(Equal("data[SUBSCRIPTION_ID]"))
+			Expect(errs[1].Field).To(Equal("secret.data[SUBSCRIPTION_ID]"))
 			Expect(errs[1].Detail).To(Equal(expectedDetailWhitespace))
-		})
-	})
-
-	Describe("validateNoUnexpectedFields", func() {
-		It("should pass when only expected fields are present", func() {
-			secret.Data["SUBSCRIPTION_ID"] = []byte(subscriptionIDValue)
-			secret.Data["CLIENT_ID"] = []byte(clientIDValue)
-
-			errs := ValidateNoUnexpectedFields(secret, mapping, fldPath)
-			Expect(errs).To(BeEmpty())
 		})
 
 		It("should return error when unexpected field is present", func() {
 			secret.Data["SUBSCRIPTION_ID"] = []byte(subscriptionIDValue)
+			secret.Data["TENANT_ID"] = []byte(tenantIDValue)
 			secret.Data["UNEXPECTED_FIELD"] = []byte("value")
 
-			errs := ValidateNoUnexpectedFields(secret, mapping, fldPath)
+			errs := mapping.Validate(secret, nil, fldPath, "test resources")
 			Expect(errs).To(HaveLen(1))
-			expectedDetail := fmt.Sprintf("unexpected field \"UNEXPECTED_FIELD\" in secret %v/%v", secret.Namespace, secret.Name)
+			expectedDetail := fmt.Sprintf("unexpected field %q in secret %v/%v", "UNEXPECTED_FIELD", secret.Namespace, secret.Name)
 			Expect(errs[0].Type).To(Equal(field.ErrorTypeForbidden))
-			Expect(errs[0].Field).To(Equal("data[UNEXPECTED_FIELD]"))
+			Expect(errs[0].Field).To(Equal("secret.data[UNEXPECTED_FIELD]"))
 			Expect(errs[0].Detail).To(Equal(expectedDetail))
+		})
+
+		Context("with immutable fields", func() {
+			oldSubscriptionID := []byte(oldSubscriptionIDValue)
+			oldTenantID := []byte(oldTenantIDValue)
+
+			BeforeEach(func() {
+				oldSecret = &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "old-secret",
+						Namespace: "test-namespace",
+					},
+					Data: map[string][]byte{
+						"SUBSCRIPTION_ID": oldSubscriptionID,
+						"TENANT_ID":       oldTenantID,
+					},
+				}
+			})
+
+			It("should pass when immutable fields haven't changed", func() {
+				secret.Data["SUBSCRIPTION_ID"] = oldSubscriptionID
+				secret.Data["TENANT_ID"] = oldTenantID
+
+				errs := mapping.Validate(secret, oldSecret, fldPath, "test resources")
+				Expect(errs).To(BeEmpty())
+			})
+
+			It("should return error when immutable field has changed", func() {
+				secret.Data["SUBSCRIPTION_ID"] = []byte(newSubscriptionIDValue)
+				secret.Data["TENANT_ID"] = oldTenantID
+
+				errs := mapping.Validate(secret, oldSecret, fldPath, "test resources")
+				Expect(errs).To(HaveLen(1))
+				expectedDetail := fmt.Sprintf("field %q must not be changed for existing test resources in secret %v/%v", "SUBSCRIPTION_ID", secret.Namespace, secret.Name)
+				Expect(errs[0].Type).To(Equal(field.ErrorTypeInvalid))
+				Expect(errs[0].Field).To(Equal("secret.data[SUBSCRIPTION_ID]"))
+				Expect(errs[0].BadValue).To(Equal("(hidden)"))
+				Expect(errs[0].Detail).To(Equal(expectedDetail))
+			})
 		})
 	})
 
-	Describe("validateImmutableCredentials", func() {
-		oldSubscriptionID := []byte(oldSubscriptionIDValue)
-		oldTenantID := []byte(oldTenantIDValue)
-		BeforeEach(func() {
-			oldSecret = &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "old-secret",
-					Namespace: "test-namespace",
-				},
-				Data: map[string][]byte{
-					"SUBSCRIPTION_ID": oldSubscriptionID,
-					"TENANT_ID":       oldTenantID,
-				},
-			}
-		})
-
-		It("should pass when immutable fields haven't changed", func() {
-			secret.Data["SUBSCRIPTION_ID"] = oldSubscriptionID
-			secret.Data["TENANT_ID"] = oldTenantID
-
-			errs := ValidateImmutableCredentials(secret, oldSecret, mapping, "test resources", fldPath)
-			Expect(errs).To(BeEmpty())
-		})
-
-		It("should return error when immutable field has changed", func() {
-			secret.Data["SUBSCRIPTION_ID"] = []byte(newSubscriptionIDValue)
-			secret.Data["TENANT_ID"] = oldTenantID
-
-			errs := ValidateImmutableCredentials(secret, oldSecret, mapping, "test resources", fldPath)
-			Expect(errs).To(HaveLen(1))
-			expectedDetail := fmt.Sprintf("field subscriptionID must not be changed for existing test resources in secret %v/%v", secret.Namespace, secret.Name)
-			Expect(errs[0].Type).To(Equal(field.ErrorTypeInvalid))
-			Expect(errs[0].Field).To(Equal("data[SUBSCRIPTION_ID]"))
-			Expect(errs[0].BadValue).To(Equal("(hidden)"))
-			Expect(errs[0].Detail).To(Equal(expectedDetail))
-		})
-	})
-
-	Describe("validatePredefinedValues", func() {
+	Describe("#ValidatePredefinedValues", func() {
 		allowedValues := []string{"value1", "value2", "value3"}
 
 		It("should pass when field contains allowed value", func() {
@@ -250,7 +227,7 @@ var _ = Describe("Credential validation helpers", func() {
 			errs := ValidatePredefinedValues(secret, "TEST_FIELD", allowedValues, fldPath)
 			Expect(errs).To(HaveLen(1))
 			Expect(errs[0].Type).To(Equal(field.ErrorTypeNotSupported))
-			Expect(errs[0].Field).To(Equal("data[TEST_FIELD]"))
+			Expect(errs[0].Field).To(Equal("secret[TEST_FIELD]"))
 			Expect(errs[0].BadValue).To(Equal(testFieldInvalidValue))
 		})
 	})

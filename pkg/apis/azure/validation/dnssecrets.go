@@ -12,21 +12,34 @@ import (
 )
 
 var (
-	// dnsCredentialMapping maps logical field names for DNS provider secrets to their keys
+	// dnsCredentialMapping defines validation rules for DNS provider secrets
 	dnsCredentialMapping = CredentialMapping{
-		RequiredFields: map[string]string{
-			"subscriptionID": azure.DNSSubscriptionIDKey,
-			"tenantID":       azure.DNSTenantIDKey,
-			"clientID":       azure.DNSClientIDKey,
-			"clientSecret":   azure.DNSClientSecretKey,
-		},
-		OptionalFields: map[string]string{
-			"azureCloud": azure.DNSAzureCloud,
-		},
-		GUIDFields: map[string]string{
-			"subscriptionID": azure.DNSSubscriptionIDKey,
-			"tenantID":       azure.DNSTenantIDKey,
-			"clientID":       azure.DNSClientIDKey,
+		Fields: map[string]FieldSpec{
+			azure.DNSSubscriptionIDKey: {
+				Required:    true,
+				IsGUID:      true,
+				IsImmutable: false,
+			},
+			azure.DNSTenantIDKey: {
+				Required:    true,
+				IsGUID:      true,
+				IsImmutable: false,
+			},
+			azure.DNSClientIDKey: {
+				Required:    true,
+				IsGUID:      true,
+				IsImmutable: false,
+			},
+			azure.DNSClientSecretKey: {
+				Required:    true,
+				IsGUID:      false,
+				IsImmutable: false,
+			},
+			azure.DNSAzureCloud: {
+				Required:    false,
+				IsGUID:      false,
+				IsImmutable: false,
+			},
 		},
 	}
 
@@ -40,24 +53,10 @@ var (
 
 // ValidateDNSProviderSecret validates Azure DNS provider credentials in a secret.
 func ValidateDNSProviderSecret(secret *corev1.Secret, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
-
-	dataPath := fldPath.Child("data")
-
-	// Validate required credentials
-	allErrs = append(allErrs, ValidateRequiredCredentials(secret, dnsCredentialMapping, dataPath)...)
-
-	// Validate optional credentials
-	allErrs = append(allErrs, ValidateOptionalCredentials(secret, dnsCredentialMapping, dataPath)...)
-
-	// Validate credential formats
-	allErrs = append(allErrs, ValidateCredentialFormats(secret, dnsCredentialMapping, dataPath)...)
-
-	// Validate no unexpected fields
-	allErrs = append(allErrs, ValidateNoUnexpectedFields(secret, dnsCredentialMapping, dataPath)...)
+	allErrs := dnsCredentialMapping.Validate(secret, nil, fldPath, "DNS records")
 
 	// Validate Azure Cloud values if present
-	allErrs = append(allErrs, ValidatePredefinedValues(secret, azure.DNSAzureCloud, allowedAzureCloudValues, dataPath)...)
+	allErrs = append(allErrs, ValidatePredefinedValues(secret, azure.DNSAzureCloud, allowedAzureCloudValues, fldPath.Child("data"))...)
 
 	return allErrs
 }

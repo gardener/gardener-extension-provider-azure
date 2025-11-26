@@ -71,8 +71,8 @@ var _ = Describe("Secret validator", func() {
 			err := secretValidator.Validate(ctx, secret, nil)
 			Expect(err).To(HaveOccurred())
 			msg := err.Error()
-			Expect(msg).To(ContainSubstring("missing required field subscriptionID"))
-			Expect(msg).To(ContainSubstring("missing required field tenantID"))
+			Expect(msg).To(ContainSubstring("missing required field \"subscriptionID\""))
+			Expect(msg).To(ContainSubstring("missing required field \"tenantID\""))
 			Expect(msg[0]).To(Equal(byte('[')))
 		})
 
@@ -86,7 +86,7 @@ var _ = Describe("Secret validator", func() {
 			err := secretValidator.Validate(ctx, secret, oldSecret)
 			Expect(err).To(HaveOccurred())
 			expected := fmt.Sprintf(
-				"secret.data[subscriptionID]: Invalid value: \"(hidden)\": field subscriptionID must not be changed for existing shoot clusters in secret %s/%s",
+				"secret.data[subscriptionID]: Invalid value: \"(hidden)\": field \"subscriptionID\" must not be changed for existing shoot clusters in secret %s/%s",
 				namespace, name,
 			)
 			Expect(err.Error()).To(Equal(expected))

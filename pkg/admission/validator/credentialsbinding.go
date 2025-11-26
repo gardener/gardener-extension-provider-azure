@@ -59,8 +59,7 @@ func (cb *credentialsBinding) Validate(ctx context.Context, newObj, oldObj clien
 			return err
 		}
 
-		secretPath := field.NewPath("secret")
-		if errs := azurevalidation.ValidateCloudProviderSecret(secret, nil, secretPath); len(errs) > 0 {
+		if errs := azurevalidation.ValidateCloudProviderSecret(secret, nil, field.NewPath("secret")); len(errs) > 0 {
 			return errs.ToAggregate()
 		}
 		return nil

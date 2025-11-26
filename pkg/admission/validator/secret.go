@@ -43,8 +43,7 @@ func (s *secret) Validate(_ context.Context, newObj, oldObj client.Object) error
 		}
 	}
 
-	secretPath := field.NewPath("secret")
-	if errs := azurevalidation.ValidateCloudProviderSecret(secret, oldSecret, secretPath); len(errs) > 0 {
+	if errs := azurevalidation.ValidateCloudProviderSecret(secret, oldSecret, field.NewPath("secret")); len(errs) > 0 {
 		return errs.ToAggregate()
 	}
 
