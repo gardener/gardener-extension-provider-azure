@@ -76,7 +76,7 @@ images:
   targetVersion: 1.33.x
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
-  repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-controller-manager
+  repository: mcr.microsoft.com/oss/v2/kubernetes/azure-cloud-controller-manager
   tag: v1.34.3
   labels:
   - name: gardener.cloud/cve-categorisation
@@ -166,7 +166,7 @@ images:
   targetVersion: 1.33.x
 - name: cloud-node-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
-  repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-node-manager
+  repository: mcr.microsoft.com/oss/v2/kubernetes/azure-cloud-node-manager
   tag: v1.34.3
   labels:
   - name: gardener.cloud/cve-categorisation
@@ -209,7 +209,7 @@ images:
     signing: false
 - name: csi-driver-file
   sourceRepository: github.com/kubernetes-sigs/azurefile-csi-driver
-  repository: mcr.microsoft.com/oss/kubernetes-csi/azurefile-csi
+  repository: mcr.microsoft.com/oss/v2/kubernetes-csi/azurefile-csi
   tag: v1.33.3
   labels:
   - name: gardener.cloud/cve-categorisation
