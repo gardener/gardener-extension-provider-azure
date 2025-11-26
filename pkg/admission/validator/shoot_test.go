@@ -328,10 +328,8 @@ var _ = Describe("Shoot validator", func() {
 				}
 				reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "dns-secret"},
 					&corev1.Secret{}).
-					DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *corev1.Secret, _ ...client.GetOption) error {
-						*obj = *invalidSecret
-						return nil
-					})
+					SetArg(2, *invalidSecret).
+					Return(nil)
 
 				err := shootValidator.Validate(ctx, shoot, nil)
 				Expect(err).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
