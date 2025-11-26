@@ -41,7 +41,7 @@ var _ = Describe("MachinesDependencies", func() {
 
 		ctx context.Context
 
-		namespace, resourceGroupName, region string
+		namespace, technicalID, resourceGroupName, region string
 	)
 
 	BeforeEach(func() {
@@ -54,13 +54,10 @@ var _ = Describe("MachinesDependencies", func() {
 		c.EXPECT().Status().AnyTimes().Return(statusWriter)
 
 		ctx = context.TODO()
-		namespace = "shoot--foobar--azure"
-		resourceGroupName = namespace
+		namespace = "control-plane-namespace"
+		technicalID = "shoot--foobar--azure"
+		resourceGroupName = technicalID
 		region = "westeurope"
-		// secretRef = corev1.SecretReference{
-		// 	Name:      "secret",
-		// 	Namespace: namespace,
-		// }
 	})
 
 	Describe("VMO Dependencies", func() {
@@ -82,7 +79,7 @@ var _ = Describe("MachinesDependencies", func() {
 			factory.EXPECT().Vmss().AnyTimes().Return(vmoClient, nil)
 
 			faultDomainCount = 3
-			cluster = makeCluster("", "westeurope", nil, nil, faultDomainCount)
+			cluster = makeCluster(technicalID, "", "westeurope", nil, nil, faultDomainCount)
 			infrastructureStatus = makeInfrastructureStatus(resourceGroupName, "vnet-name", "subnet-name", false, nil, nil)
 			pool = extensionsv1alpha1.WorkerPool{
 				Name: "my-pool",
