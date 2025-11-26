@@ -19,32 +19,25 @@ diskConfig:
 resources:
   csiDriverDisk:
     requests:
-      cpu: 20m
       memory: 50Mi
   csiDriverFile:
     requests:
-      cpu: 20m
       memory: 50Mi
 
   provisioner:
     requests:
-      cpu: 10m
       memory: 40Mi
   attacher:
     requests:
-      cpu: 11m
       memory: 40Mi
   snapshotter:
     requests:
-      cpu: 11m
       memory: 60Mi
   resizer:
     requests:
-      cpu: 11m
       memory: 50Mi
   livenessProbe:
     requests:
-      cpu: 11m
       memory: 40Mi
 
 csiSnapshotController:
@@ -52,7 +45,6 @@ csiSnapshotController:
   podAnnotations: {}
   resources:
     requests:
-      cpu: 33m
       memory: 32Mi
 
 useWorkloadIdentity: false

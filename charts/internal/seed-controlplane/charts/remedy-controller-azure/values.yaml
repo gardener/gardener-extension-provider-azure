@@ -4,8 +4,7 @@ images:
   remedy-controller-azure: image-repository:image-tag
 resources:
   requests:
-    cpu: 50m
-    memory: 72M 
+    memory: 72M
 
 manager:
   metricsPort: 10258
