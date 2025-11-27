@@ -36,27 +36,16 @@ var (
 				IsImmutable: false,
 			},
 			azure.DNSAzureCloud: {
-				Required:    false,
-				IsGUID:      false,
-				IsImmutable: false,
+				Required:      false,
+				IsGUID:        false,
+				IsImmutable:   false,
+				AllowedValues: []string{"AzurePublic", "AzureChina", "AzureGovernment"},
 			},
 		},
-	}
-
-	// allowedAzureCloudValues defines the valid values for Azure Cloud
-	allowedAzureCloudValues = []string{
-		"AzurePublic",
-		"AzureChina",
-		"AzureGovernment",
 	}
 )
 
 // ValidateDNSProviderSecret validates Azure DNS provider credentials in a secret.
 func ValidateDNSProviderSecret(secret *corev1.Secret, fldPath *field.Path) field.ErrorList {
-	allErrs := dnsCredentialMapping.Validate(secret, nil, fldPath, "DNS records")
-
-	// Validate Azure Cloud values if present
-	allErrs = append(allErrs, ValidatePredefinedValues(secret, azure.DNSAzureCloud, allowedAzureCloudValues, fldPath.Child("data"))...)
-
-	return allErrs
+	return dnsCredentialMapping.Validate(secret, nil, fldPath, "DNS records")
 }

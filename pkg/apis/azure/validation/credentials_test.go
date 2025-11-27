@@ -32,8 +32,6 @@ var _ = Describe("Credential validation helpers", func() {
 		oldSubscriptionIDValue       = "11111111-2222-3333-4444-555555555555"
 		oldTenantIDValue             = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 		newSubscriptionIDValue       = "99999999-8888-7777-6666-555555555555"
-		testFieldAllowedValue        = "value2"
-		testFieldInvalidValue        = "invalid-value"
 	)
 
 	BeforeEach(func() {
@@ -72,6 +70,12 @@ var _ = Describe("Credential validation helpers", func() {
 					Required:    false,
 					IsGUID:      false,
 					IsImmutable: false,
+				},
+				"CLOUD_TYPE": {
+					Required:      false,
+					IsGUID:        false,
+					IsImmutable:   false,
+					AllowedValues: []string{"public", "government", "anothercloud"},
 				},
 			},
 		}
@@ -159,6 +163,27 @@ var _ = Describe("Credential validation helpers", func() {
 			Expect(errs[0].Detail).To(Equal(expectedDetail))
 		})
 
+		It("should pass with valid allowed value", func() {
+			secret.Data["SUBSCRIPTION_ID"] = []byte(subscriptionIDValue)
+			secret.Data["TENANT_ID"] = []byte(tenantIDValue)
+			secret.Data["CLOUD_TYPE"] = []byte("public")
+
+			errs := mapping.Validate(secret, nil, fldPath, "test resources")
+			Expect(errs).To(BeEmpty())
+		})
+
+		It("should return error when field has disallowed value", func() {
+			secret.Data["SUBSCRIPTION_ID"] = []byte(subscriptionIDValue)
+			secret.Data["TENANT_ID"] = []byte(tenantIDValue)
+			secret.Data["CLOUD_TYPE"] = []byte("invalid-cloud")
+
+			errs := mapping.Validate(secret, nil, fldPath, "test resources")
+			Expect(errs).To(HaveLen(1))
+			Expect(errs[0].Type).To(Equal(field.ErrorTypeNotSupported))
+			Expect(errs[0].Field).To(Equal("secret.data[CLOUD_TYPE]"))
+			Expect(errs[0].BadValue).To(Equal("invalid-cloud"))
+		})
+
 		Context("with immutable fields", func() {
 			oldSubscriptionID := []byte(oldSubscriptionIDValue)
 			oldTenantID := []byte(oldTenantIDValue)
@@ -196,39 +221,6 @@ var _ = Describe("Credential validation helpers", func() {
 				Expect(errs[0].BadValue).To(Equal("(hidden)"))
 				Expect(errs[0].Detail).To(Equal(expectedDetail))
 			})
-		})
-	})
-
-	Describe("#ValidatePredefinedValues", func() {
-		allowedValues := []string{"value1", "value2", "value3"}
-
-		It("should pass when field contains allowed value", func() {
-			secret.Data["TEST_FIELD"] = []byte(testFieldAllowedValue)
-
-			errs := ValidatePredefinedValues(secret, "TEST_FIELD", allowedValues, fldPath)
-			Expect(errs).To(BeEmpty())
-		})
-
-		It("should pass when field is missing", func() {
-			errs := ValidatePredefinedValues(secret, "TEST_FIELD", allowedValues, fldPath)
-			Expect(errs).To(BeEmpty())
-		})
-
-		It("should pass when field is empty", func() {
-			secret.Data["TEST_FIELD"] = []byte("")
-
-			errs := ValidatePredefinedValues(secret, "TEST_FIELD", allowedValues, fldPath)
-			Expect(errs).To(BeEmpty())
-		})
-
-		It("should return error when field contains disallowed value", func() {
-			secret.Data["TEST_FIELD"] = []byte(testFieldInvalidValue)
-
-			errs := ValidatePredefinedValues(secret, "TEST_FIELD", allowedValues, fldPath)
-			Expect(errs).To(HaveLen(1))
-			Expect(errs[0].Type).To(Equal(field.ErrorTypeNotSupported))
-			Expect(errs[0].Field).To(Equal("secret[TEST_FIELD]"))
-			Expect(errs[0].BadValue).To(Equal(testFieldInvalidValue))
 		})
 	})
 })

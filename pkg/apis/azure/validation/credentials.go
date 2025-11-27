@@ -21,9 +21,10 @@ var (
 
 // FieldSpec defines validation rules for a single credential field
 type FieldSpec struct {
-	Required    bool
-	IsGUID      bool
-	IsImmutable bool
+	Required      bool
+	IsGUID        bool
+	IsImmutable   bool
+	AllowedValues []string
 }
 
 // CredentialMapping defines all credential fields and their validation rules
@@ -40,6 +41,7 @@ func (cm *CredentialMapping) Validate(secret, oldSecret *corev1.Secret, fldPath 
 	allErrs = append(allErrs, cm.validateRequired(secret, dataPath)...)
 	allErrs = append(allErrs, cm.validateFormats(secret, dataPath)...)
 	allErrs = append(allErrs, cm.validateNoUnexpected(secret, dataPath)...)
+	allErrs = append(allErrs, cm.validatePredefinedValues(secret, dataPath)...)
 
 	if oldSecret != nil {
 		allErrs = append(allErrs, cm.validateImmutable(secret, oldSecret, resourceType, dataPath)...)
@@ -140,15 +142,23 @@ func (cm *CredentialMapping) validateImmutable(newSecret, oldSecret *corev1.Secr
 	return allErrs
 }
 
-// ValidatePredefinedValues validates that a field contains one of the predefined values
-func ValidatePredefinedValues(secret *corev1.Secret, dataKey string, allowedValues []string, fldPath *field.Path) field.ErrorList {
+// validatePredefinedValues validates that a field contains one of the predefined values
+func (cm *CredentialMapping) validatePredefinedValues(secret *corev1.Secret, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	if value, exists := secret.Data[dataKey]; exists && len(value) > 0 {
-		valueStr := string(value)
-		allowedSet := sets.New(allowedValues...)
-		if !allowedSet.Has(valueStr) {
-			allErrs = append(allErrs, field.NotSupported(fldPath.Key(dataKey), valueStr, allowedValues))
+	for dataKey, spec := range cm.Fields {
+		if len(spec.AllowedValues) == 0 {
+			continue
+		}
+
+		value, exists := secret.Data[dataKey]
+		if !exists || len(value) == 0 {
+			continue
+		}
+
+		allowedSet := sets.New(spec.AllowedValues...)
+		if !allowedSet.Has(string(value)) {
+			allErrs = append(allErrs, field.NotSupported(fldPath.Key(dataKey), string(value), spec.AllowedValues))
 		}
 	}
 
