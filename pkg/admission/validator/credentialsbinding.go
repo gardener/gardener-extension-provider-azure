@@ -59,7 +59,10 @@ func (cb *credentialsBinding) Validate(ctx context.Context, newObj, oldObj clien
 			return err
 		}
 
-		return azurevalidation.ValidateCloudProviderSecret(secret, nil)
+		if errs := azurevalidation.ValidateCloudProviderSecret(secret, nil, field.NewPath("secret")); len(errs) > 0 {
+			return errs.ToAggregate()
+		}
+		return nil
 	case credentialsBinding.CredentialsRef.APIVersion == securityv1alpha1.SchemeGroupVersion.String() && credentialsBinding.CredentialsRef.Kind == "WorkloadIdentity":
 		workloadIdentity := &securityv1alpha1.WorkloadIdentity{}
 		if err := cb.apiReader.Get(ctx, credentialsKey, workloadIdentity); err != nil {

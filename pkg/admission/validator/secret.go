@@ -11,6 +11,7 @@ import (
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	azurevalidation "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/validation"
@@ -18,7 +19,7 @@ import (
 
 type secret struct{}
 
-// NewSecretValidator returns a new instance of a secret validator.
+// NewSecretValidator returns a new instance of an infrastructure secret validator.
 func NewSecretValidator() extensionswebhook.Validator {
 	return &secret{}
 }
@@ -42,5 +43,9 @@ func (s *secret) Validate(_ context.Context, newObj, oldObj client.Object) error
 		}
 	}
 
-	return azurevalidation.ValidateCloudProviderSecret(secret, oldSecret)
+	if errs := azurevalidation.ValidateCloudProviderSecret(secret, oldSecret, field.NewPath("secret")); len(errs) > 0 {
+		return errs.ToAggregate()
+	}
+
+	return nil
 }

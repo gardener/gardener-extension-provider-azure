@@ -14,6 +14,8 @@ import (
 	gardencorehelper "github.com/gardener/gardener/pkg/apis/core/helper"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"github.com/gardener/gardener/pkg/utils/gardener"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -22,6 +24,7 @@ import (
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	azurevalidation "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/validation"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 var (
@@ -36,6 +39,7 @@ var (
 // shoot validates shoots
 type shoot struct {
 	client         client.Client
+	apiReader      client.Reader
 	decoder        runtime.Decoder
 	lenientDecoder runtime.Decoder
 }
@@ -44,6 +48,7 @@ type shoot struct {
 func NewShootValidator(mgr manager.Manager) extensionswebhook.Validator {
 	return &shoot{
 		client:         mgr.GetClient(),
+		apiReader:      mgr.GetAPIReader(),
 		decoder:        serializer.NewCodecFactory(mgr.GetScheme(), serializer.EnableStrict).UniversalDecoder(),
 		lenientDecoder: serializer.NewCodecFactory(mgr.GetScheme()).UniversalDecoder(),
 	}
@@ -79,13 +84,13 @@ func (s *shoot) Validate(ctx context.Context, newObj, oldObj client.Object) erro
 		if !ok {
 			return fmt.Errorf("wrong object type %T for old object", oldObj)
 		}
-		return s.validateUpdate(oldShoot, shoot, &cloudProfile.Spec)
+		return s.validateUpdate(ctx, shoot, oldShoot, &cloudProfile.Spec)
 	}
 
 	return s.validateCreation(ctx, shoot, &cloudProfile.Spec)
 }
 
-func (s *shoot) validateCreation(_ context.Context, shoot *core.Shoot, cloudProfileSpec *gardencorev1beta1.CloudProfileSpec) error {
+func (s *shoot) validateCreation(ctx context.Context, shoot *core.Shoot, cloudProfileSpec *gardencorev1beta1.CloudProfileSpec) error {
 	infraConfig, err := checkAndDecodeInfrastructureConfig(s.decoder, shoot.Spec.Provider.InfrastructureConfig, infraConfigPath)
 	if err != nil {
 		return err
@@ -99,10 +104,10 @@ func (s *shoot) validateCreation(_ context.Context, shoot *core.Shoot, cloudProf
 		}
 	}
 
-	return s.validateShoot(shoot, nil, infraConfig, cloudProfileSpec, cpConfig).ToAggregate()
+	return s.validateShoot(ctx, shoot, nil, infraConfig, cloudProfileSpec, cpConfig).ToAggregate()
 }
 
-func (s *shoot) validateShoot(shoot *core.Shoot, oldInfraConfig, infraConfig *api.InfrastructureConfig, cloudProfileSpec *gardencorev1beta1.CloudProfileSpec, cpConfig *api.ControlPlaneConfig) field.ErrorList {
+func (s *shoot) validateShoot(ctx context.Context, shoot *core.Shoot, oldInfraConfig, infraConfig *api.InfrastructureConfig, cloudProfileSpec *gardencorev1beta1.CloudProfileSpec, cpConfig *api.ControlPlaneConfig) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	// Network validation
@@ -117,6 +122,9 @@ func (s *shoot) validateShoot(shoot *core.Shoot, oldInfraConfig, infraConfig *ap
 	if cpConfig != nil {
 		allErrs = append(allErrs, azurevalidation.ValidateControlPlaneConfig(cpConfig, shoot.Spec.Kubernetes.Version, cpConfigPath)...)
 	}
+
+	// DNS validation
+	allErrs = append(allErrs, s.validateDNS(ctx, shoot)...)
 
 	// Shoot workers
 	allErrs = append(allErrs, azurevalidation.ValidateWorkers(shoot.Spec.Provider.Workers, infraConfig, workersPath)...)
@@ -134,7 +142,7 @@ func (s *shoot) validateShoot(shoot *core.Shoot, oldInfraConfig, infraConfig *ap
 	return allErrs
 }
 
-func (s *shoot) validateUpdate(oldShoot, shoot *core.Shoot, cloudProfileSpec *gardencorev1beta1.CloudProfileSpec) error {
+func (s *shoot) validateUpdate(ctx context.Context, shoot, oldShoot *core.Shoot, cloudProfileSpec *gardencorev1beta1.CloudProfileSpec) error {
 	// Decode the new infrastructure config.
 	if shoot.Spec.Provider.InfrastructureConfig == nil {
 		return field.Required(infraConfigPath, "InfrastructureConfig must be set for Azure shoots")
@@ -169,7 +177,48 @@ func (s *shoot) validateUpdate(oldShoot, shoot *core.Shoot, cloudProfileSpec *ga
 
 	allErrs = append(allErrs, azurevalidation.ValidateWorkersUpdate(oldShoot.Spec.Provider.Workers, shoot.Spec.Provider.Workers, workersPath)...)
 
-	allErrs = append(allErrs, s.validateShoot(shoot, oldInfraConfig, infraConfig, cloudProfileSpec, cpConfig)...)
+	allErrs = append(allErrs, s.validateShoot(ctx, shoot, oldInfraConfig, infraConfig, cloudProfileSpec, cpConfig)...)
 
 	return allErrs.ToAggregate()
+}
+
+// validateDNS validates all azure-dns provider entries in the Shoot spec.
+func (s *shoot) validateDNS(ctx context.Context, shoot *core.Shoot) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if shoot.Spec.DNS == nil {
+		return allErrs
+	}
+
+	providersPath := specPath.Child("dns").Child("providers")
+
+	for i, p := range shoot.Spec.DNS.Providers {
+		if p.Type == nil || *p.Type != azure.DNSType {
+			continue
+		}
+
+		providerFldPath := providersPath.Index(i)
+
+		if p.SecretName == nil || *p.SecretName == "" {
+			allErrs = append(allErrs, field.Required(providerFldPath.Child("secretName"),
+				fmt.Sprintf("secretName must be specified for %v provider", azure.DNSType)))
+			continue
+		}
+
+		secret := &corev1.Secret{}
+		key := client.ObjectKey{Namespace: shoot.Namespace, Name: *p.SecretName}
+		if err := s.apiReader.Get(ctx, key, secret); err != nil {
+			if apierrors.IsNotFound(err) {
+				allErrs = append(allErrs, field.Invalid(providerFldPath.Child("secretName"),
+					*p.SecretName, "referenced secret not found"))
+			} else {
+				allErrs = append(allErrs, field.InternalError(providerFldPath.Child("secretName"), err))
+			}
+			continue
+		}
+
+		allErrs = append(allErrs, azurevalidation.ValidateDNSProviderSecret(secret, providerFldPath)...)
+	}
+
+	return allErrs
 }
