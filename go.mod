@@ -17,7 +17,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/ahmetb/gen-crd-api-reference-docs v0.3.0
 	github.com/coreos/go-systemd/v22 v22.6.0
-	github.com/gardener/etcd-druid/api v0.33.0
+	github.com/gardener/etcd-druid/api v0.34.0
 	github.com/gardener/gardener v1.132.1
 	github.com/gardener/machine-controller-manager v0.60.2
 	github.com/gardener/remedy-controller v0.14.0
@@ -33,12 +33,12 @@ require (
 	go.uber.org/mock v0.6.0
 	golang.org/x/crypto v0.45.0
 	golang.org/x/tools v0.39.0
-	k8s.io/api v0.34.1
+	k8s.io/api v0.34.2
 	k8s.io/apiextensions-apiserver v0.34.1
-	k8s.io/apimachinery v0.34.1
+	k8s.io/apimachinery v0.34.2
 	k8s.io/autoscaler/vertical-pod-autoscaler v1.5.1
-	k8s.io/client-go v0.34.1
-	k8s.io/code-generator v0.34.1
+	k8s.io/client-go v0.34.2
+	k8s.io/code-generator v0.34.2
 	k8s.io/component-base v0.34.1
 	k8s.io/kubelet v0.34.1
 	k8s.io/utils v0.0.0-20251002143259-bc988d571ff4
