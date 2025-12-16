@@ -133,6 +133,9 @@ spec:
         - --kube-api-qps=100
         - --kube-api-burst=200
         - --v=5
+        {{- if eq .role "disk" }}
+        - --strict-topology
+        {{- end }}
         securityContext:
           allowPrivilegeEscalation: false
         env:
