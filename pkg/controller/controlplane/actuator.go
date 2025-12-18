@@ -207,7 +207,7 @@ func (a *actuator) forceDeleteShootRemedyControllerResources(ctx context.Context
 		return nil
 	}
 
-	_, shootClient, err := util.NewClientForShoot(ctx, a.client, cluster.Shoot.GetName(), client.Options{}, extensionsconfigv1alpha1.RESTOptions{})
+	_, shootClient, err := util.NewClientForShoot(ctx, a.client, namespace, client.Options{}, extensionsconfigv1alpha1.RESTOptions{})
 	if err != nil {
 		// No need to report the error as this is anyway only best effort. Some scenarios, e.g. self hosted shoot clusters,
 		// might not have the gardener secret and hence cannot construct the shoot client here.
