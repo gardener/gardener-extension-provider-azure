@@ -148,7 +148,7 @@ An example `InfrastructureConfig` for the Azure extension looks as follows:
 apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
 kind: InfrastructureConfig
 networks:
-  vnet: # specify either 'name' and 'resourceGroup' or 'cidr'
+  vnet: # specify either 'name' and 'resourceGroup' or 'cidr'. If none of them are set, the value of networks.workers will be used.
     # name: my-vnet
     # resourceGroup: my-vnet-resource-group
     cidr: 10.250.0.0/16
@@ -192,6 +192,7 @@ A subnet for the nodes will be created within the specified VNet to host the mac
 * If `networks.vnet.cidr` is given then you have to specify the VNet CIDR of a new VNet that will be created during shoot creation.
 You can freely choose a private CIDR range.
 * Either `networks.vnet.name` and `networks.vnet.resourceGroup` or `networks.vnet.cidr` must be present, but not both at the same time.
+In case none of them are set, the `networks.workers` CIDR will be used to create the new VNet.
 * The `networks.vnet.ddosProtectionPlanID` field can be used to specify the id of a ddos protection plan which should be assigned to the VNet. This will only work for a VNet managed by Gardener. For externally managed VNets the ddos protection plan must be assigned by other means.
 * If a vnet name is given and cilium shoot clusters are created without a network overlay within one vnet make sure that the pod CIDR specified in `shoot.spec.networking.pods` is not overlapping with any other pod CIDR used in that vnet.
 Overlapping pod CIDRs will lead to disfunctional shoot clusters.
