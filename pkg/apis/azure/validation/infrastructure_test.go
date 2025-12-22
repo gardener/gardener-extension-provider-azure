@@ -178,7 +178,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					Fields{
 						"Type":   Equal(field.ErrorTypeInvalid),
 						"Field":  Equal("networks.vnet"),
-						"Detail": Equal("a vnet cidr or vnet name and resource group need to be specified"),
+						"Detail": Equal("vnet name and resource group need to be specified together"),
 					}))
 			})
 
@@ -192,7 +192,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					Fields{
 						"Type":   Equal(field.ErrorTypeInvalid),
 						"Field":  Equal("networks.vnet"),
-						"Detail": Equal("a vnet cidr or vnet name and resource group need to be specified"),
+						"Detail": Equal("vnet name and resource group need to be specified together"),
 					}))
 			})
 
