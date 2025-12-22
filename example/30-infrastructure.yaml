@@ -10,11 +10,11 @@ metadata:
   namespace: shoot--foobar--azure
   name: core-azure
 type: Opaque
-data:
-# clientID: base64(clientID)
-# clientSecret: base64(clientSecret)
-# subscriptionID: base64(subscriptionID)
-# tenantID: base64(tenantID)
+#data:
+#  clientID: base64(clientID)
+#  clientSecret: base64(clientSecret)
+#  subscriptionID: base64(subscriptionID)
+#  tenantID: base64(tenantID)
 ---
 apiVersion: extensions.gardener.cloud/v1alpha1
 kind: Cluster
@@ -64,10 +64,10 @@ spec:
     kind: InfrastructureConfig
     networks:
       vnet: # specify either 'name' and 'resourceGroup' or 'cidr'
-      # name: my-vnet
-      # resourceGroup: my-vnet-group
+#        name: my-vnet
+#        resourceGroup: my-vnet-group
         cidr: 10.250.0.0/16
-      # ddosProtectionPlanID: /subscriptions/test/resourceGroups/test/providers/Microsoft.Network/ddosProtectionPlans/test-ddos-protection-plan
+#        ddosProtectionPlanID: /subscriptions/test/resourceGroups/test/providers/Microsoft.Network/ddosProtectionPlans/test-ddos-protection-plan
       workers: 10.250.0.0/19
 #      # natGateway can only be set together with vnet.workers
 #      natGateway:
