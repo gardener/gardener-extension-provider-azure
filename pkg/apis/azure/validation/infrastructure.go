@@ -195,9 +195,10 @@ func validateVnetConfig(networkConfig *apisazure.NetworkConfig, resourceGroupCon
 		allErrs    = field.ErrorList{}
 		vnetConfig = networkConfig.VNet
 	)
-	// Validate that just vnet name or vnet resource group is specified.
+
+	// Require vnet.name and vnet.resourceGroup to be specified together (or both unset).
 	if (vnetConfig.Name != nil && vnetConfig.ResourceGroup == nil) || (vnetConfig.Name == nil && vnetConfig.ResourceGroup != nil) {
-		return append(allErrs, field.Invalid(vNetPath, vnetConfig, "a vnet cidr or vnet name and resource group need to be specified"))
+		return append(allErrs, field.Invalid(vNetPath, vnetConfig, "vnet name and resource group need to be specified together"))
 	}
 
 	if vnetConfig.DDosProtectionPlanID != nil {
