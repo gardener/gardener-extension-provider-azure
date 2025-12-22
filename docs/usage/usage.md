@@ -154,23 +154,26 @@ networks:
     cidr: 10.250.0.0/16
     # ddosProtectionPlanID: /subscriptions/test/resourceGroups/test/providers/Microsoft.Network/ddosProtectionPlans/test-ddos-protection-plan
   workers: 10.250.0.0/19
-  # natGateway:
-  #   enabled: false
-  #   idleConnectionTimeoutMinutes: 4
-  #   zone: 1
-  #   ipAddresses:
-  #   - name: my-public-ip-name
-  #     resourceGroup: my-public-ip-resource-group
-  #     zone: 1
-  # serviceEndpoints:
-  # - Microsoft.Test
-  # zones:
-  # - name: 1
-  #   cidr: "10.250.0.0/24
-  # - name: 2
-  #   cidr: "10.250.0.0/24"
-  #   natGateway:
-  #     enabled: false
+#  # natGateway can only be set together with vnet.workers
+#  natGateway:
+#    enabled: true
+#    idleConnectionTimeoutMinutes: 4
+#    zone: 1
+#    ipAddresses:
+#    - name: my-public-ip-name
+#      resourceGroup: my-public-ip-resource-group
+#      zone: 1
+#  # serviceEndpoints can only be set together with vnet.workers
+#  serviceEndpoints:
+#  - Microsoft.Test
+#  # specify either networks.workers or networks.zones 
+#  zones:
+#   - name: 1
+#     cidr: 10.250.0.0/24
+#   - name: 2
+#     cidr: 10.250.1.0/24
+#     natGateway:
+#      enabled: false
 zoned: false
 #identity:
 #  name: my-identity-name
