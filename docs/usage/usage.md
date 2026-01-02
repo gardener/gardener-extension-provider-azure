@@ -154,7 +154,7 @@ networks:
     cidr: 10.250.0.0/16
     # ddosProtectionPlanID: /subscriptions/test/resourceGroups/test/providers/Microsoft.Network/ddosProtectionPlans/test-ddos-protection-plan
   workers: 10.250.0.0/19
-#  # natGateway can only be set together with vnet.workers
+#  # natGateway can only be set together with networks.workers
 #  natGateway:
 #    enabled: true
 #    idleConnectionTimeoutMinutes: 4
