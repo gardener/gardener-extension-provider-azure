@@ -38,6 +38,7 @@ const (
 	publicIpFinalizerString       = "azure.remedy.gardener.cloud/publicipaddress"
 	virtualMachineFinalizerString = "azure.remedy.gardener.cloud/virtualmachine"
 	serviceFinalizerName          = "azure.remedy.gardener.cloud/service"
+	nodeFinalizerName             = "azure.remedy.gardener.cloud/node"
 )
 
 // NewActuator creates a new Actuator that acts upon and updates the status of ControlPlane resources.
@@ -197,24 +198,82 @@ func (a *actuator) forceDeleteShootRemedyControllerResources(ctx context.Context
 		return nil
 	}
 
-	pubipList := &azurev1alpha1.PublicIPAddressList{}
-	if err := a.client.List(ctx, pubipList, client.InNamespace(namespace)); err != nil {
-		return fmt.Errorf("could not list publicipaddresses: %w", err)
-	}
-
-	log.Info("Removing finalizers from publicipaddresses")
-	if len(pubipList.Items) == 0 {
-		return nil
-	}
-
 	_, shootClient, err := util.NewClientForShoot(ctx, a.client, namespace, client.Options{}, extensionsconfigv1alpha1.RESTOptions{})
 	if err != nil {
-		// No need to report the error as this is anyway only best effort. Some scenarios, e.g. self hosted shoot clusters,
-		// might not have the gardener secret and hence cannot construct the shoot client here.
 		log.Info("Could not create shoot client to check for existing remedy controller resources", "error", err.Error())
 		return err
 	}
 
+	// Te want to make sure that we do not put unnecessary load on the API server of the shoot cluster.
+	// Therefore, we first list all resources of a certain kind and only if there are any resources present,
+	// we proceed with removing the finalizers from those resources.
+	pubipList := &azurev1alpha1.PublicIPAddressList{}
+	if err := a.client.List(ctx, pubipList, client.InNamespace(namespace)); err != nil {
+		return fmt.Errorf("could not list publicipaddresses: %w", err)
+	}
+	if len(pubipList.Items) != 0 {
+		log.Info("Removing finalizers from publicipaddresses")
+		if err := a.forceDeleteRemedyLoadBalancerFinalizer(ctx, log, shootClient); err != nil {
+			return fmt.Errorf("could not remove remedy controller finalizers from services: %w", err)
+		}
+	}
+
+	vmList := &azurev1alpha1.VirtualMachineList{}
+	if err := a.client.List(ctx, vmList, client.InNamespace(namespace)); err != nil {
+		return fmt.Errorf("could not list virtualmachines: %w", err)
+	}
+	if len(vmList.Items) != 0 {
+		log.Info("Removing finalizers from virtualmachines")
+		if err := a.forceDeleteRemedyNodeFinalizer(ctx, log, shootClient); err != nil {
+			return fmt.Errorf("could not remove remedy controller finalizers from nodes: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (a *actuator) forceDeleteRemedyControllerResources(ctx context.Context, log logr.Logger, namespace string, cluster *extensionscontroller.Cluster) error {
+	err := a.forceDeleteShootRemedyControllerResources(ctx, log, namespace, cluster)
+	if err != nil {
+		return err
+	}
+	return a.forceDeleteSeedRemedyControllerResources(ctx, log, namespace)
+}
+
+func (a *actuator) forceDeleteRemedyNodeFinalizer(ctx context.Context, log logr.Logger, shootClient client.Client) error {
+	nodes := &corev1.NodeList{}
+	var errs error
+
+	for {
+		if err := shootClient.List(ctx, nodes, client.Limit(100), client.Continue(nodes.GetContinue())); err != nil {
+			log.Info("Could not list nodes in shoot cluster to check for existing remedy controller resources", "error", err)
+			return err
+		}
+
+		for _, node := range nodes.Items {
+			if controllerutil.ContainsFinalizer(&node, nodeFinalizerName) {
+				if retryErr := retry.RetryOnConflict(retry.DefaultRetry,
+					func() error {
+						err := shootClient.Get(ctx, client.ObjectKey{Name: node.Name}, &node)
+						if err != nil {
+							return err
+						}
+						return controllerutils.RemoveFinalizers(ctx, shootClient, &node, nodeFinalizerName)
+					}); retryErr != nil {
+					log.Info("Could not remove remedy finalizer from node", "name", node.Name, "error", retryErr)
+					errs = errors.Join(errs, retryErr)
+					continue
+				}
+			}
+		}
+		if nodes.GetContinue() == "" {
+			break
+		}
+	}
+	return errs
+}
+
+func (a *actuator) forceDeleteRemedyLoadBalancerFinalizer(ctx context.Context, log logr.Logger, shootClient client.Client) error {
 	lbs := &corev1.ServiceList{}
 	var errs error
 
@@ -248,12 +307,4 @@ func (a *actuator) forceDeleteShootRemedyControllerResources(ctx context.Context
 		}
 	}
 	return errs
-}
-
-func (a *actuator) forceDeleteRemedyControllerResources(ctx context.Context, log logr.Logger, namespace string, cluster *extensionscontroller.Cluster) error {
-	err := a.forceDeleteShootRemedyControllerResources(ctx, log, namespace, cluster)
-	if err != nil {
-		return err
-	}
-	return a.forceDeleteSeedRemedyControllerResources(ctx, log, namespace)
 }
