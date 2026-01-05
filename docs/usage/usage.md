@@ -166,14 +166,6 @@ networks:
 #  # serviceEndpoints can only be set together with vnet.workers
 #  serviceEndpoints:
 #  - Microsoft.Test
-#  # specify either networks.workers or networks.zones 
-#  zones:
-#   - name: 1
-#     cidr: 10.250.0.0/24
-#   - name: 2
-#     cidr: 10.250.1.0/24
-#     natGateway:
-#      enabled: false
 zoned: false
 #identity:
 #  name: my-identity-name
@@ -279,10 +271,10 @@ infrastructureConfig:
       - name: 3
         cidr: 10.250.0.0/19 # note the preservation of the 'workers' CIDR
 # optionally add other zones
-    # - name: 2
-    #   cidr: 10.250.32.0/19
-    #   natGateway:
-    #     enabled: true
+#     - name: 2
+#       cidr: 10.250.32.0/19
+#       natGateway:
+#         enabled: true
   zoned: true
 ```
 
