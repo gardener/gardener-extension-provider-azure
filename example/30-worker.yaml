@@ -94,27 +94,27 @@ spec:
     maxSurge: 1
     maxUnavailable: 0
     updateStrategy: AutoRollingUpdate # AutoRollingUpdate/AutoInPlaceUpdate/ManualInPlaceUpdate
-  # labels:
-  #   key: value
-  # annotations:
-  #   key: value
-  # taints: # See also https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
-  # - key: foo
-  #   value: bar
-  #   effect: NoSchedule
+#    labels:
+#      key: value
+#    annotations:
+#      key: value
+#    taints: # See also https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
+#    - key: foo
+#      value: bar
+#      effect: NoSchedule
     userData: IyEvYmluL2Jhc2gKCmVjaG8gImhlbGxvIHdvcmxkIgo=
     volume:
       type: standard
       size: 35Gi
-  # dataVolumes:
-  # - name: kubelet-dir
-  #   type: standard
-  #   size: 36Gi
-  # providerConfig:
-  #   apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
-  #   kind: WorkerConfig
-  #   diagnosticsProfile:
-  #     enabled: false
-  #     storageURI: https://<storage-account-name>.blob.core.windows.net/
-  #   volume:
-  #     caching: None
+#    dataVolumes:
+#    - name: kubelet-dir
+#      type: standard
+#      size: 36Gi
+#    providerConfig:
+#      apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+#      kind: WorkerConfig
+#      diagnosticsProfile:
+#        enabled: false
+#        storageURI: https://<storage-account-name>.blob.core.windows.net/
+#      volume:
+#        caching: None

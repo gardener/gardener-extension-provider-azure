@@ -1,19 +1,19 @@
 machineClasses:
 - name: class-1-zone
-# labels:
-#   foo: bar
+#  labels:
+#    foo: bar
   region: westeurope
   resourceGroup: my-resource-group
   zone: 1
-  # identityID: /subscriptions/subscription-id/resourceGroups/resource-group-name/providers/Microsoft.ManagedIdentity/userAssignedIdentities/identity-name
+#  identityID: /subscriptions/subscription-id/resourceGroups/resource-group-name/providers/Microsoft.ManagedIdentity/userAssignedIdentities/identity-name
   network:
     vnet: my-vnet
     subnet: my-subnet-in-my-vnet
-    # vnetResourceGroup: my-vnet-resource-group
-    # acceleratedNetworking: true
+#    vnetResourceGroup: my-vnet-resource-group
+#    acceleratedNetworking: true
   diagnosticsProfile:
     enabled: false
-    # storageURI: my-custom-azure-storage
+#    storageURI: my-custom-azure-storage
   tags:
     Name: shoot-crazy-botany
     kubernetes.io-cluster-shoot-crazy-botany: "1"
@@ -35,17 +35,17 @@ machineClasses:
     zone: westeurope-1
   image:
     urn: "CoreOS:CoreOS:Stable:1576.5.0"
-    #skipMarketplaceAgreement: true
-    #id: "/subscriptions/<subscription ID where the gallery is located>/resourceGroups/myGalleryRG/providers/Microsoft.Compute/galleries/myGallery/images/myImageDefinition/versions/1.0.0"
-    #communityGalleryImageID: "/CommunityGalleries/<community gallery id>/Images/myImageDefinition/versions/1.0.0"
-    #sharedGalleryImageID: "/SharedGalleries/<sharedGalleryName>/Images/<sharedGalleryImageName>/Versions/<sharedGalleryImageVersionName>"
+#    skipMarketplaceAgreement: true
+#    id: "/subscriptions/<subscription ID where the gallery is located>/resourceGroups/myGalleryRG/providers/Microsoft.Compute/galleries/myGallery/images/myImageDefinition/versions/1.0.0"
+#    communityGalleryImageID: "/CommunityGalleries/<community gallery id>/Images/myImageDefinition/versions/1.0.0"
+#    sharedGalleryImageID: "/SharedGalleries/<sharedGalleryName>/Images/<sharedGalleryImageName>/Versions/<sharedGalleryImageVersionName>"
   osDisk:
     size: 50
-    #type: Standard_LRS
-    #securityProfile:
-      #securityEncryptionType: VMGuestStateOnly
-      #uefiSettings:
-        #vtpmEnabled: false
+#    type: Standard_LRS
+#    securityProfile:
+#      securityEncryptionType: VMGuestStateOnly
+#      uefiSettings:
+#        vtpmEnabled: false
     caching: None # TODO remove default after https://github.com/gardener/machine-controller-manager-provider-azure/issues/214
   sshPublicKey: ssh-rsa AAAAB3...
 - name: class-3-vmo
@@ -68,17 +68,17 @@ machineClasses:
     namespace: shoot-namespace
   machineType: Standard_DS1_V2
   image:
-    #urn: "CoreOS:CoreOS:Stable:1576.5.0"
+#    urn: "CoreOS:CoreOS:Stable:1576.5.0"
     id: "/subscriptions/<subscription ID where the gallery is located>/resourceGroups/myGalleryRG/providers/Microsoft.Compute/galleries/myGallery/images/myImageDefinition/versions/1.0.0"
-    #communityGalleryImageID: "/CommunityGalleries/<community gallery id>/Images/myImageDefinition/versions/1.0.0"
-    #sharedGalleryImageID: "/SharedGalleries/<sharedGalleryName>/Images/<sharedGalleryImageName>/Versions/<sharedGalleryImageVersionName>"
+#    communityGalleryImageID: "/CommunityGalleries/<community gallery id>/Images/myImageDefinition/versions/1.0.0"
+#    sharedGalleryImageID: "/SharedGalleries/<sharedGalleryName>/Images/<sharedGalleryImageName>/Versions/<sharedGalleryImageVersionName>"
   osDisk:
     size: 50
     type: Standard_LRS
-# dataDisks:
-# - lun: 0
-#   caching: None
-#   diskSizeGB: 100
-#   storageAccountType: Standard_LRS
-#   name: sdb
+#  dataDisks:
+#  - lun: 0
+#    caching: None
+#    diskSizeGB: 100
+#    storageAccountType: Standard_LRS
+#    name: sdb
   sshPublicKey: ssh-rsa AAAAB3...

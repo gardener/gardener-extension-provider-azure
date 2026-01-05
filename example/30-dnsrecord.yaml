@@ -39,9 +39,9 @@ spec:
   secretRef:
     name: dnsrecord-external
     namespace: shoot--foobar--azure
-# zone: dnstest/example.com
+#  zone: dnstest/example.com
   name: api.azure.foobar.shoot.example.com
   recordType: A # Use A, CNAME, or TXT
   values: # list of IP addresses for A records, a single hostname for CNAME records, or a list of texts for TXT records.
   - 1.2.3.4
-# ttl: 120
+#  ttl: 120

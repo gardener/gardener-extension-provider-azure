@@ -18,9 +18,9 @@ webhookConfig:
 kubeconfig:
 
 #projectedKubeconfig:
-#   baseMountPath: /var/run/secrets/gardener.cloud
-#   genericKubeconfigSecretName: generic-token-kubeconfig
-#   tokenSecretName: access-azure-admission
+#  baseMountPath: /var/run/secrets/gardener.cloud
+#  genericKubeconfigSecretName: generic-token-kubeconfig
+#  tokenSecretName: access-azure-admission
 
 service:
   topologyAwareRouting:
@@ -30,10 +30,10 @@ gardener:
   virtualCluster:
     enabled: true
     serviceAccount: {}
-  #     name: extension-admission-provider-azure
-  #     namespace: kube-system
+#      name: extension-admission-provider-azure
+#      namespace: kube-system
   runtimeCluster: {}
-#   priorityClassName: gardener-garden-system-400
+#    priorityClassName: gardener-garden-system-400
 
 #featureGates:
-  #ForceNatGateway: false
+#  ForceNatGateway: false
