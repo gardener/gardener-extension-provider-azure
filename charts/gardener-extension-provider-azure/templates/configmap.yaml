@@ -3,8 +3,7 @@ kind: ConfigMap
 metadata:
   name: {{ include "name" . }}-configmap
   namespace: {{ .Release.Namespace }}
-  labels:
-{{ include "labels" . | indent 4 }}
+  labels: {{ include "labels" . | nindent 4 }}
 data:
   config.yaml: |
     ---
@@ -22,12 +21,12 @@ data:
         className: {{ .Values.config.etcd.storage.className }}
         capacity: {{ .Values.config.etcd.storage.capacity }}
 {{- if .Values.config.etcd.backup }}
-{{ toYaml .Values.config.etcd.backup | indent 6 }}
+      backup: {{- toYaml .Values.config.etcd.backup | nindent 8 }}
 {{- end }}
 
 {{- if .Values.config.featureGates }}
     featureGates:
-      {{- range $key := (.Values.config.featureGates | keys | uniq | sortAlpha) }}
-      {{ $key }}: {{ index $.Values.config.featureGates $key }}
-      {{- end }}
+  {{- range $key := (.Values.config.featureGates | keys | uniq | sortAlpha) }}
+    {{ $key }}: {{ index $.Values.config.featureGates $key }}
+  {{- end }}
 {{- end }}
