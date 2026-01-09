@@ -82,33 +82,33 @@ config:
         storageaccounttype: Premium_LRS
         kind: managed
   featureGates:
-    # DisableRemedyController: false
-    # EnableImmutableBuckets: false
+#    DisableRemedyController: false
+#    EnableImmutableBuckets: false
 
 gardener:
   version: ""
   gardenlet:
     featureGates: {}
-# seed:
-#   provider: azure
-#   region: ""
-#   spec:
-#     settings:
-#       topologyAwareRouting:
-#         enabled: false
+#  seed:
+#    provider: azure
+#    region: ""
+#    spec:
+#      settings:
+#        topologyAwareRouting:
+#          enabled: false
 
-# servicePrincipals:
-# - tenantID: tenant-1
-#   clientID: spn-1
-#   clientSecret: secret-1
-# - tenantID: tenant-2
-#   clientID: spn-2
-#   clientSecret: secret-2
+#servicePrincipals:
+#  - tenantID: tenant-1
+#    clientID: spn-1
+#    clientSecret: secret-1
+#  - tenantID: tenant-2
+#    clientID: spn-2
+#    clientSecret: secret-2
 
-# runtimeCluster:
-#   enabled: false
-#   priorityClassName: gardener-garden-system-200
-# selfHostedShootCluster: false
+#runtimeCluster:
+#  enabled: false
+#  priorityClassName: gardener-garden-system-200
+#selfHostedShootCluster: false
 
 usablePorts:
 - 8080  # metrics

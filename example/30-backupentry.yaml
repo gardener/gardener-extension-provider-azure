@@ -5,9 +5,9 @@ metadata:
   name: backupprovider
   namespace: shoot--foobar--azure
 type: Opaque
-data:
-# storageAccount: base64(storageAccount)
-# storageKey: base64(storageKey)
+#data:
+#  storageAccount: base64(storageAccount)
+#  storageKey: base64(storageKey)
 ---
 apiVersion: extensions.gardener.cloud/v1alpha1
 kind: BackupEntry
