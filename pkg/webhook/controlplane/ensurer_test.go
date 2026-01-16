@@ -82,12 +82,61 @@ var _ = Describe("Ensurer", func() {
 							Version: "1.31.0",
 						},
 					},
-					Status: gardencorev1beta1.ShootStatus{
-						TechnicalID: namespace,
+				},
+			},
+		)
+
+		eContextK8s131WithVAC = gcontext.NewInternalGardenContext(
+			&extensionscontroller.Cluster{
+				Shoot: &gardencorev1beta1.Shoot{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{
+							"azure.provider.extensions.gardener.cloud/enable-volume-attributes-class": "true",
+						},
+					},
+					Spec: gardencorev1beta1.ShootSpec{
+						Kubernetes: gardencorev1beta1.Kubernetes{
+							Version: "1.31.0",
+						},
 					},
 				},
 			},
 		)
+
+		eContextK8s133WithVAC = gcontext.NewInternalGardenContext(
+			&extensionscontroller.Cluster{
+				Shoot: &gardencorev1beta1.Shoot{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{
+							"azure.provider.extensions.gardener.cloud/enable-volume-attributes-class": "true",
+						},
+					},
+					Spec: gardencorev1beta1.ShootSpec{
+						Kubernetes: gardencorev1beta1.Kubernetes{
+							Version: "1.33.0",
+						},
+					},
+				},
+			},
+		)
+
+		eContextK8s134WithVAC = gcontext.NewInternalGardenContext(
+			&extensionscontroller.Cluster{
+				Shoot: &gardencorev1beta1.Shoot{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{
+							"azure.provider.extensions.gardener.cloud/enable-volume-attributes-class": "true",
+						},
+					},
+					Spec: gardencorev1beta1.ShootSpec{
+						Kubernetes: gardencorev1beta1.Kubernetes{
+							Version: "1.34.0",
+						},
+					},
+				},
+			},
+		)
+
 		shootk8s132 = &gardencorev1beta1.Shoot{
 			Spec: gardencorev1beta1.ShootSpec{
 				Kubernetes: gardencorev1beta1.Kubernetes{
@@ -144,21 +193,21 @@ var _ = Describe("Ensurer", func() {
 			err := ensurer.EnsureKubeAPIServerDeployment(ctx, eContextK8s130, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
 
-			checkKubeAPIServerDeployment(dep, "1.30.0")
+			checkKubeAPIServerDeployment(dep, "1.30.0", false)
 		})
 
 		It("should add missing elements to kube-apiserver deployment (k8s = 1.31)", func() {
 			err := ensurer.EnsureKubeAPIServerDeployment(ctx, eContextK8s131, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
 
-			checkKubeAPIServerDeployment(dep, "1.31.0")
+			checkKubeAPIServerDeployment(dep, "1.31.0", false)
 		})
 
 		It("should add missing elements to kube-apiserver deployment (k8s >= 1.32)", func() {
 			err := ensurer.EnsureKubeAPIServerDeployment(ctx, eContextK8s132, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
 
-			checkKubeAPIServerDeployment(dep, "1.32.0")
+			checkKubeAPIServerDeployment(dep, "1.32.0", false)
 		})
 
 		It("should modify existing elements of kube-apiserver deployment", func() {
@@ -190,7 +239,30 @@ var _ = Describe("Ensurer", func() {
 			}
 
 			Expect(ensurer.EnsureKubeAPIServerDeployment(ctx, eContextK8s130, dep, nil)).To(Not(HaveOccurred()))
-			checkKubeAPIServerDeployment(dep, "1.30.1")
+			checkKubeAPIServerDeployment(dep, "1.30.1", false)
+		})
+
+		Context("VolumeAttributesClass", func() {
+			It("should add missing elements to kube-apiserver deployment (k8s >= 1.31 with VolumeAttributeClass)", func() {
+				err := ensurer.EnsureKubeAPIServerDeployment(ctx, eContextK8s131WithVAC, dep, nil)
+				Expect(err).To(Not(HaveOccurred()))
+
+				checkKubeAPIServerDeployment(dep, "1.31.1", true)
+			})
+
+			It("should add missing elements to kube-apiserver deployment (k8s 1.33 with VolumeAttributeClass)", func() {
+				err := ensurer.EnsureKubeAPIServerDeployment(ctx, eContextK8s133WithVAC, dep, nil)
+				Expect(err).To(Not(HaveOccurred()))
+
+				checkKubeAPIServerDeployment(dep, "1.33.0", true)
+			})
+
+			It("should not add VolumeAttributeClass feature gate for k8s >= 1.34", func() {
+				err := ensurer.EnsureKubeAPIServerDeployment(ctx, eContextK8s134WithVAC, dep, nil)
+				Expect(err).To(Not(HaveOccurred()))
+
+				checkKubeAPIServerDeployment(dep, "1.34.0", false)
+			})
 		})
 	})
 
@@ -218,21 +290,21 @@ var _ = Describe("Ensurer", func() {
 			err := ensurer.EnsureKubeControllerManagerDeployment(ctx, eContextK8s130, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
 
-			checkKubeControllerManagerDeployment(dep, "1.30.0")
+			checkKubeControllerManagerDeployment(dep, "1.30.0", false)
 		})
 
 		It("should add missing elements to kube-controller-manager deployment (k8s = 1.31)", func() {
 			err := ensurer.EnsureKubeControllerManagerDeployment(ctx, eContextK8s131, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
 
-			checkKubeControllerManagerDeployment(dep, "1.31.0")
+			checkKubeControllerManagerDeployment(dep, "1.31.0", false)
 		})
 
 		It("should add missing elements to kube-controller-manager deployment (k8s >= 1.32)", func() {
 			err := ensurer.EnsureKubeControllerManagerDeployment(ctx, eContextK8s131, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
 
-			checkKubeControllerManagerDeployment(dep, "1.32.0")
+			checkKubeControllerManagerDeployment(dep, "1.32.0", false)
 		})
 
 		It("should modify existing elements of kube-controller-manager deployment", func() {
@@ -258,7 +330,30 @@ var _ = Describe("Ensurer", func() {
 
 			err := ensurer.EnsureKubeControllerManagerDeployment(ctx, eContextK8s130, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
-			checkKubeControllerManagerDeployment(dep, "1.30.1")
+			checkKubeControllerManagerDeployment(dep, "1.30.1", false)
+		})
+
+		Context("VolumeAttributesClass", func() {
+			It("should add missing elements to kube-controller-manager deployment (k8s >= 1.31 with VolumeAttributeClass)", func() {
+				err := ensurer.EnsureKubeControllerManagerDeployment(ctx, eContextK8s131WithVAC, dep, nil)
+				Expect(err).To(Not(HaveOccurred()))
+
+				checkKubeControllerManagerDeployment(dep, "1.31.1", true)
+			})
+
+			It("should add missing elements to kube-controller-manager deployment (k8s 1.33 with VolumeAttributeClass)", func() {
+				err := ensurer.EnsureKubeControllerManagerDeployment(ctx, eContextK8s133WithVAC, dep, nil)
+				Expect(err).To(Not(HaveOccurred()))
+
+				checkKubeControllerManagerDeployment(dep, "1.33.0", true)
+			})
+
+			It("should not add VolumeAttributeClass feature gate for k8s >= 1.34", func() {
+				err := ensurer.EnsureKubeControllerManagerDeployment(ctx, eContextK8s134WithVAC, dep, nil)
+				Expect(err).To(Not(HaveOccurred()))
+
+				checkKubeControllerManagerDeployment(dep, "1.34.0", false)
+			})
 		})
 	})
 
@@ -286,21 +381,44 @@ var _ = Describe("Ensurer", func() {
 			err := ensurer.EnsureKubeSchedulerDeployment(ctx, eContextK8s130, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
 
-			checkKubeSchedulerDeployment(dep, "1.30.0")
+			checkKubeSchedulerDeployment(dep, "1.30.0", false)
 		})
 
 		It("should add missing elements to kube-scheduler deployment (k8s = 1.31)", func() {
 			err := ensurer.EnsureKubeSchedulerDeployment(ctx, eContextK8s131, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
 
-			checkKubeSchedulerDeployment(dep, "1.31.0")
+			checkKubeSchedulerDeployment(dep, "1.31.0", false)
 		})
 
 		It("should add missing elements to kube-scheduler deployment (k8s >= 1.32)", func() {
 			err := ensurer.EnsureKubeSchedulerDeployment(ctx, eContextK8s132, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
 
-			checkKubeSchedulerDeployment(dep, "1.32.0")
+			checkKubeSchedulerDeployment(dep, "1.32.0", false)
+		})
+
+		Context("VolumeAttributesClass", func() {
+			It("should add missing elements to kube-scheduler deployment (k8s >= 1.31 with VolumeAttributeClass)", func() {
+				err := ensurer.EnsureKubeSchedulerDeployment(ctx, eContextK8s131WithVAC, dep, nil)
+				Expect(err).To(Not(HaveOccurred()))
+
+				checkKubeSchedulerDeployment(dep, "1.31.1", true)
+			})
+
+			It("should add missing elements to kube-scheduler deployment (k8s 1.33 with VolumeAttributeClass)", func() {
+				err := ensurer.EnsureKubeSchedulerDeployment(ctx, eContextK8s133WithVAC, dep, nil)
+				Expect(err).To(Not(HaveOccurred()))
+
+				checkKubeSchedulerDeployment(dep, "1.33.0", true)
+			})
+
+			It("should not add VolumeAttributeClass feature gate for k8s >= 1.34", func() {
+				err := ensurer.EnsureKubeSchedulerDeployment(ctx, eContextK8s134WithVAC, dep, nil)
+				Expect(err).To(Not(HaveOccurred()))
+
+				checkKubeSchedulerDeployment(dep, "1.34.0", false)
+			})
 		})
 	})
 
@@ -328,21 +446,44 @@ var _ = Describe("Ensurer", func() {
 			err := ensurer.EnsureClusterAutoscalerDeployment(ctx, eContextK8s130, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
 
-			checkClusterAutoscalerDeployment(dep, "1.30.0")
+			checkClusterAutoscalerDeployment(dep, "1.30.0", false)
 		})
 
 		It("should add missing elements to cluster-autoscaler deployment (k8s = 1.31)", func() {
 			err := ensurer.EnsureClusterAutoscalerDeployment(ctx, eContextK8s131, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
 
-			checkClusterAutoscalerDeployment(dep, "1.31.0")
+			checkClusterAutoscalerDeployment(dep, "1.31.0", false)
 		})
 
 		It("should add missing elements to cluster-autoscaler deployment (k8s >= 1.32)", func() {
 			err := ensurer.EnsureClusterAutoscalerDeployment(ctx, eContextK8s132, dep, nil)
 			Expect(err).To(Not(HaveOccurred()))
 
-			checkClusterAutoscalerDeployment(dep, "1.32.0")
+			checkClusterAutoscalerDeployment(dep, "1.32.0", false)
+		})
+
+		Context("VolumeAttributesClass", func() {
+			It("should add missing elements to cluster-autoscaler deployment (k8s >= 1.31 with VolumeAttributeClass)", func() {
+				err := ensurer.EnsureClusterAutoscalerDeployment(ctx, eContextK8s131WithVAC, dep, nil)
+				Expect(err).To(Not(HaveOccurred()))
+
+				checkClusterAutoscalerDeployment(dep, "1.31.1", true)
+			})
+
+			It("should add missing elements to cluster-autoscaler deployment (k8s 1.33 with VolumeAttributeClass)", func() {
+				err := ensurer.EnsureClusterAutoscalerDeployment(ctx, eContextK8s133WithVAC, dep, nil)
+				Expect(err).To(Not(HaveOccurred()))
+
+				checkClusterAutoscalerDeployment(dep, "1.33.0", true)
+			})
+
+			It("should not add VolumeAttributeClass feature gate for k8s >= 1.34", func() {
+				err := ensurer.EnsureClusterAutoscalerDeployment(ctx, eContextK8s134WithVAC, dep, nil)
+				Expect(err).To(Not(HaveOccurred()))
+
+				checkClusterAutoscalerDeployment(dep, "1.34.0", false)
+			})
 		})
 	})
 
@@ -590,8 +731,9 @@ var _ = Describe("Ensurer", func() {
 	})
 })
 
-func checkKubeAPIServerDeployment(dep *appsv1.Deployment, k8sVersion string) {
+func checkKubeAPIServerDeployment(dep *appsv1.Deployment, k8sVersion string, volumeAttributesClassEnabled bool) {
 	k8sVersionAtLeast131, _ := version.CompareVersions(k8sVersion, ">=", "1.31")
+	k8sVersionLess134, _ := version.CompareVersions(k8sVersion, "<", "1.34")
 
 	// Check that the kube-apiserver container still exists and contains all needed command line args,
 	// env vars, and volume mounts
@@ -599,6 +741,9 @@ func checkKubeAPIServerDeployment(dep *appsv1.Deployment, k8sVersion string) {
 	Expect(c).To(Not(BeNil()))
 
 	switch {
+	case k8sVersionAtLeast131 && k8sVersionLess134 && volumeAttributesClassEnabled:
+		Expect(c.Command).To(test.ContainElementWithPrefixContaining("--feature-gates=", "VolumeAttributesClass=true", ","))
+		Expect(c.Command).To(test.ContainElementWithPrefixContaining("--runtime-config=", "storage.k8s.io/v1beta1=true", ","))
 	case k8sVersionAtLeast131:
 		Expect(c.Command).NotTo(ContainElement(HavePrefix("--feature-gates")))
 	default: // < 1.31
@@ -616,8 +761,9 @@ func checkKubeAPIServerDeployment(dep *appsv1.Deployment, k8sVersion string) {
 	Expect(dep.Spec.Template.Annotations).To(BeNil())
 }
 
-func checkKubeControllerManagerDeployment(dep *appsv1.Deployment, k8sVersion string) {
+func checkKubeControllerManagerDeployment(dep *appsv1.Deployment, k8sVersion string, volumeAttributesClassEnabled bool) {
 	k8sVersionAtLeast131, _ := version.CompareVersions(k8sVersion, ">=", "1.31")
+	k8sVersionLess134, _ := version.CompareVersions(k8sVersion, "<", "1.34")
 
 	// Check that the kube-controller-manager container still exists and contains all needed command line args,
 	// env vars, and volume mounts
@@ -627,6 +773,8 @@ func checkKubeControllerManagerDeployment(dep *appsv1.Deployment, k8sVersion str
 	Expect(c.Command).To(ContainElement("--cloud-provider=external"))
 
 	switch {
+	case k8sVersionAtLeast131 && k8sVersionLess134 && volumeAttributesClassEnabled:
+		Expect(c.Command).To(test.ContainElementWithPrefixContaining("--feature-gates=", "VolumeAttributesClass=true", ","))
 	case k8sVersionAtLeast131:
 		Expect(c.Command).NotTo(ContainElement(HavePrefix("--feature-gates")))
 	default: // < 1.31
@@ -645,14 +793,17 @@ func checkKubeControllerManagerDeployment(dep *appsv1.Deployment, k8sVersion str
 	Expect(dep.Spec.Template.Spec.Volumes).NotTo(ContainElement(usrShareCaCertsVolume))
 }
 
-func checkKubeSchedulerDeployment(dep *appsv1.Deployment, k8sVersion string) {
+func checkKubeSchedulerDeployment(dep *appsv1.Deployment, k8sVersion string, volumeAttributesClassEnabled bool) {
 	k8sVersionAtLeast131, _ := version.CompareVersions(k8sVersion, ">=", "1.31")
+	k8sVersionLess134, _ := version.CompareVersions(k8sVersion, "<", "1.34")
 
 	// Check that the kube-scheduler container still exists and contains all needed command line args.
 	c := extensionswebhook.ContainerWithName(dep.Spec.Template.Spec.Containers, "kube-scheduler")
 	Expect(c).To(Not(BeNil()))
 
 	switch {
+	case k8sVersionAtLeast131 && k8sVersionLess134 && volumeAttributesClassEnabled:
+		Expect(c.Command).To(test.ContainElementWithPrefixContaining("--feature-gates=", "VolumeAttributesClass=true", ","))
 	case k8sVersionAtLeast131:
 		Expect(c.Command).NotTo(ContainElement(HavePrefix("--feature-gates")))
 	default: // < 1.31
@@ -660,14 +811,17 @@ func checkKubeSchedulerDeployment(dep *appsv1.Deployment, k8sVersion string) {
 	}
 }
 
-func checkClusterAutoscalerDeployment(dep *appsv1.Deployment, k8sVersion string) {
+func checkClusterAutoscalerDeployment(dep *appsv1.Deployment, k8sVersion string, volumeAttributesClassEnabled bool) {
 	k8sVersionAtLeast131, _ := version.CompareVersions(k8sVersion, ">=", "1.31")
+	k8sVersionLess134, _ := version.CompareVersions(k8sVersion, "<", "1.34")
 
 	// Check that the cluster-autoscaler container still exists and contains all needed command line args.
 	c := extensionswebhook.ContainerWithName(dep.Spec.Template.Spec.Containers, "cluster-autoscaler")
 	Expect(c).To(Not(BeNil()))
 
 	switch {
+	case k8sVersionAtLeast131 && k8sVersionLess134 && volumeAttributesClassEnabled:
+		Expect(c.Command).To(test.ContainElementWithPrefixContaining("--feature-gates=", "VolumeAttributesClass=true", ","))
 	case k8sVersionAtLeast131:
 		Expect(c.Command).NotTo(ContainElement(HavePrefix("--feature-gates")))
 	default: // < 1.31

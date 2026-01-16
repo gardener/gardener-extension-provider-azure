@@ -5,6 +5,9 @@
 package azure
 
 import (
+	"strconv"
+
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 )
 
@@ -183,3 +186,12 @@ var (
 		"standard_dc",
 	}
 )
+
+// VolumeAttributesClassBetaEnabled returns true if the VolumeAttributesClass feature is enabled for the given shoot.
+func VolumeAttributesClassBetaEnabled(shoot *gardencorev1beta1.Shoot) bool {
+	if shoot == nil || shoot.GetAnnotations() == nil {
+		return false
+	}
+	ok, _ := strconv.ParseBool(shoot.GetAnnotations()[AnnotationEnableVolumeAttributesClass])
+	return ok
+}
