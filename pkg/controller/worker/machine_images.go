@@ -9,6 +9,8 @@ import (
 	"fmt"
 
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
@@ -37,10 +39,24 @@ func (w *workerDelegate) UpdateMachineImagesStatus(ctx context.Context) error {
 	return nil
 }
 
-func (w *workerDelegate) findMachineImage(name, version string, architecture *string) (*api.MachineImage, error) {
-	machineImage, err := helper.FindImageFromCloudProfile(w.cloudProfileConfig, name, version, architecture)
-	if err == nil {
-		return machineImage, nil
+func (w *workerDelegate) selectMachineImageForWorkerPool(name, version string, architecture *string, machineCapabilities gardencorev1beta1.Capabilities) (*api.MachineImage, error) {
+	selectedMachineImage := &api.MachineImage{
+		Name:    name,
+		Version: version,
+	}
+	if imageFlavor, imageVersion, err := helper.FindImageInCloudProfile(w.cloudProfileConfig, name, version, architecture, machineCapabilities, w.cluster.CloudProfile.Spec.MachineCapabilities); err == nil {
+		if imageFlavor != nil {
+			selectedMachineImage.Capabilities = imageFlavor.Capabilities
+			selectedMachineImage.Image = imageFlavor.Image
+			selectedMachineImage.SkipMarketplaceAgreement = imageFlavor.SkipMarketplaceAgreement
+		}
+		if imageVersion != nil {
+			selectedMachineImage.Image = imageVersion.Image
+			selectedMachineImage.Architecture = imageVersion.Architecture
+			selectedMachineImage.AcceleratedNetworking = imageVersion.AcceleratedNetworking
+			selectedMachineImage.SkipMarketplaceAgreement = imageVersion.SkipMarketplaceAgreement
+		}
+		return selectedMachineImage, nil
 	}
 
 	// Try to look up machine image in worker provider status as it was not found in componentconfig.
@@ -50,20 +66,33 @@ func (w *workerDelegate) findMachineImage(name, version string, architecture *st
 			return nil, fmt.Errorf("could not decode worker status of worker '%s': %w", k8sclient.ObjectKeyFromObject(w.worker), err)
 		}
 
-		machineImage, err := helper.FindMachineImage(workerStatus.MachineImages, name, version, architecture)
-		if err != nil {
-			return nil, worker.ErrorMachineImageNotFound(name, version, *architecture)
-		}
-
-		return machineImage, nil
+		return helper.FindImageInWorkerStatus(workerStatus.MachineImages, name, version, architecture, machineCapabilities, w.cluster.CloudProfile.Spec.MachineCapabilities)
 	}
-
 	return nil, worker.ErrorMachineImageNotFound(name, version, *architecture)
 }
 
-func appendMachineImage(machineImages []api.MachineImage, machineImage api.MachineImage) []api.MachineImage {
-	if _, err := helper.FindMachineImage(machineImages, machineImage.Name, machineImage.Version, machineImage.Architecture); err != nil {
+func appendMachineImage(machineImages []api.MachineImage, machineImage api.MachineImage, capabilityDefinitions []gardencorev1beta1.CapabilityDefinition) []api.MachineImage {
+	// support for cloudprofile machine images without capabilities
+	if len(capabilityDefinitions) == 0 {
+		for _, image := range machineImages {
+			if image.Name == machineImage.Name && image.Version == machineImage.Version && machineImage.Architecture == image.Architecture {
+				// If the image already exists without capabilities, we can just return the existing list.
+				return machineImages
+			}
+		}
 		return append(machineImages, machineImage)
 	}
-	return machineImages
+
+	defaultedCapabilities := gardencorev1beta1.GetCapabilitiesWithAppliedDefaults(machineImage.Capabilities, capabilityDefinitions)
+
+	for _, existingMachineImage := range machineImages {
+		existingDefaultedCapabilities := gardencorev1beta1.GetCapabilitiesWithAppliedDefaults(existingMachineImage.Capabilities, capabilityDefinitions)
+		if existingMachineImage.Name == machineImage.Name && existingMachineImage.Version == machineImage.Version && gardencorev1beta1helper.AreCapabilitiesEqual(defaultedCapabilities, existingDefaultedCapabilities) {
+			// If the image already exists with the same capabilities return the existing list.
+			return machineImages
+		}
+	}
+
+	// If the image does not exist, we create a new machine image entry with the capabilities.
+	return append(machineImages, machineImage)
 }

@@ -5,6 +5,7 @@
 package azure
 
 import (
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -58,22 +59,12 @@ type MachineImage struct {
 	AcceleratedNetworking *bool
 	// Architecture is the CPU architecture of the machine image.
 	Architecture *string
+	// Capabilities of the machine image.
+	Capabilities gardencorev1beta1.Capabilities
 	// SkipMarketplaceAgreement skips the marketplace agreement check when enabled.
 	SkipMarketplaceAgreement *bool
 	// Image identifies the azure image.
 	Image
-}
-
-// Image identifies the azure image.
-type Image struct {
-	// URN is the uniform resource name of the image, it has the format 'publisher:offer:sku:version'.
-	URN *string
-	// ID is the VM image ID.
-	ID *string
-	// CommunityGalleryImageID is the Community Image Gallery image id.
-	CommunityGalleryImageID *string
-	// SharedGalleryImageID is the Shared Image Gallery image id.
-	SharedGalleryImageID *string
 }
 
 // VmoDependency is dependency reference for a workerpool to a VirtualMachineScaleSet Orchestration Mode VM (VMO).
