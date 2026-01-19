@@ -37,7 +37,7 @@ machineImages:
   versions:
   - version: 2135.6.0
     urn: "CoreOS:CoreOS:Stable:2135.6.0"
-    # architecture: amd64 # optional
+#    architecture: amd64 # optional
     acceleratedNetworking: true
 - name: myimage
   versions:
@@ -123,11 +123,11 @@ spec:
       versions:
       - version: 2303.3.0
         urn: CoreOS:CoreOS:Stable:2303.3.0
-        # architecture: amd64 # optional
+#        architecture: amd64 # optional
         acceleratedNetworking: true
       - version: 2135.6.0
         urn: "CoreOS:CoreOS:Stable:2135.6.0"
-        # architecture: amd64 # optional
+#        architecture: amd64 # optional
 ```
 
 ## `Seed` resource

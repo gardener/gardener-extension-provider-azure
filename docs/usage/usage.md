@@ -149,10 +149,10 @@ apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
 kind: InfrastructureConfig
 networks:
   vnet: # specify either 'name' and 'resourceGroup' or 'cidr'. If none of them are set, the value of networks.workers will be used.
-    # name: my-vnet
-    # resourceGroup: my-vnet-resource-group
+#    name: my-vnet
+#    resourceGroup: my-vnet-resource-group
     cidr: 10.250.0.0/16
-    # ddosProtectionPlanID: /subscriptions/test/resourceGroups/test/providers/Microsoft.Network/ddosProtectionPlans/test-ddos-protection-plan
+#    ddosProtectionPlanID: /subscriptions/test/resourceGroups/test/providers/Microsoft.Network/ddosProtectionPlans/test-ddos-protection-plan
   workers: 10.250.0.0/19
 #  # natGateway can only be set together with networks.workers
 #  natGateway:
@@ -281,11 +281,11 @@ infrastructureConfig:
     zones:
       - name: 3
         cidr: 10.250.0.0/19 # note the preservation of the 'workers' CIDR
-# optionally add other zones
-#     - name: 2
-#       cidr: 10.250.32.0/19
-#       natGateway:
-#         enabled: true
+#      # optionally add other zones
+#      - name: 2
+#        cidr: 10.250.32.0/19
+#        natGateway:
+#          enabled: true
   zoned: true
 ```
 
@@ -334,14 +334,14 @@ infrastructureConfig:
             - name: pip2
               resourceGroup: group
               zone: 1
-# optionally add other zones
-#     - name: 2
-#       cidr: 10.250.32.0/19
-#       natGateway:
-#         enabled: true
-#         ipAddresses:
-#           - name: pip3
-#             resourceGroup: group
+#      # optionally add other zones
+#      - name: 2
+#        cidr: 10.250.32.0/19
+#        natGateway:
+#          enabled: true
+#          ipAddresses:
+#            - name: pip3
+#              resourceGroup: group
 ```
 
 You can apply such change to your shoot by issuing a `kubectl patch` command to replace your current `.spec.provider.infrastructureConfig` section:
@@ -400,8 +400,8 @@ An example `ControlPlaneConfig` for the Azure extension looks as follows:
 apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
 kind: ControlPlaneConfig
 cloudControllerManager:
-# featureGates:
-#   SomeKubernetesFeature: true
+#  featureGates:
+#    SomeKubernetesFeature: true
 ```
 
 The `cloudControllerManager.featureGates` contains a map of explicitly enabled or disabled feature gates.
@@ -450,14 +450,14 @@ nodeTemplate: # (to be specified only if the node capacity would be different fr
     memory: 50Gi
 diagnosticsProfile:
   enabled: true
-  # storageURI: https://<storage-account-name>.blob.core.windows.net/
+#  storageURI: https://<storage-account-name>.blob.core.windows.net/
 dataVolumes:
   - name: test-image
     imageRef:
       communityGalleryImageID: /CommunityGalleries/gardenlinux-13e998fe-534d-4b0a-8a27-f16a73aef620/Images/gardenlinux/Versions/1443.10.0
-      # sharedGalleryImageID: /SharedGalleries/82fc46df-cc38-4306-9880-504e872cee18-VSMP_MEMORYONE_GALLERY/Images/vSMP_MemoryONE/Versions/1062800168.0.0
-      # id: /Subscriptions/2ebd38b6-270b-48a2-8e0b-2077106dc615/Providers/Microsoft.Compute/Locations/westeurope/Publishers/sap/ArtifactTypes/VMImage/Offers/gardenlinux/Skus/greatest/Versions/1443.10.0
-      # urn: sap:gardenlinux:greatest:1443.10.0
+#      sharedGalleryImageID: /SharedGalleries/82fc46df-cc38-4306-9880-504e872cee18-VSMP_MEMORYONE_GALLERY/Images/vSMP_MemoryONE/Versions/1062800168.0.0
+#      id: /Subscriptions/2ebd38b6-270b-48a2-8e0b-2077106dc615/Providers/Microsoft.Compute/Locations/westeurope/Publishers/sap/ArtifactTypes/VMImage/Offers/gardenlinux/Skus/greatest/Versions/1443.10.0
+#      urn: sap:gardenlinux:greatest:1443.10.0
 volume:
   cachingType: ReadWrite
 ```

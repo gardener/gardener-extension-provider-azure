@@ -6,11 +6,11 @@ aadClientSecret: barSecret
 useWorkloadIdentity: false
 resourceGroup: foobarGroup
 vnetName: name
-# vnetResourceGroup: vnetResourceGroup
+#vnetResourceGroup: vnetResourceGroup
 subnetName: sname
 routeTableName: rtname
 securityGroupName: sgname
 region: location
 maxNodes: 0
-# acrIdentityClientId: identityClientID
-# vmType: standard
+#acrIdentityClientId: identityClientID
+#vmType: standard
