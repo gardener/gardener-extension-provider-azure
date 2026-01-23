@@ -81,9 +81,11 @@ config:
       parameters:
         storageaccounttype: Premium_LRS
         kind: managed
+#     backup:
+#       schedule: "0 */1 * * *"
   featureGates:
-#    DisableRemedyController: false
-#    EnableImmutableBuckets: false
+#     DisableRemedyController: false
+#     EnableImmutableBuckets: false
 
 gardener:
   version: ""
