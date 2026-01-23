@@ -204,7 +204,7 @@ func (a *actuator) forceDeleteShootRemedyControllerResources(ctx context.Context
 		return err
 	}
 
-	// Te want to make sure that we do not put unnecessary load on the API server of the shoot cluster.
+	// We want to make sure that we do not put unnecessary load on the API server of the shoot cluster.
 	// Therefore, we first list all resources of a certain kind and only if there are any resources present,
 	// we proceed with removing the finalizers from those resources.
 	pubipList := &azurev1alpha1.PublicIPAddressList{}
