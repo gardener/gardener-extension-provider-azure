@@ -17,7 +17,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-controller-manager
-  tag: v1.31.11
+  tag: v1.31.12
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -32,7 +32,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-controller-manager
-  tag: v1.32.10
+  tag: v1.32.11
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -47,7 +47,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-controller-manager
-  tag: v1.33.5
+  tag: v1.33.6
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -92,7 +92,7 @@ images:
 - name: cloud-node-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-node-manager
-  tag: v1.31.11
+  tag: v1.31.12
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -107,7 +107,7 @@ images:
 - name: cloud-node-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-node-manager
-  tag: v1.32.10
+  tag: v1.32.11
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -122,7 +122,7 @@ images:
 - name: cloud-node-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-node-manager
-  tag: v1.33.5
+  tag: v1.33.6
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -166,7 +166,7 @@ images:
 - name: csi-driver-disk
   sourceRepository: github.com/kubernetes-sigs/azuredisk-csi-driver
   repository: mcr.microsoft.com/oss/v2/kubernetes-csi/azuredisk-csi
-  tag: v1.33.6
+  tag: v1.34.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -180,7 +180,7 @@ images:
 - name: csi-driver-file
   sourceRepository: github.com/kubernetes-sigs/azurefile-csi-driver
   repository: mcr.microsoft.com/oss/v2/kubernetes-csi/azurefile-csi
-  tag: v1.33.3
+  tag: v1.34.3
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -308,7 +308,7 @@ images:
 - name: machine-controller-manager-provider-azure
   sourceRepository: github.com/gardener/machine-controller-manager-provider-azure
   repository: europe-docker.pkg.dev/gardener-project/releases/gardener/machine-controller-manager-provider-azure
-  tag: "v0.18.0"
+  tag: v0.18.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
