@@ -32,6 +32,7 @@ jobs:
 
   skip-tests:
     if: ${{ inputs.skip-integration-tests }}
+    permissions: {}
     runs-on: ubuntu-latest
     steps:
       - name: Skip Integration Tests
