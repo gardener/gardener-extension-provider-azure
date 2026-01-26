@@ -117,6 +117,7 @@ var _ = Describe("Helper", func() {
 			Entry("profile entry not found (no architecture)", makeProfileMachineImages("ubuntu", "2", "4", "6", "7", ptr.To("bar"), nil), "ubuntu", "2", ptr.To("foo"), nil),
 			Entry("profile entry(urn)", makeProfileMachineImages("ubuntu", "1", "3", "5", "6", ptr.To("foo"), nil), "ubuntu", "1", ptr.To("foo"), &api.MachineImageVersion{Version: "1", Image: api.Image{URN: &profileURN}, Architecture: ptr.To("foo")}),
 			Entry("profile entry(id)", makeProfileMachineImages("ubuntu", "1", "3", "5", "6", ptr.To("foo"), nil), "ubuntu", "3", ptr.To("foo"), &api.MachineImageVersion{Version: "3", Image: api.Image{ID: &profileID}, Architecture: ptr.To("foo")}),
+			Entry("entry exists(urn) if architecture is nil (defaults to amd64)", makeProfileMachineImages("ubuntu", "1", "3", "5", "6", nil, nil), "ubuntu", "3", ptr.To("amd64"), &api.MachineImageVersion{Version: "3", Image: api.Image{ID: &profileID}, Architecture: nil}),
 			Entry("profile entry(communiyGalleryId)", makeProfileMachineImages("ubuntu", "1", "3", "5", "6", ptr.To("foo"), nil), "ubuntu", "5", ptr.To("foo"), &api.MachineImageVersion{Version: "5", Image: api.Image{CommunityGalleryImageID: &profileCommunityImageId}, Architecture: ptr.To("foo")}),
 			Entry("profile entry(sharedGalleryId)", makeProfileMachineImages("ubuntu", "1", "3", "5", "6", ptr.To("foo"), nil), "ubuntu", "6", ptr.To("foo"), &api.MachineImageVersion{Version: "6", Image: api.Image{SharedGalleryImageID: &profileSharedImageId}, Architecture: ptr.To("foo")}),
 

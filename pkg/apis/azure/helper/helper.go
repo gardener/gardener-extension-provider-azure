@@ -143,7 +143,7 @@ func findMachineImageFlavor(
 			}
 
 			if len(capabilityDefinitions) == 0 {
-				if ptr.Equal(arch, version.Architecture) {
+				if *arch == ptr.Deref(version.Architecture, v1beta1constants.ArchitectureAMD64) {
 					return nil, &version, nil
 				}
 				continue
