@@ -70,7 +70,7 @@ type MachineImageVersion struct {
 	Architecture *string
 	// CapabilityFlavors is a collection of all images for that version with capabilities.
 	CapabilityFlavors []MachineImageFlavor
-	// TODO @Roncossek add "// deprecated" once aws cloudprofiles are migrated to use CapabilityFlavors
+	// TODO @Roncossek add "// deprecated" once azure cloudprofiles are migrated to use CapabilityFlavors
 
 	// Image identifies the azure image.
 	Image

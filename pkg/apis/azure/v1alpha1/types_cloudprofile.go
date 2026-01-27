@@ -59,24 +59,24 @@ type MachineImages struct {
 type MachineImageVersion struct {
 	// Version is the version of the image.
 	Version string `json:"version"`
-	// TODO @Roncossek add "// deprecated" once aws cloudprofiles are migrated to use CapabilityFlavors
+	// TODO @Roncossek add "// deprecated" once azure cloudprofiles are migrated to use CapabilityFlavors
 
 	// SkipMarketplaceAgreement skips the marketplace agreement check when enabled.
 	// +optional
 	SkipMarketplaceAgreement *bool `json:"skipMarketplaceAgreement,omitempty"`
-	// TODO @Roncossek add "// deprecated" once aws cloudprofiles are migrated to use CapabilityFlavors
+	// TODO @Roncossek add "// deprecated" once azure cloudprofiles are migrated to use CapabilityFlavors
 
 	// AcceleratedNetworking is an indicator if the image supports Azure accelerated networking.
 	// +optional
 	AcceleratedNetworking *bool `json:"acceleratedNetworking,omitempty"`
-	// TODO @Roncossek add "// deprecated" once aws cloudprofiles are migrated to use CapabilityFlavors
+	// TODO @Roncossek add "// deprecated" once azure cloudprofiles are migrated to use CapabilityFlavors
 
 	// Architecture is the CPU architecture of the machine image.
 	// +optional
 	Architecture *string `json:"architecture,omitempty"`
 	// CapabilityFlavors is a collection of all images for that version with capabilities.
 	CapabilityFlavors []MachineImageFlavor `json:"capabilityFlavors,omitempty"`
-	// TODO @Roncossek add "// deprecated" once aws cloudprofiles are migrated to use CapabilityFlavors
+	// TODO @Roncossek add "// deprecated" once azure cloudprofiles are migrated to use CapabilityFlavors
 
 	// Image identifies the azure image.
 	Image `json:",inline"`
