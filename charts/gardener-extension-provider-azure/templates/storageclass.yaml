@@ -11,6 +11,6 @@ provisioner: {{ .Values.config.etcd.storage.provisioner }}
 volumeBindingMode: {{ .Values.config.etcd.storage.volumeBindingMode }}
 parameters:
   {{- if .Values.config.etcd.storage.parameters }}
-    {{- .Values.config.etcd.storage.parameters | toYaml | indent 2 }}
+    {{- .Values.config.etcd.storage.parameters | toYaml | nindent 2 }}
   {{- end }}
 {{- end }}
