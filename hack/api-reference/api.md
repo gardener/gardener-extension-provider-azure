@@ -945,7 +945,9 @@ bool
 <p>
 (<em>Appears on:</em>
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.DataVolume">DataVolume</a>, 
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.MachineImage">MachineImage</a>)
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.MachineImage">MachineImage</a>, 
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.MachineImageFlavor">MachineImageFlavor</a>, 
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.MachineImageVersion">MachineImageVersion</a>)
 </p>
 <p>
 <p>Image identifies the azure image.</p>
@@ -979,7 +981,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>ID is the VM image ID.</p>
+<p>ID is the Shared Image Gallery image id.</p>
 </td>
 </tr>
 <tr>
@@ -991,7 +993,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>CommunityGalleryImageID is the Community Image Gallery image id.</p>
+<p>CommunityGalleryImageID is the Community Image Gallery image id, it has the format &lsquo;/CommunityGalleries/myGallery/Images/myImage/Versions/myVersion&rsquo;</p>
 </td>
 </tr>
 <tr>
@@ -1003,7 +1005,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>SharedGalleryImageID is the Shared Image Gallery image id.</p>
+<p>SharedGalleryImageID is the Shared Image Gallery image id, it has the format &lsquo;/SharedGalleries/sharedGalleryName/Images/sharedGalleryImageName/Versions/sharedGalleryImageVersionName&rsquo;</p>
 </td>
 </tr>
 </tbody>
@@ -1266,6 +1268,17 @@ string
 </tr>
 <tr>
 <td>
+<code>capabilities</code></br>
+<em>
+github.com/gardener/gardener/pkg/apis/core/v1beta1.Capabilities
+</em>
+</td>
+<td>
+<p>Capabilities of the machine image.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>skipMarketplaceAgreement</code></br>
 <em>
 bool
@@ -1274,6 +1287,64 @@ bool
 <td>
 <em>(Optional)</em>
 <p>SkipMarketplaceAgreement skips the marketplace agreement check when enabled.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>Image</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.Image">
+Image
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>Image</code> are embedded into this type.)
+</p>
+<p>Image identifies the azure image.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.MachineImageFlavor">MachineImageFlavor
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.MachineImageVersion">MachineImageVersion</a>)
+</p>
+<p>
+<p>MachineImageFlavor is a flavor of the machine image version that supports a specific set of capabilities.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>skipMarketplaceAgreement</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SkipMarketplaceAgreement skips the marketplace agreement check when enabled.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>capabilities</code></br>
+<em>
+github.com/gardener/gardener/pkg/apis/core/v1beta1.Capabilities
+</em>
+</td>
+<td>
+<p>Capabilities is the set of capabilities that are supported by the image in this set.</p>
 </td>
 </tr>
 <tr>
@@ -1324,18 +1395,6 @@ string
 </tr>
 <tr>
 <td>
-<code>urn</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>URN is the uniform resource name of the image, it has the format &lsquo;publisher:offer:sku:version&rsquo;.</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>skipMarketplaceAgreement</code></br>
 <em>
 bool
@@ -1344,42 +1403,6 @@ bool
 <td>
 <em>(Optional)</em>
 <p>SkipMarketplaceAgreement skips the marketplace agreement check when enabled.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>id</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>ID is the Shared Image Gallery image id.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>communityGalleryImageID</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>CommunityGalleryImageID is the Community Image Gallery image id, it has the format &lsquo;/CommunityGalleries/myGallery/Images/myImage/Versions/myVersion&rsquo;</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>sharedGalleryImageID</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>SharedGalleryImageID is the Shared Image Gallery image id, it has the format &lsquo;/SharedGalleries/sharedGalleryName/Images/sharedGalleryImageName/Versions/sharedGalleryImageVersionName&rsquo;</p>
 </td>
 </tr>
 <tr>
@@ -1404,6 +1427,35 @@ string
 <td>
 <em>(Optional)</em>
 <p>Architecture is the CPU architecture of the machine image.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>capabilityFlavors</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.MachineImageFlavor">
+[]MachineImageFlavor
+</a>
+</em>
+</td>
+<td>
+<p>CapabilityFlavors is a collection of all images for that version with capabilities.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>Image</code></br>
+<em>
+<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.Image">
+Image
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>Image</code> are embedded into this type.)
+</p>
+<p>Image identifies the azure image.</p>
 </td>
 </tr>
 </tbody>
