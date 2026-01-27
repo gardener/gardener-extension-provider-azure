@@ -3,19 +3,17 @@ kind: Deployment
 metadata:
   name: {{ include "name" . }}
   namespace: {{ .Release.Namespace }}
-{{-  if .Values.ignoreResources }}
+{{- if .Values.ignoreResources }}
   annotations:
     resources.gardener.cloud/ignore: "true"
 {{- end }}
-  labels:
-{{ include "labels" . | indent 4 }}
+  labels: {{- include "labels" . | nindent 4 }}
     high-availability-config.resources.gardener.cloud/type: server
 spec:
   revisionHistoryLimit: 1
   replicas: {{ .Values.replicaCount }}
   selector:
-    matchLabels:
-{{ include "labels" . | indent 6 }}
+    matchLabels: {{- include "labels" . | nindent 6 }}
   strategy:
     rollingUpdate:
       maxUnavailable: {{ .Values.maxUnavailable }}
@@ -23,16 +21,16 @@ spec:
   template:
     metadata:
       annotations:
-        {{- if .Values.imageVectorOverwrite }}
+{{- if .Values.imageVectorOverwrite }}
         checksum/configmap-azure-imagevector-overwrite: {{ include (print $.Template.BasePath "/configmap-imagevector-overwrite.yaml") . | sha256sum }}
-        {{- end }}
+{{- end }}
         checksum/configmap-{{ include "name" . }}-config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
-        {{- if .Values.metrics.enableScraping }}
+{{- if .Values.metrics.enableScraping }}
         prometheus.io/name: "{{ .Release.Name }}"
         prometheus.io/scrape: "true"
         # default metrics endpoint in controller-runtime
         prometheus.io/port: "{{ tpl .Values.metricsPort . }}"
-        {{- end }}
+{{- end }}
       labels:
         networking.gardener.cloud/to-runtime-apiserver: allowed
         networking.gardener.cloud/to-dns: allowed
@@ -41,11 +39,11 @@ spec:
         networking.resources.gardener.cloud/to-all-shoots-kube-apiserver-tcp-443: allowed
 {{ include "labels" . | indent 8 }}
     spec:
-      {{- if (include "runtimeCluster.enabled" .) }}
+{{- if (include "runtimeCluster.enabled" .) }}
       priorityClassName: {{ .Values.gardener.runtimeCluster.priorityClassName }}
-      {{- else }}
+{{- else }}
       priorityClassName: gardener-system-900
-      {{- end }}
+{{- end }}
       serviceAccountName: {{ include "name" . }}
       containers:
       - name: {{ include "name" . }}
@@ -69,24 +67,32 @@ spec:
         - --webhook-config-namespace={{ .Release.Namespace }}
         - --webhook-config-service-port={{ .Values.webhookConfig.servicePort }}
         - --webhook-config-server-port={{ tpl .Values.webhookConfig.serverPort . }}
-        {{- if (include "runtimeCluster.enabled" .) }}
+{{- if (include "runtimeCluster.enabled" .) }}
         - --controllers=backupbucket,dnsrecord
         - --disable-webhooks="*"
         - --extension-class=garden
-        {{- else }}
+{{- else }}
         - --disable-controllers={{ .Values.disableControllers | join "," }}
         - --disable-webhooks={{ .Values.disableWebhooks | join "," }}
-        {{- end }}
+{{- end }}
         - --metrics-bind-address=:{{ tpl .Values.metricsPort . }}
         - --health-bind-address=:{{ tpl .Values.healthPort . }}
         - --gardener-version={{ .Values.gardener.version }}
-        {{- if .Values.gardener.selfHostedShootCluster }}
+{{- if .Values.gardener.selfHostedShootCluster }}
         - --self-hosted-shoot-cluster={{ .Values.gardener.selfHostedShootCluster }}
-        {{- end }}
-        {{- if eq (include "seed.provider" .) "azure" }}
+{{- end }}
+{{- if eq (include "seed.provider" .) "azure" }}
         - --seed-provider=azure
         - --seed-region={{ .Values.gardener.seed.region }}
-        {{- end }}
+{{- end }}
+{{- if .Values.logging }}
+  {{- if .Values.logging.level }}
+        - --log-level={{ .Values.logging.level }}
+  {{- end }}
+  {{- if .Values.logging.format }}
+        - --log-format={{ .Values.logging.format }}
+  {{- end }}
+{{- end }}
         securityContext:
           allowPrivilegeEscalation: false
         env:
@@ -94,10 +100,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        {{- if .Values.imageVectorOverwrite }}
+{{- if .Values.imageVectorOverwrite }}
         - name: IMAGEVECTOR_OVERWRITE
           value: /charts_overwrite/images_overwrite.yaml
-        {{- end }}
+{{- end }}
         livenessProbe:
           httpGet:
             path: /healthz
@@ -116,24 +122,24 @@ spec:
           protocol: TCP
 {{- if .Values.resources }}
         resources:
-{{ toYaml .Values.resources | nindent 10 }}
+{{- toYaml .Values.resources | nindent 10 }}
 {{- end }}
         volumeMounts:
         - name: config
           mountPath: /etc/{{ include "name" . }}/config
-        {{- if .Values.imageVectorOverwrite }}
+{{- if .Values.imageVectorOverwrite }}
         - name: imagevector-overwrite
           mountPath: /charts_overwrite/
           readOnly: true
-        {{- end }}
+{{- end }}
       volumes:
       - name: config
         configMap:
           name: {{ include "name" . }}-configmap
           defaultMode: 420
-      {{- if .Values.imageVectorOverwrite }}
+{{- if .Values.imageVectorOverwrite }}
       - name: imagevector-overwrite
         configMap:
           name: {{ include "name" . }}-imagevector-overwrite
           defaultMode: 420
-      {{- end }}
+{{- end }}
