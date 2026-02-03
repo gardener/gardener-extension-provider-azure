@@ -25,8 +25,5 @@ data:
 {{- end }}
 
 {{- if .Values.config.featureGates }}
-    featureGates:
-  {{- range $key := (.Values.config.featureGates | keys | uniq | sortAlpha) }}
-    {{ $key }}: {{ index $.Values.config.featureGates $key }}
-  {{- end }}
+    featureGates: {{- toYaml .Values.config.featureGates | nindent 6 }}
 {{- end }}
