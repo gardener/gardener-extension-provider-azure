@@ -30,9 +30,9 @@ type AddOptions struct {
 	IgnoreOperationAnnotation bool
 	// GardenCluster is the garden cluster object.
 	GardenCluster cluster.Cluster
-	// ExtensionClass defines the extension class this extension is responsible for.
-	ExtensionClass extensionsv1alpha1.ExtensionClass
-	// SelfHostedShootCluster indicates whether the extension runs in a self hosted shoot cluster.
+	// ExtensionClasses defines the extension classes this extension is responsible for.
+	ExtensionClasses []extensionsv1alpha1.ExtensionClass
+	// SelfHostedShootCluster indicates whether the extension runs in a self-hosted shoot cluster.
 	SelfHostedShootCluster bool
 }
 
@@ -52,7 +52,7 @@ func AddToManagerWithOptions(ctx context.Context, mgr manager.Manager, opts AddO
 		ControllerOptions:      opts.Controller,
 		Predicates:             worker.DefaultPredicates(ctx, mgr, opts.IgnoreOperationAnnotation),
 		Type:                   azure.Type,
-		ExtensionClass:         opts.ExtensionClass,
+		ExtensionClasses:       opts.ExtensionClasses,
 		SelfHostedShootCluster: opts.SelfHostedShootCluster,
 	})
 }
