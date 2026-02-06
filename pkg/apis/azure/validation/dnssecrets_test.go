@@ -256,6 +256,43 @@ var _ = Describe("DNS secrets validation", func() {
 				Expect(errs[0].Field).To(Equal("dnsRecord.spec.secretRef.data[UNEXPECTED_FIELD]"))
 				Expect(errs[0].Detail).To(Equal(expected))
 			})
+			It("should pass with valid complete DNS credentials using infrastructure keys and azureCloud", func() {
+				secret.Data[azure.SubscriptionIDKey] = []byte(subscriptionIDValue)
+				secret.Data[azure.TenantIDKey] = []byte(tenantIDValue)
+				secret.Data[azure.ClientIDKey] = []byte(clientIDValue)
+				secret.Data[azure.ClientSecretKey] = []byte(clientSecretValue)
+				secret.Data[azure.AzureCloud] = []byte("AzureGovernment")
+
+				errs := ValidateDNSProviderSecret(secret, fldPath)
+				Expect(errs).To(BeEmpty())
+			})
+
+			It("should pass with each allowed azureCloud value", func() {
+				secret.Data[azure.SubscriptionIDKey] = []byte(subscriptionIDValue)
+				secret.Data[azure.TenantIDKey] = []byte(tenantIDValue)
+				secret.Data[azure.ClientIDKey] = []byte(clientIDValue)
+				secret.Data[azure.ClientSecretKey] = []byte(clientSecretValue)
+
+				for _, v := range []string{"AzurePublic", "AzureChina", "AzureGovernment"} {
+					secret.Data[azure.AzureCloud] = []byte(v)
+					errs := ValidateDNSProviderSecret(secret, fldPath)
+					Expect(errs).To(BeEmpty())
+				}
+			})
+
+			It("should fail with invalid azureCloud value", func() {
+				secret.Data[azure.SubscriptionIDKey] = []byte(subscriptionIDValue)
+				secret.Data[azure.TenantIDKey] = []byte(tenantIDValue)
+				secret.Data[azure.ClientIDKey] = []byte(clientIDValue)
+				secret.Data[azure.ClientSecretKey] = []byte(clientSecretValue)
+				secret.Data[azure.AzureCloud] = []byte(invalidAzureCloudValue)
+
+				errs := ValidateDNSProviderSecret(secret, fldPath)
+				Expect(errs).To(HaveLen(1))
+				Expect(errs[0].Type).To(Equal(field.ErrorTypeNotSupported))
+				Expect(errs[0].Field).To(Equal("dnsRecord.spec.secretRef.data[azureCloud]"))
+				Expect(errs[0].BadValue).To(Equal(invalidAzureCloudValue))
+			})
 		})
 	})
 })

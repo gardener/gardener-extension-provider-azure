@@ -35,6 +35,12 @@ var (
 				IsGUID:      false,
 				IsImmutable: false,
 			},
+			azure.AzureCloud: {
+				Required:      false,
+				IsGUID:        false,
+				IsImmutable:   false,
+				AllowedValues: []string{"AzurePublic", "AzureChina", "AzureGovernment"},
+			},
 			azure.DNSAzureCloud: {
 				Required:      false,
 				IsGUID:        false,

@@ -282,7 +282,7 @@ var _ = Describe("Shoot validator", func() {
 				c.EXPECT().Get(ctx, cloudProfileKey, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
 				shoot.Spec.DNS = &core.DNS{
 					Providers: []core.DNSProvider{
-						{Type: ptr.To(azure.DNSType)}, // secretName missing
+						{Type: ptr.To(azure.DNSType), Primary: ptr.To(true)}, // secretName missing
 					},
 				}
 
@@ -297,7 +297,7 @@ var _ = Describe("Shoot validator", func() {
 				c.EXPECT().Get(ctx, cloudProfileKey, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
 				shoot.Spec.DNS = &core.DNS{
 					Providers: []core.DNSProvider{
-						{Type: ptr.To(azure.DNSType), SecretName: ptr.To("dns-secret")},
+						{Type: ptr.To(azure.DNSType), SecretName: ptr.To("dns-secret"), Primary: ptr.To(true)},
 					},
 				}
 				reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "dns-secret"},
@@ -315,7 +315,7 @@ var _ = Describe("Shoot validator", func() {
 				c.EXPECT().Get(ctx, cloudProfileKey, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
 				shoot.Spec.DNS = &core.DNS{
 					Providers: []core.DNSProvider{
-						{Type: ptr.To(azure.DNSType), SecretName: ptr.To("dns-secret")},
+						{Type: ptr.To(azure.DNSType), SecretName: ptr.To("dns-secret"), Primary: ptr.To(true)},
 					},
 				}
 				invalidSecret := &corev1.Secret{
@@ -342,7 +342,7 @@ var _ = Describe("Shoot validator", func() {
 				c.EXPECT().Get(ctx, cloudProfileKey, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
 				shoot.Spec.DNS = &core.DNS{
 					Providers: []core.DNSProvider{
-						{Type: ptr.To(azure.DNSType), SecretName: ptr.To("dns-secret")},
+						{Type: ptr.To(azure.DNSType), SecretName: ptr.To("dns-secret"), Primary: ptr.To(true)},
 					},
 				}
 				validSecret := &corev1.Secret{
@@ -360,6 +360,88 @@ var _ = Describe("Shoot validator", func() {
 						*obj = *validSecret
 						return nil
 					})
+
+				err := shootValidator.Validate(ctx, shoot, nil)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should skip validation for non-primary azure-dns provider", func() {
+				c.EXPECT().Get(ctx, cloudProfileKey, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
+				shoot.Spec.DNS = &core.DNS{
+					Providers: []core.DNSProvider{
+						{Type: ptr.To(azure.DNSType), SecretName: ptr.To("dns-secret"), Primary: ptr.To(false)},
+					},
+				}
+				// No secret lookup should happen for non-primary providers
+
+				err := shootValidator.Validate(ctx, shoot, nil)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should validate only primary provider when multiple azure-dns providers exist", func() {
+				c.EXPECT().Get(ctx, cloudProfileKey, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
+				shoot.Spec.DNS = &core.DNS{
+					Providers: []core.DNSProvider{
+						{Type: ptr.To(azure.DNSType), SecretName: ptr.To("dns-secret-1"), Primary: ptr.To(true)},
+						{Type: ptr.To(azure.DNSType), SecretName: ptr.To("dns-secret-2"), Primary: ptr.To(false)},
+					},
+				}
+				validSecret := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "dns-secret-1", Namespace: namespace},
+					Data: map[string][]byte{
+						azure.DNSSubscriptionIDKey: []byte("a6ad693a-028a-422c-b064-d76a4586f2b3"),
+						azure.DNSTenantIDKey:       []byte("ee16e593-3035-41b9-a217-958f8f75b750"),
+						azure.DNSClientIDKey:       []byte("7fc4685e-3c33-40e6-b6bf-7857cab04390"),
+						azure.DNSClientSecretKey:   []byte("secret"),
+					},
+				}
+				// Only the primary provider's secret should be validated
+				reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "dns-secret-1"},
+					&corev1.Secret{}).
+					SetArg(2, *validSecret).
+					Return(nil)
+
+				err := shootValidator.Validate(ctx, shoot, nil)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should skip all providers when none are primary", func() {
+				c.EXPECT().Get(ctx, cloudProfileKey, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
+				shoot.Spec.DNS = &core.DNS{
+					Providers: []core.DNSProvider{
+						{Type: ptr.To(azure.DNSType), SecretName: ptr.To("dns-secret-1"), Primary: ptr.To(false)},
+						{Type: ptr.To(azure.DNSType), SecretName: ptr.To("dns-secret-2"), Primary: ptr.To(false)},
+					},
+				}
+				// No secret lookups should happen
+
+				err := shootValidator.Validate(ctx, shoot, nil)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should validate mixed provider types with primary azure-dns", func() {
+				c.EXPECT().Get(ctx, cloudProfileKey, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
+				shoot.Spec.DNS = &core.DNS{
+					Providers: []core.DNSProvider{
+						{Type: ptr.To("aws-route53"), SecretName: ptr.To("aws-secret"), Primary: ptr.To(false)},
+						{Type: ptr.To(azure.DNSType), SecretName: ptr.To("dns-secret"), Primary: ptr.To(true)},
+						{Type: ptr.To("google-clouddns"), SecretName: ptr.To("gcp-secret"), Primary: ptr.To(false)},
+					},
+				}
+				validSecret := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "dns-secret", Namespace: namespace},
+					Data: map[string][]byte{
+						azure.DNSSubscriptionIDKey: []byte("a6ad693a-028a-422c-b064-d76a4586f2b3"),
+						azure.DNSTenantIDKey:       []byte("ee16e593-3035-41b9-a217-958f8f75b750"),
+						azure.DNSClientIDKey:       []byte("7fc4685e-3c33-40e6-b6bf-7857cab04390"),
+						azure.DNSClientSecretKey:   []byte("secret"),
+					},
+				}
+				// Only azure-dns primary provider should be validated
+				reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "dns-secret"},
+					&corev1.Secret{}).
+					SetArg(2, *validSecret).
+					Return(nil)
 
 				err := shootValidator.Validate(ctx, shoot, nil)
 				Expect(err).NotTo(HaveOccurred())
