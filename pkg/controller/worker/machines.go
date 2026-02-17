@@ -567,7 +567,7 @@ func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPo
 
 	// Include additional data for new worker-pool hash generation.
 	// See https://github.com/gardener/gardener/issues/9699 for more details
-	hashDataV2, err := workerPoolHashDataV2(pool, workerConfig)
+	hashDataV2, err := WorkerPoolHashDataV2(pool, workerConfig)
 	if err != nil {
 		return "", err
 	}
@@ -579,7 +579,7 @@ func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPo
 // workerPoolHashDataV2 adds additional provider-specific data points to consider to the given data.
 // Addition or Change in VirtualCapacity should NOT cause existing hash to change to prevent trigger of rollout.
 // TODO: once the MCM supports Machine Hot-Update from the WorkerConfig, this hash data logic can be made smarter.
-func workerPoolHashDataV2(pool extensionsv1alpha1.WorkerPool, workerConfig *azureapi.WorkerConfig) ([]string, error) {
+func WorkerPoolHashDataV2(pool extensionsv1alpha1.WorkerPool, workerConfig *azureapi.WorkerConfig) ([]string, error) {
 	var useNewHashData bool
 	if pool.KubernetesVersion != nil {
 		poolK8sVersion, err := semver.NewVersion(*pool.KubernetesVersion)

@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -31,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -50,6 +52,7 @@ var _ = Describe("Machines", func() {
 		c            *mockclient.MockClient
 		statusWriter *mockclient.MockStatusWriter
 		chartApplier *mockkubernetes.MockChartApplier
+		scheme       *runtime.Scheme
 
 		namespace, technicalID, region string
 		zone1, zone2                   string
@@ -65,6 +68,12 @@ var _ = Describe("Machines", func() {
 
 		// Let the seed client always the mocked status writer when Status() is called.
 		c.EXPECT().Status().AnyTimes().Return(statusWriter)
+
+		// Initialize scheme for decoding
+		scheme = runtime.NewScheme()
+		_ = apiv1alpha1.AddToScheme(scheme)
+		_ = apisazure.AddToScheme(scheme)
+		_ = extensionsv1alpha1.AddToScheme(scheme)
 
 		namespace = "control-plane-namespace"
 		technicalID = "shoot--foobar--azure"
@@ -1318,6 +1327,91 @@ var _ = Describe("Machines", func() {
 					fmt.Sprintf("k8s>=1.34: hash should be stable after changing VirtualCapacity: className1=%q, className3=%q", className1, className3))
 			})
 
+			Describe("WorkerPoolHashDataV2", func() {
+				var (
+					pool extensionsv1alpha1.WorkerPool
+				)
+
+				BeforeEach(func() {
+					pool = extensionsv1alpha1.WorkerPool{
+						Name: "pool1",
+					}
+				})
+
+				It("should return the expected hash data when virtualCapacity is added", func() {
+					workerConfig := apisazure.WorkerConfig{
+						TypeMeta: metav1.TypeMeta{
+							APIVersion: apiv1alpha1.SchemeGroupVersion.String(),
+							Kind:       "WorkerConfig",
+						},
+						NodeTemplate: &extensionsv1alpha1.NodeTemplate{
+							Capacity: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("4"),
+								corev1.ResourceMemory: resource.MustParse("16Gi"),
+							},
+						},
+					}
+
+					pool.KubernetesVersion = ptr.To("1.34.0")
+					got, err := WorkerPoolHashDataV2(pool, &workerConfig)
+					Expect(err).NotTo(HaveOccurred())
+					want := []string{
+						"cpu=4",
+						"memory=17179869184",
+					}
+					Expect(got).To(Equal(want))
+
+					// Now add some virtual resources
+					virtualResourceName := corev1.ResourceName("subdomain.domain.com/virtual-resource-name")
+					virtualResourceQuant := resource.MustParse("1024")
+					customVirtualResources := corev1.ResourceList{
+						virtualResourceName: virtualResourceQuant,
+					}
+					workerConfig.NodeTemplate.VirtualCapacity = customVirtualResources.DeepCopy()
+
+					got, err = WorkerPoolHashDataV2(pool, &workerConfig)
+					Expect(err).NotTo(HaveOccurred())
+					// Hash data should remain the same (virtualCapacity should not be included)
+					Expect(got).To(Equal(want))
+				})
+			})
+
+			DescribeTable("should generate same worker pool hash even when virtualCapacity is newly added or changed", Label("virtualCapacity"),
+				func(w1Def string, w2Def string) {
+					var w1, w2 extensionsv1alpha1.Worker
+					var w1Config, w2Config *apisazure.WorkerConfig
+					decoder := serializer.NewCodecFactory(scheme, serializer.EnableStrict).UniversalDecoder()
+
+					err := loadDecodeWorker(decoder, w1Def, &w1)
+					Expect(err).ToNot(HaveOccurred())
+
+					err = loadDecodeWorker(decoder, w2Def, &w2)
+					Expect(err).ToNot(HaveOccurred())
+
+					w1Config, err = decodePoolProviderConfig(decoder, w1.Spec.Pools[0])
+					Expect(err).ToNot(HaveOccurred())
+
+					w2Config, err = decodePoolProviderConfig(decoder, w2.Spec.Pools[0])
+					Expect(err).ToNot(HaveOccurred())
+
+					w1PoolHashDataV2, err := WorkerPoolHashDataV2(w1.Spec.Pools[0], w1Config)
+					Expect(err).ToNot(HaveOccurred())
+
+					w2PoolHashDataV2, err := WorkerPoolHashDataV2(w2.Spec.Pools[0], w2Config)
+					Expect(err).ToNot(HaveOccurred())
+
+					w1Hash, err := worker.WorkerPoolHash(w1.Spec.Pools[0], cluster, nil, w1PoolHashDataV2, nil)
+					Expect(err).ToNot(HaveOccurred())
+
+					w2Hash, err := worker.WorkerPoolHash(w2.Spec.Pools[0], cluster, nil, w2PoolHashDataV2, nil)
+					Expect(err).ToNot(HaveOccurred())
+
+					Expect(w1Hash).To(Equal(w2Hash), fmt.Sprintf("w1Def: %q, w2Def:%q, w1Hash: %q, w2Hash: %q", w1Def, w2Def, w1Hash, w2Hash))
+				},
+				Entry("with existing providerConfig but no existing nodeTemplate", "testdata/worker-a1.yaml", "testdata/worker-a2.yaml"),
+				Entry("with existing providerConfig and nodeTemplate", "testdata/worker-b1.yaml", "testdata/worker-b2.yaml"),
+				Entry("with existing providerConfig.volume,dataVolumes but no existing nodeTemplate", "testdata/worker-c1.yaml", "testdata/worker-c2.yaml"))
+
 			It("should fail because the version is invalid", func() {
 				cluster = makeCluster(technicalID, "invalid", region, nil, machineImages, 0)
 				workerDelegate := wrapNewWorkerDelegate(c, chartApplier, w, cluster, nil)
@@ -1435,4 +1529,29 @@ func addNameAndSecretsToMachineClass(class map[string]any, name string, credenti
 	class["labels"] = map[string]string{
 		v1beta1constants.GardenerPurpose: v1beta1constants.GardenPurposeMachineClass,
 	}
+}
+
+// loadDecodeWorker loads and decodes a Worker resource from a YAML file
+func loadDecodeWorker(decoder runtime.Decoder, filePath string, w *extensionsv1alpha1.Worker) error {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return err
+	}
+	_, _, err = decoder.Decode(data, nil, w)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// decodePoolProviderConfig decodes the ProviderConfig from a WorkerPool into a WorkerConfig
+func decodePoolProviderConfig(decoder runtime.Decoder, pool extensionsv1alpha1.WorkerPool) (workerConfig *apisazure.WorkerConfig, err error) {
+	workerConfig = &apisazure.WorkerConfig{}
+	if pool.ProviderConfig != nil && pool.ProviderConfig.Raw != nil {
+		if _, _, err = decoder.Decode(pool.ProviderConfig.Raw, nil, workerConfig); err != nil {
+			err = fmt.Errorf("could not decode provider config: %+v", err)
+			return
+		}
+	}
+	return
 }
