@@ -1133,6 +1133,191 @@ var _ = Describe("Machines", func() {
 				})
 			})
 
+			It("should generate machine classes with same name even when virtualCapacity is newly added or changed", Label("virtualCapacity"), func() {
+				capacityResources := corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("4"),
+					corev1.ResourceMemory: resource.MustParse("16Gi"),
+				}
+				virtualCapacityResources1 := corev1.ResourceList{
+					"subdomain.domain.com/virtual-resource": resource.MustParse("1024"),
+				}
+
+				// Step 1: ProviderConfig with NodeTemplate.Capacity only (no VirtualCapacity)
+				wc1 := apiv1alpha1.WorkerConfig{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: apiv1alpha1.SchemeGroupVersion.String(),
+						Kind:       "WorkerConfig",
+					},
+					NodeTemplate: &extensionsv1alpha1.NodeTemplate{
+						Capacity: capacityResources,
+					},
+				}
+
+				w1 := w.DeepCopy()
+				w1.Spec.Pools = []extensionsv1alpha1.WorkerPool{w1.Spec.Pools[0]}
+				w1.Spec.Pools[0].NodeAgentSecretName = ptr.To("dummy") // ensure WorkerPoolHashV2 is used
+				w1.Spec.Pools[0].ProviderConfig = &runtime.RawExtension{Raw: encode(&wc1)}
+
+				expectedUserDataSecretRefRead()
+
+				wd1 := wrapNewWorkerDelegate(c, chartApplier, w1, cluster, nil)
+				result1, err := wd1.GenerateMachineDeployments(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result1).NotTo(BeEmpty())
+				className1 := result1[0].ClassName
+
+				// verify nodeTemplate capacity is merged: pool (cpu:8,gpu:1,memory:128Gi) + providerConfig (cpu:4,memory:16Gi) = cpu:4,gpu:1,memory:16Gi
+				expectedMergedCapacity := nodeCapacity.DeepCopy()
+				maps.Copy(expectedMergedCapacity, capacityResources)
+
+				// Step 2: Add VirtualCapacity to the same ProviderConfig
+				wc2 := apiv1alpha1.WorkerConfig{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: apiv1alpha1.SchemeGroupVersion.String(),
+						Kind:       "WorkerConfig",
+					},
+					NodeTemplate: &extensionsv1alpha1.NodeTemplate{
+						Capacity:        capacityResources,
+						VirtualCapacity: virtualCapacityResources1,
+					},
+				}
+
+				w2 := w.DeepCopy()
+				w2.Spec.Pools = []extensionsv1alpha1.WorkerPool{w2.Spec.Pools[0]}
+				w2.Spec.Pools[0].NodeAgentSecretName = ptr.To("dummy") // ensure WorkerPoolHashV2 is used
+				w2.Spec.Pools[0].ProviderConfig = &runtime.RawExtension{Raw: encode(&wc2)}
+
+				wd2 := wrapNewWorkerDelegate(c, chartApplier, w2, cluster, nil)
+				result2, err := wd2.GenerateMachineDeployments(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result2).NotTo(BeEmpty())
+				className2 := result2[0].ClassName
+
+				// Hash should remain the same when VirtualCapacity is added
+				Expect(className2).To(Equal(className1),
+					fmt.Sprintf("hash should be stable after adding VirtualCapacity: className1=%q, className2=%q", className1, className2))
+
+				// Step 3: Change VirtualCapacity value
+				virtualCapacityResources2 := corev1.ResourceList{
+					"subdomain.domain.com/virtual-resource": resource.MustParse("2048"),
+				}
+				wc3 := apiv1alpha1.WorkerConfig{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: apiv1alpha1.SchemeGroupVersion.String(),
+						Kind:       "WorkerConfig",
+					},
+					NodeTemplate: &extensionsv1alpha1.NodeTemplate{
+						Capacity:        capacityResources,
+						VirtualCapacity: virtualCapacityResources2,
+					},
+				}
+
+				w3 := w.DeepCopy()
+				w3.Spec.Pools = []extensionsv1alpha1.WorkerPool{w3.Spec.Pools[0]}
+				w3.Spec.Pools[0].NodeAgentSecretName = ptr.To("dummy") // ensure WorkerPoolHashV2 is used
+				w3.Spec.Pools[0].ProviderConfig = &runtime.RawExtension{Raw: encode(&wc3)}
+
+				wd3 := wrapNewWorkerDelegate(c, chartApplier, w3, cluster, nil)
+				result3, err := wd3.GenerateMachineDeployments(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result3).NotTo(BeEmpty())
+				className3 := result3[0].ClassName
+
+				// Hash should remain the same after changing VirtualCapacity
+				Expect(className3).To(Equal(className1),
+					fmt.Sprintf("hash should be stable after changing VirtualCapacity: className1=%q, className3=%q", className1, className3))
+			})
+
+			It("should generate machine classes with same name even when virtualCapacity is newly added or changed (k8s >= 1.34)", Label("virtualCapacity"), func() {
+				capacityResources := corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("4"),
+					corev1.ResourceMemory: resource.MustParse("16Gi"),
+				}
+
+				// Step 1: ProviderConfig with NodeTemplate.Capacity only (no VirtualCapacity), k8s 1.34
+				wc1 := apiv1alpha1.WorkerConfig{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: apiv1alpha1.SchemeGroupVersion.String(),
+						Kind:       "WorkerConfig",
+					},
+					NodeTemplate: &extensionsv1alpha1.NodeTemplate{
+						Capacity: capacityResources,
+					},
+				}
+
+				w1 := w.DeepCopy()
+				w1.Spec.Pools = []extensionsv1alpha1.WorkerPool{w1.Spec.Pools[0]}
+				w1.Spec.Pools[0].NodeAgentSecretName = ptr.To("dummy")
+				w1.Spec.Pools[0].KubernetesVersion = ptr.To("1.34.0") // new hash data strategy
+				w1.Spec.Pools[0].ProviderConfig = &runtime.RawExtension{Raw: encode(&wc1)}
+
+				expectedUserDataSecretRefRead()
+
+				wd1 := wrapNewWorkerDelegate(c, chartApplier, w1, cluster, nil)
+				result1, err := wd1.GenerateMachineDeployments(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result1).NotTo(BeEmpty())
+				className1 := result1[0].ClassName
+
+				// Step 2: Add VirtualCapacity
+				wc2 := apiv1alpha1.WorkerConfig{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: apiv1alpha1.SchemeGroupVersion.String(),
+						Kind:       "WorkerConfig",
+					},
+					NodeTemplate: &extensionsv1alpha1.NodeTemplate{
+						Capacity: capacityResources,
+						VirtualCapacity: corev1.ResourceList{
+							"subdomain.domain.com/virtual-resource": resource.MustParse("1024"),
+						},
+					},
+				}
+
+				w2 := w.DeepCopy()
+				w2.Spec.Pools = []extensionsv1alpha1.WorkerPool{w2.Spec.Pools[0]}
+				w2.Spec.Pools[0].NodeAgentSecretName = ptr.To("dummy")
+				w2.Spec.Pools[0].KubernetesVersion = ptr.To("1.34.0")
+				w2.Spec.Pools[0].ProviderConfig = &runtime.RawExtension{Raw: encode(&wc2)}
+
+				wd2 := wrapNewWorkerDelegate(c, chartApplier, w2, cluster, nil)
+				result2, err := wd2.GenerateMachineDeployments(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result2).NotTo(BeEmpty())
+				className2 := result2[0].ClassName
+
+				Expect(className2).To(Equal(className1),
+					fmt.Sprintf("k8s>=1.34: hash should be stable after adding VirtualCapacity: className1=%q, className2=%q", className1, className2))
+
+				// Step 3: Change VirtualCapacity
+				wc3 := apiv1alpha1.WorkerConfig{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: apiv1alpha1.SchemeGroupVersion.String(),
+						Kind:       "WorkerConfig",
+					},
+					NodeTemplate: &extensionsv1alpha1.NodeTemplate{
+						Capacity: capacityResources,
+						VirtualCapacity: corev1.ResourceList{
+							"subdomain.domain.com/virtual-resource": resource.MustParse("2048"),
+						},
+					},
+				}
+
+				w3 := w.DeepCopy()
+				w3.Spec.Pools = []extensionsv1alpha1.WorkerPool{w3.Spec.Pools[0]}
+				w3.Spec.Pools[0].NodeAgentSecretName = ptr.To("dummy")
+				w3.Spec.Pools[0].KubernetesVersion = ptr.To("1.34.0")
+				w3.Spec.Pools[0].ProviderConfig = &runtime.RawExtension{Raw: encode(&wc3)}
+
+				wd3 := wrapNewWorkerDelegate(c, chartApplier, w3, cluster, nil)
+				result3, err := wd3.GenerateMachineDeployments(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result3).NotTo(BeEmpty())
+				className3 := result3[0].ClassName
+
+				Expect(className3).To(Equal(className1),
+					fmt.Sprintf("k8s>=1.34: hash should be stable after changing VirtualCapacity: className1=%q, className3=%q", className1, className3))
+			})
+
 			It("should fail because the version is invalid", func() {
 				cluster = makeCluster(technicalID, "invalid", region, nil, machineImages, 0)
 				workerDelegate := wrapNewWorkerDelegate(c, chartApplier, w, cluster, nil)
