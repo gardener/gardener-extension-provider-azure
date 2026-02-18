@@ -11,36 +11,11 @@ import (
 
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	"github.com/go-logr/logr"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-func purgeSeedRemedyControllerResources(ctx context.Context, c client.Client, log logr.Logger) error {
-	log.Info("Starting the deletion of obsolete remedy controller resources")
-
-	var remedyControllerDeployments appsv1.DeploymentList
-	if err := c.List(ctx, &remedyControllerDeployments, client.MatchingLabels{
-		"app": "remedy-controller-azure",
-	}); err != nil {
-		return fmt.Errorf("failed to list remedy controller deployments: %w", err)
-	}
-	for _, deployment := range remedyControllerDeployments.Items {
-		log.Info("Deleting deployment", "name", client.ObjectKeyFromObject(&deployment))
-		if err := kutil.DeleteObject(
-			ctx,
-			c,
-			&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Namespace: deployment.Namespace, Name: deployment.Name}},
-		); err != nil {
-			return fmt.Errorf("failed to delete deployment %s: %w", client.ObjectKeyFromObject(&deployment), err)
-		}
-	}
-
-	log.Info("Successfully removed remedy controller deployments")
-	return nil
-}
 
 // TODO (kon-angelo): Remove after the release of version 1.46.0
 func purgeTerraformerRBACResources(ctx context.Context, c client.Client, log logr.Logger) error {
