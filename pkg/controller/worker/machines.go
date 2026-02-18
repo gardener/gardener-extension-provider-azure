@@ -576,7 +576,7 @@ func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPo
 	return worker.WorkerPoolHash(pool, w.cluster, additionalHashData, additionalHashDataV2, []string{})
 }
 
-// workerPoolHashDataV2 adds additional provider-specific data points to consider to the given data.
+// WorkerPoolHashDataV2 adds additional provider-specific data points to consider to the given data.
 // Addition or Change in VirtualCapacity should NOT cause existing hash to change to prevent trigger of rollout.
 // TODO: once the MCM supports Machine Hot-Update from the WorkerConfig, this hash data logic can be made smarter.
 func WorkerPoolHashDataV2(pool extensionsv1alpha1.WorkerPool, workerConfig *azureapi.WorkerConfig) ([]string, error) {
