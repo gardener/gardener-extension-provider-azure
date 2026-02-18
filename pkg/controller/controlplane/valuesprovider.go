@@ -645,7 +645,14 @@ func getCSIControllerChartValues(
 	return values, nil
 }
 
-// getRemedyControllerChartValues collects and returns the remedy controller chart values.
+// getRemedyControllerChartValues returns the chart values used to configure the remedy controller.
+//
+// When the DisableRemedyController feature gate is enabled or the shoot has the
+// DisableRemedyController annotation set to "true", the chart remains enabled but
+// the replicas are set to 0 to effectively disable the controller. Otherwise the
+// chart is enabled with replicas determined from the cluster and scaledDown flag,
+// includes a pod annotation with the cloud provider config secret checksum, and
+// exposes the useWorkloadIdentity flag.
 func getRemedyControllerChartValues(
 	cluster *extensionscontroller.Cluster,
 	checksums map[string]string,
@@ -653,9 +660,7 @@ func getRemedyControllerChartValues(
 	useWorkloadIdentity bool,
 ) map[string]interface{} {
 	if features.ExtensionFeatureGate.Enabled(features.DisableRemedyController) {
-		return map[string]interface{}{
-			"enabled": false,
-		}
+		return map[string]interface{}{"enabled": true, "replicas": 0}
 	}
 
 	// disable remedy controller for the shoot by annotation. In this case, only set the replicas to 0.

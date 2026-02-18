@@ -47,7 +47,9 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/webhook/topology"
 )
 
-// NewControllerManagerCommand creates a new command for running a Azure provider controller.
+// NewControllerManagerCommand returns a Cobra command that runs the Azure provider controller manager.
+// The command wires up option parsing, manager configuration (including leader election, webhooks, metrics and health endpoints),
+// registers schemes and controllers, configures webhooks and seed/topology options, and starts the controller manager when executed.
 func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 	var (
 		generalOpts = &controllercmd.GeneralOptions{}
@@ -269,13 +271,6 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 					return purgeTerraformerRBACResources(ctx, mgr.GetClient(), log)
 				})); err != nil {
 					return fmt.Errorf("error adding terraformer migrations: %w", err)
-				}
-			}
-			if features.ExtensionFeatureGate.Enabled(features.DisableRemedyController) {
-				if err := mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
-					return purgeSeedRemedyControllerResources(ctx, mgr.GetClient(), log)
-				})); err != nil {
-					return fmt.Errorf("error adding remedy controller migrations: %w", err)
 				}
 			}
 
