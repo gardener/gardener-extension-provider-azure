@@ -47,7 +47,7 @@ var (
 func RegisterHealthChecks(_ context.Context, mgr manager.Manager, opts healthcheck.DefaultAddArgs) error {
 	remedyControllerPreCheckFunc := func(_ context.Context, _ client.Client, _ client.Object, obj any) bool {
 		cluster, ok := obj.(*extensionscontroller.Cluster)
-		if !ok || cluster == nil {
+		if !ok || cluster == nil || cluster.Shoot == nil {
 			return false
 		}
 		return !features.ExtensionFeatureGate.Enabled(features.DisableRemedyController) &&
