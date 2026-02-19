@@ -297,7 +297,12 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				}
 				if workerConfig.NodeTemplate != nil {
 					// Support providerConfig extended resources by copying into node template capacity and virtualCapacity
-					maps.Copy(nodeTemplate.Capacity, workerConfig.NodeTemplate.Capacity)
+					if workerConfig.NodeTemplate.Capacity != nil {
+						if nodeTemplate.Capacity == nil {
+							nodeTemplate.Capacity = corev1.ResourceList{}
+						}
+						maps.Copy(nodeTemplate.Capacity, workerConfig.NodeTemplate.Capacity)
+					}
 					if workerConfig.NodeTemplate.VirtualCapacity != nil {
 						if nodeTemplate.VirtualCapacity == nil {
 							nodeTemplate.VirtualCapacity = corev1.ResourceList{}
