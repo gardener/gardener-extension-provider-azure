@@ -45,8 +45,13 @@ var (
 // RegisterHealthChecks registers health checks for each extension resource
 // HealthChecks are grouped by extension (e.g worker), extension.type (e.g azure) and  Health Check Type (e.g SystemComponentsHealthy)
 func RegisterHealthChecks(_ context.Context, mgr manager.Manager, opts healthcheck.DefaultAddArgs) error {
-	remedyControllerPreCheckFunc := func(_ context.Context, _ client.Client, _ client.Object, cluster *extensionscontroller.Cluster) bool {
-		return !features.ExtensionFeatureGate.Enabled(features.DisableRemedyController) && cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] != "true"
+	remedyControllerPreCheckFunc := func(_ context.Context, _ client.Client, _ client.Object, obj any) bool {
+		cluster, ok := obj.(*extensionscontroller.Cluster)
+		if !ok || cluster == nil || cluster.Shoot == nil {
+			return false
+		}
+		return !features.ExtensionFeatureGate.Enabled(features.DisableRemedyController) &&
+			cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] != "true"
 	}
 
 	if err := healthcheck.DefaultRegistration(
