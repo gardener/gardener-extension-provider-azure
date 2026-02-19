@@ -65,7 +65,7 @@ var _ = Describe("ValidateWorkerConfig", func() {
 			Expect(validateNodeTemplate(nodeTemplate, fldPath)).To(BeEmpty())
 		})
 
-		It("should return error when invalid resources are specified", func() {
+		It("should allow extended resources in capacity", func() {
 			nodeTemplate := &extensionsv1alpha1.NodeTemplate{
 				Capacity: corev1.ResourceList{
 					"foo":                 resource.MustParse("0"),
@@ -75,13 +75,7 @@ var _ = Describe("ValidateWorkerConfig", func() {
 				},
 			}
 
-			Expect(validateNodeTemplate(nodeTemplate, fldPath)).To(ConsistOf(
-				PointTo(MatchFields(IgnoreExtras, Fields{
-					"Type":   Equal(field.ErrorTypeInvalid),
-					"Field":  Equal("config.capacity.foo"),
-					"Detail": ContainSubstring("foo is an unsupported resource name."),
-				})),
-			))
+			Expect(validateNodeTemplate(nodeTemplate, fldPath)).To(BeEmpty())
 		})
 
 		It("should return error when resource value is negative", func() {
@@ -97,6 +91,70 @@ var _ = Describe("ValidateWorkerConfig", func() {
 				PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  Equal(field.ErrorTypeInvalid),
 					"Field": Equal("config.capacity.memory"),
+				})),
+			))
+		})
+
+		It("should return no error for an empty nodeTemplate", func() {
+			nodeTemplate := &extensionsv1alpha1.NodeTemplate{}
+			Expect(validateNodeTemplate(nodeTemplate, fldPath)).To(BeEmpty())
+		})
+
+		It("should return no error if only virtualCapacities are set", func() {
+			nodeTemplate := &extensionsv1alpha1.NodeTemplate{
+				VirtualCapacity: corev1.ResourceList{
+					"foo": resource.MustParse("1"),
+					"bar": resource.MustParse("50Gi"),
+				},
+			}
+			Expect(validateNodeTemplate(nodeTemplate, fldPath)).To(BeEmpty())
+		})
+
+		It("should return no error if both virtualCapacities and capacities are set", func() {
+			nodeTemplate := &extensionsv1alpha1.NodeTemplate{
+				Capacity: corev1.ResourceList{
+					"cpu":    resource.MustParse("1"),
+					"memory": resource.MustParse("50Gi"),
+					"gpu":    resource.MustParse("0"),
+				},
+				VirtualCapacity: corev1.ResourceList{
+					"foo":    resource.MustParse("1"),
+					"bar":    resource.MustParse("50Gi"),
+					"foobar": resource.MustParse("0"),
+				},
+			}
+			Expect(validateNodeTemplate(nodeTemplate, fldPath)).To(BeEmpty())
+		})
+
+		It("should return errors for negative virtualCapacities", func() {
+			nodeTemplate := &extensionsv1alpha1.NodeTemplate{
+				VirtualCapacity: corev1.ResourceList{
+					"foo": resource.MustParse("-1"),
+					"bar": resource.MustParse("50Gi"),
+				},
+			}
+
+			Expect(validateNodeTemplate(nodeTemplate, fldPath)).To(ConsistOf(
+				PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("config.virtualCapacity.foo"),
+					"Detail": Equal("foo value must not be negative"),
+				})),
+			))
+		})
+
+		It("should return errors for virtualCapacities which are not whole numbers", func() {
+			nodeTemplate := &extensionsv1alpha1.NodeTemplate{
+				VirtualCapacity: corev1.ResourceList{
+					"foo": resource.MustParse("1500m"), // equal to 1.5 and thus not a whole number
+				},
+			}
+
+			Expect(validateNodeTemplate(nodeTemplate, fldPath)).To(ConsistOf(
+				PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("config.virtualCapacity.foo"),
+					"Detail": Equal("foo value must be a whole number"),
 				})),
 			))
 		})
