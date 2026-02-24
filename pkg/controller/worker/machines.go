@@ -591,7 +591,7 @@ func WorkerPoolHashDataV2(pool extensionsv1alpha1.WorkerPool, workerConfig *azur
 		if err != nil {
 			return nil, err
 		}
-		useNewHashData = versionutils.ConstraintK8sGreaterEqual134.Check(poolK8sVersion)
+		useNewHashData = versionutils.ConstraintK8sGreaterEqual135.Check(poolK8sVersion)
 	}
 
 	if useNewHashData && workerConfig != nil {

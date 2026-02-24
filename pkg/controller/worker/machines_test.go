@@ -1254,8 +1254,8 @@ var _ = Describe("Machines", func() {
 					}
 				})
 
-				It("should return the expected hash data when k8s version >= 1.34", func() {
-					pool.KubernetesVersion = ptr.To("1.34.0") // new hash data strategy for ProviderConfig beginning from 1.34.0 onwards
+				It("should return the expected hash data when k8s version >= 1.35", func() {
+					pool.KubernetesVersion = ptr.To("1.35.0") // new hash data strategy for ProviderConfig beginning from 1.35.0 onwards
 					workerConfig.NodeTemplate = &extensionsv1alpha1.NodeTemplate{
 						Capacity: corev1.ResourceList{
 							corev1.ResourceCPU:    resource.MustParse("4"),
@@ -1285,7 +1285,7 @@ var _ = Describe("Machines", func() {
 				})
 
 				It("should return the expected hash data for Rolling update strategy", func() {
-					pool.KubernetesVersion = ptr.To("1.33.0") // old hash data strategy for ProviderConfig for k8s < 1.34
+					pool.KubernetesVersion = ptr.To("1.34.0") // old hash data strategy for ProviderConfig for k8s < 1.35
 					workerConfig.NodeTemplate = &extensionsv1alpha1.NodeTemplate{
 						Capacity: corev1.ResourceList{
 							corev1.ResourceCPU:    resource.MustParse("4"),
