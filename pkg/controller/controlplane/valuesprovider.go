@@ -653,9 +653,7 @@ func getRemedyControllerChartValues(
 	useWorkloadIdentity bool,
 ) map[string]interface{} {
 	if features.ExtensionFeatureGate.Enabled(features.DisableRemedyController) {
-		return map[string]interface{}{
-			"enabled": false,
-		}
+		return map[string]interface{}{"enabled": true, "replicas": 0}
 	}
 
 	// disable remedy controller for the shoot by annotation. In this case, only set the replicas to 0.
