@@ -18,14 +18,18 @@ require (
 	github.com/ahmetb/gen-crd-api-reference-docs v0.3.0
 	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/gardener/etcd-druid/api v0.35.0
+<<<<<<< dependabot/go_modules/github.com/gardener/machine-controller-manager-0.61.2
 	github.com/gardener/gardener v1.136.0
+=======
+	github.com/gardener/gardener v1.136.2
+>>>>>>> master
 	github.com/gardener/machine-controller-manager v0.61.2
 	github.com/gardener/remedy-controller v0.14.0
 	github.com/go-logr/logr v1.4.3
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/onsi/ginkgo/v2 v2.28.1
-	github.com/onsi/gomega v1.39.0
+	github.com/onsi/gomega v1.39.1
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.89.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
