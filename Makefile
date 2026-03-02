@@ -192,8 +192,7 @@ integration-test-infra:
 		--tenant-id='$(shell cat $(TENANT_ID_FILE))' \
 		--client-id='$(shell cat $(CLIENT_ID_FILE))' \
 		--client-secret='$(shell cat $(CLIENT_SECRET_FILE))' \
-		--region=$(REGION) \
-		--reconciler=$(TEST_RECONCILER)
+		--region=$(REGION)
 
 .PHONY: integration-test-bastion
 integration-test-bastion:
