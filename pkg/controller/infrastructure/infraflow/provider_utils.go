@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v9"
 )
 
 // AzureResourceKind is a string describing the resource type.
@@ -91,6 +91,10 @@ func ForceNewIp(current, target *armnetwork.PublicIPAddress) (bool, string, any)
 	if !reflect.DeepEqual(current.Properties.PublicIPAllocationMethod, target.Properties.PublicIPAllocationMethod) {
 		return true, "PublicIPAllocationMethod", current.Properties.PublicIPAllocationMethod
 	}
+	// SKU changes require recreation of the Public IP
+	if !reflect.DeepEqual(current.SKU.Name, target.SKU.Name) {
+		return true, "SKU.Name", current.SKU.Name
+	}
 	return false, "", nil
 }
 
@@ -102,6 +106,11 @@ func ForceNewNat(current, target *armnetwork.NatGateway) (bool, string, any) {
 
 	if !reflect.DeepEqual(current.Zones, target.Zones) {
 		return true, "Zones", current.Zones
+	}
+
+	// SKU changes require recreation of the NAT Gateway
+	if !reflect.DeepEqual(current.SKU.Name, target.SKU.Name) {
+		return true, "SKU.Name", current.SKU.Name
 	}
 
 	return false, "", nil
