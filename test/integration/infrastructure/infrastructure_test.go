@@ -286,6 +286,20 @@ var _ = Describe("Infrastructure tests", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
+		It("should successfully create and delete a zonal cluster with NatGateway StandardV2", func() {
+			natGatewayConfig := &azurev1alpha1.NatGatewayConfig{
+				Enabled: true,
+				SKU:     ptr.To(string(armnetwork.NatGatewaySKUNameStandardV2)),
+			}
+			providerConfig := newInfrastructureConfig(nil, natGatewayConfig, nil, true)
+
+			namespace, err := generateName()
+			Expect(err).ToNot(HaveOccurred())
+
+			err = runTest(ctx, log, c, clientSet, namespace, providerConfig, false, decoder)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
 		It("should successfully create and delete a zonal cluster with NatGateway using an existing vNet and identity", func() {
 			foreignName, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
@@ -883,7 +897,7 @@ func hasForeignVNet(config *azurev1alpha1.InfrastructureConfig) bool {
 	return config.Networks.VNet.ResourceGroup != nil && config.Networks.VNet.Name != nil
 }
 
-func hasDedicatedSubnets(config *azurev1alpha1.InfrastructureConfig) bool {
+func hasMultipleSubnets(config *azurev1alpha1.InfrastructureConfig) bool {
 	return config.Networks.Workers == nil
 }
 
@@ -958,12 +972,13 @@ func verifyCreation(
 
 	ngBaseName := infra.Namespace + "-nat-gateway"
 	subnetBaseName := infra.Namespace + "-nodes"
-	if !hasDedicatedSubnets(config) {
+	if !hasMultipleSubnets(config) {
 		nat := config.Networks.NatGateway
 		var natID *string
 		if nat != nil && nat.Enabled {
 			ngName := indexedName(ngBaseName, 0)
 			ipNames := []pubIpRef{}
+			expectedSKU := nat.SKU
 
 			if len(nat.IPAddresses) > 0 {
 				for _, ipRef := range nat.IPAddresses {
@@ -978,7 +993,7 @@ func verifyCreation(
 					ResourceGroup: status.ResourceGroup.Name,
 				}}
 			}
-			ng = verifyNAT(az, nat.Zone, nat.IdleConnectionTimeoutMinutes, ngName, ipNames, status)
+			ng = verifyNAT(az, nat.Zone, nat.IdleConnectionTimeoutMinutes, ngName, expectedSKU, ipNames, status)
 			natID = ng.ID
 		}
 		verifySubnet(
@@ -1104,7 +1119,7 @@ func verifySubnet(
 	}
 }
 
-func verifyNAT(az *azureClientSet, zone, timeout *int32, ngName string, ipNames []pubIpRef, status *azurev1alpha1.InfrastructureStatus) armnetwork.NatGateway {
+func verifyNAT(az *azureClientSet, zone, timeout *int32, ngName string, expectedSKU *string, ipNames []pubIpRef, status *azurev1alpha1.InfrastructureStatus) armnetwork.NatGateway {
 	response, err := az.nat.Get(ctx, status.ResourceGroup.Name, ngName, nil)
 	Expect(err).ToNot(HaveOccurred())
 
@@ -1112,7 +1127,11 @@ func verifyNAT(az *azureClientSet, zone, timeout *int32, ngName string, ipNames 
 	Expect(natGateway.Properties).To(Not(BeNil()))
 	Expect(natGateway.Properties.ProvisioningState).To(PointTo(Equal(armnetwork.ProvisioningStateSucceeded)))
 	Expect(natGateway.Location).To(PointTo(Equal(*region)))
-	Expect(*natGateway.SKU.Name).To(Equal(armnetwork.NatGatewaySKUNameStandard))
+	if expectedSKU == nil {
+		expectedSKU = ptr.To(string(armnetwork.NatGatewaySKUNameStandard))
+	}
+	Expect(string(*natGateway.SKU.Name)).To(Equal(expectedSKU))
+)
 
 	// public IP
 	for _, ipName := range ipNames {
