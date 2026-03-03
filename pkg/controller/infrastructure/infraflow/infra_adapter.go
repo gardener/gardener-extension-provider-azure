@@ -221,11 +221,26 @@ func (ia *InfrastructureAdapter) natGatewayName() string {
 	return fmt.Sprintf("%s-nat-gateway", ia.TechnicalName())
 }
 
-// ensureStandardSKU returns the provided SKU or "Standard" if nil.
-// This ensures SKU is explicitly set rather than relying on implicit defaults.
-func ensureStandardSKU(sku *string) *string {
+func ensureNatGatewaySKU(sku *string) *string {
 	if sku == nil || *sku == "" {
-		return to.Ptr("Standard")
+		return to.Ptr(string(armnetwork.NatGatewaySKUNameStandard))
+	}
+	return sku
+}
+
+func ensurePublicIpSKU(sku, natSku *string) *string {
+	if sku == nil || *sku == "" {
+		if natSku == nil || *natSku == "" {
+			// If no SKU is specified for both the public IP and the NAT Gateway, default to Standard for backward compatibility.
+			return to.Ptr(string(armnetwork.PublicIPAddressSKUNameStandard))
+		}
+		switch *natSku {
+		case string(armnetwork.NatGatewaySKUNameStandardV2):
+			// If the NAT Gateway SKU is explicitly set to StandardV2, use the same SKU for the public IP to ensure compatibility.
+			return to.Ptr(string(armnetwork.PublicIPAddressSKUNameStandardV2))
+		default:
+			return to.Ptr(string(armnetwork.PublicIPAddressSKUNameStandard))
+		}
 	}
 	return sku
 }
@@ -316,7 +331,7 @@ func (ia *InfrastructureAdapter) zonesConfig() []ZoneConfig {
 					Kind:          KindNatGateway,
 				},
 				IdleTimeout: configZone.NatGateway.IdleConnectionTimeoutMinutes,
-				SKU:         ensureStandardSKU(configZone.NatGateway.SKU),
+				SKU:         ensureNatGatewaySKU(configZone.NatGateway.SKU),
 				Location:    ia.Region(),
 				Zone:        to.Ptr(zoneString),
 			}
@@ -335,7 +350,7 @@ func (ia *InfrastructureAdapter) zonesConfig() []ZoneConfig {
 						},
 						Zones:   []string{zoneString},
 						Managed: false,
-						SKU:     ensureStandardSKU(ipRef.SKU),
+						SKU:     ensurePublicIpSKU(ipRef.SKU, ngw.SKU),
 					}
 					ngw.PublicIPList = append(ngw.PublicIPList, ip)
 				}
@@ -350,7 +365,7 @@ func (ia *InfrastructureAdapter) zonesConfig() []ZoneConfig {
 						Kind:          KindPublicIP,
 					},
 					Managed:  true,
-					SKU:      ensureStandardSKU(configZone.NatGateway.SKU),
+					SKU:      ensurePublicIpSKU(nil, ngw.SKU),
 					Zones:    []string{zoneString},
 					Location: ia.Region(),
 				}
@@ -390,7 +405,7 @@ func (ia *InfrastructureAdapter) defaultZone() []ZoneConfig {
 			Kind:          KindNatGateway,
 		},
 		IdleTimeout: config.Networks.NatGateway.IdleConnectionTimeoutMinutes,
-		SKU:         ensureStandardSKU(config.Networks.NatGateway.SKU),
+		SKU:         ensureNatGatewaySKU(config.Networks.NatGateway.SKU),
 		Location:    ia.Region(),
 	}
 	if z := config.Networks.NatGateway.Zone; z != nil {
@@ -409,7 +424,7 @@ func (ia *InfrastructureAdapter) defaultZone() []ZoneConfig {
 					Kind:          KindPublicIP,
 				},
 				Managed: false,
-				SKU:     ensureStandardSKU(ipRef.SKU),
+				SKU:     ensurePublicIpSKU(ipRef.SKU, ngw.SKU),
 			}
 			ip.Zones = append(ip.Zones, strconv.Itoa(int(ipRef.Zone)))
 			ngw.PublicIPList = append(ngw.PublicIPList, ip)
@@ -426,7 +441,7 @@ func (ia *InfrastructureAdapter) defaultZone() []ZoneConfig {
 			},
 			Managed:  true,
 			Location: ia.Region(),
-			SKU:      ensureStandardSKU(config.Networks.NatGateway.SKU),
+			SKU:      ensurePublicIpSKU(nil, ngw.SKU),
 		}
 		if ngw.Zone != nil {
 			ip.Zones = append(ip.Zones, *ngw.Zone)
