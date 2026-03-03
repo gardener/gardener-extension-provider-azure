@@ -1039,7 +1039,7 @@ func verifyCreation(
 					}}
 				}
 
-				ng = verifyNAT(az, &zone.Name, nat.IdleConnectionTimeoutMinutes, ngName, ipNames, status)
+				ng = verifyNAT(az, &zone.Name, nat.IdleConnectionTimeoutMinutes, ngName, nat.SKU, ipNames, status)
 				natID = ng.ID
 			} else {
 				allZonesHaveNATGateway = false
@@ -1119,7 +1119,7 @@ func verifySubnet(
 	}
 }
 
-func verifyNAT(az *azureClientSet, zone, timeout *int32, ngName string, expectedSKU *string, ipNames []pubIpRef, status *azurev1alpha1.InfrastructureStatus) armnetwork.NatGateway {
+func verifyNAT(az *azureClientSet, zone, timeout *int32, ngName string, expectedNatSku *string, ipNames []pubIpRef, status *azurev1alpha1.InfrastructureStatus) armnetwork.NatGateway {
 	response, err := az.nat.Get(ctx, status.ResourceGroup.Name, ngName, nil)
 	Expect(err).ToNot(HaveOccurred())
 
@@ -1127,11 +1127,15 @@ func verifyNAT(az *azureClientSet, zone, timeout *int32, ngName string, expected
 	Expect(natGateway.Properties).To(Not(BeNil()))
 	Expect(natGateway.Properties.ProvisioningState).To(PointTo(Equal(armnetwork.ProvisioningStateSucceeded)))
 	Expect(natGateway.Location).To(PointTo(Equal(*region)))
-	if expectedSKU == nil {
-		expectedSKU = ptr.To(string(armnetwork.NatGatewaySKUNameStandard))
+	if expectedNatSku == nil {
+		expectedNatSku = ptr.To(string(armnetwork.NatGatewaySKUNameStandard))
 	}
-	Expect(string(*natGateway.SKU.Name)).To(Equal(expectedSKU))
-)
+	Expect(string(*natGateway.SKU.Name)).To(Equal(*expectedNatSku))
+
+	expectedIpSku := armnetwork.PublicIPAddressSKUNameStandard
+	if *expectedNatSku == string(armnetwork.NatGatewaySKUNameStandardV2) {
+		expectedIpSku = armnetwork.PublicIPAddressSKUNameStandardV2
+	}
 
 	// public IP
 	for _, ipName := range ipNames {
@@ -1139,7 +1143,7 @@ func verifyNAT(az *azureClientSet, zone, timeout *int32, ngName string, expected
 		Expect(err).ToNot(HaveOccurred())
 		Expect(pip.Location).To(PointTo(Equal(*region)))
 		Expect(pip.Properties.PublicIPAllocationMethod).To(PointTo(Equal(armnetwork.IPAllocationMethodStatic)))
-		Expect(pip.SKU.Name).To(PointTo(Equal(armnetwork.PublicIPAddressSKUNameStandard)))
+		Expect(pip.SKU.Name).To(PointTo(Equal(expectedIpSku)))
 		Expect(pip.Properties.PublicIPAddressVersion).To(PointTo(Equal(armnetwork.IPVersionIPv4)))
 		Expect(natGateway.Properties.PublicIPAddresses).To(ContainElement(HaveEqualID(*pip.ID)))
 	}
