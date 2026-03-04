@@ -1094,6 +1094,49 @@ var _ = Describe("Machines", func() {
 					Expect(result[1].ClusterAutoscalerAnnotations[extensionsv1alpha1.ScaleDownUnreadyTimeAnnotation]).To(Equal("3m0s"))
 					Expect(result[1].ClusterAutoscalerAnnotations[extensionsv1alpha1.ScaleDownUtilizationThresholdAnnotation]).To(Equal("0.5"))
 				})
+
+				It("should distribute autoPreserveFailedMachineMax across zones", func() {
+					w.Spec.Pools[0].MachineControllerManagerSettings = &gardencorev1beta1.MachineControllerManagerSettings{
+						AutoPreserveFailedMachineMax: ptr.To(int32(4)),
+					}
+					workerDelegate := wrapNewWorkerDelegate(c, chartApplier, w, cluster, nil)
+
+					expectedUserDataSecretRefRead()
+
+					result, err := workerDelegate.GenerateMachineDeployments(ctx)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(result).NotTo(BeNil())
+					Expect(result[0].AutoPreserveFailedMachineMax).To(Equal(int32(2)))
+					Expect(result[1].AutoPreserveFailedMachineMax).To(Equal(int32(2)))
+				})
+
+				It("should set autoPreserveFailedMachineMax to 0 per zone when machineControllerManagerSettings is nil", func() {
+					w.Spec.Pools[0].MachineControllerManagerSettings = nil
+					workerDelegate := wrapNewWorkerDelegate(c, chartApplier, w, cluster, nil)
+
+					expectedUserDataSecretRefRead()
+
+					result, err := workerDelegate.GenerateMachineDeployments(ctx)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(result).NotTo(BeNil())
+					Expect(result[0].AutoPreserveFailedMachineMax).To(Equal(int32(0)))
+					Expect(result[1].AutoPreserveFailedMachineMax).To(Equal(int32(0)))
+				})
+
+				It("should set autoPreserveFailedMachineMax to 0 per zone when autoPreserveFailedMachineMax is nil", func() {
+					w.Spec.Pools[0].MachineControllerManagerSettings = &gardencorev1beta1.MachineControllerManagerSettings{
+						AutoPreserveFailedMachineMax: nil,
+					}
+					workerDelegate := wrapNewWorkerDelegate(c, chartApplier, w, cluster, nil)
+
+					expectedUserDataSecretRefRead()
+
+					result, err := workerDelegate.GenerateMachineDeployments(ctx)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(result).NotTo(BeNil())
+					Expect(result[0].AutoPreserveFailedMachineMax).To(Equal(int32(0)))
+					Expect(result[1].AutoPreserveFailedMachineMax).To(Equal(int32(0)))
+				})
 			})
 
 			Describe("workers with in-place updates strategy", func() {
@@ -1387,18 +1430,20 @@ var _ = Describe("Machines", func() {
 
 			It("should set expected machineControllerManager settings on machine deployment", func() {
 				var (
-					testDrainTimeout    = metav1.Duration{Duration: 10 * time.Minute}
-					testHealthTimeout   = metav1.Duration{Duration: 20 * time.Minute}
-					testCreationTimeout = metav1.Duration{Duration: 30 * time.Minute}
-					testMaxEvictRetries = int32(30)
-					testNodeConditions  = []string{"ReadonlyFilesystem", "KernelDeadlock", "DiskPressure"}
+					testDrainTimeout                 = metav1.Duration{Duration: 10 * time.Minute}
+					testHealthTimeout                = metav1.Duration{Duration: 20 * time.Minute}
+					testCreationTimeout              = metav1.Duration{Duration: 30 * time.Minute}
+					testMaxEvictRetries              = int32(30)
+					testNodeConditions               = []string{"ReadonlyFilesystem", "KernelDeadlock", "DiskPressure"}
+					testAutoPreserveFailedMachineMax = int32(1)
 				)
 				w.Spec.Pools[0].MachineControllerManagerSettings = &gardencorev1beta1.MachineControllerManagerSettings{
-					MachineDrainTimeout:    &testDrainTimeout,
-					MachineCreationTimeout: &testCreationTimeout,
-					MachineHealthTimeout:   &testHealthTimeout,
-					MaxEvictRetries:        &testMaxEvictRetries,
-					NodeConditions:         testNodeConditions,
+					MachineDrainTimeout:          &testDrainTimeout,
+					MachineCreationTimeout:       &testCreationTimeout,
+					MachineHealthTimeout:         &testHealthTimeout,
+					MaxEvictRetries:              &testMaxEvictRetries,
+					NodeConditions:               testNodeConditions,
+					AutoPreserveFailedMachineMax: &testAutoPreserveFailedMachineMax,
 				}
 				workerDelegate := wrapNewWorkerDelegate(c, chartApplier, w, cluster, nil)
 
@@ -1416,6 +1461,33 @@ var _ = Describe("Machines", func() {
 				Expect(resultSettings.MachineHealthTimeout).To(Equal(&testHealthTimeout))
 				Expect(resultSettings.MaxEvictRetries).To(Equal(&testMaxEvictRetries))
 				Expect(resultSettings.NodeConditions).To(Equal(&resultNodeConditions))
+				Expect(result[0].AutoPreserveFailedMachineMax).To(Equal(testAutoPreserveFailedMachineMax))
+			})
+
+			It("should set autoPreserveFailedMachineMax to 0 when machineControllerManagerSettings is nil", func() {
+				w.Spec.Pools[0].MachineControllerManagerSettings = nil
+				workerDelegate := wrapNewWorkerDelegate(c, chartApplier, w, cluster, nil)
+
+				expectedUserDataSecretRefRead()
+
+				result, err := workerDelegate.GenerateMachineDeployments(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).NotTo(BeNil())
+				Expect(result[0].AutoPreserveFailedMachineMax).To(Equal(int32(0)))
+			})
+
+			It("should set autoPreserveFailedMachineMax to 0 when autoPreserveFailedMachineMax is nil", func() {
+				w.Spec.Pools[0].MachineControllerManagerSettings = &gardencorev1beta1.MachineControllerManagerSettings{
+					AutoPreserveFailedMachineMax: nil,
+				}
+				workerDelegate := wrapNewWorkerDelegate(c, chartApplier, w, cluster, nil)
+
+				expectedUserDataSecretRefRead()
+
+				result, err := workerDelegate.GenerateMachineDeployments(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).NotTo(BeNil())
+				Expect(result[0].AutoPreserveFailedMachineMax).To(Equal(int32(0)))
 			})
 		})
 	})

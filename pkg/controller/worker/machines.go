@@ -202,6 +202,10 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				}, disks)
 			)
 
+			if pool.MachineControllerManagerSettings != nil {
+				machineDeployment.AutoPreserveFailedMachineMax = ptr.Deref(pool.MachineControllerManagerSettings.AutoPreserveFailedMachineMax, 0)
+			}
+
 			networkConfig := map[string]any{
 				"vnet":   infrastructureStatus.Networks.VNet.Name,
 				"subnet": subnetName,
@@ -247,6 +251,9 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 					MaxSurge:       ptr.To(worker.DistributePositiveIntOrPercent(zone.index, pool.MaxSurge, zone.count, pool.Maximum)),
 				}
 				machineClassSpec["zone"] = zone.name
+				if pool.MachineControllerManagerSettings != nil {
+					machineDeployment.AutoPreserveFailedMachineMax = worker.DistributeOverZones(zone.index, ptr.Deref(pool.MachineControllerManagerSettings.AutoPreserveFailedMachineMax, 0), zone.count)
+				}
 			}
 
 			machineDeploymentStrategy := machinev1alpha1.MachineDeploymentStrategy{
