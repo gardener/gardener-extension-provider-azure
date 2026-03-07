@@ -362,12 +362,12 @@ var _ = Describe("Infrastructure tests", func() {
 					{
 						Name:          natIPName1,
 						ResourceGroup: foreignName,
-						Zone:          zone,
+						Zone:          &zone,
 					},
 					{
 						Name:          natIPName2,
 						ResourceGroup: foreignName,
-						Zone:          zone,
+						Zone:          &zone,
 					},
 				},
 			}

@@ -1094,7 +1094,7 @@ func Convert_azure_NetworkStatus_To_v1alpha1_NetworkStatus(in *azure.NetworkStat
 func autoConvert_v1alpha1_PublicIPReference_To_azure_PublicIPReference(in *PublicIPReference, out *azure.PublicIPReference, s conversion.Scope) error {
 	out.Name = in.Name
 	out.ResourceGroup = in.ResourceGroup
-	out.Zone = in.Zone
+	out.Zone = (*int32)(unsafe.Pointer(in.Zone))
 	out.SKU = (*string)(unsafe.Pointer(in.SKU))
 	return nil
 }
@@ -1107,7 +1107,7 @@ func Convert_v1alpha1_PublicIPReference_To_azure_PublicIPReference(in *PublicIPR
 func autoConvert_azure_PublicIPReference_To_v1alpha1_PublicIPReference(in *azure.PublicIPReference, out *PublicIPReference, s conversion.Scope) error {
 	out.Name = in.Name
 	out.ResourceGroup = in.ResourceGroup
-	out.Zone = in.Zone
+	out.Zone = (*int32)(unsafe.Pointer(in.Zone))
 	out.SKU = (*string)(unsafe.Pointer(in.SKU))
 	return nil
 }

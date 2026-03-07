@@ -466,7 +466,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					infrastructureConfig.Networks.NatGateway.IPAddresses = []apisazure.PublicIPReference{{
 						Name:          "public-ip-name",
 						ResourceGroup: "public-ip-resource-group",
-						Zone:          1,
+						Zone:          ptr.To[int32](1),
 					}}
 				})
 
@@ -481,7 +481,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				})
 
 				It("should fail as resource is in a different zone as the NatGateway", func() {
-					infrastructureConfig.Networks.NatGateway.IPAddresses[0].Zone = 2
+					infrastructureConfig.Networks.NatGateway.IPAddresses[0].Zone = ptr.To[int32](2)
 					errorList := ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)
 					Expect(errorList).To(ConsistOfFields(Fields{
 						"Type":   Equal(field.ErrorTypeInvalid),
