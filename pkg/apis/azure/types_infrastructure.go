@@ -72,7 +72,7 @@ type PublicIPReference struct {
 	// ResourceGroup is the name of the resource group where the public ip is assigned to.
 	ResourceGroup string
 	// Zone is the zone in which the public ip is deployed to.
-	Zone int32
+	Zone *int32
 	// SKU specifies the SKU of the public IP address.
 	// Supported values: "Standard", "StandardV2"
 	// Must match the SKU of the NAT Gateway it's associated with.

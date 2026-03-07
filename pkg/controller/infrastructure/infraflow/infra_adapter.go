@@ -14,6 +14,7 @@ import (
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils"
+	"k8s.io/utils/ptr"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
@@ -229,11 +230,10 @@ func ensureNatGatewaySKU(sku *string) *string {
 }
 
 func ensurePublicIpSKU(sku, natSku *string) *string {
-	if sku == nil || *sku == "" {
-		if natSku == nil || *natSku == "" {
-			// If no SKU is specified for both the public IP and the NAT Gateway, default to Standard for backward compatibility.
-			return to.Ptr(string(armnetwork.PublicIPAddressSKUNameStandard))
-		}
+	if ptr.Deref(sku, "") != "" {
+		return sku
+	}
+	if ptr.Deref(natSku, "") != "" {
 		switch *natSku {
 		case string(armnetwork.NatGatewaySKUNameStandardV2):
 			// If the NAT Gateway SKU is explicitly set to StandardV2, use the same SKU for the public IP to ensure compatibility.
@@ -242,7 +242,7 @@ func ensurePublicIpSKU(sku, natSku *string) *string {
 			return to.Ptr(string(armnetwork.PublicIPAddressSKUNameStandard))
 		}
 	}
-	return sku
+	return to.Ptr(string(armnetwork.PublicIPAddressSKUNameStandard))
 }
 
 func (ia *InfrastructureAdapter) natGatewayNameForZone(zone int32, migrated bool) string {
@@ -426,7 +426,9 @@ func (ia *InfrastructureAdapter) defaultZone() []ZoneConfig {
 				Managed: false,
 				SKU:     ensurePublicIpSKU(ipRef.SKU, ngw.SKU),
 			}
-			ip.Zones = append(ip.Zones, strconv.Itoa(int(ipRef.Zone)))
+			if ipRef.Zone != nil {
+				ip.Zones = append(ip.Zones, strconv.Itoa(int(*ipRef.Zone)))
+			}
 			ngw.PublicIPList = append(ngw.PublicIPList, ip)
 		}
 	} else {
