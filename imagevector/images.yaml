@@ -31,7 +31,7 @@ images:
   targetVersion: 1.31.x
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
-  repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-controller-manager
+  repository: mcr.microsoft.com/oss/v2/kubernetes/azure-cloud-controller-manager
   tag: v1.32.11
   labels:
   - name: gardener.cloud/cve-categorisation
@@ -46,7 +46,7 @@ images:
   targetVersion: 1.32.x
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
-  repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-controller-manager
+  repository: mcr.microsoft.com/oss/v2/kubernetes/azure-cloud-controller-manager
   tag: v1.33.6
   labels:
   - name: gardener.cloud/cve-categorisation
@@ -121,7 +121,7 @@ images:
   targetVersion: 1.31.x
 - name: cloud-node-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
-  repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-node-manager
+  repository: mcr.microsoft.com/oss/v2/kubernetes/azure-cloud-node-manager
   tag: v1.32.11
   labels:
   - name: gardener.cloud/cve-categorisation
@@ -136,7 +136,7 @@ images:
   targetVersion: 1.32.x
 - name: cloud-node-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
-  repository: mcr.microsoft.com/oss/kubernetes/azure-cloud-node-manager
+  repository: mcr.microsoft.com/oss/v2/kubernetes/azure-cloud-node-manager
   tag: v1.33.6
   labels:
   - name: gardener.cloud/cve-categorisation
