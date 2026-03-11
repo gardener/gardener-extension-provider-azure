@@ -30,7 +30,7 @@ type ClientAuth struct {
 	ClientID string `yaml:"clientID"`
 	// ClientSecret is the Azure client secret.
 	// This field is mutually exclusive with TokenRetriever.
-	ClientSecret string `yaml:"clientSecret"`
+	ClientSecret string `yaml:"clientSecret"` // #nosec G117 -- Used only to _read_ credentials from k8s-secret and handle them programmatically
 	// TokenRetriever a function that retrieves a token used for exchanging Azure credentials.
 	// This field is mutually exclusive with ClientSecret.
 	TokenRetriever func(ctx context.Context) (string, error)
