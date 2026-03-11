@@ -38,6 +38,7 @@ spec:
         command:
         - /gardener-extension-admission-azure
         - --webhook-config-server-port={{ .Values.webhookConfig.serverPort }}
+        - --webhook-config-service-port={{ .Values.webhookConfig.servicePort }}
         {{- if .Values.gardener.virtualCluster.enabled }}
         - --webhook-config-mode=url
         - --webhook-config-url={{ printf "%s.%s" (include "name" .) (.Release.Namespace) }}
@@ -103,7 +104,7 @@ spec:
         - name: kubeconfig
           mountPath: {{ required ".Values.projectedKubeconfig.baseMountPath is required" .Values.projectedKubeconfig.baseMountPath }}
           readOnly: true
-        {{- end }}        
+        {{- end }}
       volumes:
       {{- if .Values.kubeconfig }}
       - name: gardener-extension-admission-azure-kubeconfig
