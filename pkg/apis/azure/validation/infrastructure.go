@@ -8,8 +8,8 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
-	"github.com/gardener/gardener/pkg/apis/core"
 	gardencorehelper "github.com/gardener/gardener/pkg/api/core/helper"
+	"github.com/gardener/gardener/pkg/apis/core"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	cidrvalidation "github.com/gardener/gardener/pkg/utils/validation/cidr"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
