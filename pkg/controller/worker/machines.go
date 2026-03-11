@@ -7,13 +7,16 @@ package worker
 import (
 	"context"
 	"fmt"
+	"maps"
 	"path/filepath"
 	"regexp"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
+	"github.com/Masterminds/semver/v3"
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
 	genericworkeractuator "github.com/gardener/gardener/extensions/pkg/controller/worker/genericactuator"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -23,7 +26,9 @@ import (
 	extensionsv1alpha1helper "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1/helper"
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	"github.com/gardener/gardener/pkg/utils"
+	versionutils "github.com/gardener/gardener/pkg/utils/version"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -282,23 +287,30 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 					zoneName = w.worker.Spec.Region + "-" + zone.name
 				}
 
+				nodeTemplate := machinev1alpha1.NodeTemplate{
+					Capacity:        pool.NodeTemplate.Capacity,
+					VirtualCapacity: pool.NodeTemplate.VirtualCapacity,
+					InstanceType:    pool.MachineType,
+					Region:          w.worker.Spec.Region,
+					Zone:            zoneName,
+					Architecture:    &arch,
+				}
 				if workerConfig.NodeTemplate != nil {
-					machineClassSpec["nodeTemplate"] = machinev1alpha1.NodeTemplate{
-						Capacity:     workerConfig.NodeTemplate.Capacity,
-						InstanceType: pool.MachineType,
-						Region:       w.worker.Spec.Region,
-						Zone:         zoneName,
-						Architecture: &arch,
+					// Support providerConfig extended resources by copying into node template capacity and virtualCapacity
+					if workerConfig.NodeTemplate.Capacity != nil {
+						if nodeTemplate.Capacity == nil {
+							nodeTemplate.Capacity = corev1.ResourceList{}
+						}
+						maps.Copy(nodeTemplate.Capacity, workerConfig.NodeTemplate.Capacity)
 					}
-				} else if pool.NodeTemplate != nil {
-					machineClassSpec["nodeTemplate"] = machinev1alpha1.NodeTemplate{
-						Capacity:     pool.NodeTemplate.Capacity,
-						InstanceType: pool.MachineType,
-						Region:       w.worker.Spec.Region,
-						Zone:         zoneName,
-						Architecture: &arch,
+					if workerConfig.NodeTemplate.VirtualCapacity != nil {
+						if nodeTemplate.VirtualCapacity == nil {
+							nodeTemplate.VirtualCapacity = corev1.ResourceList{}
+						}
+						maps.Copy(nodeTemplate.VirtualCapacity, workerConfig.NodeTemplate.VirtualCapacity)
 					}
 				}
+				machineClassSpec["nodeTemplate"] = nodeTemplate
 			}
 
 			if machineSet != nil {
@@ -361,7 +373,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			return machineDeployment, machineClassSpec
 		}
 
-		workerPoolHash, err := w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, nil)
+		workerPoolHash, err := w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, nil, &workerConfig)
 		if err != nil {
 			return err
 		}
@@ -387,12 +399,12 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				}
 
 				if nodesSubnet.Migrated {
-					workerPoolHash, err = w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, nil)
+					workerPoolHash, err = w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, nil, &workerConfig)
 					if err != nil {
 						return err
 					}
 				} else {
-					workerPoolHash, err = w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, &nodesSubnet.Name)
+					workerPoolHash, err = w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, &nodesSubnet.Name, &workerConfig)
 					if err != nil {
 						return err
 					}
@@ -530,7 +542,7 @@ func addTopologyLabel(labels map[string]string, region string, zone *zoneInfo) m
 	return labels
 }
 
-func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPool, infrastructureStatus *azureapi.InfrastructureStatus, vmoDependency *azureapi.VmoDependency, subnetName *string) (string, error) {
+func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPool, infrastructureStatus *azureapi.InfrastructureStatus, vmoDependency *azureapi.VmoDependency, subnetName *string, workerConfig *azureapi.WorkerConfig) (string, error) {
 	var additionalHashData []string
 
 	// Integrate data disks/volumes in the hash.
@@ -560,20 +572,91 @@ func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPo
 
 	// Include additional data for new worker-pool hash generation.
 	// See https://github.com/gardener/gardener/issues/9699 for more details
-	additionalHashDataV2 := append(additionalHashData, w.workerPoolHashDataV2(pool)...)
+	hashDataV2, err := WorkerPoolHashDataV2(pool, workerConfig)
+	if err != nil {
+		return "", err
+	}
+	additionalHashDataV2 := append(additionalHashData, hashDataV2...)
 
 	return worker.WorkerPoolHash(pool, w.cluster, additionalHashData, additionalHashDataV2, []string{})
 }
 
-// workerPoolHashDataV2 adds additional provider-specific data points to consider to the given data.
-func (w workerDelegate) workerPoolHashDataV2(pool extensionsv1alpha1.WorkerPool) []string {
-	// in the future, we may not calculate a hash for the whole ProviderConfig
-	// for example volume field changes could be done in place, but MCM needs to support it
-	if pool.ProviderConfig != nil && pool.ProviderConfig.Raw != nil {
-		return []string{string(pool.ProviderConfig.Raw)}
+// WorkerPoolHashDataV2 adds additional provider-specific data points to consider to the given data.
+// Addition or Change in VirtualCapacity should NOT cause existing hash to change to prevent trigger of rollout.
+// TODO: once the MCM supports Machine Hot-Update from the WorkerConfig, this hash data logic can be made smarter.
+func WorkerPoolHashDataV2(pool extensionsv1alpha1.WorkerPool, workerConfig *azureapi.WorkerConfig) ([]string, error) {
+	var useNewHashData bool
+	if pool.KubernetesVersion != nil {
+		poolK8sVersion, err := semver.NewVersion(*pool.KubernetesVersion)
+		if err != nil {
+			return nil, err
+		}
+		useNewHashData = versionutils.ConstraintK8sGreaterEqual135.Check(poolK8sVersion)
 	}
 
-	return nil
+	if useNewHashData && workerConfig != nil {
+		return appendHashDataForWorkerConfig(nil, workerConfig), nil
+	}
+
+	if pool.ProviderConfig == nil || pool.ProviderConfig.Raw == nil {
+		return nil, nil
+	}
+
+	// Addition or Change in VirtualCapacity should NOT cause existing hash to change to prevent trigger of rollout.
+	if workerConfig != nil && workerConfig.NodeTemplate != nil && workerConfig.NodeTemplate.VirtualCapacity != nil {
+		modifiedProviderConfig := stripVirtualCapacity(pool.ProviderConfig.Raw)
+		return []string{string(modifiedProviderConfig)}, nil
+	}
+
+	// preserve legacy behaviour
+	return []string{string(pool.ProviderConfig.Raw)}, nil
+}
+
+// appendHashDataForWorkerConfig appends individual WorkerConfig fields to hash data.
+func appendHashDataForWorkerConfig(hashData []string, workerConfig *azureapi.WorkerConfig) []string {
+	if workerConfig.NodeTemplate != nil {
+		keys := slices.Sorted(maps.Keys(workerConfig.NodeTemplate.Capacity)) // ensure order
+		for _, k := range keys {
+			q := workerConfig.NodeTemplate.Capacity[k]
+			hashData = append(hashData, fmt.Sprintf("%s=%d", k, q.Value()))
+		}
+	}
+	if workerConfig.Volume != nil {
+		if workerConfig.Volume.Caching != nil {
+			hashData = append(hashData, *workerConfig.Volume.Caching)
+		}
+	}
+	if workerConfig.DataVolumes != nil {
+		for _, dv := range workerConfig.DataVolumes {
+			hashData = append(hashData, dv.Name)
+			if dv.ImageRef != nil {
+				if dv.ImageRef.URN != nil {
+					hashData = append(hashData, *dv.ImageRef.URN)
+				}
+				if dv.ImageRef.ID != nil {
+					hashData = append(hashData, *dv.ImageRef.ID)
+				}
+				if dv.ImageRef.CommunityGalleryImageID != nil {
+					hashData = append(hashData, *dv.ImageRef.CommunityGalleryImageID)
+				}
+				if dv.ImageRef.SharedGalleryImageID != nil {
+					hashData = append(hashData, *dv.ImageRef.SharedGalleryImageID)
+				}
+			}
+		}
+	}
+	if workerConfig.DiagnosticsProfile != nil {
+		hashData = append(hashData, strconv.FormatBool(workerConfig.DiagnosticsProfile.Enabled))
+		if workerConfig.DiagnosticsProfile.StorageURI != nil {
+			hashData = append(hashData, *workerConfig.DiagnosticsProfile.StorageURI)
+		}
+	}
+	if workerConfig.CapacityReservation != nil {
+		if workerConfig.CapacityReservation.CapacityReservationGroupID != nil {
+			hashData = append(hashData, *workerConfig.CapacityReservation.CapacityReservationGroupID)
+		}
+	}
+	return hashData
 }
 
 // TODO: Remove when we have support for VM Capabilities
