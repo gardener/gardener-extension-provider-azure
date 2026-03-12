@@ -115,17 +115,13 @@ var _ = Describe("CloudProfileConfig validation", func() {
 		Context("machine image validation", func() {
 			It("should reject mixed capability and architecture definitions", func() {
 				if isCapabilitiesCloudProfile {
-					cloudProfileConfig.MachineImages[0].Versions[0].Architecture = ptr.To("amd64")
+					// Set both image (old format) AND capabilityFlavors (new format) - this is forbidden
 					cloudProfileConfig.MachineImages[0].Versions[0].URN = ptr.To("foo:bar:baz:ban")
 					errorList := ValidateCloudProfileConfig(cloudProfileConfig, cloudProfileMachineImages, capabilityDefinitions, nilPath)
 					Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 						"Type":   Equal(field.ErrorTypeForbidden),
-						"Detail": Equal("image references must not be set when cloudprofile capabilities are defined. Use reference fields in capabilityFlavors instead"),
-						"Field":  Equal("machineImages[0].versions[0]"),
-					})), PointTo(MatchFields(IgnoreExtras, Fields{
-						"Type":   Equal(field.ErrorTypeForbidden),
-						"Detail": Equal("architecture must not be set when cloudprofile capabilities are defined. Use capabilityFlavors instead"),
-						"Field":  Equal("machineImages[0].versions[0].architecture"),
+						"Detail": Equal("must not be set together with capabilityFlavors. Use one format per version."),
+						"Field":  Equal("machineImages[0].versions[0].image"),
 					}))))
 				} else {
 					cloudProfileConfig.MachineImages[0].Versions[0].CapabilityFlavors = []apisazure.MachineImageFlavor{{}}
@@ -143,14 +139,63 @@ var _ = Describe("CloudProfileConfig validation", func() {
 				Expect(errorList).To(BeEmpty())
 			})
 
+			It("should allow old format (image with architecture) when CloudProfile uses capabilities", func() {
+				if !isCapabilitiesCloudProfile {
+					Skip("Test only applicable for capabilities CloudProfile")
+				}
+				// Use old format (image with architecture) instead of capabilityFlavors in providerConfig
+				cloudProfileConfig.MachineImages[0].Versions[0] = apisazure.MachineImageVersion{
+					Version:      "Version",
+					Architecture: ptr.To("amd64"),
+					Image:        apisazure.Image{URN: &urn},
+				}
+
+				errorList := ValidateCloudProfileConfig(cloudProfileConfig, cloudProfileMachineImages, capabilityDefinitions, nilPath)
+				Expect(errorList).To(BeEmpty())
+			})
+
+			It("should allow multiple capability flavors for same version", func() {
+				if !isCapabilitiesCloudProfile {
+					Skip("Test only applicable for capabilities CloudProfile")
+				}
+				// Define multiple capability flavors (amd64 and arm64)
+				cloudProfileConfig.MachineImages[0].Versions[0] = apisazure.MachineImageVersion{
+					Version: "Version",
+					CapabilityFlavors: []apisazure.MachineImageFlavor{
+						{
+							Image:        apisazure.Image{URN: ptr.To("Publisher:Offer:Sku:amd64")},
+							Capabilities: v1beta1.Capabilities{v1beta1constants.ArchitectureName: []string{"amd64"}},
+						},
+						{
+							Image:        apisazure.Image{URN: ptr.To("Publisher:Offer:Sku:arm64")},
+							Capabilities: v1beta1.Capabilities{v1beta1constants.ArchitectureName: []string{"arm64"}},
+						},
+					},
+				}
+				// Update capabilityDefinitions to include arm64
+				capabilityDefinitions = []v1beta1.CapabilityDefinition{{
+					Name:   v1beta1constants.ArchitectureName,
+					Values: []string{"amd64", "arm64"},
+				}}
+				// CloudProfile should also have both capability flavors
+				cloudProfileMachineImages[0].Versions[0].CapabilityFlavors = []core.MachineImageFlavor{
+					{Capabilities: core.Capabilities{v1beta1constants.ArchitectureName: []string{"amd64"}}},
+					{Capabilities: core.Capabilities{v1beta1constants.ArchitectureName: []string{"arm64"}}},
+				}
+
+				errorList := ValidateCloudProfileConfig(cloudProfileConfig, cloudProfileMachineImages, capabilityDefinitions, nilPath)
+				Expect(errorList).To(BeEmpty())
+			})
+
 			It("should enforce that at least one machine image has been defined", func() {
 				cloudProfileConfig.MachineImages = []apisazure.MachineImages{}
 
 				errorList := ValidateCloudProfileConfig(cloudProfileConfig, cloudProfileMachineImages, capabilityDefinitions, nilPath)
 
 				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Type":  Equal(field.ErrorTypeRequired),
-					"Field": Equal("machineImages"),
+					"Type":   Equal(field.ErrorTypeRequired),
+					"Field":  Equal("machineImages"),
+					"Detail": Equal("must provide at least one machine image"),
 				}))))
 			})
 
@@ -160,11 +205,13 @@ var _ = Describe("CloudProfileConfig validation", func() {
 				errorList := ValidateCloudProfileConfig(cloudProfileConfig, cloudProfileMachineImages, capabilityDefinitions, nilPath)
 
 				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Type":  Equal(field.ErrorTypeRequired),
-					"Field": Equal("machineImages[0].name"),
+					"Type":   Equal(field.ErrorTypeRequired),
+					"Field":  Equal("machineImages[0].name"),
+					"Detail": Equal("must provide a name"),
 				})), PointTo(MatchFields(IgnoreExtras, Fields{
-					"Type":  Equal(field.ErrorTypeRequired),
-					"Field": Equal("machineImages[0].versions"),
+					"Type":   Equal(field.ErrorTypeRequired),
+					"Field":  Equal("machineImages[0].versions"),
+					"Detail": ContainSubstring("must provide at least one version"),
 				}))))
 			})
 
@@ -251,8 +298,8 @@ var _ = Describe("CloudProfileConfig validation", func() {
 					Expect(errorList).To(matcher)
 				},
 				Entry("correct id", communityGalleryImageID, BeEmpty()),
-				Entry("incorrect number of parts id", "/too/little/parts/id", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeInvalid), "Field": Equal(expectedErrorPath + ".communityGalleryImageID")})))),
-				Entry("incorrect number of parts id", "/there/are/way/too/many/parts/in/this/id", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeInvalid), "Field": Equal(expectedErrorPath + ".communityGalleryImageID")})))),
+				Entry("too few parts", "/too/little/parts/id", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeInvalid), "Field": Equal(expectedErrorPath + ".communityGalleryImageID")})))),
+				Entry("too many parts", "/there/are/way/too/many/parts/in/this/id", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeInvalid), "Field": Equal(expectedErrorPath + ".communityGalleryImageID")})))),
 				Entry("does not start with correct prefix", "/somegallery/id/Images/myImageDefinition/versions/version", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeInvalid), "Field": Equal(expectedErrorPath + ".communityGalleryImageID")})))),
 			)
 
@@ -271,8 +318,8 @@ var _ = Describe("CloudProfileConfig validation", func() {
 					Expect(errorList).To(matcher)
 				},
 				Entry("correct id", sharedGalleryImageID, BeEmpty()),
-				Entry("incorrect number of parts id", "/too/little/parts/id", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeInvalid), "Field": Equal(expectedErrorPath + ".sharedGalleryImageID")})))),
-				Entry("incorrect number of parts id", "/there/are/way/too/many/parts/in/this/id", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeInvalid), "Field": Equal(expectedErrorPath + ".sharedGalleryImageID")})))),
+				Entry("too few parts", "/too/little/parts/id", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeInvalid), "Field": Equal(expectedErrorPath + ".sharedGalleryImageID")})))),
+				Entry("too many parts", "/there/are/way/too/many/parts/in/this/id", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeInvalid), "Field": Equal(expectedErrorPath + ".sharedGalleryImageID")})))),
 				Entry("does not start with correct prefix", "/somegallery/id/Images/myImageDefinition/versions/version", ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{"Type": Equal(field.ErrorTypeInvalid), "Field": Equal(expectedErrorPath + ".sharedGalleryImageID")})))),
 			)
 
@@ -399,12 +446,13 @@ var _ = Describe("CloudProfileConfig validation", func() {
 				errorList := ValidateCloudProfileConfig(cloudProfileConfig, cloudProfileMachineImages, capabilityDefinitions, nilPath)
 
 				Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Type":  Equal(field.ErrorTypeRequired),
-					"Field": Equal("spec.machineImages[0]"),
+					"Type":   Equal(field.ErrorTypeRequired),
+					"Field":  Equal("spec.machineImages[0]"),
+					"Detail": Equal("must provide a provider image mapping for image \"abc\""),
 				}))))
 			})
 
-			It("should forbid missing architecture in cpConfigMachineImages", func() {
+			It("should forbid Architecture/CapabilityFlavors without matching providerConfig entries", func() {
 				if isCapabilitiesCloudProfile {
 					cloudProfileMachineImages[0].Versions[0].CapabilityFlavors = []core.MachineImageFlavor{
 						{Capabilities: core.Capabilities{v1beta1constants.ArchitectureName: []string{"amd64"}}},
@@ -414,7 +462,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 
 					Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 						"Type":   Equal(field.ErrorTypeRequired),
-						"Detail": Equal("missing providerConfig mapping for machine image version ubuntu@Version and capabilityFlavor map[architecture:[arm64]]"),
+						"Detail": Equal("machine image version ubuntu@Version and capabilityFlavor map[architecture:[arm64]] is not defined in the providerConfig"),
 						"Field":  Equal("spec.machineImages[0].versions[0].capabilityFlavors[1]"),
 					}))))
 				} else {
@@ -423,7 +471,7 @@ var _ = Describe("CloudProfileConfig validation", func() {
 
 					Expect(errorList).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 						"Type":   Equal(field.ErrorTypeRequired),
-						"Detail": Equal("must provide an image mapping for version \"Version\" and architecture: arm64"),
+						"Detail": Equal("machine image version ubuntu@Version and architecture: arm64 is not defined in the providerConfig"),
 						"Field":  Equal("spec.machineImages[0].versions[0]"),
 					}))))
 				}

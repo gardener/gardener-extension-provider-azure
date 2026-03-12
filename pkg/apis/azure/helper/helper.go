@@ -137,27 +137,84 @@ func findMachineImageFlavor(
 		if machineImage.Name != imageName {
 			continue
 		}
-		for _, version := range machineImage.Versions {
-			if imageVersion != version.Version {
-				continue
-			}
 
-			if len(capabilityDefinitions) == 0 {
+		// Collect all versions with matching version string (mixed format support)
+		var matchingVersions []api.MachineImageVersion
+		for _, version := range machineImage.Versions {
+			if imageVersion == version.Version {
+				matchingVersions = append(matchingVersions, version)
+			}
+		}
+
+		if len(matchingVersions) == 0 {
+			continue
+		}
+
+		if len(capabilityDefinitions) == 0 {
+			// Legacy mode: find matching architecture from the matching versions
+			for _, version := range matchingVersions {
 				if *arch == ptr.Deref(version.Architecture, v1beta1constants.ArchitectureAMD64) {
 					return nil, &version, nil
 				}
-				continue
 			}
+			continue
+		}
 
-			bestMatch, err := worker.FindBestImageFlavor(version.CapabilityFlavors, machineCapabilities, capabilityDefinitions)
+		// Convert old format (image with architecture) versions to capability flavors if required
+		// as there may be multiple version entries for the same version with different architectures
+		capabilityFlavors := convertLegacyVersionsToCapabilityFlavors(matchingVersions)
+
+		if len(capabilityFlavors) > 0 {
+			bestMatch, err := worker.FindBestImageFlavor(capabilityFlavors, machineCapabilities, capabilityDefinitions)
 			if err != nil {
 				return nil, nil, fmt.Errorf("could not determine best flavor %w", err)
 			}
-
 			return &bestMatch, nil, nil
 		}
 	}
 	return nil, nil, nil
+}
+
+// convertLegacyVersionsToCapabilityFlavors converts old format (image with architecture) versions
+// to capability flavors for mixed format support.
+func convertLegacyVersionsToCapabilityFlavors(versions []api.MachineImageVersion) []api.MachineImageFlavor {
+	var capabilityFlavors []api.MachineImageFlavor
+	for _, version := range versions {
+		if version.Image != (api.Image{}) && len(version.CapabilityFlavors) == 0 {
+			arch := ptr.Deref(version.Architecture, v1beta1constants.ArchitectureAMD64)
+			capabilityFlavors = append(capabilityFlavors, api.MachineImageFlavor{
+				Image: version.Image,
+				Capabilities: gardencorev1beta1.Capabilities{
+					v1beta1constants.ArchitectureName: []string{arch},
+				},
+			})
+		} else {
+			capabilityFlavors = append(capabilityFlavors, version.CapabilityFlavors...)
+		}
+	}
+	return capabilityFlavors
+}
+
+// GroupVersionsByVersionString groups all provider versions by their version string.
+// This is needed because the old format may have multiple entries for the same version
+// with different architectures (mixed format support).
+func GroupVersionsByVersionString(versions []api.MachineImageVersion) map[string][]api.MachineImageVersion {
+	result := make(map[string][]api.MachineImageVersion)
+	for _, v := range versions {
+		result[v.Version] = append(result[v.Version], v)
+	}
+	return result
+}
+
+// GroupV1alpha1VersionsByVersionString groups all v1alpha1 provider versions by their version string.
+// This is needed because the old format may have multiple entries for the same version
+// with different architectures (mixed format support).
+func GroupV1alpha1VersionsByVersionString(versions []v1alpha1.MachineImageVersion) map[string][]v1alpha1.MachineImageVersion {
+	result := make(map[string][]v1alpha1.MachineImageVersion)
+	for _, v := range versions {
+		result[v.Version] = append(result[v.Version], v)
+	}
+	return result
 }
 
 // IsVmoRequired determines if VMO is required. It is different from the condition in the infrastructure as this one depends on whether the infra controller

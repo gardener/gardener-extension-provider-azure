@@ -176,31 +176,26 @@ var _ = DescribeTableSubtree("NamespacedCloudProfile Validator", func(isCapabili
 
 			err := namespacedCloudProfileValidator.Validate(ctx, namespacedCloudProfile, nil)
 
-			if isCapabilitiesCloudProfile {
-				// machineTypes in the providerConfig are not validated if capabilities are used in the CloudProfile
-				Expect(err).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Type":   Equal(field.ErrorTypeForbidden),
-					"Field":  Equal("spec.providerConfig.machineImages[0].versions[0]"),
-					"Detail": Equal("machine image version image-1@1.0 is already defined in the parent CloudProfile"),
-				}))))
-			} else {
-				Expect(err).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Type":   Equal(field.ErrorTypeForbidden),
-					"Field":  Equal("spec.providerConfig.machineImages[0].versions[0]"),
-					"Detail": Equal("machine image version image-1@1.0 is already defined in the parent CloudProfile"),
-				})), PointTo(MatchFields(IgnoreExtras, Fields{
-					"Type":   Equal(field.ErrorTypeForbidden),
-					"Field":  Equal("spec.providerConfig.machineTypes[0]"),
-					"Detail": Equal("machine type type-1 is already defined in the parent CloudProfile"),
-				}))))
-			}
+			// machineTypes in the providerConfig are always validated
+			Expect(err).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":   Equal(field.ErrorTypeForbidden),
+				"Field":  Equal("spec.providerConfig.machineImages[0].versions[0]"),
+				"Detail": Equal("machine image version image-1@1.0 is already defined in the parent CloudProfile"),
+			})), PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":   Equal(field.ErrorTypeForbidden),
+				"Field":  Equal("spec.providerConfig.machineTypes[0]"),
+				"Detail": Equal("machine type type-1 is already defined in the parent CloudProfile"),
+			}))))
 
 		})
 
 		It("should fail for NamespacedCloudProfile specifying provider config without the according version in the spec.machineImages", func() {
 			imageVersions := `{"version":"1.1","id":"image-1-1-1"}`
+			detailMsg := `machine image version image-1@1.2 and architecture: "amd64" is not defined in the NamespacedCloudProfile providerConfig`
 			if isCapabilitiesCloudProfile {
 				imageVersions = `{"version":"1.1","capabilityFlavors":[{"id":"image-1-1-1"}]}`
+				// For capabilities, when version is not found at all, shorter message is used
+				detailMsg = `machine image version image-1@1.2 is not defined in the NamespacedCloudProfile providerConfig`
 			}
 
 			namespacedCloudProfile.Spec.ProviderConfig = &runtime.RawExtension{Raw: []byte(fmt.Sprintf(`{
@@ -225,7 +220,7 @@ var _ = DescribeTableSubtree("NamespacedCloudProfile Validator", func(isCapabili
 			Expect(err).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":   Equal(field.ErrorTypeRequired),
 				"Field":  Equal("spec.providerConfig.machineImages"),
-				"Detail": Equal("machine image version image-1@1.2 is not defined in the NamespacedCloudProfile providerConfig"),
+				"Detail": Equal(detailMsg),
 			})), PointTo(MatchFields(IgnoreExtras, Fields{
 				"Type":     Equal(field.ErrorTypeInvalid),
 				"Field":    Equal("spec.providerConfig.machineImages[0].versions[0]"),
@@ -245,16 +240,12 @@ var _ = DescribeTableSubtree("NamespacedCloudProfile Validator", func(isCapabili
 			Expect(fakeClient.Create(ctx, cloudProfile)).To(Succeed())
 
 			err := namespacedCloudProfileValidator.Validate(ctx, namespacedCloudProfile, nil)
-			if isCapabilitiesCloudProfile {
-				// machineTypes in the providerConfig are not validated if capabilities are used in the CloudProfile
-				Expect(err).ToNot(HaveOccurred())
-			} else {
-				Expect(err).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Type":   Equal(field.ErrorTypeRequired),
-					"Field":  Equal("spec.providerConfig.machineTypes[0]"),
-					"Detail": Equal("machine type type-1 is not defined in the NamespacedCloudProfile .spec.machineTypes"),
-				}))))
-			}
+			// machineTypes in the providerConfig are always validated
+			Expect(err).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Type":   Equal(field.ErrorTypeRequired),
+				"Field":  Equal("spec.providerConfig.machineTypes[0]"),
+				"Detail": Equal("machine type type-1 is not defined in the NamespacedCloudProfile .spec.machineTypes"),
+			}))))
 		})
 
 		It("should fail for NamespacedCloudProfile specifying new spec.machineImages without the according version in the provider config", func() {
@@ -339,11 +330,11 @@ var _ = DescribeTableSubtree("NamespacedCloudProfile Validator", func(isCapabili
 				})), PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":   Equal(field.ErrorTypeRequired),
 					"Field":  Equal("spec.providerConfig.machineImages"),
-					"Detail": Equal("machine image version image-1@1.1-fallback is not defined in the NamespacedCloudProfile providerConfig"),
+					"Detail": Equal(`machine image version image-1@1.1-fallback and architecture: "arm64" is not defined in the NamespacedCloudProfile providerConfig`),
 				})), PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":   Equal(field.ErrorTypeRequired),
 					"Field":  Equal("spec.providerConfig.machineImages"),
-					"Detail": Equal("machine image version image-1@1.1-missing is not defined in the NamespacedCloudProfile providerConfig"),
+					"Detail": Equal(`machine image version image-1@1.1-missing and architecture: "arm64" is not defined in the NamespacedCloudProfile providerConfig`),
 				}))))
 			} else {
 				Expect(err).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
@@ -353,7 +344,7 @@ var _ = DescribeTableSubtree("NamespacedCloudProfile Validator", func(isCapabili
 				})), PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":   Equal(field.ErrorTypeRequired),
 					"Field":  Equal("spec.providerConfig.machineImages"),
-					"Detail": Equal("machine image version image-1@1.1-fallback has a capabilityFlavor map[architecture:[arm64]] not defined in the NamespacedCloudProfile providerConfig"),
+					"Detail": Equal("machine image version image-1@1.1-fallback and capabilityFlavor map[architecture:[arm64]] is not defined in the NamespacedCloudProfile providerConfig"),
 				})), PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":   Equal(field.ErrorTypeRequired),
 					"Field":  Equal("spec.providerConfig.machineImages"),

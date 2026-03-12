@@ -19,7 +19,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 )
 
@@ -52,11 +51,8 @@ func (p *namespacedCloudProfile) Mutate(_ context.Context, newObj, _ client.Obje
 		return err
 	}
 
-	// TODO(Roncossek): Remove TransformProviderConfigToParentFormat once all CloudProfiles have been migrated to use CapabilityFlavors and the Architecture fields are effectively forbidden or have been removed.
-	uniformSpecConfig := helper.TransformProviderConfigToParentFormat(specConfig, profile.Status.CloudProfileSpec.MachineTypes, profile.Status.CloudProfileSpec.MachineCapabilities)
-
-	statusConfig.MachineImages = mergeMachineImages(uniformSpecConfig.MachineImages, statusConfig.MachineImages)
-	statusConfig.MachineTypes = mergeMachineTypes(uniformSpecConfig.MachineTypes, statusConfig.MachineTypes)
+	statusConfig.MachineImages = mergeMachineImages(specConfig.MachineImages, statusConfig.MachineImages)
+	statusConfig.MachineTypes = mergeMachineTypes(specConfig.MachineTypes, statusConfig.MachineTypes)
 
 	return p.updateProfileStatus(profile, statusConfig)
 }
@@ -84,7 +80,7 @@ func (p *namespacedCloudProfile) decodeConfigs(profile *gardencorev1beta1.Namesp
 
 func (p *namespacedCloudProfile) decodeProviderConfig(raw []byte, into *v1alpha1.CloudProfileConfig, configType string) error {
 	if _, _, err := p.decoder.Decode(raw, nil, into); err != nil {
-		return fmt.Errorf("could not decode providerConfig of %s: %w", configType, err)
+		return fmt.Errorf("could not decode providerConfig of namespacedCloudProfile %s: %w", configType, err)
 	}
 	return nil
 }
