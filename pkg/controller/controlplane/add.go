@@ -35,8 +35,8 @@ type AddOptions struct {
 	WebhookServerNamespace string
 	// ShootWebhookConfig specifies the desired Shoot MutatingWebhooksConfiguration.
 	ShootWebhookConfig *atomic.Value
-	// ExtensionClass defines the extension class this extension is responsible for.
-	ExtensionClass extensionsv1alpha1.ExtensionClass
+	// ExtensionClasses defines the extension classes this extension is responsible for.
+	ExtensionClasses []extensionsv1alpha1.ExtensionClass
 }
 
 // AddToManagerWithOptions adds a controller with the given Options to the given manager.
@@ -51,11 +51,12 @@ func AddToManagerWithOptions(ctx context.Context, mgr manager.Manager, opts AddO
 		return err
 	}
 	return controlplane.Add(mgr, controlplane.AddArgs{
-		Actuator:          NewActuator(mgr, genericActuator, GracefulDeletionTimeout, GracefulDeletionWaitInterval),
-		ControllerOptions: opts.Controller,
-		Predicates:        controlplane.DefaultPredicates(ctx, mgr, opts.IgnoreOperationAnnotation),
-		Type:              azure.Type,
-		ExtensionClass:    opts.ExtensionClass,
+		Actuator:                  NewActuator(mgr, genericActuator, GracefulDeletionTimeout, GracefulDeletionWaitInterval),
+		ControllerOptions:         opts.Controller,
+		Predicates:                controlplane.DefaultPredicates(ctx, mgr, opts.IgnoreOperationAnnotation),
+		Type:                      azure.Type,
+		IgnoreOperationAnnotation: opts.IgnoreOperationAnnotation,
+		ExtensionClasses:          opts.ExtensionClasses,
 	})
 }
 
