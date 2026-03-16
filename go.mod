@@ -18,8 +18,8 @@ require (
 	github.com/ahmetb/gen-crd-api-reference-docs v0.3.0
 	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/gardener/etcd-druid/api v0.35.1
-	github.com/gardener/gardener v1.137.4
-	github.com/gardener/gardener/pkg/apis v1.137.4
+	github.com/gardener/gardener v1.137.5
+	github.com/gardener/gardener/pkg/apis v1.137.5
 	github.com/gardener/machine-controller-manager v0.61.2
 	github.com/gardener/remedy-controller v0.14.0
 	github.com/go-logr/logr v1.4.3
@@ -212,7 +212,7 @@ require (
 	go.yaml.in/yaml/v4 v4.0.0-rc.2 // indirect
 	golang.org/x/exp v0.0.0-20260218203240-3dfff04db8fa // indirect
 	golang.org/x/mod v0.33.0 // indirect
-	golang.org/x/net v0.50.0 // indirect
+	golang.org/x/net v0.51.0 // indirect
 	golang.org/x/oauth2 v0.35.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
