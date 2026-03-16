@@ -1,0 +1,48 @@
+apiVersion: extensions.gardener.cloud/v1alpha1
+kind: Worker
+spec:
+  pools:
+  - architecture: amd64
+    kubernetesVersion: 1.33.8
+    labels:
+      kubernetes.io/arch: amd64
+      networking.gardener.cloud/node-local-dns-enabled: "true"
+      node.kubernetes.io/role: node
+      worker.garden.sapcloud.io/group: tst
+      worker.gardener.cloud/cri-name: containerd
+      worker.gardener.cloud/gardener-node-agent-secret-name: fake
+      worker.gardener.cloud/pool: tst
+      worker.gardener.cloud/system-components: "true"
+    machineImage:
+      name: gardenlinux
+      version: 1877.10.0
+    machineType: Standard_DS2_v2
+    maxSurge: 1
+    maxUnavailable: 0
+    maximum: 2
+    minimum: 1
+    name: tst
+    nodeAgentSecretName: fake
+    nodeTemplate:
+      capacity:
+        cpu: "2"
+        gpu: "0"
+        memory: 7Gi
+    providerConfig:
+      apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+      kind: WorkerConfig
+      volume:
+        caching: ReadWrite
+      nodeTemplate:
+        virtualCapacity:
+          security.com/bangle: 10
+          subdomain.domain.com/cpu: "3"
+          subdomain.domain.com/memory: 2048Mi
+    updateStrategy: AutoRollingUpdate
+    volume:
+      size: 50Gi
+      type: Standard_LRS
+    zones:
+    - "2"
+  region: westeurope
+  type: azure
