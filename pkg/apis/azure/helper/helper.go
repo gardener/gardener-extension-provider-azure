@@ -15,7 +15,56 @@ import (
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
+
+// NormalizeCapabilityDefinitions ensures that capability definitions always include at least
+// the architecture capability. This allows all downstream code to assume capabilities are always present,
+// eliminating the need for conditional logic based on whether capabilities are defined.
+func NormalizeCapabilityDefinitions(capabilityDefinitions []gardencorev1beta1.CapabilityDefinition) []gardencorev1beta1.CapabilityDefinition {
+	if len(capabilityDefinitions) > 0 {
+		return capabilityDefinitions
+	}
+	return []gardencorev1beta1.CapabilityDefinition{
+		{
+			Name:   v1beta1constants.ArchitectureName,
+			Values: []string{v1beta1constants.ArchitectureAMD64, v1beta1constants.ArchitectureARM64},
+		},
+		{
+			Name:   azure.CapabilityNetworkName,
+			Values: []string{azure.CapabilityNetworkAccelerated, azure.CapabilityNetworkBasic},
+		},
+	}
+}
+
+// NormalizeMachineTypeCapabilities ensures that machine type capabilities include the architecture
+// capability. This transforms the legacy architecture-based selection into capability-based selection.
+// The architecture is determined in the following priority order:
+// 1. If capabilities already has architecture, use it as-is
+// 2. If capabilityDefinitions has exactly one architecture value, use that value
+// 3. Otherwise, use workerArchitecture (defaulting to amd64)
+func NormalizeMachineTypeCapabilities(capabilities gardencorev1beta1.Capabilities, workerArchitecture *string, capabilityDefinitions []gardencorev1beta1.CapabilityDefinition) gardencorev1beta1.Capabilities {
+	if capabilities == nil {
+		capabilities = make(gardencorev1beta1.Capabilities)
+	}
+	// If architecture capability is already present, return as-is
+	if _, hasArch := capabilities[v1beta1constants.ArchitectureName]; hasArch {
+		return capabilities
+	}
+
+	// Check if capabilityDefinitions has exactly one architecture value
+	for _, def := range capabilityDefinitions {
+		if def.Name == v1beta1constants.ArchitectureName && len(def.Values) == 1 {
+			capabilities[v1beta1constants.ArchitectureName] = []string{def.Values[0]}
+			return capabilities
+		}
+	}
+
+	// Fall back to workerArchitecture or default
+	arch := ptr.Deref(workerArchitecture, v1beta1constants.ArchitectureAMD64)
+	capabilities[v1beta1constants.ArchitectureName] = []string{arch}
+	return capabilities
+}
 
 // FindSubnetByPurposeAndZone takes a list of subnets and tries to find the first entry whose purpose matches with the given purpose.
 // Optionally, if the zone argument is not nil, the Zone field of a candidate subnet must match that value.
@@ -70,30 +119,51 @@ func FindDomainCountByRegion(domainCounts []api.DomainCount, region string) (int
 }
 
 // FindImageInCloudProfile takes a list of machine images and tries to find the first entry
-// whose name, version, architecture, capabilities and zone matches with the given ones. If no such entry is
+// whose name, version and capabilities matches with the machineTypeCapabilities. If no such entry is
 // found then an error will be returned.
+// Note: capabilityDefinitions and machineTypeCapabilities are expected to be normalized
+// by the caller using NormalizeCapabilityDefinitions() and NormalizeMachineTypeCapabilities()
 func FindImageInCloudProfile(
 	cloudProfileConfig *api.CloudProfileConfig,
-	name, version string,
-	arch *string,
-	machineCapabilities gardencorev1beta1.Capabilities,
+	imageName, imageVersion string,
+	machineTypeCapabilities gardencorev1beta1.Capabilities,
 	capabilityDefinitions []gardencorev1beta1.CapabilityDefinition,
-) (*api.MachineImageFlavor, *api.MachineImageVersion, error) {
+) (*api.MachineImageFlavor, error) {
 	if cloudProfileConfig == nil {
-		return nil, nil, fmt.Errorf("cloud profile config is nil")
-	}
-	machineImages := cloudProfileConfig.MachineImages
-
-	imageFlavor, imageVersion, err := findMachineImageFlavor(machineImages, name, version, arch, machineCapabilities, capabilityDefinitions)
-	if err != nil {
-		return nil, nil, fmt.Errorf("could not find an image %q, version %q that supports %v: %w", name, version, machineCapabilities, err)
+		return nil, fmt.Errorf("cloud profile config is nil")
 	}
 
-	if imageFlavor != nil || imageVersion != nil {
-		return imageFlavor, imageVersion, nil
+	for _, machineImage := range cloudProfileConfig.MachineImages {
+		if machineImage.Name != imageName {
+			continue
+		}
+
+		// Collect all versions with matching version string (mixed format support)
+		var matchingVersions []api.MachineImageVersion
+		for _, version := range machineImage.Versions {
+			if imageVersion == version.Version {
+				matchingVersions = append(matchingVersions, version)
+			}
+		}
+
+		if len(matchingVersions) == 0 {
+			continue
+		}
+
+		// Convert old format (image with architecture) versions to capability flavors if required
+		// as there may be multiple version entries for the same version with different architectures.
+		capabilityFlavors := convertLegacyVersionsToCapabilityFlavors(matchingVersions)
+
+		if len(capabilityFlavors) > 0 {
+			bestMatch, err := worker.FindBestImageFlavor(capabilityFlavors, machineTypeCapabilities, capabilityDefinitions)
+			if err != nil {
+				return nil, fmt.Errorf("could not determine best flavor: %w", err)
+			}
+			return &bestMatch, nil
+		}
 	}
 
-	return nil, nil, fmt.Errorf("no machine image found with name %q, and version %q that supports %v", name, version, machineCapabilities)
+	return nil, fmt.Errorf("could not find an image for name %q and version %q that supports %v", imageName, imageVersion, machineTypeCapabilities)
 }
 
 // FindImageInWorkerStatus takes a list of machine images from the worker status and tries to find the first entry
@@ -115,78 +185,48 @@ func FindImageInWorkerStatus(machineImages []api.MachineImage, name string, vers
 
 	// If capabilityDefinitions are specified, we need to find the best matching capability set.
 	for _, statusMachineImage := range machineImages {
-		var statusMachineImageV1alpha1 v1alpha1.MachineImage
-		if err := v1alpha1.Convert_azure_MachineImage_To_v1alpha1_MachineImage(&statusMachineImage, &statusMachineImageV1alpha1, nil); err != nil {
-			return nil, fmt.Errorf("failed to convert machine image: %w", err)
+		if statusMachineImage.Name != name || statusMachineImage.Version != version {
+			continue
 		}
-		if statusMachineImage.Name == name && statusMachineImage.Version == version && gardencorev1beta1helper.AreCapabilitiesCompatible(statusMachineImageV1alpha1.Capabilities, machineCapabilities, capabilityDefinitions) {
+
+		// Normalize status image capabilities: if the status has Architecture but no Capabilities,
+		// convert Architecture to Capabilities for compatibility checking
+		statusCapabilities := statusMachineImage.Capabilities
+		if len(statusCapabilities) == 0 && statusMachineImage.Architecture != nil {
+			statusCapabilities = gardencorev1beta1.Capabilities{
+				v1beta1constants.ArchitectureName: []string{*statusMachineImage.Architecture},
+			}
+		}
+
+		if gardencorev1beta1helper.AreCapabilitiesCompatible(statusCapabilities, machineCapabilities, capabilityDefinitions) {
 			return &statusMachineImage, nil
 		}
 	}
 	return nil, fmt.Errorf("no machine image found for image %q with version %q and capabilities %v", name, version, machineCapabilities)
 }
 
-func findMachineImageFlavor(
-	machineImages []api.MachineImages,
-	imageName, imageVersion string,
-	arch *string,
-	machineCapabilities gardencorev1beta1.Capabilities,
-	capabilityDefinitions []gardencorev1beta1.CapabilityDefinition,
-) (*api.MachineImageFlavor, *api.MachineImageVersion, error) {
-	for _, machineImage := range machineImages {
-		if machineImage.Name != imageName {
-			continue
-		}
-
-		// Collect all versions with matching version string (mixed format support)
-		var matchingVersions []api.MachineImageVersion
-		for _, version := range machineImage.Versions {
-			if imageVersion == version.Version {
-				matchingVersions = append(matchingVersions, version)
-			}
-		}
-
-		if len(matchingVersions) == 0 {
-			continue
-		}
-
-		if len(capabilityDefinitions) == 0 {
-			// Legacy mode: find matching architecture from the matching versions
-			for _, version := range matchingVersions {
-				if *arch == ptr.Deref(version.Architecture, v1beta1constants.ArchitectureAMD64) {
-					return nil, &version, nil
-				}
-			}
-			continue
-		}
-
-		// Convert old format (image with architecture) versions to capability flavors if required
-		// as there may be multiple version entries for the same version with different architectures
-		capabilityFlavors := convertLegacyVersionsToCapabilityFlavors(matchingVersions)
-
-		if len(capabilityFlavors) > 0 {
-			bestMatch, err := worker.FindBestImageFlavor(capabilityFlavors, machineCapabilities, capabilityDefinitions)
-			if err != nil {
-				return nil, nil, fmt.Errorf("could not determine best flavor %w", err)
-			}
-			return &bestMatch, nil, nil
-		}
-	}
-	return nil, nil, nil
-}
-
-// convertLegacyVersionsToCapabilityFlavors converts old format (image with architecture) versions
+// convertLegacyVersionsToCapabilityFlavors converts old format (image with architecture and acceleratedNetworking) versions
 // to capability flavors for mixed format support.
 func convertLegacyVersionsToCapabilityFlavors(versions []api.MachineImageVersion) []api.MachineImageFlavor {
 	var capabilityFlavors []api.MachineImageFlavor
 	for _, version := range versions {
-		if version.Image != (api.Image{}) && len(version.CapabilityFlavors) == 0 {
+		if len(version.CapabilityFlavors) == 0 {
+			// Convert legacy format to capability flavors
 			arch := ptr.Deref(version.Architecture, v1beta1constants.ArchitectureAMD64)
+			capabilities := gardencorev1beta1.Capabilities{
+				v1beta1constants.ArchitectureName: []string{arch},
+			}
+
+			// Convert AcceleratedNetworking to networking capability
+			if ptr.Deref(version.AcceleratedNetworking, false) {
+				capabilities[azure.CapabilityNetworkName] = []string{azure.CapabilityNetworkBasic, azure.CapabilityNetworkAccelerated}
+			} else {
+				capabilities[azure.CapabilityNetworkName] = []string{azure.CapabilityNetworkBasic}
+			}
+
 			capabilityFlavors = append(capabilityFlavors, api.MachineImageFlavor{
-				Image: version.Image,
-				Capabilities: gardencorev1beta1.Capabilities{
-					v1beta1constants.ArchitectureName: []string{arch},
-				},
+				Image:        version.Image,
+				Capabilities: capabilities,
 			})
 		} else {
 			capabilityFlavors = append(capabilityFlavors, version.CapabilityFlavors...)

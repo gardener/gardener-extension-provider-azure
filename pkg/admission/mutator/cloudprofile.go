@@ -11,12 +11,16 @@ import (
 
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 // NewCloudProfileMutator returns a new instance of a CloudProfile mutator.
@@ -64,19 +68,81 @@ func overwriteMachineImageCapabilityFlavors(profile *gardencorev1beta1.CloudProf
 			continue
 		}
 
-		// Iterate over versions in the provider's machine image
-		for _, providerVersion := range providerMachineImage.Versions {
+		// Group provider versions by version string (old format may have multiple entries per version)
+		groupedVersions := helper.GroupV1alpha1VersionsByVersionString(providerMachineImage.Versions)
+
+		for versionStr, providerVersions := range groupedVersions {
 			// Find the corresponding version in the CloudProfile's machine image
 			versionIdx := slices.IndexFunc(profile.Spec.MachineImages[imageIdx].Versions, func(miv gardencorev1beta1.MachineImageVersion) bool {
-				return miv.Version == providerVersion.Version
+				return miv.Version == versionStr
 			})
 			if versionIdx == -1 {
 				continue
 			}
 
-			profile.Spec.MachineImages[imageIdx].Versions[versionIdx].CapabilityFlavors = convertCapabilityFlavors(providerVersion.CapabilityFlavors)
+			// Check if any version entry uses new format (capabilityFlavors)
+			// If so, use that; otherwise convert old format entries to capability flavors
+			var capabilityFlavors []gardencorev1beta1.MachineImageFlavor
+			for _, pv := range providerVersions {
+				if len(pv.CapabilityFlavors) > 0 {
+					// New format: use capabilityFlavors directly
+					capabilityFlavors = convertCapabilityFlavors(pv.CapabilityFlavors)
+					break
+				}
+			}
+
+			if len(capabilityFlavors) == 0 {
+				// Old format: convert all image+architecture entries to capability flavors
+				capabilityFlavors = convertVersionsToCapabilityFlavors(providerVersions)
+			}
+
+			profile.Spec.MachineImages[imageIdx].Versions[versionIdx].CapabilityFlavors = capabilityFlavors
 		}
 	}
+}
+
+// convertVersionsToCapabilityFlavors converts old format (image with architecture and acceleratedNetworking) entries to capability flavors.
+// It collects unique capability combinations from all version entries and creates a capability flavor for each.
+// Note: A similar function exists in helper.go for internal API types that also preserves image references.
+// This version only extracts unique capability combinations for CloudProfile spec mutation.
+func convertVersionsToCapabilityFlavors(versions []v1alpha1.MachineImageVersion) []gardencorev1beta1.MachineImageFlavor {
+	// capabilityKey is used to track unique capability combinations
+	type capabilityKey struct {
+		architecture          string
+		acceleratedNetworking bool
+	}
+
+	// Collect unique capability combinations from all version entries
+	capabilitySet := make(map[capabilityKey]struct{})
+	for _, version := range versions {
+		if version.Image != (v1alpha1.Image{}) {
+			arch := ptr.Deref(version.Architecture, v1beta1constants.ArchitectureAMD64)
+			// AcceleratedNetworking defaults to false if not specified to maintain backward compatibility
+			acceleratedNetworking := ptr.Deref(version.AcceleratedNetworking, false)
+			capabilitySet[capabilityKey{architecture: arch, acceleratedNetworking: acceleratedNetworking}] = struct{}{}
+		}
+	}
+
+	// Create a capability flavor for each unique capability combination
+	capabilityFlavors := make([]gardencorev1beta1.MachineImageFlavor, 0, len(capabilitySet))
+	for key := range capabilitySet {
+		capabilities := gardencorev1beta1.Capabilities{
+			v1beta1constants.ArchitectureName: []string{key.architecture},
+		}
+
+		// Convert AcceleratedNetworking to networking capability
+		if key.acceleratedNetworking {
+			capabilities[azure.CapabilityNetworkName] = []string{azure.CapabilityNetworkBasic, azure.CapabilityNetworkAccelerated}
+		} else {
+			capabilities[azure.CapabilityNetworkName] = []string{azure.CapabilityNetworkBasic}
+		}
+
+		capabilityFlavors = append(capabilityFlavors, gardencorev1beta1.MachineImageFlavor{
+			Capabilities: capabilities,
+		})
+	}
+
+	return capabilityFlavors
 }
 
 // convertCapabilityFlavors converts provider capability flavors to CloudProfile capability flavors
