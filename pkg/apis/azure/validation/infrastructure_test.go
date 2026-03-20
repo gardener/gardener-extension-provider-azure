@@ -511,6 +511,127 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				})
 			})
 
+			Context("SKU", func() {
+				It("should pass with explicit Standard SKU and zone", func() {
+					infrastructureConfig.Networks.NatGateway.SKU = ptr.To("Standard")
+					infrastructureConfig.Networks.NatGateway.Zone = ptr.To[int32](2)
+					Expect(ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)).To(BeEmpty())
+				})
+
+				It("should pass with StandardV2 SKU without zone", func() {
+					infrastructureConfig.Networks.NatGateway.SKU = ptr.To("StandardV2")
+					Expect(ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)).To(BeEmpty())
+				})
+
+				It("should pass with StandardV2 SKU and StandardV2 IP addresses without zones", func() {
+					infrastructureConfig.Networks.NatGateway.SKU = ptr.To("StandardV2")
+					infrastructureConfig.Networks.NatGateway.IPAddresses = []apisazure.PublicIPReference{
+						{
+							Name:          "public-ip-1",
+							ResourceGroup: "ip-resource-group",
+							SKU:           ptr.To("StandardV2"),
+						},
+						{
+							Name:          "public-ip-2",
+							ResourceGroup: "ip-resource-group",
+							SKU:           ptr.To("StandardV2"),
+						},
+					}
+					Expect(ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)).To(BeEmpty())
+				})
+
+				It("should fail with StandardV2 SKU when zone is specified", func() {
+					infrastructureConfig.Networks.NatGateway.SKU = ptr.To("StandardV2")
+					infrastructureConfig.Networks.NatGateway.Zone = ptr.To[int32](1)
+					errorList := ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)
+					Expect(errorList).To(ConsistOfFields(Fields{
+						"Type":   Equal(field.ErrorTypeForbidden),
+						"Field":  Equal("networks.natGateway.zone"),
+						"Detail": ContainSubstring("zone cannot be specified when using StandardV2 SKU"),
+					}))
+				})
+
+				It("should fail with StandardV2 SKU when IP addresses have zones", func() {
+					infrastructureConfig.Networks.NatGateway.SKU = ptr.To("StandardV2")
+					infrastructureConfig.Networks.NatGateway.IPAddresses = []apisazure.PublicIPReference{
+						{
+							Name:          "public-ip-1",
+							ResourceGroup: "ip-resource-group",
+							Zone:          ptr.To[int32](1),
+							SKU:           ptr.To("StandardV2"),
+						},
+					}
+					errorList := ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)
+					Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":   Equal(field.ErrorTypeForbidden),
+						"Field":  Equal("networks.natGateway.ipAddresses[0].zone"),
+						"Detail": ContainSubstring("zone cannot be specified for IP addresses when using StandardV2 SKU"),
+					}))))
+				})
+
+				It("should fail with an unsupported SKU value", func() {
+					infrastructureConfig.Networks.NatGateway.SKU = ptr.To("Basic")
+					errorList := ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)
+					Expect(errorList).To(ConsistOfFields(Fields{
+						"Type":  Equal(field.ErrorTypeNotSupported),
+						"Field": Equal("networks.natGateway.sku"),
+					}))
+				})
+
+				It("should fail when Standard NAT GW has StandardV2 IP", func() {
+					infrastructureConfig.Networks.NatGateway.SKU = ptr.To("Standard")
+					infrastructureConfig.Networks.NatGateway.Zone = ptr.To[int32](1)
+					infrastructureConfig.Networks.NatGateway.IPAddresses = []apisazure.PublicIPReference{
+						{
+							Name:          "public-ip-1",
+							ResourceGroup: "ip-resource-group",
+							Zone:          ptr.To[int32](1),
+							SKU:           ptr.To("StandardV2"),
+						},
+					}
+					errorList := ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)
+					Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":   Equal(field.ErrorTypeInvalid),
+						"Field":  Equal("networks.natGateway.ipAddresses[0].sku"),
+						"Detail": ContainSubstring("public IP SKU must match NAT Gateway SKU (Standard)"),
+					}))))
+				})
+
+				It("should fail when StandardV2 NAT GW has Standard IP", func() {
+					infrastructureConfig.Networks.NatGateway.SKU = ptr.To("StandardV2")
+					infrastructureConfig.Networks.NatGateway.IPAddresses = []apisazure.PublicIPReference{
+						{
+							Name:          "public-ip-1",
+							ResourceGroup: "ip-resource-group",
+							SKU:           ptr.To("Standard"),
+						},
+					}
+					errorList := ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)
+					Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":   Equal(field.ErrorTypeInvalid),
+						"Field":  Equal("networks.natGateway.ipAddresses[0].sku"),
+						"Detail": ContainSubstring("public IP SKU must match NAT Gateway SKU (StandardV2)"),
+					}))))
+				})
+
+				It("should pass with nil SKU (defaults to Standard) and zone", func() {
+					infrastructureConfig.Networks.NatGateway.SKU = nil
+					infrastructureConfig.Networks.NatGateway.Zone = ptr.To[int32](2)
+					Expect(ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)).To(BeEmpty())
+				})
+
+				It("should fail when NatGateway is disabled but SKU is set", func() {
+					infrastructureConfig.Networks.NatGateway.Enabled = false
+					infrastructureConfig.Networks.NatGateway.SKU = ptr.To("StandardV2")
+					errorList := ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)
+					Expect(errorList).To(ConsistOfFields(Fields{
+						"Type":   Equal(field.ErrorTypeInvalid),
+						"Field":  Equal("networks.natGateway"),
+						"Detail": Equal("NatGateway is disabled but additional NatGateway config is passed"),
+					}))
+				})
+			})
+
 			Context("IdleConnectionTimeoutMinutes", func() {
 				It("should return an error when specifying lower than minimum values", func() {
 					var timeoutValue int32 = 0
@@ -675,6 +796,70 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					"Field":  Equal("networks.zones[1]"),
 					"Detail": Equal("the same zone cannot be specified multiple times"),
 				}))
+			})
+
+			Context("Zoned NatGateway SKU", func() {
+				It("should pass with Standard SKU in zoned config", func() {
+					infrastructureConfig.Networks.Zones[0].NatGateway = &apisazure.ZonedNatGatewayConfig{
+						Enabled: true,
+						SKU:     ptr.To("Standard"),
+					}
+					Expect(ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)).To(BeEmpty())
+				})
+
+				It("should fail with StandardV2 SKU in zoned config", func() {
+					infrastructureConfig.Networks.Zones[0].NatGateway = &apisazure.ZonedNatGatewayConfig{
+						Enabled: true,
+						SKU:     ptr.To("StandardV2"),
+					}
+					errorList := ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)
+					Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":   Equal(field.ErrorTypeForbidden),
+						"Field":  Equal("networks.zones[0].natGateway.sku"),
+						"Detail": ContainSubstring("StandardV2 NAT Gateway is zone-redundant"),
+					}))))
+				})
+
+				It("should fail when zoned NatGateway is disabled but SKU is set", func() {
+					infrastructureConfig.Networks.Zones[0].NatGateway = &apisazure.ZonedNatGatewayConfig{
+						Enabled: false,
+						SKU:     ptr.To("Standard"),
+					}
+					errorList := ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)
+					Expect(errorList).To(ConsistOfFields(Fields{
+						"Type":   Equal(field.ErrorTypeInvalid),
+						"Field":  Equal("networks.zones[0].natGateway"),
+						"Detail": Equal("NatGateway is disabled but additional NatGateway config is passed"),
+					}))
+				})
+
+				It("should pass with nil SKU in zoned config (defaults to Standard)", func() {
+					infrastructureConfig.Networks.Zones[0].NatGateway = &apisazure.ZonedNatGatewayConfig{
+						Enabled: true,
+						SKU:     nil,
+					}
+					Expect(ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)).To(BeEmpty())
+				})
+
+				It("should fail with SKU mismatch in zoned config - Standard NAT GW with StandardV2 IP", func() {
+					infrastructureConfig.Networks.Zones[0].NatGateway = &apisazure.ZonedNatGatewayConfig{
+						Enabled: true,
+						SKU:     ptr.To("Standard"),
+						IPAddresses: []apisazure.ZonedPublicIPReference{
+							{
+								Name:          "public-ip-1",
+								ResourceGroup: "ip-resource-group",
+								SKU:           ptr.To("StandardV2"),
+							},
+						},
+					}
+					errorList := ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)
+					Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":   Equal(field.ErrorTypeInvalid),
+						"Field":  Equal("networks.zones[0].natGateway.ipAddresses[0].sku"),
+						"Detail": ContainSubstring("public IP SKU must match NAT Gateway SKU (Standard)"),
+					}))))
+				})
 			})
 		})
 	})
