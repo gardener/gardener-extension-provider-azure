@@ -533,7 +533,9 @@ func (ip *PublicIPConfig) ToProvider(base *armnetwork.PublicIPAddress) *armnetwo
 		base = &armnetwork.PublicIPAddress{}
 	}
 
-	// Determine SKU to use - defaults to Standard for backward compatibility
+	// Determine SKU to use - defaults to Standard for backward compatibility.
+	// Note: ensurePublicIpSKU already normalizes nil to "Standard" in the adapter layer,
+	// but we keep this as a defensive fallback to guarantee SKU is always set on the Azure resource.
 	skuName := armnetwork.PublicIPAddressSKUNameStandard
 	if ip.SKU != nil && *ip.SKU != "" {
 		skuName = armnetwork.PublicIPAddressSKUName(*ip.SKU)
@@ -567,7 +569,9 @@ func (ip *PublicIPConfig) ToProvider(base *armnetwork.PublicIPAddress) *armnetwo
 
 // ToProvider translates the config into the actual providerAccess object.
 func (nat *NatGatewayConfig) ToProvider(base *armnetwork.NatGateway) *armnetwork.NatGateway {
-	// Determine SKU to use - defaults to Standard for backward compatibility
+	// Determine SKU to use - defaults to Standard for backward compatibility.
+	// Note: ensureNatGatewaySKU already normalizes nil to "Standard" in the adapter layer,
+	// but we keep this as a defensive fallback to guarantee SKU is always set on the Azure resource.
 	skuName := armnetwork.NatGatewaySKUNameStandard
 	if nat.SKU != nil && *nat.SKU != "" {
 		skuName = armnetwork.NatGatewaySKUName(*nat.SKU)

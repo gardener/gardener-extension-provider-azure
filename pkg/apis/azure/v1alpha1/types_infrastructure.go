@@ -62,6 +62,8 @@ type NatGatewayConfig struct {
 	Zone *int32 `json:"zone,omitempty"`
 	// SKU specifies the SKU of the NAT gateway.
 	// Supported values: "Standard", "StandardV2"
+	// StandardV2 is zone-redundant and cannot be used with the Zone field.
+	// IP addresses can be used with StandardV2, but they must also be zone-redundant (no zone specification).
 	// If not specified, defaults to "Standard" for backward compatibility.
 	// +optional
 	SKU *string `json:"sku,omitempty"`
@@ -109,6 +111,8 @@ type ZonedNatGatewayConfig struct {
 	IdleConnectionTimeoutMinutes *int32 `json:"idleConnectionTimeoutMinutes,omitempty"`
 	// SKU specifies the SKU of the NAT gateway.
 	// Supported values: "Standard", "StandardV2"
+	// StandardV2 is zone-redundant and cannot be used with the Zone field.
+	// IP addresses can be used with StandardV2, but they must also be zone-redundant (no zone specification).
 	// If not specified, defaults to "Standard" for backward compatibility.
 	// +optional
 	SKU *string `json:"sku,omitempty"`

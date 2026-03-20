@@ -91,8 +91,13 @@ func ForceNewIp(current, target *armnetwork.PublicIPAddress) (bool, string, any)
 	if !reflect.DeepEqual(current.Properties.PublicIPAllocationMethod, target.Properties.PublicIPAllocationMethod) {
 		return true, "PublicIPAllocationMethod", current.Properties.PublicIPAllocationMethod
 	}
-	// SKU changes require recreation of the Public IP
-	if !reflect.DeepEqual(current.SKU.Name, target.SKU.Name) {
+	// SKU changes require recreation of the Public IP.
+	// In practice, both current (from Azure GET) and target (from ToProvider) always have SKU set,
+	// but the nil guards are kept for safety in case of incomplete API responses.
+	if (current.SKU == nil) != (target.SKU == nil) {
+		return true, "SKU", nil
+	}
+	if current.SKU != nil && !reflect.DeepEqual(current.SKU.Name, target.SKU.Name) {
 		return true, "SKU.Name", current.SKU.Name
 	}
 	return false, "", nil
@@ -108,8 +113,13 @@ func ForceNewNat(current, target *armnetwork.NatGateway) (bool, string, any) {
 		return true, "Zones", current.Zones
 	}
 
-	// SKU changes require recreation of the NAT Gateway
-	if !reflect.DeepEqual(current.SKU.Name, target.SKU.Name) {
+	// SKU changes require recreation of the NAT Gateway.
+	// In practice, both current (from Azure GET) and target (from ToProvider) always have SKU set,
+	// but the nil guards are kept for safety in case of incomplete API responses.
+	if (current.SKU == nil) != (target.SKU == nil) {
+		return true, "SKU", nil
+	}
+	if current.SKU != nil && !reflect.DeepEqual(current.SKU.Name, target.SKU.Name) {
 		return true, "SKU.Name", current.SKU.Name
 	}
 

@@ -9,8 +9,8 @@ import (
 	"slices"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
-	gardencorehelper "github.com/gardener/gardener/pkg/api/core/helper"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v9"
+	gardencorehelper "github.com/gardener/gardener/pkg/api/core/helper"
 	"github.com/gardener/gardener/pkg/apis/core"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	cidrvalidation "github.com/gardener/gardener/pkg/utils/validation/cidr"
@@ -329,12 +329,8 @@ func validateNatGatewaySKU(sku *string, fldPath *field.Path) field.ErrorList {
 // validateStandardV2NoZoneSpec validates that StandardV2 NAT Gateway is configured as zone-redundant.
 // StandardV2 is zone-redundant by design and does not support zone specifications.
 // Both the NAT Gateway itself and its associated public IPs must not have zone specifications.
-func validateStandardV2NoZoneSpec(sku *string, zone *int32, ipAddresses []apisazure.PublicIPReference, fldPath *field.Path) field.ErrorList {
+func validateStandardV2NoZoneSpec(zone *int32, ipAddresses []apisazure.PublicIPReference, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
-
-	if sku == nil || *sku != string(armnetwork.NatGatewaySKUNameStandardV2) {
-		return allErrs
-	}
 
 	// StandardV2 NAT Gateway cannot have a zone specified (it's zone-redundant by design)
 	if zone != nil {
@@ -356,22 +352,13 @@ func validateStandardV2NoZoneSpec(sku *string, zone *int32, ipAddresses []apisaz
 func validatePublicIPSKUMatchesNatGateway(natGatewaySKU *string, ipAddresses []apisazure.PublicIPReference, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	// Determine expected IP SKU (defaults to Standard if NAT Gateway SKU not specified)
-	expectedSKU := "Standard"
-	if natGatewaySKU != nil && *natGatewaySKU != "" {
-		expectedSKU = *natGatewaySKU
-	}
+	currentNatSku := ptr.Deref(natGatewaySKU, string(armnetwork.NatGatewaySKUNameStandard))
 
-	// Validate each public IP has matching SKU
 	for i, ipRef := range ipAddresses {
-		ipSKU := "Standard" // Default if not specified
-		if ipRef.SKU != nil && *ipRef.SKU != "" {
-			ipSKU = *ipRef.SKU
-		}
-
-		if ipSKU != expectedSKU {
-			allErrs = append(allErrs, field.Invalid(fldPath.Index(i).Child("sku"), ipSKU,
-				fmt.Sprintf("public IP SKU must match NAT Gateway SKU (%s)", expectedSKU)))
+		currentIpSku := ptr.Deref(ipRef.SKU, string(armnetwork.PublicIPAddressSKUNameStandard))
+		if currentIpSku != currentNatSku {
+			allErrs = append(allErrs, field.Invalid(fldPath.Index(i).Child("sku"), currentIpSku,
+				fmt.Sprintf("public IP SKU must match NAT Gateway SKU (%s)", currentNatSku)))
 		}
 	}
 
@@ -405,7 +392,7 @@ func validateNatGatewayConfig(natGatewayConfig *apisazure.NatGatewayConfig, natG
 	}
 
 	if !natGatewayConfig.Enabled {
-		if natGatewayConfig.Zone != nil || natGatewayConfig.IdleConnectionTimeoutMinutes != nil || natGatewayConfig.IPAddresses != nil {
+		if natGatewayConfig.Zone != nil || natGatewayConfig.IdleConnectionTimeoutMinutes != nil || natGatewayConfig.IPAddresses != nil || natGatewayConfig.SKU != nil {
 			return append(allErrs, field.Invalid(natGatewayPath, natGatewayConfig, "NatGateway is disabled but additional NatGateway config is passed"))
 		}
 		return nil
@@ -432,12 +419,6 @@ func validateNatGatewayConfig(natGatewayConfig *apisazure.NatGatewayConfig, natG
 	case string(armnetwork.NatGatewaySKUNameStandardV2):
 		// StandardV2 validation
 		allErrs = append(allErrs, validateStandardV2NatGateway(natGatewayConfig, natGatewayPath)...)
-	default:
-		// Unsupported SKU
-		allErrs = append(allErrs, field.NotSupported(natGatewayPath.Child("sku"), actualSKU, []string{
-			string(armnetwork.NatGatewaySKUNameStandard),
-			string(armnetwork.NatGatewaySKUNameStandardV2),
-		}))
 	}
 
 	return allErrs
@@ -471,7 +452,7 @@ func validateStandardV2NatGateway(natGatewayConfig *apisazure.NatGatewayConfig, 
 	allErrs := field.ErrorList{}
 
 	// StandardV2 is zone-redundant and must not have zone specifications
-	allErrs = append(allErrs, validateStandardV2NoZoneSpec(natGatewayConfig.SKU, natGatewayConfig.Zone, natGatewayConfig.IPAddresses, natGatewayPath)...)
+	allErrs = append(allErrs, validateStandardV2NoZoneSpec(natGatewayConfig.Zone, natGatewayConfig.IPAddresses, natGatewayPath)...)
 
 	// Validate IP addresses and their SKUs
 	allErrs = append(allErrs, validatePublicIPSKUMatchesNatGateway(natGatewayConfig.SKU, natGatewayConfig.IPAddresses, natGatewayPath.Child("ipAddresses"))...)
@@ -502,7 +483,7 @@ func validateZonedNatGatewayConfig(natGatewayConfig *apisazure.ZonedNatGatewayCo
 	}
 
 	if !natGatewayConfig.Enabled {
-		if natGatewayConfig.IdleConnectionTimeoutMinutes != nil || natGatewayConfig.IPAddresses != nil {
+		if natGatewayConfig.IdleConnectionTimeoutMinutes != nil || natGatewayConfig.IPAddresses != nil || natGatewayConfig.SKU != nil {
 			return append(allErrs, field.Invalid(natGatewayPath, natGatewayConfig, "NatGateway is disabled but additional NatGateway config is passed"))
 		}
 		return nil
@@ -515,7 +496,7 @@ func validateZonedNatGatewayConfig(natGatewayConfig *apisazure.ZonedNatGatewayCo
 
 	// StandardV2 cannot be used in multi-zone layout
 	if natGatewayConfig.SKU != nil && *natGatewayConfig.SKU == string(armnetwork.NatGatewaySKUNameStandardV2) {
-		allErrs = append(allErrs, field.Forbidden(natGatewayPath.Child("sku"), "StandardV2 SKU cannot be used in multi-zone layout (use single-subnet layout instead)"))
+		allErrs = append(allErrs, field.Forbidden(natGatewayPath.Child("sku"), "StandardV2 NAT Gateway is zone-redundant and can only be configured at the network level (spec.networks.natGateway), not per-zone"))
 	}
 
 	// Validate that public IP SKUs match NAT Gateway SKU
