@@ -1599,6 +1599,22 @@ int32
 </tr>
 <tr>
 <td>
+<code>sku</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SKU specifies the SKU of the NAT gateway.
+Supported values: &ldquo;Standard&rdquo;, &ldquo;StandardV2&rdquo;
+StandardV2 is zone-redundant and cannot be used with the Zone field.
+IP addresses can be used with StandardV2, but they must also be zone-redundant (no zone specification).
+If not specified, defaults to &ldquo;Standard&rdquo; for backward compatibility.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>ipAddresses</code></br>
 <em>
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.PublicIPReference">
@@ -1834,6 +1850,21 @@ int32
 </td>
 <td>
 <p>Zone is the zone in which the public ip is deployed to.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>sku</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SKU specifies the SKU of the public IP address.
+Supported values: &ldquo;Standard&rdquo;, &ldquo;StandardV2&rdquo;
+Must match the SKU of the NAT Gateway it&rsquo;s associated with.
+If not specified, defaults to &ldquo;Standard&rdquo; for backward compatibility.</p>
 </td>
 </tr>
 </tbody>
@@ -2444,6 +2475,22 @@ int32
 </tr>
 <tr>
 <td>
+<code>sku</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SKU specifies the SKU of the NAT gateway.
+Supported values: &ldquo;Standard&rdquo;, &ldquo;StandardV2&rdquo;
+StandardV2 is zone-redundant and cannot be used with the Zone field.
+IP addresses can be used with StandardV2, but they must also be zone-redundant (no zone specification).
+If not specified, defaults to &ldquo;Standard&rdquo; for backward compatibility.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>ipAddresses</code></br>
 <em>
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.ZonedPublicIPReference">
@@ -2495,6 +2542,21 @@ string
 </td>
 <td>
 <p>ResourceGroup is the name of the resource group where the public ip is assigned to.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>sku</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SKU specifies the SKU of the public IP address.
+Supported values: &ldquo;Standard&rdquo;, &ldquo;StandardV2&rdquo;
+Must match the SKU of the NAT Gateway it&rsquo;s associated with.
+If not specified, defaults to &ldquo;Standard&rdquo; for backward compatibility.</p>
 </td>
 </tr>
 </tbody>
