@@ -7,8 +7,15 @@ package infraflow
 import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v9"
+	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 )
 
 var _ = Describe("ForceNewIp", func() {
@@ -182,23 +189,23 @@ var _ = Describe("ensureNatGatewaySKU", func() {
 	})
 })
 
-var _ = Describe("ensurePublicIpSKU", func() {
+var _ = Describe("ensurePublicIPSKU", func() {
 	It("should return 'Standard' when both sku and natSku are nil", func() {
-		result := ensurePublicIpSKU(nil, nil)
+		result := ensurePublicIPSKU(nil, nil)
 		Expect(result).ToNot(BeNil())
 		Expect(*result).To(Equal(string(armnetwork.PublicIPAddressSKUNameStandard)))
 	})
 
 	It("should return 'Standard' when sku is nil and natSku is 'Standard'", func() {
 		natSku := string(armnetwork.NatGatewaySKUNameStandard)
-		result := ensurePublicIpSKU(nil, &natSku)
+		result := ensurePublicIPSKU(nil, &natSku)
 		Expect(result).ToNot(BeNil())
 		Expect(*result).To(Equal(string(armnetwork.PublicIPAddressSKUNameStandard)))
 	})
 
 	It("should return 'StandardV2' when sku is nil and natSku is 'StandardV2'", func() {
 		natSku := string(armnetwork.NatGatewaySKUNameStandardV2)
-		result := ensurePublicIpSKU(nil, &natSku)
+		result := ensurePublicIPSKU(nil, &natSku)
 		Expect(result).ToNot(BeNil())
 		Expect(*result).To(Equal(string(armnetwork.PublicIPAddressSKUNameStandardV2)))
 	})
@@ -206,8 +213,140 @@ var _ = Describe("ensurePublicIpSKU", func() {
 	It("should return explicit sku when sku is set, even if natSku differs", func() {
 		sku := string(armnetwork.PublicIPAddressSKUNameStandardV2)
 		natSku := string(armnetwork.NatGatewaySKUNameStandard)
-		result := ensurePublicIpSKU(&sku, &natSku)
+		result := ensurePublicIPSKU(&sku, &natSku)
 		Expect(result).ToNot(BeNil())
 		Expect(*result).To(Equal(string(armnetwork.PublicIPAddressSKUNameStandardV2)))
+	})
+})
+
+var _ = Describe("InfrastructureAdapter defaultZone with StandardV2", func() {
+	var (
+		infra   *extensionsv1alpha1.Infrastructure
+		profile *azure.CloudProfileConfig
+		cluster *extensionscontroller.Cluster
+	)
+
+	BeforeEach(func() {
+		infra = &extensionsv1alpha1.Infrastructure{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "shoot--foo--bar",
+			},
+			Spec: extensionsv1alpha1.InfrastructureSpec{
+				DefaultSpec: extensionsv1alpha1.DefaultSpec{
+					Type: "azure",
+				},
+				Region: "westeurope",
+			},
+		}
+		profile = &azure.CloudProfileConfig{}
+		cluster = &extensionscontroller.Cluster{
+			Shoot: &gardencorev1beta1.Shoot{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+			},
+		}
+	})
+
+	It("should set StandardV2 SKU on the NAT gateway and no zone", func() {
+		workers := "10.250.0.0/19"
+		config := &azure.InfrastructureConfig{
+			Networks: azure.NetworkConfig{
+				Workers: &workers,
+				VNet:    azure.VNet{CIDR: ptr.To("10.250.0.0/16")},
+				NatGateway: &azure.NatGatewayConfig{
+					Enabled: true,
+					SKU:     ptr.To("StandardV2"),
+				},
+			},
+			Zoned: true,
+		}
+
+		adapter, err := NewInfrastructureAdapter(infra, config, nil, profile, cluster)
+		Expect(err).ToNot(HaveOccurred())
+
+		zones := adapter.Zones()
+		Expect(zones).To(HaveLen(1))
+		Expect(zones[0].NatGateway).ToNot(BeNil())
+		Expect(*zones[0].NatGateway.SKU).To(Equal("StandardV2"))
+		Expect(zones[0].NatGateway.Zone).To(BeNil())
+	})
+
+	It("should set StandardV2 SKU on managed public IPs", func() {
+		workers := "10.250.0.0/19"
+		config := &azure.InfrastructureConfig{
+			Networks: azure.NetworkConfig{
+				Workers: &workers,
+				VNet:    azure.VNet{CIDR: ptr.To("10.250.0.0/16")},
+				NatGateway: &azure.NatGatewayConfig{
+					Enabled: true,
+					SKU:     ptr.To("StandardV2"),
+				},
+			},
+			Zoned: true,
+		}
+
+		adapter, err := NewInfrastructureAdapter(infra, config, nil, profile, cluster)
+		Expect(err).ToNot(HaveOccurred())
+
+		zones := adapter.Zones()
+		Expect(zones[0].NatGateway.PublicIPList).To(HaveLen(1))
+		Expect(*zones[0].NatGateway.PublicIPList[0].SKU).To(Equal(string(armnetwork.PublicIPAddressSKUNameStandardV2)))
+		Expect(zones[0].NatGateway.PublicIPList[0].Managed).To(BeTrue())
+	})
+
+	It("should set Standard SKU when NAT gateway SKU is nil (default)", func() {
+		workers := "10.250.0.0/19"
+		config := &azure.InfrastructureConfig{
+			Networks: azure.NetworkConfig{
+				Workers: &workers,
+				VNet:    azure.VNet{CIDR: ptr.To("10.250.0.0/16")},
+				NatGateway: &azure.NatGatewayConfig{
+					Enabled: true,
+					Zone:    ptr.To[int32](1),
+				},
+			},
+			Zoned: true,
+		}
+
+		adapter, err := NewInfrastructureAdapter(infra, config, nil, profile, cluster)
+		Expect(err).ToNot(HaveOccurred())
+
+		zones := adapter.Zones()
+		Expect(zones).To(HaveLen(1))
+		Expect(zones[0].NatGateway).ToNot(BeNil())
+		Expect(*zones[0].NatGateway.SKU).To(Equal("Standard"))
+		Expect(zones[0].NatGateway.Zone).To(Equal(ptr.To("1")))
+	})
+
+	It("should propagate StandardV2 SKU to user-provided public IPs", func() {
+		workers := "10.250.0.0/19"
+		config := &azure.InfrastructureConfig{
+			Networks: azure.NetworkConfig{
+				Workers: &workers,
+				VNet:    azure.VNet{CIDR: ptr.To("10.250.0.0/16")},
+				NatGateway: &azure.NatGatewayConfig{
+					Enabled: true,
+					SKU:     ptr.To("StandardV2"),
+					IPAddresses: []azure.PublicIPReference{
+						{
+							Name:          "my-ip",
+							ResourceGroup: "my-rg",
+							SKU:           ptr.To("StandardV2"),
+						},
+					},
+				},
+			},
+			Zoned: true,
+		}
+
+		adapter, err := NewInfrastructureAdapter(infra, config, nil, profile, cluster)
+		Expect(err).ToNot(HaveOccurred())
+
+		zones := adapter.Zones()
+		Expect(zones[0].NatGateway.PublicIPList).To(HaveLen(1))
+		Expect(*zones[0].NatGateway.PublicIPList[0].SKU).To(Equal(string(armnetwork.PublicIPAddressSKUNameStandardV2)))
+		Expect(zones[0].NatGateway.PublicIPList[0].Managed).To(BeFalse())
+		Expect(zones[0].NatGateway.PublicIPList[0].Name).To(Equal("my-ip"))
 	})
 })

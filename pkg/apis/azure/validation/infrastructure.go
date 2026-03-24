@@ -348,40 +348,40 @@ func validateStandardV2NoZoneSpec(zone *int32, ipAddresses []apisazure.PublicIPR
 	return allErrs
 }
 
-// validatePublicIPSKUMatchesNatGateway validates that public IP SKUs match the NAT Gateway SKU.
-func validatePublicIPSKUMatchesNatGateway(natGatewaySKU *string, ipAddresses []apisazure.PublicIPReference, fldPath *field.Path) field.ErrorList {
+// validatePublicIPSKUsMatchNatGateway validates that public IP SKUs match the NAT Gateway SKU.
+// It works for both PublicIPReference and ZonedPublicIPReference by accepting a slice of SKU pointers.
+func validatePublicIPSKUsMatchNatGateway(natGatewaySKU *string, ipSKUs []*string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	currentNatSku := ptr.Deref(natGatewaySKU, string(armnetwork.NatGatewaySKUNameStandard))
+	effectiveNatSKU := ptr.Deref(natGatewaySKU, string(armnetwork.NatGatewaySKUNameStandard))
 
-	for i, ipRef := range ipAddresses {
-		currentIpSku := ptr.Deref(ipRef.SKU, string(armnetwork.PublicIPAddressSKUNameStandard))
-		if currentIpSku != currentNatSku {
-			allErrs = append(allErrs, field.Invalid(fldPath.Index(i).Child("sku"), currentIpSku,
-				fmt.Sprintf("public IP SKU must match NAT Gateway SKU (%s)", currentNatSku)))
+	for i, ipSKU := range ipSKUs {
+		effectiveIPSKU := ptr.Deref(ipSKU, string(armnetwork.NatGatewaySKUNameStandard))
+		if effectiveIPSKU != effectiveNatSKU {
+			allErrs = append(allErrs, field.Invalid(fldPath.Index(i).Child("sku"), effectiveIPSKU,
+				fmt.Sprintf("public IP SKU must match NAT Gateway SKU (%s)", effectiveNatSKU)))
 		}
 	}
 
 	return allErrs
 }
 
-// validateZonedPublicIPSKUMatchesNatGateway validates that zoned public IP SKUs match the NAT Gateway SKU.
-func validateZonedPublicIPSKUMatchesNatGateway(natGatewaySKU *string, ipAddresses []apisazure.ZonedPublicIPReference, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
-
-	// Determine expected IP SKU (defaults to Standard if NAT Gateway SKU not specified)
-	currentNatSku := ptr.Deref(natGatewaySKU, string(armnetwork.NatGatewaySKUNameStandard))
-
-	// Validate each public IP has matching SKU
-	for i, ipRef := range ipAddresses {
-		currentIpSku := ptr.Deref(ipRef.SKU, string(armnetwork.PublicIPAddressSKUNameStandard))
-		if currentIpSku != currentNatSku {
-			allErrs = append(allErrs, field.Invalid(fldPath.Index(i).Child("sku"), currentIpSku,
-				fmt.Sprintf("public IP SKU must match NAT Gateway SKU (%s)", currentNatSku)))
-		}
+// publicIPSKUs extracts the SKU pointers from a slice of PublicIPReference.
+func publicIPSKUs(ipAddresses []apisazure.PublicIPReference) []*string {
+	skus := make([]*string, len(ipAddresses))
+	for i := range ipAddresses {
+		skus[i] = ipAddresses[i].SKU
 	}
+	return skus
+}
 
-	return allErrs
+// zonedPublicIPSKUs extracts the SKU pointers from a slice of ZonedPublicIPReference.
+func zonedPublicIPSKUs(ipAddresses []apisazure.ZonedPublicIPReference) []*string {
+	skus := make([]*string, len(ipAddresses))
+	for i := range ipAddresses {
+		skus[i] = ipAddresses[i].SKU
+	}
+	return skus
 }
 
 func validateNatGatewayConfig(natGatewayConfig *apisazure.NatGatewayConfig, natGatewayPath *field.Path) field.ErrorList {
@@ -405,11 +405,7 @@ func validateNatGatewayConfig(natGatewayConfig *apisazure.NatGatewayConfig, natG
 	// Validate SKU is well-known
 	allErrs = append(allErrs, validateNatGatewaySKU(natGatewayConfig.SKU, natGatewayPath.Child("sku"))...)
 
-	// Determine actual SKU (default to Standard if not specified)
-	actualSKU := string(armnetwork.NatGatewaySKUNameStandard)
-	if natGatewayConfig.SKU != nil {
-		actualSKU = *natGatewayConfig.SKU
-	}
+	actualSKU := ptr.Deref(natGatewayConfig.SKU, string(armnetwork.NatGatewaySKUNameStandard))
 
 	// Validate based on SKU version
 	switch actualSKU {
@@ -436,7 +432,7 @@ func validateStandardV1NatGateway(natGatewayConfig *apisazure.NatGatewayConfig, 
 	}
 
 	// Validate IP addresses and their SKUs
-	allErrs = append(allErrs, validatePublicIPSKUMatchesNatGateway(natGatewayConfig.SKU, natGatewayConfig.IPAddresses, natGatewayPath.Child("ipAddresses"))...)
+	allErrs = append(allErrs, validatePublicIPSKUsMatchNatGateway(natGatewayConfig.SKU, publicIPSKUs(natGatewayConfig.IPAddresses), natGatewayPath.Child("ipAddresses"))...)
 
 	// For Standard V1, if zone is specified, validate IP references
 	if natGatewayConfig.Zone != nil {
@@ -455,7 +451,7 @@ func validateStandardV2NatGateway(natGatewayConfig *apisazure.NatGatewayConfig, 
 	allErrs = append(allErrs, validateStandardV2NoZoneSpec(natGatewayConfig.Zone, natGatewayConfig.IPAddresses, natGatewayPath)...)
 
 	// Validate IP addresses and their SKUs
-	allErrs = append(allErrs, validatePublicIPSKUMatchesNatGateway(natGatewayConfig.SKU, natGatewayConfig.IPAddresses, natGatewayPath.Child("ipAddresses"))...)
+	allErrs = append(allErrs, validatePublicIPSKUsMatchNatGateway(natGatewayConfig.SKU, publicIPSKUs(natGatewayConfig.IPAddresses), natGatewayPath.Child("ipAddresses"))...)
 
 	return allErrs
 }
@@ -500,7 +496,7 @@ func validateZonedNatGatewayConfig(natGatewayConfig *apisazure.ZonedNatGatewayCo
 	}
 
 	// Validate that public IP SKUs match NAT Gateway SKU
-	allErrs = append(allErrs, validateZonedPublicIPSKUMatchesNatGateway(natGatewayConfig.SKU, natGatewayConfig.IPAddresses, natGatewayPath.Child("ipAddresses"))...)
+	allErrs = append(allErrs, validatePublicIPSKUsMatchNatGateway(natGatewayConfig.SKU, zonedPublicIPSKUs(natGatewayConfig.IPAddresses), natGatewayPath.Child("ipAddresses"))...)
 
 	return allErrs
 }
@@ -557,6 +553,7 @@ func ValidateInfrastructureConfigUpdate(oldConfig, newConfig *apisazure.Infrastr
 
 	allErrs = append(allErrs, apivalidation.ValidateImmutableField(oldConfig.Zoned, newConfig.Zoned, providerPath.Child("zoned"))...)
 	allErrs = append(allErrs, validateVnetConfigUpdate(&oldConfig.Networks, &newConfig.Networks, providerPath.Child("networks"))...)
+	allErrs = append(allErrs, validateNatGatewaySKUUpdate(oldConfig, newConfig, providerPath.Child("networks"))...)
 
 	return allErrs
 }
@@ -644,4 +641,46 @@ func isDefaultVnetConfig(vnetConfig *apisazure.VNet) bool {
 		return true
 	}
 	return false
+}
+
+// validateNatGatewaySKUUpdate validates that the NAT Gateway SKU is not changed during an infrastructure update.
+// Changing the SKU requires recreation of the NAT Gateway and its associated public IPs, which would cause
+// outbound connectivity disruption.
+func validateNatGatewaySKUUpdate(oldConfig, newConfig *apisazure.InfrastructureConfig, networksPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	// Single-subnet layout: check networks.natGateway.sku
+	if oldConfig.Networks.NatGateway != nil && newConfig.Networks.NatGateway != nil {
+		oldSKU := ptr.Deref(oldConfig.Networks.NatGateway.SKU, string(armnetwork.NatGatewaySKUNameStandard))
+		newSKU := ptr.Deref(newConfig.Networks.NatGateway.SKU, string(armnetwork.NatGatewaySKUNameStandard))
+		if oldSKU != newSKU {
+			allErrs = append(allErrs, field.Invalid(
+				networksPath.Child("natGateway", "sku"),
+				newSKU,
+				"changing the NAT Gateway SKU is not allowed as it requires recreation of the NAT Gateway and causes outbound connectivity disruption",
+			))
+		}
+	}
+
+	// Multi-subnet layout: check per-zone natGateway.sku
+	for i, newZone := range newConfig.Networks.Zones {
+		if newZone.NatGateway == nil {
+			continue
+		}
+		for _, oldZone := range oldConfig.Networks.Zones {
+			if oldZone.Name == newZone.Name && oldZone.NatGateway != nil {
+				oldSKU := ptr.Deref(oldZone.NatGateway.SKU, string(armnetwork.NatGatewaySKUNameStandard))
+				newSKU := ptr.Deref(newZone.NatGateway.SKU, string(armnetwork.NatGatewaySKUNameStandard))
+				if oldSKU != newSKU {
+					allErrs = append(allErrs, field.Invalid(
+						networksPath.Child("zones").Index(i).Child("natGateway", "sku"),
+						newSKU,
+						"changing the NAT Gateway SKU is not allowed as it requires recreation of the NAT Gateway and causes outbound connectivity disruption",
+					))
+				}
+			}
+		}
+	}
+
+	return allErrs
 }

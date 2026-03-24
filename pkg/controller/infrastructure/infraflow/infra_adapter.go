@@ -229,18 +229,12 @@ func ensureNatGatewaySKU(sku *string) *string {
 	return sku
 }
 
-func ensurePublicIpSKU(sku, natSku *string) *string {
-	if ptr.Deref(sku, "") != "" {
-		return sku
+func ensurePublicIPSKU(ipSKU, natSKU *string) *string {
+	if ptr.Deref(ipSKU, "") != "" {
+		return ipSKU
 	}
-	if ptr.Deref(natSku, "") != "" {
-		switch *natSku {
-		case string(armnetwork.NatGatewaySKUNameStandardV2):
-			// If the NAT Gateway SKU is explicitly set to StandardV2, use the same SKU for the public IP to ensure compatibility.
-			return to.Ptr(string(armnetwork.PublicIPAddressSKUNameStandardV2))
-		default:
-			return to.Ptr(string(armnetwork.PublicIPAddressSKUNameStandard))
-		}
+	if ptr.Deref(natSKU, "") == string(armnetwork.NatGatewaySKUNameStandardV2) {
+		return to.Ptr(string(armnetwork.PublicIPAddressSKUNameStandardV2))
 	}
 	return to.Ptr(string(armnetwork.PublicIPAddressSKUNameStandard))
 }
@@ -350,7 +344,7 @@ func (ia *InfrastructureAdapter) zonesConfig() []ZoneConfig {
 						},
 						Zones:   []string{zoneString},
 						Managed: false,
-						SKU:     ensurePublicIpSKU(ipRef.SKU, ngw.SKU),
+						SKU:     ensurePublicIPSKU(ipRef.SKU, ngw.SKU),
 					}
 					ngw.PublicIPList = append(ngw.PublicIPList, ip)
 				}
@@ -365,7 +359,7 @@ func (ia *InfrastructureAdapter) zonesConfig() []ZoneConfig {
 						Kind:          KindPublicIP,
 					},
 					Managed:  true,
-					SKU:      ensurePublicIpSKU(nil, ngw.SKU),
+					SKU:      ensurePublicIPSKU(nil, ngw.SKU),
 					Zones:    []string{zoneString},
 					Location: ia.Region(),
 				}
@@ -424,7 +418,7 @@ func (ia *InfrastructureAdapter) defaultZone() []ZoneConfig {
 					Kind:          KindPublicIP,
 				},
 				Managed: false,
-				SKU:     ensurePublicIpSKU(ipRef.SKU, ngw.SKU),
+				SKU:     ensurePublicIPSKU(ipRef.SKU, ngw.SKU),
 			}
 			if ipRef.Zone != nil {
 				ip.Zones = append(ip.Zones, strconv.Itoa(int(*ipRef.Zone)))
@@ -443,7 +437,7 @@ func (ia *InfrastructureAdapter) defaultZone() []ZoneConfig {
 			},
 			Managed:  true,
 			Location: ia.Region(),
-			SKU:      ensurePublicIpSKU(nil, ngw.SKU),
+			SKU:      ensurePublicIPSKU(nil, ngw.SKU),
 		}
 		if ngw.Zone != nil {
 			ip.Zones = append(ip.Zones, *ngw.Zone)
@@ -533,9 +527,6 @@ func (ip *PublicIPConfig) ToProvider(base *armnetwork.PublicIPAddress) *armnetwo
 		base = &armnetwork.PublicIPAddress{}
 	}
 
-	// Determine SKU to use - defaults to Standard for backward compatibility.
-	// Note: ensurePublicIpSKU already normalizes nil to "Standard" in the adapter layer,
-	// but we keep this as a defensive fallback to guarantee SKU is always set on the Azure resource.
 	skuName := armnetwork.PublicIPAddressSKUNameStandard
 	if ip.SKU != nil && *ip.SKU != "" {
 		skuName = armnetwork.PublicIPAddressSKUName(*ip.SKU)
@@ -569,9 +560,6 @@ func (ip *PublicIPConfig) ToProvider(base *armnetwork.PublicIPAddress) *armnetwo
 
 // ToProvider translates the config into the actual providerAccess object.
 func (nat *NatGatewayConfig) ToProvider(base *armnetwork.NatGateway) *armnetwork.NatGateway {
-	// Determine SKU to use - defaults to Standard for backward compatibility.
-	// Note: ensureNatGatewaySKU already normalizes nil to "Standard" in the adapter layer,
-	// but we keep this as a defensive fallback to guarantee SKU is always set on the Azure resource.
 	skuName := armnetwork.NatGatewaySKUNameStandard
 	if nat.SKU != nil && *nat.SKU != "" {
 		skuName = armnetwork.NatGatewaySKUName(*nat.SKU)

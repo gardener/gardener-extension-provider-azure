@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: SAP SE or an SAP affiliate company and Gardener contributors
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -111,8 +112,8 @@ type ZonedNatGatewayConfig struct {
 	IdleConnectionTimeoutMinutes *int32 `json:"idleConnectionTimeoutMinutes,omitempty"`
 	// SKU specifies the SKU of the NAT gateway.
 	// Supported values: "Standard", "StandardV2"
-	// StandardV2 is zone-redundant and cannot be used with the Zone field.
-	// IP addresses can be used with StandardV2, but they must also be zone-redundant (no zone specification).
+	// StandardV2 NAT Gateway is zone-redundant and can only be configured at the network level
+	// (spec.networks.natGateway), not per-zone.
 	// If not specified, defaults to "Standard" for backward compatibility.
 	// +optional
 	SKU *string `json:"sku,omitempty"`
