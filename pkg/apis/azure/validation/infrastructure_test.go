@@ -1224,5 +1224,117 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				}))))
 			})
 		})
+
+		Context("NatGateway SKU Update", func() {
+			It("should forbid changing NAT Gateway SKU from Standard to StandardV2", func() {
+				oldInfra := &apisazure.InfrastructureConfig{
+					Networks: apisazure.NetworkConfig{
+						Workers: &workers,
+						VNet:    apisazure.VNet{CIDR: &vnetCIDR},
+						NatGateway: &apisazure.NatGatewayConfig{
+							Enabled: true,
+							SKU:     ptr.To("Standard"),
+						},
+					},
+				}
+				newInfra := oldInfra.DeepCopy()
+				newInfra.Networks.NatGateway.SKU = ptr.To("StandardV2")
+
+				errorList := ValidateInfrastructureConfigUpdate(oldInfra, newInfra, &shoot, providerPath)
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.natGateway.sku"),
+					"Detail": ContainSubstring("changing the NAT Gateway SKU is not allowed"),
+				}))
+			})
+
+			It("should forbid changing NAT Gateway SKU from StandardV2 to Standard", func() {
+				oldInfra := &apisazure.InfrastructureConfig{
+					Networks: apisazure.NetworkConfig{
+						Workers: &workers,
+						VNet:    apisazure.VNet{CIDR: &vnetCIDR},
+						NatGateway: &apisazure.NatGatewayConfig{
+							Enabled: true,
+							SKU:     ptr.To("StandardV2"),
+						},
+					},
+				}
+				newInfra := oldInfra.DeepCopy()
+				newInfra.Networks.NatGateway.SKU = ptr.To("Standard")
+
+				errorList := ValidateInfrastructureConfigUpdate(oldInfra, newInfra, &shoot, providerPath)
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.natGateway.sku"),
+					"Detail": ContainSubstring("changing the NAT Gateway SKU is not allowed"),
+				}))
+			})
+
+			It("should forbid changing NAT Gateway SKU from nil (Standard default) to StandardV2", func() {
+				oldInfra := &apisazure.InfrastructureConfig{
+					Networks: apisazure.NetworkConfig{
+						Workers: &workers,
+						VNet:    apisazure.VNet{CIDR: &vnetCIDR},
+						NatGateway: &apisazure.NatGatewayConfig{
+							Enabled: true,
+						},
+					},
+				}
+				newInfra := oldInfra.DeepCopy()
+				newInfra.Networks.NatGateway.SKU = ptr.To("StandardV2")
+
+				errorList := ValidateInfrastructureConfigUpdate(oldInfra, newInfra, &shoot, providerPath)
+				Expect(errorList).To(ConsistOfFields(Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.natGateway.sku"),
+					"Detail": ContainSubstring("changing the NAT Gateway SKU is not allowed"),
+				}))
+			})
+
+			It("should allow keeping the same NAT Gateway SKU", func() {
+				oldInfra := &apisazure.InfrastructureConfig{
+					Networks: apisazure.NetworkConfig{
+						Workers: &workers,
+						VNet:    apisazure.VNet{CIDR: &vnetCIDR},
+						NatGateway: &apisazure.NatGatewayConfig{
+							Enabled: true,
+							SKU:     ptr.To("StandardV2"),
+						},
+					},
+				}
+				newInfra := oldInfra.DeepCopy()
+
+				errorList := ValidateInfrastructureConfigUpdate(oldInfra, newInfra, &shoot, providerPath)
+				Expect(errorList).To(BeEmpty())
+			})
+
+			It("should forbid changing zoned NAT Gateway SKU", func() {
+				oldInfra := &apisazure.InfrastructureConfig{
+					Zoned: true,
+					Networks: apisazure.NetworkConfig{
+						VNet: apisazure.VNet{CIDR: &vnetCIDR},
+						Zones: []apisazure.Zone{
+							{
+								Name: 1,
+								CIDR: "10.250.0.0/24",
+								NatGateway: &apisazure.ZonedNatGatewayConfig{
+									Enabled: true,
+									SKU:     ptr.To("Standard"),
+								},
+							},
+						},
+					},
+				}
+				newInfra := oldInfra.DeepCopy()
+				newInfra.Networks.Zones[0].NatGateway.SKU = ptr.To("StandardV2")
+
+				errorList := ValidateInfrastructureConfigUpdate(oldInfra, newInfra, &shoot, providerPath)
+				Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.zones[0].natGateway.sku"),
+					"Detail": ContainSubstring("changing the NAT Gateway SKU is not allowed"),
+				}))))
+			})
+		})
 	})
 })

@@ -102,6 +102,8 @@ type ZonedNatGatewayConfig struct {
 	IdleConnectionTimeoutMinutes *int32
 	// SKU specifies the SKU of the NAT gateway.
 	// Supported values: "Standard", "StandardV2"
+	// StandardV2 NAT Gateway is zone-redundant and can only be configured at the network level
+	// (spec.networks.natGateway), not per-zone.
 	// If not specified, defaults to "Standard" for backward compatibility.
 	// +optional
 	SKU *string
