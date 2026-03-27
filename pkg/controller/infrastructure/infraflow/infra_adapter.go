@@ -10,10 +10,11 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v4"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v9"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils"
+	"k8s.io/utils/ptr"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
@@ -188,6 +189,7 @@ type PublicIPConfig struct {
 	Zones    []string
 	Location string
 	Managed  bool
+	SKU      *string
 }
 
 // NatGatewayConfig contains configuration for a NAT Gateway.
@@ -196,6 +198,7 @@ type NatGatewayConfig struct {
 	Location     string
 	Zone         *string
 	IdleTimeout  *int32
+	SKU          *string
 	PublicIPList []PublicIPConfig
 }
 
@@ -217,6 +220,23 @@ type ZoneConfig struct {
 
 func (ia *InfrastructureAdapter) natGatewayName() string {
 	return fmt.Sprintf("%s-nat-gateway", ia.TechnicalName())
+}
+
+func ensureNatGatewaySKU(sku *string) *string {
+	if sku == nil || *sku == "" {
+		return to.Ptr(string(armnetwork.NatGatewaySKUNameStandard))
+	}
+	return sku
+}
+
+func ensurePublicIPSKU(ipSKU, natSKU *string) *string {
+	if ptr.Deref(ipSKU, "") != "" {
+		return ipSKU
+	}
+	if ptr.Deref(natSKU, "") == string(armnetwork.NatGatewaySKUNameStandardV2) {
+		return to.Ptr(string(armnetwork.PublicIPAddressSKUNameStandardV2))
+	}
+	return to.Ptr(string(armnetwork.PublicIPAddressSKUNameStandard))
 }
 
 func (ia *InfrastructureAdapter) natGatewayNameForZone(zone int32, migrated bool) string {
@@ -305,6 +325,7 @@ func (ia *InfrastructureAdapter) zonesConfig() []ZoneConfig {
 					Kind:          KindNatGateway,
 				},
 				IdleTimeout: configZone.NatGateway.IdleConnectionTimeoutMinutes,
+				SKU:         ensureNatGatewaySKU(configZone.NatGateway.SKU),
 				Location:    ia.Region(),
 				Zone:        to.Ptr(zoneString),
 			}
@@ -323,6 +344,7 @@ func (ia *InfrastructureAdapter) zonesConfig() []ZoneConfig {
 						},
 						Zones:   []string{zoneString},
 						Managed: false,
+						SKU:     ensurePublicIPSKU(ipRef.SKU, ngw.SKU),
 					}
 					ngw.PublicIPList = append(ngw.PublicIPList, ip)
 				}
@@ -337,6 +359,7 @@ func (ia *InfrastructureAdapter) zonesConfig() []ZoneConfig {
 						Kind:          KindPublicIP,
 					},
 					Managed:  true,
+					SKU:      ensurePublicIPSKU(nil, ngw.SKU),
 					Zones:    []string{zoneString},
 					Location: ia.Region(),
 				}
@@ -376,6 +399,7 @@ func (ia *InfrastructureAdapter) defaultZone() []ZoneConfig {
 			Kind:          KindNatGateway,
 		},
 		IdleTimeout: config.Networks.NatGateway.IdleConnectionTimeoutMinutes,
+		SKU:         ensureNatGatewaySKU(config.Networks.NatGateway.SKU),
 		Location:    ia.Region(),
 	}
 	if z := config.Networks.NatGateway.Zone; z != nil {
@@ -394,8 +418,11 @@ func (ia *InfrastructureAdapter) defaultZone() []ZoneConfig {
 					Kind:          KindPublicIP,
 				},
 				Managed: false,
+				SKU:     ensurePublicIPSKU(ipRef.SKU, ngw.SKU),
 			}
-			ip.Zones = append(ip.Zones, strconv.Itoa(int(ipRef.Zone)))
+			if ipRef.Zone != nil {
+				ip.Zones = append(ip.Zones, strconv.Itoa(int(*ipRef.Zone)))
+			}
 			ngw.PublicIPList = append(ngw.PublicIPList, ip)
 		}
 	} else {
@@ -410,6 +437,7 @@ func (ia *InfrastructureAdapter) defaultZone() []ZoneConfig {
 			},
 			Managed:  true,
 			Location: ia.Region(),
+			SKU:      ensurePublicIPSKU(nil, ngw.SKU),
 		}
 		if ngw.Zone != nil {
 			ip.Zones = append(ip.Zones, *ngw.Zone)
@@ -498,13 +526,19 @@ func (ip *PublicIPConfig) ToProvider(base *armnetwork.PublicIPAddress) *armnetwo
 	if base == nil {
 		base = &armnetwork.PublicIPAddress{}
 	}
+
+	skuName := armnetwork.PublicIPAddressSKUNameStandard
+	if ip.SKU != nil && *ip.SKU != "" {
+		skuName = armnetwork.PublicIPAddressSKUName(*ip.SKU)
+	}
+
 	target := &armnetwork.PublicIPAddress{
 		Location: to.Ptr(ip.Location),
 		Properties: &armnetwork.PublicIPAddressPropertiesFormat{
 			PublicIPAllocationMethod: to.Ptr(armnetwork.IPAllocationMethodStatic),
 		},
 		SKU: &armnetwork.PublicIPAddressSKU{
-			Name: to.Ptr(armnetwork.PublicIPAddressSKUNameStandard),
+			Name: to.Ptr(skuName),
 			Tier: to.Ptr(armnetwork.PublicIPAddressSKUTierRegional),
 		},
 		Name: to.Ptr(ip.Name),
@@ -526,6 +560,11 @@ func (ip *PublicIPConfig) ToProvider(base *armnetwork.PublicIPAddress) *armnetwo
 
 // ToProvider translates the config into the actual providerAccess object.
 func (nat *NatGatewayConfig) ToProvider(base *armnetwork.NatGateway) *armnetwork.NatGateway {
+	skuName := armnetwork.NatGatewaySKUNameStandard
+	if nat.SKU != nil && *nat.SKU != "" {
+		skuName = armnetwork.NatGatewaySKUName(*nat.SKU)
+	}
+
 	target := &armnetwork.NatGateway{
 		ID:       nil,
 		Location: to.Ptr(nat.Location),
@@ -533,7 +572,7 @@ func (nat *NatGatewayConfig) ToProvider(base *armnetwork.NatGateway) *armnetwork
 			IdleTimeoutInMinutes: nat.IdleTimeout,
 		},
 		SKU: &armnetwork.NatGatewaySKU{
-			Name: to.Ptr(armnetwork.NatGatewaySKUNameStandard),
+			Name: to.Ptr(skuName),
 		},
 		Name: to.Ptr(nat.Name),
 	}

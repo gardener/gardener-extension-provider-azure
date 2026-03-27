@@ -1,3 +1,4 @@
+// SPDX-FileCopyrightText: SAP SE or an SAP affiliate company and Gardener contributors
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -60,6 +61,13 @@ type NatGatewayConfig struct {
 	// Zone specifies the zone in which the NAT gateway should be deployed to.
 	// +optional
 	Zone *int32 `json:"zone,omitempty"`
+	// SKU specifies the SKU of the NAT gateway.
+	// Supported values: "Standard", "StandardV2"
+	// StandardV2 is zone-redundant and cannot be used with the Zone field.
+	// IP addresses can be used with StandardV2, but they must also be zone-redundant (no zone specification).
+	// If not specified, defaults to "Standard" for backward compatibility.
+	// +optional
+	SKU *string `json:"sku,omitempty"`
 	// IPAddresses is a list of ip addresses which should be assigned to the NAT gateway.
 	// +optional
 	IPAddresses []PublicIPReference `json:"ipAddresses,omitempty"`
@@ -72,7 +80,13 @@ type PublicIPReference struct {
 	// ResourceGroup is the name of the resource group where the public ip is assigned to.
 	ResourceGroup string `json:"resourceGroup"`
 	// Zone is the zone in which the public ip is deployed to.
-	Zone int32 `json:"zone"`
+	Zone *int32 `json:"zone"`
+	// SKU specifies the SKU of the public IP address.
+	// Supported values: "Standard", "StandardV2"
+	// Must match the SKU of the NAT Gateway it's associated with.
+	// If not specified, defaults to "Standard" for backward compatibility.
+	// +optional
+	SKU *string `json:"sku,omitempty"`
 }
 
 // Zone describes the configuration for a subnet that is used for VMs on that region.
@@ -96,6 +110,13 @@ type ZonedNatGatewayConfig struct {
 	// IdleConnectionTimeoutMinutes specifies the idle connection timeout limit for NAT gateway in minutes.
 	// +optional
 	IdleConnectionTimeoutMinutes *int32 `json:"idleConnectionTimeoutMinutes,omitempty"`
+	// SKU specifies the SKU of the NAT gateway.
+	// Supported values: "Standard", "StandardV2"
+	// StandardV2 NAT Gateway is zone-redundant and can only be configured at the network level
+	// (spec.networks.natGateway), not per-zone.
+	// If not specified, defaults to "Standard" for backward compatibility.
+	// +optional
+	SKU *string `json:"sku,omitempty"`
 	// IPAddresses is a list of ip addresses which should be assigned to the NAT gateway.
 	// +optional
 	IPAddresses []ZonedPublicIPReference `json:"ipAddresses,omitempty"`
@@ -107,6 +128,12 @@ type ZonedPublicIPReference struct {
 	Name string `json:"name"`
 	// ResourceGroup is the name of the resource group where the public ip is assigned to.
 	ResourceGroup string `json:"resourceGroup"`
+	// SKU specifies the SKU of the public IP address.
+	// Supported values: "Standard", "StandardV2"
+	// Must match the SKU of the NAT Gateway it's associated with.
+	// If not specified, defaults to "Standard" for backward compatibility.
+	// +optional
+	SKU *string `json:"sku,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

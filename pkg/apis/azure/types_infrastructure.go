@@ -49,9 +49,18 @@ type NatGatewayConfig struct {
 	// Enabled is an indicator if NAT gateway should be deployed.
 	Enabled bool
 	// IdleConnectionTimeoutMinutes specifies the idle connection timeout limit for NAT gateway in minutes.
+	// +optional
 	IdleConnectionTimeoutMinutes *int32
 	// Zone specifies the zone in which the NAT gateway should be deployed to.
+	// +optional
 	Zone *int32
+	// SKU specifies the SKU of the NAT gateway.
+	// Supported values: "Standard", "StandardV2"
+	// StandardV2 is zone-redundant and cannot be used with the Zone field.
+	// IP addresses can be used with StandardV2, but they must also be zone-redundant (no zone specification).
+	// If not specified, defaults to "Standard" for backward compatibility.
+	// +optional
+	SKU *string
 	// IPAddresses is a list of ip addresses which should be assigned to the NAT gateway.
 	IPAddresses []PublicIPReference
 }
@@ -63,7 +72,13 @@ type PublicIPReference struct {
 	// ResourceGroup is the name of the resource group where the public ip is assigned to.
 	ResourceGroup string
 	// Zone is the zone in which the public ip is deployed to.
-	Zone int32
+	Zone *int32
+	// SKU specifies the SKU of the public IP address.
+	// Supported values: "Standard", "StandardV2"
+	// Must match the SKU of the NAT Gateway it's associated with.
+	// If not specified, defaults to "Standard" for backward compatibility.
+	// +optional
+	SKU *string
 }
 
 // Zone describes the configuration for a subnet that is used for VMs on that region.
@@ -83,7 +98,15 @@ type ZonedNatGatewayConfig struct {
 	// Enabled is an indicator if NAT gateway should be deployed.
 	Enabled bool
 	// IdleConnectionTimeoutMinutes specifies the idle connection timeout limit for NAT gateway in minutes.
+	// +optional
 	IdleConnectionTimeoutMinutes *int32
+	// SKU specifies the SKU of the NAT gateway.
+	// Supported values: "Standard", "StandardV2"
+	// StandardV2 NAT Gateway is zone-redundant and can only be configured at the network level
+	// (spec.networks.natGateway), not per-zone.
+	// If not specified, defaults to "Standard" for backward compatibility.
+	// +optional
+	SKU *string
 	// IPAddresses is a list of ip addresses which should be assigned to the NAT gateway.
 	IPAddresses []ZonedPublicIPReference
 }
@@ -94,6 +117,12 @@ type ZonedPublicIPReference struct {
 	Name string
 	// ResourceGroup is the name of the resource group where the public ip is assigned to.
 	ResourceGroup string
+	// SKU specifies the SKU of the public IP address.
+	// Supported values: "Standard", "StandardV2"
+	// Must match the SKU of the NAT Gateway it's associated with.
+	// If not specified, defaults to "Standard" for backward compatibility.
+	// +optional
+	SKU *string
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
