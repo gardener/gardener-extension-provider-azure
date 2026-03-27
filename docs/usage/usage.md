@@ -468,6 +468,11 @@ Some points to note for this field:
 - a change in the value lead to a rolling update of the machine in the worker pool
 - all the resources needs to be specified
 
+The `nodeTemplate.virtualCapacity` can be used to specify [node extended resources](https://kubernetes.io/docs/tasks/administer-cluster/extended-resource-node/) that are _hot-updated_ on nodes belonging to the pool. There are currently some caveats wrt rollouts:
+- If the `providerConfig` section has not yet been defined for the pool, then a rollout is unavoidable.
+- If the `providerConfig` is already present for the pool, then `nodeTemplate.virtualCapacity` can be added without triggering a rollout as long as the `virtualCapacity` is either the only element of the `nodeTemplate` or the last element.
+- If the `providerConfig` is already present for the pool along with a previously defined `nodeTemplate.virtualCapacity`, then further extended resource attributes may be freely added/modified within `virtualCapacity` without triggering a rollout.
+
 The `.diagnosticsProfile` is used to enable [machine boot diagnostics](https://learn.microsoft.com/en-us/azure/virtual-machines/boot-diagnostics) (disabled per default).
 A storage account is used for storing vm's boot console output and screenshots.
 If `.diagnosticsProfile.StorageURI` is not specified azure managed storage will be used (recommended way).
