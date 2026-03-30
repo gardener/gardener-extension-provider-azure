@@ -816,7 +816,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
 						"Type":   Equal(field.ErrorTypeForbidden),
 						"Field":  Equal("networks.zones[0].natGateway.sku"),
-						"Detail": ContainSubstring("StandardV2 NAT Gateway is zone-redundant"),
+						"Detail": ContainSubstring("Only Standard SKU can be configured for multi-subnet layout"),
 					}))))
 				})
 

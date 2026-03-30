@@ -490,9 +490,9 @@ func validateZonedNatGatewayConfig(natGatewayConfig *apisazure.ZonedNatGatewayCo
 	// Validate SKU
 	allErrs = append(allErrs, validateNatGatewaySKU(natGatewayConfig.SKU, natGatewayPath.Child("sku"))...)
 
-	// StandardV2 cannot be used in multi-zone layout
-	if natGatewayConfig.SKU != nil && *natGatewayConfig.SKU == string(armnetwork.NatGatewaySKUNameStandardV2) {
-		allErrs = append(allErrs, field.Forbidden(natGatewayPath.Child("sku"), "StandardV2 NAT Gateway is zone-redundant and can only be configured at the network level (spec.networks.natGateway), not per-zone"))
+	// StandardV2 cannot be used in multi-subnet layout
+	if natGatewayConfig.SKU != nil && *natGatewayConfig.SKU != string(armnetwork.NatGatewaySKUNameStandard) {
+		allErrs = append(allErrs, field.Forbidden(natGatewayPath.Child("sku"), "Only Standard SKU can be configured for multi-subnet layout"))
 	}
 
 	// Validate that public IP SKUs match NAT Gateway SKU

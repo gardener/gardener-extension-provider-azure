@@ -2484,8 +2484,8 @@ string
 <em>(Optional)</em>
 <p>SKU specifies the SKU of the NAT gateway.
 Supported values: &ldquo;Standard&rdquo;, &ldquo;StandardV2&rdquo;
-StandardV2 is zone-redundant and cannot be used with the Zone field.
-IP addresses can be used with StandardV2, but they must also be zone-redundant (no zone specification).
+StandardV2 NAT Gateway is zone-redundant and can only be configured at the network level
+(spec.networks.natGateway), not per-zone.
 If not specified, defaults to &ldquo;Standard&rdquo; for backward compatibility.</p>
 </td>
 </tr>
