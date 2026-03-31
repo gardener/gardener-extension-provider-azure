@@ -195,8 +195,8 @@ github.com/gardener/gardener v1.137.5 h1:rnpkiWL3MR13D9Z2stTL4GvmXWzfCn+Nn6DcA17
 github.com/gardener/gardener v1.137.5/go.mod h1:Gw5+R2G+Agg33mAgzANZYJuJfWHuK5Eo44Ou+B/9w3A=
 github.com/gardener/gardener/pkg/apis v1.137.5 h1:E52DyLS4od0/3MoYtpp43z6SVq24RdG28Zs0UY4fsZI=
 github.com/gardener/gardener/pkg/apis v1.137.5/go.mod h1:QUINW0KPDxMiYQ5bAmIKnsK3oWpseuqMrHnLrMEC5W4=
-github.com/gardener/machine-controller-manager v0.61.2 h1:kG8DgmOqqlljWqxa4x0ER4+L5zg1lxNd1dQXT9gKbvA=
-github.com/gardener/machine-controller-manager v0.61.2/go.mod h1:8eE1qLztrWIbOM71mHSQGaC6Q+pl5lvOyN08qP39D7o=
+github.com/gardener/machine-controller-manager v0.61.3 h1:w0JuHCKLmcK7B8E7mx3TvE3e0hSYwikchsMSiMhocqw=
+github.com/gardener/machine-controller-manager v0.61.3/go.mod h1:8eE1qLztrWIbOM71mHSQGaC6Q+pl5lvOyN08qP39D7o=
 github.com/gardener/remedy-controller v0.14.0 h1:KQv6HXka/jWcnb0Bsl99iAEmu4X0mEWLkoywYsF0uI8=
 github.com/gardener/remedy-controller v0.14.0/go.mod h1:ARh2p+GUh/nYAssAjObWy4vpCy8OsccWQSMURySJsb4=
 github.com/ghodss/yaml v0.0.0-20150909031657-73d445a93680/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
