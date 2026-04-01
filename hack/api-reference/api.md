@@ -1849,6 +1849,7 @@ int32
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Zone is the zone in which the public ip is deployed to.</p>
 </td>
 </tr>
@@ -2483,10 +2484,10 @@ string
 <td>
 <em>(Optional)</em>
 <p>SKU specifies the SKU of the NAT gateway.
-Supported values: &ldquo;Standard&rdquo;, &ldquo;StandardV2&rdquo;
+Supported values: &ldquo;Standard&rdquo;
 StandardV2 NAT Gateway is zone-redundant and can only be configured at the network level
 (spec.networks.natGateway), not per-zone.
-If not specified, defaults to &ldquo;Standard&rdquo; for backward compatibility.</p>
+If not specified, defaults to &ldquo;Standard&rdquo;.</p>
 </td>
 </tr>
 <tr>
@@ -2554,9 +2555,9 @@ string
 <td>
 <em>(Optional)</em>
 <p>SKU specifies the SKU of the public IP address.
-Supported values: &ldquo;Standard&rdquo;, &ldquo;StandardV2&rdquo;
+Supported values: &ldquo;Standard&rdquo;
 Must match the SKU of the NAT Gateway it&rsquo;s associated with.
-If not specified, defaults to &ldquo;Standard&rdquo; for backward compatibility.</p>
+If not specified, defaults to &ldquo;Standard&rdquo;.</p>
 </td>
 </tr>
 </tbody>

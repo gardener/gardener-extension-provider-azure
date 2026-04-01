@@ -80,6 +80,7 @@ type PublicIPReference struct {
 	// ResourceGroup is the name of the resource group where the public ip is assigned to.
 	ResourceGroup string `json:"resourceGroup"`
 	// Zone is the zone in which the public ip is deployed to.
+	// +optional
 	Zone *int32 `json:"zone"`
 	// SKU specifies the SKU of the public IP address.
 	// Supported values: "Standard", "StandardV2"
@@ -111,10 +112,10 @@ type ZonedNatGatewayConfig struct {
 	// +optional
 	IdleConnectionTimeoutMinutes *int32 `json:"idleConnectionTimeoutMinutes,omitempty"`
 	// SKU specifies the SKU of the NAT gateway.
-	// Supported values: "Standard", "StandardV2"
+	// Supported values: "Standard"
 	// StandardV2 NAT Gateway is zone-redundant and can only be configured at the network level
 	// (spec.networks.natGateway), not per-zone.
-	// If not specified, defaults to "Standard" for backward compatibility.
+	// If not specified, defaults to "Standard".
 	// +optional
 	SKU *string `json:"sku,omitempty"`
 	// IPAddresses is a list of ip addresses which should be assigned to the NAT gateway.
@@ -129,9 +130,9 @@ type ZonedPublicIPReference struct {
 	// ResourceGroup is the name of the resource group where the public ip is assigned to.
 	ResourceGroup string `json:"resourceGroup"`
 	// SKU specifies the SKU of the public IP address.
-	// Supported values: "Standard", "StandardV2"
+	// Supported values: "Standard"
 	// Must match the SKU of the NAT Gateway it's associated with.
-	// If not specified, defaults to "Standard" for backward compatibility.
+	// If not specified, defaults to "Standard".
 	// +optional
 	SKU *string `json:"sku,omitempty"`
 }
