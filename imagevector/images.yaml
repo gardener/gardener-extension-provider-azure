@@ -32,7 +32,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/v2/kubernetes/azure-cloud-controller-manager
-  tag: v1.32.14
+  tag: v1.32.16
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -47,7 +47,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/v2/kubernetes/azure-cloud-controller-manager
-  tag: v1.33.9
+  tag: v1.33.11
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -62,7 +62,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/v2/kubernetes/azure-cloud-controller-manager
-  tag: v1.34.6
+  tag: v1.34.8
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -77,7 +77,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/v2/kubernetes/azure-cloud-controller-manager
-  tag: v1.35.1
+  tag: v1.35.3
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -122,7 +122,7 @@ images:
 - name: cloud-node-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/v2/kubernetes/azure-cloud-node-manager
-  tag: v1.32.14
+  tag: v1.32.16
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -137,7 +137,7 @@ images:
 - name: cloud-node-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/v2/kubernetes/azure-cloud-node-manager
-  tag: v1.33.9
+  tag: v1.33.11
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -152,7 +152,7 @@ images:
 - name: cloud-node-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/v2/kubernetes/azure-cloud-node-manager
-  tag: v1.34.6
+  tag: v1.34.8
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -167,7 +167,7 @@ images:
 - name: cloud-node-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/v2/kubernetes/azure-cloud-node-manager
-  tag: v1.35.1
+  tag: v1.35.3
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
