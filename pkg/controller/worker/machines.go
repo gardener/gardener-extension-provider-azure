@@ -598,10 +598,6 @@ func WorkerPoolHashDataV2(pool extensionsv1alpha1.WorkerPool, workerConfig *azur
 		return appendHashDataForWorkerConfig(nil, workerConfig), nil
 	}
 
-	if pool.ProviderConfig == nil || pool.ProviderConfig.Raw == nil {
-		return nil, nil
-	}
-
 	// Addition or Change in VirtualCapacity should NOT cause existing hash to change to prevent trigger of rollout.
 	if workerConfig != nil && workerConfig.NodeTemplate != nil && workerConfig.NodeTemplate.VirtualCapacity != nil {
 		modifiedProviderConfig := stripVirtualCapacity(pool.ProviderConfig.Raw)
@@ -609,7 +605,11 @@ func WorkerPoolHashDataV2(pool extensionsv1alpha1.WorkerPool, workerConfig *azur
 	}
 
 	// preserve legacy behaviour
-	return []string{string(pool.ProviderConfig.Raw)}, nil
+	if pool.ProviderConfig != nil && pool.ProviderConfig.Raw != nil {
+		return []string{string(pool.ProviderConfig.Raw)}, nil
+	}
+
+	return []string{}, nil
 }
 
 // appendHashDataForWorkerConfig appends individual WorkerConfig fields to hash data.
