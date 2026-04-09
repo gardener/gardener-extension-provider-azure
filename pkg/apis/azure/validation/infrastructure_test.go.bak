@@ -575,6 +575,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					}))
 				})
 
+
 				It("should pass with nil SKU (defaults to Standard) and zone", func() {
 					infrastructureConfig.Networks.NatGateway.SKU = nil
 					infrastructureConfig.Networks.NatGateway.Zone = ptr.To[int32](2)
@@ -802,6 +803,25 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					Expect(ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)).To(BeEmpty())
 				})
 
+				It("should fail with SKU mismatch in zoned config - Standard NAT GW with StandardV2 IP", func() {
+					infrastructureConfig.Networks.Zones[0].NatGateway = &apisazure.ZonedNatGatewayConfig{
+						Enabled: true,
+						SKU:     ptr.To("Standard"),
+						IPAddresses: []apisazure.ZonedPublicIPReference{
+							{
+								Name:          "public-ip-1",
+								ResourceGroup: "ip-resource-group",
+								SKU:           ptr.To("StandardV2"),
+							},
+						},
+					}
+					errorList := ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)
+					Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":   Equal(field.ErrorTypeInvalid),
+						"Field":  Equal("networks.zones[0].natGateway.ipAddresses[0].sku"),
+						"Detail": ContainSubstring("public IP SKU must match NAT Gateway SKU (Standard)"),
+					}))))
+				})
 			})
 		})
 	})

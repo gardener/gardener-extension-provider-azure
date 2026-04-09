@@ -1005,6 +1005,7 @@ func autoConvert_v1alpha1_NatGatewayConfig_To_azure_NatGatewayConfig(in *NatGate
 	out.Enabled = in.Enabled
 	out.IdleConnectionTimeoutMinutes = (*int32)(unsafe.Pointer(in.IdleConnectionTimeoutMinutes))
 	out.Zone = (*int32)(unsafe.Pointer(in.Zone))
+	out.SKU = (*string)(unsafe.Pointer(in.SKU))
 	out.IPAddresses = *(*[]azure.PublicIPReference)(unsafe.Pointer(&in.IPAddresses))
 	return nil
 }
@@ -1018,6 +1019,7 @@ func autoConvert_azure_NatGatewayConfig_To_v1alpha1_NatGatewayConfig(in *azure.N
 	out.Enabled = in.Enabled
 	out.IdleConnectionTimeoutMinutes = (*int32)(unsafe.Pointer(in.IdleConnectionTimeoutMinutes))
 	out.Zone = (*int32)(unsafe.Pointer(in.Zone))
+	out.SKU = (*string)(unsafe.Pointer(in.SKU))
 	out.IPAddresses = *(*[]PublicIPReference)(unsafe.Pointer(&in.IPAddresses))
 	return nil
 }
@@ -1092,7 +1094,7 @@ func Convert_azure_NetworkStatus_To_v1alpha1_NetworkStatus(in *azure.NetworkStat
 func autoConvert_v1alpha1_PublicIPReference_To_azure_PublicIPReference(in *PublicIPReference, out *azure.PublicIPReference, s conversion.Scope) error {
 	out.Name = in.Name
 	out.ResourceGroup = in.ResourceGroup
-	out.Zone = in.Zone
+	out.Zone = (*int32)(unsafe.Pointer(in.Zone))
 	return nil
 }
 
@@ -1104,7 +1106,7 @@ func Convert_v1alpha1_PublicIPReference_To_azure_PublicIPReference(in *PublicIPR
 func autoConvert_azure_PublicIPReference_To_v1alpha1_PublicIPReference(in *azure.PublicIPReference, out *PublicIPReference, s conversion.Scope) error {
 	out.Name = in.Name
 	out.ResourceGroup = in.ResourceGroup
-	out.Zone = in.Zone
+	out.Zone = (*int32)(unsafe.Pointer(in.Zone))
 	return nil
 }
 
@@ -1444,6 +1446,7 @@ func Convert_azure_Zone_To_v1alpha1_Zone(in *azure.Zone, out *Zone, s conversion
 func autoConvert_v1alpha1_ZonedNatGatewayConfig_To_azure_ZonedNatGatewayConfig(in *ZonedNatGatewayConfig, out *azure.ZonedNatGatewayConfig, s conversion.Scope) error {
 	out.Enabled = in.Enabled
 	out.IdleConnectionTimeoutMinutes = (*int32)(unsafe.Pointer(in.IdleConnectionTimeoutMinutes))
+	out.SKU = (*string)(unsafe.Pointer(in.SKU))
 	out.IPAddresses = *(*[]azure.ZonedPublicIPReference)(unsafe.Pointer(&in.IPAddresses))
 	return nil
 }
@@ -1456,6 +1459,7 @@ func Convert_v1alpha1_ZonedNatGatewayConfig_To_azure_ZonedNatGatewayConfig(in *Z
 func autoConvert_azure_ZonedNatGatewayConfig_To_v1alpha1_ZonedNatGatewayConfig(in *azure.ZonedNatGatewayConfig, out *ZonedNatGatewayConfig, s conversion.Scope) error {
 	out.Enabled = in.Enabled
 	out.IdleConnectionTimeoutMinutes = (*int32)(unsafe.Pointer(in.IdleConnectionTimeoutMinutes))
+	out.SKU = (*string)(unsafe.Pointer(in.SKU))
 	out.IPAddresses = *(*[]ZonedPublicIPReference)(unsafe.Pointer(&in.IPAddresses))
 	return nil
 }

@@ -72,12 +72,14 @@ spec:
 #      # natGateway can only be set together with vnet.workers
 #      natGateway:
 #        enabled: true
+#        sku: Standard  # or StandardV2 for zone-redundant NAT Gateway
 #        idleConnectionTimeoutMinutes: 4
 #        zone: 1
 #        ipAddresses:
 #        - name: my-public-ip-name
 #          resourceGroup: my-public-ip-resource-group
 #          zone: 1
+#          # Public IP SKU is automatically derived from natGateway.sku
 #      # serviceEndpoints can only be set together with vnet.workers
 #      serviceEndpoints:
 #      - entry1
@@ -89,4 +91,5 @@ spec:
 #        cidr: 10.250.1.0/24
 #        natGateway:
 #          enabled: false
+#          sku: Standard  # StandardV2 not allowed in per-zone config
     zoned: false
