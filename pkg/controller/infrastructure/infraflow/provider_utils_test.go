@@ -190,30 +190,22 @@ var _ = Describe("ensureNatGatewaySKU", func() {
 })
 
 var _ = Describe("ensurePublicIPSKU", func() {
-	It("should return 'Standard' when both sku and natSku are nil", func() {
-		result := ensurePublicIPSKU(nil, nil)
+	It("should return 'Standard' when natSku is nil", func() {
+		result := ensurePublicIPSKU(nil)
 		Expect(result).ToNot(BeNil())
 		Expect(*result).To(Equal(string(armnetwork.PublicIPAddressSKUNameStandard)))
 	})
 
-	It("should return 'Standard' when sku is nil and natSku is 'Standard'", func() {
+	It("should return 'Standard' when natSku is 'Standard'", func() {
 		natSku := string(armnetwork.NatGatewaySKUNameStandard)
-		result := ensurePublicIPSKU(nil, &natSku)
+		result := ensurePublicIPSKU(&natSku)
 		Expect(result).ToNot(BeNil())
 		Expect(*result).To(Equal(string(armnetwork.PublicIPAddressSKUNameStandard)))
 	})
 
-	It("should return 'StandardV2' when sku is nil and natSku is 'StandardV2'", func() {
+	It("should return 'StandardV2' when natSku is 'StandardV2'", func() {
 		natSku := string(armnetwork.NatGatewaySKUNameStandardV2)
-		result := ensurePublicIPSKU(nil, &natSku)
-		Expect(result).ToNot(BeNil())
-		Expect(*result).To(Equal(string(armnetwork.PublicIPAddressSKUNameStandardV2)))
-	})
-
-	It("should return explicit sku when sku is set, even if natSku differs", func() {
-		sku := string(armnetwork.PublicIPAddressSKUNameStandardV2)
-		natSku := string(armnetwork.NatGatewaySKUNameStandard)
-		result := ensurePublicIPSKU(&sku, &natSku)
+		result := ensurePublicIPSKU(&natSku)
 		Expect(result).ToNot(BeNil())
 		Expect(*result).To(Equal(string(armnetwork.PublicIPAddressSKUNameStandardV2)))
 	})
@@ -332,7 +324,6 @@ var _ = Describe("InfrastructureAdapter defaultZone with StandardV2", func() {
 						{
 							Name:          "my-ip",
 							ResourceGroup: "my-rg",
-							SKU:           ptr.To("StandardV2"),
 						},
 					},
 				},

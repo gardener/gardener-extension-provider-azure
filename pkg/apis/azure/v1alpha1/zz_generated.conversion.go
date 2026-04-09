@@ -1095,7 +1095,6 @@ func autoConvert_v1alpha1_PublicIPReference_To_azure_PublicIPReference(in *Publi
 	out.Name = in.Name
 	out.ResourceGroup = in.ResourceGroup
 	out.Zone = (*int32)(unsafe.Pointer(in.Zone))
-	out.SKU = (*string)(unsafe.Pointer(in.SKU))
 	return nil
 }
 
@@ -1108,7 +1107,6 @@ func autoConvert_azure_PublicIPReference_To_v1alpha1_PublicIPReference(in *azure
 	out.Name = in.Name
 	out.ResourceGroup = in.ResourceGroup
 	out.Zone = (*int32)(unsafe.Pointer(in.Zone))
-	out.SKU = (*string)(unsafe.Pointer(in.SKU))
 	return nil
 }
 
@@ -1474,7 +1472,6 @@ func Convert_azure_ZonedNatGatewayConfig_To_v1alpha1_ZonedNatGatewayConfig(in *a
 func autoConvert_v1alpha1_ZonedPublicIPReference_To_azure_ZonedPublicIPReference(in *ZonedPublicIPReference, out *azure.ZonedPublicIPReference, s conversion.Scope) error {
 	out.Name = in.Name
 	out.ResourceGroup = in.ResourceGroup
-	out.SKU = (*string)(unsafe.Pointer(in.SKU))
 	return nil
 }
 
@@ -1486,7 +1483,6 @@ func Convert_v1alpha1_ZonedPublicIPReference_To_azure_ZonedPublicIPReference(in 
 func autoConvert_azure_ZonedPublicIPReference_To_v1alpha1_ZonedPublicIPReference(in *azure.ZonedPublicIPReference, out *ZonedPublicIPReference, s conversion.Scope) error {
 	out.Name = in.Name
 	out.ResourceGroup = in.ResourceGroup
-	out.SKU = (*string)(unsafe.Pointer(in.SKU))
 	return nil
 }
 

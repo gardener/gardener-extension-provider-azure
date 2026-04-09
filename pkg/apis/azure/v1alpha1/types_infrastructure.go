@@ -82,12 +82,6 @@ type PublicIPReference struct {
 	// Zone is the zone in which the public ip is deployed to.
 	// +optional
 	Zone *int32 `json:"zone"`
-	// SKU specifies the SKU of the public IP address.
-	// Supported values: "Standard", "StandardV2"
-	// Must match the SKU of the NAT Gateway it's associated with.
-	// If not specified, defaults to "Standard" for backward compatibility.
-	// +optional
-	SKU *string `json:"sku,omitempty"`
 }
 
 // Zone describes the configuration for a subnet that is used for VMs on that region.
@@ -129,12 +123,6 @@ type ZonedPublicIPReference struct {
 	Name string `json:"name"`
 	// ResourceGroup is the name of the resource group where the public ip is assigned to.
 	ResourceGroup string `json:"resourceGroup"`
-	// SKU specifies the SKU of the public IP address.
-	// Supported values: "Standard"
-	// Must match the SKU of the NAT Gateway it's associated with.
-	// If not specified, defaults to "Standard".
-	// +optional
-	SKU *string `json:"sku,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

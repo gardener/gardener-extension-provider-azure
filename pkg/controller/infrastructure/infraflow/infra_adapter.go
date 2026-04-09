@@ -229,10 +229,7 @@ func ensureNatGatewaySKU(sku *string) *string {
 	return sku
 }
 
-func ensurePublicIPSKU(ipSKU, natSKU *string) *string {
-	if ptr.Deref(ipSKU, "") != "" {
-		return ipSKU
-	}
+func ensurePublicIPSKU(natSKU *string) *string {
 	if ptr.Deref(natSKU, "") == string(armnetwork.NatGatewaySKUNameStandardV2) {
 		return to.Ptr(string(armnetwork.PublicIPAddressSKUNameStandardV2))
 	}
@@ -344,7 +341,7 @@ func (ia *InfrastructureAdapter) zonesConfig() []ZoneConfig {
 						},
 						Zones:   []string{zoneString},
 						Managed: false,
-						SKU:     ensurePublicIPSKU(ipRef.SKU, ngw.SKU),
+						SKU:     ensurePublicIPSKU(ngw.SKU),
 					}
 					ngw.PublicIPList = append(ngw.PublicIPList, ip)
 				}
@@ -359,7 +356,7 @@ func (ia *InfrastructureAdapter) zonesConfig() []ZoneConfig {
 						Kind:          KindPublicIP,
 					},
 					Managed:  true,
-					SKU:      ensurePublicIPSKU(nil, ngw.SKU),
+					SKU:      ensurePublicIPSKU(ngw.SKU),
 					Zones:    []string{zoneString},
 					Location: ia.Region(),
 				}
@@ -418,7 +415,7 @@ func (ia *InfrastructureAdapter) defaultZone() []ZoneConfig {
 					Kind:          KindPublicIP,
 				},
 				Managed: false,
-				SKU:     ensurePublicIPSKU(ipRef.SKU, ngw.SKU),
+				SKU:     ensurePublicIPSKU(ngw.SKU),
 			}
 			if ipRef.Zone != nil {
 				ip.Zones = append(ip.Zones, strconv.Itoa(int(*ipRef.Zone)))
@@ -437,7 +434,7 @@ func (ia *InfrastructureAdapter) defaultZone() []ZoneConfig {
 			},
 			Managed:  true,
 			Location: ia.Region(),
-			SKU:      ensurePublicIPSKU(nil, ngw.SKU),
+			SKU:      ensurePublicIPSKU(ngw.SKU),
 		}
 		if ngw.Zone != nil {
 			ip.Zones = append(ip.Zones, *ngw.Zone)
