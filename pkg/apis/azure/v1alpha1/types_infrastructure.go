@@ -81,7 +81,7 @@ type PublicIPReference struct {
 	ResourceGroup string `json:"resourceGroup"`
 	// Zone is the zone in which the public ip is deployed to.
 	// +optional
-	Zone *int32 `json:"zone"`
+	Zone *int32 `json:"zone,omitempty"`
 }
 
 // Zone describes the configuration for a subnet that is used for VMs on that region.
