@@ -1599,6 +1599,22 @@ int32
 </tr>
 <tr>
 <td>
+<code>sku</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SKU specifies the SKU of the NAT gateway.
+Supported values: &ldquo;Standard&rdquo;, &ldquo;StandardV2&rdquo;
+StandardV2 is zone-redundant and cannot be used with the Zone field.
+IP addresses can be used with StandardV2, but they must also be zone-redundant (no zone specification).
+If not specified, defaults to &ldquo;Standard&rdquo; for backward compatibility.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>ipAddresses</code></br>
 <em>
 <a href="#azure.provider.extensions.gardener.cloud/v1alpha1.PublicIPReference">
@@ -1833,6 +1849,7 @@ int32
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Zone is the zone in which the public ip is deployed to.</p>
 </td>
 </tr>
@@ -2440,6 +2457,22 @@ int32
 <td>
 <em>(Optional)</em>
 <p>IdleConnectionTimeoutMinutes specifies the idle connection timeout limit for NAT gateway in minutes.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>sku</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SKU specifies the SKU of the NAT gateway.
+Supported values: &ldquo;Standard&rdquo;
+StandardV2 NAT Gateway is zone-redundant and can only be configured at the network level
+(spec.networks.natGateway), not per-zone.
+If not specified, defaults to &ldquo;Standard&rdquo;.</p>
 </td>
 </tr>
 <tr>
