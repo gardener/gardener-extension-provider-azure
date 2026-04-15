@@ -231,8 +231,9 @@ func convertLegacyVersionsToCapabilityFlavors(versions []api.MachineImageVersion
 			}
 
 			capabilityFlavors = append(capabilityFlavors, api.MachineImageFlavor{
-				Image:        version.Image,
-				Capabilities: capabilities,
+				Image:                    version.Image,
+				Capabilities:             capabilities,
+				SkipMarketplaceAgreement: version.SkipMarketplaceAgreement,
 			})
 		} else {
 			capabilityFlavors = append(capabilityFlavors, version.CapabilityFlavors...)
