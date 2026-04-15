@@ -93,11 +93,20 @@ func validateMachineImageVersion(providerImage apisazure.MachineImages, version 
 
 	hasCapabilityFlavors := len(version.CapabilityFlavors) > 0
 	hasLegacyImage := version.Image != (apisazure.Image{})
+	hasLegacyFields := version.Architecture != nil || version.AcceleratedNetworking != nil
 
 	if len(capabilityDefinitions) > 0 {
 		// When CloudProfile defines capabilities, allow either old format (image) or new format (capabilityFlavors) per version
-		if hasCapabilityFlavors && hasLegacyImage {
-			allErrs = append(allErrs, field.Forbidden(jdxPath.Child("image"), "must not be set together with capabilityFlavors. Use one format per version."))
+		if hasCapabilityFlavors && (hasLegacyImage || hasLegacyFields) {
+			if hasLegacyImage {
+				allErrs = append(allErrs, field.Forbidden(jdxPath.Child("image"), "must not be set together with capabilityFlavors. Use one format per version."))
+			}
+			if version.Architecture != nil {
+				allErrs = append(allErrs, field.Forbidden(jdxPath.Child("architecture"), "must not be set together with capabilityFlavors. Use one format per version."))
+			}
+			if version.AcceleratedNetworking != nil {
+				allErrs = append(allErrs, field.Forbidden(jdxPath.Child("acceleratedNetworking"), "must not be set together with capabilityFlavors. Use one format per version."))
+			}
 		} else if hasCapabilityFlavors {
 			// New format: validate capabilityFlavors
 			allErrs = append(allErrs, validateCapabilityFlavors(version, capabilityDefinitions, jdxPath)...)

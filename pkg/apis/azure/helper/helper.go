@@ -190,11 +190,17 @@ func FindImageInWorkerStatus(machineImages []api.MachineImage, name string, vers
 		}
 
 		// Normalize status image capabilities: if the status has Architecture but no Capabilities,
-		// convert Architecture to Capabilities for compatibility checking
+		// convert Architecture and AcceleratedNetworking to Capabilities for compatibility checking
 		statusCapabilities := statusMachineImage.Capabilities
 		if len(statusCapabilities) == 0 && statusMachineImage.Architecture != nil {
 			statusCapabilities = gardencorev1beta1.Capabilities{
 				v1beta1constants.ArchitectureName: []string{*statusMachineImage.Architecture},
+			}
+			// Convert AcceleratedNetworking to networking capability (same logic as convertLegacyVersionsToCapabilityFlavors)
+			if ptr.Deref(statusMachineImage.AcceleratedNetworking, false) {
+				statusCapabilities[azure.CapabilityNetworkName] = []string{azure.CapabilityNetworkBasic, azure.CapabilityNetworkAccelerated}
+			} else {
+				statusCapabilities[azure.CapabilityNetworkName] = []string{azure.CapabilityNetworkBasic}
 			}
 		}
 
