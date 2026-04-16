@@ -25,6 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/validation"
 )
 
@@ -120,7 +121,7 @@ func (p *namespacedCloudProfile) validateMachineImages(providerConfig *api.Cloud
 	// Create a map of provider images grouped by version for mixed format support
 	providerVersionsMap := make(map[string]map[string][]api.MachineImageVersion)
 	for _, img := range providerConfig.MachineImages {
-		providerVersionsMap[img.Name] = validation.GroupVersionsByVersionString(img.Versions)
+		providerVersionsMap[img.Name] = helper.GroupVersionsByVersionString(img.Versions)
 	}
 
 	for _, machineImage := range namespacedImages.Images {

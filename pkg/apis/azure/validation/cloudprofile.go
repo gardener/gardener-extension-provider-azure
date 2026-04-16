@@ -408,17 +408,6 @@ func NewProviderImagesContext(providerImages []apisazure.MachineImages) *gutil.I
 	)
 }
 
-// GroupVersionsByVersionString groups all provider versions by their version string.
-// This is needed because the old format may have multiple entries for the same version
-// with different architectures (mixed format support).
-func GroupVersionsByVersionString(versions []apisazure.MachineImageVersion) map[string][]apisazure.MachineImageVersion {
-	result := make(map[string][]apisazure.MachineImageVersion)
-	for _, v := range versions {
-		result[v.Version] = append(result[v.Version], v)
-	}
-	return result
-}
-
 // FindCapabilityFlavorsVersion finds the first provider version that uses the new format (capabilityFlavors).
 // Returns nil if no version uses the new format.
 func FindCapabilityFlavorsVersion(providerVersions []apisazure.MachineImageVersion) *apisazure.MachineImageVersion {
@@ -525,34 +514,6 @@ func ValidateMissingArchitectures(
 				allErrs = append(allErrs, field.Required(errPath,
 					fmt.Sprintf("machine image version %s@%s and capabilityFlavor %v is not defined in the %s", imageName, versionStr, specCapabilitySet.Capabilities, errorMsgSuffix)))
 			}
-		}
-	}
-
-	return allErrs
-}
-
-// ValidateExcessArchitectures checks that the provider doesn't have extra architectures not defined in the spec capabilities.
-func ValidateExcessArchitectures(
-	imageName, versionStr string,
-	defaultedSpecCapabilities []gardencorev1beta1.MachineImageFlavor,
-	availableArchitectures []string,
-	path *field.Path,
-	errorMsgSuffix string,
-) field.ErrorList {
-	allErrs := field.ErrorList{}
-
-	for _, arch := range availableArchitectures {
-		isFound := false
-		for _, specCapabilitySet := range defaultedSpecCapabilities {
-			expectedArchitectures := specCapabilitySet.Capabilities[v1beta1constants.ArchitectureName]
-			if slices.Contains(expectedArchitectures, arch) {
-				isFound = true
-				break
-			}
-		}
-		if !isFound {
-			allErrs = append(allErrs, field.Forbidden(path,
-				fmt.Sprintf("machine image version %s@%s has an excess architecture %q, which is not defined in the %s", imageName, versionStr, arch, errorMsgSuffix)))
 		}
 	}
 
