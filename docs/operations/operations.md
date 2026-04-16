@@ -21,13 +21,31 @@ You have to map every version that you specify in `.spec.machineImages[].version
 
 
 #### NEW: MachineCapabilities
-With the introduction of `spec.machineCapabilities` in Gardener *v1.131.0* you have to map every `capabilityFlavor` in `.spec.machineImages[].versions` here to an available VM image in your subscription.
 
-Currently, the only supported Capabilities with its supported Capability values are: 
+With the introduction of `spec.machineCapabilities` in Gardener *v1.131.0*, you can define capability-based matching between machine images and machine types. This enables fine-grained control over which images can be used with which machine types.
+
+**Purpose and Behavior:**
+
+The `machineCapabilities` feature allows you to:
+- Define available capabilities and their values in the CloudProfile (e.g., `architecture`, `gardener-azure-networking`)
+- Associate machine images with specific capability combinations via `capabilityFlavors`
+- Optionally restrict machine types to specific capabilities via `machineTypes.capabilities`
+
+**Default & Override Behavior:**
+
+The capability system uses **automatic defaulting** from `.spec.machineCapabilities`:
+
+- **`.spec.machineCapabilities`**: Defines all available capability keys and their possible values (e.g., `architecture: [amd64, arm64]`, `gardener-azure-networking: [basic, accelerated]`)
+- Any capability **not explicitly specified** in `.spec.machineImages[].versions[].capabilityFlavors[].capabilities` or `.spec.machineTypes[].capabilities` automatically gets **all values** from `.spec.machineCapabilities`
+- If no capabilities are defined all will be defaulted.
+
+**Required Capability:**
+
+Always required is the architecture capability:
 - `architecture`: `amd64` and `arm64` (specifies the CPU architecture of the machine on which given machine image can be used)
-- `networking`: `basic` and `accelerated`. (specifies if the machine image supports [Azure Accelerated Networking](https://docs.microsoft.com/en-us/azure/virtual-network/create-vm-accelerated-networking-cli))
 
-As soon as the legacy `architectures` field in `.spec.machineImages[].versions` is removed, any capabilities can be mapped here.
+But any other capability can be mapped here as well, e.g.:
+- `gardener-azure-networking`: `basic` and `accelerated` (specifies if the machine image supports [Azure Accelerated Networking](https://docs.microsoft.com/en-us/azure/virtual-network/create-vm-accelerated-networking-cli))
 
 An example `CloudProfileConfig` for the Azure extension looks as follows:
 
@@ -48,7 +66,7 @@ machineImages:
     - urn: "CoreOS:CoreOS:Stable:2135.6.0"
       capabilities:
         architecture: [amd64]
-        networking: [basic,accelerated]
+        gardener-azure-networking: [basic,accelerated]
 - name: ImageWithMultipleCapabilityFlavors
   versions:
   - version: 1.0.0
@@ -56,20 +74,18 @@ machineImages:
     - id: "/subscriptions/<subscription ID where the gallery is located>/resourceGroups/myGalleryRG/providers/Microsoft.Compute/galleries/myGallery/images/myImageDefinition/versions/1.0.0"
       capabilities:
         architecture: [amd64]
-        networking: [basic]
+        gardener-azure-networking: [basic]
     - communityGalleryImageID: "/CommunityGalleries/gardenlinux-567905d8-921f-4a85-b423-1fbf4e249d90/Images/gardenlinux/Versions/576.1.1"
       capabilities:
         architecture: [amd64]
-        networking: [accelerated]
+        gardener-azure-networking: [accelerated]
     - sharedGalleryImageID: "/SharedGalleries/sharedGalleryName/Images/sharedGalleryImageName/Versions/sharedGalleryImageVersionName"
       capabilities:
         architecture: [arm64]
-        networking: [accelerated]
+        gardener-azure-networking: [accelerated]
 ```
 
-#### Legacy: Architectures
-
-If the `spec.machineCapabilities` field is not used in the `CloudProfile`, the legacy `architectures` field in `.spec.machineImages[].versions` is used.
+#### Old format
 
 For each machine image version an `architecture` field can be specified which specifies the CPU architecture of the machine on which given machine image can be used.
 
@@ -133,12 +149,14 @@ metadata:
 spec:
   type: azure
   machineCapabilities:
-    architecture:
-      - amd64
-      - arm64
-#    networking: # optional
-#      - basic
-#      - accelerated
+    - name: architecture
+      values:
+        - amd64
+        - arm64
+#    - name: gardener-azure-networking # optional
+#      values:
+#        - basic
+#        - accelerated
   kubernetes:
     versions:
     - version: 1.32.0
@@ -150,11 +168,11 @@ spec:
     - version: 2135.6.0
       capabilityFlavors:
 #      - architecture: [amd64] # optional
-#        networking: [accelerated]
+#        gardener-azure-networking: [accelerated]
       - architecture: [amd64]
-#        networking: [basic]
+#        gardener-azure-networking: [basic]
       - architecture: [arm64]
-#        networking: [basic, accelerated]
+#        gardener-azure-networking: [basic, accelerated]
   machineTypes:
   - name: Standard_D3_v2
     cpu: "4"
@@ -162,14 +180,14 @@ spec:
     memory: 14Gi
     capabilities:
       architecture: [amd64]
-      # networking: [accelerated] # optional
+      # gardener-azure-networking: [accelerated] # optional
   - name: Standard_D4_v3
     cpu: "4"
     gpu: "0"
     memory: 16Gi
     capabilities:
       architecture: [amd64]
-      # networking: [accelerated] # optional
+      # gardener-azure-networking: [accelerated] # optional
   volumeTypes:
   - name: Standard_LRS
     class: standard
@@ -198,25 +216,23 @@ spec:
     machineImages:
     - name: coreos
       versions:
-      - name: ImageWithMultipleCapabilityFlavors
-        versions:
-          - version: 2135.6.0
-            capabilityFlavors:
-#              - id: "/subscriptions/<subscription ID where the gallery is located>/resourceGroups/myGalleryRG/providers/Microsoft.Compute/galleries/myGallery/images/myImageDefinition/versions/1.0.0"
-#                capabilities:
-#                  architecture: [amd64]
-#                  networking: [accelerated] # optional
-              - communityGalleryImageID: "/CommunityGalleries/gardenlinux-567905d8-921f-4a85-b423-1fbf4e249d90/Images/gardenlinux/Versions/576.1.1"
-                capabilities:
-                  architecture: [amd64]
-#                  networking: [basic] # optional
-              - sharedGalleryImageID: "/SharedGalleries/sharedGalleryName/Images/sharedGalleryImageName/Versions/sharedGalleryImageVersionName"
-                capabilities:
-                  architecture: [arm64]
-#                  networking: [basic,accelerated] # optional
+      - version: 2135.6.0
+        capabilityFlavors:
+#          - id: "/subscriptions/<subscription ID where the gallery is located>/resourceGroups/myGalleryRG/providers/Microsoft.Compute/galleries/myGallery/images/myImageDefinition/versions/1.0.0"
+#            capabilities:
+#              architecture: [amd64]
+#              gardener-azure-networking: [accelerated] # optional
+          - communityGalleryImageID: "/CommunityGalleries/gardenlinux-567905d8-921f-4a85-b423-1fbf4e249d90/Images/gardenlinux/Versions/576.1.1"
+            capabilities:
+              architecture: [amd64]
+#              gardener-azure-networking: [basic] # optional
+          - sharedGalleryImageID: "/SharedGalleries/sharedGalleryName/Images/sharedGalleryImageName/Versions/sharedGalleryImageVersionName"
+            capabilities:
+              architecture: [arm64]
+#              gardener-azure-networking: [basic,accelerated] # optional
 ```
 
-#### Legacy: without `spec.machineCapabilities`:
+#### Without `spec.machineCapabilities`:
 ```yaml
 apiVersion: core.gardener.cloud/v1beta1
 kind: CloudProfile
