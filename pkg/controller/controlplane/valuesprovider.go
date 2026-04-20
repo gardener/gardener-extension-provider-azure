@@ -704,7 +704,27 @@ func getControlPlaneShootChartValues(
 	disableRemedyController := cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] == "true" ||
 		features.ExtensionFeatureGate.Enabled(features.DisableRemedyController)
 
-	return map[string]interface{}{
+	driver := map[string]interface{}{}
+	if value, ok := cluster.Shoot.Annotations[azure.VolumeAttachLimit]; ok {
+		driver["volumeAttachLimit"] = value
+	}
+	if value, ok := cluster.Shoot.Annotations[azure.ReservedVolumeAttachments]; ok {
+		driver["reservedDataDiskSlotNum"] = value
+	}
+
+	csiNodeConfig := map[string]interface{}{
+		"enabled": true,
+		"podAnnotations": map[string]interface{}{
+			"checksum/configmap-" + azure.CloudProviderDiskConfigName: cloudProviderDiskConfigChecksum,
+		},
+		"cloudProviderConfig": cloudProviderDiskConfig,
+	}
+
+	if len(driver) != 0 {
+		csiNodeConfig["driver"] = driver
+	}
+
+	values := map[string]interface{}{
 		// the allow-egress chart is enabled in all cases **except**:
 		// - when the shoot is using AVSets due to using basic loadbalancers (see https://github.com/gardener/gardener-extension-provider-azure/issues/1).
 		// - when the outbound connectivity is done via a NATGateway (currently meaning that all worker subnets have a NATGateway attached).
@@ -715,17 +735,13 @@ func getControlPlaneShootChartValues(
 			"enabled":    true,
 			"vpaEnabled": gardencorev1beta1helper.ShootWantsVerticalPodAutoscaler(cluster.Shoot),
 		},
-		azure.CSINodeName: map[string]interface{}{
-			"enabled": true,
-			"podAnnotations": map[string]interface{}{
-				"checksum/configmap-" + azure.CloudProviderDiskConfigName: cloudProviderDiskConfigChecksum,
-			},
-			"cloudProviderConfig": cloudProviderDiskConfig,
-		},
+		azure.CSINodeName: csiNodeConfig,
 		azure.RemedyControllerName: map[string]interface{}{
 			"enabled": !disableRemedyController,
 		},
-	}, err
+	}
+
+	return values, err
 }
 
 func cleanupSeedLegacyCSISnapshotValidation(

@@ -551,6 +551,25 @@ var _ = Describe("ValuesProvider", func() {
 			}))
 		})
 
+		It("should return correct control plane chart values when configuring CSI-Driver flags", func() {
+			shootAnnotations := map[string]string{
+				azure.VolumeAttachLimit:         "42",
+				azure.ReservedVolumeAttachments: "2",
+			}
+			cluster = generateCluster(cidr, k8sVersion, false, shootAnnotations, nil, &gardencorev1beta1.Seed{})
+
+			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+			values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, nil, checksums)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(HaveKey(azure.CSINodeName))
+			Expect(values[azure.CSINodeName]).To(HaveKey("driver"))
+			csiConfig := values[azure.CSINodeName].(map[string]any)
+			driverConfig := csiConfig["driver"].(map[string]any)
+			Expect(driverConfig).To(HaveKeyWithValue("volumeAttachLimit", "42"))
+			Expect(driverConfig).To(HaveKeyWithValue("reservedDataDiskSlotNum", "2"))
+		})
+
 		It("should return false if allowEgress behavior is overwritten by user", func() {
 			infrastructureStatus.Zoned = true
 			cluster.Shoot.GetAnnotations()[azure.ShootSkipAllowEgressDeployment] = "true"
