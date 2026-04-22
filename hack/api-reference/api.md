@@ -4,31 +4,24 @@
 <a href="#azure.provider.extensions.gardener.cloud%2fv1alpha1">azure.provider.extensions.gardener.cloud/v1alpha1</a>
 </li>
 </ul>
+
 <h2 id="azure.provider.extensions.gardener.cloud/v1alpha1">azure.provider.extensions.gardener.cloud/v1alpha1</h2>
 <p>
-<p>Package v1alpha1 contains the Azure provider API resources.</p>
+
 </p>
-Resource Types:
-<ul><li>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.BackupBucketConfig">BackupBucketConfig</a>
-</li><li>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.CloudProfileConfig">CloudProfileConfig</a>
-</li><li>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.ControlPlaneConfig">ControlPlaneConfig</a>
-</li><li>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.InfrastructureConfig">InfrastructureConfig</a>
-</li><li>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig</a>
-</li><li>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.WorkerStatus">WorkerStatus</a>
-</li><li>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.WorkloadIdentityConfig">WorkloadIdentityConfig</a>
-</li></ul>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.BackupBucketConfig">BackupBucketConfig
+
+<h3 id="azureresource">AzureResource
 </h3>
+
+
 <p>
-<p>BackupBucketConfig is the provider-specific configuration for backup buckets/entries</p>
+(<em>Appears on:</em><a href="#infrastructurestate">InfrastructureState</a>)
 </p>
+
+<p>
+AzureResource represents metadata information about created infrastructure resources.
+</p>
+
 <table>
 <thead>
 <tr>
@@ -37,560 +30,7 @@ Resource Types:
 </tr>
 </thead>
 <tbody>
-<tr>
-<td>
-<code>apiVersion</code></br>
-string</td>
-<td>
-<code>
-azure.provider.extensions.gardener.cloud/v1alpha1
-</code>
-</td>
-</tr>
-<tr>
-<td>
-<code>kind</code></br>
-string
-</td>
-<td><code>BackupBucketConfig</code></td>
-</tr>
-<tr>
-<td>
-<code>cloudConfiguration</code></br>
-<em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.CloudConfiguration">
-CloudConfiguration
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>CloudConfiguration contains config that controls which cloud to connect to.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>immutability</code></br>
-<em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.ImmutableConfig">
-ImmutableConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Immutability defines the immutability config for the backup bucket.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>rotationConfig</code></br>
-<em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.RotationConfig">
-RotationConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>RotationConfig controls the behavior for the rotation of storage account keys.</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.CloudProfileConfig">CloudProfileConfig
-</h3>
-<p>
-<p>CloudProfileConfig contains provider-specific configuration that is embedded into Gardener&rsquo;s <code>CloudProfile</code>
-resource.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>apiVersion</code></br>
-string</td>
-<td>
-<code>
-azure.provider.extensions.gardener.cloud/v1alpha1
-</code>
-</td>
-</tr>
-<tr>
-<td>
-<code>kind</code></br>
-string
-</td>
-<td><code>CloudProfileConfig</code></td>
-</tr>
-<tr>
-<td>
-<code>countUpdateDomains</code></br>
-<em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.DomainCount">
-[]DomainCount
-</a>
-</em>
-</td>
-<td>
-<p>CountUpdateDomains is list of update domain counts for each region.
-Deprecated: VMSS does not allow specifying update domain count. With the deprecation of Availability Sets, only CountFaultDomains is required.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>countFaultDomains</code></br>
-<em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.DomainCount">
-[]DomainCount
-</a>
-</em>
-</td>
-<td>
-<p>CountFaultDomains is list of fault domain counts for each region.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>machineImages</code></br>
-<em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.MachineImages">
-[]MachineImages
-</a>
-</em>
-</td>
-<td>
-<p>MachineImages is the list of machine images that are understood by the controller. It maps
-logical names and versions to provider-specific identifiers.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>machineTypes</code></br>
-<em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.MachineType">
-[]MachineType
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>MachineTypes is a list of machine types complete with provider specific information.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>cloudConfiguration</code></br>
-<em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.CloudConfiguration">
-CloudConfiguration
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>CloudConfiguration contains config that controls which cloud to connect to.</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.ControlPlaneConfig">ControlPlaneConfig
-</h3>
-<p>
-<p>ControlPlaneConfig contains configuration settings for the control plane.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>apiVersion</code></br>
-string</td>
-<td>
-<code>
-azure.provider.extensions.gardener.cloud/v1alpha1
-</code>
-</td>
-</tr>
-<tr>
-<td>
-<code>kind</code></br>
-string
-</td>
-<td><code>ControlPlaneConfig</code></td>
-</tr>
-<tr>
-<td>
-<code>cloudControllerManager</code></br>
-<em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.CloudControllerManagerConfig">
-CloudControllerManagerConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>CloudControllerManager contains configuration settings for the cloud-controller-manager.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>storage</code></br>
-<em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.Storage">
-Storage
-</a>
-</em>
-</td>
-<td>
-<p>Storage contains configuration for storage in the cluster.</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.InfrastructureConfig">InfrastructureConfig
-</h3>
-<p>
-<p>InfrastructureConfig infrastructure configuration resource</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>apiVersion</code></br>
-string</td>
-<td>
-<code>
-azure.provider.extensions.gardener.cloud/v1alpha1
-</code>
-</td>
-</tr>
-<tr>
-<td>
-<code>kind</code></br>
-string
-</td>
-<td><code>InfrastructureConfig</code></td>
-</tr>
-<tr>
-<td>
-<code>resourceGroup</code></br>
-<em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.ResourceGroup">
-ResourceGroup
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>ResourceGroup is azure resource group.
-Deprecated: This feature is no longer supported and will be removed in a future release.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>networks</code></br>
-<em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.NetworkConfig">
-NetworkConfig
-</a>
-</em>
-</td>
-<td>
-<p>Networks is the network configuration (VNet, subnets, etc.).</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>identity</code></br>
-<em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.IdentityConfig">
-IdentityConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Identity contains configuration for the assigned managed identity.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>zoned</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Zoned indicates whether the cluster uses availability zones.</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig
-</h3>
-<p>
-<p>WorkerConfig contains configuration settings for the worker nodes.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>apiVersion</code></br>
-string</td>
-<td>
-<code>
-azure.provider.extensions.gardener.cloud/v1alpha1
-</code>
-</td>
-</tr>
-<tr>
-<td>
-<code>kind</code></br>
-string
-</td>
-<td><code>WorkerConfig</code></td>
-</tr>
-<tr>
-<td>
-<code>nodeTemplate</code></br>
-<em>
-github.com/gardener/gardener/pkg/apis/extensions/v1alpha1.NodeTemplate
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>NodeTemplate contains resource information of the machine which is used by Cluster Autoscaler to generate nodeTemplate during scaling a nodeGroup from zero.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>diagnosticsProfile</code></br>
-<em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.DiagnosticsProfile">
-DiagnosticsProfile
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>DiagnosticsProfile specifies boot diagnostic options.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>volume</code></br>
-<em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.Volume">
-Volume
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Volume contains configuration for the root (OS) disk of a VM.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>dataVolumes</code></br>
-<em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.DataVolume">
-[]DataVolume
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>DataVolumes contains configuration for the additional disks attached to VMs.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>capacityReservation</code></br>
-<em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.CapacityReservation">
-CapacityReservation
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>CapacityReservation represents the configuration for capacity reservations on Azure.</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.WorkerStatus">WorkerStatus
-</h3>
-<p>
-<p>WorkerStatus contains information about created worker resources.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>apiVersion</code></br>
-string</td>
-<td>
-<code>
-azure.provider.extensions.gardener.cloud/v1alpha1
-</code>
-</td>
-</tr>
-<tr>
-<td>
-<code>kind</code></br>
-string
-</td>
-<td><code>WorkerStatus</code></td>
-</tr>
-<tr>
-<td>
-<code>machineImages</code></br>
-<em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.MachineImage">
-[]MachineImage
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>MachineImages is a list of machine images that have been used in this worker. Usually, the extension controller
-gets the mapping from name/version to the provider-specific machine image data in its componentconfig. However, if
-a version that is still in use gets removed from this componentconfig it cannot reconcile anymore existing <code>Worker</code>
-resources that are still using this version. Hence, it stores the used versions in the provider status to ensure
-reconciliation is possible.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>vmoDependencies</code></br>
-<em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.VmoDependency">
-[]VmoDependency
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>VmoDependencies is a list of external VirtualMachineScaleSet Orchestration Mode VM (VMO) dependencies.</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.WorkloadIdentityConfig">WorkloadIdentityConfig
-</h3>
-<p>
-<p>WorkloadIdentityConfig contains configuration settings for workload identity.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>apiVersion</code></br>
-string</td>
-<td>
-<code>
-azure.provider.extensions.gardener.cloud/v1alpha1
-</code>
-</td>
-</tr>
-<tr>
-<td>
-<code>kind</code></br>
-string
-</td>
-<td><code>WorkloadIdentityConfig</code></td>
-</tr>
-<tr>
-<td>
-<code>clientID</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>ClientID is the ID of the Azure client.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>tenantID</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>TenantID is the ID of the Azure tenant.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>subscriptionID</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>SubscriptionID is the ID of the subscription.</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.AzureResource">AzureResource
-</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.InfrastructureState">InfrastructureState</a>)
-</p>
-<p>
-<p>AzureResource represents metadata information about created infrastructure resources.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
+
 <tr>
 <td>
 <code>kind</code></br>
@@ -613,17 +53,19 @@ string
 <p>ID is the ID of the resource.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.CapacityReservation">CapacityReservation
+
+
+<h3 id="backupbucketconfig">BackupBucketConfig
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig</a>)
+BackupBucketConfig is the provider-specific configuration for backup buckets/entries
 </p>
-<p>
-<p>CapacityReservation represents the configuration for capacity reservations on Azure.</p>
-</p>
+
 <table>
 <thead>
 <tr>
@@ -632,6 +74,69 @@ string
 </tr>
 </thead>
 <tbody>
+
+<tr>
+<td>
+<code>cloudConfiguration</code></br>
+<em>
+<a href="#cloudconfiguration">CloudConfiguration</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CloudConfiguration contains config that controls which cloud to connect to.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>immutability</code></br>
+<em>
+<a href="#immutableconfig">ImmutableConfig</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Immutability defines the immutability config for the backup bucket.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>rotationConfig</code></br>
+<em>
+<a href="#rotationconfig">RotationConfig</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RotationConfig controls the behavior for the rotation of storage account keys.</p>
+</td>
+</tr>
+
+</tbody>
+</table>
+
+
+<h3 id="capacityreservation">CapacityReservation
+</h3>
+
+
+<p>
+(<em>Appears on:</em><a href="#workerconfig">WorkerConfig</a>)
+</p>
+
+<p>
+CapacityReservation represents the configuration for capacity reservations on Azure.
+</p>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+
 <tr>
 <td>
 <code>capacityReservationGroupID</code></br>
@@ -643,19 +148,24 @@ string
 <p>CapacityReservationGroupID is the resource ID of the capacity reservation group to use.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.CloudConfiguration">CloudConfiguration
+
+
+<h3 id="cloudconfiguration">CloudConfiguration
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.BackupBucketConfig">BackupBucketConfig</a>, 
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.CloudProfileConfig">CloudProfileConfig</a>)
+(<em>Appears on:</em><a href="#backupbucketconfig">BackupBucketConfig</a>, <a href="#cloudprofileconfig">CloudProfileConfig</a>)
 </p>
+
 <p>
-<p>CloudConfiguration contains detailed config for the cloud to connect to. Currently we only support selection of well-
-known Azure-instances by name, but this could be extended in future to support private clouds.</p>
+CloudConfiguration contains detailed config for the cloud to connect to. Currently we only support selection of well-
+known Azure-instances by name, but this could be extended in future to support private clouds.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -664,6 +174,7 @@ known Azure-instances by name, but this could be extended in future to support p
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>name</code></br>
@@ -672,20 +183,26 @@ string
 </em>
 </td>
 <td>
-<p>Name is the name of the cloud to connect to, e.g. &ldquo;AzurePublic&rdquo; or &ldquo;AzureChina&rdquo;.</p>
+<p>Name is the name of the cloud to connect to, e.g. "AzurePublic" or "AzureChina".</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.CloudControllerManagerConfig">CloudControllerManagerConfig
+
+
+<h3 id="cloudcontrollermanagerconfig">CloudControllerManagerConfig
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.ControlPlaneConfig">ControlPlaneConfig</a>)
+(<em>Appears on:</em><a href="#controlplaneconfig">ControlPlaneConfig</a>)
 </p>
+
 <p>
-<p>CloudControllerManagerConfig contains configuration settings for the cloud-controller-manager.</p>
+CloudControllerManagerConfig contains configuration settings for the cloud-controller-manager.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -694,11 +211,12 @@ string
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>featureGates</code></br>
 <em>
-map[string]bool
+object (keys:string, values:boolean)
 </em>
 </td>
 <td>
@@ -706,17 +224,20 @@ map[string]bool
 <p>FeatureGates contains information about enabled feature gates.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.DataVolume">DataVolume
+
+
+<h3 id="cloudprofileconfig">CloudProfileConfig
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig</a>)
+CloudProfileConfig contains provider-specific configuration that is embedded into Gardener's `CloudProfile`
+resource.
 </p>
-<p>
-<p>DataVolume contains configuration for data volumes attached to VMs.</p>
-</p>
+
 <table>
 <thead>
 <tr>
@@ -725,6 +246,135 @@ map[string]bool
 </tr>
 </thead>
 <tbody>
+
+<tr>
+<td>
+<code>countUpdateDomains</code></br>
+<em>
+<a href="#domaincount">DomainCount</a> array
+</em>
+</td>
+<td>
+<p>CountUpdateDomains is list of update domain counts for each region.<br />Deprecated: VMSS does not allow specifying update domain count. With the deprecation of Availability Sets, only CountFaultDomains is required.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>countFaultDomains</code></br>
+<em>
+<a href="#domaincount">DomainCount</a> array
+</em>
+</td>
+<td>
+<p>CountFaultDomains is list of fault domain counts for each region.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>machineImages</code></br>
+<em>
+<a href="#machineimages">MachineImages</a> array
+</em>
+</td>
+<td>
+<p>MachineImages is the list of machine images that are understood by the controller. It maps<br />logical names and versions to provider-specific identifiers.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>machineTypes</code></br>
+<em>
+<a href="#machinetype">MachineType</a> array
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MachineTypes is a list of machine types complete with provider specific information.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>cloudConfiguration</code></br>
+<em>
+<a href="#cloudconfiguration">CloudConfiguration</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CloudConfiguration contains config that controls which cloud to connect to.</p>
+</td>
+</tr>
+
+</tbody>
+</table>
+
+
+<h3 id="controlplaneconfig">ControlPlaneConfig
+</h3>
+
+
+<p>
+ControlPlaneConfig contains configuration settings for the control plane.
+</p>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+
+<tr>
+<td>
+<code>cloudControllerManager</code></br>
+<em>
+<a href="#cloudcontrollermanagerconfig">CloudControllerManagerConfig</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CloudControllerManager contains configuration settings for the cloud-controller-manager.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storage</code></br>
+<em>
+<a href="#storage">Storage</a>
+</em>
+</td>
+<td>
+<p>Storage contains configuration for storage in the cluster.</p>
+</td>
+</tr>
+
+</tbody>
+</table>
+
+
+<h3 id="datavolume">DataVolume
+</h3>
+
+
+<p>
+(<em>Appears on:</em><a href="#workerconfig">WorkerConfig</a>)
+</p>
+
+<p>
+DataVolume contains configuration for data volumes attached to VMs.
+</p>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+
 <tr>
 <td>
 <code>name</code></br>
@@ -740,9 +390,7 @@ string
 <td>
 <code>imageRef</code></br>
 <em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.Image">
-Image
-</a>
+<a href="#image">Image</a>
 </em>
 </td>
 <td>
@@ -750,17 +398,23 @@ Image
 <p>ImageRef defines the dataVolume source image.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.DiagnosticsProfile">DiagnosticsProfile
+
+
+<h3 id="diagnosticsprofile">DiagnosticsProfile
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig</a>)
+(<em>Appears on:</em><a href="#workerconfig">WorkerConfig</a>)
 </p>
+
 <p>
-<p>DiagnosticsProfile specifies boot diagnostic options.</p>
+DiagnosticsProfile specifies boot diagnostic options.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -769,11 +423,12 @@ Image
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>enabled</code></br>
 <em>
-bool
+boolean
 </em>
 </td>
 <td>
@@ -788,21 +443,26 @@ string
 </em>
 </td>
 <td>
-<p>StorageURI is the URI of the storage account to use for storing console output and screenshot.
-If not specified azure managed storage will be used.</p>
+<p>StorageURI is the URI of the storage account to use for storing console output and screenshot.<br />If not specified azure managed storage will be used.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.DomainCount">DomainCount
+
+
+<h3 id="domaincount">DomainCount
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.CloudProfileConfig">CloudProfileConfig</a>)
+(<em>Appears on:</em><a href="#cloudprofileconfig">CloudProfileConfig</a>)
 </p>
+
 <p>
-<p>DomainCount defines the region and the count for this domain count value.</p>
+DomainCount defines the region and the count for this domain count value.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -811,6 +471,7 @@ If not specified azure managed storage will be used.</p>
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>region</code></br>
@@ -826,24 +487,30 @@ string
 <td>
 <code>count</code></br>
 <em>
-int32
+integer
 </em>
 </td>
 <td>
 <p>Count is the count value for the respective domain count.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.IdentityConfig">IdentityConfig
+
+
+<h3 id="identityconfig">IdentityConfig
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.InfrastructureConfig">InfrastructureConfig</a>)
+(<em>Appears on:</em><a href="#infrastructureconfig">InfrastructureConfig</a>)
 </p>
+
 <p>
-<p>IdentityConfig contains configuration for the managed identity.</p>
+IdentityConfig contains configuration for the managed identity.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -852,6 +519,7 @@ int32
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>name</code></br>
@@ -878,7 +546,7 @@ string
 <td>
 <code>acrAccess</code></br>
 <em>
-bool
+boolean
 </em>
 </td>
 <td>
@@ -886,17 +554,23 @@ bool
 <p>ACRAccess indicated if the identity should be used by the Shoot worker nodes to pull from an Azure Container Registry.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.IdentityStatus">IdentityStatus
+
+
+<h3 id="identitystatus">IdentityStatus
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.InfrastructureStatus">InfrastructureStatus</a>)
+(<em>Appears on:</em><a href="#infrastructurestatus">InfrastructureStatus</a>)
 </p>
+
 <p>
-<p>IdentityStatus contains the status information of the created managed identity.</p>
+IdentityStatus contains the status information of the created managed identity.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -905,6 +579,7 @@ bool
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>id</code></br>
@@ -931,27 +606,30 @@ string
 <td>
 <code>acrAccess</code></br>
 <em>
-bool
+boolean
 </em>
 </td>
 <td>
 <p>ACRAccess specifies if the identity should be used by the Shoot worker nodes to pull from an Azure Container Registry.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.Image">Image
+
+
+<h3 id="image">Image
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.DataVolume">DataVolume</a>, 
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.MachineImage">MachineImage</a>, 
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.MachineImageFlavor">MachineImageFlavor</a>, 
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.MachineImageVersion">MachineImageVersion</a>)
+(<em>Appears on:</em><a href="#datavolume">DataVolume</a>, <a href="#machineimage">MachineImage</a>, <a href="#machineimageflavor">MachineImageFlavor</a>, <a href="#machineimageversion">MachineImageVersion</a>)
 </p>
+
 <p>
-<p>Image identifies the azure image.</p>
+Image identifies the azure image.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -960,6 +638,7 @@ bool
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>urn</code></br>
@@ -969,7 +648,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>URN is the uniform resource name of the image, it has the format &lsquo;publisher:offer:sku:version&rsquo;.</p>
+<p>URN is the uniform resource name of the image, it has the format 'publisher:offer:sku:version'.</p>
 </td>
 </tr>
 <tr>
@@ -993,7 +672,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>CommunityGalleryImageID is the Community Image Gallery image id, it has the format &lsquo;/CommunityGalleries/myGallery/Images/myImage/Versions/myVersion&rsquo;</p>
+<p>CommunityGalleryImageID is the Community Image Gallery image id, it has the format '/CommunityGalleries/myGallery/Images/myImage/Versions/myVersion'</p>
 </td>
 </tr>
 <tr>
@@ -1005,20 +684,26 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>SharedGalleryImageID is the Shared Image Gallery image id, it has the format &lsquo;/SharedGalleries/sharedGalleryName/Images/sharedGalleryImageName/Versions/sharedGalleryImageVersionName&rsquo;</p>
+<p>SharedGalleryImageID is the Shared Image Gallery image id, it has the format '/SharedGalleries/sharedGalleryName/Images/sharedGalleryImageName/Versions/sharedGalleryImageVersionName'</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.ImmutableConfig">ImmutableConfig
+
+
+<h3 id="immutableconfig">ImmutableConfig
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.BackupBucketConfig">BackupBucketConfig</a>)
+(<em>Appears on:</em><a href="#backupbucketconfig">BackupBucketConfig</a>)
 </p>
+
 <p>
-<p>ImmutableConfig represents the immutability configuration for a backup bucket.</p>
+ImmutableConfig represents the immutability configuration for a backup bucket.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -1027,28 +712,23 @@ string
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>retentionType</code></br>
 <em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.RetentionType">
-RetentionType
-</a>
+<a href="#retentiontype">RetentionType</a>
 </em>
 </td>
 <td>
-<p>RetentionType specifies the type of retention for the backup bucket.
-Currently allowed values are:
-- BucketLevelImmutability: The retention policy applies to the entire bucket.</p>
+<p>RetentionType specifies the type of retention for the backup bucket.<br />Currently allowed values are:<br />- BucketLevelImmutability: The retention policy applies to the entire bucket.</p>
 </td>
 </tr>
 <tr>
 <td>
 <code>retentionPeriod</code></br>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.32/#duration-v1-meta">
-Kubernetes meta/v1.Duration
-</a>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#duration-v1-meta">Duration</a>
 </em>
 </td>
 <td>
@@ -1059,21 +739,26 @@ Kubernetes meta/v1.Duration
 <td>
 <code>locked</code></br>
 <em>
-bool
+boolean
 </em>
 </td>
 <td>
-<p>Locked indicates whether the immutable retention policy is locked for the backup bucket.
-If set to true, the retention policy cannot be removed or the retention period reduced, enforcing immutability.</p>
+<p>Locked indicates whether the immutable retention policy is locked for the backup bucket.<br />If set to true, the retention policy cannot be removed or the retention period reduced, enforcing immutability.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.InfrastructureState">InfrastructureState
+
+
+<h3 id="infrastructureconfig">InfrastructureConfig
 </h3>
+
+
 <p>
-<p>InfrastructureState contains state information of the infrastructure resource.</p>
+InfrastructureConfig infrastructure configuration resource
 </p>
+
 <table>
 <thead>
 <tr>
@@ -1082,11 +767,81 @@ If set to true, the retention policy cannot be removed or the retention period r
 </tr>
 </thead>
 <tbody>
+
+<tr>
+<td>
+<code>resourceGroup</code></br>
+<em>
+<a href="#resourcegroup">ResourceGroup</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ResourceGroup is azure resource group.<br />Deprecated: This feature is no longer supported and will be removed in a future release.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>networks</code></br>
+<em>
+<a href="#networkconfig">NetworkConfig</a>
+</em>
+</td>
+<td>
+<p>Networks is the network configuration (VNet, subnets, etc.).</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>identity</code></br>
+<em>
+<a href="#identityconfig">IdentityConfig</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Identity contains configuration for the assigned managed identity.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>zoned</code></br>
+<em>
+boolean
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Zoned indicates whether the cluster uses availability zones.</p>
+</td>
+</tr>
+
+</tbody>
+</table>
+
+
+<h3 id="infrastructurestate">InfrastructureState
+</h3>
+
+
+<p>
+InfrastructureState contains state information of the infrastructure resource.
+</p>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+
 <tr>
 <td>
 <code>data</code></br>
 <em>
-map[string]string
+object (keys:string, values:string)
 </em>
 </td>
 <td>
@@ -1098,9 +853,7 @@ map[string]string
 <td>
 <code>managedItems</code></br>
 <em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.AzureResource">
-[]AzureResource
-</a>
+<a href="#azureresource">AzureResource</a> array
 </em>
 </td>
 <td>
@@ -1108,13 +861,19 @@ map[string]string
 <p>ManagedItems is a list of resources that were created during the infrastructure reconciliation.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.InfrastructureStatus">InfrastructureStatus
+
+
+<h3 id="infrastructurestatus">InfrastructureStatus
 </h3>
+
+
 <p>
-<p>InfrastructureStatus contains information about created infrastructure resources.</p>
+InfrastructureStatus contains information about created infrastructure resources.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -1123,13 +882,12 @@ map[string]string
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>networks</code></br>
 <em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.NetworkStatus">
-NetworkStatus
-</a>
+<a href="#networkstatus">NetworkStatus</a>
 </em>
 </td>
 <td>
@@ -1140,9 +898,7 @@ NetworkStatus
 <td>
 <code>resourceGroup</code></br>
 <em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.ResourceGroup">
-ResourceGroup
-</a>
+<a href="#resourcegroup">ResourceGroup</a>
 </em>
 </td>
 <td>
@@ -1153,9 +909,7 @@ ResourceGroup
 <td>
 <code>routeTables</code></br>
 <em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.RouteTable">
-[]RouteTable
-</a>
+<a href="#routetable">RouteTable</a> array
 </em>
 </td>
 <td>
@@ -1166,9 +920,7 @@ ResourceGroup
 <td>
 <code>securityGroups</code></br>
 <em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.SecurityGroup">
-[]SecurityGroup
-</a>
+<a href="#securitygroup">SecurityGroup</a> array
 </em>
 </td>
 <td>
@@ -1179,9 +931,7 @@ ResourceGroup
 <td>
 <code>identity</code></br>
 <em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.IdentityStatus">
-IdentityStatus
-</a>
+<a href="#identitystatus">IdentityStatus</a>
 </em>
 </td>
 <td>
@@ -1193,7 +943,7 @@ IdentityStatus
 <td>
 <code>zoned</code></br>
 <em>
-bool
+boolean
 </em>
 </td>
 <td>
@@ -1201,17 +951,23 @@ bool
 <p>Zoned indicates whether the cluster uses zones</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.MachineImage">MachineImage
+
+
+<h3 id="machineimage">MachineImage
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.WorkerStatus">WorkerStatus</a>)
+(<em>Appears on:</em><a href="#workerstatus">WorkerStatus</a>)
 </p>
+
 <p>
-<p>MachineImage is a mapping from logical names and versions to provider-specific machine image data.</p>
+MachineImage is a mapping from logical names and versions to provider-specific machine image data.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -1220,6 +976,7 @@ bool
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>name</code></br>
@@ -1246,7 +1003,7 @@ string
 <td>
 <code>acceleratedNetworking</code></br>
 <em>
-bool
+boolean
 </em>
 </td>
 <td>
@@ -1270,7 +1027,7 @@ string
 <td>
 <code>capabilities</code></br>
 <em>
-github.com/gardener/gardener/pkg/apis/core/v1beta1.Capabilities
+<a href="#capabilities">Capabilities</a>
 </em>
 </td>
 <td>
@@ -1281,7 +1038,7 @@ github.com/gardener/gardener/pkg/apis/core/v1beta1.Capabilities
 <td>
 <code>skipMarketplaceAgreement</code></br>
 <em>
-bool
+boolean
 </em>
 </td>
 <td>
@@ -1291,31 +1048,69 @@ bool
 </tr>
 <tr>
 <td>
-<code>Image</code></br>
+<code>urn</code></br>
 <em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.Image">
-Image
-</a>
+string
 </em>
 </td>
 <td>
-<p>
-(Members of <code>Image</code> are embedded into this type.)
-</p>
-<p>Image identifies the azure image.</p>
+<em>(Optional)</em>
+<p>URN is the uniform resource name of the image, it has the format 'publisher:offer:sku:version'.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>id</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ID is the Shared Image Gallery image id.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>communityGalleryImageID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CommunityGalleryImageID is the Community Image Gallery image id, it has the format '/CommunityGalleries/myGallery/Images/myImage/Versions/myVersion'</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>sharedGalleryImageID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SharedGalleryImageID is the Shared Image Gallery image id, it has the format '/SharedGalleries/sharedGalleryName/Images/sharedGalleryImageName/Versions/sharedGalleryImageVersionName'</p>
+</td>
+</tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.MachineImageFlavor">MachineImageFlavor
+
+
+<h3 id="machineimageflavor">MachineImageFlavor
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.MachineImageVersion">MachineImageVersion</a>)
+(<em>Appears on:</em><a href="#machineimageversion">MachineImageVersion</a>)
 </p>
+
 <p>
-<p>MachineImageFlavor is a flavor of the machine image version that supports a specific set of capabilities.</p>
+MachineImageFlavor is a flavor of the machine image version that supports a specific set of capabilities.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -1324,11 +1119,12 @@ Image
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>skipMarketplaceAgreement</code></br>
 <em>
-bool
+boolean
 </em>
 </td>
 <td>
@@ -1340,7 +1136,7 @@ bool
 <td>
 <code>capabilities</code></br>
 <em>
-github.com/gardener/gardener/pkg/apis/core/v1beta1.Capabilities
+<a href="#capabilities">Capabilities</a>
 </em>
 </td>
 <td>
@@ -1349,31 +1145,69 @@ github.com/gardener/gardener/pkg/apis/core/v1beta1.Capabilities
 </tr>
 <tr>
 <td>
-<code>Image</code></br>
+<code>urn</code></br>
 <em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.Image">
-Image
-</a>
+string
 </em>
 </td>
 <td>
-<p>
-(Members of <code>Image</code> are embedded into this type.)
-</p>
-<p>Image identifies the azure image.</p>
+<em>(Optional)</em>
+<p>URN is the uniform resource name of the image, it has the format 'publisher:offer:sku:version'.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>id</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ID is the Shared Image Gallery image id.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>communityGalleryImageID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CommunityGalleryImageID is the Community Image Gallery image id, it has the format '/CommunityGalleries/myGallery/Images/myImage/Versions/myVersion'</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>sharedGalleryImageID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SharedGalleryImageID is the Shared Image Gallery image id, it has the format '/SharedGalleries/sharedGalleryName/Images/sharedGalleryImageName/Versions/sharedGalleryImageVersionName'</p>
+</td>
+</tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.MachineImageVersion">MachineImageVersion
+
+
+<h3 id="machineimageversion">MachineImageVersion
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.MachineImages">MachineImages</a>)
+(<em>Appears on:</em><a href="#machineimages">MachineImages</a>)
 </p>
+
 <p>
-<p>MachineImageVersion contains a version and a provider-specific identifier.</p>
+MachineImageVersion contains a version and a provider-specific identifier.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -1382,6 +1216,7 @@ Image
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>version</code></br>
@@ -1397,7 +1232,7 @@ string
 <td>
 <code>skipMarketplaceAgreement</code></br>
 <em>
-bool
+boolean
 </em>
 </td>
 <td>
@@ -1409,7 +1244,7 @@ bool
 <td>
 <code>acceleratedNetworking</code></br>
 <em>
-bool
+boolean
 </em>
 </td>
 <td>
@@ -1433,9 +1268,7 @@ string
 <td>
 <code>capabilityFlavors</code></br>
 <em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.MachineImageFlavor">
-[]MachineImageFlavor
-</a>
+<a href="#machineimageflavor">MachineImageFlavor</a> array
 </em>
 </td>
 <td>
@@ -1444,31 +1277,69 @@ string
 </tr>
 <tr>
 <td>
-<code>Image</code></br>
+<code>urn</code></br>
 <em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.Image">
-Image
-</a>
+string
 </em>
 </td>
 <td>
-<p>
-(Members of <code>Image</code> are embedded into this type.)
-</p>
-<p>Image identifies the azure image.</p>
+<em>(Optional)</em>
+<p>URN is the uniform resource name of the image, it has the format 'publisher:offer:sku:version'.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>id</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ID is the Shared Image Gallery image id.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>communityGalleryImageID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CommunityGalleryImageID is the Community Image Gallery image id, it has the format '/CommunityGalleries/myGallery/Images/myImage/Versions/myVersion'</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>sharedGalleryImageID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SharedGalleryImageID is the Shared Image Gallery image id, it has the format '/SharedGalleries/sharedGalleryName/Images/sharedGalleryImageName/Versions/sharedGalleryImageVersionName'</p>
+</td>
+</tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.MachineImages">MachineImages
+
+
+<h3 id="machineimages">MachineImages
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.CloudProfileConfig">CloudProfileConfig</a>)
+(<em>Appears on:</em><a href="#cloudprofileconfig">CloudProfileConfig</a>)
 </p>
+
 <p>
-<p>MachineImages is a mapping from logical names and versions to provider-specific identifiers.</p>
+MachineImages is a mapping from logical names and versions to provider-specific identifiers.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -1477,6 +1348,7 @@ Image
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>name</code></br>
@@ -1492,26 +1364,30 @@ string
 <td>
 <code>versions</code></br>
 <em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.MachineImageVersion">
-[]MachineImageVersion
-</a>
+<a href="#machineimageversion">MachineImageVersion</a> array
 </em>
 </td>
 <td>
 <p>Versions contains versions and a provider-specific identifier.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.MachineType">MachineType
+
+
+<h3 id="machinetype">MachineType
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.CloudProfileConfig">CloudProfileConfig</a>)
+(<em>Appears on:</em><a href="#cloudprofileconfig">CloudProfileConfig</a>)
 </p>
+
 <p>
-<p>MachineType contains provider specific information to a machine type.</p>
+MachineType contains provider specific information to a machine type.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -1520,6 +1396,7 @@ string
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>name</code></br>
@@ -1535,7 +1412,7 @@ string
 <td>
 <code>acceleratedNetworking</code></br>
 <em>
-bool
+boolean
 </em>
 </td>
 <td>
@@ -1543,17 +1420,23 @@ bool
 <p>AcceleratedNetworking is an indicator if the machine type supports Azure accelerated networking.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.NatGatewayConfig">NatGatewayConfig
+
+
+<h3 id="natgatewayconfig">NatGatewayConfig
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.NetworkConfig">NetworkConfig</a>)
+(<em>Appears on:</em><a href="#networkconfig">NetworkConfig</a>)
 </p>
+
 <p>
-<p>NatGatewayConfig contains configuration for the NAT gateway and the attached resources.</p>
+NatGatewayConfig contains configuration for the NAT gateway and the attached resources.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -1562,11 +1445,12 @@ bool
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>enabled</code></br>
 <em>
-bool
+boolean
 </em>
 </td>
 <td>
@@ -1577,7 +1461,7 @@ bool
 <td>
 <code>idleConnectionTimeoutMinutes</code></br>
 <em>
-int32
+integer
 </em>
 </td>
 <td>
@@ -1589,7 +1473,7 @@ int32
 <td>
 <code>zone</code></br>
 <em>
-int32
+integer
 </em>
 </td>
 <td>
@@ -1606,20 +1490,14 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>SKU specifies the SKU of the NAT gateway.
-Supported values: &ldquo;Standard&rdquo;, &ldquo;StandardV2&rdquo;
-StandardV2 is zone-redundant and cannot be used with the Zone field.
-IP addresses can be used with StandardV2, but they must also be zone-redundant (no zone specification).
-If not specified, defaults to &ldquo;Standard&rdquo; for backward compatibility.</p>
+<p>SKU specifies the SKU of the NAT gateway.<br />Supported values: "Standard", "StandardV2"<br />StandardV2 is zone-redundant and cannot be used with the Zone field.<br />IP addresses can be used with StandardV2, but they must also be zone-redundant (no zone specification).<br />If not specified, defaults to "Standard" for backward compatibility.</p>
 </td>
 </tr>
 <tr>
 <td>
 <code>ipAddresses</code></br>
 <em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.PublicIPReference">
-[]PublicIPReference
-</a>
+<a href="#publicipreference">PublicIPReference</a> array
 </em>
 </td>
 <td>
@@ -1627,17 +1505,23 @@ If not specified, defaults to &ldquo;Standard&rdquo; for backward compatibility.
 <p>IPAddresses is a list of ip addresses which should be assigned to the NAT gateway.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.NetworkConfig">NetworkConfig
+
+
+<h3 id="networkconfig">NetworkConfig
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.InfrastructureConfig">InfrastructureConfig</a>)
+(<em>Appears on:</em><a href="#infrastructureconfig">InfrastructureConfig</a>)
 </p>
+
 <p>
-<p>NetworkConfig holds information about the Kubernetes and infrastructure networks.</p>
+NetworkConfig holds information about the Kubernetes and infrastructure networks.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -1646,13 +1530,12 @@ If not specified, defaults to &ldquo;Standard&rdquo; for backward compatibility.
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>vnet</code></br>
 <em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.VNet">
-VNet
-</a>
+<a href="#vnet">VNet</a>
 </em>
 </td>
 <td>
@@ -1675,9 +1558,7 @@ string
 <td>
 <code>natGateway</code></br>
 <em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.NatGatewayConfig">
-NatGatewayConfig
-</a>
+<a href="#natgatewayconfig">NatGatewayConfig</a>
 </em>
 </td>
 <td>
@@ -1689,7 +1570,7 @@ NatGatewayConfig
 <td>
 <code>serviceEndpoints</code></br>
 <em>
-[]string
+string array
 </em>
 </td>
 <td>
@@ -1701,35 +1582,44 @@ NatGatewayConfig
 <td>
 <code>zones</code></br>
 <em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.Zone">
-[]Zone
-</a>
+<a href="#zone">Zone</a> array
 </em>
 </td>
 <td>
 <p>Zones is a list of zones with their respective configuration.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.NetworkLayout">NetworkLayout
-(<code>string</code> alias)</p></h3>
-<p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.NetworkStatus">NetworkStatus</a>)
-</p>
-<p>
-<p>NetworkLayout is the network layout type for the cluster.</p>
-</p>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.NetworkStatus">NetworkStatus
+
+
+<h3 id="networklayout">NetworkLayout
 </h3>
+<p><em>Underlying type: string</em></p>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.InfrastructureStatus">InfrastructureStatus</a>)
+(<em>Appears on:</em><a href="#networkstatus">NetworkStatus</a>)
 </p>
+
 <p>
-<p>NetworkStatus is the current status of the infrastructure networks.</p>
+NetworkLayout is the network layout type for the cluster.
 </p>
+
+
+<h3 id="networkstatus">NetworkStatus
+</h3>
+
+
+<p>
+(<em>Appears on:</em><a href="#infrastructurestatus">InfrastructureStatus</a>)
+</p>
+
+<p>
+NetworkStatus is the current status of the infrastructure networks.
+</p>
+
 <table>
 <thead>
 <tr>
@@ -1738,13 +1628,12 @@ NatGatewayConfig
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>vnet</code></br>
 <em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.VNetStatus">
-VNetStatus
-</a>
+<a href="#vnetstatus">VNetStatus</a>
 </em>
 </td>
 <td>
@@ -1755,9 +1644,7 @@ VNetStatus
 <td>
 <code>subnets</code></br>
 <em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.Subnet">
-[]Subnet
-</a>
+<a href="#subnet">Subnet</a> array
 </em>
 </td>
 <td>
@@ -1768,9 +1655,7 @@ VNetStatus
 <td>
 <code>layout</code></br>
 <em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.NetworkLayout">
-NetworkLayout
-</a>
+<a href="#networklayout">NetworkLayout</a>
 </em>
 </td>
 <td>
@@ -1781,36 +1666,45 @@ NetworkLayout
 <td>
 <code>outboundAccessType</code></br>
 <em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.OutboundAccessType">
-OutboundAccessType
-</a>
+<a href="#outboundaccesstype">OutboundAccessType</a>
 </em>
 </td>
 <td>
 <p>OutboundAccessType is the type of outbound access configured for the shoot. It indicates how egress traffic flows outside the shoot.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.OutboundAccessType">OutboundAccessType
-(<code>string</code> alias)</p></h3>
-<p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.NetworkStatus">NetworkStatus</a>)
-</p>
-<p>
-<p>OutboundAccessType is the type of outbound access configured for the shoot. It indicates how egress traffic flows outside the shoot.
-See <a href="https://learn.microsoft.com/en-us/azure/load-balancer/load-balancer-outbound-connections#scenarios">https://learn.microsoft.com/en-us/azure/load-balancer/load-balancer-outbound-connections#scenarios</a></p>
-</p>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.PublicIPReference">PublicIPReference
+
+
+<h3 id="outboundaccesstype">OutboundAccessType
 </h3>
+<p><em>Underlying type: string</em></p>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.NatGatewayConfig">NatGatewayConfig</a>)
+(<em>Appears on:</em><a href="#networkstatus">NetworkStatus</a>)
 </p>
+
 <p>
-<p>PublicIPReference contains information about a public ip.</p>
+OutboundAccessType is the type of outbound access configured for the shoot. It indicates how egress traffic flows outside the shoot.
+See https://learn.microsoft.com/en-us/azure/load-balancer/load-balancer-outbound-connections#scenarios
 </p>
+
+
+<h3 id="publicipreference">PublicIPReference
+</h3>
+
+
+<p>
+(<em>Appears on:</em><a href="#natgatewayconfig">NatGatewayConfig</a>)
+</p>
+
+<p>
+PublicIPReference contains information about a public ip.
+</p>
+
 <table>
 <thead>
 <tr>
@@ -1819,6 +1713,7 @@ See <a href="https://learn.microsoft.com/en-us/azure/load-balancer/load-balancer
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>name</code></br>
@@ -1845,7 +1740,7 @@ string
 <td>
 <code>zone</code></br>
 <em>
-int32
+integer
 </em>
 </td>
 <td>
@@ -1853,29 +1748,37 @@ int32
 <p>Zone is the zone in which the public ip is deployed to.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.Purpose">Purpose
-(<code>string</code> alias)</p></h3>
-<p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.RouteTable">RouteTable</a>, 
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.SecurityGroup">SecurityGroup</a>, 
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.Subnet">Subnet</a>)
-</p>
-<p>
-<p>Purpose is a purpose of a subnet.</p>
-</p>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.ResourceGroup">ResourceGroup
+
+
+<h3 id="purpose">Purpose
 </h3>
+<p><em>Underlying type: string</em></p>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.InfrastructureConfig">InfrastructureConfig</a>, 
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.InfrastructureStatus">InfrastructureStatus</a>)
+(<em>Appears on:</em><a href="#routetable">RouteTable</a>, <a href="#securitygroup">SecurityGroup</a>, <a href="#subnet">Subnet</a>)
 </p>
+
 <p>
-<p>ResourceGroup is azure resource group</p>
+Purpose is a purpose of a subnet.
 </p>
+
+
+<h3 id="resourcegroup">ResourceGroup
+</h3>
+
+
+<p>
+(<em>Appears on:</em><a href="#infrastructureconfig">InfrastructureConfig</a>, <a href="#infrastructurestatus">InfrastructureStatus</a>)
+</p>
+
+<p>
+ResourceGroup is azure resource group
+</p>
+
 <table>
 <thead>
 <tr>
@@ -1884,6 +1787,7 @@ int32
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>name</code></br>
@@ -1895,26 +1799,37 @@ string
 <p>Name is the name of the resource group</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.RetentionType">RetentionType
-(<code>string</code> alias)</p></h3>
-<p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.ImmutableConfig">ImmutableConfig</a>)
-</p>
-<p>
-<p>RetentionType defines the level at which immutability properties are obtained by objects</p>
-</p>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.RotationConfig">RotationConfig
+
+
+<h3 id="retentiontype">RetentionType
 </h3>
+<p><em>Underlying type: string</em></p>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.BackupBucketConfig">BackupBucketConfig</a>)
+(<em>Appears on:</em><a href="#immutableconfig">ImmutableConfig</a>)
 </p>
+
 <p>
-<p>RotationConfig controls the behavior for the rotation of storage account keys.</p>
+RetentionType defines the level at which immutability properties are obtained by objects
 </p>
+
+
+<h3 id="rotationconfig">RotationConfig
+</h3>
+
+
+<p>
+(<em>Appears on:</em><a href="#backupbucketconfig">BackupBucketConfig</a>)
+</p>
+
+<p>
+RotationConfig controls the behavior for the rotation of storage account keys.
+</p>
+
 <table>
 <thead>
 <tr>
@@ -1923,11 +1838,12 @@ string
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>rotationPeriodDays</code></br>
 <em>
-int32
+integer
 </em>
 </td>
 <td>
@@ -1938,24 +1854,30 @@ int32
 <td>
 <code>expirationPeriodDays</code></br>
 <em>
-int32
+integer
 </em>
 </td>
 <td>
-<p>ExpirationPeriod sets the policy on the storage account to expire stale storage account keys. Can only be configured if <code>rotationPeriod</code> is configured.</p>
+<p>ExpirationPeriod sets the policy on the storage account to expire stale storage account keys. Can only be configured if `rotationPeriod` is configured.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.RouteTable">RouteTable
+
+
+<h3 id="routetable">RouteTable
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.InfrastructureStatus">InfrastructureStatus</a>)
+(<em>Appears on:</em><a href="#infrastructurestatus">InfrastructureStatus</a>)
 </p>
+
 <p>
-<p>RouteTable is the azure route table</p>
+RouteTable is the azure route table
 </p>
+
 <table>
 <thead>
 <tr>
@@ -1964,13 +1886,12 @@ int32
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>purpose</code></br>
 <em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.Purpose">
-Purpose
-</a>
+<a href="#purpose">Purpose</a>
 </em>
 </td>
 <td>
@@ -1988,17 +1909,23 @@ string
 <p>Name is the name of the route table</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.SecurityGroup">SecurityGroup
+
+
+<h3 id="securitygroup">SecurityGroup
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.InfrastructureStatus">InfrastructureStatus</a>)
+(<em>Appears on:</em><a href="#infrastructurestatus">InfrastructureStatus</a>)
 </p>
+
 <p>
-<p>SecurityGroup contains information about the security group</p>
+SecurityGroup contains information about the security group
 </p>
+
 <table>
 <thead>
 <tr>
@@ -2007,13 +1934,12 @@ string
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>purpose</code></br>
 <em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.Purpose">
-Purpose
-</a>
+<a href="#purpose">Purpose</a>
 </em>
 </td>
 <td>
@@ -2031,17 +1957,23 @@ string
 <p>Name is the name of the security group</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.Storage">Storage
+
+
+<h3 id="storage">Storage
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.ControlPlaneConfig">ControlPlaneConfig</a>)
+(<em>Appears on:</em><a href="#controlplaneconfig">ControlPlaneConfig</a>)
 </p>
+
 <p>
-<p>Storage contains configuration for storage in the cluster.</p>
+Storage contains configuration for storage in the cluster.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -2050,45 +1982,48 @@ string
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>managedDefaultStorageClass</code></br>
 <em>
-bool
+boolean
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>ManagedDefaultStorageClass controls if the &lsquo;default&rsquo; StorageClass would be marked as default. Set to false to
-manually set the default to another class not managed by Gardener.
-Defaults to true.</p>
+<p>ManagedDefaultStorageClass controls if the 'default' StorageClass would be marked as default. Set to false to<br />manually set the default to another class not managed by Gardener.<br />Defaults to true.</p>
 </td>
 </tr>
 <tr>
 <td>
 <code>managedDefaultVolumeSnapshotClass</code></br>
 <em>
-bool
+boolean
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>ManagedDefaultVolumeSnapshotClass controls if the &lsquo;default&rsquo; VolumeSnapshotClass would be marked as default.
-Set to false to manually set the default to another class not managed by Gardener.
-Defaults to true.</p>
+<p>ManagedDefaultVolumeSnapshotClass controls if the 'default' VolumeSnapshotClass would be marked as default.<br />Set to false to manually set the default to another class not managed by Gardener.<br />Defaults to true.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.Subnet">Subnet
+
+
+<h3 id="subnet">Subnet
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.NetworkStatus">NetworkStatus</a>)
+(<em>Appears on:</em><a href="#networkstatus">NetworkStatus</a>)
 </p>
+
 <p>
-<p>Subnet is a subnet that was created.</p>
+Subnet is a subnet that was created.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -2097,6 +2032,7 @@ Defaults to true.</p>
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>name</code></br>
@@ -2112,9 +2048,7 @@ string
 <td>
 <code>purpose</code></br>
 <em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.Purpose">
-Purpose
-</a>
+<a href="#purpose">Purpose</a>
 </em>
 </td>
 <td>
@@ -2137,12 +2071,11 @@ string
 <td>
 <code>migrated</code></br>
 <em>
-bool
+boolean
 </em>
 </td>
 <td>
-<p>Migrated is set when the network layout is migrated from NetworkLayoutSingleSubnet to NetworkLayoutMultipleSubnet.
-Only the subnet that was used prior to the migration should have this attribute set.</p>
+<p>Migrated is set when the network layout is migrated from NetworkLayoutSingleSubnet to NetworkLayoutMultipleSubnet.<br />Only the subnet that was used prior to the migration should have this attribute set.</p>
 </td>
 </tr>
 <tr>
@@ -2157,17 +2090,23 @@ string
 <p>NatGatewayID is the ID of the NATGateway associated with the subnet.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.VNet">VNet
+
+
+<h3 id="vnet">VNet
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.NetworkConfig">NetworkConfig</a>)
+(<em>Appears on:</em><a href="#networkconfig">NetworkConfig</a>)
 </p>
+
 <p>
-<p>VNet contains information about the VNet and some related resources.</p>
+VNet contains information about the VNet and some related resources.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -2176,6 +2115,7 @@ string
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>name</code></br>
@@ -2224,17 +2164,23 @@ string
 <p>DDosProtectionPlanID is the id of a ddos protection plan assigned to the vnet.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.VNetStatus">VNetStatus
+
+
+<h3 id="vnetstatus">VNetStatus
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.NetworkStatus">NetworkStatus</a>)
+(<em>Appears on:</em><a href="#networkstatus">NetworkStatus</a>)
 </p>
+
 <p>
-<p>VNetStatus contains the VNet name.</p>
+VNetStatus contains the VNet name.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -2243,6 +2189,7 @@ string
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>name</code></br>
@@ -2266,17 +2213,23 @@ string
 <p>ResourceGroup is the resource group where the existing vNet belongs to.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.VmoDependency">VmoDependency
+
+
+<h3 id="vmodependency">VmoDependency
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.WorkerStatus">WorkerStatus</a>)
+(<em>Appears on:</em><a href="#workerstatus">WorkerStatus</a>)
 </p>
+
 <p>
-<p>VmoDependency is dependency reference for a workerpool to a VirtualMachineScaleSet Orchestration Mode VM (VMO).</p>
+VmoDependency is dependency reference for a workerpool to a VirtualMachineScaleSet Orchestration Mode VM (VMO).
 </p>
+
 <table>
 <thead>
 <tr>
@@ -2285,6 +2238,7 @@ string
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>poolName</code></br>
@@ -2318,17 +2272,23 @@ string
 <p>Name is the name of the VMO resource on Azure.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.Volume">Volume
+
+
+<h3 id="volume">Volume
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.WorkerConfig">WorkerConfig</a>)
+(<em>Appears on:</em><a href="#workerconfig">WorkerConfig</a>)
 </p>
+
 <p>
-<p>Volume contains configuration for the root disk of a VM.</p>
+Volume contains configuration for the root disk of a VM.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -2337,6 +2297,7 @@ string
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>caching</code></br>
@@ -2346,21 +2307,22 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Caching specifies the caching type for the OS disk.
-Valid values are &lsquo;None&rsquo;, &lsquo;ReadOnly&rsquo;, and &lsquo;ReadWrite&rsquo;.</p>
+<p>Caching specifies the caching type for the OS disk.<br />Valid values are 'None', 'ReadOnly', and 'ReadWrite'.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.Zone">Zone
+
+
+<h3 id="workerconfig">WorkerConfig
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.NetworkConfig">NetworkConfig</a>)
+WorkerConfig contains configuration settings for the worker nodes.
 </p>
-<p>
-<p>Zone describes the configuration for a subnet that is used for VMs on that region.</p>
-</p>
+
 <table>
 <thead>
 <tr>
@@ -2369,11 +2331,199 @@ Valid values are &lsquo;None&rsquo;, &lsquo;ReadOnly&rsquo;, and &lsquo;ReadWrit
 </tr>
 </thead>
 <tbody>
+
+<tr>
+<td>
+<code>nodeTemplate</code></br>
+<em>
+<a href="#nodetemplate">NodeTemplate</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>NodeTemplate contains resource information of the machine which is used by Cluster Autoscaler to generate nodeTemplate during scaling a nodeGroup from zero.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>diagnosticsProfile</code></br>
+<em>
+<a href="#diagnosticsprofile">DiagnosticsProfile</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DiagnosticsProfile specifies boot diagnostic options.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>volume</code></br>
+<em>
+<a href="#volume">Volume</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Volume contains configuration for the root (OS) disk of a VM.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dataVolumes</code></br>
+<em>
+<a href="#datavolume">DataVolume</a> array
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DataVolumes contains configuration for the additional disks attached to VMs.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>capacityReservation</code></br>
+<em>
+<a href="#capacityreservation">CapacityReservation</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CapacityReservation represents the configuration for capacity reservations on Azure.</p>
+</td>
+</tr>
+
+</tbody>
+</table>
+
+
+<h3 id="workerstatus">WorkerStatus
+</h3>
+
+
+<p>
+WorkerStatus contains information about created worker resources.
+</p>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+
+<tr>
+<td>
+<code>machineImages</code></br>
+<em>
+<a href="#machineimage">MachineImage</a> array
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MachineImages is a list of machine images that have been used in this worker. Usually, the extension controller<br />gets the mapping from name/version to the provider-specific machine image data in its componentconfig. However, if<br />a version that is still in use gets removed from this componentconfig it cannot reconcile anymore existing `Worker`<br />resources that are still using this version. Hence, it stores the used versions in the provider status to ensure<br />reconciliation is possible.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>vmoDependencies</code></br>
+<em>
+<a href="#vmodependency">VmoDependency</a> array
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>VmoDependencies is a list of external VirtualMachineScaleSet Orchestration Mode VM (VMO) dependencies.</p>
+</td>
+</tr>
+
+</tbody>
+</table>
+
+
+<h3 id="workloadidentityconfig">WorkloadIdentityConfig
+</h3>
+
+
+<p>
+WorkloadIdentityConfig contains configuration settings for workload identity.
+</p>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+
+<tr>
+<td>
+<code>clientID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>ClientID is the ID of the Azure client.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tenantID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>TenantID is the ID of the Azure tenant.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>subscriptionID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>SubscriptionID is the ID of the subscription.</p>
+</td>
+</tr>
+
+</tbody>
+</table>
+
+
+<h3 id="zone">Zone
+</h3>
+
+
+<p>
+(<em>Appears on:</em><a href="#networkconfig">NetworkConfig</a>)
+</p>
+
+<p>
+Zone describes the configuration for a subnet that is used for VMs on that region.
+</p>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+
 <tr>
 <td>
 <code>name</code></br>
 <em>
-int32
+integer
 </em>
 </td>
 <td>
@@ -2388,28 +2538,26 @@ string
 </em>
 </td>
 <td>
-<p>CIDR is the CIDR range used for the zone&rsquo;s subnet.</p>
+<p>CIDR is the CIDR range used for the zone's subnet.</p>
 </td>
 </tr>
 <tr>
 <td>
 <code>serviceEndpoints</code></br>
 <em>
-[]string
+string array
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>ServiceEndpoints is a list of Azure ServiceEndpoints which should be associated with the zone&rsquo;s subnet.</p>
+<p>ServiceEndpoints is a list of Azure ServiceEndpoints which should be associated with the zone's subnet.</p>
 </td>
 </tr>
 <tr>
 <td>
 <code>natGateway</code></br>
 <em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.ZonedNatGatewayConfig">
-ZonedNatGatewayConfig
-</a>
+<a href="#zonednatgatewayconfig">ZonedNatGatewayConfig</a>
 </em>
 </td>
 <td>
@@ -2417,17 +2565,23 @@ ZonedNatGatewayConfig
 <p>NatGateway contains the configuration for the NatGateway associated with this subnet.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.ZonedNatGatewayConfig">ZonedNatGatewayConfig
+
+
+<h3 id="zonednatgatewayconfig">ZonedNatGatewayConfig
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.Zone">Zone</a>)
+(<em>Appears on:</em><a href="#zone">Zone</a>)
 </p>
+
 <p>
-<p>ZonedNatGatewayConfig contains configuration for NAT gateway and the attached resources.</p>
+ZonedNatGatewayConfig contains configuration for NAT gateway and the attached resources.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -2436,11 +2590,12 @@ ZonedNatGatewayConfig
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>enabled</code></br>
 <em>
-bool
+boolean
 </em>
 </td>
 <td>
@@ -2451,7 +2606,7 @@ bool
 <td>
 <code>idleConnectionTimeoutMinutes</code></br>
 <em>
-int32
+integer
 </em>
 </td>
 <td>
@@ -2468,20 +2623,14 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>SKU specifies the SKU of the NAT gateway.
-Supported values: &ldquo;Standard&rdquo;
-StandardV2 NAT Gateway is zone-redundant and can only be configured at the network level
-(spec.networks.natGateway), not per-zone.
-If not specified, defaults to &ldquo;Standard&rdquo;.</p>
+<p>SKU specifies the SKU of the NAT gateway.<br />Supported values: "Standard"<br />StandardV2 NAT Gateway is zone-redundant and can only be configured at the network level<br />(spec.networks.natGateway), not per-zone.<br />If not specified, defaults to "Standard".</p>
 </td>
 </tr>
 <tr>
 <td>
 <code>ipAddresses</code></br>
 <em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.ZonedPublicIPReference">
-[]ZonedPublicIPReference
-</a>
+<a href="#zonedpublicipreference">ZonedPublicIPReference</a> array
 </em>
 </td>
 <td>
@@ -2489,17 +2638,23 @@ If not specified, defaults to &ldquo;Standard&rdquo;.</p>
 <p>IPAddresses is a list of ip addresses which should be assigned to the NAT gateway.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<h3 id="azure.provider.extensions.gardener.cloud/v1alpha1.ZonedPublicIPReference">ZonedPublicIPReference
+
+
+<h3 id="zonedpublicipreference">ZonedPublicIPReference
 </h3>
+
+
 <p>
-(<em>Appears on:</em>
-<a href="#azure.provider.extensions.gardener.cloud/v1alpha1.ZonedNatGatewayConfig">ZonedNatGatewayConfig</a>)
+(<em>Appears on:</em><a href="#zonednatgatewayconfig">ZonedNatGatewayConfig</a>)
 </p>
+
 <p>
-<p>ZonedPublicIPReference contains information about a public ip.</p>
+ZonedPublicIPReference contains information about a public ip.
 </p>
+
 <table>
 <thead>
 <tr>
@@ -2508,6 +2663,7 @@ If not specified, defaults to &ldquo;Standard&rdquo;.</p>
 </tr>
 </thead>
 <tbody>
+
 <tr>
 <td>
 <code>name</code></br>
@@ -2530,9 +2686,8 @@ string
 <p>ResourceGroup is the name of the resource group where the public ip is assigned to.</p>
 </td>
 </tr>
+
 </tbody>
 </table>
-<hr/>
-<p><em>
-Generated with <a href="https://github.com/ahmetb/gen-crd-api-reference-docs">gen-crd-api-reference-docs</a>
-</em></p>
+
+

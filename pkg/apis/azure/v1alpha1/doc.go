@@ -7,7 +7,7 @@
 // +k8s:openapi-gen=true
 // +k8s:defaulter-gen=TypeMeta
 
-//go:generate gen-crd-api-reference-docs -api-dir . -config ../../../../hack/api-reference/api.json -template-dir $GARDENER_HACK_DIR/api-reference/template -out-file ../../../../hack/api-reference/api.md
+//go:generate crd-ref-docs --source-path=. --config ../../../../hack/api-reference/api.json --renderer=markdown --templates-dir $GARDENER_HACK_DIR/api-reference/template --output-path ../../../../hack/api-reference/api.md --log-level=ERROR
 
 // Package v1alpha1 contains the Azure provider API resources.
 // +groupName=azure.provider.extensions.gardener.cloud
