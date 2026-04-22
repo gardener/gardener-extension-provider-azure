@@ -74,6 +74,7 @@ images:
       availability_requirement: low
     signing: false
   targetVersion: 1.34.x
+# max-supported-k8s
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/v2/kubernetes/azure-cloud-controller-manager
@@ -164,6 +165,7 @@ images:
       availability_requirement: low
     signing: false
   targetVersion: 1.34.x
+# max-supported-k8s
 - name: cloud-node-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/v2/kubernetes/azure-cloud-node-manager
