@@ -13,7 +13,9 @@ import (
 	gardencorehelper "github.com/gardener/gardener/pkg/api/core/helper"
 	"github.com/gardener/gardener/pkg/apis/core"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	securityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
 	"github.com/gardener/gardener/pkg/utils/gardener"
+	"github.com/gardener/gardener/pkg/utils/kubernetes"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -204,25 +206,60 @@ func (s *shoot) validateDNS(ctx context.Context, shoot *core.Shoot) field.ErrorL
 
 		providerFldPath := providersPath.Index(i)
 
-		if p.SecretName == nil || *p.SecretName == "" {
-			allErrs = append(allErrs, field.Required(providerFldPath.Child("secretName"),
-				fmt.Sprintf("secretName must be specified for %v provider", azure.DNSType)))
-			continue
-		}
+		// TODO(vpnachev): Enable this validation once the extension does not support github.com/gardener/gardener < v1.135.0
+		// if p.CredentialsRef == nil {
+		// 	allErrs = append(allErrs, field.Required(providerFldPath.Child("credentialsRef"), "must be set"))
+		// }
 
-		secret := &corev1.Secret{}
-		key := client.ObjectKey{Namespace: shoot.Namespace, Name: *p.SecretName}
-		if err := s.apiReader.Get(ctx, key, secret); err != nil {
-			if apierrors.IsNotFound(err) {
-				allErrs = append(allErrs, field.Invalid(providerFldPath.Child("secretName"),
-					*p.SecretName, "referenced secret not found"))
-			} else {
-				allErrs = append(allErrs, field.InternalError(providerFldPath.Child("secretName"), err))
+		if p.CredentialsRef != nil {
+			credentialsFldPath := providerFldPath.Child("credentialsRef")
+
+			credentials, err := kubernetes.GetCredentialsByCrossVersionObjectReference(ctx, s.apiReader, *p.CredentialsRef, shoot.GetNamespace())
+			if err != nil {
+				if apierrors.IsNotFound(err) {
+					allErrs = append(allErrs, field.NotFound(credentialsFldPath, p.CredentialsRef.String()))
+				} else {
+					allErrs = append(allErrs, field.InternalError(credentialsFldPath, err))
+				}
+				continue
 			}
-			continue
-		}
 
-		allErrs = append(allErrs, azurevalidation.ValidateDNSProviderSecret(secret, providerFldPath)...)
+			switch creds := credentials.(type) {
+			case *securityv1alpha1.WorkloadIdentity:
+				if err := ValidateWorkloadIdentity(creds, nil); err != nil {
+					allErrs = append(allErrs, field.Invalid(credentialsFldPath, p.CredentialsRef.String(), err.Error()))
+				}
+			case *corev1.Secret:
+				if errList := azurevalidation.ValidateDNSProviderSecret(creds, field.NewPath("secret")); len(errList) != 0 {
+					allErrs = append(allErrs, field.Invalid(credentialsFldPath, p.CredentialsRef.String(), errList.ToAggregate().Error()))
+				}
+			default:
+				allErrs = append(allErrs, field.Invalid(credentialsFldPath, p.CredentialsRef.String(), "supported credentials types are Secret and WorkloadIdentity"))
+			}
+		} else { // TODO(vpnachev): Remove the else block once the extension does not support github.com/gardener/gardener < v1.135.0
+			secretNameFldPath := providerFldPath.Child("secretName")
+			if p.SecretName == nil || *p.SecretName == "" {
+				allErrs = append(allErrs, field.Required(secretNameFldPath,
+					fmt.Sprintf("secretName must be specified for %v provider", azure.DNSType)))
+				continue
+			}
+
+			secret := &corev1.Secret{}
+			key := client.ObjectKey{Namespace: shoot.Namespace, Name: *p.SecretName}
+			if err := s.apiReader.Get(ctx, key, secret); err != nil {
+				if apierrors.IsNotFound(err) {
+					allErrs = append(allErrs, field.Invalid(secretNameFldPath,
+						*p.SecretName, "referenced secret not found"))
+				} else {
+					allErrs = append(allErrs, field.InternalError(secretNameFldPath, err))
+				}
+				continue
+			}
+
+			if errList := azurevalidation.ValidateDNSProviderSecret(secret, field.NewPath("secret")); len(errList) != 0 {
+				allErrs = append(allErrs, field.Invalid(secretNameFldPath, *p.SecretName, errList.ToAggregate().Error()))
+			}
+		}
 	}
 
 	return allErrs

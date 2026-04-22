@@ -11,12 +11,14 @@ import (
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	"github.com/gardener/gardener/pkg/apis/core"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	securityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
 	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
 	mockmanager "github.com/gardener/gardener/third_party/mock/controller-runtime/manager"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	"go.uber.org/mock/gomock"
+	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -278,173 +280,424 @@ var _ = Describe("Shoot validator", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			It("should return error when azure-dns provider has no secretName", func() {
-				c.EXPECT().Get(ctx, cloudProfileKey, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
-				shoot.Spec.DNS = &core.DNS{
-					Providers: []core.DNSProvider{
-						{Type: ptr.To(azure.DNSType), Primary: ptr.To(true)}, // secretName missing
-					},
-				}
+			Context("Shoot with custom DNS provider", func() {
+				BeforeEach(func() {
+					c.EXPECT().Get(ctx, cloudProfileKey, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
+				})
 
-				err := shootValidator.Validate(ctx, shoot, nil)
-				Expect(err).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Type":  Equal(field.ErrorTypeRequired),
-					"Field": Equal("spec.dns.providers[0].secretName"),
-				}))))
-			})
+				Context("#secretName", func() {
+					It("should return error when azure-dns provider has no secretName", func() {
+						shoot.Spec.DNS = &core.DNS{
+							Providers: []core.DNSProvider{
+								{Type: ptr.To(azure.DNSType), Primary: ptr.To(true)}, // secretName missing
+							},
+						}
 
-			It("should return error when azure-dns provider secret not found", func() {
-				c.EXPECT().Get(ctx, cloudProfileKey, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
-				shoot.Spec.DNS = &core.DNS{
-					Providers: []core.DNSProvider{
-						{Type: ptr.To(azure.DNSType), SecretName: ptr.To("dns-secret"), Primary: ptr.To(true)},
-					},
-				}
-				reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "dns-secret"},
-					&corev1.Secret{}).
-					Return(apierrors.NewNotFound(schema.GroupResource{Resource: "secrets"}, "dns-secret"))
-
-				err := shootValidator.Validate(ctx, shoot, nil)
-				Expect(err).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Type":  Equal(field.ErrorTypeInvalid),
-					"Field": Equal("spec.dns.providers[0].secretName"),
-				}))))
-			})
-
-			It("should return error when azure-dns secret is invalid (missing subscriptionID)", func() {
-				c.EXPECT().Get(ctx, cloudProfileKey, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
-				shoot.Spec.DNS = &core.DNS{
-					Providers: []core.DNSProvider{
-						{Type: ptr.To(azure.DNSType), SecretName: ptr.To("dns-secret"), Primary: ptr.To(true)},
-					},
-				}
-				invalidSecret := &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Name: "dns-secret", Namespace: namespace},
-					Data: map[string][]byte{
-						azure.DNSTenantIDKey:     []byte("ee16e593-3035-41b9-a217-958f8f75b750"),
-						azure.DNSClientIDKey:     []byte("7fc4685e-3c33-40e6-b6bf-7857cab04390"),
-						azure.DNSClientSecretKey: []byte("secret"),
-					},
-				}
-				reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "dns-secret"},
-					&corev1.Secret{}).
-					SetArg(2, *invalidSecret).
-					Return(nil)
-
-				err := shootValidator.Validate(ctx, shoot, nil)
-				Expect(err).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Type":  Equal(field.ErrorTypeRequired),
-					"Field": Equal("spec.dns.providers[0].data[AZURE_SUBSCRIPTION_ID]"),
-				}))))
-			})
-
-			It("should succeed with valid azure-dns provider secret", func() {
-				c.EXPECT().Get(ctx, cloudProfileKey, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
-				shoot.Spec.DNS = &core.DNS{
-					Providers: []core.DNSProvider{
-						{Type: ptr.To(azure.DNSType), SecretName: ptr.To("dns-secret"), Primary: ptr.To(true)},
-					},
-				}
-				validSecret := &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Name: "dns-secret", Namespace: namespace},
-					Data: map[string][]byte{
-						azure.DNSSubscriptionIDKey: []byte("a6ad693a-028a-422c-b064-d76a4586f2b3"),
-						azure.DNSTenantIDKey:       []byte("ee16e593-3035-41b9-a217-958f8f75b750"),
-						azure.DNSClientIDKey:       []byte("7fc4685e-3c33-40e6-b6bf-7857cab04390"),
-						azure.DNSClientSecretKey:   []byte("secret"),
-					},
-				}
-				reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "dns-secret"},
-					&corev1.Secret{}).
-					DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *corev1.Secret, _ ...client.GetOption) error {
-						*obj = *validSecret
-						return nil
+						Expect(shootValidator.Validate(ctx, shoot, nil)).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+							"Type":  Equal(field.ErrorTypeRequired),
+							"Field": Equal("spec.dns.providers[0].secretName"),
+						}))))
 					})
 
-				err := shootValidator.Validate(ctx, shoot, nil)
-				Expect(err).NotTo(HaveOccurred())
-			})
+					It("should return error when azure-dns provider secret not found", func() {
+						shoot.Spec.DNS = &core.DNS{
+							Providers: []core.DNSProvider{
+								{Type: ptr.To(azure.DNSType), SecretName: ptr.To("dns-secret"), Primary: ptr.To(true)},
+							},
+						}
+						reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "dns-secret"},
+							&corev1.Secret{}).
+							Return(apierrors.NewNotFound(schema.GroupResource{Resource: "secrets"}, "dns-secret"))
 
-			It("should skip validation for non-primary azure-dns provider", func() {
-				c.EXPECT().Get(ctx, cloudProfileKey, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
-				shoot.Spec.DNS = &core.DNS{
-					Providers: []core.DNSProvider{
-						{Type: ptr.To(azure.DNSType), SecretName: ptr.To("dns-secret"), Primary: ptr.To(false)},
-					},
-				}
-				// No secret lookup should happen for non-primary providers
+						Expect(shootValidator.Validate(ctx, shoot, nil)).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+							"Type":  Equal(field.ErrorTypeInvalid),
+							"Field": Equal("spec.dns.providers[0].secretName"),
+						}))))
+					})
 
-				err := shootValidator.Validate(ctx, shoot, nil)
-				Expect(err).NotTo(HaveOccurred())
-			})
+					It("should return error when azure-dns secret is invalid (missing subscriptionID)", func() {
+						shoot.Spec.DNS = &core.DNS{
+							Providers: []core.DNSProvider{
+								{Type: ptr.To(azure.DNSType), SecretName: ptr.To("dns-secret"), Primary: ptr.To(true)},
+							},
+						}
+						invalidSecret := &corev1.Secret{
+							ObjectMeta: metav1.ObjectMeta{Name: "dns-secret", Namespace: namespace},
+							Data: map[string][]byte{
+								azure.DNSTenantIDKey:     []byte("ee16e593-3035-41b9-a217-958f8f75b750"),
+								azure.DNSClientIDKey:     []byte("7fc4685e-3c33-40e6-b6bf-7857cab04390"),
+								azure.DNSClientSecretKey: []byte("secret"),
+							},
+						}
+						reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "dns-secret"},
+							&corev1.Secret{}).
+							SetArg(2, *invalidSecret).
+							Return(nil)
 
-			It("should validate only primary provider when multiple azure-dns providers exist", func() {
-				c.EXPECT().Get(ctx, cloudProfileKey, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
-				shoot.Spec.DNS = &core.DNS{
-					Providers: []core.DNSProvider{
-						{Type: ptr.To(azure.DNSType), SecretName: ptr.To("dns-secret-1"), Primary: ptr.To(true)},
-						{Type: ptr.To(azure.DNSType), SecretName: ptr.To("dns-secret-2"), Primary: ptr.To(false)},
-					},
-				}
-				validSecret := &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Name: "dns-secret-1", Namespace: namespace},
-					Data: map[string][]byte{
-						azure.DNSSubscriptionIDKey: []byte("a6ad693a-028a-422c-b064-d76a4586f2b3"),
-						azure.DNSTenantIDKey:       []byte("ee16e593-3035-41b9-a217-958f8f75b750"),
-						azure.DNSClientIDKey:       []byte("7fc4685e-3c33-40e6-b6bf-7857cab04390"),
-						azure.DNSClientSecretKey:   []byte("secret"),
-					},
-				}
-				// Only the primary provider's secret should be validated
-				reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "dns-secret-1"},
-					&corev1.Secret{}).
-					SetArg(2, *validSecret).
-					Return(nil)
+						Expect(shootValidator.Validate(ctx, shoot, nil)).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+							"Type":   Equal(field.ErrorTypeInvalid),
+							"Field":  Equal("spec.dns.providers[0].secretName"),
+							"Detail": ContainSubstring("missing required field \"AZURE_SUBSCRIPTION_ID\" in secret"),
+						}))))
+					})
 
-				err := shootValidator.Validate(ctx, shoot, nil)
-				Expect(err).NotTo(HaveOccurred())
-			})
+					It("should succeed with valid azure-dns provider secret", func() {
+						shoot.Spec.DNS = &core.DNS{
+							Providers: []core.DNSProvider{
+								{Type: ptr.To(azure.DNSType), SecretName: ptr.To("dns-secret"), Primary: ptr.To(true)},
+							},
+						}
+						validSecret := &corev1.Secret{
+							ObjectMeta: metav1.ObjectMeta{Name: "dns-secret", Namespace: namespace},
+							Data: map[string][]byte{
+								azure.DNSSubscriptionIDKey: []byte("a6ad693a-028a-422c-b064-d76a4586f2b3"),
+								azure.DNSTenantIDKey:       []byte("ee16e593-3035-41b9-a217-958f8f75b750"),
+								azure.DNSClientIDKey:       []byte("7fc4685e-3c33-40e6-b6bf-7857cab04390"),
+								azure.DNSClientSecretKey:   []byte("secret"),
+							},
+						}
+						reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "dns-secret"},
+							&corev1.Secret{}).
+							DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *corev1.Secret, _ ...client.GetOption) error {
+								*obj = *validSecret
+								return nil
+							})
 
-			It("should skip all providers when none are primary", func() {
-				c.EXPECT().Get(ctx, cloudProfileKey, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
-				shoot.Spec.DNS = &core.DNS{
-					Providers: []core.DNSProvider{
-						{Type: ptr.To(azure.DNSType), SecretName: ptr.To("dns-secret-1"), Primary: ptr.To(false)},
-						{Type: ptr.To(azure.DNSType), SecretName: ptr.To("dns-secret-2"), Primary: ptr.To(false)},
-					},
-				}
-				// No secret lookups should happen
+						Expect(shootValidator.Validate(ctx, shoot, nil)).To(Succeed())
+					})
 
-				err := shootValidator.Validate(ctx, shoot, nil)
-				Expect(err).NotTo(HaveOccurred())
-			})
+					It("should skip validation for non-primary azure-dns provider", func() {
+						shoot.Spec.DNS = &core.DNS{
+							Providers: []core.DNSProvider{
+								{Type: ptr.To(azure.DNSType), SecretName: ptr.To("dns-secret"), Primary: ptr.To(false)},
+							},
+						}
+						// No secret lookup should happen for non-primary providers
 
-			It("should validate mixed provider types with primary azure-dns", func() {
-				c.EXPECT().Get(ctx, cloudProfileKey, &gardencorev1beta1.CloudProfile{}).SetArg(2, *cloudProfile)
-				shoot.Spec.DNS = &core.DNS{
-					Providers: []core.DNSProvider{
-						{Type: ptr.To("aws-route53"), SecretName: ptr.To("aws-secret"), Primary: ptr.To(false)},
-						{Type: ptr.To(azure.DNSType), SecretName: ptr.To("dns-secret"), Primary: ptr.To(true)},
-						{Type: ptr.To("google-clouddns"), SecretName: ptr.To("gcp-secret"), Primary: ptr.To(false)},
-					},
-				}
-				validSecret := &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Name: "dns-secret", Namespace: namespace},
-					Data: map[string][]byte{
-						azure.DNSSubscriptionIDKey: []byte("a6ad693a-028a-422c-b064-d76a4586f2b3"),
-						azure.DNSTenantIDKey:       []byte("ee16e593-3035-41b9-a217-958f8f75b750"),
-						azure.DNSClientIDKey:       []byte("7fc4685e-3c33-40e6-b6bf-7857cab04390"),
-						azure.DNSClientSecretKey:   []byte("secret"),
-					},
-				}
-				// Only azure-dns primary provider should be validated
-				reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "dns-secret"},
-					&corev1.Secret{}).
-					SetArg(2, *validSecret).
-					Return(nil)
+						Expect(shootValidator.Validate(ctx, shoot, nil)).To(Succeed())
+					})
 
-				err := shootValidator.Validate(ctx, shoot, nil)
-				Expect(err).NotTo(HaveOccurred())
+					It("should validate only primary provider when multiple azure-dns providers exist", func() {
+						shoot.Spec.DNS = &core.DNS{
+							Providers: []core.DNSProvider{
+								{Type: ptr.To(azure.DNSType), SecretName: ptr.To("dns-secret-1"), Primary: ptr.To(true)},
+								{Type: ptr.To(azure.DNSType), SecretName: ptr.To("dns-secret-2"), Primary: ptr.To(false)},
+							},
+						}
+						validSecret := &corev1.Secret{
+							ObjectMeta: metav1.ObjectMeta{Name: "dns-secret-1", Namespace: namespace},
+							Data: map[string][]byte{
+								azure.DNSSubscriptionIDKey: []byte("a6ad693a-028a-422c-b064-d76a4586f2b3"),
+								azure.DNSTenantIDKey:       []byte("ee16e593-3035-41b9-a217-958f8f75b750"),
+								azure.DNSClientIDKey:       []byte("7fc4685e-3c33-40e6-b6bf-7857cab04390"),
+								azure.DNSClientSecretKey:   []byte("secret"),
+							},
+						}
+						// Only the primary provider's secret should be validated
+						reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "dns-secret-1"},
+							&corev1.Secret{}).
+							SetArg(2, *validSecret).
+							Return(nil)
+
+						Expect(shootValidator.Validate(ctx, shoot, nil)).To(Succeed())
+					})
+
+					It("should skip all providers when none are primary", func() {
+						shoot.Spec.DNS = &core.DNS{
+							Providers: []core.DNSProvider{
+								{Type: ptr.To(azure.DNSType), SecretName: ptr.To("dns-secret-1"), Primary: ptr.To(false)},
+								{Type: ptr.To(azure.DNSType), SecretName: ptr.To("dns-secret-2"), Primary: ptr.To(false)},
+							},
+						}
+						// No secret lookups should happen
+
+						Expect(shootValidator.Validate(ctx, shoot, nil)).To(Succeed())
+					})
+
+					It("should validate mixed provider types with primary azure-dns", func() {
+						shoot.Spec.DNS = &core.DNS{
+							Providers: []core.DNSProvider{
+								{Type: ptr.To("aws-route53"), SecretName: ptr.To("aws-secret"), Primary: ptr.To(false)},
+								{Type: ptr.To(azure.DNSType), SecretName: ptr.To("dns-secret"), Primary: ptr.To(true)},
+								{Type: ptr.To("google-clouddns"), SecretName: ptr.To("gcp-secret"), Primary: ptr.To(false)},
+							},
+						}
+						validSecret := &corev1.Secret{
+							ObjectMeta: metav1.ObjectMeta{Name: "dns-secret", Namespace: namespace},
+							Data: map[string][]byte{
+								azure.DNSSubscriptionIDKey: []byte("a6ad693a-028a-422c-b064-d76a4586f2b3"),
+								azure.DNSTenantIDKey:       []byte("ee16e593-3035-41b9-a217-958f8f75b750"),
+								azure.DNSClientIDKey:       []byte("7fc4685e-3c33-40e6-b6bf-7857cab04390"),
+								azure.DNSClientSecretKey:   []byte("secret"),
+							},
+						}
+						// Only azure-dns primary provider should be validated
+						reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "dns-secret"},
+							&corev1.Secret{}).
+							SetArg(2, *validSecret).
+							Return(nil)
+
+						Expect(shootValidator.Validate(ctx, shoot, nil)).To(Succeed())
+					})
+				})
+
+				Context("#credentialsRef", func() {
+					It("should return error when azure-dns provider Secret not found", func() {
+						shoot.Spec.DNS = &core.DNS{
+							Providers: []core.DNSProvider{
+								{
+									Type:    ptr.To(azure.DNSType),
+									Primary: ptr.To(true),
+									CredentialsRef: &autoscalingv1.CrossVersionObjectReference{
+										APIVersion: "v1",
+										Kind:       "Secret",
+										Name:       "dns-secret",
+									},
+								},
+							},
+						}
+						reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "dns-secret"},
+							&corev1.Secret{}).
+							Return(apierrors.NewNotFound(schema.GroupResource{Resource: "secrets"}, "dns-secret"))
+
+						Expect(shootValidator.Validate(ctx, shoot, nil)).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+							"Type":  Equal(field.ErrorTypeNotFound),
+							"Field": Equal("spec.dns.providers[0].credentialsRef"),
+						}))))
+					})
+
+					It("should return error when azure-dns provider WorkloadIdentity not found", func() {
+						shoot.Spec.DNS = &core.DNS{
+							Providers: []core.DNSProvider{
+								{
+									Type:    ptr.To(azure.DNSType),
+									Primary: ptr.To(true),
+									CredentialsRef: &autoscalingv1.CrossVersionObjectReference{
+										APIVersion: "security.gardener.cloud/v1alpha1",
+										Kind:       "WorkloadIdentity",
+										Name:       "dns-workload-identity",
+									},
+								},
+							},
+						}
+						reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "dns-workload-identity"},
+							&securityv1alpha1.WorkloadIdentity{}).
+							Return(apierrors.NewNotFound(schema.GroupResource{Resource: "workloadidentities"}, "dns-workload-identity"))
+
+						Expect(shootValidator.Validate(ctx, shoot, nil)).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+							"Type":  Equal(field.ErrorTypeNotFound),
+							"Field": Equal("spec.dns.providers[0].credentialsRef"),
+						}))))
+					})
+
+					It("should succeed with valid azure-dns Secret", func() {
+						shoot.Spec.DNS = &core.DNS{
+							Providers: []core.DNSProvider{
+								{
+									Type:    ptr.To(azure.DNSType),
+									Primary: ptr.To(true),
+									CredentialsRef: &autoscalingv1.CrossVersionObjectReference{
+										APIVersion: "v1",
+										Kind:       "Secret",
+										Name:       "dns-secret",
+									},
+								},
+							},
+						}
+						validSecret := &corev1.Secret{
+							ObjectMeta: metav1.ObjectMeta{Name: "dns-secret", Namespace: namespace},
+							Data: map[string][]byte{
+								azure.DNSSubscriptionIDKey: []byte("a6ad693a-028a-422c-b064-d76a4586f2b3"),
+								azure.DNSTenantIDKey:       []byte("ee16e593-3035-41b9-a217-958f8f75b750"),
+								azure.DNSClientIDKey:       []byte("7fc4685e-3c33-40e6-b6bf-7857cab04390"),
+								azure.DNSClientSecretKey:   []byte("secret"),
+							},
+						}
+						reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "dns-secret"},
+							&corev1.Secret{}).
+							SetArg(2, *validSecret).
+							Return(nil)
+
+						Expect(shootValidator.Validate(ctx, shoot, nil)).To(Succeed())
+					})
+
+					It("should return error with invalid azure-dns Secret", func() {
+						shoot.Spec.DNS = &core.DNS{
+							Providers: []core.DNSProvider{
+								{
+									Type:    ptr.To(azure.DNSType),
+									Primary: ptr.To(true),
+									CredentialsRef: &autoscalingv1.CrossVersionObjectReference{
+										APIVersion: "v1",
+										Kind:       "Secret",
+										Name:       "dns-secret",
+									},
+								},
+							},
+						}
+						invalidSecret := &corev1.Secret{
+							ObjectMeta: metav1.ObjectMeta{Name: "dns-secret", Namespace: namespace},
+							Data: map[string][]byte{
+								"foo": []byte("bar"),
+							},
+						}
+						reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "dns-secret"},
+							&corev1.Secret{}).
+							SetArg(2, *invalidSecret).
+							Return(nil)
+
+						Expect(shootValidator.Validate(ctx, shoot, nil)).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+							"Type":  Equal(field.ErrorTypeInvalid),
+							"Field": Equal("spec.dns.providers[0].credentialsRef"),
+							"Detail": And(
+								ContainSubstring("missing required field \"subscriptionID\""),
+								ContainSubstring("missing required field \"tenantID\""),
+								ContainSubstring("missing required field \"clientID\""),
+								ContainSubstring("missing required field \"clientSecret\""),
+							),
+						}))))
+					})
+
+					It("should succeed with valid azure-dns WorkloadIdentity", func() {
+						shoot.Spec.DNS = &core.DNS{
+							Providers: []core.DNSProvider{
+								{
+									Type:    ptr.To(azure.DNSType),
+									Primary: ptr.To(true),
+									CredentialsRef: &autoscalingv1.CrossVersionObjectReference{
+										APIVersion: "security.gardener.cloud/v1alpha1",
+										Kind:       "WorkloadIdentity",
+										Name:       "dns-workload-identity",
+									},
+								},
+							},
+						}
+						validWorkloadIdentity := &securityv1alpha1.WorkloadIdentity{
+							ObjectMeta: metav1.ObjectMeta{Name: "dns-workload-identity", Namespace: namespace},
+							Spec: securityv1alpha1.WorkloadIdentitySpec{
+								TargetSystem: securityv1alpha1.TargetSystem{
+									Type: "azure",
+									ProviderConfig: &runtime.RawExtension{
+										Raw: []byte(`
+apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+kind: WorkloadIdentityConfig
+clientID: "11111c4e-db61-17fa-a141-ed39b34aa561"
+tenantID: "44444c4e-db61-17fa-a141-ed39b34aa561"
+subscriptionID: "44444c4e-db61-17fa-a141-ed39b34aa561"
+`),
+									},
+								},
+							},
+						}
+						reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "dns-workload-identity"},
+							&securityv1alpha1.WorkloadIdentity{}).
+							SetArg(2, *validWorkloadIdentity).
+							Return(nil)
+
+						Expect(shootValidator.Validate(ctx, shoot, nil)).To(Succeed())
+					})
+
+					It("should return error with invalid azure-dns WorkloadIdentity", func() {
+						shoot.Spec.DNS = &core.DNS{
+							Providers: []core.DNSProvider{
+								{
+									Type:    ptr.To(azure.DNSType),
+									Primary: ptr.To(true),
+									CredentialsRef: &autoscalingv1.CrossVersionObjectReference{
+										APIVersion: "security.gardener.cloud/v1alpha1",
+										Kind:       "WorkloadIdentity",
+										Name:       "dns-workload-identity",
+									},
+								},
+							},
+						}
+						invalidWorkloadIdentity := &securityv1alpha1.WorkloadIdentity{
+							ObjectMeta: metav1.ObjectMeta{Name: "dns-workload-identity", Namespace: namespace},
+							Spec: securityv1alpha1.WorkloadIdentitySpec{
+								TargetSystem: securityv1alpha1.TargetSystem{
+									Type: "azure",
+									ProviderConfig: &runtime.RawExtension{
+										Raw: []byte(`
+apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+kind: WorkloadIdentityConfig
+clientID: "client-id"
+tenantID: "tenant-id"
+subscriptionID: "subscription-id"
+`),
+									},
+								},
+							},
+						}
+						reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "dns-workload-identity"},
+							&securityv1alpha1.WorkloadIdentity{}).
+							SetArg(2, *invalidWorkloadIdentity).
+							Return(nil)
+
+						Expect(shootValidator.Validate(ctx, shoot, nil)).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+							"Type":  Equal(field.ErrorTypeInvalid),
+							"Field": Equal("spec.dns.providers[0].credentialsRef"),
+							"Detail": And(
+								ContainSubstring("clientID should be a valid GUID"),
+								ContainSubstring("tenantID should be a valid GUID"),
+								ContainSubstring("subscriptionID should be a valid GUID"),
+							),
+						}))))
+					})
+
+					It("should return error with unsupported credentials type", func() {
+						shoot.Spec.DNS = &core.DNS{
+							Providers: []core.DNSProvider{
+								{
+									Type:    ptr.To(azure.DNSType),
+									Primary: ptr.To(true),
+									CredentialsRef: &autoscalingv1.CrossVersionObjectReference{
+										APIVersion: "foo.bar/v1",
+										Kind:       "Baz",
+										Name:       "dns-baz-ref",
+									},
+								},
+							},
+						}
+
+						Expect(shootValidator.Validate(ctx, shoot, nil)).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+							"Type":   Equal(field.ErrorTypeInternal),
+							"Field":  Equal("spec.dns.providers[0].credentialsRef"),
+							"Detail": ContainSubstring("unsupported credentials reference: garden-dev/dns-baz-ref, foo.bar/v1, Kind=Baz"),
+						}))))
+					})
+
+					It("should return error with InternalSecret type", func() {
+						shoot.Spec.DNS = &core.DNS{
+							Providers: []core.DNSProvider{
+								{
+									Type:    ptr.To(azure.DNSType),
+									Primary: ptr.To(true),
+									CredentialsRef: &autoscalingv1.CrossVersionObjectReference{
+										APIVersion: "core.gardener.cloud/v1beta1",
+										Kind:       "InternalSecret",
+										Name:       "dns-internal-secret-ref",
+									},
+								},
+							},
+						}
+						internalSecret := &gardencorev1beta1.InternalSecret{
+							ObjectMeta: metav1.ObjectMeta{Name: "dns-internal-secret-ref", Namespace: namespace},
+							Data: map[string][]byte{
+								"foo": []byte("bar"),
+							},
+						}
+						reader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: "dns-internal-secret-ref"},
+							&gardencorev1beta1.InternalSecret{}).
+							SetArg(2, *internalSecret).
+							Return(nil)
+
+						Expect(shootValidator.Validate(ctx, shoot, nil)).To(ConsistOf(PointTo(MatchFields(IgnoreExtras, Fields{
+							"Type":   Equal(field.ErrorTypeInvalid),
+							"Field":  Equal("spec.dns.providers[0].credentialsRef"),
+							"Detail": ContainSubstring("supported credentials types are Secret and WorkloadIdentity"),
+						}))))
+					})
+				})
 			})
 		})
 
