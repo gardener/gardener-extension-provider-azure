@@ -181,7 +181,7 @@ const (
 	StorageAccountKeyMustRotate = "azure.provider.extensions.gardener.cloud/rotate"
 
 	// CapabilityNetworkName is the name for the Azure specific capability networking.
-	CapabilityNetworkName = "networking"
+	CapabilityNetworkName = "gardener-azure-networking"
 	// CapabilityNetworkAccelerated is a constant for the accelerated networking capability.
 	CapabilityNetworkAccelerated = "accelerated"
 	// CapabilityNetworkBasic is a constant for the standard networking capability.

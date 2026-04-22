@@ -179,17 +179,17 @@ func getProviderSpecificImage(
 	vm extensionsbastion.MachineSpec,
 	capabilityDefinitions []gardencorev1beta1.CapabilityDefinition,
 ) (*armcompute.ImageReference, error) {
-	imageFlavor, imageVersion, err := helper.FindImageInCloudProfile(cloudProfileConfig, vm.ImageBaseName, vm.ImageVersion, &vm.Architecture, vm.MachineTypeCapabilities, capabilityDefinitions)
+	// Normalize capability definitions and machine type capabilities to ensure
+	// capability-based selection is always used, even for non-capabilities CloudProfiles
+	normalizedCapabilityDefinitions := helper.NormalizeCapabilityDefinitions(capabilityDefinitions)
+	machineTypeCapabilities := helper.NormalizeMachineTypeCapabilities(vm.MachineTypeCapabilities, &vm.Architecture, normalizedCapabilityDefinitions)
+
+	imageFlavor, err := helper.FindImageInCloudProfile(cloudProfileConfig, vm.ImageBaseName, vm.ImageVersion, machineTypeCapabilities, normalizedCapabilityDefinitions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find machine image in CloudProfileConfig: %w", err)
 	}
 
-	var image azure.Image
-	if imageFlavor != nil {
-		image = imageFlavor.Image
-	} else if imageVersion != nil {
-		image = imageVersion.Image
-	}
+	image := imageFlavor.Image
 
 	var (
 		publisher *string

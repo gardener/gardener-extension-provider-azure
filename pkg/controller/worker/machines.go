@@ -91,6 +91,10 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		machineImages             []azureapi.MachineImage
 	)
 
+	// Normalize capability definitions once at the entry point.
+	// This ensures all downstream code can assume capabilities are always present.
+	capabilityDefinitions := azureapihelper.NormalizeCapabilityDefinitions(w.cluster.CloudProfile.Spec.MachineCapabilities)
+
 	infrastructureStatus, err := w.decodeAzureInfrastructureStatus()
 	if err != nil {
 		return err
@@ -120,7 +124,10 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			return fmt.Errorf("machine type %q not found in cloud profile %q", pool.MachineType, w.cluster.CloudProfile.Name)
 		}
 
-		machineImage, err := w.selectMachineImageForWorkerPool(pool.MachineImage.Name, pool.MachineImage.Version, &arch, machineTypeFromCloudProfile.Capabilities)
+		// Normalize machine type capabilities to include architecture
+		machineTypeCapabilities := azureapihelper.NormalizeMachineTypeCapabilities(machineTypeFromCloudProfile.Capabilities, &arch, capabilityDefinitions)
+
+		machineImage, err := w.selectMachineImageForWorkerPool(pool.MachineImage.Name, pool.MachineImage.Version, &arch, machineTypeCapabilities, capabilityDefinitions)
 
 		if err != nil {
 			return err
@@ -207,18 +214,17 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			}
 
 			if acceleratedNetworkAllowed {
-				if len(w.cluster.CloudProfile.Spec.MachineCapabilities) > 0 {
-					defaultedMachineTypeCapabilities := gardencorev1beta1.GetCapabilitiesWithAppliedDefaults(machineTypeFromCloudProfile.Capabilities, w.cluster.CloudProfile.Spec.MachineCapabilities)
-					defaultedImageCapabilities := gardencorev1beta1.GetCapabilitiesWithAppliedDefaults(machineImage.Capabilities, w.cluster.CloudProfile.Spec.MachineCapabilities)
-					machineTypeSupportsAcceleratedNetworking := slices.Contains(defaultedMachineTypeCapabilities[azure.CapabilityNetworkName], azure.CapabilityNetworkAccelerated)
-					machineImageSupportsAcceleratedNetworking := slices.Contains(defaultedImageCapabilities[azure.CapabilityNetworkName], azure.CapabilityNetworkAccelerated)
-					if machineTypeSupportsAcceleratedNetworking && machineImageSupportsAcceleratedNetworking {
-						networkConfig["acceleratedNetworking"] = true
-					}
-				} else {
-					if ptr.Deref(machineImage.AcceleratedNetworking, false) && w.isMachineTypeSupportingAcceleratedNetworking(pool.MachineType) {
-						networkConfig["acceleratedNetworking"] = true
-					}
+				// legacy cloudprofiles must check the provider config for accelerated networking support
+				if len(w.cluster.CloudProfile.Spec.MachineCapabilities) == 0 && !w.isMachineTypeSupportingAcceleratedNetworking(pool.MachineType) {
+					machineTypeCapabilities[azure.CapabilityNetworkName] = []string{azure.CapabilityNetworkBasic}
+				}
+
+				defaultedMachineTypeCapabilities := gardencorev1beta1.GetCapabilitiesWithAppliedDefaults(machineTypeCapabilities, capabilityDefinitions)
+				defaultedImageCapabilities := gardencorev1beta1.GetCapabilitiesWithAppliedDefaults(machineImage.Capabilities, capabilityDefinitions)
+				capabilityIntersection := gardencorev1beta1helper.GetCapabilitiesIntersection(defaultedMachineTypeCapabilities, defaultedImageCapabilities)
+
+				if slices.Contains(capabilityIntersection[azure.CapabilityNetworkName], azure.CapabilityNetworkAccelerated) {
+					networkConfig["acceleratedNetworking"] = true
 				}
 			}
 			machineClassSpec["network"] = networkConfig

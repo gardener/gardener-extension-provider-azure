@@ -39,23 +39,20 @@ func (w *workerDelegate) UpdateMachineImagesStatus(ctx context.Context) error {
 	return nil
 }
 
-func (w *workerDelegate) selectMachineImageForWorkerPool(name, version string, architecture *string, machineCapabilities gardencorev1beta1.Capabilities) (*api.MachineImage, error) {
+func (w *workerDelegate) selectMachineImageForWorkerPool(
+	name, version string,
+	architecture *string,
+	machineTypeCapabilities gardencorev1beta1.Capabilities,
+	capabilityDefinitions []gardencorev1beta1.CapabilityDefinition,
+) (*api.MachineImage, error) {
 	selectedMachineImage := &api.MachineImage{
 		Name:    name,
 		Version: version,
 	}
-	if imageFlavor, imageVersion, err := helper.FindImageInCloudProfile(w.cloudProfileConfig, name, version, architecture, machineCapabilities, w.cluster.CloudProfile.Spec.MachineCapabilities); err == nil {
-		if imageFlavor != nil {
-			selectedMachineImage.Capabilities = imageFlavor.Capabilities
-			selectedMachineImage.Image = imageFlavor.Image
-			selectedMachineImage.SkipMarketplaceAgreement = imageFlavor.SkipMarketplaceAgreement
-		}
-		if imageVersion != nil {
-			selectedMachineImage.Image = imageVersion.Image
-			selectedMachineImage.Architecture = imageVersion.Architecture
-			selectedMachineImage.AcceleratedNetworking = imageVersion.AcceleratedNetworking
-			selectedMachineImage.SkipMarketplaceAgreement = imageVersion.SkipMarketplaceAgreement
-		}
+	if imageFlavor, err := helper.FindImageInCloudProfile(w.cloudProfileConfig, name, version, machineTypeCapabilities, capabilityDefinitions); err == nil {
+		selectedMachineImage.Capabilities = imageFlavor.Capabilities
+		selectedMachineImage.Image = imageFlavor.Image
+		selectedMachineImage.SkipMarketplaceAgreement = imageFlavor.SkipMarketplaceAgreement
 		return selectedMachineImage, nil
 	}
 
@@ -66,7 +63,7 @@ func (w *workerDelegate) selectMachineImageForWorkerPool(name, version string, a
 			return nil, fmt.Errorf("could not decode worker status of worker '%s': %w", k8sclient.ObjectKeyFromObject(w.worker), err)
 		}
 
-		return helper.FindImageInWorkerStatus(workerStatus.MachineImages, name, version, architecture, machineCapabilities, w.cluster.CloudProfile.Spec.MachineCapabilities)
+		return helper.FindImageInWorkerStatus(workerStatus.MachineImages, name, version, architecture, machineTypeCapabilities, capabilityDefinitions)
 	}
 	return nil, worker.ErrorMachineImageNotFound(name, version, *architecture)
 }
