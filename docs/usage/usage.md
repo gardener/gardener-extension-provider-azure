@@ -740,6 +740,20 @@ To have the CSI-driver configured to support the necessary features for [VolumeA
 
 For more information and examples on how to configure the volume attributes class, see [example](https://github.com/kubernetes-sigs/azuredisk-csi-driver/blob/release-1.31/deploy/example/modifyvolume/README.md) provided in the azuredisk-csi-driver repository.
 
+### Node-specific Volume Limits
+
+The Kubernetes scheduler allows configurable limit for the number of volumes that can be attached to a node.
+See https://k8s.io/docs/concepts/storage/storage-limits/#custom-limits.
+
+CSI drivers usually have a different procedure for configuring this custom limit. By default, the Azure Disk driver parses the machine type name and then decides the volume limit. However, this is only a rough approximation and not good enough in most cases.
+
+Specifying the volume attach limit via command line flag (`--volume-attach-limit`) is currently the alternative until a more sophisticated solution presents itself.Additional CSI flags are supported via annotations by the Azure extension:
+- the `--volume-attach-limit` flag of the Azure Disk CSI driver to be configurable via `azure.provider.extensions.gardener.cloud/volume-attach-limit` annotation on the `Shoot` resource.
+- the `--reserved-data-disk-slot-num` flag of the Azure Disk CSI driver to be configurable via `azure.provider.extensions.gardener.cloud/reserved-data-disk-slot-num` annotation on the `Shoot` resource.
+
+> [!IMPORTANT]
+> If the annotation is added to an existing `Shoot`, then reconciliation needs to be triggered manually (see [Immediate reconciliation](https://github.com/gardener/gardener/blob/master/docs/usage/shoot-operations/shoot_operations.md#immediate-reconciliation)), as adding an annotation to a resource is not a change that leads to an increase of `.metadata.generation` in general.
+
 ### Support for on-demand capacity reservation
 
 You can have your VMs deployed in existing capacity reservations that are part of a capacity reservation group. Setting this up is as simple as specifying the capacity reservation group's ID as part of the worker group's provider-config:
