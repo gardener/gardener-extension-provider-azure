@@ -60,6 +60,14 @@ spec:
         - --endpoint=$(CSI_ENDPOINT)
         - --nodeid=$(KUBE_NODE_NAME)
         - --metrics-address=0.0.0.0:{{ include (print "csi-driver-node.daemonset.ports.metrics." .role) . }}
+        {{- if eq .role "disk" }}
+        {{- if .Values.driver.volumeAttachLimit }}
+        - --volume-attach-limit={{ .Values.driver.volumeAttachLimit }}
+        {{- end }}
+        {{- if .Values.driver.reservedDataDiskSlotNum }}
+        - --reserved-data-disk-slot-num={{ .Values.driver.reservedDataDiskSlotNum }}
+        {{- end }}
+        {{- end }}
         - --v=5
         env:
         - name: CSI_ENDPOINT

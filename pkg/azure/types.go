@@ -21,6 +21,12 @@ const (
 	ShootDiskConvertRWCachingModeAnnotation = "azure.provider.extensions.gardener.cloud/convert-rw-caching-mode-for-intree-pv"
 	// NetworkLayoutZoneMigrationAnnotation is used when migrating from a single subnet network layout to a multiple subnet network layout to indicate the zone that the existing subnet should be assigned to.
 	NetworkLayoutZoneMigrationAnnotation = "migration.azure.provider.extensions.gardener.cloud/zone"
+	// VolumeAttachLimit is the key for an annotation on a Shoot object whose value represents the maximum number of
+	// volumes attachable for all nodes.
+	VolumeAttachLimit = "azure.provider.extensions.gardener.cloud/volume-attach-limit"
+	// ReservedVolumeAttachments is the key for an annotation on a Shoot object whose value represents a number of reserved
+	// slots for volume-attachments (in effect an offset to use when calculating available volume-attachments).
+	ReservedVolumeAttachments = "azure.provider.extensions.gardener.cloud/reserved-data-disk-slot-num"
 
 	// DisableDefaultOutboundAccessAnnotation is used to disable the default outbound access for the shoot's subnet.
 	// Deprecated: This annotation is deprecated and will only used for testing until the deprecation by Azure.

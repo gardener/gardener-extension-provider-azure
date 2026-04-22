@@ -2,6 +2,10 @@ podAnnotations: {}
 cloudProviderConfig: |
   <azure-cloud-provider-config>
 
+driver: {}
+  # volumeAttachLimit: -1
+  # reservedDataDiskSlotNum: -1
+
 images:
   csi-driver-disk: image-repository:image-tag
   csi-driver-file: image-repository:image-tag
