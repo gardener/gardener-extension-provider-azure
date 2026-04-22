@@ -15,7 +15,6 @@ import (
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/ptr"
 
@@ -53,20 +52,20 @@ func validateNodeTemplate(nodeTemplate *extensionsv1alpha1.NodeTemplate, fldPath
 	if nodeTemplate == nil {
 		return nil
 	}
-	resources := []corev1.ResourceName{corev1.ResourceCPU, "gpu", corev1.ResourceMemory, corev1.ResourceStorage, corev1.ResourceEphemeralStorage}
-	resourceSet := sets.New[corev1.ResourceName](resources...)
-	for resourceName := range nodeTemplate.Capacity {
-		if !resourceSet.Has(resourceName) {
-			allErrs = append(allErrs, field.Invalid(fldPath.Child("capacity").Child(string(resourceName)), resourceName, fmt.Sprintf("%s is an unsupported resource name. Valid values are: %v", resourceName, resourceSet.UnsortedList())))
-		}
-	}
 
-	for _, capacityAttribute := range resources {
+	for _, capacityAttribute := range []corev1.ResourceName{corev1.ResourceCPU, "gpu", corev1.ResourceMemory} {
 		value, ok := nodeTemplate.Capacity[capacityAttribute]
 		if !ok {
 			continue
 		}
 		allErrs = append(allErrs, validateResourceQuantityValue(capacityAttribute, value, fldPath.Child("capacity").Child(string(capacityAttribute)))...)
+	}
+
+	// extended resources are required to be whole numbers
+	// https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#consuming-extended-resources
+	for capacityAttribute, value := range nodeTemplate.VirtualCapacity {
+		allErrs = append(allErrs, validateResourceQuantityValue(capacityAttribute, value, fldPath.Child("virtualCapacity").Child(string(capacityAttribute)))...)
+		allErrs = append(allErrs, validateResourceQuantityIsWhole(capacityAttribute, value, fldPath.Child("virtualCapacity").Child(string(capacityAttribute)))...)
 	}
 
 	return allErrs
@@ -145,6 +144,16 @@ func validateResourceQuantityValue(key corev1.ResourceName, value resource.Quant
 
 	if value.Cmp(resource.Quantity{}) < 0 {
 		allErrs = append(allErrs, field.Invalid(fldPath, value.String(), fmt.Sprintf("%s value must not be negative", key)))
+	}
+
+	return allErrs
+}
+
+func validateResourceQuantityIsWhole(key corev1.ResourceName, value resource.Quantity, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if value.MilliValue()%1000 != 0 {
+		allErrs = append(allErrs, field.Invalid(fldPath, value.String(), fmt.Sprintf("%s value must be a whole number", key)))
 	}
 
 	return allErrs
