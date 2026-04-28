@@ -1,7 +1,7 @@
 module github.com/gardener/gardener-extension-provider-azure
 
 // minimum version of Go required
-go 1.25.6
+go 1.26.2
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.21.1
@@ -20,7 +20,7 @@ require (
 	github.com/gardener/etcd-druid/api v0.36.2
 	github.com/gardener/gardener v1.140.1
 	github.com/gardener/gardener/pkg/apis v1.140.1
-	github.com/gardener/machine-controller-manager v0.61.3
+	github.com/gardener/machine-controller-manager v0.62.0
 	github.com/gardener/remedy-controller v0.14.0
 	github.com/go-logr/logr v1.4.3
 	github.com/google/go-cmp v0.7.0
