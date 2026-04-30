@@ -229,24 +229,10 @@ func (e *ensurer) EnsureClusterAutoscalerDeployment(
 }
 
 func ensureKubeAPIServerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version, cluster *extensionscontroller.Cluster) {
-	if versionutils.ConstraintK8sLess131.Check(k8sVersion) {
-		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
-			"InTreePluginAzureDiskUnregister=true", ",")
-		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
-			"InTreePluginAzureFileUnregister=true", ",")
-	}
-
 	c.Command = extensionswebhook.EnsureNoStringWithPrefix(c.Command, "--cloud-provider=")
 	c.Command = extensionswebhook.EnsureNoStringWithPrefix(c.Command, "--cloud-config=")
-	if versionutils.ConstraintK8sLess131.Check(k8sVersion) {
-		c.Command = extensionswebhook.EnsureNoStringWithPrefixContains(c.Command, "--enable-admission-plugins=",
-			"PersistentVolumeLabel", ",")
-		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--disable-admission-plugins=",
-			"PersistentVolumeLabel", ",")
-	}
 
-	if versionutils.ConstraintK8sGreaterEqual131.Check(k8sVersion) &&
-		versionutils.ConstraintK8sLess134.Check(k8sVersion) &&
+	if versionutils.ConstraintK8sLess134.Check(k8sVersion) &&
 		azure.VolumeAttributesClassBetaEnabled(cluster.Shoot) {
 		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 			"VolumeAttributesClass=true", ",")
@@ -258,18 +244,10 @@ func ensureKubeAPIServerCommandLineArgs(c *corev1.Container, k8sVersion *semver.
 func ensureKubeControllerManagerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version, cluster *extensionscontroller.Cluster) {
 	c.Command = extensionswebhook.EnsureStringWithPrefix(c.Command, "--cloud-provider=", "external")
 
-	if versionutils.ConstraintK8sLess131.Check(k8sVersion) {
-		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
-			"InTreePluginAzureDiskUnregister=true", ",")
-		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
-			"InTreePluginAzureFileUnregister=true", ",")
-	}
-
 	c.Command = extensionswebhook.EnsureNoStringWithPrefix(c.Command, "--cloud-config=")
 	c.Command = extensionswebhook.EnsureNoStringWithPrefix(c.Command, "--external-cloud-volume-plugin=")
 
-	if versionutils.ConstraintK8sGreaterEqual131.Check(k8sVersion) &&
-		versionutils.ConstraintK8sLess134.Check(k8sVersion) &&
+	if versionutils.ConstraintK8sLess134.Check(k8sVersion) &&
 		azure.VolumeAttributesClassBetaEnabled(cluster.Shoot) {
 		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 			"VolumeAttributesClass=true", ",")
@@ -277,15 +255,7 @@ func ensureKubeControllerManagerCommandLineArgs(c *corev1.Container, k8sVersion 
 }
 
 func ensureKubeSchedulerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version, cluster *extensionscontroller.Cluster) {
-	if versionutils.ConstraintK8sLess131.Check(k8sVersion) {
-		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
-			"InTreePluginAzureDiskUnregister=true", ",")
-		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
-			"InTreePluginAzureFileUnregister=true", ",")
-	}
-
-	if versionutils.ConstraintK8sGreaterEqual131.Check(k8sVersion) &&
-		versionutils.ConstraintK8sLess134.Check(k8sVersion) &&
+	if versionutils.ConstraintK8sLess134.Check(k8sVersion) &&
 		azure.VolumeAttributesClassBetaEnabled(cluster.Shoot) {
 		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 			"VolumeAttributesClass=true", ",")
@@ -293,15 +263,7 @@ func ensureKubeSchedulerCommandLineArgs(c *corev1.Container, k8sVersion *semver.
 }
 
 func ensureClusterAutoscalerCommandLineArgs(c *corev1.Container, k8sVersion *semver.Version, cluster *extensionscontroller.Cluster) {
-	if versionutils.ConstraintK8sLess131.Check(k8sVersion) {
-		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
-			"InTreePluginAzureDiskUnregister=true", ",")
-		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
-			"InTreePluginAzureFileUnregister=true", ",")
-	}
-
-	if versionutils.ConstraintK8sGreaterEqual131.Check(k8sVersion) &&
-		versionutils.ConstraintK8sLess134.Check(k8sVersion) &&
+	if versionutils.ConstraintK8sLess134.Check(k8sVersion) &&
 		azure.VolumeAttributesClassBetaEnabled(cluster.Shoot) {
 		c.Command = extensionswebhook.EnsureStringWithPrefixContains(c.Command, "--feature-gates=",
 			"VolumeAttributesClass=true", ",")
@@ -412,24 +374,11 @@ func (e *ensurer) ensureKubeletCommandLineArgs(ctx context.Context, cluster *ext
 func (e *ensurer) EnsureKubeletConfiguration(
 	_ context.Context,
 	_ gcontext.GardenContext,
-	kubeletVersion *semver.Version,
+	_ *semver.Version,
 	newKubeletConfiguration, _ *kubeletconfigv1beta1.KubeletConfiguration) error {
-	if versionutils.ConstraintK8sLess131.Check(kubeletVersion) {
-		setKubeletConfigurationFeatureGate(newKubeletConfiguration, "InTreePluginAzureDiskUnregister", true)
-		setKubeletConfigurationFeatureGate(newKubeletConfiguration, "InTreePluginAzureFileUnregister", true)
-	}
-
 	newKubeletConfiguration.EnableControllerAttachDetach = ptr.To(true)
 
 	return nil
-}
-
-func setKubeletConfigurationFeatureGate(kubeletConfiguration *kubeletconfigv1beta1.KubeletConfiguration, featureGate string, value bool) {
-	if kubeletConfiguration.FeatureGates == nil {
-		kubeletConfiguration.FeatureGates = make(map[string]bool)
-	}
-
-	kubeletConfiguration.FeatureGates[featureGate] = value
 }
 
 // ShouldProvisionKubeletCloudProviderConfig returns true if the cloud provider config file should be added to the kubelet configuration.
