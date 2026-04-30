@@ -1,3 +1,4 @@
+{{- if gt (int .Values.replicas) 0 }}
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
@@ -31,3 +32,4 @@ spec:
       annotations:
         description: An Azure virtual machine is in a Failed state and could not be fixed by the remedy controller.
         summary: An Azure VM is in a Failed state.
+{{- end }}
