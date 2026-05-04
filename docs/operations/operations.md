@@ -159,8 +159,8 @@ spec:
 #        - accelerated
   kubernetes:
     versions:
-    - version: 1.32.0
-    - version: 1.31.1
+    - version: 1.33.0
+    - version: 1.32.1
       expirationDate: "2025-10-28T23:59:59Z"
   machineImages:
   - name: coreos
@@ -242,8 +242,8 @@ spec:
   type: azure
   kubernetes:
     versions:
-    - version: 1.32.0
-    - version: 1.31.1
+    - version: 1.33.0
+    - version: 1.32.1
       expirationDate: "2025-10-28T23:59:59Z"
   machineImages:
   - name: coreos
