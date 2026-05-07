@@ -76,6 +76,132 @@ var _ = Describe("NamespacedCloudProfile Mutator", func() {
 			Expect(namespacedCloudProfile).To(DeepEqual(expectedProfile))
 		})
 
+		Describe("populate spec capabilityFlavors from provider config", func() {
+			var parentProfile *v1beta1.CloudProfile
+
+			BeforeEach(func() {
+				parentProfile = &v1beta1.CloudProfile{
+					ObjectMeta: metav1.ObjectMeta{Name: "parent-profile"},
+					Spec: v1beta1.CloudProfileSpec{
+						MachineCapabilities: []v1beta1.CapabilityDefinition{{
+							Name:   "architecture",
+							Values: []string{"amd64", "arm64"},
+						}},
+					},
+				}
+				namespacedCloudProfile.Spec.Parent = v1beta1.CloudProfileReference{
+					Kind: "CloudProfile",
+					Name: "parent-profile",
+				}
+			})
+
+			It("should populate capabilityFlavors from old format provider config", func() {
+				Expect(fakeClient.Create(ctx, parentProfile)).To(Succeed())
+
+				namespacedCloudProfile.Spec.ProviderConfig = &runtime.RawExtension{Raw: []byte(`{
+"apiVersion":"azure.provider.extensions.gardener.cloud/v1alpha1",
+"kind":"CloudProfileConfig",
+"machineImages":[
+  {"name":"ubuntu","versions":[
+    {"version":"22.04","id":"canonical:ubuntu:22.04:latest"},
+    {"version":"22.04","architecture":"arm64","id":"canonical:ubuntu:22.04:arm64"}
+  ]}
+]}`)}
+				namespacedCloudProfile.Spec.MachineImages = []v1beta1.MachineImage{
+					{Name: "ubuntu", Versions: []v1beta1.MachineImageVersion{
+						{ExpirableVersion: v1beta1.ExpirableVersion{Version: "22.04"}},
+					}},
+				}
+
+				Expect(namespacedCloudProfileMutator.Mutate(ctx, namespacedCloudProfile, nil)).To(Succeed())
+
+				Expect(namespacedCloudProfile.Spec.MachineImages[0].Versions[0].CapabilityFlavors).ToNot(BeEmpty())
+				// Should have flavors for both amd64 and arm64
+				Expect(namespacedCloudProfile.Spec.MachineImages[0].Versions[0].CapabilityFlavors).To(HaveLen(2))
+			})
+
+			It("should populate capabilityFlavors from new format provider config", func() {
+				Expect(fakeClient.Create(ctx, parentProfile)).To(Succeed())
+
+				namespacedCloudProfile.Spec.ProviderConfig = &runtime.RawExtension{Raw: []byte(`{
+"apiVersion":"azure.provider.extensions.gardener.cloud/v1alpha1",
+"kind":"CloudProfileConfig",
+"machineImages":[
+  {"name":"ubuntu","versions":[{"version":"22.04","capabilityFlavors":[
+    {"capabilities":{"architecture":["amd64"]},"id":"canonical:ubuntu:22.04:latest"},
+    {"capabilities":{"architecture":["arm64"]},"id":"canonical:ubuntu:22.04:arm64"}
+  ]}]}
+]}`)}
+				namespacedCloudProfile.Spec.MachineImages = []v1beta1.MachineImage{
+					{Name: "ubuntu", Versions: []v1beta1.MachineImageVersion{
+						{ExpirableVersion: v1beta1.ExpirableVersion{Version: "22.04"}},
+					}},
+				}
+
+				Expect(namespacedCloudProfileMutator.Mutate(ctx, namespacedCloudProfile, nil)).To(Succeed())
+
+				Expect(namespacedCloudProfile.Spec.MachineImages[0].Versions[0].CapabilityFlavors).To(ConsistOf(
+					v1beta1.MachineImageFlavor{Capabilities: v1beta1.Capabilities{"architecture": []string{"amd64"}}},
+					v1beta1.MachineImageFlavor{Capabilities: v1beta1.Capabilities{"architecture": []string{"arm64"}}},
+				))
+			})
+
+			It("should skip spec mutation when parent has no machineCapabilities", func() {
+				parentProfile.Spec.MachineCapabilities = nil
+				Expect(fakeClient.Create(ctx, parentProfile)).To(Succeed())
+
+				namespacedCloudProfile.Spec.ProviderConfig = &runtime.RawExtension{Raw: []byte(`{
+"apiVersion":"azure.provider.extensions.gardener.cloud/v1alpha1",
+"kind":"CloudProfileConfig",
+"machineImages":[
+  {"name":"ubuntu","versions":[{"version":"22.04","id":"canonical:ubuntu:22.04:latest"}]}
+]}`)}
+				namespacedCloudProfile.Spec.MachineImages = []v1beta1.MachineImage{
+					{Name: "ubuntu", Versions: []v1beta1.MachineImageVersion{
+						{ExpirableVersion: v1beta1.ExpirableVersion{Version: "22.04"}},
+					}},
+				}
+
+				Expect(namespacedCloudProfileMutator.Mutate(ctx, namespacedCloudProfile, nil)).To(Succeed())
+
+				// capabilityFlavors should NOT be populated
+				Expect(namespacedCloudProfile.Spec.MachineImages[0].Versions[0].CapabilityFlavors).To(BeEmpty())
+			})
+
+			It("should skip spec mutation when Spec.Parent.Name is empty", func() {
+				namespacedCloudProfile.Spec.Parent = v1beta1.CloudProfileReference{}
+				namespacedCloudProfile.Spec.ProviderConfig = &runtime.RawExtension{Raw: []byte(`{
+"apiVersion":"azure.provider.extensions.gardener.cloud/v1alpha1",
+"kind":"CloudProfileConfig",
+"machineImages":[
+  {"name":"ubuntu","versions":[{"version":"22.04","id":"canonical:ubuntu:22.04:latest"}]}
+]}`)}
+				namespacedCloudProfile.Spec.MachineImages = []v1beta1.MachineImage{
+					{Name: "ubuntu", Versions: []v1beta1.MachineImageVersion{
+						{ExpirableVersion: v1beta1.ExpirableVersion{Version: "22.04"}},
+					}},
+				}
+
+				Expect(namespacedCloudProfileMutator.Mutate(ctx, namespacedCloudProfile, nil)).To(Succeed())
+
+				// capabilityFlavors should NOT be populated
+				Expect(namespacedCloudProfile.Spec.MachineImages[0].Versions[0].CapabilityFlavors).To(BeEmpty())
+			})
+
+			It("should skip spec mutation when Spec.MachineImages is empty", func() {
+				Expect(fakeClient.Create(ctx, parentProfile)).To(Succeed())
+
+				namespacedCloudProfile.Spec.ProviderConfig = &runtime.RawExtension{Raw: []byte(`{
+"apiVersion":"azure.provider.extensions.gardener.cloud/v1alpha1",
+"kind":"CloudProfileConfig",
+"machineImages":[
+  {"name":"ubuntu","versions":[{"version":"22.04","id":"canonical:ubuntu:22.04:latest"}]}
+]}`)}
+
+				Expect(namespacedCloudProfileMutator.Mutate(ctx, namespacedCloudProfile, nil)).To(Succeed())
+			})
+		})
+
 		Describe("merge the provider configurations from a NamespacedCloudProfile and the parent CloudProfile", func() {
 			It("should correctly merge extended machineImages", func() {
 				namespacedCloudProfile.Status.CloudProfileSpec.ProviderConfig = &runtime.RawExtension{Raw: []byte(`{
