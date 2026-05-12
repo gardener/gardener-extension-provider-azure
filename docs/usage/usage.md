@@ -106,6 +106,10 @@ In the shown example a `WorkloadIdentity` with name `azure` with id `00000000-00
 
 ![Federated Credential](images/federated_credential.png)
 
+> [!NOTE]
+> Flexible federated identity credentials currently support only few well-known [public services issuing tokens](https://learn.microsoft.com/en-us/entra/workload-id/workload-identities-flexible-federated-identity-credentials?tabs=github#how-do-flexible-federated-identity-credentials-work).
+> Gardener Workload identity can be configured as (standard) federated identity credentials only.
+
 Please ensure that the Azure application (spn) has the proper [IAM actions](azure-permissions.md) assigned.
 If no fine-grained permissions/actions required then simply assign the [Contributor](https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#contributor) role.
 
