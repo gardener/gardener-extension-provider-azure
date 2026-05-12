@@ -93,10 +93,10 @@ kubectl -n garden-myproj get wi azure -o=jsonpath={.status.sub}
 As a second step users should configure [Workload Identity Federation](https://learn.microsoft.com/en-us/entra/workload-id/workload-identity-federation-create-trust?pivots=identity-wif-apps-methods-azp#other-identity-providers) so that their application trusts Gardener's Workload Identity Issuer.
 
 > [!TIP]
-> You can retrieve Gardener's Workload Identity Issuer URL directly from the Garden cluster by reading the contents of the [Gardener Info ConfigMap](https://gardener.cloud/docs/gardener/gardener/gardener_info_configmap/).
+> You can retrieve Gardener's Workload Identity Issuer URL directly from the Garden cluster by reading the contents of the [Gardener Info ConfigMap](https://gardener.cloud/docs/gardener/configmap/).
 >
 > ```bash
-> kubectl -n gardener-system-public get configmap -o yaml
+> kubectl -n gardener-system-public get configmap gardener-info -o yaml
 > ```
 
 In the shown example a `WorkloadIdentity` with name `azure` with id `00000000-0000-0000-0000-000000000000` from the `garden-myproj` namespace will be trusted by the Azure application.
