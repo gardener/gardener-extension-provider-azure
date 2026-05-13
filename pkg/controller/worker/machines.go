@@ -481,6 +481,9 @@ func computeDisks(pool extensionsv1alpha1.WorkerPool, dataVolumesConfig []azurea
 	if osDiskConfig != nil && osDiskConfig.Caching != nil {
 		osDisk["caching"] = *osDiskConfig.Caching
 	}
+	if osDiskConfig != nil && osDiskConfig.DiskControllerType != nil {
+		osDisk["diskControllerType"] = *osDiskConfig.DiskControllerType
+	}
 
 	disks := map[string]any{
 		"osDisk": osDisk,

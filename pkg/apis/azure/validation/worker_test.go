@@ -300,5 +300,26 @@ var _ = Describe("ValidateWorkerConfig", func() {
 
 			Expect(validateOSDiskConf(osDiskConf, nil)).To(BeEmpty())
 		})
+
+		It("should deny invalid disk controller type", func() {
+			osDiskConf := &apisazure.Volume{
+				DiskControllerType: ptr.To("unknown"),
+			}
+
+			Expect(validateOSDiskConf(osDiskConf, nil)).To(ConsistOf(
+				PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeNotSupported),
+					"Field": Equal("diskControllerType"),
+				})),
+			))
+		})
+
+		It("should allow valid disk controller type", func() {
+			osDiskConf := &apisazure.Volume{
+				DiskControllerType: ptr.To("NVMe"),
+			}
+
+			Expect(validateOSDiskConf(osDiskConf, nil)).To(BeEmpty())
+		})
 	})
 })
