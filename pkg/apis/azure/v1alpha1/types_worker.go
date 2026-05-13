@@ -113,6 +113,10 @@ type Volume struct {
 	// Valid values are 'None', 'ReadOnly', and 'ReadWrite'.
 	// +optional
 	Caching *string `json:"caching,omitempty"`
+	// DiskControllerType specifies the disk controller type configured for the VM.
+	// Valid values are 'SCSI' and 'NVMe'.
+	// +optional
+	DiskControllerType *string `json:"diskControllerType,omitempty"`
 }
 
 // CapacityReservation represents the configuration for capacity reservations on Azure.

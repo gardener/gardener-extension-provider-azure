@@ -459,7 +459,8 @@ dataVolumes:
 #      id: /Subscriptions/2ebd38b6-270b-48a2-8e0b-2077106dc615/Providers/Microsoft.Compute/Locations/westeurope/Publishers/sap/ArtifactTypes/VMImage/Offers/gardenlinux/Skus/greatest/Versions/1443.10.0
 #      urn: sap:gardenlinux:greatest:1443.10.0
 volume:
-  cachingType: ReadWrite
+  caching: ReadWrite
+  diskControllerType: NVMe
 ```
 
 The `.nodeTemplate` is used to specify resource information of the machine during runtime. This then helps in Scale-from-Zero.
@@ -487,6 +488,9 @@ The `.volume` field is used to add provider specific configurations for a osDisk
 The OS disk is the disk that contains the operating system and is mounted as `/` in the machine.
 You can configure the host caching type by specifying `.volume.caching` in the workerConfig.
 The default value is `None`, current supported values are `None`, `ReadOnly`, `ReadWrite`.
+You can configure the disk controller type by specifying `.volume.diskControllerType` in the workerConfig.
+Current supported values are `SCSI` and `NVMe`.
+If omitted, Azure chooses the default disk controller type based on the VM size and image capabilities.
 
 ## Example `Shoot` manifest (non-zoned)
 

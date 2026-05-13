@@ -232,7 +232,8 @@ var _ = Describe("Machines", func() {
 				}
 
 				osDiskConfig = apiv1alpha1.Volume{
-					Caching: ptr.To(string(armcompute.CachingTypesReadOnly)),
+					Caching:            ptr.To(string(armcompute.CachingTypesReadOnly)),
+					DiskControllerType: ptr.To("NVMe"),
 				}
 
 				diagnosticProfile = apiv1alpha1.DiagnosticsProfile{
@@ -624,8 +625,9 @@ var _ = Describe("Machines", func() {
 						},
 					}
 					machineClassPool1["osDisk"] = map[string]any{
-						"size":    volumeSize,
-						"caching": *osDiskConfig.Caching,
+						"size":               volumeSize,
+						"caching":            *osDiskConfig.Caching,
+						"diskControllerType": *osDiskConfig.DiskControllerType,
 					}
 					machineClassPool2["osDisk"] = map[string]any{
 						"size":    volumeSize,

@@ -1325,6 +1325,7 @@ func Convert_azure_VmoDependency_To_v1alpha1_VmoDependency(in *azure.VmoDependen
 
 func autoConvert_v1alpha1_Volume_To_azure_Volume(in *Volume, out *azure.Volume, s conversion.Scope) error {
 	out.Caching = (*string)(unsafe.Pointer(in.Caching))
+	out.DiskControllerType = (*string)(unsafe.Pointer(in.DiskControllerType))
 	return nil
 }
 
@@ -1335,6 +1336,7 @@ func Convert_v1alpha1_Volume_To_azure_Volume(in *Volume, out *azure.Volume, s co
 
 func autoConvert_azure_Volume_To_v1alpha1_Volume(in *azure.Volume, out *Volume, s conversion.Scope) error {
 	out.Caching = (*string)(unsafe.Pointer(in.Caching))
+	out.DiskControllerType = (*string)(unsafe.Pointer(in.DiskControllerType))
 	return nil
 }
 

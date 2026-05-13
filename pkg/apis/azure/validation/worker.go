@@ -21,6 +21,8 @@ import (
 	apiazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 )
 
+var supportedDiskControllerTypes = []string{"SCSI", "NVMe"}
+
 // ValidateWorkerConfig validates a WorkerConfig object.
 func ValidateWorkerConfig(workerConfig *apiazure.WorkerConfig, dataVolumes []core.DataVolume, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
@@ -121,6 +123,21 @@ func validateOSDiskConf(osDiskConf *apiazure.Volume, fldPath *field.Path) field.
 	}
 
 	allErrs = append(allErrs, validateOsDiskCaching(osDiskConf.Caching, fldPath.Child("caching"))...)
+	allErrs = append(allErrs, validateDiskControllerType(osDiskConf.DiskControllerType, fldPath.Child("diskControllerType"))...)
+
+	return allErrs
+}
+
+func validateDiskControllerType(diskControllerType *string, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if diskControllerType == nil {
+		return nil
+	}
+
+	if !slices.Contains(supportedDiskControllerTypes, *diskControllerType) {
+		allErrs = append(allErrs, field.NotSupported(fldPath, *diskControllerType, supportedDiskControllerTypes))
+	}
 
 	return allErrs
 }

@@ -108,6 +108,9 @@ providerSpec:
             securityEncryptionType: {{ $machineClass.osDisk.securityProfile.securityEncryptionType }}
 {{- end }}
         createOption: FromImage
+{{- if hasKey $machineClass.osDisk "diskControllerType" }}
+      diskControllerType: {{ $machineClass.osDisk.diskControllerType }}
+{{- end }}
 {{- if $machineClass.dataDisks }}
       dataDisks: {{- toYaml $machineClass.dataDisks | nindent 6 }}
 {{- end }}
