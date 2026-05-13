@@ -14,9 +14,8 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	reconcilerutils "github.com/gardener/gardener/pkg/controllerutils/reconciler"
-	"github.com/gardener/gardener/pkg/utils/test"
+	testutils "github.com/gardener/gardener/pkg/utils/test"
 	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
-	mockmanager "github.com/gardener/gardener/third_party/mock/controller-runtime/manager"
 	azurev1alpha1 "github.com/gardener/remedy-controller/pkg/apis/azure/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -34,7 +33,7 @@ var _ = Describe("Actuator", func() {
 		logger = log.Log.WithName("test")
 
 		c        *mockclient.MockClient
-		mgr      *mockmanager.MockManager
+		mgr      testutils.FakeManager
 		a        *mockcontrolplane.MockActuator
 		actuator controlplane.Actuator
 
@@ -79,8 +78,7 @@ var _ = Describe("Actuator", func() {
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
 		c = mockclient.NewMockClient(ctrl)
-		mgr = mockmanager.NewMockManager(ctrl)
-		mgr.EXPECT().GetClient().Return(c)
+		mgr = testutils.FakeManager{Client: c}
 
 		a = mockcontrolplane.NewMockActuator(ctrl)
 		gracefulDeletionTimeout = 10 * time.Second
@@ -150,7 +148,7 @@ var _ = Describe("Actuator", func() {
 					return nil
 				}).Times(2)
 
-			test.EXPECTPatchWithOptimisticLock(ctx, c, pubip, pubipWithFinalizers, types.MergePatchType)
+			testutils.EXPECTPatchWithOptimisticLock(ctx, c, pubip, pubipWithFinalizers, types.MergePatchType)
 			c.EXPECT().DeleteAllOf(ctx, &azurev1alpha1.PublicIPAddress{}, client.InNamespace(namespace)).Return(nil)
 
 			vm := newVirtualMachine()
@@ -161,7 +159,7 @@ var _ = Describe("Actuator", func() {
 					list.Items = []azurev1alpha1.VirtualMachine{*vmWithFinalizers}
 					return nil
 				})
-			test.EXPECTPatchWithOptimisticLock(ctx, c, vm, vmWithFinalizers, types.MergePatchType)
+			testutils.EXPECTPatchWithOptimisticLock(ctx, c, vm, vmWithFinalizers, types.MergePatchType)
 			c.EXPECT().DeleteAllOf(ctx, &azurev1alpha1.VirtualMachine{}, client.InNamespace(namespace)).Return(nil)
 
 			a.EXPECT().Delete(ctx, logger, cp, cluster).Return(nil)
@@ -184,7 +182,7 @@ var _ = Describe("Actuator", func() {
 					list.Items = []azurev1alpha1.PublicIPAddress{*pubipWithFinalizers}
 					return nil
 				})
-			test.EXPECTPatchWithOptimisticLock(ctx, c, pubip, pubipWithFinalizers, types.MergePatchType)
+			testutils.EXPECTPatchWithOptimisticLock(ctx, c, pubip, pubipWithFinalizers, types.MergePatchType)
 			c.EXPECT().DeleteAllOf(ctx, &azurev1alpha1.PublicIPAddress{}, client.InNamespace(namespace)).Return(nil)
 
 			vm := newVirtualMachine()
@@ -195,7 +193,7 @@ var _ = Describe("Actuator", func() {
 					list.Items = []azurev1alpha1.VirtualMachine{*vmWithFinalizers}
 					return nil
 				})
-			test.EXPECTPatchWithOptimisticLock(ctx, c, vm, vmWithFinalizers, types.MergePatchType)
+			testutils.EXPECTPatchWithOptimisticLock(ctx, c, vm, vmWithFinalizers, types.MergePatchType)
 			c.EXPECT().DeleteAllOf(ctx, &azurev1alpha1.VirtualMachine{}, client.InNamespace(namespace)).Return(nil)
 
 			err := actuator.Migrate(ctx, logger, cp, cluster)

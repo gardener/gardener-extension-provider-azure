@@ -11,8 +11,8 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/webhook/cloudprovider"
 	gcontext "github.com/gardener/gardener/extensions/pkg/webhook/context"
 	"github.com/gardener/gardener/pkg/client/kubernetes"
+	testutils "github.com/gardener/gardener/pkg/utils/test"
 	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
-	mockmanager "github.com/gardener/gardener/third_party/mock/controller-runtime/manager"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/mock/gomock"
@@ -37,7 +37,7 @@ var _ = Describe("Ensurer", func() {
 
 		ctrl *gomock.Controller
 		c    *mockclient.MockClient
-		mgr  *mockmanager.MockManager
+		mgr  testutils.FakeManager
 
 		secret                 *corev1.Secret
 		servicePrincipalSecret corev1.Secret
@@ -63,9 +63,7 @@ var _ = Describe("Ensurer", func() {
 		ctrl = gomock.NewController(GinkgoT())
 		c = mockclient.NewMockClient(ctrl)
 
-		mgr = mockmanager.NewMockManager(ctrl)
-
-		mgr.EXPECT().GetClient().Return(c)
+		mgr = testutils.FakeManager{Client: c}
 		scheme := kubernetes.SeedScheme
 		Expect(install.AddToScheme(scheme)).To(Succeed())
 
