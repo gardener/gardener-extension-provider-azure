@@ -1,4 +1,4 @@
-# [Gardener Extension for Azure provider](https://gardener.cloud)
+# Gardener Extension for Azure provider
 [![REUSE status](https://api.reuse.software/badge/github.com/gardener/gardener-extension-provider-azure)](https://api.reuse.software/info/github.com/gardener/gardener-extension-provider-azure)
 [![Build](https://github.com/gardener/gardener-extension-provider-azure/actions/workflows/non-release.yaml/badge.svg)](https://github.com/gardener/gardener-extension-provider-azure/actions/workflows/non-release.yaml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/gardener/gardener-extension-provider-azure)](https://goreportcard.com/report/github.com/gardener/gardener-extension-provider-azure)
