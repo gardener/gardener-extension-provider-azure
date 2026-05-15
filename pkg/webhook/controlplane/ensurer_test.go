@@ -22,7 +22,6 @@ import (
 	testutils "github.com/gardener/gardener/pkg/utils/test"
 	"github.com/gardener/gardener/pkg/utils/version"
 	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
-	mockmanager "github.com/gardener/gardener/third_party/mock/controller-runtime/manager"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/mock/gomock"
@@ -57,7 +56,7 @@ var _ = Describe("Ensurer ", func() {
 
 		ensurer genericmutator.Ensurer
 		c       *mockclient.MockClient
-		mgr     *mockmanager.MockManager
+		mgr     *testutils.FakeManager
 
 		dummyContext = gcontext.NewGardenContext(nil, nil)
 
@@ -117,8 +116,7 @@ var _ = Describe("Ensurer ", func() {
 
 		c = mockclient.NewMockClient(ctrl)
 
-		mgr = mockmanager.NewMockManager(ctrl)
-		mgr.EXPECT().GetClient().Return(c)
+		mgr = &testutils.FakeManager{Client: c}
 
 		ensurer = NewEnsurer(mgr, logger)
 	})
@@ -493,7 +491,7 @@ var _ = Describe("Ensurer ", func() {
 		})
 
 		BeforeEach(func() {
-			mgr.EXPECT().GetClient().Return(c)
+			mgr = &testutils.FakeManager{Client: c}
 			ensurer = NewEnsurer(mgr, logger)
 			DeferCleanup(testutils.WithVar(&ImageVector, imagevector.ImageVector{{
 				Name:       "machine-controller-manager-provider-azure",
@@ -575,7 +573,7 @@ var _ = Describe("Ensurer ", func() {
 		})
 
 		BeforeEach(func() {
-			mgr.EXPECT().GetClient().Return(c)
+			mgr = &testutils.FakeManager{Client: c}
 			ensurer = NewEnsurer(mgr, logger)
 		})
 

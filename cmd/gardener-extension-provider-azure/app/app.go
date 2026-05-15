@@ -18,6 +18,7 @@ import (
 	heartbeatcmd "github.com/gardener/gardener/extensions/pkg/controller/heartbeat/cmd"
 	"github.com/gardener/gardener/extensions/pkg/util"
 	webhookcmd "github.com/gardener/gardener/extensions/pkg/webhook/cmd"
+	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	gardenerhealthz "github.com/gardener/gardener/pkg/healthz"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
@@ -226,13 +227,20 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			controlPlaneCtrlOpts.Completed().Apply(&azurecontrolplane.DefaultAddOptions.Controller)
 			dnsRecordCtrlOpts.Completed().Apply(&azurednsrecord.DefaultAddOptions.Controller)
 			infraCtrlOpts.Completed().Apply(&azureinfrastructure.DefaultAddOptions.Controller)
-			reconcileOpts.Completed().Apply(&azureinfrastructure.DefaultAddOptions.IgnoreOperationAnnotation, &azureinfrastructure.DefaultAddOptions.ExtensionClasses)
-			reconcileOpts.Completed().Apply(&azurecontrolplane.DefaultAddOptions.IgnoreOperationAnnotation, &azurecontrolplane.DefaultAddOptions.ExtensionClasses)
-			reconcileOpts.Completed().Apply(&azureworker.DefaultAddOptions.IgnoreOperationAnnotation, &azureworker.DefaultAddOptions.ExtensionClasses)
-			reconcileOpts.Completed().Apply(&azurebastion.DefaultAddOptions.IgnoreOperationAnnotation, &azurebastion.DefaultAddOptions.ExtensionClasses)
-			reconcileOpts.Completed().Apply(&azurebackupbucket.DefaultAddOptions.IgnoreOperationAnnotation, &azurebackupbucket.DefaultAddOptions.ExtensionClasses)
-			reconcileOpts.Completed().Apply(&azurebackupentry.DefaultAddOptions.IgnoreOperationAnnotation, &azurebackupentry.DefaultAddOptions.ExtensionClasses)
-			reconcileOpts.Completed().Apply(&azurednsrecord.DefaultAddOptions.IgnoreOperationAnnotation, &azurednsrecord.DefaultAddOptions.ExtensionClasses)
+			reconcileOpts.Completed().Apply(&azureinfrastructure.DefaultAddOptions.IgnoreOperationAnnotation)
+			azureinfrastructure.DefaultAddOptions.ExtensionClasses = generalOpts.Completed().ExtensionClasses
+			reconcileOpts.Completed().Apply(&azurecontrolplane.DefaultAddOptions.IgnoreOperationAnnotation)
+			azurecontrolplane.DefaultAddOptions.ExtensionClasses = generalOpts.Completed().ExtensionClasses
+			reconcileOpts.Completed().Apply(&azureworker.DefaultAddOptions.IgnoreOperationAnnotation)
+			azureworker.DefaultAddOptions.ExtensionClasses = generalOpts.Completed().ExtensionClasses
+			reconcileOpts.Completed().Apply(&azurebastion.DefaultAddOptions.IgnoreOperationAnnotation)
+			azurebastion.DefaultAddOptions.ExtensionClasses = generalOpts.Completed().ExtensionClasses
+			reconcileOpts.Completed().Apply(&azurebackupbucket.DefaultAddOptions.IgnoreOperationAnnotation)
+			azurebackupbucket.DefaultAddOptions.ExtensionClasses = generalOpts.Completed().ExtensionClasses
+			reconcileOpts.Completed().Apply(&azurebackupentry.DefaultAddOptions.IgnoreOperationAnnotation)
+			azurebackupentry.DefaultAddOptions.ExtensionClasses = generalOpts.Completed().ExtensionClasses
+			reconcileOpts.Completed().Apply(&azurednsrecord.DefaultAddOptions.IgnoreOperationAnnotation)
+			azurednsrecord.DefaultAddOptions.ExtensionClasses = generalOpts.Completed().ExtensionClasses
 			workerCtrlOpts.Completed().Apply(&azureworker.DefaultAddOptions.Controller)
 			azureworker.DefaultAddOptions.GardenCluster = gardenCluster
 			azureworker.DefaultAddOptions.SelfHostedShootCluster = generalOpts.Completed().SelfHostedShootCluster
@@ -265,7 +273,7 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 				return fmt.Errorf("could not add ready check for webhook server to manager: %w", err)
 			}
 
-			if !slices.Contains(reconcileOpts.ExtensionClasses, "garden") {
+			if !slices.Contains(generalOpts.Completed().ExtensionClasses, extensionsv1alpha1.ExtensionClassGarden) {
 				// TODO (kon-angelo): Remove after the release of version 1.46.0
 				if err := mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
 					return purgeTerraformerRBACResources(ctx, mgr.GetClient(), log)

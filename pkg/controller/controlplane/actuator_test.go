@@ -16,7 +16,6 @@ import (
 	reconcilerutils "github.com/gardener/gardener/pkg/controllerutils/reconciler"
 	"github.com/gardener/gardener/pkg/utils/test"
 	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
-	mockmanager "github.com/gardener/gardener/third_party/mock/controller-runtime/manager"
 	azurev1alpha1 "github.com/gardener/remedy-controller/pkg/apis/azure/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -34,7 +33,7 @@ var _ = Describe("Actuator", func() {
 		logger = log.Log.WithName("test")
 
 		c        *mockclient.MockClient
-		mgr      *mockmanager.MockManager
+		mgr      *test.FakeManager
 		a        *mockcontrolplane.MockActuator
 		actuator controlplane.Actuator
 
@@ -79,8 +78,7 @@ var _ = Describe("Actuator", func() {
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
 		c = mockclient.NewMockClient(ctrl)
-		mgr = mockmanager.NewMockManager(ctrl)
-		mgr.EXPECT().GetClient().Return(c)
+		mgr = &test.FakeManager{Client: c}
 
 		a = mockcontrolplane.NewMockActuator(ctrl)
 		gracefulDeletionTimeout = 10 * time.Second

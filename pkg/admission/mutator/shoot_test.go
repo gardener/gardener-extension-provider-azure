@@ -10,11 +10,10 @@ import (
 
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	testutils "github.com/gardener/gardener/pkg/utils/test"
 	. "github.com/gardener/gardener/pkg/utils/test/matchers"
-	mockmanager "github.com/gardener/gardener/third_party/mock/controller-runtime/manager"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"go.uber.org/mock/gomock"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
@@ -29,8 +28,7 @@ var _ = Describe("Shoot mutator", func() {
 		const namespace = "garden-dev"
 
 		var (
-			ctrl         *gomock.Controller
-			mgr          *mockmanager.MockManager
+			mgr          *testutils.FakeManager
 			shootMutator extensionswebhook.Mutator
 			shoot        *gardencorev1beta1.Shoot
 			oldShoot     *gardencorev1beta1.Shoot
@@ -42,10 +40,7 @@ var _ = Describe("Shoot mutator", func() {
 			scheme := runtime.NewScheme()
 			Expect(gardencorev1beta1.AddToScheme(scheme)).To(Succeed())
 
-			ctrl = gomock.NewController(GinkgoT())
-			mgr = mockmanager.NewMockManager(ctrl)
-
-			mgr.EXPECT().GetScheme().Return(scheme)
+			mgr = &testutils.FakeManager{Scheme: scheme}
 
 			shootMutator = mutator.NewShootMutator(mgr)
 

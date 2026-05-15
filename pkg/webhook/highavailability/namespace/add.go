@@ -14,8 +14,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
-
-	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 const (
@@ -57,12 +55,11 @@ func AddToManagerWithOpts(mgr manager.Manager, options AddOptions) (*extensionsw
 
 	logger.Info("Creating webhook")
 	return &extensionswebhook.Webhook{
-		Name:     WebhookName,
-		Provider: azure.Type,
-		Path:     webhookPath,
-		Target:   extensionswebhook.TargetSeed,
-		Types:    types,
-		Webhook:  &admission.Webhook{Handler: New(admission.NewDecoder(mgr.GetScheme()), logger, options), RecoverPanic: ptr.To(true)},
+		Name:    WebhookName,
+		Path:    webhookPath,
+		Target:  extensionswebhook.TargetSeed,
+		Types:   types,
+		Webhook: &admission.Webhook{Handler: New(admission.NewDecoder(mgr.GetScheme()), logger, options), RecoverPanic: ptr.To(true)},
 		NamespaceSelector: &metav1.LabelSelector{
 			MatchExpressions: []metav1.LabelSelectorRequirement{
 				{

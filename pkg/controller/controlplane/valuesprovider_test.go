@@ -17,8 +17,8 @@ import (
 	"github.com/gardener/gardener/pkg/utils"
 	secretsmanager "github.com/gardener/gardener/pkg/utils/secrets/manager"
 	fakesecretsmanager "github.com/gardener/gardener/pkg/utils/secrets/manager/fake"
+	testutils "github.com/gardener/gardener/pkg/utils/test"
 	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
-	mockmanager "github.com/gardener/gardener/third_party/mock/controller-runtime/manager"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/mock/gomock"
@@ -55,7 +55,7 @@ var _ = Describe("ValuesProvider", func() {
 
 		c   *mockclient.MockClient
 		vp  genericactuator.ValuesProvider
-		mgr *mockmanager.MockManager
+		mgr *testutils.FakeManager
 
 		scheme = runtime.NewScheme()
 		_      = apisazure.AddToScheme(scheme)
@@ -140,9 +140,7 @@ var _ = Describe("ValuesProvider", func() {
 		fakeSecretsManager = fakesecretsmanager.New(fakeClient, namespace)
 
 		c = mockclient.NewMockClient(ctrl)
-		mgr = mockmanager.NewMockManager(ctrl)
-		mgr.EXPECT().GetClient().Return(c)
-		mgr.EXPECT().GetScheme().Return(scheme)
+		mgr = &testutils.FakeManager{Client: c, Scheme: scheme}
 
 		vp = NewValuesProvider(mgr)
 

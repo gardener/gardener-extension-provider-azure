@@ -16,8 +16,8 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage"
 	"github.com/gardener/gardener/extensions/pkg/controller/backupbucket"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	testutils "github.com/gardener/gardener/pkg/utils/test"
 	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
-	mockmanager "github.com/gardener/gardener/third_party/mock/controller-runtime/manager"
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -98,7 +98,7 @@ var _ = Describe("Actuator", func() {
 		ctrl                          *gomock.Controller
 		c                             *mockclient.MockClient
 		sw                            *mockclient.MockStatusWriter
-		mgr                           *mockmanager.MockManager
+		mgr                           *testutils.FakeManager
 		azureClientFactory            *mockazureclient.MockFactory
 		azureGroupClient              *mockazureclient.MockResourceGroup
 		azureStorageAccountClient     *mockazureclient.MockStorageAccount
@@ -119,7 +119,7 @@ var _ = Describe("Actuator", func() {
 
 		c = mockclient.NewMockClient(ctrl)
 		sw = mockclient.NewMockStatusWriter(ctrl)
-		mgr = mockmanager.NewMockManager(ctrl)
+		mgr = &testutils.FakeManager{}
 		azureClientFactory = mockazureclient.NewMockFactory(ctrl)
 		azureGroupClient = mockazureclient.NewMockResourceGroup(ctrl)
 		azureStorageAccountClient = mockazureclient.NewMockStorageAccount(ctrl)
@@ -135,9 +135,7 @@ var _ = Describe("Actuator", func() {
 		ctx = context.TODO()
 		logger = log.Log.WithName("test")
 
-		mgr = mockmanager.NewMockManager(ctrl)
-		mgr.EXPECT().GetClient().Return(c)
-
+		mgr = &testutils.FakeManager{Client: c}
 		a = NewActuator(mgr)
 
 		backupBucket = &extensionsv1alpha1.BackupBucket{

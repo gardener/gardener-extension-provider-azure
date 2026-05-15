@@ -13,8 +13,8 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"github.com/gardener/gardener/pkg/apis/security"
 	securityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
+	testutils "github.com/gardener/gardener/pkg/utils/test"
 	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
-	mockmanager "github.com/gardener/gardener/third_party/mock/controller-runtime/manager"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/mock/gomock"
@@ -39,7 +39,7 @@ var _ = Describe("CredentialsBinding validator", func() {
 			credentialsBindingValidator extensionswebhook.Validator
 
 			ctrl      *gomock.Controller
-			mgr       *mockmanager.MockManager
+			mgr       *testutils.FakeManager
 			apiReader *mockclient.MockReader
 
 			ctx                                = context.TODO()
@@ -52,10 +52,10 @@ var _ = Describe("CredentialsBinding validator", func() {
 		BeforeEach(func() {
 			ctrl = gomock.NewController(GinkgoT())
 
-			mgr = mockmanager.NewMockManager(ctrl)
+			mgr = &testutils.FakeManager{}
 
 			apiReader = mockclient.NewMockReader(ctrl)
-			mgr.EXPECT().GetAPIReader().Return(apiReader)
+			mgr.APIReader = apiReader
 			scheme := runtime.NewScheme()
 			Expect(gardencorev1beta1.AddToScheme(scheme)).To(Succeed())
 			Expect(securityv1alpha1.AddToScheme(scheme)).To(Succeed())
