@@ -227,20 +227,20 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			controlPlaneCtrlOpts.Completed().Apply(&azurecontrolplane.DefaultAddOptions.Controller)
 			dnsRecordCtrlOpts.Completed().Apply(&azurednsrecord.DefaultAddOptions.Controller)
 			infraCtrlOpts.Completed().Apply(&azureinfrastructure.DefaultAddOptions.Controller)
-			reconcileOpts.Completed().Apply(&azureinfrastructure.DefaultAddOptions.IgnoreOperationAnnotation)
-			azureinfrastructure.DefaultAddOptions.ExtensionClasses = generalOpts.Completed().ExtensionClasses
-			reconcileOpts.Completed().Apply(&azurecontrolplane.DefaultAddOptions.IgnoreOperationAnnotation)
-			azurecontrolplane.DefaultAddOptions.ExtensionClasses = generalOpts.Completed().ExtensionClasses
-			reconcileOpts.Completed().Apply(&azureworker.DefaultAddOptions.IgnoreOperationAnnotation)
-			azureworker.DefaultAddOptions.ExtensionClasses = generalOpts.Completed().ExtensionClasses
-			reconcileOpts.Completed().Apply(&azurebastion.DefaultAddOptions.IgnoreOperationAnnotation)
-			azurebastion.DefaultAddOptions.ExtensionClasses = generalOpts.Completed().ExtensionClasses
-			reconcileOpts.Completed().Apply(&azurebackupbucket.DefaultAddOptions.IgnoreOperationAnnotation)
-			azurebackupbucket.DefaultAddOptions.ExtensionClasses = generalOpts.Completed().ExtensionClasses
-			reconcileOpts.Completed().Apply(&azurebackupentry.DefaultAddOptions.IgnoreOperationAnnotation)
-			azurebackupentry.DefaultAddOptions.ExtensionClasses = generalOpts.Completed().ExtensionClasses
-			reconcileOpts.Completed().Apply(&azurednsrecord.DefaultAddOptions.IgnoreOperationAnnotation)
-			azurednsrecord.DefaultAddOptions.ExtensionClasses = generalOpts.Completed().ExtensionClasses
+
+			extensionClasses := generalOpts.Completed().ExtensionClasses
+			applyReconcileConfig := func(ignore *bool, classes *[]extensionsv1alpha1.ExtensionClass) {
+				reconcileOpts.Completed().Apply(ignore)
+				*classes = extensionClasses
+			}
+			applyReconcileConfig(&azureinfrastructure.DefaultAddOptions.IgnoreOperationAnnotation, &azureinfrastructure.DefaultAddOptions.ExtensionClasses)
+			applyReconcileConfig(&azurecontrolplane.DefaultAddOptions.IgnoreOperationAnnotation, &azurecontrolplane.DefaultAddOptions.ExtensionClasses)
+			applyReconcileConfig(&azureworker.DefaultAddOptions.IgnoreOperationAnnotation, &azureworker.DefaultAddOptions.ExtensionClasses)
+			applyReconcileConfig(&azurebastion.DefaultAddOptions.IgnoreOperationAnnotation, &azurebastion.DefaultAddOptions.ExtensionClasses)
+			applyReconcileConfig(&azurebackupbucket.DefaultAddOptions.IgnoreOperationAnnotation, &azurebackupbucket.DefaultAddOptions.ExtensionClasses)
+			applyReconcileConfig(&azurebackupentry.DefaultAddOptions.IgnoreOperationAnnotation, &azurebackupentry.DefaultAddOptions.ExtensionClasses)
+			applyReconcileConfig(&azurednsrecord.DefaultAddOptions.IgnoreOperationAnnotation, &azurednsrecord.DefaultAddOptions.ExtensionClasses)
+
 			workerCtrlOpts.Completed().Apply(&azureworker.DefaultAddOptions.Controller)
 			azureworker.DefaultAddOptions.GardenCluster = gardenCluster
 			azureworker.DefaultAddOptions.SelfHostedShootCluster = generalOpts.Completed().SelfHostedShootCluster
