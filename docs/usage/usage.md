@@ -93,10 +93,10 @@ kubectl -n garden-myproj get wi azure -o=jsonpath={.status.sub}
 As a second step users should configure [Workload Identity Federation](https://learn.microsoft.com/en-us/entra/workload-id/workload-identity-federation-create-trust?pivots=identity-wif-apps-methods-azp#other-identity-providers) so that their application trusts Gardener's Workload Identity Issuer.
 
 > [!TIP]
-> You can retrieve Gardener's Workload Identity Issuer URL directly from the Garden cluster by reading the contents of the [Gardener Info ConfigMap](https://gardener.cloud/docs/gardener/gardener/gardener_info_configmap/).
+> You can retrieve Gardener's Workload Identity Issuer URL directly from the Garden cluster by reading the contents of the [Gardener Info ConfigMap](https://gardener.cloud/docs/gardener/configmap/).
 >
 > ```bash
-> kubectl -n gardener-system-public get configmap -o yaml
+> kubectl -n gardener-system-public get configmap gardener-info -o yaml
 > ```
 
 In the shown example a `WorkloadIdentity` with name `azure` with id `00000000-0000-0000-0000-000000000000` from the `garden-myproj` namespace will be trusted by the Azure application.
@@ -105,6 +105,10 @@ In the shown example a `WorkloadIdentity` with name `azure` with id `00000000-00
 > You should replace the subject identifier in the example below with the subject that is populated in the status of the `WorkloadIdentity`, obtained in a previous step.
 
 ![Federated Credential](images/federated_credential.png)
+
+> [!NOTE]
+> Flexible federated identity credentials currently support only few well-known [public services issuing tokens](https://learn.microsoft.com/en-us/entra/workload-id/workload-identities-flexible-federated-identity-credentials?tabs=github#how-do-flexible-federated-identity-credentials-work).
+> Gardener Workload identity can be configured as (standard) federated identity credentials only.
 
 Please ensure that the Azure application (spn) has the proper [IAM actions](azure-permissions.md) assigned.
 If no fine-grained permissions/actions required then simply assign the [Contributor](https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#contributor) role.
