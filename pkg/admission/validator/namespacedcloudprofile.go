@@ -151,6 +151,11 @@ func (p *namespacedCloudProfile) validateMachineImages(providerConfig *api.Cloud
 				// Support mixed format: group provider versions by version string
 				providerVersions, versionExists := providerVersionsMap[machineImage.Name][version.Version]
 				if !versionExists || len(providerVersions) == 0 {
+					// If the version exists in the parent, it's an expirationDate-only override
+					// that doesn't change image mappings — skip validation.
+					if _, existsInParentVersion := parentImages.GetImageVersion(machineImage.Name, version.Version); existsInParentVersion {
+						continue
+					}
 					allErrs = append(allErrs, field.Required(imagesPath,
 						fmt.Sprintf("machine image version %s@%s is not defined in the NamespacedCloudProfile providerConfig", machineImage.Name, version.Version),
 					))

@@ -372,6 +372,65 @@ var _ = DescribeTableSubtree("NamespacedCloudProfile Validator", func(isCapabili
 			err := namespacedCloudProfileValidator.Validate(ctx, namespacedCloudProfile, nil)
 			Expect(err).ToNot(HaveOccurred())
 		})
+
+		It("should succeed for expirationDate-only override of a parent version without providerConfig entry", func() {
+			cloudProfile.Spec.MachineImages = []v1beta1.MachineImage{
+				{Name: "ubuntu", Versions: []v1beta1.MachineImageVersion{
+					{ExpirableVersion: v1beta1.ExpirableVersion{Version: "22.04"}, Architectures: []string{"amd64"}},
+				}},
+			}
+			if isCapabilitiesCloudProfile {
+				cloudProfile.Spec.MachineImages[0].Versions[0].CapabilityFlavors = []v1beta1.MachineImageFlavor{
+					{Capabilities: v1beta1.Capabilities{v1beta1constants.ArchitectureName: []string{"amd64"}}},
+				}
+			}
+
+			// NCP overrides only the expirationDate, no providerConfig entry for ubuntu
+			namespacedCloudProfile.Spec.ProviderConfig = &runtime.RawExtension{Raw: []byte(`{
+"apiVersion":"azure.provider.extensions.gardener.cloud/v1alpha1",
+"kind":"CloudProfileConfig"
+}`)}
+			namespacedCloudProfile.Spec.MachineImages = []core.MachineImage{
+				{
+					Name: "ubuntu",
+					Versions: []core.MachineImageVersion{
+						{ExpirableVersion: core.ExpirableVersion{Version: "22.04", ExpirationDate: ptr.To(metav1.Now())}, Architectures: []string{"amd64"},
+							CapabilityFlavors: []core.MachineImageFlavor{
+								{Capabilities: core.Capabilities{v1beta1constants.ArchitectureName: []string{"amd64"}}},
+							}},
+					},
+				},
+			}
+
+			Expect(fakeClient.Create(ctx, cloudProfile)).To(Succeed())
+			Expect(namespacedCloudProfileValidator.Validate(ctx, namespacedCloudProfile, nil)).To(Succeed())
+		})
+
+		It("should fail for new version NOT in parent AND not in providerConfig", func() {
+			// When the image doesn't exist at all in the parent, a new version
+			// without providerConfig entry should be rejected.
+			// NCP defines image "new-image" version "1.0" that is NOT in parent and NOT in providerConfig
+			namespacedCloudProfile.Spec.ProviderConfig = &runtime.RawExtension{Raw: []byte(`{
+"apiVersion":"azure.provider.extensions.gardener.cloud/v1alpha1",
+"kind":"CloudProfileConfig"
+}`)}
+			namespacedCloudProfile.Spec.MachineImages = []core.MachineImage{
+				{
+					Name: "new-image",
+					Versions: []core.MachineImageVersion{
+						{ExpirableVersion: core.ExpirableVersion{Version: "1.0"}, Architectures: []string{"amd64"},
+							CapabilityFlavors: []core.MachineImageFlavor{
+								{Capabilities: core.Capabilities{v1beta1constants.ArchitectureName: []string{"amd64"}}},
+							}},
+					},
+				},
+			}
+
+			Expect(fakeClient.Create(ctx, cloudProfile)).To(Succeed())
+
+			err := namespacedCloudProfileValidator.Validate(ctx, namespacedCloudProfile, nil)
+			Expect(err).To(HaveOccurred())
+		})
 	})
 },
 	Entry("CloudProfile uses NO capabilities", false),
