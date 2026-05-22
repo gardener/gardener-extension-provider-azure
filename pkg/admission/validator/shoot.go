@@ -206,12 +206,9 @@ func (s *shoot) validateDNS(ctx context.Context, shoot *core.Shoot) field.ErrorL
 
 		providerFldPath := providersPath.Index(i)
 
-		// TODO(vpnachev): Enable this validation once the extension does not support github.com/gardener/gardener < v1.135.0
-		// if p.CredentialsRef == nil {
-		// 	allErrs = append(allErrs, field.Required(providerFldPath.Child("credentialsRef"), "must be set"))
-		// }
-
-		if p.CredentialsRef != nil {
+		if p.CredentialsRef == nil {
+			allErrs = append(allErrs, field.Required(providerFldPath.Child("credentialsRef"), "must be set"))
+		} else {
 			credentialsFldPath := providerFldPath.Child("credentialsRef")
 
 			credentials, err := kubernetes.GetCredentialsByCrossVersionObjectReference(ctx, s.apiReader, *p.CredentialsRef, shoot.GetNamespace())
@@ -235,29 +232,6 @@ func (s *shoot) validateDNS(ctx context.Context, shoot *core.Shoot) field.ErrorL
 				}
 			default:
 				allErrs = append(allErrs, field.Invalid(credentialsFldPath, p.CredentialsRef.String(), "supported credentials types are Secret and WorkloadIdentity"))
-			}
-		} else { // TODO(vpnachev): Remove the else block once the extension does not support github.com/gardener/gardener < v1.135.0
-			secretNameFldPath := providerFldPath.Child("secretName")
-			if p.SecretName == nil || *p.SecretName == "" {
-				allErrs = append(allErrs, field.Required(secretNameFldPath,
-					fmt.Sprintf("secretName must be specified for %v provider", azure.DNSType)))
-				continue
-			}
-
-			secret := &corev1.Secret{}
-			key := client.ObjectKey{Namespace: shoot.Namespace, Name: *p.SecretName}
-			if err := s.apiReader.Get(ctx, key, secret); err != nil {
-				if apierrors.IsNotFound(err) {
-					allErrs = append(allErrs, field.Invalid(secretNameFldPath,
-						*p.SecretName, "referenced secret not found"))
-				} else {
-					allErrs = append(allErrs, field.InternalError(secretNameFldPath, err))
-				}
-				continue
-			}
-
-			if errList := azurevalidation.ValidateDNSProviderSecret(secret, field.NewPath("secret")); len(errList) != 0 {
-				allErrs = append(allErrs, field.Invalid(secretNameFldPath, *p.SecretName, errList.ToAggregate().Error()))
 			}
 		}
 	}
