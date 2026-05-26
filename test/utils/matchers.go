@@ -81,7 +81,7 @@ func (a azureIDMatcher) Match(actual interface{}) (success bool, err error) {
 	}
 
 	val := reflect.ValueOf(actual)
-	if val.Kind() == reflect.Ptr {
+	if val.Kind() == reflect.Pointer {
 		val = val.Elem()
 	}
 	if val.Kind() != reflect.Struct {
@@ -94,7 +94,7 @@ func (a azureIDMatcher) Match(actual interface{}) (success bool, err error) {
 	}
 
 	var id string
-	if idField.Kind() == reflect.Ptr {
+	if idField.Kind() == reflect.Pointer {
 		id = idField.Elem().String()
 	} else {
 		id = idField.String()
