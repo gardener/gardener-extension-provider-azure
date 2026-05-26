@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"slices"
 
 	druidcorev1alpha1 "github.com/gardener/etcd-druid/api/core/v1alpha1"
 	"github.com/gardener/gardener/extensions/pkg/controller"
@@ -226,13 +225,20 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 			controlPlaneCtrlOpts.Completed().Apply(&azurecontrolplane.DefaultAddOptions.Controller)
 			dnsRecordCtrlOpts.Completed().Apply(&azurednsrecord.DefaultAddOptions.Controller)
 			infraCtrlOpts.Completed().Apply(&azureinfrastructure.DefaultAddOptions.Controller)
-			reconcileOpts.Completed().Apply(&azureinfrastructure.DefaultAddOptions.IgnoreOperationAnnotation, &azureinfrastructure.DefaultAddOptions.ExtensionClasses)
-			reconcileOpts.Completed().Apply(&azurecontrolplane.DefaultAddOptions.IgnoreOperationAnnotation, &azurecontrolplane.DefaultAddOptions.ExtensionClasses)
-			reconcileOpts.Completed().Apply(&azureworker.DefaultAddOptions.IgnoreOperationAnnotation, &azureworker.DefaultAddOptions.ExtensionClasses)
-			reconcileOpts.Completed().Apply(&azurebastion.DefaultAddOptions.IgnoreOperationAnnotation, &azurebastion.DefaultAddOptions.ExtensionClasses)
-			reconcileOpts.Completed().Apply(&azurebackupbucket.DefaultAddOptions.IgnoreOperationAnnotation, &azurebackupbucket.DefaultAddOptions.ExtensionClasses)
-			reconcileOpts.Completed().Apply(&azurebackupentry.DefaultAddOptions.IgnoreOperationAnnotation, &azurebackupentry.DefaultAddOptions.ExtensionClasses)
-			reconcileOpts.Completed().Apply(&azurednsrecord.DefaultAddOptions.IgnoreOperationAnnotation, &azurednsrecord.DefaultAddOptions.ExtensionClasses)
+			reconcileOpts.Completed().Apply(&azureinfrastructure.DefaultAddOptions.IgnoreOperationAnnotation)
+			azureinfrastructure.DefaultAddOptions.ExtensionClasses = generalOpts.Completed().ExtensionClasses
+			reconcileOpts.Completed().Apply(&azurecontrolplane.DefaultAddOptions.IgnoreOperationAnnotation)
+			azurecontrolplane.DefaultAddOptions.ExtensionClasses = generalOpts.Completed().ExtensionClasses
+			reconcileOpts.Completed().Apply(&azureworker.DefaultAddOptions.IgnoreOperationAnnotation)
+			azureworker.DefaultAddOptions.ExtensionClasses = generalOpts.Completed().ExtensionClasses
+			reconcileOpts.Completed().Apply(&azurebastion.DefaultAddOptions.IgnoreOperationAnnotation)
+			azurebastion.DefaultAddOptions.ExtensionClasses = generalOpts.Completed().ExtensionClasses
+			reconcileOpts.Completed().Apply(&azurebackupbucket.DefaultAddOptions.IgnoreOperationAnnotation)
+			azurebackupbucket.DefaultAddOptions.ExtensionClasses = generalOpts.Completed().ExtensionClasses
+			reconcileOpts.Completed().Apply(&azurebackupentry.DefaultAddOptions.IgnoreOperationAnnotation)
+			azurebackupentry.DefaultAddOptions.ExtensionClasses = generalOpts.Completed().ExtensionClasses
+			reconcileOpts.Completed().Apply(&azurednsrecord.DefaultAddOptions.IgnoreOperationAnnotation)
+			azurednsrecord.DefaultAddOptions.ExtensionClasses = generalOpts.Completed().ExtensionClasses
 			workerCtrlOpts.Completed().Apply(&azureworker.DefaultAddOptions.Controller)
 			azureworker.DefaultAddOptions.GardenCluster = gardenCluster
 			azureworker.DefaultAddOptions.SelfHostedShootCluster = generalOpts.Completed().SelfHostedShootCluster
@@ -263,15 +269,6 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 
 			if err := mgr.AddReadyzCheck("webhook-server", mgr.GetWebhookServer().StartedChecker()); err != nil {
 				return fmt.Errorf("could not add ready check for webhook server to manager: %w", err)
-			}
-
-			if !slices.Contains(reconcileOpts.ExtensionClasses, "garden") {
-				// TODO (kon-angelo): Remove after the release of version 1.46.0
-				if err := mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
-					return purgeTerraformerRBACResources(ctx, mgr.GetClient(), log)
-				})); err != nil {
-					return fmt.Errorf("error adding terraformer migrations: %w", err)
-				}
 			}
 
 			if err := mgr.Start(ctx); err != nil {

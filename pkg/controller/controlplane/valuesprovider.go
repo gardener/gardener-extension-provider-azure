@@ -621,7 +621,7 @@ func getCSIControllerChartValues(
 	if err != nil {
 		return nil, err
 	}
-	if versionutils.ConstraintK8sGreaterEqual131.Check(k8sVersion) && versionutils.ConstraintK8sLess134.Check(k8sVersion) {
+	if versionutils.ConstraintK8sLess134.Check(k8sVersion) {
 		if azure.VolumeAttributesClassBetaEnabled(cluster.Shoot) {
 			values["csiResizer"] = map[string]any{
 				"featureGates": map[string]string{
