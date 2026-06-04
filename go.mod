@@ -18,8 +18,8 @@ require (
 	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/elastic/crd-ref-docs v0.3.0
 	github.com/gardener/etcd-druid/api v0.36.3
-	github.com/gardener/gardener v1.143.0
-	github.com/gardener/gardener/pkg/apis v1.143.0
+	github.com/gardener/gardener v1.143.1
+	github.com/gardener/gardener/pkg/apis v1.143.1
 	github.com/gardener/machine-controller-manager v0.62.0
 	github.com/gardener/remedy-controller v0.14.0
 	github.com/go-logr/logr v1.4.3
@@ -32,7 +32,7 @@ require (
 	github.com/spf13/pflag v1.0.10
 	go.uber.org/atomic v1.11.0
 	go.uber.org/mock v0.6.0
-	golang.org/x/crypto v0.51.0
+	golang.org/x/crypto v0.52.0
 	golang.org/x/tools v0.45.0
 	k8s.io/api v0.35.5
 	k8s.io/apiextensions-apiserver v0.35.5
@@ -213,7 +213,7 @@ require (
 	golang.org/x/net v0.54.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/sys v0.44.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
 	golang.org/x/telemetry v0.0.0-20260508192327-42602be52be6 // indirect
 	golang.org/x/term v0.43.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
