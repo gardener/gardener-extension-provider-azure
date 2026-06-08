@@ -43,3 +43,10 @@ var (
 func ValidateCloudProviderSecret(secret, oldSecret *corev1.Secret, fldPath *field.Path) field.ErrorList {
 	return infrastructureCredentialMapping.Validate(secret, oldSecret, fldPath, "shoot clusters")
 }
+
+// ValidateCloudProviderSecretData validates Azure infrastructure credentials from a raw data map.
+// It is equivalent to ValidateCloudProviderSecret but accepts a map[string][]byte directly,
+// allowing validation of both corev1.Secret and gardencorev1beta1.InternalSecret data.
+func ValidateCloudProviderSecretData(data map[string][]byte, fldPath *field.Path) field.ErrorList {
+	return infrastructureCredentialMapping.ValidateData(data, fldPath)
+}
