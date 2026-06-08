@@ -6,7 +6,6 @@ package validator_test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
@@ -99,7 +98,7 @@ var _ = Describe("CredentialsBinding validator", func() {
 		It("should return err if the CredentialsBinding references unknown credentials type", func() {
 			credentialsBindingSecret.CredentialsRef.APIVersion = "unknown"
 			err := credentialsBindingValidator.Validate(ctx, credentialsBindingSecret, nil)
-			Expect(err).To(MatchError(errors.New(`unsupported credentials reference: version "unknown", kind "Secret"`)))
+			Expect(err).To(MatchError(ContainSubstring("unsupported credentials reference")))
 		})
 
 		It("should return err if it fails to get the corresponding Secret", func() {
@@ -143,6 +142,52 @@ var _ = Describe("CredentialsBinding validator", func() {
 			old := credentialsBindingSecret.DeepCopy()
 
 			Expect(credentialsBindingValidator.Validate(ctx, credentialsBindingSecret, old)).To(Succeed())
+		})
+
+		Context("InternalSecret", func() {
+			var credentialsBindingInternalSecret *security.CredentialsBinding
+
+			BeforeEach(func() {
+				credentialsBindingInternalSecret = &security.CredentialsBinding{
+					CredentialsRef: corev1.ObjectReference{
+						Name:       name,
+						Namespace:  namespace,
+						Kind:       "InternalSecret",
+						APIVersion: gardencorev1beta1.SchemeGroupVersion.String(),
+					},
+				}
+			})
+
+			It("should return err if it fails to get the corresponding InternalSecret", func() {
+				apiReader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&gardencorev1beta1.InternalSecret{})).Return(fakeErr)
+
+				err := credentialsBindingValidator.Validate(ctx, credentialsBindingInternalSecret, nil)
+				Expect(err).To(MatchError(fakeErr))
+			})
+
+			It("should return err when the corresponding InternalSecret is not valid", func() {
+				apiReader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&gardencorev1beta1.InternalSecret{})).
+					DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *gardencorev1beta1.InternalSecret, _ ...client.GetOption) error {
+						obj.Data = map[string][]byte{"foo": []byte("bar")}
+						return nil
+					})
+
+				err := credentialsBindingValidator.Validate(ctx, credentialsBindingInternalSecret, nil)
+				Expect(err).To(HaveOccurred())
+			})
+
+			It("should succeed when the corresponding InternalSecret is valid", func() {
+				apiReader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&gardencorev1beta1.InternalSecret{})).
+					DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *gardencorev1beta1.InternalSecret, _ ...client.GetOption) error {
+						obj.Data = map[string][]byte{
+							azure.SubscriptionIDKey: []byte("b7ad693a-028a-422c-b064-d76c4586f2b3"),
+							azure.TenantIDKey:       []byte("ee16e592-3035-41b9-a217-958f8f75b740"),
+						}
+						return nil
+					})
+
+				Expect(credentialsBindingValidator.Validate(ctx, credentialsBindingInternalSecret, nil)).To(Succeed())
+			})
 		})
 
 		It("should succeed when the corresponding WorkloadIdentity is valid", func() {

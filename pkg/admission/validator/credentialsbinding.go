@@ -10,8 +10,10 @@ import (
 	"fmt"
 
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"github.com/gardener/gardener/pkg/apis/security"
 	securityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
+	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -51,34 +53,34 @@ func (cb *credentialsBinding) Validate(ctx context.Context, newObj, oldObj clien
 
 	// Explicitly use the client.Reader to prevent controller-runtime to start Informer for Secrets/WorkloadIdentities
 	// under the hood. The latter increases the memory usage of the component.
-	var credentialsKey = client.ObjectKey{Namespace: credentialsBinding.CredentialsRef.Namespace, Name: credentialsBinding.CredentialsRef.Name}
-	switch {
-	case credentialsBinding.CredentialsRef.APIVersion == corev1.SchemeGroupVersion.String() && credentialsBinding.CredentialsRef.Kind == "Secret":
-		secret := &corev1.Secret{}
-		if err := cb.apiReader.Get(ctx, credentialsKey, secret); err != nil {
-			return err
-		}
+	credentials, err := kutil.GetCredentialsByObjectReference(ctx, cb.apiReader, credentialsBinding.CredentialsRef)
+	if err != nil {
+		return err
+	}
 
-		if errs := azurevalidation.ValidateCloudProviderSecret(secret, nil, field.NewPath("secret")); len(errs) > 0 {
+	switch creds := credentials.(type) {
+	case *corev1.Secret:
+		if errs := azurevalidation.ValidateCloudProviderSecret(creds, nil, field.NewPath("secret")); len(errs) > 0 {
 			return errs.ToAggregate()
 		}
 		return nil
-	case credentialsBinding.CredentialsRef.APIVersion == securityv1alpha1.SchemeGroupVersion.String() && credentialsBinding.CredentialsRef.Kind == "WorkloadIdentity":
-		workloadIdentity := &securityv1alpha1.WorkloadIdentity{}
-		if err := cb.apiReader.Get(ctx, credentialsKey, workloadIdentity); err != nil {
-			return err
+	case *gardencorev1beta1.InternalSecret:
+		if errs := azurevalidation.ValidateCloudProviderSecretData(creds.Data, field.NewPath("secret")); len(errs) > 0 {
+			return errs.ToAggregate()
 		}
-
-		if workloadIdentity.Spec.TargetSystem.ProviderConfig == nil {
+		return nil
+	case *securityv1alpha1.WorkloadIdentity:
+		if creds.Spec.TargetSystem.ProviderConfig == nil {
 			return errors.New("the target system is missing configuration")
 		}
 
-		workloadIdentityConfig, err := helper.WorkloadIdentityConfigFromRaw(workloadIdentity.Spec.TargetSystem.ProviderConfig)
+		workloadIdentityConfig, err := helper.WorkloadIdentityConfigFromRaw(creds.Spec.TargetSystem.ProviderConfig)
 		if err != nil {
 			return fmt.Errorf("target system's configuration is not valid: %w", err)
 		}
 
 		fieldPath := field.NewPath("spec", "targetSystem", "providerConfig")
+		credentialsKey := client.ObjectKey{Namespace: credentialsBinding.CredentialsRef.Namespace, Name: credentialsBinding.CredentialsRef.Name}
 		if errList := azurevalidation.ValidateWorkloadIdentityConfig(workloadIdentityConfig, fieldPath); len(errList) > 0 {
 			return fmt.Errorf("referenced workload identity %s is not valid: %w", credentialsKey, errList.ToAggregate())
 		}
