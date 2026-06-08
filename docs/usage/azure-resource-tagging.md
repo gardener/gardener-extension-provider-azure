@@ -22,9 +22,33 @@ Worker node VMs receive tags derived from the worker pool configuration in the S
 | `kubernetes.io-role-node` | `"1"` | Static |
 | `{label-key}` | `{label-value}` | Each entry in `shoot.spec.provider.workers[].labels` |
 
-### Virtual Machine Scale Sets / VMOs (Flex Orchestration)
+**Example:** Given the following worker pool configuration:
 
-Azure Virtual Machine Scale Set resources created for worker pools (VMO mode) receive tags that identify them as Gardener-managed and associate them with a specific worker pool.
+```yaml
+spec:
+  provider:
+    workers:
+    - name: production
+      labels:
+        worker.gardener.cloud/pool: production
+        workload-type: high-memory
+```
+
+The resulting VM tags are:
+
+```
+Name:                                                    shoot--my-project--my-cluster
+kubernetes.io-cluster-shoot--my-project--my-cluster:     "1"
+kubernetes.io-role-node:                                 "1"
+worker.gardener.cloud_pool:                              production
+workload-type:                                           high-memory
+```
+
+> Note: The label key `worker.gardener.cloud/pool` is sanitized to `worker.gardener.cloud_pool` because `/` is not allowed in Azure tag keys.
+
+### Virtual Machine Scale Sets / Flexible Orchestration Mode for Virtual Machine Scale Sets (VMSS)
+
+Azure Virtual Machine Scale Set resources created for worker pools receive tags that identify them as Gardener-managed and associate them with a specific worker pool.
 
 | Tag Key | Value | Source |
 |---|---|---|
@@ -37,12 +61,13 @@ These tags are also used as a filter when listing VMSS resources to determine wh
 
 Public IP addresses created for load balancers (Services of type `LoadBalancer`) are tagged so the extension can identify and manage them across reconciliation cycles.
 
-| Tag Key | Value | Source |
-|---|---|---|
-| `managed-by-gardener` | `"true"` | Static |
-| `gardener-shoot-name` | Technical name of the Shoot | Shoot technical ID |
+| Tag Key | Value                     | Source |
+|---|---------------------------|---|
+| `managed-by-gardener` | `"true"`                  | Static |
+| `gardener-shoot-name` | Technical ID of the Shoot | Shoot technical ID |
 
-During reconciliation, the extension filters Public IPs by requiring **both** of these tags to match. This prevents the extension from touching Public IPs it did not create.
+During reconciliation, the extension filters Public IPs by requiring **both** of these tags to match.
+This prevents the extension from touching Public IPs it did not create.
 
 ### Bastion Resources
 
@@ -59,7 +84,8 @@ When a bastion host is created, the following resources are all tagged with the 
 
 ### Blob Storage Objects
 
-Blobs in Azure Storage accounts may be tagged when they cannot be deleted immediately due to an immutability policy (e.g. WORM retention). In this case a tag is applied to mark the blob for deferred deletion via a storage lifecycle policy.
+Blobs in Azure Storage accounts may be tagged when they cannot be deleted immediately due to an immutability policy (e.g. WORM retention).
+In this case a tag is applied to mark the blob for deferred deletion via a storage lifecycle policy.
 
 | Tag Key | Value | Source |
 |---|---|---|
@@ -67,4 +93,5 @@ Blobs in Azure Storage accounts may be tagged when they cannot be deleted immedi
 
 ## Tag Sanitization
 
-Azure VM tags do not allow the characters `< > % \ & ? /` or spaces in tag keys. Worker pool label keys (and the Shoot technical ID used in `kubernetes.io-cluster-*` keys) are sanitized by replacing any of these characters with an underscore (`_`) before the tags are applied.
+Azure VM tags do not allow the characters `< > % \ & ? /` or spaces in tag keys.
+Worker pool label keys (and the Shoot technical ID used in `kubernetes.io-cluster-*` keys) are sanitized by replacing any of these characters with an underscore (`_`) and converted to lowercase before the tags are applied.
