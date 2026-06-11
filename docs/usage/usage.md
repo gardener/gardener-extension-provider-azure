@@ -492,6 +492,8 @@ You can configure the disk controller type by specifying `.volume.diskController
 Current supported values are `SCSI` and `NVMe`.
 If omitted, Azure chooses the default disk controller type based on the VM size and image capabilities.
 
+> **Note:** `diskControllerType` requires a Generation 2 (Gen2) VM image. Azure will reject the VM creation with an `InvalidParameter` error if the image is not Gen2. In the cloud profile, Gen2 image versions are identified by the `-gen2` suffix (e.g. `2150.4.0-gen2`). Ensure the worker pool's `machineImage.version` references a Gen2 image when setting `diskControllerType`.
+
 ## Example `Shoot` manifest (non-zoned)
 
 Please find below an example `Shoot` manifest for a non-zoned cluster:
