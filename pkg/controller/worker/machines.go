@@ -481,12 +481,13 @@ func computeDisks(pool extensionsv1alpha1.WorkerPool, dataVolumesConfig []azurea
 	if osDiskConfig != nil && osDiskConfig.Caching != nil {
 		osDisk["caching"] = *osDiskConfig.Caching
 	}
-	if osDiskConfig != nil && osDiskConfig.DiskControllerType != nil {
-		osDisk["diskControllerType"] = *osDiskConfig.DiskControllerType
-	}
 
 	disks := map[string]any{
 		"osDisk": osDisk,
+	}
+
+	if osDiskConfig != nil && osDiskConfig.DiskControllerType != nil {
+		disks["diskControllerType"] = *osDiskConfig.DiskControllerType
 	}
 
 	// handle data disks
@@ -633,6 +634,9 @@ func appendHashDataForWorkerConfig(hashData []string, workerConfig *azureapi.Wor
 	if workerConfig.Volume != nil {
 		if workerConfig.Volume.Caching != nil {
 			hashData = append(hashData, *workerConfig.Volume.Caching)
+		}
+		if workerConfig.Volume.DiskControllerType != nil {
+			hashData = append(hashData, *workerConfig.Volume.DiskControllerType)
 		}
 	}
 	if workerConfig.DataVolumes != nil {
