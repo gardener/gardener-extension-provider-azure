@@ -27,6 +27,7 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/admission/mutator"
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/install"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 var _ = Describe("NamespacedCloudProfile Mutator", func() {
@@ -115,9 +116,52 @@ var _ = Describe("NamespacedCloudProfile Mutator", func() {
 
 				Expect(namespacedCloudProfileMutator.Mutate(ctx, namespacedCloudProfile, nil)).To(Succeed())
 
-				Expect(namespacedCloudProfile.Spec.MachineImages[0].Versions[0].CapabilityFlavors).ToNot(BeEmpty())
-				// Should have flavors for both amd64 and arm64
-				Expect(namespacedCloudProfile.Spec.MachineImages[0].Versions[0].CapabilityFlavors).To(HaveLen(2))
+				// Should have flavors for both amd64 and arm64. Since acceleratedNetworking
+				// is not set (defaults to false), the network capability is set to "basic".
+				Expect(namespacedCloudProfile.Spec.MachineImages[0].Versions[0].CapabilityFlavors).To(ConsistOf(
+					v1beta1.MachineImageFlavor{Capabilities: v1beta1.Capabilities{
+						"architecture":              []string{"amd64"},
+						azure.CapabilityNetworkName: []string{azure.CapabilityNetworkBasic},
+					}},
+					v1beta1.MachineImageFlavor{Capabilities: v1beta1.Capabilities{
+						"architecture":              []string{"arm64"},
+						azure.CapabilityNetworkName: []string{azure.CapabilityNetworkBasic},
+					}},
+				))
+			})
+
+			It("should populate capabilityFlavors from old format provider config with acceleratedNetworking", func() {
+				Expect(fakeClient.Create(ctx, parentProfile)).To(Succeed())
+
+				namespacedCloudProfile.Spec.ProviderConfig = &runtime.RawExtension{Raw: []byte(`{
+"apiVersion":"azure.provider.extensions.gardener.cloud/v1alpha1",
+"kind":"CloudProfileConfig",
+"machineImages":[
+  {"name":"ubuntu","versions":[
+    {"version":"22.04","acceleratedNetworking":true,"id":"canonical:ubuntu:22.04:latest"},
+    {"version":"22.04","acceleratedNetworking":false,"id":"canonical:ubuntu:22.04:basic"}
+  ]}
+]}`)}
+				namespacedCloudProfile.Spec.MachineImages = []v1beta1.MachineImage{
+					{Name: "ubuntu", Versions: []v1beta1.MachineImageVersion{
+						{ExpirableVersion: v1beta1.ExpirableVersion{Version: "22.04"}},
+					}},
+				}
+
+				Expect(namespacedCloudProfileMutator.Mutate(ctx, namespacedCloudProfile, nil)).To(Succeed())
+
+				// When acceleratedNetworking=true the network capability is omitted from the flavor
+				// (meaning any networking is acceptable). When acceleratedNetworking=false the
+				// network capability is restricted to "basic".
+				Expect(namespacedCloudProfile.Spec.MachineImages[0].Versions[0].CapabilityFlavors).To(ConsistOf(
+					v1beta1.MachineImageFlavor{Capabilities: v1beta1.Capabilities{
+						"architecture": []string{"amd64"},
+					}},
+					v1beta1.MachineImageFlavor{Capabilities: v1beta1.Capabilities{
+						"architecture":              []string{"amd64"},
+						azure.CapabilityNetworkName: []string{azure.CapabilityNetworkBasic},
+					}},
+				))
 			})
 
 			It("should populate capabilityFlavors from new format provider config", func() {
