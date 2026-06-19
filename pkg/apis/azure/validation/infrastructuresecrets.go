@@ -45,8 +45,9 @@ func ValidateCloudProviderSecret(secret, oldSecret *corev1.Secret, fldPath *fiel
 }
 
 // ValidateCloudProviderSecretData validates Azure infrastructure credentials from a raw data map.
-// It is equivalent to ValidateCloudProviderSecret but accepts a map[string][]byte directly,
-// allowing validation of both corev1.Secret and gardencorev1beta1.InternalSecret data.
-func ValidateCloudProviderSecretData(data map[string][]byte, fldPath *field.Path) field.ErrorList {
-	return infrastructureCredentialMapping.ValidateData(data, fldPath)
+// It accepts a map[string][]byte directly, allowing validation of both corev1.Secret and
+// gardencorev1beta1.InternalSecret data. When secretKey is non-empty it is included in error
+// messages. When oldData is non-nil, immutability constraints are also checked.
+func ValidateCloudProviderSecretData(data, oldData map[string][]byte, secretKey string, fldPath *field.Path) field.ErrorList {
+	return infrastructureCredentialMapping.ValidateData(data, oldData, secretKey, "shoot clusters", fldPath)
 }

@@ -54,14 +54,20 @@ func (cm *CredentialMapping) Validate(secret, oldSecret *corev1.Secret, fldPath 
 // ValidateData performs validation of credentials from a raw data map.
 // It accepts a map[string][]byte directly, allowing validation of both
 // corev1.Secret and gardencorev1beta1.InternalSecret data.
-func (cm *CredentialMapping) ValidateData(data map[string][]byte, fldPath *field.Path) field.ErrorList {
+// When secretKey is non-empty it is included in error messages for context.
+// When oldData is non-nil, immutability constraints are also checked.
+func (cm *CredentialMapping) ValidateData(data, oldData map[string][]byte, secretKey string, resourceType string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	dataPath := fldPath.Child("data")
 
-	allErrs = append(allErrs, cm.validateRequired(data, "", dataPath)...)
-	allErrs = append(allErrs, cm.validateFormats(data, "", dataPath)...)
-	allErrs = append(allErrs, cm.validateNoUnexpected(data, "", dataPath)...)
+	allErrs = append(allErrs, cm.validateRequired(data, secretKey, dataPath)...)
+	allErrs = append(allErrs, cm.validateFormats(data, secretKey, dataPath)...)
+	allErrs = append(allErrs, cm.validateNoUnexpected(data, secretKey, dataPath)...)
 	allErrs = append(allErrs, cm.validatePredefinedValues(data, dataPath)...)
+
+	if oldData != nil {
+		allErrs = append(allErrs, cm.validateImmutable(data, oldData, resourceType, secretKey, dataPath)...)
+	}
 
 	return allErrs
 }
