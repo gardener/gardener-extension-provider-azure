@@ -95,3 +95,6 @@ In this case a tag is applied to mark the blob for deferred deletion via a stora
 
 Azure VM tags do not allow the characters `< > % \ & ? /` or spaces in tag keys.
 Worker pool label keys (and the Shoot technical ID used in `kubernetes.io-cluster-*` keys) are sanitized by replacing any of these characters with an underscore (`_`) and converted to lowercase before the tags are applied.
+
+Note that sanitization can cause key collisions: two distinct label keys that differ only in restricted characters (e.g. `foo/bar` and `foo\bar`) will both be sanitized to the same tag key (`foo_bar`).
+In that case the last value written wins and one label will silently be dropped from the VM tags.
