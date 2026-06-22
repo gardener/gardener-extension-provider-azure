@@ -61,14 +61,14 @@ func (cb *credentialsBinding) Validate(ctx context.Context, newObj, oldObj clien
 	switch creds := credentials.(type) {
 	case *corev1.Secret:
 		secretKey := fmt.Sprintf("%s/%s", creds.Namespace, creds.Name)
-		if errs := azurevalidation.ValidateCloudProviderSecretData(creds.Data, nil, secretKey, field.NewPath("secret")); len(errs) > 0 {
-			return errs.ToAggregate()
+		if errs := azurevalidation.ValidateCloudProviderSecretData(creds.Data, nil, field.NewPath("secret")); len(errs) > 0 {
+			return fmt.Errorf("secret %s is not valid: %w", secretKey, errs.ToAggregate())
 		}
 		return nil
 	case *gardencorev1beta1.InternalSecret:
 		secretKey := fmt.Sprintf("%s/%s", creds.Namespace, creds.Name)
-		if errs := azurevalidation.ValidateCloudProviderSecretData(creds.Data, nil, secretKey, field.NewPath("secret")); len(errs) > 0 {
-			return errs.ToAggregate()
+		if errs := azurevalidation.ValidateCloudProviderSecretData(creds.Data, nil, field.NewPath("secret")); len(errs) > 0 {
+			return fmt.Errorf("secret %s is not valid: %w", secretKey, errs.ToAggregate())
 		}
 		return nil
 	case *securityv1alpha1.WorkloadIdentity:

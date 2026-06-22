@@ -56,17 +56,17 @@ func (cm *CredentialMapping) Validate(secret, oldSecret *corev1.Secret, fldPath 
 // corev1.Secret and gardencorev1beta1.InternalSecret data.
 // When secretKey is non-empty it is included in error messages for context.
 // When oldData is non-nil, immutability constraints are also checked.
-func (cm *CredentialMapping) ValidateData(data, oldData map[string][]byte, secretKey string, resourceType string, fldPath *field.Path) field.ErrorList {
+func (cm *CredentialMapping) ValidateData(data, oldData map[string][]byte, resourceType string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	dataPath := fldPath.Child("data")
 
-	allErrs = append(allErrs, cm.validateRequired(data, secretKey, dataPath)...)
-	allErrs = append(allErrs, cm.validateFormats(data, secretKey, dataPath)...)
-	allErrs = append(allErrs, cm.validateNoUnexpected(data, secretKey, dataPath)...)
+	allErrs = append(allErrs, cm.validateRequired(data, dataPath)...)
+	allErrs = append(allErrs, cm.validateFormats(data, dataPath)...)
+	allErrs = append(allErrs, cm.validateNoUnexpected(data, dataPath)...)
 	allErrs = append(allErrs, cm.validatePredefinedValues(data, dataPath)...)
 
 	if oldData != nil {
-		allErrs = append(allErrs, cm.validateImmutable(data, oldData, resourceType, secretKey, dataPath)...)
+		allErrs = append(allErrs, cm.validateImmutable(data, oldData, resourceType, dataPath)...)
 	}
 
 	return allErrs
@@ -74,7 +74,7 @@ func (cm *CredentialMapping) ValidateData(data, oldData map[string][]byte, secre
 
 // validateRequired validates that all required credential fields are present and non-empty.
 // When secretKey is non-empty it is appended to error messages for context.
-func (cm *CredentialMapping) validateRequired(data map[string][]byte, secretKey string, fldPath *field.Path) field.ErrorList {
+func (cm *CredentialMapping) validateRequired(data map[string][]byte, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	for dataKey, spec := range cm.Fields {
@@ -84,19 +84,11 @@ func (cm *CredentialMapping) validateRequired(data map[string][]byte, secretKey 
 
 		value, exists := data[dataKey]
 		if !exists {
-			msg := fmt.Sprintf("missing required field %q", dataKey)
-			if secretKey != "" {
-				msg += " in secret " + secretKey
-			}
-			allErrs = append(allErrs, field.Required(fldPath.Key(dataKey), msg))
+			allErrs = append(allErrs, field.Required(fldPath.Key(dataKey), fmt.Sprintf("missing required field %q", dataKey)))
 			continue
 		}
 		if len(value) == 0 {
-			msg := fmt.Sprintf("field %q cannot be empty", dataKey)
-			if secretKey != "" {
-				msg += " in secret " + secretKey
-			}
-			allErrs = append(allErrs, field.Invalid(fldPath.Key(dataKey), "", msg))
+			allErrs = append(allErrs, field.Invalid(fldPath.Key(dataKey), "", fmt.Sprintf("field %q cannot be empty", dataKey)))
 		}
 	}
 
@@ -105,7 +97,7 @@ func (cm *CredentialMapping) validateRequired(data map[string][]byte, secretKey 
 
 // validateFormats validates the format of credential values.
 // When secretKey is non-empty it is appended to error messages for context.
-func (cm *CredentialMapping) validateFormats(data map[string][]byte, secretKey string, fldPath *field.Path) field.ErrorList {
+func (cm *CredentialMapping) validateFormats(data map[string][]byte, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	for dataKey, spec := range cm.Fields {
@@ -115,20 +107,12 @@ func (cm *CredentialMapping) validateFormats(data map[string][]byte, secretKey s
 		}
 
 		if spec.IsGUID && !guidRegex.Match(value) {
-			msg := fmt.Sprintf("field %q must be a valid GUID", dataKey)
-			if secretKey != "" {
-				msg += " in secret " + secretKey
-			}
-			allErrs = append(allErrs, field.Invalid(fldPath.Key(dataKey), "(hidden)", msg))
+			allErrs = append(allErrs, field.Invalid(fldPath.Key(dataKey), "(hidden)", fmt.Sprintf("field %q must be a valid GUID", dataKey)))
 		}
 
 		valueStr := string(value)
 		if strings.TrimSpace(valueStr) != valueStr {
-			msg := fmt.Sprintf("field %q must not contain leading or trailing whitespace", dataKey)
-			if secretKey != "" {
-				msg += " in secret " + secretKey
-			}
-			allErrs = append(allErrs, field.Invalid(fldPath.Key(dataKey), "(hidden)", msg))
+			allErrs = append(allErrs, field.Invalid(fldPath.Key(dataKey), "(hidden)", fmt.Sprintf("field %q must not contain leading or trailing whitespace", dataKey)))
 		}
 	}
 
@@ -137,7 +121,7 @@ func (cm *CredentialMapping) validateFormats(data map[string][]byte, secretKey s
 
 // validateNoUnexpected validates that no unexpected fields are present.
 // When secretKey is non-empty it is appended to error messages for context.
-func (cm *CredentialMapping) validateNoUnexpected(data map[string][]byte, secretKey string, fldPath *field.Path) field.ErrorList {
+func (cm *CredentialMapping) validateNoUnexpected(data map[string][]byte, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	allowedKeys := sets.New[string]()
@@ -147,11 +131,7 @@ func (cm *CredentialMapping) validateNoUnexpected(data map[string][]byte, secret
 
 	for key := range data {
 		if !allowedKeys.Has(key) {
-			msg := fmt.Sprintf("unexpected field %q", key)
-			if secretKey != "" {
-				msg += " in secret " + secretKey
-			}
-			allErrs = append(allErrs, field.Forbidden(fldPath.Key(key), msg))
+			allErrs = append(allErrs, field.Forbidden(fldPath.Key(key), fmt.Sprintf("unexpected field %q", key)))
 		}
 	}
 
@@ -159,7 +139,7 @@ func (cm *CredentialMapping) validateNoUnexpected(data map[string][]byte, secret
 }
 
 // validateImmutable validates that immutable fields haven't changed
-func (cm *CredentialMapping) validateImmutable(newData, oldData map[string][]byte, resourceType, secretKey string, fldPath *field.Path) field.ErrorList {
+func (cm *CredentialMapping) validateImmutable(newData, oldData map[string][]byte, resourceType string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	for dataKey, spec := range cm.Fields {
@@ -169,7 +149,7 @@ func (cm *CredentialMapping) validateImmutable(newData, oldData map[string][]byt
 
 		if !bytes.Equal(newData[dataKey], oldData[dataKey]) {
 			allErrs = append(allErrs, field.Invalid(fldPath.Key(dataKey), "(hidden)",
-				fmt.Sprintf("field %q must not be changed for existing %s in secret %s", dataKey, resourceType, secretKey)))
+				fmt.Sprintf("field %q must not be changed for existing %s", dataKey, resourceType)))
 		}
 	}
 

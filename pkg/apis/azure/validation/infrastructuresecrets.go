@@ -48,6 +48,6 @@ func ValidateCloudProviderSecret(secret, oldSecret *corev1.Secret, fldPath *fiel
 // It accepts a map[string][]byte directly, allowing validation of both corev1.Secret and
 // gardencorev1beta1.InternalSecret data. When secretKey is non-empty it is included in error
 // messages. When oldData is non-nil, immutability constraints are also checked.
-func ValidateCloudProviderSecretData(data, oldData map[string][]byte, secretKey string, fldPath *field.Path) field.ErrorList {
-	return infrastructureCredentialMapping.ValidateData(data, oldData, secretKey, "shoot clusters", fldPath)
+func ValidateCloudProviderSecretData(data, oldData map[string][]byte, fldPath *field.Path) field.ErrorList {
+	return infrastructureCredentialMapping.ValidateData(data, oldData, "shoot clusters", fldPath)
 }
