@@ -27,7 +27,7 @@ With the introduction of `spec.machineCapabilities` in Gardener *v1.131.0*, you 
 **Purpose and Behavior:**
 
 The `machineCapabilities` feature allows you to:
-- Define available capabilities and their values in the CloudProfile (e.g., `architecture`, `gardener-azure-networking`)
+- Define available capabilities and their values in the CloudProfile (e.g., `architecture`, `azure-networking`)
 - Associate machine images with specific capability combinations via `capabilityFlavors`
 - Optionally restrict machine types to specific capabilities via `machineTypes.capabilities`
 
@@ -35,7 +35,7 @@ The `machineCapabilities` feature allows you to:
 
 The capability system uses **automatic defaulting** from `.spec.machineCapabilities`:
 
-- **`.spec.machineCapabilities`**: Defines all available capability keys and their possible values (e.g., `architecture: [amd64, arm64]`, `gardener-azure-networking: [basic, accelerated]`)
+- **`.spec.machineCapabilities`**: Defines all available capability keys and their possible values (e.g., `architecture: [amd64, arm64]`, `azure-networking: [basic, accelerated]`)
 - Any capability **not explicitly specified** in `.spec.machineImages[].versions[].capabilityFlavors[].capabilities` or `.spec.machineTypes[].capabilities` automatically gets **all values** from `.spec.machineCapabilities`
 - If no capabilities are defined all will be defaulted.
 
@@ -45,7 +45,7 @@ Always required is the architecture capability:
 - `architecture`: `amd64` and `arm64` (specifies the CPU architecture of the machine on which given machine image can be used)
 
 But any other capability can be mapped here as well, e.g.:
-- `gardener-azure-networking`: `basic` and `accelerated` (specifies if the machine image supports [Azure Accelerated Networking](https://docs.microsoft.com/en-us/azure/virtual-network/create-vm-accelerated-networking-cli))
+- `azure-networking`: `basic` and `accelerated` (specifies if the machine image supports [Azure Accelerated Networking](https://docs.microsoft.com/en-us/azure/virtual-network/create-vm-accelerated-networking-cli))
 
 An example `CloudProfileConfig` for the Azure extension looks as follows:
 
@@ -66,7 +66,7 @@ machineImages:
     - urn: "CoreOS:CoreOS:Stable:2135.6.0"
       capabilities:
         architecture: [amd64]
-        gardener-azure-networking: [basic,accelerated]
+        azure-networking: [basic,accelerated]
 - name: ImageWithMultipleCapabilityFlavors
   versions:
   - version: 1.0.0
@@ -74,15 +74,15 @@ machineImages:
     - id: "/subscriptions/<subscription ID where the gallery is located>/resourceGroups/myGalleryRG/providers/Microsoft.Compute/galleries/myGallery/images/myImageDefinition/versions/1.0.0"
       capabilities:
         architecture: [amd64]
-        gardener-azure-networking: [basic]
+        azure-networking: [basic]
     - communityGalleryImageID: "/CommunityGalleries/gardenlinux-567905d8-921f-4a85-b423-1fbf4e249d90/Images/gardenlinux/Versions/576.1.1"
       capabilities:
         architecture: [amd64]
-        gardener-azure-networking: [accelerated]
+        azure-networking: [accelerated]
     - sharedGalleryImageID: "/SharedGalleries/sharedGalleryName/Images/sharedGalleryImageName/Versions/sharedGalleryImageVersionName"
       capabilities:
         architecture: [arm64]
-        gardener-azure-networking: [accelerated]
+        azure-networking: [accelerated]
 ```
 
 #### Old format
@@ -153,7 +153,7 @@ spec:
       values:
         - amd64
         - arm64
-#    - name: gardener-azure-networking # optional
+#    - name: azure-networking # optional
 #      values:
 #        - basic
 #        - accelerated
@@ -168,11 +168,11 @@ spec:
     - version: 2135.6.0
       capabilityFlavors:
 #      - architecture: [amd64] # optional
-#        gardener-azure-networking: [accelerated]
+#        azure-networking: [accelerated]
       - architecture: [amd64]
-#        gardener-azure-networking: [basic]
+#        azure-networking: [basic]
       - architecture: [arm64]
-#        gardener-azure-networking: [basic, accelerated]
+#        azure-networking: [basic, accelerated]
   machineTypes:
   - name: Standard_D3_v2
     cpu: "4"
@@ -180,14 +180,14 @@ spec:
     memory: 14Gi
     capabilities:
       architecture: [amd64]
-      # gardener-azure-networking: [accelerated] # optional
+      # azure-networking: [accelerated] # optional
   - name: Standard_D4_v3
     cpu: "4"
     gpu: "0"
     memory: 16Gi
     capabilities:
       architecture: [amd64]
-      # gardener-azure-networking: [accelerated] # optional
+      # azure-networking: [accelerated] # optional
   volumeTypes:
   - name: Standard_LRS
     class: standard
@@ -221,15 +221,15 @@ spec:
 #          - id: "/subscriptions/<subscription ID where the gallery is located>/resourceGroups/myGalleryRG/providers/Microsoft.Compute/galleries/myGallery/images/myImageDefinition/versions/1.0.0"
 #            capabilities:
 #              architecture: [amd64]
-#              gardener-azure-networking: [accelerated] # optional
+#              azure-networking: [accelerated] # optional
           - communityGalleryImageID: "/CommunityGalleries/gardenlinux-567905d8-921f-4a85-b423-1fbf4e249d90/Images/gardenlinux/Versions/576.1.1"
             capabilities:
               architecture: [amd64]
-#              gardener-azure-networking: [basic] # optional
+#              azure-networking: [basic] # optional
           - sharedGalleryImageID: "/SharedGalleries/sharedGalleryName/Images/sharedGalleryImageName/Versions/sharedGalleryImageVersionName"
             capabilities:
               architecture: [arm64]
-#              gardener-azure-networking: [basic,accelerated] # optional
+#              azure-networking: [basic,accelerated] # optional
 ```
 
 #### Without `spec.machineCapabilities`:

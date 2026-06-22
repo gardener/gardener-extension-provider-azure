@@ -132,9 +132,7 @@ func convertVersionsToCapabilityFlavors(versions []v1alpha1.MachineImageVersion)
 		}
 
 		// Convert AcceleratedNetworking to networking capability
-		if key.acceleratedNetworking {
-			capabilities[azure.CapabilityNetworkName] = []string{azure.CapabilityNetworkBasic, azure.CapabilityNetworkAccelerated}
-		} else {
+		if !key.acceleratedNetworking {
 			capabilities[azure.CapabilityNetworkName] = []string{azure.CapabilityNetworkBasic}
 		}
 
