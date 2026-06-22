@@ -86,7 +86,7 @@ var (
 // ValidateDNSProviderSecret validates Azure DNS provider credentials in a secret.
 func ValidateDNSProviderSecret(secret *corev1.Secret, fldPath *field.Path) field.ErrorList {
 	mapping := selectDNSCredentialMapping(secret)
-	return mapping.Validate(secret, nil, fldPath, "DNS records")
+	return mapping.ValidateData(secret.Data, nil, "DNS records", fldPath)
 }
 
 // selectDNSCredentialMapping determines which credential mapping to use based on the

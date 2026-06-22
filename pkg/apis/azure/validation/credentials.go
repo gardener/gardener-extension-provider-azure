@@ -10,7 +10,6 @@ import (
 	"regexp"
 	"strings"
 
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -31,24 +30,6 @@ type FieldSpec struct {
 // The map key is the data key used in the secret
 type CredentialMapping struct {
 	Fields map[string]FieldSpec
-}
-
-// Validate performs complete validation of credentials in a secret
-func (cm *CredentialMapping) Validate(secret, oldSecret *corev1.Secret, fldPath *field.Path, resourceType string) field.ErrorList {
-	allErrs := field.ErrorList{}
-	dataPath := fldPath.Child("data")
-	secretKey := fmt.Sprintf("%s/%s", secret.Namespace, secret.Name)
-
-	allErrs = append(allErrs, cm.validateRequired(secret.Data, secretKey, dataPath)...)
-	allErrs = append(allErrs, cm.validateFormats(secret.Data, secretKey, dataPath)...)
-	allErrs = append(allErrs, cm.validateNoUnexpected(secret.Data, secretKey, dataPath)...)
-	allErrs = append(allErrs, cm.validatePredefinedValues(secret.Data, dataPath)...)
-
-	if oldSecret != nil {
-		allErrs = append(allErrs, cm.validateImmutable(secret.Data, oldSecret.Data, resourceType, secretKey, dataPath)...)
-	}
-
-	return allErrs
 }
 
 // ValidateData performs validation of credentials from a raw data map.

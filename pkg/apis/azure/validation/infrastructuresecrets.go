@@ -41,7 +41,10 @@ var (
 
 // ValidateCloudProviderSecret validates Azure infrastructure credentials
 func ValidateCloudProviderSecret(secret, oldSecret *corev1.Secret, fldPath *field.Path) field.ErrorList {
-	return infrastructureCredentialMapping.Validate(secret, oldSecret, fldPath, "shoot clusters")
+	if oldSecret == nil {
+		return ValidateCloudProviderSecretData(secret.Data, nil, fldPath)
+	}
+	return ValidateCloudProviderSecretData(secret.Data, oldSecret.Data, fldPath)
 }
 
 // ValidateCloudProviderSecretData validates Azure infrastructure credentials from a raw data map.
