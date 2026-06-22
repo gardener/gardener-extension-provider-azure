@@ -59,6 +59,8 @@ spec:
         - --nodeid=dummy
         - --kubeconfig=/var/run/secrets/gardener.cloud/shoot/generic-kubeconfig/kubeconfig
         {{- end }}
+        - --kube-api-qps=100
+        - --kube-api-burst=200
         - --v=5
         securityContext:
           allowPrivilegeEscalation: false
