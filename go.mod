@@ -19,7 +19,7 @@ require (
 	github.com/elastic/crd-ref-docs v0.3.0
 	github.com/gardener/etcd-druid/api v0.36.3
 	github.com/gardener/gardener v1.143.0
-	github.com/gardener/gardener/pkg/apis v1.143.0
+	github.com/gardener/gardener/pkg/apis v1.145.0
 	github.com/gardener/machine-controller-manager v0.62.0
 	github.com/gardener/remedy-controller v0.14.0
 	github.com/go-logr/logr v1.4.3
