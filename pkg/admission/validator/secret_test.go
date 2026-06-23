@@ -6,7 +6,6 @@ package validator_test
 
 import (
 	"context"
-	"fmt"
 
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	. "github.com/onsi/ginkgo/v2"
@@ -85,10 +84,8 @@ var _ = Describe("Secret validator", func() {
 
 			err := secretValidator.Validate(ctx, secret, oldSecret)
 			Expect(err).To(HaveOccurred())
-			expected := fmt.Sprintf(
-				"secret.data[subscriptionID]: Invalid value: \"(hidden)\": field \"subscriptionID\" must not be changed for existing shoot clusters in secret %s/%s",
-				namespace, name,
-			)
+			expected := "secret.data[subscriptionID]: Invalid value: \"(hidden)\": field \"subscriptionID\" must not be changed for existing shoot clusters"
+
 			Expect(err.Error()).To(Equal(expected))
 		})
 

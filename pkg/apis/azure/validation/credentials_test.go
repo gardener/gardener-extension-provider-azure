@@ -105,7 +105,7 @@ var _ = Describe("Credential validation helpers", func() {
 
 			errs := mapping.ValidateData(secret.Data, nil, "test resources", fldPath)
 			Expect(errs).To(HaveLen(1))
-			expectedDetail := fmt.Sprintf("missing required field %q in secret %v/%v", "SUBSCRIPTION_ID", secret.Namespace, secret.Name)
+			expectedDetail := fmt.Sprintf("missing required field %q", "SUBSCRIPTION_ID")
 			Expect(errs[0].Type).To(Equal(field.ErrorTypeRequired))
 			Expect(errs[0].Field).To(Equal("secret.data[SUBSCRIPTION_ID]"))
 			Expect(errs[0].Detail).To(Equal(expectedDetail))
@@ -117,7 +117,7 @@ var _ = Describe("Credential validation helpers", func() {
 
 			errs := mapping.ValidateData(secret.Data, nil, "test resources", fldPath)
 			Expect(errs).To(HaveLen(1))
-			expectedDetail := fmt.Sprintf("field %q cannot be empty in secret %v/%v", "SUBSCRIPTION_ID", secret.Namespace, secret.Name)
+			expectedDetail := fmt.Sprintf("field %q cannot be empty", "SUBSCRIPTION_ID")
 			Expect(errs[0].Type).To(Equal(field.ErrorTypeInvalid))
 			Expect(errs[0].Field).To(Equal("secret.data[SUBSCRIPTION_ID]"))
 			Expect(errs[0].Detail).To(Equal(expectedDetail))
@@ -129,7 +129,7 @@ var _ = Describe("Credential validation helpers", func() {
 
 			errs := mapping.ValidateData(secret.Data, nil, "test resources", fldPath)
 			Expect(errs).To(HaveLen(1))
-			expectedDetail := fmt.Sprintf("field %q must be a valid GUID in secret %v/%v", "SUBSCRIPTION_ID", secret.Namespace, secret.Name)
+			expectedDetail := fmt.Sprintf("field %q must be a valid GUID", "SUBSCRIPTION_ID")
 			Expect(errs[0].Type).To(Equal(field.ErrorTypeInvalid))
 			Expect(errs[0].Field).To(Equal("secret.data[SUBSCRIPTION_ID]"))
 			Expect(errs[0].BadValue).To(Equal("(hidden)"))
@@ -142,8 +142,8 @@ var _ = Describe("Credential validation helpers", func() {
 
 			errs := mapping.ValidateData(secret.Data, nil, "test resources", fldPath)
 			Expect(errs).To(HaveLen(2))
-			expectedDetailGUID := fmt.Sprintf("field %q must be a valid GUID in secret %v/%v", "SUBSCRIPTION_ID", secret.Namespace, secret.Name)
-			expectedDetailWhitespace := fmt.Sprintf("field %q must not contain leading or trailing whitespace in secret %v/%v", "SUBSCRIPTION_ID", secret.Namespace, secret.Name)
+			expectedDetailGUID := fmt.Sprintf("field %q must be a valid GUID", "SUBSCRIPTION_ID")
+			expectedDetailWhitespace := fmt.Sprintf("field %q must not contain leading or trailing whitespace", "SUBSCRIPTION_ID")
 			Expect(errs[0].Detail).To(Equal(expectedDetailGUID))
 			Expect(errs[1].Type).To(Equal(field.ErrorTypeInvalid))
 			Expect(errs[1].Field).To(Equal("secret.data[SUBSCRIPTION_ID]"))
@@ -157,7 +157,7 @@ var _ = Describe("Credential validation helpers", func() {
 
 			errs := mapping.ValidateData(secret.Data, nil, "test resources", fldPath)
 			Expect(errs).To(HaveLen(1))
-			expectedDetail := fmt.Sprintf("unexpected field %q in secret %v/%v", "UNEXPECTED_FIELD", secret.Namespace, secret.Name)
+			expectedDetail := fmt.Sprintf("unexpected field %q", "UNEXPECTED_FIELD")
 			Expect(errs[0].Type).To(Equal(field.ErrorTypeForbidden))
 			Expect(errs[0].Field).To(Equal("secret.data[UNEXPECTED_FIELD]"))
 			Expect(errs[0].Detail).To(Equal(expectedDetail))
@@ -215,7 +215,7 @@ var _ = Describe("Credential validation helpers", func() {
 
 				errs := mapping.ValidateData(secret.Data, oldSecret.Data, "test resources", fldPath)
 				Expect(errs).To(HaveLen(1))
-				expectedDetail := fmt.Sprintf("field %q must not be changed for existing test resources in secret %v/%v", "SUBSCRIPTION_ID", secret.Namespace, secret.Name)
+				expectedDetail := fmt.Sprintf("field %q must not be changed for existing test resources", "SUBSCRIPTION_ID")
 				Expect(errs[0].Type).To(Equal(field.ErrorTypeInvalid))
 				Expect(errs[0].Field).To(Equal("secret.data[SUBSCRIPTION_ID]"))
 				Expect(errs[0].BadValue).To(Equal("(hidden)"))
