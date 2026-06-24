@@ -6,20 +6,19 @@ package validator_test
 
 import (
 	"context"
-	"fmt"
 
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"github.com/gardener/gardener/pkg/apis/security"
 	securityv1alpha1 "github.com/gardener/gardener/pkg/apis/security/v1alpha1"
 	testutils "github.com/gardener/gardener/pkg/utils/test"
-	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/admission/validator"
 	azureapi "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
@@ -37,31 +36,28 @@ var _ = Describe("CredentialsBinding validator", func() {
 		var (
 			credentialsBindingValidator extensionswebhook.Validator
 
-			ctrl      *gomock.Controller
-			mgr       testutils.FakeManager
-			apiReader *mockclient.MockReader
+			scheme *runtime.Scheme
 
 			ctx                                = context.TODO()
 			credentialsBindingSecret           *security.CredentialsBinding
 			credentialsBindingWorkloadIdentity *security.CredentialsBinding
-
-			fakeErr = fmt.Errorf("fake err")
 		)
 
+		newValidator := func(objs ...client.Object) {
+			apiReader := fakeclient.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
+			mgr := testutils.FakeManager{APIReader: apiReader}
+			credentialsBindingValidator = validator.NewCredentialsBindingValidator(mgr)
+		}
+
 		BeforeEach(func() {
-			ctrl = gomock.NewController(GinkgoT())
-
-			mgr = testutils.FakeManager{}
-
-			apiReader = mockclient.NewMockReader(ctrl)
-			mgr.APIReader = apiReader
-			scheme := runtime.NewScheme()
+			scheme = runtime.NewScheme()
 			Expect(gardencorev1beta1.AddToScheme(scheme)).To(Succeed())
 			Expect(securityv1alpha1.AddToScheme(scheme)).To(Succeed())
 			Expect(azureapi.AddToScheme(scheme)).To(Succeed())
 			Expect(azureapiv1alpha1.AddToScheme(scheme)).To(Succeed())
+			Expect(corev1.AddToScheme(scheme)).To(Succeed())
 
-			credentialsBindingValidator = validator.NewCredentialsBindingValidator(mgr)
+			newValidator()
 
 			credentialsBindingSecret = &security.CredentialsBinding{
 				CredentialsRef: corev1.ObjectReference{
@@ -81,10 +77,6 @@ var _ = Describe("CredentialsBinding validator", func() {
 			}
 		})
 
-		AfterEach(func() {
-			ctrl.Finish()
-		})
-
 		It("should return err when obj is not a CredentialsBinding", func() {
 			err := credentialsBindingValidator.Validate(ctx, &corev1.Secret{}, nil)
 			Expect(err).To(MatchError("wrong object type *v1.Secret"))
@@ -102,38 +94,31 @@ var _ = Describe("CredentialsBinding validator", func() {
 		})
 
 		It("should return err if it fails to get the corresponding Secret", func() {
-			apiReader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).Return(fakeErr)
-
+			// Secret not pre-populated → fake client returns not-found
 			err := credentialsBindingValidator.Validate(ctx, credentialsBindingSecret, nil)
-			Expect(err).To(MatchError(fakeErr))
+			Expect(err).To(HaveOccurred())
 		})
 
 		It("should return err when the corresponding Secret is not valid", func() {
-			apiReader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).
-				DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *corev1.Secret, _ ...client.GetOption) error {
-					secret := &corev1.Secret{Data: map[string][]byte{
-						"foo": []byte("bar"),
-					}}
-					*obj = *secret
-					return nil
-				})
+			newValidator(&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+				Data:       map[string][]byte{"foo": []byte("bar")},
+			})
 
 			err := credentialsBindingValidator.Validate(ctx, credentialsBindingSecret, nil)
 			Expect(err).To(HaveOccurred())
 		})
 
 		It("should succeed when the corresponding Secret is valid", func() {
-			apiReader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).
-				DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *corev1.Secret, _ ...client.GetOption) error {
-					secret := &corev1.Secret{Data: map[string][]byte{
-						azure.SubscriptionIDKey: []byte("b7ad693a-028a-422c-b064-d76c4586f2b3"),
-						azure.TenantIDKey:       []byte("ee16e592-3035-41b9-a217-958f8f75b740"),
-						azure.ClientIDKey:       []byte("7fc4685d-3c33-40e6-b6bf-7857cab04300"),
-						azure.ClientSecretKey:   []byte("clientSecret"),
-					}}
-					*obj = *secret
-					return nil
-				})
+			newValidator(&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+				Data: map[string][]byte{
+					azure.SubscriptionIDKey: []byte("b7ad693a-028a-422c-b064-d76c4586f2b3"),
+					azure.TenantIDKey:       []byte("ee16e592-3035-41b9-a217-958f8f75b740"),
+					azure.ClientIDKey:       []byte("7fc4685d-3c33-40e6-b6bf-7857cab04300"),
+					azure.ClientSecretKey:   []byte("clientSecret"),
+				},
+			})
 
 			Expect(credentialsBindingValidator.Validate(ctx, credentialsBindingSecret, nil)).To(Succeed())
 		})
@@ -159,130 +144,110 @@ var _ = Describe("CredentialsBinding validator", func() {
 			})
 
 			It("should return err if it fails to get the corresponding InternalSecret", func() {
-				apiReader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&gardencorev1beta1.InternalSecret{})).Return(fakeErr)
-
+				// InternalSecret not pre-populated → fake client returns not-found
 				err := credentialsBindingValidator.Validate(ctx, credentialsBindingInternalSecret, nil)
-				Expect(err).To(MatchError(fakeErr))
+				Expect(err).To(HaveOccurred())
 			})
 
 			It("should return err when the corresponding InternalSecret is not valid", func() {
-				apiReader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&gardencorev1beta1.InternalSecret{})).
-					DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *gardencorev1beta1.InternalSecret, _ ...client.GetOption) error {
-						obj.Data = map[string][]byte{"foo": []byte("bar")}
-						return nil
-					})
+				newValidator(&gardencorev1beta1.InternalSecret{
+					ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+					Data:       map[string][]byte{"foo": []byte("bar")},
+				})
 
 				err := credentialsBindingValidator.Validate(ctx, credentialsBindingInternalSecret, nil)
 				Expect(err).To(HaveOccurred())
 			})
 
 			It("should succeed when the corresponding InternalSecret is valid", func() {
-				apiReader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&gardencorev1beta1.InternalSecret{})).
-					DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *gardencorev1beta1.InternalSecret, _ ...client.GetOption) error {
-						obj.Data = map[string][]byte{
-							azure.SubscriptionIDKey: []byte("b7ad693a-028a-422c-b064-d76c4586f2b3"),
-							azure.TenantIDKey:       []byte("ee16e592-3035-41b9-a217-958f8f75b740"),
-						}
-						return nil
-					})
+				newValidator(&gardencorev1beta1.InternalSecret{
+					ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+					Data: map[string][]byte{
+						azure.SubscriptionIDKey: []byte("b7ad693a-028a-422c-b064-d76c4586f2b3"),
+						azure.TenantIDKey:       []byte("ee16e592-3035-41b9-a217-958f8f75b740"),
+					},
+				})
 
 				Expect(credentialsBindingValidator.Validate(ctx, credentialsBindingInternalSecret, nil)).To(Succeed())
 			})
 		})
 
 		It("should succeed when the corresponding WorkloadIdentity is valid", func() {
-			apiReader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&securityv1alpha1.WorkloadIdentity{})).
-				DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *securityv1alpha1.WorkloadIdentity, _ ...client.GetOption) error {
-					workloadIdentity := &securityv1alpha1.WorkloadIdentity{
-						Spec: securityv1alpha1.WorkloadIdentitySpec{
-							Audiences: []string{"foo"},
-							TargetSystem: securityv1alpha1.TargetSystem{
-								Type: "azure",
-								ProviderConfig: &runtime.RawExtension{
-									Raw: []byte(`
-apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
-kind: WorkloadIdentityConfig
-clientID: "11111c4e-db61-17fa-a141-ed39b34aa561"
-tenantID: "44444c4e-db61-17fa-a141-ed39b34aa561"
-subscriptionID: "44444c4e-db61-17fa-a141-ed39b34aa561"
-`),
-								},
-							},
+			newValidator(&securityv1alpha1.WorkloadIdentity{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+				Spec: securityv1alpha1.WorkloadIdentitySpec{
+					Audiences: []string{"foo"},
+					TargetSystem: securityv1alpha1.TargetSystem{
+						Type: "azure",
+						ProviderConfig: &runtime.RawExtension{
+							Raw: []byte(`{
+								"apiVersion": "azure.provider.extensions.gardener.cloud/v1alpha1",
+								"kind": "WorkloadIdentityConfig",
+								"clientID": "11111c4e-db61-17fa-a141-ed39b34aa561",
+								"tenantID": "44444c4e-db61-17fa-a141-ed39b34aa561",
+								"subscriptionID": "44444c4e-db61-17fa-a141-ed39b34aa561"
+							}`),
 						},
-					}
-					*obj = *workloadIdentity
-					return nil
-				})
+					},
+				},
+			})
 
 			Expect(credentialsBindingValidator.Validate(ctx, credentialsBindingWorkloadIdentity, nil)).To(Succeed())
 		})
 
 		It("should return err if it fails to get the corresponding WorkloadIdentity", func() {
-			apiReader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&securityv1alpha1.WorkloadIdentity{})).Return(fakeErr)
-
+			// WorkloadIdentity not pre-populated → fake client returns not-found
 			err := credentialsBindingValidator.Validate(ctx, credentialsBindingWorkloadIdentity, nil)
-			Expect(err).To(MatchError(fakeErr))
+			Expect(err).To(HaveOccurred())
 		})
 
 		It("should return err when the corresponding WorkloadIdentity is missing config for target system", func() {
-			apiReader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&securityv1alpha1.WorkloadIdentity{})).
-				DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *securityv1alpha1.WorkloadIdentity, _ ...client.GetOption) error {
-					workloadIdentity := &securityv1alpha1.WorkloadIdentity{
-						Spec: securityv1alpha1.WorkloadIdentitySpec{
-							Audiences: []string{"foo"},
-							TargetSystem: securityv1alpha1.TargetSystem{
-								Type: "azure",
-							},
-						},
-					}
-					*obj = *workloadIdentity
-					return nil
-				})
+			newValidator(&securityv1alpha1.WorkloadIdentity{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+				Spec: securityv1alpha1.WorkloadIdentitySpec{
+					Audiences: []string{"foo"},
+					TargetSystem: securityv1alpha1.TargetSystem{
+						Type: "azure",
+					},
+				},
+			})
 
 			err := credentialsBindingValidator.Validate(ctx, credentialsBindingWorkloadIdentity, nil)
 			Expect(err).To(MatchError("the target system is missing configuration"))
 		})
 
 		It("should return err when the corresponding WorkloadIdentity has empty config for target system", func() {
-			apiReader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&securityv1alpha1.WorkloadIdentity{})).
-				DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *securityv1alpha1.WorkloadIdentity, _ ...client.GetOption) error {
-					workloadIdentity := &securityv1alpha1.WorkloadIdentity{
-						Spec: securityv1alpha1.WorkloadIdentitySpec{
-							Audiences: []string{"foo"},
-							TargetSystem: securityv1alpha1.TargetSystem{
-								Type:           "azure",
-								ProviderConfig: &runtime.RawExtension{},
-							},
-						},
-					}
-					*obj = *workloadIdentity
-					return nil
-				})
+			newValidator(&securityv1alpha1.WorkloadIdentity{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+				Spec: securityv1alpha1.WorkloadIdentitySpec{
+					Audiences: []string{"foo"},
+					TargetSystem: securityv1alpha1.TargetSystem{
+						Type:           "azure",
+						ProviderConfig: &runtime.RawExtension{Raw: []byte(`{}`)},
+					},
+				},
+			})
 
 			err := credentialsBindingValidator.Validate(ctx, credentialsBindingWorkloadIdentity, nil)
 			Expect(err.Error()).To(ContainSubstring("target system's configuration is not valid"))
 		})
 
 		It("should return err when the corresponding WorkloadIdentity has invalid target system configuration", func() {
-			apiReader.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&securityv1alpha1.WorkloadIdentity{})).
-				DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *securityv1alpha1.WorkloadIdentity, _ ...client.GetOption) error {
-					workloadIdentity := &securityv1alpha1.WorkloadIdentity{
-						Spec: securityv1alpha1.WorkloadIdentitySpec{
-							Audiences: []string{"foo"},
-							TargetSystem: securityv1alpha1.TargetSystem{
-								Type: "azure",
-								ProviderConfig: &runtime.RawExtension{
-									Raw: []byte(`
-apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
-kind: WorkloadIdentityConfig
-`),
-								},
-							},
+			newValidator(&securityv1alpha1.WorkloadIdentity{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+				Spec: securityv1alpha1.WorkloadIdentitySpec{
+					Audiences: []string{"foo"},
+					TargetSystem: securityv1alpha1.TargetSystem{
+						Type: "azure",
+						ProviderConfig: &runtime.RawExtension{
+							Raw: []byte(`{
+								"apiVersion": "azure.provider.extensions.gardener.cloud/v1alpha1",
+								"kind": "WorkloadIdentityConfig"
+							}`),
 						},
-					}
-					*obj = *workloadIdentity
-					return nil
-				})
+					},
+				},
+			})
 
 			err := credentialsBindingValidator.Validate(ctx, credentialsBindingWorkloadIdentity, nil)
 			Expect(err.Error()).To(ContainSubstring("referenced workload identity garden-dev/my-provider-account is not valid"))

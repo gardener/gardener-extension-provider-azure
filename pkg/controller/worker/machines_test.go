@@ -23,7 +23,6 @@ import (
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	mockkubernetes "github.com/gardener/gardener/pkg/client/kubernetes/mock"
 	"github.com/gardener/gardener/pkg/utils"
-	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -36,6 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/gardener/gardener-extension-provider-azure/charts"
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
@@ -49,8 +49,7 @@ var _ = Describe("Machines", func() {
 		ctx = context.Background()
 
 		ctrl         *gomock.Controller
-		c            *mockclient.MockClient
-		statusWriter *mockclient.MockStatusWriter
+		c            client.Client
 		chartApplier *mockkubernetes.MockChartApplier
 		scheme       *runtime.Scheme
 
@@ -62,19 +61,19 @@ var _ = Describe("Machines", func() {
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
 
-		c = mockclient.NewMockClient(ctrl)
 		chartApplier = mockkubernetes.NewMockChartApplier(ctrl)
-		statusWriter = mockclient.NewMockStatusWriter(ctrl)
-
-		// Let the seed client always the mocked status writer when Status() is called.
-		c.EXPECT().Status().AnyTimes().Return(statusWriter)
 
 		// Initialize scheme for decoding
 		scheme = runtime.NewScheme()
 		_ = apiv1alpha1.AddToScheme(scheme)
 		_ = apisazure.AddToScheme(scheme)
 		_ = extensionsv1alpha1.AddToScheme(scheme)
+		_ = corev1.AddToScheme(scheme)
 
+		c = fakeclient.NewClientBuilder().
+			WithScheme(scheme).
+			WithStatusSubresource(&extensionsv1alpha1.Worker{}).
+			Build()
 		namespace = "control-plane-namespace"
 		technicalID = "shoot--foobar--azure"
 		region = "westeurope"
@@ -82,10 +81,6 @@ var _ = Describe("Machines", func() {
 		zone2 = "2"
 		regionAndZone1 = region + "-" + zone1
 		regionAndZone2 = region + "-" + zone2
-	})
-
-	AfterEach(func() {
-		ctrl.Finish()
 	})
 
 	Context("workerDelegate", func() {
@@ -525,12 +520,18 @@ var _ = Describe("Machines", func() {
 			})
 
 			expectedUserDataSecretRefRead := func() {
-				c.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: userDataSecretName}, gomock.AssignableToTypeOf(&corev1.Secret{})).DoAndReturn(
-					func(_ context.Context, _ client.ObjectKey, secret *corev1.Secret, _ ...client.GetOption) error {
-						secret.Data = map[string][]byte{userDataSecretDataKey: userData}
-						return nil
-					},
-				).AnyTimes()
+				// Pre-populate the userdata secret in the fake client so the worker delegate can read it.
+				secret := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: userDataSecretName},
+					Data:       map[string][]byte{userDataSecretDataKey: userData},
+				}
+				existing := &corev1.Secret{}
+				if err := c.Get(ctx, client.ObjectKeyFromObject(secret), existing); err != nil {
+					Expect(c.Create(ctx, secret)).To(Succeed())
+				} else {
+					existing.Data = secret.Data
+					Expect(c.Update(ctx, existing)).To(Succeed())
+				}
 			}
 
 			Describe("machine images", func() {
@@ -790,7 +791,6 @@ var _ = Describe("Machines", func() {
 						Expect(err).NotTo(HaveOccurred())
 
 						// Test workerDelegate.UpdateMachineImagesStatus()
-						expectWorkerProviderStatusUpdateToSucceed(ctx, statusWriter)
 						err = workerDelegate.UpdateMachineImagesStatus(ctx)
 						Expect(err).NotTo(HaveOccurred())
 

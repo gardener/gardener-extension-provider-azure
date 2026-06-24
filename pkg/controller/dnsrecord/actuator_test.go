@@ -10,15 +10,16 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/controller/dnsrecord"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	testutils "github.com/gardener/gardener/pkg/utils/test"
-	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
@@ -39,9 +40,8 @@ const (
 var _ = Describe("Actuator", func() {
 	var (
 		ctrl                    *gomock.Controller
-		c                       *mockclient.MockClient
+		c                       client.Client
 		mgr                     testutils.FakeManager
-		sw                      *mockclient.MockStatusWriter
 		azureClientFactory      *mockazureclient.MockFactory
 		azureDNSZoneClient      *mockazureclient.MockDNSZone
 		azureDNSRecordSetClient *mockazureclient.MockDNSRecordSet
@@ -56,13 +56,9 @@ var _ = Describe("Actuator", func() {
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
 
-		c = mockclient.NewMockClient(ctrl)
-		sw = mockclient.NewMockStatusWriter(ctrl)
 		azureClientFactory = mockazureclient.NewMockFactory(ctrl)
 		azureDNSZoneClient = mockazureclient.NewMockDNSZone(ctrl)
 		azureDNSRecordSetClient = mockazureclient.NewMockDNSRecordSet(ctrl)
-
-		c.EXPECT().Status().Return(sw).AnyTimes()
 
 		DefaultAzureClientFactoryFunc = func(_ context.Context, _ client.Client, _ corev1.SecretReference, _ bool, _ ...azclient.AzureFactoryOption) (azclient.Factory, error) {
 			return azureClientFactory, nil
@@ -71,6 +67,13 @@ var _ = Describe("Actuator", func() {
 		ctx = context.TODO()
 		logger = log.Log.WithName("test")
 
+		scheme := runtime.NewScheme()
+		Expect(extensionsv1alpha1.AddToScheme(scheme)).To(Succeed())
+
+		c = fakeclient.NewClientBuilder().
+			WithScheme(scheme).
+			WithStatusSubresource(&extensionsv1alpha1.DNSRecord{}).
+			Build()
 		mgr = testutils.FakeManager{Client: c}
 
 		a = NewActuator(mgr)
@@ -94,6 +97,7 @@ var _ = Describe("Actuator", func() {
 				Region:     ptr.To("Foobar"),
 			},
 		}
+		Expect(c.Create(ctx, dns)).To(Succeed())
 
 		zones = map[string]string{
 			shootDomain:   zone,
@@ -104,7 +108,6 @@ var _ = Describe("Actuator", func() {
 
 	AfterEach(func() {
 		DefaultAzureClientFactoryFunc = defaultFactory
-		ctrl.Finish()
 	})
 
 	Describe("#Reconcile", func() {
@@ -113,17 +116,10 @@ var _ = Describe("Actuator", func() {
 			azureClientFactory.EXPECT().DNSRecordSet().Return(azureDNSRecordSetClient, nil)
 			azureDNSZoneClient.EXPECT().List(ctx).Return(zones, nil)
 			azureDNSRecordSetClient.EXPECT().CreateOrUpdate(ctx, zone, domainName, string(extensionsv1alpha1.DNSRecordTypeA), []string{address}, int64(120)).Return(nil)
-			sw.EXPECT().Patch(ctx, gomock.AssignableToTypeOf(&extensionsv1alpha1.DNSRecord{}), gomock.Any()).DoAndReturn(
-				func(_ context.Context, obj *extensionsv1alpha1.DNSRecord, _ client.Patch, _ ...client.PatchOption) error {
-					Expect(obj.Status).To(Equal(extensionsv1alpha1.DNSRecordStatus{
-						Zone: ptr.To(zone),
-					}))
-					return nil
-				},
-			)
 
 			err := a.Reconcile(ctx, logger, dns, nil)
 			Expect(err).NotTo(HaveOccurred())
+			Expect(dns.Status.Zone).To(Equal(ptr.To(zone)))
 		})
 	})
 

@@ -17,18 +17,16 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/controller/backupbucket"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	testutils "github.com/gardener/gardener/pkg/utils/test"
-	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
@@ -96,8 +94,8 @@ var _ = Describe("Actuator", func() {
 	var (
 		ctx                           context.Context
 		ctrl                          *gomock.Controller
-		c                             *mockclient.MockClient
-		sw                            *mockclient.MockStatusWriter
+		c                             client.Client
+		scheme                        *runtime.Scheme
 		mgr                           testutils.FakeManager
 		azureClientFactory            *mockazureclient.MockFactory
 		azureGroupClient              *mockazureclient.MockResourceGroup
@@ -117,15 +115,11 @@ var _ = Describe("Actuator", func() {
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
 
-		c = mockclient.NewMockClient(ctrl)
-		sw = mockclient.NewMockStatusWriter(ctrl)
 		azureClientFactory = mockazureclient.NewMockFactory(ctrl)
 		azureGroupClient = mockazureclient.NewMockResourceGroup(ctrl)
 		azureStorageAccountClient = mockazureclient.NewMockStorageAccount(ctrl)
 		azureBlobContainersClient = mockazureclient.NewMockBlobContainers(ctrl)
 		azureManagementPoliciesClient = mockazureclient.NewMockManagementPolicies(ctrl)
-
-		c.EXPECT().Status().Return(sw).AnyTimes()
 
 		DefaultAzureClientFactoryFunc = func(_ context.Context, _ client.Client, _ corev1.SecretReference, _ bool, _ ...azclient.AzureFactoryOption) (azclient.Factory, error) {
 			return azureClientFactory, nil
@@ -134,6 +128,14 @@ var _ = Describe("Actuator", func() {
 		ctx = context.TODO()
 		logger = log.Log.WithName("test")
 
+		scheme = runtime.NewScheme()
+		Expect(corev1.AddToScheme(scheme)).To(Succeed())
+		Expect(extensionsv1alpha1.AddToScheme(scheme)).To(Succeed())
+
+		c = fakeclient.NewClientBuilder().
+			WithScheme(scheme).
+			WithStatusSubresource(&extensionsv1alpha1.BackupBucket{}).
+			Build()
 		mgr = testutils.FakeManager{Client: c}
 
 		a = NewActuator(mgr)
@@ -154,6 +156,9 @@ var _ = Describe("Actuator", func() {
 				},
 			},
 		}
+		// Create the backupBucket in the store so status patches succeed.
+		Expect(c.Create(ctx, backupBucket)).To(Succeed())
+
 		storageAccountKeys = []*armstorage.AccountKey{
 			{
 				KeyName: to.Ptr("key1"),
@@ -173,7 +178,6 @@ var _ = Describe("Actuator", func() {
 
 	AfterEach(func() {
 		DefaultAzureClientFactoryFunc = defaultFactory
-		ctrl.Finish()
 	})
 
 	Describe("#Reconcile", func() {
@@ -200,7 +204,7 @@ var _ = Describe("Actuator", func() {
 					storageAccountKeys[1].CreationTime = ptr.To(time.Now())
 					return storageAccountKeys, nil
 				})
-				mockGeneratedSecretUpdate(ctx, c, storageAccountName, "secret1", "newKey", backupBucket)
+				ensureGeneratedSecret(ctx, c, storageAccountName, "secret1", backupBucket)
 				err := a.Reconcile(ctx, logger, backupBucket)
 				Expect(err).ShouldNot(HaveOccurred())
 			})
@@ -213,7 +217,7 @@ var _ = Describe("Actuator", func() {
 					storageAccountKeys[1].CreationTime = ptr.To(time.Now())
 					return storageAccountKeys, nil
 				})
-				mockGeneratedSecretUpdate(ctx, c, storageAccountName, "secret1", "newKey", backupBucket)
+				ensureGeneratedSecret(ctx, c, storageAccountName, "secret1", backupBucket)
 				err := a.Reconcile(ctx, logger, backupBucket)
 				Expect(err).ShouldNot(HaveOccurred())
 			})
@@ -226,13 +230,13 @@ var _ = Describe("Actuator", func() {
 					storageAccountKeys[0].CreationTime = ptr.To(time.Now())
 					return storageAccountKeys, nil
 				})
-				mockGeneratedSecretUpdate(ctx, c, storageAccountName, "secret2", "newKey", backupBucket)
+				ensureGeneratedSecret(ctx, c, storageAccountName, "secret2", backupBucket)
 				err := a.Reconcile(ctx, logger, backupBucket)
 				Expect(err).ShouldNot(HaveOccurred())
 			})
 			It("should skip rotating the credentials if they are within the rotation period", func() {
 				mockEnsureResourceGroupAndStorageAccount(ctx, azureClientFactory, azureGroupClient, azureStorageAccountClient, storageAccountName, backupBucket)
-				mockGeneratedSecretNoop(ctx, c, storageAccountName, backupBucket)
+				ensureGeneratedSecret(ctx, c, storageAccountName, "secret1", backupBucket)
 				storageAccountKeys[0].CreationTime = ptr.To(time.Now())
 				err := a.Reconcile(ctx, logger, backupBucket)
 				Expect(err).ShouldNot(HaveOccurred())
@@ -252,7 +256,7 @@ var _ = Describe("Actuator", func() {
 					},
 				}
 				mockEnsureResourceGroupAndStorageAccountWithParams(ctx, azureClientFactory, azureGroupClient, azureStorageAccountClient, storageAccountName, backupBucket, ptr.To(int32(5)))
-				mockGeneratedSecretNoop(ctx, c, storageAccountName, backupBucket)
+				ensureGeneratedSecret(ctx, c, storageAccountName, "secret1", backupBucket)
 				storageAccountKeys[0].CreationTime = ptr.To(time.Now())
 				err := a.Reconcile(ctx, logger, backupBucket)
 				Expect(err).ShouldNot(HaveOccurred())
@@ -299,9 +303,6 @@ var _ = Describe("Actuator", func() {
 			It("should error if adding the lifecycle policy to the storage account fails", func() {
 				mockEnsureResourceGroupAndStorageAccount(ctx, azureClientFactory, azureGroupClient, azureStorageAccountClient, storageAccountName, backupBucket)
 
-				// create generated secret
-				mockGeneratedSecretCreation(ctx, c, sw, storageAccountName, backupBucket)
-
 				azureClientFactory.EXPECT().ManagementPolicies().Return(azureManagementPoliciesClient, nil)
 				azureManagementPoliciesClient.EXPECT().CreateOrUpdate(ctx, resourceGroupName, storageAccountName, 0).Return(fmt.Errorf("management policy addition on storage account error test"))
 
@@ -314,7 +315,7 @@ var _ = Describe("Actuator", func() {
 			BeforeEach(func() {
 				mockEnsureResourceGroupAndStorageAccount(ctx, azureClientFactory, azureGroupClient, azureStorageAccountClient, storageAccountName, backupBucket)
 				// create generated secret
-				mockGeneratedSecretNoop(ctx, c, storageAccountName, backupBucket)
+				ensureGeneratedSecret(ctx, c, storageAccountName, "secret1", backupBucket)
 
 				azureClientFactory.EXPECT().ManagementPolicies().Return(azureManagementPoliciesClient, nil)
 				azureManagementPoliciesClient.EXPECT().CreateOrUpdate(ctx, resourceGroupName, storageAccountName, 0)
@@ -356,7 +357,7 @@ var _ = Describe("Actuator", func() {
 				mockEnsureResourceGroupAndStorageAccount(ctx, azureClientFactory, azureGroupClient, azureStorageAccountClient, storageAccountName, backupBucket)
 
 				// create generated secret
-				mockGeneratedSecretNoop(ctx, c, storageAccountName, backupBucket)
+				ensureGeneratedSecret(ctx, c, storageAccountName, "secret1", backupBucket)
 
 				azureClientFactory.EXPECT().ManagementPolicies().Return(azureManagementPoliciesClient, nil)
 				azureManagementPoliciesClient.EXPECT().CreateOrUpdate(ctx, resourceGroupName, storageAccountName, 0)
@@ -401,7 +402,7 @@ var _ = Describe("Actuator", func() {
 				mockEnsureResourceGroupAndStorageAccount(ctx, azureClientFactory, azureGroupClient, azureStorageAccountClient, storageAccountName, backupBucket)
 
 				// create generated secret
-				mockGeneratedSecretNoop(ctx, c, storageAccountName, backupBucket)
+				ensureGeneratedSecret(ctx, c, storageAccountName, "secret1", backupBucket)
 
 				azureClientFactory.EXPECT().ManagementPolicies().Return(azureManagementPoliciesClient, nil)
 				azureManagementPoliciesClient.EXPECT().CreateOrUpdate(ctx, resourceGroupName, storageAccountName, 0)
@@ -451,7 +452,7 @@ var _ = Describe("Actuator", func() {
 				}
 
 				mockEnsureResourceGroupAndStorageAccount(ctx, azureClientFactory, azureGroupClient, azureStorageAccountClient, storageAccountName, backupBucket)
-				mockGeneratedSecretNoop(ctx, c, storageAccountName, backupBucket)
+				ensureGeneratedSecret(ctx, c, storageAccountName, "secret1", backupBucket)
 				azureClientFactory.EXPECT().ManagementPolicies().Return(azureManagementPoliciesClient, nil)
 				azureManagementPoliciesClient.EXPECT().CreateOrUpdate(ctx, resourceGroupName, storageAccountName, 0)
 
@@ -488,7 +489,7 @@ var _ = Describe("Actuator", func() {
 					Namespace: "garden",
 				}
 				mockEnsureResourceGroupAndStorageAccount(ctx, azureClientFactory, azureGroupClient, azureStorageAccountClient, storageAccountName, backupBucket)
-				mockGeneratedSecretNoop(ctx, c, storageAccountName, backupBucket)
+				ensureGeneratedSecret(ctx, c, storageAccountName, "secret1", backupBucket)
 				backupBucket.Spec.ProviderConfig = &runtime.RawExtension{
 					Raw: []byte(`{"apiVersion":"azure.provider.extensions.gardener.cloud/v1alpha1","kind":"BackupBucketConfig","immutability":{"retentionType":"bucket","retentionPeriod":"24h","locked":true}}`),
 				}
@@ -534,7 +535,7 @@ var _ = Describe("Actuator", func() {
 				}
 
 				mockEnsureResourceGroupAndStorageAccount(ctx, azureClientFactory, azureGroupClient, azureStorageAccountClient, storageAccountName, backupBucket)
-				mockGeneratedSecretNoop(ctx, c, storageAccountName, backupBucket)
+				ensureGeneratedSecret(ctx, c, storageAccountName, "secret1", backupBucket)
 				azureClientFactory.EXPECT().ManagementPolicies().Return(azureManagementPoliciesClient, nil)
 				azureManagementPoliciesClient.EXPECT().CreateOrUpdate(ctx, resourceGroupName, storageAccountName, 0)
 			})
@@ -600,7 +601,7 @@ var _ = Describe("Actuator", func() {
 		Context("when a backupbucket configured for locked immutability already exists in a locked state", func() {
 			BeforeEach(func() {
 				mockEnsureResourceGroupAndStorageAccount(ctx, azureClientFactory, azureGroupClient, azureStorageAccountClient, storageAccountName, backupBucket)
-				mockGeneratedSecretNoop(ctx, c, storageAccountName, backupBucket)
+				ensureGeneratedSecret(ctx, c, storageAccountName, "secret1", backupBucket)
 				azureClientFactory.EXPECT().ManagementPolicies().Return(azureManagementPoliciesClient, nil)
 				azureManagementPoliciesClient.EXPECT().CreateOrUpdate(ctx, resourceGroupName, storageAccountName, 0)
 			})
@@ -628,7 +629,7 @@ var _ = Describe("Actuator", func() {
 		Context("when a backupbucket already exists in the expected state", func() {
 			BeforeEach(func() {
 				mockEnsureResourceGroupAndStorageAccount(ctx, azureClientFactory, azureGroupClient, azureStorageAccountClient, storageAccountName, backupBucket)
-				mockGeneratedSecretNoop(ctx, c, storageAccountName, backupBucket)
+				ensureGeneratedSecret(ctx, c, storageAccountName, "secret1", backupBucket)
 				azureClientFactory.EXPECT().ManagementPolicies().Return(azureManagementPoliciesClient, nil)
 				azureManagementPoliciesClient.EXPECT().CreateOrUpdate(ctx, resourceGroupName, storageAccountName, 0)
 			})
@@ -710,9 +711,8 @@ var _ = Describe("Actuator", func() {
 				Name:      generatedSecret.Name,
 				Namespace: generatedSecret.Namespace,
 			}
-			// passing &corev1.Secret{} here instead of generatedSecret
-			// since kutil.GetSecretByReference() uses a &corev1.Secret{} to Get()
-			c.EXPECT().Get(ctx, client.ObjectKeyFromObject(generatedSecret), &corev1.Secret{})
+			// Pre-populate the generated secret so Get can find it.
+			Expect(c.Create(ctx, generatedSecret)).To(Succeed())
 			azureClientFactory.EXPECT().BlobContainers().Return(azureBlobContainersClient, nil)
 		})
 
@@ -729,10 +729,11 @@ var _ = Describe("Actuator", func() {
 			azureClientFactory.EXPECT().Group().Return(azureGroupClient, nil)
 			azureGroupClient.EXPECT().Delete(ctx, resourceGroupName)
 
-			c.EXPECT().Delete(ctx, generatedSecret)
-
 			err := a.Delete(ctx, logger, backupBucket)
 			Expect(err).ShouldNot(HaveOccurred())
+
+			// Verify the generated secret was deleted.
+			Expect(c.Get(ctx, client.ObjectKeyFromObject(generatedSecret), &corev1.Secret{})).To(MatchError(ContainSubstring("not found")))
 		})
 	})
 })
@@ -768,130 +769,39 @@ func mockEnsureResourceGroupAndStorageAccountWithParams(
 	azureStorageAccountClient.EXPECT().ListStorageAccountKeys(ctx, name, storageAccountName).Return(storageAccountKeys, nil)
 }
 
-func mockGeneratedSecretCreation(
+// ensureGeneratedSecret creates or updates the generated secret with the given storage key.
+func ensureGeneratedSecret(
 	ctx context.Context,
-	c *mockclient.MockClient,
-	sw *mockclient.MockStatusWriter,
+	c client.Client,
 	storageAccountName string,
+	storageKey string,
 	backupBucket *extensionsv1alpha1.BackupBucket,
 ) {
-	generatedSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("generated-bucket-%s", backupBucket.Name),
-			Namespace: "garden",
-		},
-	}
-
-	c.EXPECT().Get(ctx, client.ObjectKeyFromObject(generatedSecret), generatedSecret.DeepCopy()).Return(apierrors.NewNotFound(schema.GroupResource{}, generatedSecret.Name))
-	// mutateFn's side effect
-	generatedSecret.Data = map[string][]byte{
-		"domain":         []byte(azure.AzureBlobStorageDomain),
-		"storageAccount": []byte(storageAccountName),
-		"storageKey":     []byte(*(storageAccountKeys[0].Value)),
-	}
-
-	c.EXPECT().Create(ctx, generatedSecret)
-	backupBucketCopy := backupBucket.DeepCopy()
-	backupBucketCopy.Status.GeneratedSecretRef = &corev1.SecretReference{
-		Name:      generatedSecret.Name,
-		Namespace: generatedSecret.Namespace,
-	}
-
-	// gomock.Any() needs to be used here since the patch can never be the same
-	// as MergeFrom() needs a deepcopy, which creates a different base object
-	sw.EXPECT().Patch(ctx, backupBucketCopy, gomock.Any())
-}
-
-// mockGeneratedSecretNoop is a utility to ensure that the controller passes the steps for the creation of the generated secret.
-func mockGeneratedSecretNoop(
-	ctx context.Context,
-	c *mockclient.MockClient,
-	storageAccountName string,
-	backupBucket *extensionsv1alpha1.BackupBucket,
-) {
+	secretName := fmt.Sprintf("generated-bucket-%s", backupBucket.Name)
 	backupBucket.Status.GeneratedSecretRef = &corev1.SecretReference{
-		Name:      fmt.Sprintf("generated-bucket-%s", backupBucket.Name),
+		Name:      secretName,
 		Namespace: "garden",
 	}
 
 	generatedSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("generated-bucket-%s", backupBucket.Name),
+			Name:      secretName,
 			Namespace: "garden",
+		},
+		Data: map[string][]byte{
+			azure.StorageDomain:  []byte(azure.AzureBlobStorageDomain),
+			azure.StorageAccount: []byte(storageAccountName),
+			azure.StorageKey:     []byte(storageKey),
 		},
 	}
 
-	secret := &corev1.Secret{}
-	c.EXPECT().Get(ctx, client.ObjectKeyFromObject(generatedSecret), secret).DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *corev1.Secret, _ ...client.GetOption) error {
-		*obj = *generatedSecret.DeepCopy()
-		obj.Data = map[string][]byte{
-			azure.StorageDomain:  []byte(azure.AzureBlobStorageDomain),
-			azure.StorageAccount: []byte(storageAccountName),
-			azure.StorageKey:     []byte("secret1"),
-		}
-		return nil
-	})
-
-	c.EXPECT().Get(ctx, client.ObjectKeyFromObject(generatedSecret), generatedSecret.DeepCopy()).DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *corev1.Secret, _ ...client.GetOption) error {
-		generatedSecret.Data = map[string][]byte{
-			azure.StorageDomain:  []byte(azure.AzureBlobStorageDomain),
-			azure.StorageAccount: []byte(storageAccountName),
-			azure.StorageKey:     []byte("secret1"),
-		}
-		*obj = *generatedSecret
-		return nil
-	})
-}
-
-func mockGeneratedSecretUpdate(
-	ctx context.Context,
-	c *mockclient.MockClient,
-	storageAccountName string,
-	oldStorageAccountKey string,
-	newStorageAccountKey string,
-	backupBucket *extensionsv1alpha1.BackupBucket,
-) {
-	backupBucket.Status.GeneratedSecretRef = &corev1.SecretReference{
-		Name:      fmt.Sprintf("generated-bucket-%s", backupBucket.Name),
-		Namespace: "garden",
+	existing := &corev1.Secret{}
+	if err := c.Get(ctx, client.ObjectKeyFromObject(generatedSecret), existing); err != nil {
+		Expect(c.Create(ctx, generatedSecret)).To(Succeed())
+	} else {
+		existing.Data = generatedSecret.Data
+		Expect(c.Update(ctx, existing)).To(Succeed())
 	}
-
-	generatedSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("generated-bucket-%s", backupBucket.Name),
-			Namespace: "garden",
-		},
-	}
-
-	secret := &corev1.Secret{}
-	c.EXPECT().Get(ctx, client.ObjectKeyFromObject(generatedSecret), secret).DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *corev1.Secret, _ ...client.GetOption) error {
-		*obj = *generatedSecret.DeepCopy()
-		obj.Data = map[string][]byte{
-			"domain":         []byte(azure.AzureBlobStorageDomain),
-			"storageAccount": []byte(storageAccountName),
-			"storageKey":     []byte(oldStorageAccountKey),
-		}
-		return nil
-	})
-	c.EXPECT().Get(ctx, client.ObjectKeyFromObject(generatedSecret), generatedSecret.DeepCopy()).DoAndReturn(func(_ context.Context, _ client.ObjectKey, obj *corev1.Secret, _ ...client.GetOption) error {
-		secret := generatedSecret.DeepCopy()
-		secret.Data = map[string][]byte{
-			"domain":         []byte(azure.AzureBlobStorageDomain),
-			"storageAccount": []byte(storageAccountName),
-			"storageKey":     []byte(oldStorageAccountKey),
-		}
-		*obj = *secret
-		return nil
-	})
-
-	// mutateFn's side effect
-	generatedSecret.Data = map[string][]byte{
-		"domain":         []byte(azure.AzureBlobStorageDomain),
-		"storageAccount": []byte(storageAccountName),
-		"storageKey":     []byte(newStorageAccountKey),
-	}
-
-	c.EXPECT().Update(ctx, generatedSecret)
 }
 
 func mockEnsureBlobContainer(

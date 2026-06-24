@@ -18,20 +18,15 @@ import (
 	secretsmanager "github.com/gardener/gardener/pkg/utils/secrets/manager"
 	fakesecretsmanager "github.com/gardener/gardener/pkg/utils/secrets/manager/fake"
 	testutils "github.com/gardener/gardener/pkg/utils/test"
-	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"go.uber.org/mock/gomock"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	vpaautoscalingv1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
@@ -47,19 +42,20 @@ const (
 
 var _ = Describe("ValuesProvider", func() {
 	var (
-		ctrl *gomock.Controller
-		ctx  = context.TODO()
+		ctx = context.TODO()
 
-		fakeClient         client.Client
 		fakeSecretsManager secretsmanager.Interface
 
-		c   *mockclient.MockClient
 		vp  genericactuator.ValuesProvider
 		mgr testutils.FakeManager
 
 		scheme = runtime.NewScheme()
 		_      = apisazure.AddToScheme(scheme)
 		_      = v1alpha1.AddToScheme(scheme)
+		_      = corev1.AddToScheme(scheme)
+		_      = appsv1.AddToScheme(scheme)
+		_      = vpaautoscalingv1.AddToScheme(scheme)
+		_      = policyv1.AddToScheme(scheme)
 
 		infrastructureStatus *v1alpha1.InfrastructureStatus
 		controlPlaneConfig   *v1alpha1.ControlPlaneConfig
@@ -122,25 +118,50 @@ var _ = Describe("ValuesProvider", func() {
 		enabledFalse   = map[string]interface{}{"enabled": false}
 		remedyDisabled = map[string]interface{}{"enabled": true, "replicas": 0}
 
-		// Azure Container Registry
-		azureContainerRegistryConfigMap = &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: azure.CloudProviderAcrConfigName, Namespace: namespace},
-		}
-		errorAzureContainerRegistryConfigMapNotFound = apierrors.NewNotFound(schema.GroupResource{}, azure.CloudProviderAcrConfigName)
-		checksums                                    = map[string]string{
+		checksums = map[string]string{
 			v1beta1constants.SecretNameCloudProvider: "8bafb35ff1ac60275d62e1cbd495aceb511fb354f74a20f7d06ecb48b3a68432",
 			azure.CloudProviderDiskConfigName:        "77627eb2343b9f2dc2fca3cce35f2f9eec55783aa5f7dac21c473019e5825de2",
 		}
+
+		// controlPlaneSecret is the cloud-provider secret used in GetConfigChartValues and GetControlPlaneChartValues.
+		controlPlaneSecret = &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      v1beta1constants.SecretNameCloudProvider,
+				Namespace: namespace,
+			},
+			Type: corev1.SecretTypeOpaque,
+			Data: map[string][]byte{
+				"clientID":       []byte(`ClientID`),
+				"clientSecret":   []byte(`ClientSecret`),
+				"subscriptionID": []byte(`SubscriptionID`),
+				"tenantID":       []byte(`TenantID`),
+			},
+		}
+
+		// controlPlaneConfigSecret is the azure-cloudprovider-config secret used in GetControlPlaneChartValues.
+		controlPlaneConfigSecret = &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      azure.CloudProviderConfigName,
+				Namespace: namespace,
+			},
+			Data: map[string][]byte{azure.CloudProviderConfigMapKey: []byte(cloudProviderConfigData)},
+		}
 	)
 
+	// buildMgr creates a fake manager with the given objects pre-populated.
+	buildMgr := func(objs ...corev1.Secret) testutils.FakeManager {
+		builder := fakeclient.NewClientBuilder().WithScheme(scheme)
+		for i := range objs {
+			builder = builder.WithObjects(&objs[i])
+		}
+		return testutils.FakeManager{Client: builder.Build(), Scheme: scheme}
+	}
+
 	BeforeEach(func() {
-		ctrl = gomock.NewController(GinkgoT())
+		mgr = buildMgr(*controlPlaneSecret, *controlPlaneConfigSecret)
 
-		fakeClient = fakeclient.NewClientBuilder().Build()
-		fakeSecretsManager = fakesecretsmanager.New(fakeClient, namespace)
-
-		c = mockclient.NewMockClient(ctrl)
-		mgr = testutils.FakeManager{Client: c, Scheme: scheme}
+		fakeSecretsManagerClient := fakeclient.NewClientBuilder().WithScheme(scheme).Build()
+		fakeSecretsManager = fakesecretsmanager.New(fakeSecretsManagerClient, namespace)
 
 		vp = NewValuesProvider(mgr)
 
@@ -165,39 +186,9 @@ var _ = Describe("ValuesProvider", func() {
 		}
 	})
 
-	AfterEach(func() {
-		ctrl.Finish()
-	})
-
 	Describe("#GetConfigChartValues", func() {
-		var (
-			controlPlaneSecretKey = client.ObjectKey{Namespace: namespace, Name: v1beta1constants.SecretNameCloudProvider}
-			controlPlaneSecret    = &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      v1beta1constants.SecretNameCloudProvider,
-					Namespace: namespace,
-				},
-				Type: corev1.SecretTypeOpaque,
-				Data: map[string][]byte{
-					"clientID":       []byte(`ClientID`),
-					"clientSecret":   []byte(`ClientSecret`),
-					"subscriptionID": []byte(`SubscriptionID`),
-					"tenantID":       []byte(`TenantID`),
-				},
-			}
-		)
-
-		BeforeEach(func() {
-			c.EXPECT().Get(ctx, controlPlaneSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(controlPlaneSecret))
-		})
-
 		Context("Error due to missing resources in the infrastructure status", func() {
-			BeforeEach(func() {
-				c.EXPECT().Delete(ctx, azureContainerRegistryConfigMap).Return(errorAzureContainerRegistryConfigMapNotFound)
-			})
-
 			It("should return error, missing subnet", func() {
-
 				infrastructureStatus.Networks.Subnets[0].Purpose = "internal"
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 
@@ -227,8 +218,6 @@ var _ = Describe("ValuesProvider", func() {
 
 		Context("Generate config chart values", func() {
 			It("should return correct config chart valued for cluser with vmo (non-zoned)", func() {
-				c.EXPECT().Delete(ctx, azureContainerRegistryConfigMap).Return(errorAzureContainerRegistryConfigMapNotFound)
-
 				infrastructureStatus.Zoned = false
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 
@@ -242,7 +231,6 @@ var _ = Describe("ValuesProvider", func() {
 			})
 
 			It("should return correct config chart values for zoned cluster", func() {
-				c.EXPECT().Delete(ctx, azureContainerRegistryConfigMap).Return(errorAzureContainerRegistryConfigMapNotFound)
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 
 				values, err := vp.GetConfigChartValues(ctx, cp, cluster)
@@ -275,11 +263,6 @@ var _ = Describe("ValuesProvider", func() {
 
 	Describe("#GetControlPlaneChartValues", func() {
 		var (
-			controlPlaneConfigSecretKey = client.ObjectKey{Namespace: namespace, Name: azure.CloudProviderConfigName}
-			controlPlaneConfigSecret    = &corev1.Secret{
-				Data: map[string][]byte{azure.CloudProviderConfigMapKey: []byte(cloudProviderConfigData)},
-			}
-
 			ccmChartValues = utils.MergeMaps(enabledTrue, map[string]interface{}{
 				"replicas":    1,
 				"clusterName": namespace,
@@ -312,24 +295,15 @@ var _ = Describe("ValuesProvider", func() {
 		)
 
 		BeforeEach(func() {
-			c.EXPECT().Get(ctx, controlPlaneConfigSecretKey, &corev1.Secret{}).DoAndReturn(clientGet(controlPlaneConfigSecret))
-
 			By("creating secrets managed outside of this package for whose secretsmanager.Get() will be called")
-			Expect(fakeClient.Create(context.TODO(), &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "ca-provider-azure-controlplane", Namespace: namespace}})).To(Succeed())
-			Expect(fakeClient.Create(context.TODO(), &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "cloud-controller-manager-server", Namespace: namespace}})).To(Succeed())
+			fakeSmClient := fakeclient.NewClientBuilder().WithScheme(scheme).Build()
+			fakeSecretsManager = fakesecretsmanager.New(fakeSmClient, namespace)
+			Expect(fakeSmClient.Create(context.TODO(), &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "ca-provider-azure-controlplane", Namespace: namespace}})).To(Succeed())
+			Expect(fakeSmClient.Create(context.TODO(), &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "cloud-controller-manager-server", Namespace: namespace}})).To(Succeed())
 
-			c.EXPECT().Delete(context.TODO(), &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "csi-snapshot-validation", Namespace: namespace}})
-			c.EXPECT().Delete(context.TODO(), &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "csi-snapshot-validation", Namespace: namespace}})
-			c.EXPECT().Delete(context.TODO(), &vpaautoscalingv1.VerticalPodAutoscaler{ObjectMeta: metav1.ObjectMeta{Name: "csi-snapshot-webhook-vpa", Namespace: namespace}})
-			c.EXPECT().Delete(context.TODO(), &policyv1.PodDisruptionBudget{ObjectMeta: metav1.ObjectMeta{Name: "csi-snapshot-validation", Namespace: namespace}})
-
-			cloudProviderSecret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "cloudprovider",
-					Namespace: "test",
-				},
-			}
-			c.EXPECT().Get(ctx, client.ObjectKeyFromObject(cloudProviderSecret), cloudProviderSecret).Return(nil)
+			// controlPlaneSecret (cloudprovider) is already included via buildMgr base objects
+			mgr = buildMgr(*controlPlaneSecret, *controlPlaneConfigSecret)
+			vp = NewValuesProvider(mgr)
 		})
 
 		It("should return correct control plane chart values without zoned infrastructure", func() {
@@ -433,6 +407,7 @@ var _ = Describe("ValuesProvider", func() {
 				azure.RemedyControllerName: remedyDisabled,
 			}))
 		})
+
 		It("should return correct control plane chart values when forcing read cache for in-tree PVs", func() {
 			shootAnnotations := map[string]string{
 				azure.ShootDiskConvertRWCachingModeAnnotation: "true",
@@ -456,7 +431,7 @@ var _ = Describe("ValuesProvider", func() {
 						Settings: seedSettings,
 					},
 				}
-				cluster = generateCluster(cidr, k8sVersion, true, nil, shootControlPlane, seed)
+				cluster := generateCluster(cidr, k8sVersion, true, nil, shootControlPlane, seed)
 
 				infrastructureStatus.Zoned = false
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
@@ -509,17 +484,8 @@ var _ = Describe("ValuesProvider", func() {
 				"enabled":    true,
 				"vpaEnabled": false,
 			}
-		)
 
-		BeforeEach(func() {
-			By("creating secrets managed outside of this package for whose secretsmanager.Get() will be called")
-			Expect(fakeClient.Create(context.TODO(), &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "ca-provider-azure-controlplane", Namespace: namespace}})).To(Succeed())
-			Expect(fakeClient.Create(context.TODO(), &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "cloud-controller-manager-server", Namespace: namespace}})).To(Succeed())
-		})
-
-		var (
-			cpDiskConfigKey = client.ObjectKey{Namespace: namespace, Name: azure.CloudProviderDiskConfigName}
-			cpDiskConfig    = &corev1.Secret{
+			cpDiskConfig = &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      azure.CloudProviderDiskConfigName,
 					Namespace: namespace,
@@ -531,11 +497,18 @@ var _ = Describe("ValuesProvider", func() {
 		)
 
 		BeforeEach(func() {
-			c.EXPECT().Get(ctx, cpDiskConfigKey, &corev1.Secret{}).DoAndReturn(clientGet(cpDiskConfig))
-			cluster = generateCluster(cidr, k8sVersion, true, nil, nil, nil)
+			By("creating secrets managed outside of this package for whose secretsmanager.Get() will be called")
+			fakeSmClient := fakeclient.NewClientBuilder().WithScheme(scheme).Build()
+			fakeSecretsManager = fakesecretsmanager.New(fakeSmClient, namespace)
+			Expect(fakeSmClient.Create(context.TODO(), &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "ca-provider-azure-controlplane", Namespace: namespace}})).To(Succeed())
+			Expect(fakeSmClient.Create(context.TODO(), &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "cloud-controller-manager-server", Namespace: namespace}})).To(Succeed())
+
+			mgr = buildMgr(*controlPlaneSecret, *controlPlaneConfigSecret, *cpDiskConfig)
+			vp = NewValuesProvider(mgr)
 		})
 
 		It("should return correct control plane shoot chart values for zoned cluster", func() {
+			cluster = generateCluster(cidr, k8sVersion, true, nil, nil, nil)
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 			csiNode := csiNodeEnabled
 
@@ -569,6 +542,7 @@ var _ = Describe("ValuesProvider", func() {
 		})
 
 		It("should return false if allowEgress behavior is overwritten by user", func() {
+			cluster = generateCluster(cidr, k8sVersion, true, nil, nil, nil)
 			infrastructureStatus.Zoned = true
 			cluster.Shoot.GetAnnotations()[azure.ShootSkipAllowEgressDeployment] = "true"
 			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
@@ -585,14 +559,11 @@ var _ = Describe("ValuesProvider", func() {
 		})
 
 		Context("remedy controller is disabled", func() {
-			BeforeEach(func() {
+			It("should return correct control plane shoot chart values for zoned cluster", func() {
 				shootAnnotations := map[string]string{
 					azure.DisableRemedyControllerAnnotation: "true",
 				}
 				cluster = generateCluster(cidr, k8sVersion, false, shootAnnotations, nil, nil)
-			})
-
-			It("should return correct control plane shoot chart values for zoned cluster", func() {
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 				csiNode := csiNodeEnabled
 
@@ -654,18 +625,6 @@ var _ = Describe("ValuesProvider", func() {
 func encode(obj runtime.Object) []byte {
 	data, _ := json.Marshal(obj)
 	return data
-}
-
-func clientGet(result runtime.Object) interface{} {
-	return func(_ context.Context, _ client.ObjectKey, obj runtime.Object, _ ...client.GetOption) error {
-		switch obj.(type) {
-		case *corev1.Secret:
-			*obj.(*corev1.Secret) = *result.(*corev1.Secret)
-		case *corev1.ConfigMap:
-			*obj.(*corev1.ConfigMap) = *result.(*corev1.ConfigMap)
-		}
-		return nil
-	}
 }
 
 func generateControlPlane(controlPlaneConfig *v1alpha1.ControlPlaneConfig, infrastructureStatus *v1alpha1.InfrastructureStatus) *extensionsv1alpha1.ControlPlane {
