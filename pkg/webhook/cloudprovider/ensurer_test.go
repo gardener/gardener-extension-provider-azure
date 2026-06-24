@@ -12,12 +12,11 @@ import (
 	gcontext "github.com/gardener/gardener/extensions/pkg/webhook/context"
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	testutils "github.com/gardener/gardener/pkg/utils/test"
-	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/install"
@@ -35,16 +34,26 @@ var _ = Describe("Ensurer", func() {
 		ctx     = context.TODO()
 		ensurer cloudprovider.Ensurer
 
-		ctrl *gomock.Controller
-		c    *mockclient.MockClient
-		mgr  testutils.FakeManager
-
 		secret                 *corev1.Secret
 		servicePrincipalSecret corev1.Secret
 
-		gctx          = gcontext.NewGardenContext(nil, nil)
-		labelSelector = client.MatchingLabels{"azure.provider.extensions.gardener.cloud/purpose": "tenant-service-principal-secret"}
+		gctx = gcontext.NewGardenContext(nil, nil)
 	)
+
+	// purposeLabel is the label used to identify tenant service principal secrets.
+	const purposeLabel = "azure.provider.extensions.gardener.cloud/purpose"
+	const purposeValue = "tenant-service-principal-secret"
+
+	newEnsurer := func(objs ...corev1.Secret) cloudprovider.Ensurer {
+		scheme := kubernetes.SeedScheme
+		Expect(install.AddToScheme(scheme)).To(Succeed())
+		builder := fakeclient.NewClientBuilder().WithScheme(scheme)
+		for i := range objs {
+			builder = builder.WithObjects(&objs[i])
+		}
+		mgr := testutils.FakeManager{Client: builder.Build()}
+		return NewEnsurer(mgr, logger)
+	}
 
 	BeforeEach(func() {
 		secret = &corev1.Secret{
@@ -53,6 +62,13 @@ var _ = Describe("Ensurer", func() {
 			},
 		}
 		servicePrincipalSecret = corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "svc-principal",
+				Namespace: "default",
+				Labels: map[string]string{
+					purposeLabel: purposeValue,
+				},
+			},
 			Data: map[string][]byte{
 				"tenantID":     []byte("tenant-id"),
 				"clientID":     []byte("client-id"),
@@ -60,18 +76,7 @@ var _ = Describe("Ensurer", func() {
 			},
 		}
 
-		ctrl = gomock.NewController(GinkgoT())
-		c = mockclient.NewMockClient(ctrl)
-
-		mgr = testutils.FakeManager{Client: c}
-		scheme := kubernetes.SeedScheme
-		Expect(install.AddToScheme(scheme)).To(Succeed())
-
-		ensurer = NewEnsurer(mgr, logger)
-	})
-
-	AfterEach(func() {
-		ctrl.Finish()
+		ensurer = newEnsurer()
 	})
 
 	Describe("#EnsureCloudProviderSecret", func() {
@@ -90,11 +95,7 @@ var _ = Describe("Ensurer", func() {
 		})
 
 		It("should add clientID and clientSecret", func() {
-			c.EXPECT().List(gomock.Any(), &corev1.SecretList{}, labelSelector).
-				DoAndReturn(func(_ context.Context, list *corev1.SecretList, _ ...client.ListOption) error {
-					list.Items = []corev1.Secret{servicePrincipalSecret}
-					return nil
-				})
+			ensurer = newEnsurer(servicePrincipalSecret)
 
 			err := ensurer.EnsureCloudProviderSecret(ctx, gctx, secret, nil)
 			Expect(err).NotTo(HaveOccurred())
@@ -106,22 +107,16 @@ var _ = Describe("Ensurer", func() {
 		})
 
 		It("should fail as service principal secret matching to the tenant id exists", func() {
-			c.EXPECT().List(gomock.Any(), &corev1.SecretList{}, labelSelector).
-				DoAndReturn(func(_ context.Context, list *corev1.SecretList, _ ...client.ListOption) error {
-					list.Items = []corev1.Secret{}
-					return nil
-				})
+			// No service principal secret pre-populated → list returns empty
 
 			err := ensurer.EnsureCloudProviderSecret(ctx, gctx, secret, nil)
 			Expect(err).To(HaveOccurred())
 		})
 
 		It("should fail as multiple service principal secrets matching to the tenant id exists", func() {
-			c.EXPECT().List(gomock.Any(), &corev1.SecretList{}, labelSelector).
-				DoAndReturn(func(_ context.Context, list *corev1.SecretList, _ ...client.ListOption) error {
-					list.Items = []corev1.Secret{servicePrincipalSecret, servicePrincipalSecret}
-					return nil
-				})
+			sps2 := servicePrincipalSecret.DeepCopy()
+			sps2.Name = "svc-principal-2"
+			ensurer = newEnsurer(servicePrincipalSecret, *sps2)
 
 			err := ensurer.EnsureCloudProviderSecret(ctx, gctx, secret, nil)
 			Expect(err).To(HaveOccurred())
@@ -129,22 +124,14 @@ var _ = Describe("Ensurer", func() {
 
 		It("should fail as multiple service principal secrets matching to the tenant id exists", func() {
 			servicePrincipalSecret.Data["tenantID"] = []byte("some-different-tenant-id")
-			c.EXPECT().List(gomock.Any(), &corev1.SecretList{}, labelSelector).
-				DoAndReturn(func(_ context.Context, list *corev1.SecretList, _ ...client.ListOption) error {
-					list.Items = []corev1.Secret{servicePrincipalSecret}
-					return nil
-				})
+			ensurer = newEnsurer(servicePrincipalSecret)
 
 			err := ensurer.EnsureCloudProviderSecret(ctx, gctx, secret, nil)
 			Expect(err).To(HaveOccurred())
 		})
 
 		It("should not add workload identity config to the secret if it is not labeled correctly", func() {
-			c.EXPECT().List(gomock.Any(), &corev1.SecretList{}, labelSelector).
-				DoAndReturn(func(_ context.Context, list *corev1.SecretList, _ ...client.ListOption) error {
-					list.Items = []corev1.Secret{servicePrincipalSecret}
-					return nil
-				})
+			ensurer = newEnsurer(servicePrincipalSecret)
 			secret.Labels = map[string]string{"workloadidentity.security.gardener.cloud/provider": "foo"}
 			expected := secret.DeepCopy()
 			Expect(ensurer.EnsureCloudProviderSecret(ctx, gctx, secret, nil)).To(Succeed())

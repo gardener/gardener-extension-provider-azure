@@ -21,20 +21,16 @@ import (
 	"github.com/gardener/gardener/pkg/utils/imagevector"
 	testutils "github.com/gardener/gardener/pkg/utils/test"
 	"github.com/gardener/gardener/pkg/utils/version"
-	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"go.uber.org/mock/gomock"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	vpaautoscalingv1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	kubeletconfigv1beta1 "k8s.io/kubelet/config/v1beta1"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
@@ -51,11 +47,10 @@ func TestController(t *testing.T) {
 
 var _ = Describe("Ensurer ", func() {
 	var (
-		ctx  = context.TODO()
-		ctrl *gomock.Controller
+		ctx = context.TODO()
 
 		ensurer genericmutator.Ensurer
-		c       *mockclient.MockClient
+		scheme  *runtime.Scheme
 		mgr     testutils.FakeManager
 
 		dummyContext = gcontext.NewGardenContext(nil, nil)
@@ -112,17 +107,12 @@ var _ = Describe("Ensurer ", func() {
 	)
 
 	BeforeEach(func() {
-		ctrl = gomock.NewController(GinkgoT())
+		scheme = runtime.NewScheme()
+		Expect(corev1.AddToScheme(scheme)).To(Succeed())
 
-		c = mockclient.NewMockClient(ctrl)
-
+		c := fakeclient.NewClientBuilder().WithScheme(scheme).Build()
 		mgr = testutils.FakeManager{Client: c}
-
 		ensurer = NewEnsurer(mgr, logger)
-	})
-
-	AfterEach(func() {
-		ctrl.Finish()
 	})
 
 	Describe("#EnsureKubeAPIServerDeployment", func() {
@@ -359,11 +349,7 @@ var _ = Describe("Ensurer ", func() {
 	})
 
 	Describe("#EnsureKubeletServiceUnitOptions", func() {
-		var (
-			acrCmKey = client.ObjectKey{Namespace: namespace, Name: azure.CloudProviderAcrConfigName}
-
-			oldUnitOptions []*unit.UnitOption
-		)
+		var oldUnitOptions []*unit.UnitOption
 
 		BeforeEach(func() {
 			oldUnitOptions = []*unit.UnitOption{
@@ -377,6 +363,14 @@ var _ = Describe("Ensurer ", func() {
 		})
 
 		It("should modify existing elements of kubelet.service unit options", func() {
+			acrCM := &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: azure.CloudProviderAcrConfigName},
+				Data:       map[string]string{},
+			}
+			c := fakeclient.NewClientBuilder().WithScheme(scheme).WithObjects(acrCM).Build()
+			mgr = testutils.FakeManager{Client: c}
+			ensurer = NewEnsurer(mgr, logger)
+
 			newUnitOptions := []*unit.UnitOption{
 				{
 					Section: "Service",
@@ -387,13 +381,6 @@ var _ = Describe("Ensurer ", func() {
 			}
 			newUnitOptions[0].Value += ` \
     --cloud-provider=external`
-
-			acrCM := &corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: azure.CloudProviderAcrConfigName},
-				Data:       map[string]string{},
-			}
-			c.EXPECT().Get(ctx, acrCmKey, &corev1.ConfigMap{}).DoAndReturn(clientGet(acrCM))
-
 			newUnitOptions[0].Value += ` \
     --azure-container-registry-config=/var/lib/kubelet/acr.conf`
 
@@ -444,18 +431,12 @@ var _ = Describe("Ensurer ", func() {
 
 	Describe("#EnsureKubeletCloudProviderConfig", func() {
 		var (
-			objKey = client.ObjectKey{Namespace: namespace, Name: azure.CloudProviderDiskConfigName}
-			secret = &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: azure.CloudProviderDiskConfigName},
-				Data:       map[string][]byte{"abc": []byte("xyz"), azure.CloudProviderConfigMapKey: []byte(cloudProviderConfigContent)},
-			}
-
 			existingData = ptr.To("[LoadBalancer]\nlb-version=v2\nlb-provider:\n")
 			emptydata    = ptr.To("")
 		)
 
 		It("cloud provider secret does not exist", func() {
-			c.EXPECT().Get(ctx, objKey, &corev1.Secret{}).Return(apierrors.NewNotFound(schema.GroupResource{}, secret.Name))
+			// Secret not pre-populated → fake client returns not-found
 
 			err := ensurer.EnsureKubeletCloudProviderConfig(ctx, dummyContext, nil, emptydata, namespace)
 			Expect(err).To(Not(HaveOccurred()))
@@ -463,7 +444,13 @@ var _ = Describe("Ensurer ", func() {
 		})
 
 		It("should create element containing cloud provider config content with secret", func() {
-			c.EXPECT().Get(ctx, objKey, &corev1.Secret{}).DoAndReturn(clientGet(secret))
+			secret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: azure.CloudProviderDiskConfigName},
+				Data:       map[string][]byte{"abc": []byte("xyz"), azure.CloudProviderConfigMapKey: []byte(cloudProviderConfigContent)},
+			}
+			c := fakeclient.NewClientBuilder().WithScheme(scheme).WithObjects(secret).Build()
+			mgr = testutils.FakeManager{Client: c}
+			ensurer = NewEnsurer(mgr, logger)
 
 			err := ensurer.EnsureKubeletCloudProviderConfig(ctx, dummyContext, nil, emptydata, namespace)
 			Expect(err).To(Not(HaveOccurred()))
@@ -471,7 +458,13 @@ var _ = Describe("Ensurer ", func() {
 		})
 
 		It("should modify existing element containing cloud provider config content", func() {
-			c.EXPECT().Get(ctx, objKey, &corev1.Secret{}).DoAndReturn(clientGet(secret))
+			secret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: azure.CloudProviderDiskConfigName},
+				Data:       map[string][]byte{"abc": []byte("xyz"), azure.CloudProviderConfigMapKey: []byte(cloudProviderConfigContent)},
+			}
+			c := fakeclient.NewClientBuilder().WithScheme(scheme).WithObjects(secret).Build()
+			mgr = testutils.FakeManager{Client: c}
+			ensurer = NewEnsurer(mgr, logger)
 
 			err := ensurer.EnsureKubeletCloudProviderConfig(ctx, dummyContext, nil, existingData, namespace)
 			Expect(err).To(Not(HaveOccurred()))
@@ -490,6 +483,7 @@ var _ = Describe("Ensurer ", func() {
 		})
 
 		BeforeEach(func() {
+			c := fakeclient.NewClientBuilder().WithScheme(scheme).Build()
 			mgr = testutils.FakeManager{Client: c}
 			ensurer = NewEnsurer(mgr, logger)
 			DeferCleanup(testutils.WithVar(&ImageVector, imagevector.ImageVector{{
@@ -506,7 +500,10 @@ var _ = Describe("Ensurer ", func() {
 					Namespace: deployment.Namespace,
 				},
 			}
-			c.EXPECT().Get(ctx, client.ObjectKeyFromObject(secret), secret).DoAndReturn(clientGet(secret))
+			c := fakeclient.NewClientBuilder().WithScheme(scheme).WithObjects(secret).Build()
+			mgr = testutils.FakeManager{Client: c}
+			ensurer = NewEnsurer(mgr, logger)
+
 			Expect(deployment.Spec.Template.Spec.Containers).To(BeEmpty())
 			Expect(ensurer.EnsureMachineControllerManagerDeployment(context.TODO(), eContextK8s132, deployment, nil)).To(Succeed())
 			expectedContainer := machinecontrollermanager.ProviderSidecarContainer(shootk8s132, deployment.Namespace, "provider-azure", "foo:bar")
@@ -519,13 +516,15 @@ var _ = Describe("Ensurer ", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "cloudprovider",
 					Namespace: deployment.Namespace,
+					Labels: map[string]string{
+						"security.gardener.cloud/purpose": "workload-identity-token-requestor",
+					},
 				},
 			}
-			returnedSecret := secret.DeepCopy()
-			returnedSecret.Labels = map[string]string{
-				"security.gardener.cloud/purpose": "workload-identity-token-requestor",
-			}
-			c.EXPECT().Get(ctx, client.ObjectKeyFromObject(secret), secret).DoAndReturn(clientGet(returnedSecret))
+			c := fakeclient.NewClientBuilder().WithScheme(scheme).WithObjects(secret).Build()
+			mgr = testutils.FakeManager{Client: c}
+			ensurer = NewEnsurer(mgr, logger)
+
 			Expect(deployment.Spec.Template.Spec.Containers).To(BeEmpty())
 			Expect(ensurer.EnsureMachineControllerManagerDeployment(context.TODO(), eContextK8s132, deployment, nil)).To(Succeed())
 			expectedContainer := machinecontrollermanager.ProviderSidecarContainer(shootk8s132, deployment.Namespace, "provider-azure", "foo:bar")
@@ -572,6 +571,7 @@ var _ = Describe("Ensurer ", func() {
 		})
 
 		BeforeEach(func() {
+			c := fakeclient.NewClientBuilder().WithScheme(scheme).Build()
 			mgr = testutils.FakeManager{Client: c}
 			ensurer = NewEnsurer(mgr, logger)
 		})
@@ -664,17 +664,5 @@ func checkClusterAutoscalerDeployment(dep *appsv1.Deployment, k8sVersion string,
 		Expect(c.Command).To(test.ContainElementWithPrefixContaining("--feature-gates=", "VolumeAttributesClass=true", ","))
 	} else {
 		Expect(c.Command).NotTo(ContainElement(HavePrefix("--feature-gates")))
-	}
-}
-
-func clientGet(result runtime.Object) interface{} {
-	return func(_ context.Context, _ client.ObjectKey, obj runtime.Object, _ ...client.GetOption) error {
-		switch obj.(type) {
-		case *corev1.Secret:
-			*obj.(*corev1.Secret) = *result.(*corev1.Secret)
-		case *corev1.ConfigMap:
-			*obj.(*corev1.ConfigMap) = *result.(*corev1.ConfigMap)
-		}
-		return nil
 	}
 }

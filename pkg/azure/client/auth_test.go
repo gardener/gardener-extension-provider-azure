@@ -7,12 +7,12 @@ package client_test
 import (
 	"context"
 
-	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	. "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
@@ -20,8 +20,6 @@ import (
 
 var _ = Describe("Azure Auth", func() {
 	var (
-		ctrl *gomock.Controller
-
 		ctx context.Context
 
 		clientAuth *ClientAuth
@@ -34,7 +32,6 @@ var _ = Describe("Azure Auth", func() {
 	)
 
 	BeforeEach(func() {
-		ctrl = gomock.NewController(GinkgoT())
 		clientSecret, clientID, tenantID, subscriptionID := "secret", "client_id", "tenant_id", "subscription_id"
 		clientAuth = &ClientAuth{
 			ClientSecret:   clientSecret,
@@ -66,10 +63,6 @@ var _ = Describe("Azure Auth", func() {
 			Namespace: namespace,
 			Name:      name,
 		}
-	})
-
-	AfterEach(func() {
-		ctrl.Finish()
 	})
 
 	Describe("#NewClientAuthDataFromSecret", func() {
@@ -165,14 +158,19 @@ var _ = Describe("Azure Auth", func() {
 	})
 
 	Describe("#GetClientAuthData", func() {
+		var scheme *runtime.Scheme
+
+		BeforeEach(func() {
+			scheme = runtime.NewScheme()
+			Expect(corev1.AddToScheme(scheme)).To(Succeed())
+
+			secret.ObjectMeta = metav1.ObjectMeta{Name: name, Namespace: namespace}
+			dnsSecret.ObjectMeta = metav1.ObjectMeta{Name: name, Namespace: namespace}
+		})
+
 		Context("DNS keys are not allowed", func() {
 			It("should retrieve the client auth data if non-DNS keys ar used", func() {
-				var c = mockclient.NewMockClient(ctrl)
-				c.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).
-					DoAndReturn(func(_ context.Context, _ client.ObjectKey, actual *corev1.Secret, _ ...client.GetOption) error {
-						*actual = *secret
-						return nil
-					})
+				c := fakeclient.NewClientBuilder().WithScheme(scheme).WithObjects(secret).Build()
 
 				actual, _, err := GetClientAuthData(ctx, c, secretRef, false)
 
@@ -181,12 +179,7 @@ var _ = Describe("Azure Auth", func() {
 			})
 
 			It("should fail if DNS keys ar used", func() {
-				var c = mockclient.NewMockClient(ctrl)
-				c.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).
-					DoAndReturn(func(_ context.Context, _ client.ObjectKey, actual *corev1.Secret, _ ...client.GetOption) error {
-						*actual = *dnsSecret
-						return nil
-					})
+				c := fakeclient.NewClientBuilder().WithScheme(scheme).WithObjects(dnsSecret).Build()
 
 				actual, _, err := GetClientAuthData(ctx, c, secretRef, false)
 
@@ -197,12 +190,7 @@ var _ = Describe("Azure Auth", func() {
 
 		Context("DNS keys are allowed", func() {
 			It("should retrieve the client auth data if non-DNS keys ar used", func() {
-				var c = mockclient.NewMockClient(ctrl)
-				c.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).
-					DoAndReturn(func(_ context.Context, _ client.ObjectKey, actual *corev1.Secret, _ ...client.GetOption) error {
-						*actual = *secret
-						return nil
-					})
+				c := fakeclient.NewClientBuilder().WithScheme(scheme).WithObjects(secret).Build()
 
 				actual, _, err := GetClientAuthData(ctx, c, secretRef, true)
 
@@ -211,12 +199,7 @@ var _ = Describe("Azure Auth", func() {
 			})
 
 			It("should retrieve the client auth data if DNS keys ar used", func() {
-				var c = mockclient.NewMockClient(ctrl)
-				c.EXPECT().Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, gomock.AssignableToTypeOf(&corev1.Secret{})).
-					DoAndReturn(func(_ context.Context, _ client.ObjectKey, actual *corev1.Secret, _ ...client.GetOption) error {
-						*actual = *dnsSecret
-						return nil
-					})
+				c := fakeclient.NewClientBuilder().WithScheme(scheme).WithObjects(dnsSecret).Build()
 
 				actual, _, err := GetClientAuthData(ctx, c, secretRef, true)
 

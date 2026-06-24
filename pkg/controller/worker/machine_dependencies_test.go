@@ -16,14 +16,16 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	mockclient "github.com/gardener/gardener/third_party/mock/controller-runtime/client"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	"go.uber.org/mock/gomock"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	azureapi "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
@@ -34,10 +36,9 @@ import (
 
 var _ = Describe("MachinesDependencies", func() {
 	var (
-		ctrl         *gomock.Controller
-		c            *mockclient.MockClient
-		statusWriter *mockclient.MockStatusWriter
-		factory      *factorymock.MockFactory
+		ctrl    *gomock.Controller
+		c       client.Client
+		factory *factorymock.MockFactory
 
 		ctx context.Context
 
@@ -46,12 +47,18 @@ var _ = Describe("MachinesDependencies", func() {
 
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
-		c = mockclient.NewMockClient(ctrl)
-		statusWriter = mockclient.NewMockStatusWriter(ctrl)
 		factory = factorymock.NewMockFactory(ctrl)
 
-		// Let the seed client always the mocked status writer when Status() is called.
-		c.EXPECT().Status().AnyTimes().Return(statusWriter)
+		scheme := runtime.NewScheme()
+		Expect(extensionsv1alpha1.AddToScheme(scheme)).To(Succeed())
+		Expect(corev1.AddToScheme(scheme)).To(Succeed())
+		Expect(v1alpha1.AddToScheme(scheme)).To(Succeed())
+		Expect(azureapi.AddToScheme(scheme)).To(Succeed())
+
+		c = fakeclient.NewClientBuilder().
+			WithScheme(scheme).
+			WithStatusSubresource(&extensionsv1alpha1.Worker{}).
+			Build()
 
 		ctx = context.TODO()
 		namespace = "control-plane-namespace"
@@ -108,11 +115,10 @@ var _ = Describe("MachinesDependencies", func() {
 				workerDelegate := wrapNewWorkerDelegate(c, nil, w, cluster, factory)
 
 				expectVmoCreateToSucceed(ctx, vmoClient, resourceGroupName, vmoName, vmoID)
-				expectWorkerProviderStatusUpdateToSucceed(ctx, statusWriter)
 				err := workerDelegate.PreReconcileHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
-				workerStatus := decodeWorkerProviderStatus(w)
+				workerStatus := readBackWorkerStatus(ctx, c, w)
 				Expect(workerStatus.VmoDependencies).To(ContainElements(MatchFields(IgnoreExtras, Fields{
 					"ID":       Equal(vmoID),
 					"Name":     Equal(vmoName),
@@ -126,11 +132,10 @@ var _ = Describe("MachinesDependencies", func() {
 				workerDelegate := wrapNewWorkerDelegate(c, nil, w, cluster, factory)
 
 				expectVmoGetToSucceed(ctx, vmoClient, resourceGroupName, vmoName, vmoID, faultDomainCount)
-				expectWorkerProviderStatusUpdateToSucceed(ctx, statusWriter)
 				err := workerDelegate.PreReconcileHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
-				workerStatus := decodeWorkerProviderStatus(w)
+				workerStatus := readBackWorkerStatus(ctx, c, w)
 				Expect(workerStatus.VmoDependencies).To(ContainElements(MatchFields(IgnoreExtras, Fields{
 					"ID":       Equal(vmoDependency.ID),
 					"Name":     Equal(vmoDependency.Name),
@@ -146,11 +151,10 @@ var _ = Describe("MachinesDependencies", func() {
 				var oldFaultDomainCoaunt int32 = 2
 				expectVmoGetToSucceed(ctx, vmoClient, resourceGroupName, vmoName, vmoID, oldFaultDomainCoaunt)
 				expectVmoCreateToSucceed(ctx, vmoClient, resourceGroupName, vmoName, vmoID)
-				expectWorkerProviderStatusUpdateToSucceed(ctx, statusWriter)
 				err := workerDelegate.PreReconcileHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
-				workerStatus := decodeWorkerProviderStatus(w)
+				workerStatus := readBackWorkerStatus(ctx, c, w)
 				Expect(workerStatus.VmoDependencies).To(ContainElements(MatchFields(IgnoreExtras, Fields{
 					"ID":       Equal(vmoDependency.ID),
 					"Name":     Equal(vmoDependency.Name),
@@ -176,7 +180,6 @@ var _ = Describe("MachinesDependencies", func() {
 				vmoClient.EXPECT().List(ctx, resourceGroupName).Return(nil, &azcore.ResponseError{
 					StatusCode: http.StatusNotFound,
 				})
-				expectWorkerProviderStatusUpdateToSucceed(ctx, statusWriter)
 				err := workerDelegate.PostReconcileHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 			})
@@ -187,11 +190,10 @@ var _ = Describe("MachinesDependencies", func() {
 				workerDelegate := wrapNewWorkerDelegate(c, nil, w, cluster, factory)
 
 				expectVmoListToSucceed(ctx, vmoClient, resourceGroupName, generateExpectedVmo(vmoName, vmoID))
-				expectWorkerProviderStatusUpdateToSucceed(ctx, statusWriter)
 				err := workerDelegate.PostReconcileHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
-				workerStatus := decodeWorkerProviderStatus(w)
+				workerStatus := readBackWorkerStatus(ctx, c, w)
 				Expect(workerStatus.VmoDependencies).To(ContainElements(MatchFields(IgnoreExtras, Fields{
 					"ID":       Equal(vmoDependency.ID),
 					"Name":     Equal(vmoDependency.Name),
@@ -206,11 +208,10 @@ var _ = Describe("MachinesDependencies", func() {
 
 				expectVmoListToSucceed(ctx, vmoClient, resourceGroupName, generateExpectedVmo(vmoName, vmoID), generateExpectedVmo("orphan-managed-vmss", "/some/orphan/vmss/id"))
 				expectVmoDeleteToSucceed(ctx, vmoClient, resourceGroupName)
-				expectWorkerProviderStatusUpdateToSucceed(ctx, statusWriter)
 				err := workerDelegate.PostReconcileHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
-				workerStatus := decodeWorkerProviderStatus(w)
+				workerStatus := readBackWorkerStatus(ctx, c, w)
 				Expect(workerStatus.VmoDependencies).To(ContainElements(MatchFields(IgnoreExtras, Fields{
 					"ID":       Equal(vmoDependency.ID),
 					"Name":     Equal(vmoDependency.Name),
@@ -234,11 +235,10 @@ var _ = Describe("MachinesDependencies", func() {
 
 				expectVmoListToSucceed(ctx, vmoClient, resourceGroupName, generateExpectedVmo(deletedPoolVmoName, deletedPoolVmoID))
 				expectVmoDeleteToSucceed(ctx, vmoClient, resourceGroupName)
-				expectWorkerProviderStatusUpdateToSucceed(ctx, statusWriter)
 				err := workerDelegate.PostReconcileHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
-				workerStatus := decodeWorkerProviderStatus(w)
+				workerStatus := readBackWorkerStatus(ctx, c, w)
 				Expect(workerStatus.VmoDependencies).To(BeEmpty())
 			})
 
@@ -251,11 +251,10 @@ var _ = Describe("MachinesDependencies", func() {
 
 				expectVmoListToSucceed(ctx, vmoClient, resourceGroupName, generateExpectedVmo(vmoName, vmoID))
 				expectVmoDeleteToSucceed(ctx, vmoClient, resourceGroupName)
-				expectWorkerProviderStatusUpdateToSucceed(ctx, statusWriter)
 				err := workerDelegate.PostReconcileHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
-				workerStatus := decodeWorkerProviderStatus(w)
+				workerStatus := readBackWorkerStatus(ctx, c, w)
 				Expect(workerStatus.VmoDependencies).To(BeEmpty())
 			})
 		})
@@ -277,7 +276,6 @@ var _ = Describe("MachinesDependencies", func() {
 				vmoClient.EXPECT().List(ctx, resourceGroupName).Return(nil, &azcore.ResponseError{
 					StatusCode: http.StatusNotFound,
 				})
-				expectWorkerProviderStatusUpdateToSucceed(ctx, statusWriter)
 				err := workerDelegate.PostDeleteHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 			})
@@ -288,11 +286,10 @@ var _ = Describe("MachinesDependencies", func() {
 				workerDelegate := wrapNewWorkerDelegate(c, nil, w, cluster, factory)
 
 				expectVmoListToSucceed(ctx, vmoClient, resourceGroupName, generateExpectedVmo(vmoName, vmoID))
-				expectWorkerProviderStatusUpdateToSucceed(ctx, statusWriter)
 				err := workerDelegate.PostDeleteHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
-				workerStatus := decodeWorkerProviderStatus(w)
+				workerStatus := readBackWorkerStatus(ctx, c, w)
 				Expect(workerStatus.VmoDependencies).To(ContainElements(MatchFields(IgnoreExtras, Fields{
 					"ID":       Equal(vmoDependency.ID),
 					"Name":     Equal(vmoDependency.Name),
@@ -307,11 +304,10 @@ var _ = Describe("MachinesDependencies", func() {
 
 				expectVmoListToSucceed(ctx, vmoClient, resourceGroupName, generateExpectedVmo(vmoName, vmoID), generateExpectedVmo("orphan-managed-vmss", "/some/orphan/vmss/id"))
 				expectVmoDeleteToSucceed(ctx, vmoClient, resourceGroupName)
-				expectWorkerProviderStatusUpdateToSucceed(ctx, statusWriter)
 				err := workerDelegate.PostDeleteHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
-				workerStatus := decodeWorkerProviderStatus(w)
+				workerStatus := readBackWorkerStatus(ctx, c, w)
 				Expect(workerStatus.VmoDependencies).To(ContainElements(MatchFields(IgnoreExtras, Fields{
 					"ID":       Equal(vmoDependency.ID),
 					"Name":     Equal(vmoDependency.Name),
@@ -335,11 +331,10 @@ var _ = Describe("MachinesDependencies", func() {
 
 				expectVmoListToSucceed(ctx, vmoClient, resourceGroupName, generateExpectedVmo(deletedPoolVmoName, deletedPoolVmoID))
 				expectVmoDeleteToSucceed(ctx, vmoClient, resourceGroupName)
-				expectWorkerProviderStatusUpdateToSucceed(ctx, statusWriter)
 				err := workerDelegate.PostDeleteHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
-				workerStatus := decodeWorkerProviderStatus(w)
+				workerStatus := readBackWorkerStatus(ctx, c, w)
 				Expect(workerStatus.VmoDependencies).To(BeEmpty())
 			})
 
@@ -352,11 +347,10 @@ var _ = Describe("MachinesDependencies", func() {
 
 				expectVmoListToSucceed(ctx, vmoClient, resourceGroupName, generateExpectedVmo(vmoName, vmoID))
 				expectVmoDeleteToSucceed(ctx, vmoClient, resourceGroupName)
-				expectWorkerProviderStatusUpdateToSucceed(ctx, statusWriter)
 				err := workerDelegate.PostDeleteHook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
-				workerStatus := decodeWorkerProviderStatus(w)
+				workerStatus := readBackWorkerStatus(ctx, c, w)
 				Expect(workerStatus.VmoDependencies).To(BeEmpty())
 			})
 		})
