@@ -195,8 +195,8 @@ github.com/gardener/etcd-druid/api v0.36.4 h1:o/17ciPrbh/w+igKMUuglW7N9XLjoMh7Av
 github.com/gardener/etcd-druid/api v0.36.4/go.mod h1:RwZzKp8K415AS0zg8VoODjBxYepCAUYyLgXnZc1bmbo=
 github.com/gardener/gardener v1.144.2 h1:Xo4bYdbFmoKM/GtUqARDDXRO9Yye8J5c5OSEfrdU0Ts=
 github.com/gardener/gardener v1.144.2/go.mod h1:RBqX3h3eiMtEUG7oDZqVM+wOYT1T1sr7c1WPs3akTeE=
-github.com/gardener/gardener/pkg/apis v1.144.2 h1:Wgwt+0GUzRy3unkIrfzaY5UgpzPbonwlPNDvpRf25nI=
-github.com/gardener/gardener/pkg/apis v1.144.2/go.mod h1:we6hJ8r80nL1rkXzVnOQwey4q77pQXHN3pvoBgeak8g=
+github.com/gardener/gardener/pkg/apis v1.145.0 h1:E9mnDYOKOoOEJnpGCPpFuS0OX32uoOnv27a03b/nlP0=
+github.com/gardener/gardener/pkg/apis v1.145.0/go.mod h1:LsjZw5/3awWSMDnKg4bgftM1kW9Dkeor/ged5DNHVPI=
 github.com/gardener/machine-controller-manager v0.62.1 h1:TQ4Qs9aaYTqSkqFownIaEAvnrYoNpBMcp7ZMYVEgUWM=
 github.com/gardener/machine-controller-manager v0.62.1/go.mod h1:ICsymXK4VHm7NVr8Mpl6USvYcTZjUNSk6+XaVu/dd74=
 github.com/gardener/remedy-controller v0.14.0 h1:KQv6HXka/jWcnb0Bsl99iAEmu4X0mEWLkoywYsF0uI8=
