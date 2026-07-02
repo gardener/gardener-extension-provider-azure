@@ -227,7 +227,8 @@ var _ = Describe("Machines", func() {
 				}
 
 				osDiskConfig = apiv1alpha1.Volume{
-					Caching: ptr.To(string(armcompute.CachingTypesReadOnly)),
+					Caching:            ptr.To(string(armcompute.CachingTypesReadOnly)),
+					DiskControllerType: ptr.To("NVMe"),
 				}
 
 				diagnosticProfile = apiv1alpha1.DiagnosticsProfile{
@@ -628,6 +629,7 @@ var _ = Describe("Machines", func() {
 						"size":    volumeSize,
 						"caching": *osDiskConfig.Caching,
 					}
+					machineClassPool1["diskControllerType"] = *osDiskConfig.DiskControllerType
 					machineClassPool2["osDisk"] = map[string]any{
 						"size":    volumeSize,
 						"type":    volumeType,
@@ -1282,6 +1284,16 @@ var _ = Describe("Machines", func() {
 					got, err = WorkerPoolHashDataV2(pool, &workerConfig)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(got).To(Equal(want))
+				})
+
+				It("should include DiskControllerType in hash data when k8s version >= 1.35", func() {
+					pool.KubernetesVersion = ptr.To("1.35.0")
+					workerConfig.Volume = &apisazure.Volume{
+						DiskControllerType: ptr.To("NVMe"),
+					}
+					got, err := WorkerPoolHashDataV2(pool, &workerConfig)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(got).To(ContainElement("NVMe"))
 				})
 
 				It("should return the expected hash data for Rolling update strategy", func() {
