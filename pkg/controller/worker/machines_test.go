@@ -105,6 +105,7 @@ var _ = Describe("Machines", func() {
 				userData              []byte
 				userDataSecretName    string
 				userDataSecretDataKey string
+				nodeAgentSecretName   string
 				sshKey                string
 
 				volumeSize      int
@@ -192,6 +193,7 @@ var _ = Describe("Machines", func() {
 				userData = []byte("some-user-data")
 				userDataSecretName = "userdata-secret-name"
 				userDataSecretDataKey = "userdata-secret-key"
+				nodeAgentSecretName = "node-agent-secret-name"
 				sshKey = "public-key"
 				identityID = "identity-id"
 
@@ -388,9 +390,10 @@ var _ = Describe("Machines", func() {
 							Type: &dataVolume2Type,
 						},
 					},
-					Labels:         zone1Labels,
-					ProviderConfig: providerConfig,
-					Zones:          []string{zone1},
+					Labels:              zone1Labels,
+					ProviderConfig:      providerConfig,
+					Zones:               []string{zone1},
+					NodeAgentSecretName: &nodeAgentSecretName,
 				}
 
 				pool2 = extensionsv1alpha1.WorkerPool{
@@ -418,8 +421,9 @@ var _ = Describe("Machines", func() {
 						Size: fmt.Sprintf("%dGi", volumeSize),
 						Type: &volumeType,
 					},
-					Labels: zone1Labels,
-					Zones:  []string{zone1},
+					Labels:              zone1Labels,
+					Zones:               []string{zone1},
+					NodeAgentSecretName: &nodeAgentSecretName,
 				}
 
 				pool3 = extensionsv1alpha1.WorkerPool{
@@ -446,8 +450,9 @@ var _ = Describe("Machines", func() {
 						Size: fmt.Sprintf("%dGi", volumeSize),
 						Type: &volumeType,
 					},
-					Labels: zone1Labels,
-					Zones:  []string{zone1},
+					Labels:              zone1Labels,
+					Zones:               []string{zone1},
+					NodeAgentSecretName: &nodeAgentSecretName,
 				}
 
 				pool4 = extensionsv1alpha1.WorkerPool{
@@ -474,8 +479,9 @@ var _ = Describe("Machines", func() {
 						Size: fmt.Sprintf("%dGi", volumeSize),
 						Type: &volumeType,
 					},
-					Labels: zone1Labels,
-					Zones:  []string{zone1},
+					Labels:              zone1Labels,
+					Zones:               []string{zone1},
+					NodeAgentSecretName: &nodeAgentSecretName,
 				}
 
 				vmTags := map[string]string{
@@ -568,10 +574,10 @@ var _ = Describe("Machines", func() {
 					workerPoolHash1AdditionalData := []string{fmt.Sprintf("%dGi", dataVolume2Size), dataVolume2Type, fmt.Sprintf("%dGi", dataVolume1Size), identityID}
 					additionalData := []string{identityID}
 
-					workerPoolHash1, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster, workerPoolHash1AdditionalData, workerPoolHash1AdditionalData, nil)
-					workerPoolHash2, _ = worker.WorkerPoolHash(w.Spec.Pools[1], cluster, additionalData, additionalData, nil)
-					workerPoolHash3, _ = worker.WorkerPoolHash(w.Spec.Pools[2], cluster, additionalData, additionalData, nil)
-					workerPoolHash4, _ = worker.WorkerPoolHash(w.Spec.Pools[3], cluster, additionalData, additionalData, nil)
+					workerPoolHash1, _ = worker.WorkerPoolHash(w.Spec.Pools[0], cluster, workerPoolHash1AdditionalData, nil)
+					workerPoolHash2, _ = worker.WorkerPoolHash(w.Spec.Pools[1], cluster, additionalData, nil)
+					workerPoolHash3, _ = worker.WorkerPoolHash(w.Spec.Pools[2], cluster, additionalData, nil)
+					workerPoolHash4, _ = worker.WorkerPoolHash(w.Spec.Pools[3], cluster, additionalData, nil)
 
 					var (
 						machineClassPool1 = copyMachineClass(urnMachineClass)
@@ -906,8 +912,9 @@ var _ = Describe("Machines", func() {
 						Volume: &extensionsv1alpha1.Volume{
 							Size: fmt.Sprintf("%dGi", volumeSize),
 						},
-						Labels: labels,
-						Zones:  []string{zone1, zone2},
+						Labels:              labels,
+						Zones:               []string{zone1, zone2},
+						NodeAgentSecretName: &nodeAgentSecretName,
 					}
 
 					infrastructureStatus = makeInfrastructureStatus(resourceGroupName, vnetName, subnetName, true, &vnetResourceGroupName, &identityID)
@@ -963,8 +970,8 @@ var _ = Describe("Machines", func() {
 						machineClassPool2,
 					}}
 					additionalData := []string{identityID}
-					workerPoolHash1, _ := worker.WorkerPoolHash(w.Spec.Pools[0], cluster, additionalData, additionalData, nil)
-					workerPoolHash2, _ := worker.WorkerPoolHash(w.Spec.Pools[0], cluster, append(additionalData, subnet2), append(additionalData, subnet2), nil)
+					workerPoolHash1, _ := worker.WorkerPoolHash(w.Spec.Pools[0], cluster, additionalData, nil)
+					workerPoolHash2, _ := worker.WorkerPoolHash(w.Spec.Pools[0], cluster, append(additionalData, subnet2), nil)
 					machineClassNamePool1 := fmt.Sprintf("%s-%s", technicalID, poolZones.Name)
 					machineClassNamePool2 := fmt.Sprintf("%s-%s", technicalID, poolZones.Name)
 					machineDeploymentNamePool1 := fmt.Sprintf("%s-z%s", machineClassNamePool1, zone1)
@@ -1126,8 +1133,9 @@ var _ = Describe("Machines", func() {
 							Size: fmt.Sprintf("%dGi", volumeSize),
 							Type: &volumeType,
 						},
-						Labels: zone1Labels,
-						Zones:  []string{zone1},
+						Labels:              zone1Labels,
+						Zones:               []string{zone1},
+						NodeAgentSecretName: &nodeAgentSecretName,
 					}
 					w = makeWorker(namespace, region, &sshKey, infrastructureStatus, poolInPlace)
 
@@ -1141,7 +1149,7 @@ var _ = Describe("Machines", func() {
 					}
 					machineClassPool["nodeTemplate"] = nodeTemplateZone4
 					additionalData := []string{identityID}
-					workerPoolHash, _ := worker.WorkerPoolHash(w.Spec.Pools[0], cluster, additionalData, additionalData, nil)
+					workerPoolHash, _ := worker.WorkerPoolHash(w.Spec.Pools[0], cluster, additionalData, nil)
 					machineClassNamePool := fmt.Sprintf("%s-%s", technicalID, poolInPlace.Name)
 					machineClassWithHashPool := fmt.Sprintf("%s-%s-z%s", machineClassNamePool, workerPoolHash, zone1)
 					machineDeploymentNamePool := fmt.Sprintf("%s-z%s", machineClassNamePool, zone1)
@@ -1224,10 +1232,10 @@ var _ = Describe("Machines", func() {
 					w2PoolHashDataV2, err := WorkerPoolHashDataV2(w2.Spec.Pools[0], w2Config)
 					Expect(err).ToNot(HaveOccurred())
 
-					w1Hash, err := worker.WorkerPoolHash(w1.Spec.Pools[0], cluster, nil, w1PoolHashDataV2, nil)
+					w1Hash, err := worker.WorkerPoolHash(w1.Spec.Pools[0], cluster, w1PoolHashDataV2, nil)
 					Expect(err).ToNot(HaveOccurred())
 
-					w2Hash, err := worker.WorkerPoolHash(w2.Spec.Pools[0], cluster, nil, w2PoolHashDataV2, nil)
+					w2Hash, err := worker.WorkerPoolHash(w2.Spec.Pools[0], cluster, w2PoolHashDataV2, nil)
 					Expect(err).ToNot(HaveOccurred())
 
 					Expect(w1Hash).To(Equal(w2Hash), fmt.Sprintf("w1Def: %q, w2Def:%q, w1Hash: %q, w2Hash: %q", w1Def, w2Def, w1Hash, w2Hash))

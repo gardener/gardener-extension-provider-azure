@@ -584,7 +584,7 @@ func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPo
 	}
 	additionalHashDataV2 := append(additionalHashData, hashDataV2...)
 
-	return worker.WorkerPoolHash(pool, w.cluster, additionalHashData, additionalHashDataV2, []string{})
+	return worker.WorkerPoolHash(pool, w.cluster, additionalHashDataV2, []string{})
 }
 
 // WorkerPoolHashDataV2 adds additional provider-specific data points to consider to the given data.
