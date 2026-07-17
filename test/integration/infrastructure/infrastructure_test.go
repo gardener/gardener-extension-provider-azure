@@ -784,7 +784,7 @@ func newCluster(name, region string, setVmoAnnotationToShoot bool) (*extensionsv
 			CloudProfile: runtime.RawExtension{
 				Raw: rawCloudProfile,
 			},
-			Seed: runtime.RawExtension{
+			Seed: &runtime.RawExtension{
 				Raw: []byte("{}"),
 			},
 			Shoot: runtime.RawExtension{
