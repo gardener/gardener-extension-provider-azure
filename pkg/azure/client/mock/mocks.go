@@ -14,9 +14,9 @@ import (
 	reflect "reflect"
 
 	armmsi "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi"
-	armnetwork "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v9"
-	armresources "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
-	armstorage "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage"
+	armnetwork "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v10"
+	armresources "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v4"
+	armstorage "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage/v4"
 	client "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	gomock "go.uber.org/mock/gomock"
 )

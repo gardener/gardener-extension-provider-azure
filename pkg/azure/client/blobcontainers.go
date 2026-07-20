@@ -9,7 +9,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage/v4"
 	"k8s.io/utils/ptr"
 )
 
@@ -52,15 +52,13 @@ func (c *BlobContainersClient) GetImmutabilityPolicy(ctx context.Context, resour
 // CreateOrUpdateImmutabilityPolicy creates, or updates the immutability policy set at the container level on the container with the name <containerName>, in the storage account <accountName>, and resource group <resourceGroupName>. This method can be called on containers without an immutability policy, or with an unlocked immutability policy.
 // Returns the policy etag and the error.
 func (c *BlobContainersClient) CreateOrUpdateImmutabilityPolicy(ctx context.Context, resourceGroupName, accountName, containerName string, immutabilityPeriodSinceCreationInDays *int32) (*string, error) {
-	createOrUpdateImmutabilityPolicyResponse, err := c.client.CreateOrUpdateImmutabilityPolicy(ctx, resourceGroupName, accountName, containerName, &armstorage.BlobContainersClientCreateOrUpdateImmutabilityPolicyOptions{
-		Parameters: &armstorage.ImmutabilityPolicy{
-			Properties: &armstorage.ImmutabilityPolicyProperty{
-				AllowProtectedAppendWrites:            ptr.To(false),
-				AllowProtectedAppendWritesAll:         ptr.To(false),
-				ImmutabilityPeriodSinceCreationInDays: immutabilityPeriodSinceCreationInDays,
-			},
+	createOrUpdateImmutabilityPolicyResponse, err := c.client.CreateOrUpdateImmutabilityPolicy(ctx, resourceGroupName, accountName, containerName, armstorage.ImmutabilityPolicy{
+		Properties: &armstorage.ImmutabilityPolicyProperty{
+			AllowProtectedAppendWrites:            ptr.To(false),
+			AllowProtectedAppendWritesAll:         ptr.To(false),
+			ImmutabilityPeriodSinceCreationInDays: immutabilityPeriodSinceCreationInDays,
 		},
-	})
+	}, nil)
 	return createOrUpdateImmutabilityPolicyResponse.Etag, err
 }
 

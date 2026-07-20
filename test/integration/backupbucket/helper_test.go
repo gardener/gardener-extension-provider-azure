@@ -17,8 +17,8 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v4"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -465,16 +465,16 @@ func verifyLockedImmutabilityPolicy(ctx context.Context, azClientSet *azureClien
 	log.Info("Expected error when deleting a locked immutability policy", "error", err)
 
 	By("attempting to mutate the immutability policy on blob container")
-	options := &armstorage.BlobContainersClientCreateOrUpdateImmutabilityPolicyOptions{
-		IfMatch: policy.Etag,
-		Parameters: &armstorage.ImmutabilityPolicy{
-			Properties: &armstorage.ImmutabilityPolicyProperty{
-				// decreasing immutability period to 0 days (increasing is allowed for a locked immutability policy)
-				ImmutabilityPeriodSinceCreationInDays: ptr.To(int32(0)),
-			},
+	parameters := armstorage.ImmutabilityPolicy{
+		Properties: &armstorage.ImmutabilityPolicyProperty{
+			// decreasing immutability period to 0 days (increasing is allowed for a locked immutability policy)
+			ImmutabilityPeriodSinceCreationInDays: ptr.To(int32(0)),
 		},
 	}
-	_, err = azClientSet.blobContainers.CreateOrUpdateImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, containerName, options)
+	options := &armstorage.BlobContainersClientCreateOrUpdateImmutabilityPolicyOptions{
+		IfMatch: policy.Etag,
+	}
+	_, err = azClientSet.blobContainers.CreateOrUpdateImmutabilityPolicy(ctx, resourceGroupName, storageAccountName, containerName, parameters, options)
 	Expect(err).To(HaveOccurred(), "Expected error when trying to mutate a locked immutability policy")
 	log.Info("Expected error when trying to mutate a locked immutability policy", "error", err)
 }
