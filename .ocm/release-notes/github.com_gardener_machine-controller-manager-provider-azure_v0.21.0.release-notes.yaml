@@ -1,0 +1,14 @@
+ocm:
+  component_name: github.com/gardener/machine-controller-manager-provider-azure
+  component_version: v0.21.0
+release_notes:
+- audience: user
+  author:
+    hostname: github.com
+    type: githubUser
+    username: MSSedusch
+  category: improvement
+  contents: add support for specifying the diskControllerType during the VM creation.
+  mimetype: text/markdown
+  reference: '[#233](https://github.com/gardener/machine-controller-manager-provider-azure/pull/233)'
+  type: standard
