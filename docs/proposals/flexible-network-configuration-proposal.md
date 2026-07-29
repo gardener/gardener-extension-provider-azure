@@ -107,7 +107,7 @@ No new mode/enum is added. Presence of `Networks.Subnet` alone signals user-mana
 
 One status-only addition: the existing `OutboundAccessType` enum on `InfrastructureStatus.Networks` gains a third value **`UserManaged`**, set when the user brought their own subnet and did not enable a NAT Gateway. The API user does not set this; it is derived at reconcile time.
 
-Concrete Go type definitions are in the [Technical implementation](#technical-implementation) section at the end of this document.
+Concrete Go type definitions are in the companion spec document — see [`flexible-network-configuration-spec.md`](./flexible-network-configuration-spec.md).
 
 ### Derived mode
 
@@ -130,7 +130,7 @@ When `Networks.Subnet != nil`:
 | `Networks.ServiceEndpoints` must be empty                               | User manages service endpoints on their own subnet.                                                            |
 | `Networks.Subnet.Name` non-empty (RFC-1123-ish per Azure naming rules)  | Standard field validation.                                                                                     |
 
-**Runtime validation** (in a new admission `ConfigValidator`, `pkg/controller/infrastructure/configvalidator.go` — Azure today only has `pkg/admission/validator/shoot.go` for API-level validation, so any cloud-side lookups against actual ARM resources happen inside the reconciler; this proposal introduces a dedicated pre-flight validator):
+**Runtime validation** — a new pre-flight validator runs before reconcile and checks the referenced ARM resources actually exist and are compatible. It complements the API-level rules above; API-level rules catch static mistakes at admission time, runtime rules catch mismatches with the live cloud state:
 
 | Rule                                                                                                           | Rationale                                                                                                                                                                                                                   |
 | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -149,7 +149,7 @@ When `Networks.Subnet != nil`:
 
 Modifications live in `pkg/controller/infrastructure/infraflow/`.
 
-**Task-gating matrix**, at `flow_context.go:150-177`:
+**Task-gating matrix**:
 
 | Task                    | Condition                                                                                                                                |
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
@@ -273,7 +273,7 @@ The user takes ownership of using an overlay CNI. Gardener does not introspect t
 | 5    | `ensureSecurityGroupTagged(rv)`               | `:3532`      | always                                                             | Adds cluster tags to the NSG iff `az.Tags`/`az.TagsMap` are set. **No-op for Gardener** — Gardener does not populate `Tags`/`TagsMap` in `cloud-provider-config`.                |
 | 6    | `nsgRepo.CreateOrUpdateSecurityGroup(ctx,rv)` | `:3539`      | if steps 2–5 mutated the NSG                                       | Writes the updated NSG back to ARM.                                                                                                                                              |
 
-**What the bastion controller does to the NSG**: for each Bastion resource lifecycle, adds/removes 4 IP-scoped rules on the same NSG (2 SSH-in from operator CIDRs, 1 SSH-out to worker CIDRs, 1 deny-all-out) — see `pkg/controller/bastion/resourcesdefine.go:102-150` and `actuator_delete.go:107-118`. Rule names are prefixed `<bastion-instance-name>-` and removed on Bastion delete.
+**What the bastion controller does to the NSG**: for each Bastion resource lifecycle, adds/removes 4 IP-scoped rules on the same NSG — 2 SSH-in from operator CIDRs, 1 SSH-out to worker CIDRs, and 1 deny-all-out that ensures the bastion has no internet egress. Rule names are prefixed `<bastion-instance-name>-` and removed on Bastion delete.
 
 Both flows are additive, name-scoped, and self-cleaning. They never touch the user's non-Gardener rules.
 
@@ -386,7 +386,7 @@ The user MUST NOT:
 - BYO route table and NSG are **never** deleted by Gardener.
 - The observability tag `kubernetes.io/cluster/<shoot-technical-name>: shared` that the reconciler added to the BYO VNet, NSG, and route table is removed on shoot deletion by the `RemoveBYOResourceTags` task. Tag removal is best-effort — a failure (e.g. permission revoked, resource already gone) logs a warning and does not block deletion. Other tags on the resource are untouched.
 - Named rules added by the CCM (for LB Services) and the bastion controller (for Bastion resources) on the NSG are cleaned up on their owning resource's delete — same as for any Gardener Azure shoot today. On shoot deletion, all LB Services and all Bastion resources are deleted first, which triggers the corresponding NSG rule removal before Gardener stops managing anything.
-- Any load balancers created by CCM for `Service type=LoadBalancer` are cleaned up by the existing LB-in-foreign-VNet-RG cleanup path (`flow_context.go:193-197`, `ensurer.go:762-822`), which already handles the BYO-VNet case.
+- Any load balancers created by CCM for `Service type=LoadBalancer` are cleaned up by the existing LB-in-foreign-VNet-RG cleanup path, which already handles the BYO-VNet case today.
 
 ## Documentation
 
@@ -528,7 +528,7 @@ Add `Networks.RouteTable.{Name,ResourceGroup}` and `Networks.SecurityGroup.{Name
 
 ### 4. Programmatically detect and preserve foreign-RG resources (extend the existing heuristic)
 
-The existing preservation heuristic at `pkg/controller/infrastructure/infraflow/ensurer.go:545-565` already leaves foreign-RG NAT associations alone. Extend the same approach to RT and NSG, making BYO implicit.
+The existing preservation heuristic in the infrastructure reconciler already leaves foreign-RG NAT associations alone. Extend the same approach to RT and NSG, making BYO implicit.
 
 **Rejected**: implicit behavior with no API surface is impossible to validate, document, or reason about. Users need an explicit way to say "I own this."
 
