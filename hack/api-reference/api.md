@@ -2310,6 +2310,18 @@ string
 <p>Caching specifies the caching type for the OS disk.<br />Valid values are 'None', 'ReadOnly', and 'ReadWrite'.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>diskControllerType</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DiskControllerType specifies the disk controller type configured for the VM.<br />Valid values are 'SCSI' and 'NVMe'.</p>
+</td>
+</tr>
 
 </tbody>
 </table>

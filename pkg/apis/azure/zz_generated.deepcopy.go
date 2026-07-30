@@ -974,6 +974,11 @@ func (in *Volume) DeepCopyInto(out *Volume) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.DiskControllerType != nil {
+		in, out := &in.DiskControllerType, &out.DiskControllerType
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 

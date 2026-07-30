@@ -118,3 +118,4 @@ spec:
 #        storageURI: https://<storage-account-name>.blob.core.windows.net/
 #      volume:
 #        caching: None
+#        diskControllerType: NVMe # Valid values: SCSI, NVMe

@@ -47,6 +47,7 @@ machineClasses:
 #      uefiSettings:
 #        vtpmEnabled: false
     caching: None # TODO remove default after https://github.com/gardener/machine-controller-manager-provider-azure/issues/214
+#  diskControllerType: SCSI
   sshPublicKey: ssh-rsa AAAAB3...
 - name: class-3-vmo
   region: westeurope
