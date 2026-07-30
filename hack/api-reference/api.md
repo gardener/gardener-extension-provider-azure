@@ -2319,8 +2319,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>DiskControllerType specifies the disk controller type configured for the VM.
-Valid values are &lsquo;SCSI&rsquo; and &lsquo;NVMe&rsquo;.</p>
+<p>DiskControllerType specifies the disk controller type configured for the VM.<br />Valid values are 'SCSI' and 'NVMe'.</p>
 </td>
 </tr>
 
