@@ -1589,6 +1589,18 @@ string array
 <p>Zones is a list of zones with their respective configuration.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>subnet</code></br>
+<em>
+<a href="#subnetreference">SubnetReference</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Subnet is an optional reference to an already-existing subnet inside the (also user-provided) VNet.<br />When set, Gardener's infrastructure reconciler will not create or manage the worker subnet, its<br />route table, or its network security group; it discovers them from the referenced subnet at<br />reconcile time. The NSG's securityRules are still mutated at runtime by the Azure<br />cloud-controller-manager (for Service type=LoadBalancer) and by the bastion controller (for<br />Bastion resources). Requires VNet.Name and VNet.ResourceGroup to be set. Not compatible with<br />Zones, Workers, NatGateway, or ServiceEndpoints.</p>
+</td>
+</tr>
 
 </tbody>
 </table>
@@ -1909,6 +1921,18 @@ string
 <p>Name is the name of the route table</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>resourceGroup</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ResourceGroup is the resource group hosting this route table. If nil, the shoot's cluster<br />resource group is assumed. Only populated in BYO-subnet mode, where the route table may live<br />in any resource group within the shoot's subscription.</p>
+</td>
+</tr>
 
 </tbody>
 </table>
@@ -1955,6 +1979,18 @@ string
 </td>
 <td>
 <p>Name is the name of the security group</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>resourceGroup</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ResourceGroup is the resource group hosting this security group. If nil, the shoot's cluster<br />resource group is assumed. Only populated in BYO-subnet mode, where the security group may<br />live in any resource group within the shoot's subscription.</p>
 </td>
 </tr>
 
@@ -2088,6 +2124,45 @@ string
 <td>
 <em>(Optional)</em>
 <p>NatGatewayID is the ID of the NATGateway associated with the subnet.</p>
+</td>
+</tr>
+
+</tbody>
+</table>
+
+
+<h3 id="subnetreference">SubnetReference
+</h3>
+
+
+<p>
+(<em>Appears on:</em><a href="#networkconfig">NetworkConfig</a>)
+</p>
+
+<p>
+SubnetReference references an existing subnet in an existing VNet.
+The parent VNet's name and resource group are taken from NetworkConfig.VNet, so the pair
+(VNet.ResourceGroup, VNet.Name, Subnet.Name) uniquely identifies the subnet.
+</p>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name is the name of the subnet.</p>
 </td>
 </tr>
 

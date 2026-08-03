@@ -76,9 +76,17 @@ spec:
       subnets:
       - purpose: nodes
         name: subnet-acbd1234
+      # outboundAccessType is one of "NATGateway", "LoadBalancer", or "UserManaged" (BYO subnet).
+#      outboundAccessType: NATGateway
     routeTables:
     - name: route-table
       purpose: nodes
+      # resourceGroup is only populated in BYO-subnet mode where the RT lives outside the shoot's
+      # cluster resource group.
+#      resourceGroup: platform-network-rg
     securityGroups:
     - name: sec-groups
       purpose: nodes
+      # resourceGroup is only populated in BYO-subnet mode where the NSG lives outside the shoot's
+      # cluster resource group.
+#      resourceGroup: central-security-rg
