@@ -279,3 +279,11 @@ func InfrastructureZoneToString(zone int32) string {
 func IsUsingSingleSubnetLayout(config *api.InfrastructureConfig) bool {
 	return len(config.Networks.Zones) == 0
 }
+
+// IsUsingUserManagedEgress returns true if the user opted into managing their own egress path by
+// bringing an existing subnet inside a BYO VNet. In this mode the infrastructure reconciler skips
+// creation of the worker subnet, its route table, its network security group, and the NAT gateway,
+// and only discovers the route table and NSG associations on the referenced subnet.
+func IsUsingUserManagedEgress(config *api.InfrastructureConfig) bool {
+	return config != nil && config.Networks.Subnet != nil
+}

@@ -77,12 +77,20 @@ spec:
       subnets:
       - purpose: nodes
         name: subnet-123
+      # outboundAccessType is one of "NATGateway", "LoadBalancer", or "UserManaged" (BYO subnet).
+#      outboundAccessType: NATGateway
     routeTables:
     - purpose: nodes
       name: route-table-1
+      # resourceGroup is only populated in BYO-subnet mode where the RT lives outside the shoot's
+      # cluster resource group.
+#      resourceGroup: platform-network-rg
     securityGroups:
     - purpose: nodes
       name: sec-group-1
+      # resourceGroup is only populated in BYO-subnet mode where the NSG lives outside the shoot's
+      # cluster resource group.
+#      resourceGroup: central-security-rg
   pools:
   - name: cpu-worker
     machineType: Standard_D2_v3

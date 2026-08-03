@@ -42,6 +42,22 @@ type NetworkConfig struct {
 	ServiceEndpoints []string
 	// Zones is a list of zones with their respective configuration.
 	Zones []Zone
+	// Subnet is an optional reference to an already-existing subnet inside the (also user-provided) VNet.
+	// When set, Gardener's infrastructure reconciler will not create or manage the worker subnet, its
+	// route table, or its network security group; it discovers them from the referenced subnet at
+	// reconcile time. The NSG's securityRules are still mutated at runtime by the Azure
+	// cloud-controller-manager (for Service type=LoadBalancer) and by the bastion controller (for
+	// Bastion resources). Requires VNet.Name and VNet.ResourceGroup to be set. Not compatible with
+	// Zones, Workers, NatGateway, or ServiceEndpoints.
+	Subnet *SubnetReference
+}
+
+// SubnetReference references an existing subnet in an existing VNet.
+// The parent VNet's name and resource group are taken from NetworkConfig.VNet, so the pair
+// (VNet.ResourceGroup, VNet.Name, Subnet.Name) uniquely identifies the subnet.
+type SubnetReference struct {
+	// Name is the name of the subnet.
+	Name string
 }
 
 // NatGatewayConfig contains configuration for the NAT gateway and the attached resources.
@@ -174,6 +190,10 @@ const (
 	OutboundAccessTypeNatGateway = "NATGateway"
 	// OutboundAccessTypeLoadBalancer indicates that the outbound access happens through configured FrontendIPs of a LoadBalancer.
 	OutboundAccessTypeLoadBalancer = "LoadBalancer"
+	// OutboundAccessTypeUserManaged indicates that the user is responsible for egress (firewall-based
+	// egress via a user-owned route table, or network-isolated with no default route). Set when the
+	// user brought their own subnet and did not enable a NAT Gateway.
+	OutboundAccessTypeUserManaged = "UserManaged"
 )
 
 // Subnet is a subnet that was created.
@@ -198,6 +218,11 @@ type RouteTable struct {
 	Purpose Purpose
 	// Name is the name of the route table
 	Name string
+	// ResourceGroup is the resource group hosting this route table. If nil, the shoot's cluster
+	// resource group is assumed. Only populated in BYO-subnet mode, where the route table may live
+	// in any resource group within the shoot's subscription.
+	// +optional
+	ResourceGroup *string
 }
 
 // SecurityGroup contains information about the security group
@@ -206,6 +231,11 @@ type SecurityGroup struct {
 	Purpose Purpose
 	// Name is the name of the security group
 	Name string
+	// ResourceGroup is the resource group hosting this security group. If nil, the shoot's cluster
+	// resource group is assumed. Only populated in BYO-subnet mode, where the security group may
+	// live in any resource group within the shoot's subscription.
+	// +optional
+	ResourceGroup *string
 }
 
 // VNet contains information about the VNet and some related resources.

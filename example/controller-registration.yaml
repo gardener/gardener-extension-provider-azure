@@ -18,19 +18,19 @@ metadata:
 spec:
   deployment:
     deploymentRefs:
-    - name: provider-azure
+      - name: provider-azure
   resources:
-  - kind: BackupBucket
-    type: azure
-  - kind: BackupEntry
-    type: azure
-  - kind: Bastion
-    type: azure
-  - kind: ControlPlane
-    type: azure
-  - kind: DNSRecord
-    type: azure-dns
-  - kind: Infrastructure
-    type: azure
-  - kind: Worker
-    type: azure
+    - kind: BackupBucket
+      type: azure
+    - kind: BackupEntry
+      type: azure
+    - kind: Bastion
+      type: azure
+    - kind: ControlPlane
+      type: azure
+    - kind: DNSRecord
+      type: azure-dns
+    - kind: Infrastructure
+      type: azure
+    - kind: Worker
+      type: azure
