@@ -151,6 +151,8 @@ func (fctx *FlowContext) buildReconcileGraph() *flow.Graph {
 	fctx.BasicFlowContext = shared.NewBasicFlowContext().WithSpan().WithLogger(fctx.log).WithPersist(fctx.persistState)
 	g := flow.NewGraph("Azure infrastructure reconciliation")
 
+	byo := helper.IsUsingUserManagedEgress(fctx.cfg)
+
 	resourceGroup := fctx.AddTask(g, "ensure resource group",
 		fctx.EnsureResourceGroup, shared.Timeout(defaultTimeout))
 
@@ -160,19 +162,29 @@ func (fctx *FlowContext) buildReconcileGraph() *flow.Graph {
 	_ = fctx.AddTask(g, "ensure managed identity",
 		fctx.EnsureManagedIdentity, shared.DoIf(fctx.cfg.Identity != nil))
 
+	// In BYO mode Gardener does not create the route table or the network security group; they
+	// are pre-attached to the user's subnet and discovered by EnsureUserSubnet below.
 	routeTable := fctx.AddTask(g, "ensure route table",
-		fctx.EnsureRouteTable, shared.Timeout(defaultTimeout), shared.Dependencies(resourceGroup))
+		fctx.EnsureRouteTable, shared.Timeout(defaultTimeout), shared.Dependencies(resourceGroup), shared.DoIf(!byo))
 
 	securityGroup := fctx.AddTask(g, "ensure security group",
-		fctx.EnsureSecurityGroup, shared.Timeout(defaultTimeout), shared.Dependencies(resourceGroup))
+		fctx.EnsureSecurityGroup, shared.Timeout(defaultTimeout), shared.Dependencies(resourceGroup), shared.DoIf(!byo))
 
 	ip := fctx.AddTask(g, "ensure public IPs",
-		fctx.EnsurePublicIps, shared.Timeout(defaultLongTimeout), shared.Dependencies(resourceGroup))
+		fctx.EnsurePublicIps, shared.Timeout(defaultLongTimeout), shared.Dependencies(resourceGroup), shared.DoIf(!byo))
 	nat := fctx.AddTask(g, "ensure nats",
-		fctx.EnsureNatGateways, shared.Timeout(defaultLongTimeout), shared.Dependencies(resourceGroup, ip))
+		fctx.EnsureNatGateways, shared.Timeout(defaultLongTimeout), shared.Dependencies(resourceGroup, ip), shared.DoIf(!byo))
 
-	_ = fctx.AddTask(g, "ensure subnets", fctx.EnsureSubnets,
-		shared.Timeout(defaultLongTimeout), shared.Dependencies(vnet, routeTable, securityGroup, nat))
+	subnets := fctx.AddTask(g, "ensure subnets", fctx.EnsureSubnets,
+		shared.Timeout(defaultLongTimeout), shared.Dependencies(vnet, routeTable, securityGroup, nat), shared.DoIf(!byo))
+
+	userSubnet := fctx.AddTask(g, "ensure BYO subnet (read-only discovery)",
+		fctx.EnsureUserSubnet, shared.Timeout(defaultTimeout), shared.Dependencies(vnet), shared.DoIf(byo))
+
+	_ = fctx.AddTask(g, "ensure BYO resource tags",
+		fctx.EnsureBYOResourceTags, shared.Timeout(defaultTimeout), shared.Dependencies(userSubnet), shared.DoIf(byo))
+
+	_ = subnets
 	return g
 }
 
@@ -188,13 +200,19 @@ func (fctx *FlowContext) Delete(ctx context.Context) error {
 
 	fctx.BasicFlowContext = shared.NewBasicFlowContext().WithSpan().WithLogger(fctx.log).WithPersist(fctx.persistState)
 	managedVnet := fctx.adapter.VirtualNetworkConfig().Managed
+	byo := helper.IsUsingUserManagedEgress(fctx.cfg)
 	g := flow.NewGraph("Azure infrastructure deletion")
 
+	// BYO resource tags are removed first (best-effort). This runs regardless of managed-VNet state
+	// because in BYO mode the VNet, NSG, and route table are all user-owned.
+	byoUntag := fctx.AddTask(g, "remove BYO resource tags",
+		fctx.RemoveBYOResourceTags, shared.Timeout(defaultTimeout), shared.DoIf(byo))
+
 	loadBalancers := fctx.AddTask(g, "delete load balancers",
-		fctx.DeleteLoadBalancers, shared.Timeout(defaultLongTimeout), shared.DoIf(!managedVnet))
+		fctx.DeleteLoadBalancers, shared.Timeout(defaultLongTimeout), shared.DoIf(!managedVnet), shared.Dependencies(byoUntag))
 	foreignSubnets := fctx.AddTask(g, "delete subnets in foreign resource group",
 		fctx.DeleteSubnetsInForeignGroup, shared.Timeout(defaultLongTimeout),
-		shared.Dependencies(loadBalancers), shared.DoIf(!managedVnet))
+		shared.Dependencies(loadBalancers), shared.DoIf(!managedVnet && !byo))
 
 	fctx.AddTask(g, "delete resource group",
 		fctx.DeleteResourceGroup, shared.Dependencies(foreignSubnets), shared.Timeout(defaultLongTimeout))
