@@ -36,8 +36,22 @@ type BaseOptions struct {
 	PublicIPName        string
 	NicName             string
 	SecurityGroupName   string
-	SecretReference     corev1.SecretReference
-	Logr                logr.Logger
+	// SecurityGroupResourceGroup is the resource group hosting SecurityGroupName. Empty when the
+	// NSG lives in the shoot's cluster resource group (managed-mode default); populated in
+	// BYO-subnet mode where the NSG may live in any resource group in the shoot's subscription.
+	SecurityGroupResourceGroup string
+	SecretReference            corev1.SecretReference
+	Logr                       logr.Logger
+}
+
+// nsgResourceGroup returns the resource group hosting the network security group referenced by
+// this BaseOptions. Falls back to the shoot's cluster resource group when the NSG lives there
+// (managed-mode default). Populated with a foreign RG only in BYO-subnet mode.
+func (o BaseOptions) nsgResourceGroup() string {
+	if o.SecurityGroupResourceGroup != "" {
+		return o.SecurityGroupResourceGroup
+	}
+	return o.ResourceGroupName
 }
 
 // Options contains provider-related information required for setting up
@@ -59,7 +73,12 @@ type Options struct {
 }
 
 // NewBaseOpts determines base opts that are required for creating and deleting a Bastion.
-func NewBaseOpts(bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster, resourceGroup string, log logr.Logger) (BaseOptions, error) {
+// The NSG name and its resource group are sourced from the shoot's InfrastructureStatus (i.e. the
+// discovered BYO NSG in user-managed-egress mode, or the Gardener-managed `<technicalName>-workers`
+// NSG in managed mode). Falls back to the historical name convention `NSGName(clusterName)` and the
+// cluster resource group if the status entry is missing (defensive; should not happen after the
+// BYO-subnet feature landed).
+func NewBaseOpts(bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster, infrastructureStatus *azure.InfrastructureStatus, log logr.Logger) (BaseOptions, error) {
 	clusterName := cluster.ObjectMeta.Name
 	baseResourceName, err := generateBastionBaseResourceName(clusterName, bastion.Name)
 	if err != nil {
@@ -71,21 +90,33 @@ func NewBaseOpts(bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluste
 		Name:      v1beta1constants.SecretNameCloudProvider,
 	}
 
+	nsgName := NSGName(clusterName)
+	var nsgResourceGroup string
+	if infrastructureStatus != nil {
+		if sg, ferr := helper.FindSecurityGroupByPurpose(infrastructureStatus.SecurityGroups, azure.PurposeNodes); ferr == nil && sg != nil {
+			nsgName = sg.Name
+			if sg.ResourceGroup != nil {
+				nsgResourceGroup = *sg.ResourceGroup
+			}
+		}
+	}
+
 	return BaseOptions{
-		BastionInstanceName: baseResourceName,
-		ResourceGroupName:   resourceGroup,
-		SecretReference:     secretReference,
-		Logr:                log,
-		DiskName:            DiskResourceName(baseResourceName),
-		PublicIPName:        publicIPResourceName(baseResourceName),
-		NicName:             NicResourceName(baseResourceName),
-		SecurityGroupName:   NSGName(clusterName),
+		BastionInstanceName:        baseResourceName,
+		ResourceGroupName:          infrastructureStatus.ResourceGroup.Name,
+		SecretReference:            secretReference,
+		Logr:                       log,
+		DiskName:                   DiskResourceName(baseResourceName),
+		PublicIPName:               publicIPResourceName(baseResourceName),
+		NicName:                    NicResourceName(baseResourceName),
+		SecurityGroupName:          nsgName,
+		SecurityGroupResourceGroup: nsgResourceGroup,
 	}, nil
 }
 
 // NewOpts determines the information that is required to reconcile a Bastion.
-func NewOpts(bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster, resourceGroup string, log logr.Logger) (Options, error) {
-	baseOpts, err := NewBaseOpts(bastion, cluster, resourceGroup, log)
+func NewOpts(bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster, infrastructureStatus *azure.InfrastructureStatus, log logr.Logger) (Options, error) {
+	baseOpts, err := NewBaseOpts(bastion, cluster, infrastructureStatus, log)
 	if err != nil {
 		return Options{}, err
 	}

@@ -152,7 +152,12 @@ var _ = Describe("Bastion test", func() {
 		DescribeTable("should return options", func(isCapabilityCloudProfile bool) {
 			cluster := createAzureTestCluster(vNetCIDR, isCapabilityCloudProfile)
 
-			options, err := NewOpts(bastion, cluster, "cluster1", log)
+			options, err := NewOpts(bastion, cluster, &api.InfrastructureStatus{
+				ResourceGroup: api.ResourceGroup{Name: "cluster1"},
+				SecurityGroups: []api.SecurityGroup{
+					{Purpose: api.PurposeNodes, Name: "cluster1-workers"},
+				},
+			}, log)
 			Expect(err).To(Not(HaveOccurred()))
 
 			Expect(options.BastionInstanceName).To(Equal("cluster1-bastionName1-bastion-1cdc8"))
@@ -172,12 +177,31 @@ var _ = Describe("Bastion test", func() {
 				"Type": ptr.To("gardenctl"),
 			}))
 			Expect(options.SecurityGroupName).To(Equal("cluster1-workers"))
+			Expect(options.SecurityGroupResourceGroup).To(BeEmpty())
 			Expect(options.MachineType).To(Equal("machineName"))
 			Expect(*options.ImageRef.CommunityGalleryImageID).To(Equal("/CommunityGalleries/gardenlinux-1.2.3"))
 		},
 			Entry("cloudProfile without capabilities", false),
 			Entry("cloudProfile with capabilities", true),
 		)
+
+		It("should source NSG name and foreign resource group from the BYO status", func() {
+			cluster := createAzureTestCluster(vNetCIDR, false)
+
+			options, err := NewOpts(bastion, cluster, &api.InfrastructureStatus{
+				ResourceGroup: api.ResourceGroup{Name: "cluster1"},
+				SecurityGroups: []api.SecurityGroup{
+					{
+						Purpose:       api.PurposeNodes,
+						Name:          "team-owned-nsg",
+						ResourceGroup: ptr.To("central-security-rg"),
+					},
+				},
+			}, log)
+			Expect(err).To(Not(HaveOccurred()))
+			Expect(options.SecurityGroupName).To(Equal("team-owned-nsg"))
+			Expect(options.SecurityGroupResourceGroup).To(Equal("central-security-rg"))
+		})
 	})
 
 	Describe("check Names generations", func() {

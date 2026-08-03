@@ -75,7 +75,7 @@ func createOrUpdateNetworkSecGroup(ctx context.Context, factory azureclient.Fact
 		return err
 	}
 
-	_, err = nsgClient.CreateOrUpdate(ctx, opts.ResourceGroupName, opts.SecurityGroupName, *parameters)
+	_, err = nsgClient.CreateOrUpdate(ctx, opts.nsgResourceGroup(), opts.SecurityGroupName, *parameters)
 	if err != nil {
 		return fmt.Errorf("can't update Network Security Group %s: %w", opts.SecurityGroupName, err)
 	}
@@ -123,7 +123,7 @@ func getNetworkSecurityGroup(ctx context.Context, factory azureclient.Factory, o
 		return nil, err
 	}
 
-	nsgResp, err := nsgClient.Get(ctx, opts.ResourceGroupName, opts.SecurityGroupName)
+	nsgResp, err := nsgClient.Get(ctx, opts.nsgResourceGroup(), opts.SecurityGroupName)
 	if err != nil {
 		if azureclient.IsAzureAPINotFoundError(err) {
 			opts.Logr.Error(err, "Network Security Group not found, test environment?", "nsg_name", opts.SecurityGroupName)
