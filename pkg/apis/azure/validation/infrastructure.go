@@ -140,6 +140,11 @@ func validateNetworkConfig(
 		workerCIDR   cidrvalidation.CIDR
 	)
 
+	// BYO subnet / user-managed egress mode: separate validation path.
+	if helper.IsUsingUserManagedEgress(infra) {
+		return validateUserManagedEgressNetworkConfig(infra, networksPath)
+	}
+
 	// forbid not setting at least one of {workers, zones}
 	if config.Workers == nil && len(config.Zones) == 0 {
 		allErrs = append(allErrs, field.Forbidden(workersPath, "either workers or zones must be specified"))
@@ -188,6 +193,66 @@ func validateNetworkConfig(
 	}
 
 	allErrs = append(allErrs, validateZones(config.Zones, nodes, pods, services, zonesPath)...)
+
+	return allErrs
+}
+
+// validateUserManagedEgressNetworkConfig validates a BYO-subnet / user-managed-egress network
+// configuration. When Networks.Subnet is set, Gardener discovers the worker subnet, its route table,
+// and its network security group instead of creating them. This mode requires a BYO VNet and is
+// mutually exclusive with the workers CIDR, zones, NAT gateway, and service endpoints fields.
+// Covers acceptance criteria C1-C7.
+func validateUserManagedEgressNetworkConfig(infra *apisazure.InfrastructureConfig, networksPath *field.Path) field.ErrorList {
+	var (
+		allErrs    = field.ErrorList{}
+		config     = infra.Networks
+		vNetPath   = networksPath.Child("vnet")
+		subnetPath = networksPath.Child("subnet")
+	)
+
+	// C1: BYO subnet requires a fully-specified BYO VNet.
+	if config.VNet.Name == nil || *config.VNet.Name == "" {
+		allErrs = append(allErrs, field.Required(vNetPath.Child("name"), "vnet name is required when networks.subnet is set (BYO subnet requires BYO VNet)"))
+	} else {
+		allErrs = append(allErrs, validateVnetName(*config.VNet.Name, vNetPath.Child("name"))...)
+	}
+	if config.VNet.ResourceGroup == nil || *config.VNet.ResourceGroup == "" {
+		allErrs = append(allErrs, field.Required(vNetPath.Child("resourceGroup"), "vnet resource group is required when networks.subnet is set (BYO subnet requires BYO VNet)"))
+	} else {
+		allErrs = append(allErrs, validateResourceGroupName(*config.VNet.ResourceGroup, vNetPath.Child("resourceGroup"))...)
+	}
+
+	// C6: VNet CIDR is discovered, not declared.
+	if config.VNet.CIDR != nil {
+		allErrs = append(allErrs, field.Forbidden(vNetPath.Child("cidr"), "vnet cidr must not be set when networks.subnet is set (cidr is discovered)"))
+	}
+	// C7: DDoS plan managed by user on BYO VNet.
+	if config.VNet.DDosProtectionPlanID != nil {
+		allErrs = append(allErrs, field.Forbidden(vNetPath.Child("ddosProtectionPlanID"), "ddosProtectionPlanID must not be set when networks.subnet is set (managed by user on BYO VNet)"))
+	}
+	// C3: workers CIDR is discovered from the subnet.
+	if config.Workers != nil {
+		allErrs = append(allErrs, field.Forbidden(networksPath.Child("workers"), "networks.workers must not be set when networks.subnet is set (worker CIDR is discovered from the BYO subnet)"))
+	}
+	// C2: multi-subnet layout not supported with BYO subnet in v1.
+	if len(config.Zones) > 0 {
+		allErrs = append(allErrs, field.Forbidden(networksPath.Child("zones"), "networks.zones must be empty when networks.subnet is set (multi-subnet layout with BYO subnet is not supported)"))
+	}
+	// C4: NAT managed by user in BYO mode.
+	if config.NatGateway != nil {
+		allErrs = append(allErrs, field.Forbidden(networksPath.Child("natGateway"), "networks.natGateway must not be set when networks.subnet is set (attach a NAT gateway to the BYO subnet out-of-band instead)"))
+	}
+	// C5: service endpoints managed by user in BYO mode.
+	if len(config.ServiceEndpoints) > 0 {
+		allErrs = append(allErrs, field.Forbidden(networksPath.Child("serviceEndpoints"), "networks.serviceEndpoints must not be set when networks.subnet is set (service endpoints are managed by the user on the BYO subnet)"))
+	}
+
+	// Subnet.Name must be a valid Azure subnet name.
+	if config.Subnet.Name == "" {
+		allErrs = append(allErrs, field.Required(subnetPath.Child("name"), "subnet name must not be empty"))
+	} else {
+		allErrs = append(allErrs, validateGenericName(config.Subnet.Name, subnetPath.Child("name"))...)
+	}
 
 	return allErrs
 }
@@ -509,6 +574,35 @@ func ValidateInfrastructureConfigUpdate(oldConfig, newConfig *apisazure.Infrastr
 	allErrs = append(allErrs, apivalidation.ValidateImmutableField(oldConfig.Zoned, newConfig.Zoned, providerPath.Child("zoned"))...)
 	allErrs = append(allErrs, validateVnetConfigUpdate(&oldConfig.Networks, &newConfig.Networks, providerPath.Child("networks"))...)
 	allErrs = append(allErrs, validateNatGatewaySKUUpdate(oldConfig, newConfig, providerPath.Child("networks"))...)
+	allErrs = append(allErrs, validateSubnetUpdate(oldConfig, newConfig, providerPath.Child("networks"))...)
+
+	return allErrs
+}
+
+// validateSubnetUpdate enforces immutability of the BYO-subnet reference and forbids in-place
+// transitions between managed and user-managed-egress modes. Covers acceptance criteria D1-D3.
+func validateSubnetUpdate(oldConfig, newConfig *apisazure.InfrastructureConfig, networksPath *field.Path) field.ErrorList {
+	var (
+		allErrs    = field.ErrorList{}
+		subnetPath = networksPath.Child("subnet")
+		oldSubnet  = oldConfig.Networks.Subnet
+		newSubnet  = newConfig.Networks.Subnet
+	)
+
+	// D1: cannot add BYO subnet to an existing managed-mode shoot.
+	if oldSubnet == nil && newSubnet != nil {
+		allErrs = append(allErrs, field.Forbidden(subnetPath, "cannot switch to user-managed-egress mode on an existing shoot (transitioning is not supported in v1)"))
+		return allErrs
+	}
+	// D2: cannot remove BYO subnet from an existing user-managed-egress shoot.
+	if oldSubnet != nil && newSubnet == nil {
+		allErrs = append(allErrs, field.Forbidden(subnetPath, "cannot switch away from user-managed-egress mode on an existing shoot (transitioning is not supported in v1)"))
+		return allErrs
+	}
+	// D3: subnet name is immutable once set.
+	if oldSubnet != nil && newSubnet != nil {
+		allErrs = append(allErrs, apivalidation.ValidateImmutableField(newSubnet.Name, oldSubnet.Name, subnetPath.Child("name"))...)
+	}
 
 	return allErrs
 }
