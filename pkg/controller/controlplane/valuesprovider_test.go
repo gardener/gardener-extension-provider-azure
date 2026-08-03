@@ -291,6 +291,9 @@ var _ = Describe("ValuesProvider", func() {
 				"secrets": map[string]interface{}{
 					"server": "cloud-controller-manager-server",
 				},
+				// Test fixtures set no networking.providerConfig, so IsOverlayEnabled returns true
+				// and configureCloudRoutes evaluates to !true = false.
+				"configureCloudRoutes": false,
 			})
 		)
 
@@ -424,6 +427,42 @@ var _ = Describe("ValuesProvider", func() {
 			}))
 		})
 
+		Context("CCM route-controller flag (configureCloudRoutes)", func() {
+			It("sets configureCloudRoutes=false when the shoot has no networking provider config (overlay defaults to enabled)", func() {
+				// IsOverlayEnabled returns true when providerConfig is absent, so cloud routes must be off.
+				cluster = generateCluster(cidr, k8sVersion, true, nil, nil, &gardencorev1beta1.Seed{})
+				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+
+				values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, fakeSecretsManager, checksums, false)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values[azure.CloudControllerManagerName]).To(HaveKeyWithValue("configureCloudRoutes", false))
+			})
+
+			It("sets configureCloudRoutes=false when the shoot's networking has overlay enabled", func() {
+				cluster = generateCluster(cidr, k8sVersion, true, nil, nil, &gardencorev1beta1.Seed{})
+				cluster.Shoot.Spec.Networking.ProviderConfig = &runtime.RawExtension{
+					Raw: []byte(`{"overlay":{"enabled":true}}`),
+				}
+				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+
+				values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, fakeSecretsManager, checksums, false)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values[azure.CloudControllerManagerName]).To(HaveKeyWithValue("configureCloudRoutes", false))
+			})
+
+			It("sets configureCloudRoutes=true when the shoot's networking has overlay disabled", func() {
+				cluster = generateCluster(cidr, k8sVersion, true, nil, nil, &gardencorev1beta1.Seed{})
+				cluster.Shoot.Spec.Networking.ProviderConfig = &runtime.RawExtension{
+					Raw: []byte(`{"overlay":{"enabled":false}}`),
+				}
+				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+
+				values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, fakeSecretsManager, checksums, false)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values[azure.CloudControllerManagerName]).To(HaveKeyWithValue("configureCloudRoutes", true))
+			})
+		})
+
 		DescribeTable("topologyAwareRoutingEnabled value",
 			func(seedSettings *gardencorev1beta1.SeedSettings, shootControlPlane *gardencorev1beta1.ControlPlane) {
 				seed := &gardencorev1beta1.Seed{
@@ -477,12 +516,14 @@ var _ = Describe("ValuesProvider", func() {
 				"cloudProviderConfig": cloudProviderConfigData,
 			})
 			cloudControllerManager = map[string]interface{}{
-				"enabled":    true,
-				"vpaEnabled": true,
+				"enabled":              true,
+				"vpaEnabled":           true,
+				"configureCloudRoutes": false, // default fixture has no networking providerConfig -> overlay defaults to enabled -> cloud routes off
 			}
 			cloudControllerManagerWithVPADisabled = map[string]interface{}{
-				"enabled":    true,
-				"vpaEnabled": false,
+				"enabled":              true,
+				"vpaEnabled":           false,
+				"configureCloudRoutes": false,
 			}
 
 			cpDiskConfig = &corev1.Secret{
