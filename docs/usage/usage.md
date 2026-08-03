@@ -225,6 +225,10 @@ In the `identity` section you can specify an [Azure user-assigned managed identi
 
 Apart from the VNet and the worker subnet the Azure extension will also create a dedicated resource group, route tables, security groups and a VMSS-Flex group depending on the configuration.
 
+### User-managed egress via BYO subnet
+
+Shoots that need full control over egress (central firewall via `0.0.0.0/0` next-hop to an Azure Firewall / NVA, or network-isolated shoots with no default route) may bring their own worker subnet inside their own VNet. In this mode Gardener does not create the worker subnet, its route table, its network security group, or the NAT Gateway; it only discovers and references them. See [User-managed egress via BYO subnet](./user-managed-egress.md) for the end-to-end usage guide.
+
 ### InfrastructureConfig with dedicated subnets per zone
 
 Another deployment option **for zonal clusters only**, is to create and configure a separate subnet per availability zone. This network layout is recommended to users that require fine-grained control over their network setup. One prevalent usecase is to create a zone-redundant NAT Gateway deployment by taking advantage of the ability to deploy separate NAT Gateways for each subnet.
