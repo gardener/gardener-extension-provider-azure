@@ -151,41 +151,63 @@ func (fctx *FlowContext) buildReconcileGraph() *flow.Graph {
 	fctx.BasicFlowContext = shared.NewBasicFlowContext().WithSpan().WithLogger(fctx.log).WithPersist(fctx.persistState)
 	g := flow.NewGraph("Azure infrastructure reconciliation")
 
-	byo := helper.IsUsingUserManagedEgress(fctx.cfg)
+	resourceGroup, vnet := fctx.addCommonReconcileTasks(g)
 
-	resourceGroup := fctx.AddTask(g, "ensure resource group",
+	if helper.IsUsingUserManagedEgress(fctx.cfg) {
+		fctx.addUserManagedEgressReconcileTasks(g, vnet)
+	} else {
+		fctx.addManagedReconcileTasks(g, resourceGroup, vnet)
+	}
+	return g
+}
+
+// addCommonReconcileTasks registers the tasks that both managed-mode and BYO-subnet shoots share:
+// the shoot's resource group, the VNet (managed or BYO), and the optional managed identity. It
+// returns the resource-group and VNet task IDs so the mode-specific builders can wire further
+// dependencies on top of them.
+func (fctx *FlowContext) addCommonReconcileTasks(g *flow.Graph) (resourceGroup, vnet flow.TaskIDer) {
+	resourceGroup = fctx.AddTask(g, "ensure resource group",
 		fctx.EnsureResourceGroup, shared.Timeout(defaultTimeout))
 
-	vnet := fctx.AddTask(g, "ensure vnet",
+	vnet = fctx.AddTask(g, "ensure vnet",
 		fctx.EnsureVirtualNetwork, shared.Timeout(defaultTimeout), shared.Dependencies(resourceGroup))
 
 	_ = fctx.AddTask(g, "ensure managed identity",
 		fctx.EnsureManagedIdentity, shared.DoIf(fctx.cfg.Identity != nil))
 
-	// In BYO mode Gardener does not create the route table or the network security group; they
-	// are pre-attached to the user's subnet and discovered by EnsureUserSubnet below.
+	return resourceGroup, vnet
+}
+
+// addManagedReconcileTasks registers the tasks that create the Gardener-managed network stack:
+// route table, worker network security group, worker public IPs, NAT gateway (if enabled), and
+// the worker subnet(s). All of these are skipped in BYO-subnet mode.
+func (fctx *FlowContext) addManagedReconcileTasks(g *flow.Graph, resourceGroup, vnet flow.TaskIDer) {
 	routeTable := fctx.AddTask(g, "ensure route table",
-		fctx.EnsureRouteTable, shared.Timeout(defaultTimeout), shared.Dependencies(resourceGroup), shared.DoIf(!byo))
+		fctx.EnsureRouteTable, shared.Timeout(defaultTimeout), shared.Dependencies(resourceGroup))
 
 	securityGroup := fctx.AddTask(g, "ensure security group",
-		fctx.EnsureSecurityGroup, shared.Timeout(defaultTimeout), shared.Dependencies(resourceGroup), shared.DoIf(!byo))
+		fctx.EnsureSecurityGroup, shared.Timeout(defaultTimeout), shared.Dependencies(resourceGroup))
 
 	ip := fctx.AddTask(g, "ensure public IPs",
-		fctx.EnsurePublicIps, shared.Timeout(defaultLongTimeout), shared.Dependencies(resourceGroup), shared.DoIf(!byo))
+		fctx.EnsurePublicIps, shared.Timeout(defaultLongTimeout), shared.Dependencies(resourceGroup))
+
 	nat := fctx.AddTask(g, "ensure nats",
-		fctx.EnsureNatGateways, shared.Timeout(defaultLongTimeout), shared.Dependencies(resourceGroup, ip), shared.DoIf(!byo))
+		fctx.EnsureNatGateways, shared.Timeout(defaultLongTimeout), shared.Dependencies(resourceGroup, ip))
 
-	subnets := fctx.AddTask(g, "ensure subnets", fctx.EnsureSubnets,
-		shared.Timeout(defaultLongTimeout), shared.Dependencies(vnet, routeTable, securityGroup, nat), shared.DoIf(!byo))
+	_ = fctx.AddTask(g, "ensure subnets", fctx.EnsureSubnets,
+		shared.Timeout(defaultLongTimeout), shared.Dependencies(vnet, routeTable, securityGroup, nat))
+}
 
+// addUserManagedEgressReconcileTasks registers the tasks that support user-managed-egress mode: a
+// read-only discovery pass over the BYO subnet (populating status with the discovered NSG and RT)
+// followed by a best-effort tag application to the BYO VNet, NSG, and RT. Neither task issues a
+// mutating call against the user's network resources beyond the observability tag.
+func (fctx *FlowContext) addUserManagedEgressReconcileTasks(g *flow.Graph, vnet flow.TaskIDer) {
 	userSubnet := fctx.AddTask(g, "ensure BYO subnet (read-only discovery)",
-		fctx.EnsureUserSubnet, shared.Timeout(defaultTimeout), shared.Dependencies(vnet), shared.DoIf(byo))
+		fctx.EnsureUserSubnet, shared.Timeout(defaultTimeout), shared.Dependencies(vnet))
 
 	_ = fctx.AddTask(g, "ensure BYO resource tags",
-		fctx.EnsureBYOResourceTags, shared.Timeout(defaultTimeout), shared.Dependencies(userSubnet), shared.DoIf(byo))
-
-	_ = subnets
-	return g
+		fctx.EnsureBYOResourceTags, shared.Timeout(defaultTimeout), shared.Dependencies(userSubnet))
 }
 
 // Delete deletes all resources managed by the reconciler
