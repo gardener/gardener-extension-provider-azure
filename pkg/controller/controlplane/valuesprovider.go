@@ -426,7 +426,7 @@ func (vp *valuesProvider) removeAcrConfig(ctx context.Context, namespace string)
 
 // getConfigChartValues collects and returns the configuration chart values.
 func getConfigChartValues(infraStatus *apisazure.InfrastructureStatus, cp *extensionsv1alpha1.ControlPlane, cluster *extensionscontroller.Cluster, ca *azureclient.ClientAuth) (map[string]interface{}, error) {
-	subnetName, routeTableName, securityGroupName, err := getInfraNames(infraStatus)
+	names, err := getInfraNames(infraStatus)
 	if err != nil {
 		return nil, fmt.Errorf("could not determine subnet, route table or security group name from infrastructureStatus of controlplane '%s': %w", k8sclient.ObjectKeyFromObject(cp), err)
 	}
@@ -450,9 +450,9 @@ func getConfigChartValues(infraStatus *apisazure.InfrastructureStatus, cp *exten
 		"useWorkloadIdentity": useWorkloadIdentity,
 		"resourceGroup":       infraStatus.ResourceGroup.Name,
 		"vnetName":            infraStatus.Networks.VNet.Name,
-		"subnetName":          subnetName,
-		"routeTableName":      routeTableName,
-		"securityGroupName":   securityGroupName,
+		"subnetName":          names.subnetName,
+		"routeTableName":      names.routeTableName,
+		"securityGroupName":   names.securityGroupName,
 		"region":              cp.Spec.Region,
 		"maxNodes":            maxNodes,
 	}
@@ -466,6 +466,18 @@ func getConfigChartValues(infraStatus *apisazure.InfrastructureStatus, cp *exten
 
 	if infraStatus.Networks.VNet.ResourceGroup != nil {
 		values["vnetResourceGroup"] = *infraStatus.Networks.VNet.ResourceGroup
+	}
+
+	// BYO-subnet mode: emit foreign-RG overrides and disable outbound SNAT on any LB rules the CCM
+	// creates so the SLB frontend does not become an accidental egress path.
+	if names.routeTableResourceGroup != "" {
+		values["routeTableResourceGroup"] = names.routeTableResourceGroup
+	}
+	if names.securityGroupResourceGroup != "" {
+		values["securityGroupResourceGroup"] = names.securityGroupResourceGroup
+	}
+	if infraStatus.Networks.OutboundAccessType == apisazure.OutboundAccessTypeUserManaged {
+		values["disableOutboundSNAT"] = true
 	}
 
 	if infraStatus.Identity != nil && infraStatus.Identity.ACRAccess {
@@ -496,22 +508,50 @@ func appendMachineSetValues(values map[string]interface{}, infraStatus *apisazur
 	return values
 }
 
-// getInfraNames determines the subnet, availability set, route table and security group names from the given infrastructure status.
-func getInfraNames(infraStatus *apisazure.InfrastructureStatus) (string, string, string, error) {
+// infraNames captures the identifiers that need to be threaded into azure.json. Route table and
+// security group carry an optional resource group; a non-empty resource group is emitted only when
+// the resource lives in a foreign RG (BYO-subnet mode).
+type infraNames struct {
+	subnetName                 string
+	routeTableName             string
+	routeTableResourceGroup    string
+	securityGroupName          string
+	securityGroupResourceGroup string
+}
+
+// getInfraNames determines the subnet, route table and security group names (and, in BYO-subnet
+// mode, the foreign resource groups that host them) from the given infrastructure status.
+func getInfraNames(infraStatus *apisazure.InfrastructureStatus) (infraNames, error) {
+	names := infraNames{}
 	_, nodesSubnet, err := azureapihelper.FindSubnetByPurposeAndZone(infraStatus.Networks.Subnets, apisazure.PurposeNodes, nil)
 	if err != nil {
-		return "", "", "", fmt.Errorf("could not determine subnet for purpose 'nodes': %w", err)
+		return names, fmt.Errorf("could not determine subnet for purpose 'nodes': %w", err)
 	}
-	nodesRouteTable, err := azureapihelper.FindRouteTableByPurpose(infraStatus.RouteTables, apisazure.PurposeNodes)
-	if err != nil {
-		return "", "", "", fmt.Errorf("could not determine route table for purpose 'nodes': %w", err)
-	}
+	names.subnetName = nodesSubnet.Name
+
 	nodesSecurityGroup, err := azureapihelper.FindSecurityGroupByPurpose(infraStatus.SecurityGroups, apisazure.PurposeNodes)
 	if err != nil {
-		return "", "", "", fmt.Errorf("could not determine security group for purpose 'nodes': %w", err)
+		return names, fmt.Errorf("could not determine security group for purpose 'nodes': %w", err)
+	}
+	names.securityGroupName = nodesSecurityGroup.Name
+	if nodesSecurityGroup.ResourceGroup != nil {
+		names.securityGroupResourceGroup = *nodesSecurityGroup.ResourceGroup
 	}
 
-	return nodesSubnet.Name, nodesRouteTable.Name, nodesSecurityGroup.Name, nil
+	// Route table is optional in BYO-subnet mode when the shoot uses an overlay CNI (the seed CCM's
+	// route controller is disabled in that case, so no per-node routes need to be written). Only
+	// fail if we are not in that mode and the RT is missing.
+	nodesRouteTable, rtErr := azureapihelper.FindRouteTableByPurpose(infraStatus.RouteTables, apisazure.PurposeNodes)
+	if rtErr == nil {
+		names.routeTableName = nodesRouteTable.Name
+		if nodesRouteTable.ResourceGroup != nil {
+			names.routeTableResourceGroup = *nodesRouteTable.ResourceGroup
+		}
+	} else if infraStatus.Networks.OutboundAccessType != apisazure.OutboundAccessTypeUserManaged {
+		return names, fmt.Errorf("could not determine route table for purpose 'nodes': %w", rtErr)
+	}
+
+	return names, nil
 }
 
 // getControlPlaneChartValues collects and returns the control plane chart values.
@@ -528,7 +568,7 @@ func getControlPlaneChartValues(
 	map[string]interface{},
 	error,
 ) {
-	ccm, err := getCCMChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown, useWorkloadIdentity)
+	ccm, err := getCCMChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown, useWorkloadIdentity, infraStatus)
 	if err != nil {
 		return nil, err
 	}
@@ -559,6 +599,7 @@ func getCCMChartValues(
 	checksums map[string]string,
 	scaledDown bool,
 	useWorkloadIdentity bool,
+	infraStatus *apisazure.InfrastructureStatus,
 ) (map[string]interface{}, error) {
 	serverSecret, found := secretsReader.Get(cloudControllerManagerServerName)
 	if !found {
@@ -591,7 +632,7 @@ func getCCMChartValues(
 	// Derive the CCM route-controller flag from the shoot's networking overlay setting. Overlay
 	// CNIs (Cilium/Calico with VXLAN or Geneve) encapsulate pod-to-pod traffic at the node level
 	// and do not need per-node pod-CIDR routes in the underlying VNet, so `--configure-cloud-routes`
-	// can be turned off. This matches provider-gcp's behavior.
+	// can be turned off. This matches provider-gcp's behavior and is orthogonal to BYO subnet.
 	overlayEnabled, err := azureapihelper.IsOverlayEnabled(cluster.Shoot.Spec.Networking)
 	if err != nil {
 		return nil, err
