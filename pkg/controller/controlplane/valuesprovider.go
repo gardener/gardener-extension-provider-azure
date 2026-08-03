@@ -588,6 +588,16 @@ func getCCMChartValues(
 		values["featureGates"] = cpConfig.CloudControllerManager.FeatureGates
 	}
 
+	// Derive the CCM route-controller flag from the shoot's networking overlay setting. Overlay
+	// CNIs (Cilium/Calico with VXLAN or Geneve) encapsulate pod-to-pod traffic at the node level
+	// and do not need per-node pod-CIDR routes in the underlying VNet, so `--configure-cloud-routes`
+	// can be turned off. This matches provider-gcp's behavior.
+	overlayEnabled, err := azureapihelper.IsOverlayEnabled(cluster.Shoot.Spec.Networking)
+	if err != nil {
+		return nil, err
+	}
+	values["configureCloudRoutes"] = !overlayEnabled
+
 	return values, nil
 }
 
@@ -704,6 +714,15 @@ func getControlPlaneShootChartValues(
 	disableRemedyController := cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] == "true" ||
 		features.ExtensionFeatureGate.Enabled(features.DisableRemedyController)
 
+	// Keep cloud-node-manager's --wait-routes flag aligned with the seed CCM's --configure-cloud-routes.
+	// Both are derived from the shoot's overlay networking setting (see getCCMChartValues); if they
+	// disagree, nodes hang waiting for routes that never arrive.
+	overlayEnabled, err := azureapihelper.IsOverlayEnabled(cluster.Shoot.Spec.Networking)
+	if err != nil {
+		return nil, err
+	}
+	configureCloudRoutes := !overlayEnabled
+
 	driver := map[string]interface{}{}
 	if value, ok := cluster.Shoot.Annotations[azure.VolumeAttachLimit]; ok {
 		driver["volumeAttachLimit"] = value
@@ -732,8 +751,9 @@ func getControlPlaneShootChartValues(
 			"enabled": deployAllowEgressChart(cluster.Shoot, infraStatus),
 		},
 		azure.CloudControllerManagerName: map[string]interface{}{
-			"enabled":    true,
-			"vpaEnabled": gardencorev1beta1helper.ShootWantsVerticalPodAutoscaler(cluster.Shoot),
+			"enabled":              true,
+			"vpaEnabled":           gardencorev1beta1helper.ShootWantsVerticalPodAutoscaler(cluster.Shoot),
+			"configureCloudRoutes": configureCloudRoutes,
 		},
 		azure.CSINodeName: csiNodeConfig,
 		azure.RemedyControllerName: map[string]interface{}{
