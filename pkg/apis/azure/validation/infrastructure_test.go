@@ -1279,4 +1279,169 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			})
 		})
 	})
+
+	Describe("BYO subnet (user-managed egress)", func() {
+		var (
+			byoConfig *apisazure.InfrastructureConfig
+			byoVNetRG = "byo-network-rg"
+			byoVNet   = "byo-vnet"
+			byoSubnet = "byo-workers"
+		)
+
+		BeforeEach(func() {
+			byoConfig = &apisazure.InfrastructureConfig{
+				Networks: apisazure.NetworkConfig{
+					VNet: apisazure.VNet{
+						Name:          ptr.To(byoVNet),
+						ResourceGroup: ptr.To(byoVNetRG),
+					},
+					Subnet: &apisazure.SubnetReference{
+						Name: byoSubnet,
+					},
+				},
+			}
+		})
+
+		Describe("#ValidateInfrastructureConfig", func() {
+			It("should accept a minimal BYO-subnet config", func() {
+				errorList := ValidateInfrastructureConfig(byoConfig, &shoot, providerPath)
+				Expect(errorList).To(BeEmpty())
+			})
+
+			It("should reject BYO subnet without VNet name (C1)", func() {
+				byoConfig.Networks.VNet.Name = nil
+				errorList := ValidateInfrastructureConfig(byoConfig, &shoot, providerPath)
+				Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeRequired),
+					"Field": Equal("networks.vnet.name"),
+				}))))
+			})
+
+			It("should reject BYO subnet without VNet resource group (C1)", func() {
+				byoConfig.Networks.VNet.ResourceGroup = nil
+				errorList := ValidateInfrastructureConfig(byoConfig, &shoot, providerPath)
+				Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeRequired),
+					"Field": Equal("networks.vnet.resourceGroup"),
+				}))))
+			})
+
+			It("should reject BYO subnet with zones set (C2)", func() {
+				byoConfig.Networks.Zones = []apisazure.Zone{{Name: 1, CIDR: "10.250.0.0/24"}}
+				errorList := ValidateInfrastructureConfig(byoConfig, &shoot, providerPath)
+				Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeForbidden),
+					"Field": Equal("networks.zones"),
+				}))))
+			})
+
+			It("should reject BYO subnet with workers CIDR set (C3)", func() {
+				byoConfig.Networks.Workers = &workers
+				errorList := ValidateInfrastructureConfig(byoConfig, &shoot, providerPath)
+				Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeForbidden),
+					"Field": Equal("networks.workers"),
+				}))))
+			})
+
+			It("should reject BYO subnet with NatGateway set (C4)", func() {
+				byoConfig.Networks.NatGateway = &apisazure.NatGatewayConfig{Enabled: true}
+				errorList := ValidateInfrastructureConfig(byoConfig, &shoot, providerPath)
+				Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeForbidden),
+					"Field": Equal("networks.natGateway"),
+				}))))
+			})
+
+			It("should reject BYO subnet with service endpoints (C5)", func() {
+				byoConfig.Networks.ServiceEndpoints = []string{"Microsoft.Storage"}
+				errorList := ValidateInfrastructureConfig(byoConfig, &shoot, providerPath)
+				Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeForbidden),
+					"Field": Equal("networks.serviceEndpoints"),
+				}))))
+			})
+
+			It("should reject BYO subnet with VNet CIDR set (C6)", func() {
+				byoConfig.Networks.VNet.CIDR = ptr.To("10.0.0.0/8")
+				errorList := ValidateInfrastructureConfig(byoConfig, &shoot, providerPath)
+				Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeForbidden),
+					"Field": Equal("networks.vnet.cidr"),
+				}))))
+			})
+
+			It("should reject BYO subnet with DDoS protection plan ID set (C7)", func() {
+				byoConfig.Networks.VNet.DDosProtectionPlanID = ptr.To("/subscriptions/x/resourceGroups/y/providers/Microsoft.Network/ddosProtectionPlans/z")
+				errorList := ValidateInfrastructureConfig(byoConfig, &shoot, providerPath)
+				Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeForbidden),
+					"Field": Equal("networks.vnet.ddosProtectionPlanID"),
+				}))))
+			})
+
+			It("should reject BYO subnet with empty subnet name", func() {
+				byoConfig.Networks.Subnet.Name = ""
+				errorList := ValidateInfrastructureConfig(byoConfig, &shoot, providerPath)
+				Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeRequired),
+					"Field": Equal("networks.subnet.name"),
+				}))))
+			})
+		})
+
+		Describe("#ValidateInfrastructureConfigUpdate", func() {
+			It("should reject adding networks.subnet on an existing shoot (D1)", func() {
+				oldConfig := &apisazure.InfrastructureConfig{
+					Networks: apisazure.NetworkConfig{
+						Workers: &workers,
+						VNet:    apisazure.VNet{CIDR: &vnetCIDR},
+					},
+				}
+				errorList := ValidateInfrastructureConfigUpdate(oldConfig, byoConfig, &shoot, providerPath)
+				Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":   Equal(field.ErrorTypeForbidden),
+					"Field":  Equal("networks.subnet"),
+					"Detail": ContainSubstring("cannot switch to user-managed-egress mode"),
+				}))))
+			})
+
+			It("should reject removing networks.subnet from an existing BYO shoot (D2)", func() {
+				newConfig := byoConfig.DeepCopy()
+				newConfig.Networks.Subnet = nil
+				newConfig.Networks.Workers = &workers
+				errorList := ValidateInfrastructureConfigUpdate(byoConfig, newConfig, &shoot, providerPath)
+				Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":   Equal(field.ErrorTypeForbidden),
+					"Field":  Equal("networks.subnet"),
+					"Detail": ContainSubstring("cannot switch away from user-managed-egress mode"),
+				}))))
+			})
+
+			It("should reject renaming networks.subnet.name (D3)", func() {
+				newConfig := byoConfig.DeepCopy()
+				newConfig.Networks.Subnet.Name = "different-subnet"
+				errorList := ValidateInfrastructureConfigUpdate(byoConfig, newConfig, &shoot, providerPath)
+				Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeInvalid),
+					"Field": Equal("networks.subnet.name"),
+				}))))
+			})
+
+			It("should reject changing networks.vnet.name (D4)", func() {
+				newConfig := byoConfig.DeepCopy()
+				newConfig.Networks.VNet.Name = ptr.To("different-vnet")
+				errorList := ValidateInfrastructureConfigUpdate(byoConfig, newConfig, &shoot, providerPath)
+				Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeInvalid),
+					"Field": Equal("networks.vnet.name"),
+				}))))
+			})
+
+			It("should accept an unchanged BYO config", func() {
+				errorList := ValidateInfrastructureConfigUpdate(byoConfig, byoConfig.DeepCopy(), &shoot, providerPath)
+				Expect(errorList).To(BeEmpty())
+			})
+		})
+	})
 })
