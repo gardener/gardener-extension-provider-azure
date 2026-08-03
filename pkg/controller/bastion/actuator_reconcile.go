@@ -46,7 +46,7 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, bastion *exte
 		return err
 	}
 
-	opts, err := NewOpts(bastion, cluster, infrastructureStatus.ResourceGroup.Name, log)
+	opts, err := NewOpts(bastion, cluster, infrastructureStatus, log)
 	if err != nil {
 		return err
 	}
