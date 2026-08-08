@@ -500,6 +500,7 @@ var _ = Describe("Machines", func() {
 						"vnet":              vnetName,
 						"subnet":            subnetName,
 						"vnetResourceGroup": vnetResourceGroupName,
+						"securityGroupID":   fmt.Sprintf("/subscriptions/1234/resourceGroups/%s/providers/Microsoft.Network/networkSecurityGroups/my-workers", resourceGroupName),
 					},
 					"tags": vmTags,
 					"secret": map[string]any{
