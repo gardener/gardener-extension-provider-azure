@@ -30,12 +30,6 @@ const (
 	// the delete flow can act deterministically (e.g. remove observability tags) without having to
 	// re-read the subnet.
 	ChildKeyBYO = "byo"
-	// KeyBYONSGName is the name of the network security group discovered on the BYO subnet.
-	KeyBYONSGName = "nsgName"
-	// KeyBYONSGResourceGroup is the resource group hosting the discovered BYO NSG.
-	KeyBYONSGResourceGroup = "nsgResourceGroup"
-	// KeyBYONSGID is the ARM resource ID of the discovered BYO NSG.
-	KeyBYONSGID = "nsgID"
 	// KeyBYORTName is the name of the route table discovered on the BYO subnet (empty if the subnet
 	// has no route table attached, which is only accepted when the shoot uses an overlay CNI).
 	KeyBYORTName = "rtName"
@@ -48,9 +42,6 @@ const (
 	// KeyBYOVNetTagged marks whether the observability tag has been successfully applied to the
 	// BYO VNet by this shoot. Used to drive best-effort tag removal on shoot deletion.
 	KeyBYOVNetTagged = "vnetTagged"
-	// KeyBYONSGTagged marks whether the observability tag has been successfully applied to the
-	// BYO NSG by this shoot.
-	KeyBYONSGTagged = "nsgTagged"
 	// KeyBYORTTagged marks whether the observability tag has been successfully applied to the
 	// BYO route table by this shoot.
 	KeyBYORTTagged = "rtTagged"

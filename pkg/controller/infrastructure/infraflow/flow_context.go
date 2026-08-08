@@ -199,15 +199,20 @@ func (fctx *FlowContext) addManagedReconcileTasks(g *flow.Graph, resourceGroup, 
 }
 
 // addUserManagedEgressReconcileTasks registers the tasks that support user-managed-egress mode: a
-// read-only discovery pass over the BYO subnet (populating status with the discovered NSG and RT)
-// followed by a best-effort tag application to the BYO VNet, NSG, and RT. Neither task issues a
-// mutating call against the user's network resources beyond the observability tag.
+// read-only discovery pass over the BYO subnet (populating status with the discovered route table)
+// followed by a best-effort tag application to the BYO VNet and RT. The worker NSG is created in
+// the shoot's cluster RG the same way it is in managed mode — Gardener owns the CCM-facing NSG
+// end-to-end in every mode. See docs/proposals/flexible-network-configuration-proposal.md for the
+// rationale.
 func (fctx *FlowContext) addUserManagedEgressReconcileTasks(g *flow.Graph, vnet flow.TaskIDer) {
+	securityGroup := fctx.AddTask(g, "ensure security group",
+		fctx.EnsureSecurityGroup, shared.Timeout(defaultTimeout))
+
 	userSubnet := fctx.AddTask(g, "ensure BYO subnet (read-only discovery)",
 		fctx.EnsureUserSubnet, shared.Timeout(defaultTimeout), shared.Dependencies(vnet))
 
 	_ = fctx.AddTask(g, "ensure BYO resource tags",
-		fctx.EnsureBYOResourceTags, shared.Timeout(defaultTimeout), shared.Dependencies(userSubnet))
+		fctx.EnsureBYOResourceTags, shared.Timeout(defaultTimeout), shared.Dependencies(userSubnet, securityGroup))
 }
 
 // Delete deletes all resources managed by the reconciler
@@ -226,7 +231,8 @@ func (fctx *FlowContext) Delete(ctx context.Context) error {
 	g := flow.NewGraph("Azure infrastructure deletion")
 
 	// BYO resource tags are removed first (best-effort). This runs regardless of managed-VNet state
-	// because in BYO mode the VNet, NSG, and route table are all user-owned.
+	// because in BYO mode the VNet and route table are user-owned. Gardener's own NSG in the
+	// cluster RG dies with the cluster-RG cascade below and needs no separate cleanup.
 	byoUntag := fctx.AddTask(g, "remove BYO resource tags",
 		fctx.RemoveBYOResourceTags, shared.Timeout(defaultTimeout), shared.DoIf(byo))
 
