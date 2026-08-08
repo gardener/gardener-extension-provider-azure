@@ -115,6 +115,28 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		return err
 	}
 
+	// Compose the ARM resource ID of the shoot NSG so that MCM can attach it to each worker NIC.
+	// The NSG lives in the shoot's cluster RG in both managed and BYO mode (see the [NSG
+	// mutation contract] in the design proposal). ResourceGroup on the status entry is honored
+	// when set for forward-compatibility.
+	//
+	// [NSG mutation contract]: /docs/proposals/flexible-network-configuration-proposal.md#nsg-mutation-contract
+	var nsgResourceID string
+	if sg, ferr := azureapihelper.FindSecurityGroupByPurpose(infrastructureStatus.SecurityGroups, azureapi.PurposeNodes); ferr == nil && sg != nil {
+		auth, _, aerr := azureclient.GetClientAuthData(ctx, w.client, w.worker.Spec.SecretRef, false)
+		if aerr != nil {
+			return fmt.Errorf("could not read Azure credentials from secret %s/%s: %w", w.worker.Spec.SecretRef.Namespace, w.worker.Spec.SecretRef.Name, aerr)
+		}
+		sgResourceGroup := infrastructureStatus.ResourceGroup.Name
+		if sg.ResourceGroup != nil {
+			sgResourceGroup = *sg.ResourceGroup
+		}
+		nsgResourceID = fmt.Sprintf(
+			"/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Network/networkSecurityGroups/%s",
+			auth.SubscriptionID, sgResourceGroup, sg.Name,
+		)
+	}
+
 	for _, pool := range w.worker.Spec.Pools {
 		// Get the vmo dependency from the worker status if exists.
 		vmoDependency, err := w.determineWorkerPoolVmoDependency(ctx, infrastructureStatus, workerStatus, pool.Name, pool.UpdateStrategy)
@@ -205,6 +227,9 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			networkConfig := map[string]any{
 				"vnet":   infrastructureStatus.Networks.VNet.Name,
 				"subnet": subnetName,
+			}
+			if nsgResourceID != "" {
+				networkConfig["securityGroupID"] = nsgResourceID
 			}
 
 			cloudConfiguration, err := azureclient.CloudConfiguration(nil, &w.worker.Spec.Region)
