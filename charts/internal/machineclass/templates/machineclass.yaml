@@ -61,9 +61,14 @@ providerSpec:
 {{- if hasKey $machineClass "identityID" }}
     identityID: {{ $machineClass.identityID }}
 {{- end }}
-{{- if hasKey $machineClass.network "acceleratedNetworking" }}
+{{- if or (hasKey $machineClass.network "acceleratedNetworking") (hasKey $machineClass.network "securityGroupID") }}
     networkProfile:
+  {{- if hasKey $machineClass.network "acceleratedNetworking" }}
       acceleratedNetworking: {{ $machineClass.network.acceleratedNetworking }}
+  {{- end }}
+  {{- if hasKey $machineClass.network "securityGroupID" }}
+      securityGroupID: {{ $machineClass.network.securityGroupID }}
+  {{- end }}
 {{- end }}
 {{- if hasKey $machineClass "diagnosticsProfile" }}
     diagnosticsProfile:
