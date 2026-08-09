@@ -38,7 +38,7 @@
 
 Give shoot owners full control over Azure egress by allowing them to bring their own worker **subnet** — pre-attached to their own route table (typically with a `0.0.0.0/0` route to a firewall/NVA, or no default route at all for network-isolated clusters). In this mode Gardener's _infrastructure reconciler_ stops creating and managing the subnet, the route table, and the NAT Gateway, and stops deploying the LB-egress workaround Services. The user pre-provisions the subnet + route table (and optionally a subnet-level NSG); Gardener only _discovers and references_ them.
 
-The network security group is a separate concern. Regardless of BYO mode, Gardener creates a dedicated **NIC-level NSG in the shoot's cluster resource group** and attaches it to every worker node NIC. That NSG is what the Azure CCM manages at runtime for `Service type=LoadBalancer` ingress rules (see [NSG mutation contract](#nsg-mutation-contract)). This mirrors AKS's node-NSG model: the CCM-managed NSG lives inside the resource group Gardener owns, so its lifecycle is tied to the cluster RG cascade delete — no orphan cleanup on shoot teardown, no cross-cluster sharing hazards. A subnet-level NSG owned by the user is optional and independent; if present, it stacks with the Gardener-owned NIC-level NSG per Azure's normal two-layer evaluation.
+The network security group is a separate concern. Gardener creates a NSG in the shoot's cluster resource group in every mode. In **managed mode** that NSG is attached to the worker subnet (unchanged from today; existing shoots keep working). In **BYO-subnet mode** the same NSG is instead attached to worker node **NICs** — because the subnet is user-owned and Gardener must not touch it. Either way the NSG is what the Azure CCM manages at runtime for `Service type=LoadBalancer` ingress rules (see [NSG mutation contract](#nsg-mutation-contract)). NIC-level attachment in BYO mode mirrors AKS's node-NSG model: the CCM-managed NSG lives inside the resource group Gardener owns, so its lifecycle is tied to the cluster RG cascade delete — no orphan cleanup on shoot teardown. A subnet-level NSG owned by the user in BYO mode is optional and independent; if present, it stacks with the Gardener-owned NIC-level NSG per Azure's normal two-layer evaluation.
 
 This covers two related egress topologies: (a) a user-owned route table with a `0.0.0.0/0` route to a firewall or virtual appliance, and (b) a user-owned subnet with no default route at all — for network-isolated shoots that terminate all traffic via Private Endpoints. Both are collapsed into a single "user-managed egress" Gardener mode signaled by the presence of a BYO subnet reference.
 
@@ -59,7 +59,7 @@ Common enterprise requirements dictate additional options:
 
 - Support the two "user-managed egress" topologies described in the Summary — firewall-based egress via a user-owned route table with a default route to a virtual appliance, and no-egress (network-isolated) shoots with no default route.
 - Support **BYO subnet** in the single-subnet (non-zoned) layout, requiring BYO VNet.
-- Skip creation of the route table, NAT Gateway, and the LB-egress dummy Services when the user has taken over egress. The worker NSG is unchanged — Gardener continues to create a NIC-level NSG in the shoot's cluster RG (see [NSG mutation contract](#nsg-mutation-contract)).
+- Skip creation of the route table, NAT Gateway, and the LB-egress dummy Services when the user has taken over egress. The worker NSG creation is unchanged in both modes — Gardener continues to create a NSG in the shoot's cluster RG (see [NSG mutation contract](#nsg-mutation-contract)). Only its attachment point differs: subnet-level in managed mode, NIC-level in BYO-subnet mode.
 - Zero breaking changes for existing shoots: opting in is purely additive.
 
 ### Non-Goals
@@ -68,7 +68,7 @@ Common enterprise requirements dictate additional options:
 - **No BYO subnet in the multi-subnet (zoned) layout** in v1. `Networks.Zones[i].Subnet` is deferred.
 - **No BYO NAT Gateway** (the resource) in v1. Users needing a pre-existing NAT Gateway can attach it to their BYO subnet themselves; Gardener will not create or reference one in BYO-subnet mode.
 - **No BYO Route Table as a separate API field.** The route table is discovered from the subnet's existing `RouteTable` association; the user attaches it out-of-band.
-- **No BYO NSG.** Gardener always creates and owns the CCM-facing NSG, in every mode. In BYO-subnet mode the same NSG creation logic runs; the resulting NSG lives in the shoot's cluster resource group and is attached to worker node NICs (not to the user's subnet). See [NSG mutation contract](#nsg-mutation-contract) for the rationale (short version: the CCM's `RetainSecurityGroup` behavior forbids sharing a single NSG across clusters, and NIC-level ownership keeps the lifecycle inside our RG). A user-owned NSG on the subnet is optional and independent — Gardener neither creates nor touches it.
+- **No BYO NSG.** Gardener always creates and owns the CCM-facing NSG, in every mode. In BYO-subnet mode the same NSG creation logic runs; the resulting NSG lives in the shoot's cluster resource group and is attached to worker node NICs (rather than to the user's subnet, which Gardener must not touch). In managed mode the NSG attachment is unchanged (subnet-level). See [NSG mutation contract](#nsg-mutation-contract) for the rationale (short version: the CCM's `RetainSecurityGroup` behavior forbids sharing a single NSG across clusters, so we need per-shoot NSG ownership; NIC-level attachment gives us that in BYO where we can't attach to the user's subnet). A user-owned NSG on the subnet in BYO mode is optional and independent — Gardener neither creates nor touches it.
 
 ## Background: today's egress in `provider-azure`
 
@@ -158,7 +158,7 @@ Modifications live in `pkg/controller/infrastructure/infraflow/`.
 | `EnsureVirtualNetwork`  | unchanged (BYO VNet path already exists)                                                                                                 |
 | `EnsureManagedIdentity` | unchanged                                                                                                                                |
 | `EnsureRouteTable`      | **skip if `IsUsingUserManagedEgress()`**                                                                                                 |
-| `EnsureSecurityGroup`   | **unchanged** — runs in every mode, creates the NIC-level NSG in the shoot's cluster RG. In BYO mode the created NSG is _not_ attached to the subnet (see [NSG mutation contract](#nsg-mutation-contract)) — it is attached to worker NICs via the MCM machine class. |
+| `EnsureSecurityGroup`   | **unchanged** — runs in every mode, creates the NSG in the shoot's cluster RG. In managed mode the NSG is attached to the subnet by `EnsureSubnets` (unchanged from today). In BYO mode the NSG is not attached to the subnet (Gardener does not touch the user's subnet); it is attached to worker NICs by MCM via the machine class. See [NSG mutation contract](#nsg-mutation-contract). |
 | `EnsurePublicIps`       | already naturally skipped (no NAT configured)                                                                                            |
 | `EnsureNatGateways`     | already naturally skipped                                                                                                                |
 | `EnsureSubnets`         | **new branch: `EnsureUserSubnet`** — verify existence, fetch RT ID/name, populate whiteboard; do NOT patch any subnet properties         |
@@ -194,7 +194,7 @@ flowchart TD
 1. Reads the referenced subnet from Azure.
 2. Verifies the subnet exists in the BYO VNet, that its CIDR is compatible with the shoot's networking config, and that it has a route table attached unless `SkipRouteReconciliation=true`.
 3. Parses the route table ARM ID into `(resourceGroup, name)` and stores it for status emission and `azure.json` rendering.
-4. Never issues a `PUT`/`PATCH` on the subnet itself — the discovery is read-only. In particular, the Gardener-owned NIC-level NSG created by `EnsureSecurityGroup` is _not_ associated with the subnet in this mode; it lives in the shoot's cluster RG and is attached to worker NICs directly by MCM (see [NSG mutation contract](#nsg-mutation-contract)).
+4. Never issues a `PUT`/`PATCH` on the subnet itself — the discovery is read-only. The Gardener-owned NSG created by `EnsureSecurityGroup` is _not_ associated with the subnet in this mode; it lives in the shoot's cluster RG and is attached to worker NICs directly by MCM (see [NSG mutation contract](#nsg-mutation-contract)).
 
 **Metadata tags on the BYO resources.** For human observability, the reconciler adds a single tag to the BYO VNet and route table:
 
@@ -262,15 +262,20 @@ The user takes ownership of using an overlay CNI. Gardener does not introspect t
 
 ### NSG mutation contract
 
-**Who owns the NSG.** Gardener owns exactly one NSG per shoot — the NIC-level NSG created by `EnsureSecurityGroup` in the shoot's cluster RG. It is attached to every worker node NIC by MCM at machine creation time (via the `securityGroupID` field on the machine class network config; see `machine-controller-manager-provider-azure`). It is **never** attached to the subnet. This is the CCM-facing NSG (`securityGroupName` in `azure.json`).
+**Who owns the NSG.** Gardener owns exactly one NSG per shoot — created by `EnsureSecurityGroup` in the shoot's cluster resource group. This is the CCM-facing NSG (`securityGroupName` in `azure.json`). Its **attachment point** depends on the mode:
 
-Rationale for NIC-level attachment (vs. subnet-level):
+- **Managed mode**: attached to the worker subnet (`Subnet.Properties.NetworkSecurityGroup` — set by `EnsureSubnets`, unchanged from today).
+- **BYO-subnet mode**: attached to every worker NIC by MCM at machine creation time (via the `securityGroupID` field on the machine class network config; see `machine-controller-manager-provider-azure`). Never attached to the subnet — the subnet is user-owned and Gardener must not touch it.
+
+Rationale for the BYO-side NIC attachment (vs. attaching to the user's subnet):
 
 1. **Ownership boundary matches the resource-group boundary.** The NSG lives inside the shoot's cluster RG, which Gardener owns end-to-end. Cluster-RG cascade delete on shoot teardown wipes the NSG cleanly. No BYO-mode orphan cleanup problem for the NSG.
-2. **Sharing is impossible by construction.** Every shoot has its own NSG in its own cluster RG. Two shoots sharing the user's BYO subnet each still have a distinct NSG on their own NICs. The upstream CCM's `RetainSecurityGroup` behavior (`pkg/provider/azure_loadbalancer.go:3520` → `RetainDestinationFromRules` in the `securitygroup` package) iterates every managed rule on the NSG and strips destination IPs it does not recognize as belonging to _this_ cluster. On a shared NSG this pattern mutually destroys rules across clusters. NIC-level ownership avoids that class of failure entirely.
-3. **This mirrors AKS.** AKS creates a NIC-level NSG per cluster in `MC_<rg>_<cluster>_<region>` and never touches subnet-level NSGs — see the [AKS docs on custom-VNet NSGs](https://learn.microsoft.com/en-us/azure/aks/concepts-network-cni-overview#aks-cni-networking-prerequisites): _"AKS doesn't apply network security groups (NSGs) to its subnet and doesn't modify any of the NSGs associated with that subnet."_ We do the same, both in managed and in BYO mode.
+2. **Sharing is impossible by construction.** Every shoot has its own NSG in its own cluster RG. Two shoots sharing the user's BYO subnet each still have a distinct NSG on their own NICs. The upstream CCM's `RetainSecurityGroup` behavior (`pkg/provider/azure_loadbalancer.go:3520` → `RetainDestinationFromRules` in the `securitygroup` package) iterates every managed rule on the NSG and strips destination IPs it does not recognize as belonging to _this_ cluster. On a shared NSG this pattern mutually destroys rules across clusters. Per-shoot NSG ownership avoids that class of failure entirely.
+3. **This mirrors AKS.** AKS creates a NIC-level NSG per cluster in `MC_<rg>_<cluster>_<region>` and never touches subnet-level NSGs — see the [AKS docs on custom-VNet NSGs](https://learn.microsoft.com/en-us/azure/aks/concepts-network-cni-overview#aks-cni-networking-prerequisites): _"AKS doesn't apply network security groups (NSGs) to its subnet and doesn't modify any of the NSGs associated with that subnet."_ We follow the same pattern in BYO mode.
 
-**What the infrastructure reconciler does in BYO-subnet mode**: creates the NIC-level NSG in the cluster RG (unchanged from managed mode). Emits its name in `InfrastructureStatus.SecurityGroups[0]`. Does not attach it to the subnet. Does not touch any subnet-level NSG the user may have attached themselves. Deletes it on shoot teardown (via cluster-RG cascade delete; no per-resource delete step).
+**Why not migrate managed mode to NIC attachment too?** It's a rolling change on every running shoot: the machine class would change, but because MCM does not reconcile the NIC of an already-running machine, we would end up with a fleet split (existing machines still with subnet-only evaluation, new machines with subnet + NIC evaluation) that is unsafe to reason about without a controlled full-fleet rollout. That migration is deferred to a follow-up if and when Gardener chooses to converge managed mode to the AKS-style attachment. Until then, managed mode stays subnet-attached.
+
+**What the infrastructure reconciler does in BYO-subnet mode**: creates the NSG in the cluster RG (unchanged from managed mode). Emits its name in `InfrastructureStatus.SecurityGroups[0]`. Does not attach it to the subnet. Does not touch any subnet-level NSG the user may have attached themselves. Deletes it on shoot teardown (via cluster-RG cascade delete; no per-resource delete step).
 
 **What the Azure CCM does to the NSG at runtime** — implemented in upstream `reconcileSecurityGroup` at `pkg/provider/azure_loadbalancer.go:3401`, invoked from `EnsureLoadBalancer` (`:163`) and `EnsureLoadBalancerDeleted` (`:482`). For each `Service type=LoadBalancer` reconcile:
 
@@ -287,7 +292,7 @@ Rationale for NIC-level attachment (vs. subnet-level):
 
 Both flows are additive, name-scoped, and self-cleaning. They never touch the user's subnet-level NSG (if any) — that's a different NSG at a different Azure layer.
 
-**Optional user-owned NSG at the subnet layer**: the user is free to attach their own NSG to the BYO subnet. Gardener does not create, read, mutate, or delete it. Both the subnet-level NSG and Gardener's NIC-level NSG are evaluated by Azure for every packet — subnet-first for inbound, NIC-first for outbound. This is standard Azure two-layer NSG evaluation and requires no coordination between the layers.
+**Optional user-owned NSG at the subnet layer**: in BYO-subnet mode, the user is free to attach their own NSG to the BYO subnet. Gardener does not create, read, mutate, or delete it. Both the subnet-level NSG and Gardener's NIC-level NSG are evaluated by Azure for every packet — subnet-first for inbound, NIC-first for outbound. This is standard Azure two-layer NSG evaluation and requires no coordination between the layers. (In managed mode there is only one Gardener NSG, attached at the subnet layer; a second user-owned NSG at the subnet layer is not possible since a subnet supports at most one `NetworkSecurityGroup` reference.)
 
 If the user does attach a subnet-level NSG, they must permit the flows Kubernetes needs. AKS documents this requirement (["Custom virtual network requirements"](https://learn.microsoft.com/en-us/azure/aks/concepts-network#custom-virtual-network-requirements)); the same rules apply here:
 
@@ -317,13 +322,13 @@ There is no cluster-wide upstream equivalent. If we later want to force this clu
 
 ### Bastion
 
-Bastion is **fully supported** in BYO-subnet mode. No new API surface is required, and the bastion controller's behavior is uniform across managed and BYO modes.
+Bastion is **fully supported** in BYO-subnet mode. No new API surface is required.
 
-The bastion controller reads the worker subnet from `InfrastructureStatus.Networks.Subnets[0]` and the NSG from `InfrastructureStatus.SecurityGroups[0]`. In both modes the NSG points at Gardener's NIC-level NSG in the shoot's cluster RG. Bastion adds/removes its four IP-scoped rules on that NSG the same way regardless of mode.
+The bastion controller reads the worker subnet from `InfrastructureStatus.Networks.Subnets[0]` and the NSG name from `InfrastructureStatus.SecurityGroups[0]`. Both are populated uniformly across modes; only the attachment point of the NSG differs (subnet-level in managed mode, NIC-level in BYO). Bastion adds/removes its four IP-scoped rules on that NSG the same way in both modes.
 
 **Bastion's NSG mutation footprint** — four IP-scoped rules per bastion (see [NSG mutation contract](#nsg-mutation-contract)). The bastion has no internet egress by design (its own NSG rules include a deny-all-outbound), so no firewall allowlisting is required on the user's side for bastion egress.
 
-**Bastion resource placement**: VM, disk, NIC, and the bastion's public IP are created in the shoot's cluster RG (unchanged). The NIC lives inside the BYO worker subnet. The bastion NIC also carries Gardener's NIC-level NSG (same NSG as the worker NICs).
+**Bastion resource placement**: VM, disk, NIC, and the bastion's public IP are created in the shoot's cluster RG (unchanged). The NIC lives inside the BYO worker subnet. **Follow-up work**: in BYO mode the bastion's own NIC should also carry the Gardener NSG at the NIC layer (same rationale as worker NICs — the user's subnet is not Gardener-owned). The bastion controller today does not set an NSG on its NIC; the CCM-authored rules on the shoot NSG therefore currently rely on evaluation via the user's subnet NSG (if any). Tracked as a follow-up commit in the same PR series.
 
 ## Configuration patterns
 
@@ -353,9 +358,9 @@ Gardener will:
 
 - Verify the VNet, subnet, and route-table associations exist.
 - Skip creating a route table, NAT, LB, or allow-egress services.
-- Create the NIC-level NSG in the shoot's cluster RG (same as managed mode) and attach it to worker node NICs via the MCM machine class.
+- Create the shoot NSG in the shoot's cluster RG (same as managed mode) and attach it to worker node NICs via the MCM machine class (BYO-only; managed mode continues to attach the NSG to the subnet).
 - Discover the RT association from the subnet at reconcile time and emit `cloud-provider-config` with `subnetName`, `routeTableName` from the BYO resources, `securityGroupName` from the Gardener-created NSG, `vnetResourceGroup` from the BYO VNet, plus `disableOutboundSNAT: true`.
-- Continue to allow the CCM and bastion controller to add/remove narrowly-scoped rules on Gardener's NIC-level NSG at runtime (see [NSG mutation contract](#nsg-mutation-contract)).
+- Continue to allow the CCM and bastion controller to add/remove narrowly-scoped rules on Gardener's NSG at runtime (see [NSG mutation contract](#nsg-mutation-contract)).
 
 ### Pattern 2 — No egress (network-isolated)
 
@@ -489,7 +494,7 @@ Any implementation must pass the following scenarios end-to-end. They are groupe
 | E6  | The subnet's `.properties.networkSecurityGroup` is left as the user configured it (either nil, or pointing at the user's own NSG). Gardener does not associate the cluster-RG NSG with the subnet.                                                                                                                          |
 | E7  | The `allow-tcp-egress` and `allow-udp-egress` Services are **not** present in `kube-system` of the shoot cluster.                                                                                                                                                                                                            |
 | E8  | The `azure.json` emitted to the CCM contains, at minimum: `subnetName`, `routeTableName`, `securityGroupName`, `vnetResourceGroup`, `disableOutboundSNAT: true`. If RT lives outside the cluster RG, `routeTableResourceGroup` is also emitted. `securityGroupResourceGroup` is not emitted (NSG is in cluster RG).          |
-| E9  | Every worker node NIC has `properties.networkSecurityGroup.id` pointing at the Gardener-owned NSG in the shoot's cluster RG (asserted via `armnetwork.InterfacesClient.Get`).                                                                                                                                                |
+| E9  | In BYO-subnet mode: every worker node NIC has `properties.networkSecurityGroup.id` pointing at the Gardener-owned NSG in the shoot's cluster RG (asserted via `armnetwork.InterfacesClient.Get`). In managed mode: worker NICs have no NIC-level NSG association (unchanged); the shoot NSG is applied via the subnet-level association instead.                                                     |
 | E10 | Creating a `Service type=LoadBalancer` (default settings) → CCM creates SLB + Public IP; adds NSG rules on Gardener's NSG in the shoot's cluster RG; LB rule has `disableOutboundSnat=true`.                                                                                                                                 |
 | E11 | Creating a `Service type=LoadBalancer` with annotation `service.beta.kubernetes.io/azure-disable-load-balancer-nsg-rule: "true"` → CCM creates SLB but adds **no** NSG rules on the shoot NSG.                                                                                                                               |
 | E12 | Deleting the `Service type=LoadBalancer` → CCM removes SLB, Public IP, and any NSG rules it added.                                                                                                                                                                                                                           |

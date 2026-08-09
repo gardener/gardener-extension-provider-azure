@@ -196,15 +196,6 @@ func makeCluster(technicalID, shootVersion, region string, machineTypes []v1alph
 }
 
 func makeInfrastructureStatus(resourceGroupName, vnetName, subnetName string, zoned bool, vnetrg, identityID *string) *apiazure.InfrastructureStatus {
-	// The shoot's NSG name follows the same convention as the managed-mode reconciler:
-	// `<technicalName>-workers`. Since tests use the resource group name as the shoot's technical
-	// name (`shoot--foobar--azure-rg` -> `shoot--foobar--azure`), derive the NSG name here for
-	// use by both managed-mode and BYO-mode test paths.
-	nsgName := "workers"
-	if len(resourceGroupName) > 3 && resourceGroupName[len(resourceGroupName)-3:] == "-rg" {
-		nsgName = resourceGroupName[:len(resourceGroupName)-3] + "-workers"
-	}
-
 	infrastructureStatus := apiazure.InfrastructureStatus{
 		ResourceGroup: apiazure.ResourceGroup{
 			Name: resourceGroupName,
@@ -220,12 +211,6 @@ func makeInfrastructureStatus(resourceGroupName, vnetName, subnetName string, zo
 				},
 			},
 			Layout: apiazure.NetworkLayoutSingleSubnet,
-		},
-		SecurityGroups: []apiazure.SecurityGroup{
-			{
-				Purpose: apiazure.PurposeNodes,
-				Name:    nsgName,
-			},
 		},
 		Zoned: zoned,
 	}
