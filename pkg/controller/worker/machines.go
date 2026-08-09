@@ -409,7 +409,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			return machineDeployment, machineClassSpec
 		}
 
-		workerPoolHash, err := w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, nil, &workerConfig)
+		workerPoolHash, err := w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, nil, nsgResourceID, &workerConfig)
 		if err != nil {
 			return err
 		}
@@ -435,12 +435,12 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				}
 
 				if nodesSubnet.Migrated {
-					workerPoolHash, err = w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, nil, &workerConfig)
+					workerPoolHash, err = w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, nil, nsgResourceID, &workerConfig)
 					if err != nil {
 						return err
 					}
 				} else {
-					workerPoolHash, err = w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, &nodesSubnet.Name, &workerConfig)
+					workerPoolHash, err = w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, &nodesSubnet.Name, nsgResourceID, &workerConfig)
 					if err != nil {
 						return err
 					}
@@ -582,7 +582,7 @@ func addTopologyLabel(labels map[string]string, region string, zone *zoneInfo) m
 	return labels
 }
 
-func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPool, infrastructureStatus *azureapi.InfrastructureStatus, vmoDependency *azureapi.VmoDependency, subnetName *string, workerConfig *azureapi.WorkerConfig) (string, error) {
+func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPool, infrastructureStatus *azureapi.InfrastructureStatus, vmoDependency *azureapi.VmoDependency, subnetName *string, nsgResourceID string, workerConfig *azureapi.WorkerConfig) (string, error) {
 	var additionalHashData []string
 
 	// Integrate data disks/volumes in the hash.
@@ -608,6 +608,14 @@ func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPo
 
 	if subnetName != nil {
 		additionalHashData = append(additionalHashData, *subnetName)
+	}
+
+	// Include the node NSG ARM resource ID in the workerpool hash when set (BYO-subnet mode only).
+	// Machines must roll if the NSG identity changes so that new NICs pick up the new NSG. In
+	// managed mode nsgResourceID is empty and the pool hash is unaffected — the NSG is applied
+	// via the subnet-level attachment which is not per-machine.
+	if nsgResourceID != "" {
+		additionalHashData = append(additionalHashData, nsgResourceID)
 	}
 
 	// Include additional data for new worker-pool hash generation.

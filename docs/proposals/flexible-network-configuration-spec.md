@@ -195,7 +195,7 @@ The following wiring is BYO-specific. Managed-mode shoots do not emit `securityG
 - Call `GetClientAuthData` on the worker's `SecretRef` to obtain the shoot's subscription ID.
 - Compose the ARM resource ID: `/subscriptions/<subscriptionID>/resourceGroups/<cluster-RG>/providers/Microsoft.Network/networkSecurityGroups/<nsg-name>`. Honor the optional `ResourceGroup` on the NSG status entry (nil in the current design; wired for forward-compatibility).
 - Add a new key `securityGroupID` (ARM resource ID string) to `machineClassSpec["network"]` alongside the existing `vnet`, `subnet`, `acceleratedNetworking`.
-- **Do not** include the NSG resource ID in `generateWorkerPoolHash`. Its stability across the shoot lifecycle is sufficient that including it would only trigger an unnecessary one-time rollout when the change first ships.
+- **Do** include the NSG resource ID in `generateWorkerPoolHash` when set (i.e. in BYO-subnet mode). The NSG's ARM identity is part of a machine's network placement — if it changes, existing NICs still point at the old NSG and new NICs pick up the new one, creating a fleet split. Rolling on change avoids that. In managed mode the argument is empty (no `securityGroupID` on the class), so the hash is unaffected — the shoot NSG is attached at the subnet layer, which is not per-machine.
 
 **Machine-class chart** — `charts/internal/machineclass/templates/`:
 
