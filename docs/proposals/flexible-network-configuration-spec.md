@@ -42,11 +42,10 @@ type NetworkConfig struct {
     // Subnet is an optional reference to an already-existing subnet inside the (also
     // user-provided) VNet. When set, Gardener's infrastructure reconciler will not create
     // or manage the worker subnet or its route table; it discovers the subnet's route-table
-    // association at reconcile time. Gardener still creates its own NIC-level NSG in the
-    // shoot's cluster resource group (which will be attached to worker NICs by MCM), so a
-    // subnet-level NSG owned by the user is optional and independent. Requires VNet.Name
-    // and VNet.ResourceGroup to be set. Not compatible with Zones, Workers, NatGateway,
-    // or ServiceEndpoints.
+    // association at reconcile time. Gardener still creates its own NSG in the shoot's cluster
+    // resource group, but attaches it to worker NICs (not to the user's subnet). A subnet-level
+    // NSG owned by the user is optional and independent. Requires VNet.Name and VNet.ResourceGroup
+    // to be set. Not compatible with Zones, Workers, NatGateway, or ServiceEndpoints.
     // +optional
     Subnet *SubnetReference `json:"subnet,omitempty"`
 }
@@ -151,7 +150,7 @@ Errors must include the subnet name and VNet identity so the user can debug with
 Add branching on `IsUsingUserManagedEgress()`:
 
 - **Skip** `EnsureRouteTable` in BYO mode.
-- **Keep** `EnsureSecurityGroup` in BYO mode. The NSG it creates lives in the shoot's cluster RG (unchanged from managed mode). Difference: in BYO mode, do _not_ attach this NSG to the subnet in `EnsureSubnets` (i.e. do not set `Subnet.Properties.NetworkSecurityGroup`). It will be attached to worker NICs by MCM via the machine class instead.
+- **Keep** `EnsureSecurityGroup` in BYO mode. The NSG it creates lives in the shoot's cluster RG (unchanged from managed mode). Difference: in BYO mode, do _not_ attach this NSG to the subnet (we don't run `EnsureSubnets` at all). It will be attached to worker NICs by MCM via the machine class instead. In managed mode the subnet-level attachment continues (via `ensurer.go:543`).
 - **Replace** `EnsureSubnets` with a new `EnsureUserSubnet` in BYO mode.
 - **Add** `EnsureBYOResourceTags` after `EnsureUserSubnet` in the reconcile flow.
 - **Add** `RemoveBYOResourceTags` at the start of the deletion flow (before any actual resource deletion, since removal is on the BYO resources not on Gardener-owned ones).
@@ -166,7 +165,7 @@ Add branching on `IsUsingUserManagedEgress()`:
 // on the whiteboard for status building and cloud-provider-config emission.
 // It does NOT read or write any subnet-level NSG association — the CCM-facing NSG
 // is created separately by EnsureSecurityGroup in the shoot's cluster RG and is
-// attached to worker NICs by MCM.
+// attached to worker NICs by MCM (in BYO mode only).
 func (fctx *FlowContext) EnsureUserSubnet(ctx context.Context) error {
     // 1. GET the subnet from ARM.
     // 2. Verify the subnet's CIDR is compatible with shoot networking.
@@ -185,19 +184,22 @@ Status builder (`ensurer.go:641-708` `EnsureInfrastructureStatus`):
 - Set `Networks.Layout = SingleSubnet`.
 - Leave `EgressCIDRs` nil.
 
-## Worker / MCM machine class
+## Worker / MCM machine class (BYO-only wiring)
 
-New wiring so that MCM attaches the shoot NSG to every worker NIC.
+The following wiring is BYO-specific. Managed-mode shoots do not emit `securityGroupID` on the machine class; their machine NICs get no NIC-level NSG association (as today). This is deliberate — see the [NSG mutation contract] in the proposal for the rationale, in particular the sub-section on why managed mode is not migrated to NIC attachment in this PR.
 
 **Worker delegate** — `pkg/controller/worker/machines.go`:
 
-- In `generateMachineClassAndDeployment`, look up the NSG entry from `infrastructureStatus.SecurityGroups` (single entry, `Purpose == PurposeNodes`).
-- Add a new key `securityGroupID` (ARM resource ID string) to `machineClassSpec["network"]` alongside the existing `vnet`, `subnet`, `acceleratedNetworking`. Compose the ARM ID from the shoot's subscription, `infrastructureStatus.ResourceGroup.Name` (cluster RG), and the NSG's `Name`.
-- Include the NSG resource ID in `generateWorkerPoolHash` only when set (mirror the existing `subnetName` inclusion pattern). Ensures rollout on first landing in BYO; no rollout for shoots that already had an NSG in managed mode (identical to today).
+- Gate on `infrastructureStatus.Networks.OutboundAccessType == OutboundAccessTypeUserManaged` — only render the NSG ID for BYO-mode shoots.
+- Look up the NSG entry from `infrastructureStatus.SecurityGroups` (single entry, `Purpose == PurposeNodes`).
+- Call `GetClientAuthData` on the worker's `SecretRef` to obtain the shoot's subscription ID.
+- Compose the ARM resource ID: `/subscriptions/<subscriptionID>/resourceGroups/<cluster-RG>/providers/Microsoft.Network/networkSecurityGroups/<nsg-name>`. Honor the optional `ResourceGroup` on the NSG status entry (nil in the current design; wired for forward-compatibility).
+- Add a new key `securityGroupID` (ARM resource ID string) to `machineClassSpec["network"]` alongside the existing `vnet`, `subnet`, `acceleratedNetworking`.
+- **Do not** include the NSG resource ID in `generateWorkerPoolHash`. Its stability across the shoot lifecycle is sufficient that including it would only trigger an unnecessary one-time rollout when the change first ships.
 
 **Machine-class chart** — `charts/internal/machineclass/templates/`:
 
-- Render the `securityGroupID` value into the `providerSpec.properties.networkProfile.securityGroupID` field on the machine class. The MCM-provider-azure side (see below) consumes it as the NSG to attach to each NIC at creation time.
+- Render the `securityGroupID` value into the `providerSpec.properties.networkProfile.securityGroupID` field on the machine class when set. The MCM-provider-azure side (see below) consumes it as the NSG to attach to each NIC at creation time.
 
 **MCM-provider-azure** — `pkg/azure/api/providerspec.go`:
 
@@ -205,6 +207,8 @@ New wiring so that MCM attaches the shoot NSG to every worker NIC.
 - Update `pkg/azure/provider/helpers/driver.go` (`createNICParams` at `:399`) so that when `providerSpec.Properties.NetworkProfile.SecurityGroupID` is non-nil, the created NIC's `InterfacePropertiesFormat.NetworkSecurityGroup = &armnetwork.SecurityGroup{ID: <the value>}`.
 - Add validation in `pkg/azure/api/validation/validation.go` that if set, `SecurityGroupID` parses as a valid ARM resource ID of type `Microsoft.Network/networkSecurityGroups`.
 - Unit tests for the new field: NIC-creation path with and without the field set; validation happy path + malformed ID.
+
+[NSG mutation contract]: ./flexible-network-configuration-proposal.md#nsg-mutation-contract
 
 ## Cloud-provider config
 

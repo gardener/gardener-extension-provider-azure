@@ -9,11 +9,12 @@ egress. In this mode Gardener stops creating and managing the worker subnet, its
 NAT Gateway, and the `allow-{tcp,udp}-egress` loadbalancer workaround services. The user pre-provisions
 the subnet and route table; Gardener discovers and references them.
 
-The cloud-controller-manager-facing network security group is unchanged: Gardener continues to create
-a NIC-level NSG in the shoot's cluster resource group (as it does for every Azure shoot today) and
-attaches it to worker node NICs via the machine class. A subnet-level NSG owned by the user is
-optional and independent — Gardener neither creates nor mutates it. See
-[NSG evaluation](#nsg-evaluation) below.
+The cloud-controller-manager-facing network security group is unchanged in the sense that Gardener
+continues to create it in the shoot's cluster resource group. The difference is where it lives at
+the Azure layer: managed-mode shoots have it attached at the **subnet** (as today); BYO-subnet
+shoots have it attached at every worker **NIC** by the machine-controller-manager, since Gardener
+must not touch the user's subnet. A subnet-level NSG owned by the user in BYO mode is optional and
+independent — Gardener neither creates nor mutates it. See [NSG evaluation](#nsg-evaluation) below.
 
 This document covers the shoot-owner's side of the workflow. For the full design intent and
 acceptance criteria see the design proposal at
@@ -99,7 +100,8 @@ marker annotation is required. When the config is submitted Gardener:
   CNI (`spec.networking.providerConfig.overlay.enabled: true`).
 - Skips creation of the worker subnet, route table, and NAT Gateway.
 - **Creates** the worker NSG in the shoot's cluster resource group (same as managed mode). This NSG
-  is attached to worker node NICs by the machine-controller-manager, not to the subnet.
+  is attached to worker node NICs by the machine-controller-manager (BYO-only behavior); it is not
+  attached to the subnet.
 - Discovers the route-table association at reconcile time and threads its name (and resource group,
   if outside cluster RG) into the shoot's `azure.json` as `routeTableName`/`routeTableResourceGroup`.
 - Emits the Gardener-owned NSG's name as `securityGroupName` in `azure.json`. `securityGroupResourceGroup`
@@ -177,15 +179,18 @@ verify that `networking.type` matches the overlay setting.
 
 ## NSG evaluation
 
-Two layers of Azure network security groups may sit in front of a worker node in BYO mode:
+In BYO-subnet mode, two layers of Azure network security groups may sit in front of a worker node:
 
-1. **NIC-level NSG (Gardener-owned)** — always present. Created by the infrastructure reconciler
-   in the shoot's cluster RG and attached to every worker NIC by the machine-controller-manager
+1. **NIC-level NSG (Gardener-owned)** — always present in BYO mode. Created by the infrastructure
+   reconciler in the shoot's cluster RG and attached to every worker NIC by the machine-controller-manager
    at machine creation time. The Azure cloud-controller-manager writes `Service type=LoadBalancer`
    ingress rules here. The bastion controller writes bastion SSH rules here. This is the CCM-facing
    NSG (`securityGroupName` in `azure.json`).
 2. **Subnet-level NSG (user-owned, optional)** — only present if the user attached one to the
    BYO subnet. Gardener never touches it.
+
+(In managed-mode shoots there is only one NSG: the Gardener-owned NSG at the subnet layer. NIC-level
+NSG attachment is a BYO-specific behavior.)
 
 Azure evaluates both layers logically as AND — traffic must be allowed by both to pass. For
 inbound the subnet NSG is evaluated first, then the NIC NSG. For outbound the order is reversed.

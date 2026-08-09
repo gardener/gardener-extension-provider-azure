@@ -116,25 +116,30 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 	}
 
 	// Compose the ARM resource ID of the shoot NSG so that MCM can attach it to each worker NIC.
-	// The NSG lives in the shoot's cluster RG in both managed and BYO mode (see the [NSG
-	// mutation contract] in the design proposal). ResourceGroup on the status entry is honored
-	// when set for forward-compatibility.
+	// Only rendered in BYO-subnet mode: in managed mode the shoot NSG is attached to the subnet
+	// by the infrastructure reconciler (see [NSG mutation contract]), so a NIC-level attachment
+	// would be redundant AND would create a fleet-split (new machines would have NIC-NSG while
+	// existing machines wouldn't, since this field is intentionally not part of the pool hash).
+	// In BYO mode the subnet is user-owned and Gardener never touches it, so the NIC layer is
+	// the only place the CCM-facing NSG can be attached.
 	//
 	// [NSG mutation contract]: /docs/proposals/flexible-network-configuration-proposal.md#nsg-mutation-contract
 	var nsgResourceID string
-	if sg, ferr := azureapihelper.FindSecurityGroupByPurpose(infrastructureStatus.SecurityGroups, azureapi.PurposeNodes); ferr == nil && sg != nil {
-		auth, _, aerr := azureclient.GetClientAuthData(ctx, w.client, w.worker.Spec.SecretRef, false)
-		if aerr != nil {
-			return fmt.Errorf("could not read Azure credentials from secret %s/%s: %w", w.worker.Spec.SecretRef.Namespace, w.worker.Spec.SecretRef.Name, aerr)
+	if infrastructureStatus.Networks.OutboundAccessType == azureapi.OutboundAccessTypeUserManaged {
+		if sg, ferr := azureapihelper.FindSecurityGroupByPurpose(infrastructureStatus.SecurityGroups, azureapi.PurposeNodes); ferr == nil && sg != nil {
+			auth, _, aerr := azureclient.GetClientAuthData(ctx, w.client, w.worker.Spec.SecretRef, false)
+			if aerr != nil {
+				return fmt.Errorf("could not read Azure credentials from secret %s/%s: %w", w.worker.Spec.SecretRef.Namespace, w.worker.Spec.SecretRef.Name, aerr)
+			}
+			sgResourceGroup := infrastructureStatus.ResourceGroup.Name
+			if sg.ResourceGroup != nil {
+				sgResourceGroup = *sg.ResourceGroup
+			}
+			nsgResourceID = fmt.Sprintf(
+				"/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Network/networkSecurityGroups/%s",
+				auth.SubscriptionID, sgResourceGroup, sg.Name,
+			)
 		}
-		sgResourceGroup := infrastructureStatus.ResourceGroup.Name
-		if sg.ResourceGroup != nil {
-			sgResourceGroup = *sg.ResourceGroup
-		}
-		nsgResourceID = fmt.Sprintf(
-			"/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Network/networkSecurityGroups/%s",
-			auth.SubscriptionID, sgResourceGroup, sg.Name,
-		)
 	}
 
 	for _, pool := range w.worker.Spec.Pools {
