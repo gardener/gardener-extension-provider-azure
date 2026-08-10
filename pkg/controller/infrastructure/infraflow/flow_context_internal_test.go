@@ -134,7 +134,6 @@ func TestBuildReconcileGraph_BYO_RegistersOnlyBYOTasks(t *testing.T) {
 		taskEnsureResourceGroup,
 		taskEnsureVirtualNetwork,
 		taskEnsureManagedIdenty,
-		taskEnsureSecurityGroup,
 		taskEnsureUserSubnet,
 		taskEnsureBYOTags,
 	}
@@ -144,10 +143,9 @@ func TestBuildReconcileGraph_BYO_RegistersOnlyBYOTasks(t *testing.T) {
 	}
 
 	// Sanity: managed-only tasks must not appear in a BYO graph.
-	// (The security group is shared between managed and BYO — Gardener creates it in the
-	// shoot's cluster RG in both modes; see docs/proposals/flexible-network-configuration-proposal.md#nsg-mutation-contract.)
 	managedOnly := []string{
 		taskEnsureRouteTable,
+		taskEnsureSecurityGroup,
 		taskEnsurePublicIPs,
 		taskEnsureNATs,
 		taskEnsureSubnets,
