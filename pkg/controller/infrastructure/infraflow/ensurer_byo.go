@@ -10,7 +10,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v10"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
@@ -21,8 +20,8 @@ import (
 // EnsureUserSubnet is the BYO-mode replacement for EnsureSubnets. It performs a read-only
 // discovery of the user-referenced subnet in the BYO VNet: verifies the subnet exists, reads its
 // route-table and network-security-group associations, and persists the discovered names and
-// resource groups on the whiteboard for status emission, azure.json rendering, tag management, and
-// the delete flow. Never issues a PUT/PATCH against the subnet, NSG, or route table.
+// resource groups on the whiteboard for status emission, azure.json rendering, and the delete
+// flow. Never issues a PUT/PATCH against the subnet, NSG, or route table.
 func (fctx *FlowContext) EnsureUserSubnet(ctx context.Context) error {
 	if !helper.IsUsingUserManagedEgress(fctx.cfg) {
 		return nil
@@ -51,6 +50,9 @@ func (fctx *FlowContext) EnsureUserSubnet(ctx context.Context) error {
 	byo := fctx.whiteboard.GetChild(ChildKeyBYO)
 
 	// NSG discovery is mandatory; the CCM requires a non-empty securityGroupName in azure.json.
+	// Because the subnet is unique per shoot (see the design proposal's route-table ownership
+	// section), the NSG attached to it is 1:1 with this shoot and can be safely handed to the
+	// CCM without the shared-NSG destruction hazard.
 	if subnet.Properties.NetworkSecurityGroup == nil || subnet.Properties.NetworkSecurityGroup.ID == nil {
 		return fmt.Errorf("BYO subnet %q has no network security group attached; attach an NSG before reconciling the shoot", subnetRef.Name)
 	}
@@ -98,242 +100,6 @@ func (fctx *FlowContext) EnsureUserSubnet(ctx context.Context) error {
 	)
 
 	return nil
-}
-
-// EnsureBYOResourceTags applies the observability tag `kubernetes.io/cluster/<technicalName>=shared`
-// to the BYO VNet, NSG, and route table. Best-effort: a permission failure on any single resource
-// is logged as a warning and does not fail the reconcile. The tag is merged with any pre-existing
-// tags. No-ops in non-BYO mode.
-func (fctx *FlowContext) EnsureBYOResourceTags(ctx context.Context) error {
-	if !helper.IsUsingUserManagedEgress(fctx.cfg) {
-		return nil
-	}
-	log := shared.LogFromContext(ctx)
-	tagKey := TagKeyClusterPrefix + fctx.adapter.TechnicalName()
-
-	// VNet
-	vnetCfg := fctx.adapter.VirtualNetworkConfig()
-	if err := fctx.tagVNet(ctx, vnetCfg.ResourceGroup, vnetCfg.Name, tagKey); err != nil {
-		log.Info("skipping observability tag on BYO VNet (best-effort)", "vnet", vnetCfg.Name, "resourceGroup", vnetCfg.ResourceGroup, "error", err.Error())
-	} else {
-		fctx.whiteboard.GetChild(ChildKeyBYO).Set(KeyBYOVNetTagged, "true")
-	}
-
-	// NSG
-	if nsgName := fctx.whiteboard.GetChild(ChildKeyBYO).Get(KeyBYONSGName); nsgName != nil {
-		nsgRG := *fctx.whiteboard.GetChild(ChildKeyBYO).Get(KeyBYONSGResourceGroup)
-		if err := fctx.tagNSG(ctx, nsgRG, *nsgName, tagKey); err != nil {
-			log.Info("skipping observability tag on BYO NSG (best-effort)", "nsg", *nsgName, "resourceGroup", nsgRG, "error", err.Error())
-		} else {
-			fctx.whiteboard.GetChild(ChildKeyBYO).Set(KeyBYONSGTagged, "true")
-		}
-	}
-
-	// Route table (may be absent in overlay-CNI mode)
-	if rtName := fctx.whiteboard.GetChild(ChildKeyBYO).Get(KeyBYORTName); rtName != nil {
-		rtRG := *fctx.whiteboard.GetChild(ChildKeyBYO).Get(KeyBYORTResourceGroup)
-		if err := fctx.tagRouteTable(ctx, rtRG, *rtName, tagKey); err != nil {
-			log.Info("skipping observability tag on BYO route table (best-effort)", "routeTable", *rtName, "resourceGroup", rtRG, "error", err.Error())
-		} else {
-			fctx.whiteboard.GetChild(ChildKeyBYO).Set(KeyBYORTTagged, "true")
-		}
-	}
-
-	return nil
-}
-
-// RemoveBYOResourceTags removes the observability tag applied by this shoot from the BYO VNet,
-// NSG, and route table. Best-effort: any per-resource failure is logged and does not block
-// shoot deletion. Only resources marked as tagged by this shoot are touched.
-func (fctx *FlowContext) RemoveBYOResourceTags(ctx context.Context) error {
-	if !helper.IsUsingUserManagedEgress(fctx.cfg) {
-		return nil
-	}
-	log := shared.LogFromContext(ctx)
-	tagKey := TagKeyClusterPrefix + fctx.adapter.TechnicalName()
-	byo := fctx.whiteboard.GetChild(ChildKeyBYO)
-
-	if v := byo.Get(KeyBYOVNetTagged); v != nil && *v == "true" {
-		vnetCfg := fctx.adapter.VirtualNetworkConfig()
-		if err := fctx.untagVNet(ctx, vnetCfg.ResourceGroup, vnetCfg.Name, tagKey); err != nil {
-			log.Info("failed to remove observability tag from BYO VNet (best-effort)", "vnet", vnetCfg.Name, "error", err.Error())
-		}
-	}
-	if v := byo.Get(KeyBYONSGTagged); v != nil && *v == "true" {
-		if nsgName := byo.Get(KeyBYONSGName); nsgName != nil {
-			nsgRG := *byo.Get(KeyBYONSGResourceGroup)
-			if err := fctx.untagNSG(ctx, nsgRG, *nsgName, tagKey); err != nil {
-				log.Info("failed to remove observability tag from BYO NSG (best-effort)", "nsg", *nsgName, "error", err.Error())
-			}
-		}
-	}
-	if v := byo.Get(KeyBYORTTagged); v != nil && *v == "true" {
-		if rtName := byo.Get(KeyBYORTName); rtName != nil {
-			rtRG := *byo.Get(KeyBYORTResourceGroup)
-			if err := fctx.untagRouteTable(ctx, rtRG, *rtName, tagKey); err != nil {
-				log.Info("failed to remove observability tag from BYO route table (best-effort)", "routeTable", *rtName, "error", err.Error())
-			}
-		}
-	}
-	return nil
-}
-
-func (fctx *FlowContext) tagVNet(ctx context.Context, rg, name, key string) error {
-	c, err := fctx.factory.Vnet()
-	if err != nil {
-		return err
-	}
-	vnet, err := c.Get(ctx, rg, name)
-	if err != nil {
-		return err
-	}
-	if vnet == nil {
-		return fmt.Errorf("vnet %s/%s not found", rg, name)
-	}
-	if hasTag(vnet.Tags, key, TagValueShared) {
-		return nil
-	}
-	if vnet.Tags == nil {
-		vnet.Tags = map[string]*string{}
-	}
-	vnet.Tags[key] = to.Ptr(TagValueShared)
-	_, err = c.CreateOrUpdate(ctx, rg, name, *vnet)
-	return err
-}
-
-func (fctx *FlowContext) untagVNet(ctx context.Context, rg, name, key string) error {
-	c, err := fctx.factory.Vnet()
-	if err != nil {
-		return err
-	}
-	vnet, err := c.Get(ctx, rg, name)
-	if err != nil {
-		return err
-	}
-	if vnet == nil || vnet.Tags == nil {
-		return nil
-	}
-	if _, ok := vnet.Tags[key]; !ok {
-		return nil
-	}
-	delete(vnet.Tags, key)
-	_, err = c.CreateOrUpdate(ctx, rg, name, *vnet)
-	return err
-}
-
-func (fctx *FlowContext) tagNSG(ctx context.Context, rg, name, key string) error {
-	c, err := fctx.factory.NetworkSecurityGroup()
-	if err != nil {
-		return err
-	}
-	sg, err := c.Get(ctx, rg, name)
-	if err != nil {
-		return err
-	}
-	if sg == nil {
-		return fmt.Errorf("nsg %s/%s not found", rg, name)
-	}
-	if hasTag(sg.Tags, key, TagValueShared) {
-		return nil
-	}
-	if sg.Tags == nil {
-		sg.Tags = map[string]*string{}
-	}
-	sg.Tags[key] = to.Ptr(TagValueShared)
-	// Only update tags to avoid clobbering security rules mutated by the CCM.
-	patch := armnetwork.SecurityGroup{
-		Location: sg.Location,
-		Tags:     sg.Tags,
-	}
-	_, err = c.CreateOrUpdate(ctx, rg, name, patch)
-	return err
-}
-
-func (fctx *FlowContext) untagNSG(ctx context.Context, rg, name, key string) error {
-	c, err := fctx.factory.NetworkSecurityGroup()
-	if err != nil {
-		return err
-	}
-	sg, err := c.Get(ctx, rg, name)
-	if err != nil {
-		return err
-	}
-	if sg == nil || sg.Tags == nil {
-		return nil
-	}
-	if _, ok := sg.Tags[key]; !ok {
-		return nil
-	}
-	delete(sg.Tags, key)
-	patch := armnetwork.SecurityGroup{
-		Location: sg.Location,
-		Tags:     sg.Tags,
-	}
-	_, err = c.CreateOrUpdate(ctx, rg, name, patch)
-	return err
-}
-
-func (fctx *FlowContext) tagRouteTable(ctx context.Context, rg, name, key string) error {
-	c, err := fctx.factory.RouteTables()
-	if err != nil {
-		return err
-	}
-	rt, err := c.Get(ctx, rg, name)
-	if err != nil {
-		return err
-	}
-	if rt == nil {
-		return fmt.Errorf("route table %s/%s not found", rg, name)
-	}
-	if hasTag(rt.Tags, key, TagValueShared) {
-		return nil
-	}
-	if rt.Tags == nil {
-		rt.Tags = map[string]*string{}
-	}
-	rt.Tags[key] = to.Ptr(TagValueShared)
-	// Tags-only patch, keeping routes intact (the CCM writes per-node pod-CIDR routes here).
-	patch := armnetwork.RouteTable{
-		Location: rt.Location,
-		Tags:     rt.Tags,
-	}
-	_, err = c.CreateOrUpdate(ctx, rg, name, patch)
-	return err
-}
-
-func (fctx *FlowContext) untagRouteTable(ctx context.Context, rg, name, key string) error {
-	c, err := fctx.factory.RouteTables()
-	if err != nil {
-		return err
-	}
-	rt, err := c.Get(ctx, rg, name)
-	if err != nil {
-		return err
-	}
-	if rt == nil || rt.Tags == nil {
-		return nil
-	}
-	if _, ok := rt.Tags[key]; !ok {
-		return nil
-	}
-	delete(rt.Tags, key)
-	patch := armnetwork.RouteTable{
-		Location: rt.Location,
-		Tags:     rt.Tags,
-	}
-	_, err = c.CreateOrUpdate(ctx, rg, name, patch)
-	return err
-}
-
-func hasTag(tags map[string]*string, key, value string) bool {
-	if tags == nil {
-		return false
-	}
-	v, ok := tags[key]
-	if !ok {
-		return false
-	}
-	return v != nil && *v == value
 }
 
 // getUserManagedEgressInfrastructureStatus builds the InfrastructureStatus for a BYO-subnet shoot.
