@@ -14,7 +14,6 @@
 - [CCM route-controller flag](#ccm-route-controller-flag)
 - [`allow-egress` gating](#allow-egress-gating)
 - [Bastion controller](#bastion-controller)
-- [Metadata tagging](#metadata-tagging)
 - [Testing plan](#testing-plan)
 - [Suggested implementation order](#suggested-implementation-order)
 
@@ -145,70 +144,38 @@ Errors must include the subnet name and VNet identity so the user can debug with
 
 ## Reconciler
 
-**File**: `pkg/controller/infrastructure/infraflow/flow_context.go:150-177` — the task graph.
+**File**: `pkg/controller/infrastructure/infraflow/flow_context.go` — the task graph.
 
 Add branching on `IsUsingUserManagedEgress()`:
 
-- **Skip** `EnsureRouteTable` in BYO mode.
-- **Keep** `EnsureSecurityGroup` in BYO mode. The NSG it creates lives in the shoot's cluster RG (unchanged from managed mode). Difference: in BYO mode, do _not_ attach this NSG to the subnet (we don't run `EnsureSubnets` at all). It will be attached to worker NICs by MCM via the machine class instead. In managed mode the subnet-level attachment continues (via `ensurer.go:543`).
+- **Skip** `EnsureRouteTable` and `EnsureSecurityGroup` in BYO mode. Both resources are user-owned in that mode; Gardener neither creates nor deletes them.
 - **Replace** `EnsureSubnets` with a new `EnsureUserSubnet` in BYO mode.
-- **Add** `EnsureBYOResourceTags` after `EnsureUserSubnet` in the reconcile flow.
-- **Add** `RemoveBYOResourceTags` at the start of the deletion flow (before any actual resource deletion, since removal is on the BYO resources not on Gardener-owned ones).
-
-**Update to `ensurer.go:543`**: currently sets `actual.Properties.NetworkSecurityGroup = &armnetwork.SecurityGroup{ID: ...}` on the managed-mode subnet. In BYO mode this line is unreached (we don't run `EnsureSubnets` at all). No change needed at that call site itself, but the new `EnsureUserSubnet` must never write to the user's subnet either.
 
 **New helper** `EnsureUserSubnet` — put adjacent to the existing `ensureUserVirtualNetwork` at `ensurer.go:136-156`:
 
 ```go
 // EnsureUserSubnet verifies the user-referenced subnet exists inside the BYO VNet
-// and discovers the associated route table, storing its name and resource group
-// on the whiteboard for status building and cloud-provider-config emission.
-// It does NOT read or write any subnet-level NSG association — the CCM-facing NSG
-// is created separately by EnsureSecurityGroup in the shoot's cluster RG and is
-// attached to worker NICs by MCM (in BYO mode only).
+// and discovers the associated NSG and route table, storing their names and resource
+// groups on the whiteboard for status building and cloud-provider-config emission.
+// Never writes to the subnet, NSG, or RT.
 func (fctx *FlowContext) EnsureUserSubnet(ctx context.Context) error {
     // 1. GET the subnet from ARM.
     // 2. Verify the subnet's CIDR is compatible with shoot networking.
-    // 3. Parse subnet.Properties.RouteTable.ID -> (rg, name); store on the whiteboard.
-    //    RT may be absent if SkipRouteReconciliation=true — then RouteTables[] is not populated in status.
-    // 4. Do NOT PUT the subnet back — discovery must be read-only. Satisfies E3.
-    // 5. Do NOT associate the shoot-owned NSG with the subnet.
+    // 3. Verify subnet.Properties.NetworkSecurityGroup.ID is set. Parse to (rg, name); store on whiteboard.
+    // 4. Parse subnet.Properties.RouteTable.ID -> (rg, name); store on the whiteboard.
+    //    RT may be absent if the shoot uses overlay CNI (helper.IsOverlayEnabled) — then
+    //    RouteTables[] is not populated in status.
+    // 5. Do NOT PUT the subnet back — discovery must be read-only. Satisfies E3.
 }
 ```
 
 Status builder (`ensurer.go:641-708` `EnsureInfrastructureStatus`):
 
-- Read the discovered RT identifier from the whiteboard.
+- Read the discovered NSG and RT identifiers from the whiteboard.
 - Emit `Networks.OutboundAccessType = UserManaged`.
-- Emit exactly one entry each in `Networks.Subnets[]`, `SecurityGroups[]` (the Gardener-owned NSG in cluster RG), and `RouteTables[]` (only if a RT was discovered).
+- Emit exactly one entry each in `Networks.Subnets[]`, `SecurityGroups[]`, and `RouteTables[]` (RT only if discovered).
 - Set `Networks.Layout = SingleSubnet`.
 - Leave `EgressCIDRs` nil.
-
-## Worker / MCM machine class (BYO-only wiring)
-
-The following wiring is BYO-specific. Managed-mode shoots do not emit `securityGroupID` on the machine class; their machine NICs get no NIC-level NSG association (as today). This is deliberate — see the [NSG mutation contract] in the proposal for the rationale, in particular the sub-section on why managed mode is not migrated to NIC attachment in this PR.
-
-**Worker delegate** — `pkg/controller/worker/machines.go`:
-
-- Gate on `infrastructureStatus.Networks.OutboundAccessType == OutboundAccessTypeUserManaged` — only render the NSG ID for BYO-mode shoots.
-- Look up the NSG entry from `infrastructureStatus.SecurityGroups` (single entry, `Purpose == PurposeNodes`).
-- Call `GetClientAuthData` on the worker's `SecretRef` to obtain the shoot's subscription ID.
-- Compose the ARM resource ID: `/subscriptions/<subscriptionID>/resourceGroups/<cluster-RG>/providers/Microsoft.Network/networkSecurityGroups/<nsg-name>`. Honor the optional `ResourceGroup` on the NSG status entry (nil in the current design; wired for forward-compatibility).
-- Add a new key `securityGroupID` (ARM resource ID string) to `machineClassSpec["network"]` alongside the existing `vnet`, `subnet`, `acceleratedNetworking`.
-- **Do** include the NSG resource ID in `generateWorkerPoolHash` when set (i.e. in BYO-subnet mode). The NSG's ARM identity is part of a machine's network placement — if it changes, existing NICs still point at the old NSG and new NICs pick up the new one, creating a fleet split. Rolling on change avoids that. In managed mode the argument is empty (no `securityGroupID` on the class), so the hash is unaffected — the shoot NSG is attached at the subnet layer, which is not per-machine.
-
-**Machine-class chart** — `charts/internal/machineclass/templates/`:
-
-- Render the `securityGroupID` value into the `providerSpec.properties.networkProfile.securityGroupID` field on the machine class when set. The MCM-provider-azure side (see below) consumes it as the NSG to attach to each NIC at creation time.
-
-**MCM-provider-azure** — `pkg/azure/api/providerspec.go`:
-
-- Add `SecurityGroupID *string \`json:"securityGroupID,omitempty"\`` to `AzureNetworkProfile`. Optional pointer; backwards-compatible for existing managed-mode shoots that don't set it.
-- Update `pkg/azure/provider/helpers/driver.go` (`createNICParams` at `:399`) so that when `providerSpec.Properties.NetworkProfile.SecurityGroupID` is non-nil, the created NIC's `InterfacePropertiesFormat.NetworkSecurityGroup = &armnetwork.SecurityGroup{ID: <the value>}`.
-- Add validation in `pkg/azure/api/validation/validation.go` that if set, `SecurityGroupID` parses as a valid ARM resource ID of type `Microsoft.Network/networkSecurityGroups`.
-- Unit tests for the new field: NIC-creation path with and without the field set; validation happy path + malformed ID.
-
-[NSG mutation contract]: ./flexible-network-configuration-proposal.md#nsg-mutation-contract
 
 ## Cloud-provider config
 
@@ -287,45 +254,22 @@ Verifies `E7`.
 
 Verifies `E13`, `E14`.
 
-## Metadata tagging
-
-**Convention**: `kubernetes.io/cluster/<technicalName>: shared` on the BYO VNet and RT. Not on the NSG — that lives in the shoot's cluster RG and is Gardener-owned end-to-end.
-
-**New helper** `EnsureBYOResourceTags`:
-
-- Reads the current tags on VNet and RT.
-- If the shoot's cluster tag is already present with value `shared`, no-op.
-- Otherwise merges the tag in and PUTs the resource.
-- Best-effort per resource: catches the AuthorizationFailed / Forbidden error, logs a warning with the resource ID and the operator's principal name, and continues.
-- Does not touch any other tags.
-
-**New helper** `RemoveBYOResourceTags`:
-
-- For each of VNet and RT: read tags, drop only the `kubernetes.io/cluster/<technicalName>` key if present, PUT back if the tag was removed.
-- If the resource no longer exists (user deleted it), skip and log.
-- Best-effort: on permission failure, log and continue — deletion must not be blocked.
-
-Verifies `G1`–`G5`, `F1`, `F4`.
-
 ## Testing plan
 
 **Unit tests** — add or extend:
 
 - `pkg/apis/azure/validation/infrastructure_test.go` — cover every case in `C1`–`C7` and `D1`–`D4`. Use a table-driven test structure.
 - `pkg/controller/infrastructure/configvalidator_test.go` (new) — cover `C8`–`C12`. Mock the Azure subnet/network client.
-- `pkg/controller/infrastructure/infraflow/ensurer_test.go` — cover `EnsureUserSubnet` (happy path + missing RT + subnet-level NSG-present variant that must not fail).
-- `pkg/controller/infrastructure/infraflow/ensurer_test.go` — cover `EnsureBYOResourceTags` and `RemoveBYOResourceTags` including permission-failure paths (`G3`, `G4`, `F4`).
+- `pkg/controller/infrastructure/infraflow/ensurer_test.go` — cover `EnsureUserSubnet` (happy path + missing NSG + missing RT with overlay off + missing RT with overlay on + cross-subscription reference).
 - `pkg/controller/controlplane/valuesprovider_test.go` — cover `E7`, `E8`.
 - `pkg/controller/bastion/bastion_test.go` — cover the NSG lookup path in BYO mode (`E13`).
-- `pkg/controller/worker/machines_test.go` — cover the `securityGroupID` propagation into `machineClassSpec["network"]`; hash inclusion when set.
-- MCM-provider-azure `pkg/azure/provider/helpers/driver_test.go` — cover `createNICParams` with and without `NetworkProfile.SecurityGroupID` set.
 
 **Integration tests** — `test/integration/infrastructure/`:
 
-- Extend the existing integration harness so that BYO-mode shoots can be created against a real subscription. Requires pre-provisioned VNet + subnet + RT in a test resource group; a script under `hack/` to create these on-demand. Subnet-level NSG optional in the test fixture.
-- New scenarios: `B1`, `B2`, `B3`, `B4`, `B5`, `E3`, `E9` (assert every worker NIC's NSG association), `F1`, `F2`, `F3`.
+- Extend the existing integration harness so that BYO-mode shoots can be created against a real subscription. Requires pre-provisioned VNet + subnet + NSG (attached) + RT in a test resource group.
+- New scenarios: `B1`, `B2`, `B3`, `B4`, `B5`, `E3`, `F1`, `F2`, `F3`.
 
-**E2E** — the existing shoot-creation e2e in Gardener core covers the LB Service creation surface (`E10`, `E12`). Add one BYO-mode variant if capacity allows; otherwise cover in a follow-up.
+**E2E** — the existing shoot-creation e2e in Gardener core covers the LB Service creation surface (`E10`, `E12`). Add one BYO-mode variant if capacity allows.
 
 **Regression** — `A1`–`A5` must continue to pass unchanged. Run the existing infrastructure integration suite against master then against this branch to confirm parity.
 
@@ -337,15 +281,10 @@ Minimizes risk by getting the machine-checkable parts (types, validation, unit t
 2. **API-level validation** in `pkg/apis/azure/validation/infrastructure.go`. Unit tests for `C1`–`C7`, `D1`–`D4`.
 3. **Status-shape changes** — extend `RouteTable` with `ResourceGroup`. Regenerate. Adjust existing status-builder code to always leave `ResourceGroup` nil (backward-compat baseline).
 4. **Pre-flight `ConfigValidator`**. Wire it into the infrastructure controller. Unit tests for `C8`–`C12`.
-5. **MCM-provider-azure NIC-NSG support** (separate repo). Land first so ggaz can depend on it: extend `AzureNetworkProfile` with `SecurityGroupID`, apply it in `createNICParams`, add unit tests.
-6. **Reconciler task-graph branching** — add `EnsureUserSubnet`. Manual smoke test in a scratch shoot with a hand-crafted BYO subnet. Ensure the shoot NSG is created and _not_ attached to the subnet.
-7. **Worker + machine-class chart wiring** — pass `securityGroupID` from status into the machine class. Verifies `E9`.
-8. **`cloud-provider-config` template + valuesprovider changes**. Unit tests for `E8`.
-9. **`allow-egress` gating change**. Unit test for `E7`.
-10. **CCM route-controller flag** — chart change + valuesprovider wiring. Manual test with `SkipRouteReconciliation=true`.
-11. **Metadata tagging** — new `EnsureBYOResourceTags` / `RemoveBYOResourceTags`. Unit tests for `G1`–`G5`.
-12. **Bastion controller refactor**. Unit test for `E13`.
-13. **Integration test harness updates**. Add scenarios `B1`–`B5`, `F1`–`F4`.
-14. **Documentation** — `docs/usage/user-managed-egress.md` and the pointer from `docs/usage/usage.md`.
-
-Steps 1–5 are review-safe and can land in small PRs. Steps 6–10 form the behavioral core. Steps 11–14 are additive polish.
+5. **Reconciler task-graph branching** — add `EnsureUserSubnet`. Manual smoke test in a scratch shoot with a hand-crafted BYO subnet.
+6. **`cloud-provider-config` template + valuesprovider changes**. Unit tests for `E8`.
+7. **`allow-egress` gating change**. Unit test for `E7`.
+8. **CCM route-controller flag** — chart change + valuesprovider wiring. Manual test with `SkipRouteReconciliation=true`.
+9. **Bastion controller refactor**. Unit test for `E13`.
+10. **Integration test harness updates**. Add scenarios `B1`–`B5`, `F1`–`F4`.
+11. **Documentation** — `docs/usage/user-managed-egress.md` and the pointer from `docs/usage/usage.md`.

@@ -5,16 +5,14 @@ title: User-managed egress via BYO subnet
 # User-managed egress via BYO subnet
 
 Azure shoots may bring their own worker **subnet** inside their own **VNet** to take full control of
-egress. In this mode Gardener stops creating and managing the worker subnet, its route table, the
-NAT Gateway, and the `allow-{tcp,udp}-egress` loadbalancer workaround services. The user pre-provisions
-the subnet and route table; Gardener discovers and references them.
+egress. In this mode Gardener stops creating and managing the worker subnet, its route table, its
+network security group, the NAT Gateway, and the `allow-{tcp,udp}-egress` loadbalancer workaround
+services. You pre-provision all of the above; Gardener only discovers and references them.
 
-The cloud-controller-manager-facing network security group is unchanged in the sense that Gardener
-continues to create it in the shoot's cluster resource group. The difference is where it lives at
-the Azure layer: managed-mode shoots have it attached at the **subnet** (as today); BYO-subnet
-shoots have it attached at every worker **NIC** by the machine-controller-manager, since Gardener
-must not touch the user's subnet. A subnet-level NSG owned by the user in BYO mode is optional and
-independent — Gardener neither creates nor mutates it. See [NSG evaluation](#nsg-evaluation) below.
+The NSG attached to your subnet is what the Azure cloud-controller-manager writes
+`Service type=LoadBalancer` ingress rules onto, and what the bastion controller writes bastion SSH
+rules onto. See [The NSG](#the-nsg) for the details of what rules land there and what flows the
+NSG must permit.
 
 > [!IMPORTANT]
 > **The BYO subnet (and its route table) must not be shared with any other Gardener shoot.**
@@ -25,12 +23,13 @@ independent — Gardener neither creates nor mutates it. See [NSG evaluation](#n
 > one route table per subnet. Two shoots pointing at the same subnet therefore share the same
 > route table, and their CCMs *mutually delete* each other's routes on every reconcile —
 > silently breaking pod-to-pod connectivity across nodes. Overlay-CNI shoots (Gardener default:
-> Calico/Cilium with VXLAN) do not have this specific writer conflict, but the same
-> "one-shoot-per-subnet" rule applies uniformly in v1 to keep the constraint simple to reason
-> about and to prevent accidental toggling of `overlay.enabled` from silently breaking sharing.
+> Calico/Cilium with VXLAN) do not have this specific writer conflict, but the CCM still writes
+> LB Service rules into the NSG attached to your subnet — and Azure enforces one NSG per subnet
+> as well, so a shared subnet still means a shared NSG on the CCM's write path. The
+> "one-shoot-per-subnet" rule therefore applies uniformly across CNI modes.
 >
 > Gardener does not enforce this rule at admission time — it is your responsibility to keep
-> subnets one-to-one with shoots. Lifting this constraint is planned for a future release.
+> subnets one-to-one with shoots.
 
 This document covers the shoot-owner's side of the workflow. For the full design intent and
 acceptance criteria see the design proposal at
@@ -61,45 +60,34 @@ Before creating the shoot, the user MUST provide the following in their Azure su
    overlap `shoot.spec.networking.pods` or `.services`. **The subnet must be dedicated to this
    shoot** — no other Gardener Azure shoot may reference the same subnet. See the important
    callout above for the rationale.
-3. A **route table** attached to that subnet, dedicated to this shoot (do not attach it to any
+3. A **network security group** attached to that subnet, dedicated to this shoot. Gardener does
+   not create it, and the CCM will write LB Service rules onto it during shoot operation. It must
+   permit the flows listed in [The NSG](#the-nsg) below.
+4. A **route table** attached to that subnet, dedicated to this shoot (do not attach it to any
    other subnet used by another Gardener shoot). For firewall-based egress this route table should
    contain a `0.0.0.0/0` route to the user's firewall / NVA (next-hop = `VirtualAppliance` +
    firewall IP). For network-isolated shoots the route table may be empty. If the shoot uses an
    overlay CNI (Cilium/Calico with VXLAN or Geneve — i.e. `shoot.spec.networking.providerConfig`
    sets `overlay.enabled: true`), the route table can be omitted entirely; the seed CCM's route
    controller is disabled automatically in that case (same behavior as provider-gcp).
-4. Any firewall rules required for Azure control-plane traffic and container image pulls —
+5. Any firewall rules required for Azure control-plane traffic and container image pulls —
    at minimum the `AzureCloud` service tag, the `AzureContainerRegistry` service tag, and the
-   public MCR endpoint (`mcr.microsoft.com` and its CDN backends). Cross-link to the
-   [outbound-connectivity docs](https://learn.microsoft.com/en-us/azure/aks/limit-egress-traffic)
-   for the full list.
-5. The route table must live in the **same Azure subscription** as the shoot. It may live in
-   any resource group within that subscription — cluster RG, VNet RG, or a central network-team RG
-   are all supported.
-
-The user MAY (optional):
-
-6. Attach an **NSG to the subnet**. Gardener does not create, read, mutate, or delete it. If you
-   attach one, you take responsibility for permitting the traffic flows Kubernetes needs — see
-   [NSG evaluation](#nsg-evaluation) below for the exact list.
+   public MCR endpoint (`mcr.microsoft.com` and its CDN backends).
+6. Both the NSG and the route table must live in the **same Azure subscription** as the shoot.
+   They may live in any resource group within that subscription — cluster RG, VNet RG, or a
+   central network-team RG are all supported.
 
 The user MUST NOT:
 
-- **Reuse the subnet or its route table across multiple Gardener Azure shoots** (see the callout
-  at the top of this page).
-- Run competing automation (Terraform, policy engines) against the discovered route table in
-  non-overlay shoots — the seed cloud-controller-manager writes per-node pod-CIDR routes there.
-  Overlay-CNI shoots (Gardener default) are unaffected because the CCM's route controller is
-  disabled.
-- If you attached a subnet-level NSG: block any of the flows listed in
-  [NSG evaluation](#nsg-evaluation). Doing so breaks the cluster; Gardener has no way to detect the
-  misconfiguration at reconcile time.
-- Rely on `shoot.status.provider.egressCIDRs` for firewall allowlisting on the receiving side. That
-  field is empty (`nil`) in BYO mode because Gardener has no reliable way to know the user's
+- **Reuse the subnet, its NSG, or its route table across multiple Gardener Azure shoots** (see
+  the callout at the top of this page).
+- Run competing automation (Terraform, policy engines) against the discovered NSG or route table
+  in ways that fight the CCM/bastion controller's normal rule/route management.
+- Rely on `shoot.status.provider.egressCIDRs` for firewall allowlisting on the receiving side.
+  That field is empty (`nil`) in BYO mode because Gardener has no reliable way to know the user's
   firewall / NVA egress IPs.
-- Expect Gardener to prune orphan pod-CIDR routes from the route table on shoot deletion — in
-  non-overlay shoots some routes may remain after teardown if the CCM's graceful pruning failed
-  (crash during teardown, force-delete of the shoot, etc.). See [Deletion](#deletion) below.
+- Expect Gardener to prune orphan rules or routes on shoot deletion — see [Deletion](#deletion)
+  below.
 
 ## Configuring a BYO-subnet shoot
 
@@ -121,23 +109,18 @@ Presence of `networks.subnet` alone signals user-managed-egress mode; no `outbou
 marker annotation is required. When the config is submitted Gardener:
 
 - Verifies the referenced subnet exists in the BYO VNet and that its CIDR is compatible with the
-  shoot's networking config. A route table association is required unless the shoot uses an overlay
-  CNI (`spec.networking.providerConfig.overlay.enabled: true`).
-- Skips creation of the worker subnet, route table, and NAT Gateway.
-- **Creates** the worker NSG in the shoot's cluster resource group (same as managed mode). This NSG
-  is attached to worker node NICs by the machine-controller-manager (BYO-only behavior); it is not
-  attached to the subnet.
-- Discovers the route-table association at reconcile time and threads its name (and resource group,
-  if outside cluster RG) into the shoot's `azure.json` as `routeTableName`/`routeTableResourceGroup`.
-- Emits the Gardener-owned NSG's name as `securityGroupName` in `azure.json`. `securityGroupResourceGroup`
-  is not emitted because the NSG lives in the cluster RG (the CCM's default).
+  shoot's networking config. Both a network security group and a route table (unless the shoot
+  uses an overlay CNI, i.e. `spec.networking.providerConfig.overlay.enabled: true`) must be
+  attached to the subnet before shoot creation.
+- Skips creation of the worker subnet, worker NSG, route table, and NAT Gateway.
+- Discovers the NSG and route-table associations at reconcile time and threads their names and
+  resource groups into the shoot's `azure.json` as `securityGroupName`/`securityGroupResourceGroup`
+  and `routeTableName`/`routeTableResourceGroup`.
 - Sets `disableOutboundSNAT: true` in `azure.json` so that any user-created
   `Service type=LoadBalancer` does not become an accidental egress path bypassing the user's route
   table.
 - Skips deploying the `allow-tcp-egress` and `allow-udp-egress` services in the shoot's
   `kube-system` namespace.
-- Applies the observability tag `kubernetes.io/cluster/<shoot-technical-name>=shared` to the BYO
-  VNet and route table (best-effort; ignored if the principal lacks tag-write permission).
 
 The `zoned` field remains valid — the shoot can still be zonal even though the worker subnet is
 single-subnet.
@@ -149,7 +132,7 @@ The following fields must **not** be set when `networks.subnet` is set:
 | Forbidden field                    | Rationale                                                                          |
 | ---------------------------------- | ---------------------------------------------------------------------------------- |
 | `networks.workers`                 | Worker CIDR is discovered from the BYO subnet.                                     |
-| `networks.zones`                   | Multi-subnet (zoned) layout is not supported with BYO subnet in v1.                |
+| `networks.zones`                   | Multi-subnet (zoned) layout is not supported with BYO subnet.                      |
 | `networks.natGateway`              | NAT is user-managed. Attach a NAT gateway to the BYO subnet out-of-band if needed. |
 | `networks.serviceEndpoints`        | Service endpoints are managed by the user on their own subnet.                     |
 | `networks.vnet.cidr`               | VNet CIDR is discovered from the actual VNet, not declared.                        |
@@ -197,31 +180,32 @@ verify that `networking.type` matches the overlay setting.
 
 - Existing shoots keep working. Opting in requires setting `networks.subnet` at shoot **creation**
   time.
-- In-place transitions between managed and BYO mode are forbidden in v1. Once created with
+- In-place transitions between managed and BYO mode are forbidden. Once created with
   `networks.subnet` set, the field must stay set; once created without, it must stay unset. Users
   who need to migrate must create a fresh shoot.
 - `networks.subnet.name` is immutable once set.
 
-## NSG evaluation
+## The NSG
 
-In BYO-subnet mode, two layers of Azure network security groups may sit in front of a worker node:
+Your subnet has exactly one network security group attached to it. In BYO mode this NSG is the
+CCM-facing NSG for the shoot — Gardener discovers it, threads its identity into the shoot's
+`azure.json`, and the Azure cloud-controller-manager writes `Service type=LoadBalancer` ingress
+rules onto it. The bastion controller also writes bastion SSH rules onto the same NSG.
 
-1. **NIC-level NSG (Gardener-owned)** — always present in BYO mode. Created by the infrastructure
-   reconciler in the shoot's cluster RG and attached to every worker NIC by the machine-controller-manager
-   at machine creation time. The Azure cloud-controller-manager writes `Service type=LoadBalancer`
-   ingress rules here. The bastion controller writes bastion SSH rules here. This is the CCM-facing
-   NSG (`securityGroupName` in `azure.json`).
-2. **Subnet-level NSG (user-owned, optional)** — only present if the user attached one to the
-   BYO subnet. Gardener never touches it.
+This is your NSG: you created it, you own its lifecycle, Gardener never deletes it. The CCM and
+bastion controller do write named, scoped rules onto it during normal shoot operation. Rule names
+follow a well-known convention:
 
-(In managed-mode shoots there is only one NSG: the Gardener-owned NSG at the subnet layer. NIC-level
-NSG attachment is a BYO-specific behavior.)
+- `k8s-azure-lb_allow_<v4|v6>_<hash>` — LB Service ingress rules written by the Azure CCM.
+- `k8s-azure-lb_deny-all_<v4|v6>` — deny-all rules the CCM adds under specific Service
+  configurations (`disableFloatingIP` + `loadBalancerSourceRanges`).
+- `<bastion-instance-name>-*` — bastion controller rules (SSH in/out and deny-all-out).
 
-Azure evaluates both layers logically as AND — traffic must be allowed by both to pass. For
-inbound the subnet NSG is evaluated first, then the NIC NSG. For outbound the order is reversed.
-A deny at either layer wins.
+These rules are added on resource creation and removed on resource deletion under normal
+operation. Do not run competing automation (Terraform, policy engines) that fights the CCM or
+bastion controller on this NSG.
 
-If you attach a subnet-level NSG, it must permit at minimum the following:
+At minimum your NSG must permit the following flows for the cluster to function:
 
 | Direction | Source        | Destination            | Protocol | Port      | Use                                              |
 | --------- | ------------- | ---------------------- | -------- | --------- | ------------------------------------------------ |
@@ -234,51 +218,21 @@ If you attach a subnet-level NSG, it must permit at minimum the following:
 For overlay CNIs (Calico with VXLAN, Cilium with VXLAN/Geneve — the Gardener default) the pod↔pod
 flow is encapsulated inside node↔node traffic; only the node↔node row is required.
 
-Misconfiguration of the subnet-level NSG (denying a required flow) breaks the cluster; Gardener
-has no way to detect this at reconcile time. This is your responsibility.
-
-## Bastion and `Service type=LoadBalancer`
-
-The Azure cloud-controller-manager and the bastion controller mutate the Gardener-owned NIC-level
-NSG at runtime — the same behavior every managed Azure shoot has today. Rule additions are
-name-scoped and self-cleaning:
-
-- `Service type=LoadBalancer` reconciliation adds allow-rules for the service's frontend IPs and
-  ports; deletion removes them. Set the annotation
-  `service.beta.kubernetes.io/azure-disable-load-balancer-nsg-rule: "true"` on a service to
-  suppress NSG mutation for that specific service (the LB frontend is created but no NSG rules
-  are added).
-- `Bastion` resources add four rules (2 SSH-in from operator CIDRs, 1 SSH-out to worker CIDRs,
-  1 deny-all-out). All rules are named `<bastion-instance-name>-*` and removed when the Bastion is
-  deleted.
-
-Because the NSG lives in the shoot's cluster RG, no user-side permission grant is needed for these
-mutations — Gardener's Azure principal already has the necessary permissions on the cluster RG.
+Misconfiguration (denying a required flow, or blocking the CCM/bastion rule priorities) breaks
+the cluster; Gardener has no way to detect this at reconcile time. This is your responsibility.
 
 ## Deletion
 
-- The BYO VNet, subnet, route table, and any user-owned subnet-level NSG are never deleted by
-  Gardener — they belong to you.
-- The Gardener-owned NIC-level NSG in the cluster RG is deleted with the rest of the cluster RG
-  (Azure cascade delete). No separate cleanup step is required.
-- The observability tag `kubernetes.io/cluster/<technicalName>: shared` is removed from the VNet
-  and route table on shoot deletion (best-effort; a failure logs a warning and does not block
-  deletion). Other tags on those resources are untouched.
-- Named rules added by the CCM (for LB services) and the bastion controller (for Bastion resources)
-  on the Gardener NSG die with the NSG itself. Under graceful teardown the CCM/bastion controllers
-  remove them first anyway; the cluster-RG cascade catches anything that slips through.
-- **Orphan pod-CIDR routes on your route table are NOT cleaned up by Gardener.** In non-overlay
-  shoots the seed CCM writes one route per node into your RT. Graceful teardown removes them as
-  the CCM observes each Node deletion. Failure modes that leave orphans behind:
-    - CCM crash during control-plane teardown.
-    - API server becoming unreachable before all Nodes are drained.
-    - Force-delete of the shoot (skips graceful teardown entirely).
-    - Transient Azure API errors past the CCM's retry budget.
-
-  Any orphan routes are yours to prune. They will point at private IPs that no longer exist (the
-  worker VMs are gone with the cluster RG). A future release of this extension is planned to add
-  targeted cleanup (snapshot the shoot's NIC IPs at the top of the delete flow, then drop matching
-  routes).
-
-  Overlay-CNI shoots are unaffected because the CCM's route controller is disabled and no per-node
-  routes are ever written.
+- The BYO VNet, subnet, route table, and NSG are never deleted by Gardener — they belong to you.
+- Under normal (graceful) shoot deletion, the CCM removes its `k8s-azure-lb_*` rules from your
+  NSG as each `Service type=LoadBalancer` is deleted, and the bastion controller removes its
+  `<bastion-instance-name>-*` rules as each Bastion is deleted. The seed CCM's route controller
+  removes its per-node routes from your RT as MCM scales workers down (non-overlay CNI shoots
+  only).
+- If teardown does not go gracefully — CCM crash during control-plane teardown, API server
+  becoming unreachable before all Nodes are drained, force-delete of the shoot, transient Azure
+  API errors past the CCM's retry budget — orphan rules may remain on the NSG and orphan routes
+  on the RT. They will point at IPs that no longer exist. Gardener does not clean them up. Prune
+  them yourself if they matter to your operational surface (Azure NSGs have a 1000-rule soft cap).
+  Overlay-CNI shoots are unaffected by the RT side of this (the CCM's route controller is
+  disabled and no per-node routes are ever written) but the NSG side still applies.
