@@ -20,17 +20,9 @@ import (
 
 // EnsureUserSubnet is the BYO-mode replacement for EnsureSubnets. It performs a read-only
 // discovery of the user-referenced subnet in the BYO VNet: verifies the subnet exists, reads its
-// route-table association, and persists the discovered route-table name and resource group on the
-// whiteboard for status emission, azure.json rendering, tag management, and the delete flow.
-//
-// The subnet's NetworkSecurityGroup association (if any) is user-owned and is intentionally
-// ignored: the CCM-facing NSG is created by EnsureSecurityGroup in the shoot's cluster RG and is
-// attached to worker NICs by MCM at machine creation time, not to the user's subnet. See the
-// [NSG mutation contract] in the design proposal for the rationale.
-//
-// This method never issues a PUT/PATCH against the subnet.
-//
-// [NSG mutation contract]: ../../../docs/proposals/flexible-network-configuration-proposal.md#nsg-mutation-contract
+// route-table and network-security-group associations, and persists the discovered names and
+// resource groups on the whiteboard for status emission, azure.json rendering, tag management, and
+// the delete flow. Never issues a PUT/PATCH against the subnet, NSG, or route table.
 func (fctx *FlowContext) EnsureUserSubnet(ctx context.Context) error {
 	if !helper.IsUsingUserManagedEgress(fctx.cfg) {
 		return nil
@@ -57,6 +49,19 @@ func (fctx *FlowContext) EnsureUserSubnet(ctx context.Context) error {
 	}
 
 	byo := fctx.whiteboard.GetChild(ChildKeyBYO)
+
+	// NSG discovery is mandatory; the CCM requires a non-empty securityGroupName in azure.json.
+	if subnet.Properties.NetworkSecurityGroup == nil || subnet.Properties.NetworkSecurityGroup.ID == nil {
+		return fmt.Errorf("BYO subnet %q has no network security group attached; attach an NSG before reconciling the shoot", subnetRef.Name)
+	}
+	nsgID := *subnet.Properties.NetworkSecurityGroup.ID
+	nsgResID, err := arm.ParseResourceID(nsgID)
+	if err != nil {
+		return fmt.Errorf("failed to parse discovered NSG resource ID %q: %w", nsgID, err)
+	}
+	byo.Set(KeyBYONSGID, nsgID)
+	byo.Set(KeyBYONSGName, nsgResID.Name)
+	byo.Set(KeyBYONSGResourceGroup, nsgResID.ResourceGroupName)
 
 	// Route table discovery is optional when the shoot uses an overlay CNI: pod-to-pod traffic is
 	// encapsulated at the node level and no per-node routes are written into the underlying VNet.
@@ -86,30 +91,19 @@ func (fctx *FlowContext) EnsureUserSubnet(ctx context.Context) error {
 
 	log.Info("discovered BYO subnet associations",
 		"subnet", subnetRef.Name,
+		"nsg", byo.Get(KeyBYONSGName),
+		"nsgResourceGroup", byo.Get(KeyBYONSGResourceGroup),
 		"routeTable", byo.Get(KeyBYORTName),
 		"routeTableResourceGroup", byo.Get(KeyBYORTResourceGroup),
-		"userSubnetNSG", subnetNSGID(subnet),
 	)
 
 	return nil
 }
 
-// subnetNSGID returns the ARM ID of the NSG attached to the subnet, or an empty string if none.
-// Used for logging only.
-func subnetNSGID(subnet *armnetwork.Subnet) string {
-	if subnet == nil || subnet.Properties == nil || subnet.Properties.NetworkSecurityGroup == nil || subnet.Properties.NetworkSecurityGroup.ID == nil {
-		return ""
-	}
-	return *subnet.Properties.NetworkSecurityGroup.ID
-}
-
 // EnsureBYOResourceTags applies the observability tag `kubernetes.io/cluster/<technicalName>=shared`
-// to the BYO VNet and route table. Best-effort: a permission failure on any single resource is
-// logged as a warning and does not fail the reconcile. The tag is merged with any pre-existing
+// to the BYO VNet, NSG, and route table. Best-effort: a permission failure on any single resource
+// is logged as a warning and does not fail the reconcile. The tag is merged with any pre-existing
 // tags. No-ops in non-BYO mode.
-//
-// The Gardener-owned NSG in the shoot's cluster RG does not receive this tag — it's owned end-to-end
-// by the shoot's cluster RG and dies with the cascade delete, so there's nothing to observe.
 func (fctx *FlowContext) EnsureBYOResourceTags(ctx context.Context) error {
 	if !helper.IsUsingUserManagedEgress(fctx.cfg) {
 		return nil
@@ -125,6 +119,16 @@ func (fctx *FlowContext) EnsureBYOResourceTags(ctx context.Context) error {
 		fctx.whiteboard.GetChild(ChildKeyBYO).Set(KeyBYOVNetTagged, "true")
 	}
 
+	// NSG
+	if nsgName := fctx.whiteboard.GetChild(ChildKeyBYO).Get(KeyBYONSGName); nsgName != nil {
+		nsgRG := *fctx.whiteboard.GetChild(ChildKeyBYO).Get(KeyBYONSGResourceGroup)
+		if err := fctx.tagNSG(ctx, nsgRG, *nsgName, tagKey); err != nil {
+			log.Info("skipping observability tag on BYO NSG (best-effort)", "nsg", *nsgName, "resourceGroup", nsgRG, "error", err.Error())
+		} else {
+			fctx.whiteboard.GetChild(ChildKeyBYO).Set(KeyBYONSGTagged, "true")
+		}
+	}
+
 	// Route table (may be absent in overlay-CNI mode)
 	if rtName := fctx.whiteboard.GetChild(ChildKeyBYO).Get(KeyBYORTName); rtName != nil {
 		rtRG := *fctx.whiteboard.GetChild(ChildKeyBYO).Get(KeyBYORTResourceGroup)
@@ -138,9 +142,9 @@ func (fctx *FlowContext) EnsureBYOResourceTags(ctx context.Context) error {
 	return nil
 }
 
-// RemoveBYOResourceTags removes the observability tag applied by this shoot from the BYO VNet and
-// route table. Best-effort: any per-resource failure is logged and does not block shoot deletion.
-// Only resources marked as tagged by this shoot are touched.
+// RemoveBYOResourceTags removes the observability tag applied by this shoot from the BYO VNet,
+// NSG, and route table. Best-effort: any per-resource failure is logged and does not block
+// shoot deletion. Only resources marked as tagged by this shoot are touched.
 func (fctx *FlowContext) RemoveBYOResourceTags(ctx context.Context) error {
 	if !helper.IsUsingUserManagedEgress(fctx.cfg) {
 		return nil
@@ -153,6 +157,14 @@ func (fctx *FlowContext) RemoveBYOResourceTags(ctx context.Context) error {
 		vnetCfg := fctx.adapter.VirtualNetworkConfig()
 		if err := fctx.untagVNet(ctx, vnetCfg.ResourceGroup, vnetCfg.Name, tagKey); err != nil {
 			log.Info("failed to remove observability tag from BYO VNet (best-effort)", "vnet", vnetCfg.Name, "error", err.Error())
+		}
+	}
+	if v := byo.Get(KeyBYONSGTagged); v != nil && *v == "true" {
+		if nsgName := byo.Get(KeyBYONSGName); nsgName != nil {
+			nsgRG := *byo.Get(KeyBYONSGResourceGroup)
+			if err := fctx.untagNSG(ctx, nsgRG, *nsgName, tagKey); err != nil {
+				log.Info("failed to remove observability tag from BYO NSG (best-effort)", "nsg", *nsgName, "error", err.Error())
+			}
 		}
 	}
 	if v := byo.Get(KeyBYORTTagged); v != nil && *v == "true" {
@@ -206,6 +218,58 @@ func (fctx *FlowContext) untagVNet(ctx context.Context, rg, name, key string) er
 	}
 	delete(vnet.Tags, key)
 	_, err = c.CreateOrUpdate(ctx, rg, name, *vnet)
+	return err
+}
+
+func (fctx *FlowContext) tagNSG(ctx context.Context, rg, name, key string) error {
+	c, err := fctx.factory.NetworkSecurityGroup()
+	if err != nil {
+		return err
+	}
+	sg, err := c.Get(ctx, rg, name)
+	if err != nil {
+		return err
+	}
+	if sg == nil {
+		return fmt.Errorf("nsg %s/%s not found", rg, name)
+	}
+	if hasTag(sg.Tags, key, TagValueShared) {
+		return nil
+	}
+	if sg.Tags == nil {
+		sg.Tags = map[string]*string{}
+	}
+	sg.Tags[key] = to.Ptr(TagValueShared)
+	// Only update tags to avoid clobbering security rules mutated by the CCM.
+	patch := armnetwork.SecurityGroup{
+		Location: sg.Location,
+		Tags:     sg.Tags,
+	}
+	_, err = c.CreateOrUpdate(ctx, rg, name, patch)
+	return err
+}
+
+func (fctx *FlowContext) untagNSG(ctx context.Context, rg, name, key string) error {
+	c, err := fctx.factory.NetworkSecurityGroup()
+	if err != nil {
+		return err
+	}
+	sg, err := c.Get(ctx, rg, name)
+	if err != nil {
+		return err
+	}
+	if sg == nil || sg.Tags == nil {
+		return nil
+	}
+	if _, ok := sg.Tags[key]; !ok {
+		return nil
+	}
+	delete(sg.Tags, key)
+	patch := armnetwork.SecurityGroup{
+		Location: sg.Location,
+		Tags:     sg.Tags,
+	}
+	_, err = c.CreateOrUpdate(ctx, rg, name, patch)
 	return err
 }
 
@@ -273,14 +337,17 @@ func hasTag(tags map[string]*string, key, value string) bool {
 }
 
 // getUserManagedEgressInfrastructureStatus builds the InfrastructureStatus for a BYO-subnet shoot.
-// The route table identifier (name + resource group) comes from the whiteboard populated by
-// EnsureUserSubnet. The NSG identifier comes from the Gardener-owned NSG created by
-// EnsureSecurityGroup in the shoot's cluster RG (same as managed mode). EgressCIDRs is left nil
-// because Gardener has no reliable way to know the user's egress IPs in this mode.
+// The discovered NSG and route table (name + resource group) come from the whiteboard populated by
+// EnsureUserSubnet. EgressCIDRs is left nil because Gardener has no reliable way to know the user's
+// egress IPs in this mode.
 func (fctx *FlowContext) getUserManagedEgressInfrastructureStatus() (*v1alpha1.InfrastructureStatus, error) {
 	byo := fctx.whiteboard.GetChild(ChildKeyBYO)
 
-	sgCfg := fctx.adapter.SecurityGroupConfig()
+	nsgName := byo.Get(KeyBYONSGName)
+	nsgRG := byo.Get(KeyBYONSGResourceGroup)
+	if nsgName == nil || nsgRG == nil {
+		return nil, fmt.Errorf("BYO NSG has not been discovered yet; EnsureUserSubnet must run before status is built")
+	}
 
 	status := &v1alpha1.InfrastructureStatus{
 		TypeMeta: metav1.TypeMeta{
@@ -306,8 +373,9 @@ func (fctx *FlowContext) getUserManagedEgressInfrastructureStatus() (*v1alpha1.I
 		},
 		SecurityGroups: []v1alpha1.SecurityGroup{
 			{
-				Purpose: v1alpha1.PurposeNodes,
-				Name:    sgCfg.Name,
+				Purpose:       v1alpha1.PurposeNodes,
+				Name:          *nsgName,
+				ResourceGroup: to.Ptr(*nsgRG),
 			},
 		},
 		Zoned: fctx.cfg.Zoned,
