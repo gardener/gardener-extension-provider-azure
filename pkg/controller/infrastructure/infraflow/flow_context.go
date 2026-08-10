@@ -199,15 +199,11 @@ func (fctx *FlowContext) addManagedReconcileTasks(g *flow.Graph, resourceGroup, 
 }
 
 // addUserManagedEgressReconcileTasks registers the tasks that support user-managed-egress mode: a
-// read-only discovery pass over the BYO subnet (populating status with the discovered NSG and RT)
-// followed by a best-effort tag application to the BYO VNet, NSG, and RT. Neither task issues a
-// mutating call against the user's network resources beyond the observability tag.
+// read-only discovery pass over the BYO subnet that populates status with the discovered NSG and
+// route table. No mutating call is ever issued against the user's network resources.
 func (fctx *FlowContext) addUserManagedEgressReconcileTasks(g *flow.Graph, vnet flow.TaskIDer) {
-	userSubnet := fctx.AddTask(g, "ensure BYO subnet (read-only discovery)",
+	_ = fctx.AddTask(g, "ensure BYO subnet (read-only discovery)",
 		fctx.EnsureUserSubnet, shared.Timeout(defaultTimeout), shared.Dependencies(vnet))
-
-	_ = fctx.AddTask(g, "ensure BYO resource tags",
-		fctx.EnsureBYOResourceTags, shared.Timeout(defaultTimeout), shared.Dependencies(userSubnet))
 }
 
 // Delete deletes all resources managed by the reconciler
@@ -225,13 +221,8 @@ func (fctx *FlowContext) Delete(ctx context.Context) error {
 	byo := helper.IsUsingUserManagedEgress(fctx.cfg)
 	g := flow.NewGraph("Azure infrastructure deletion")
 
-	// BYO resource tags are removed first (best-effort). This runs regardless of managed-VNet state
-	// because in BYO mode the VNet, NSG, and route table are all user-owned.
-	byoUntag := fctx.AddTask(g, "remove BYO resource tags",
-		fctx.RemoveBYOResourceTags, shared.Timeout(defaultTimeout), shared.DoIf(byo))
-
 	loadBalancers := fctx.AddTask(g, "delete load balancers",
-		fctx.DeleteLoadBalancers, shared.Timeout(defaultLongTimeout), shared.DoIf(!managedVnet), shared.Dependencies(byoUntag))
+		fctx.DeleteLoadBalancers, shared.Timeout(defaultLongTimeout), shared.DoIf(!managedVnet))
 	foreignSubnets := fctx.AddTask(g, "delete subnets in foreign resource group",
 		fctx.DeleteSubnetsInForeignGroup, shared.Timeout(defaultLongTimeout),
 		shared.Dependencies(loadBalancers), shared.DoIf(!managedVnet && !byo))
