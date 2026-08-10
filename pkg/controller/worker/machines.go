@@ -115,33 +115,6 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 		return err
 	}
 
-	// Compose the ARM resource ID of the shoot NSG so that MCM can attach it to each worker NIC.
-	// Only rendered in BYO-subnet mode: in managed mode the shoot NSG is attached to the subnet
-	// by the infrastructure reconciler (see [NSG mutation contract]), so a NIC-level attachment
-	// would be redundant AND would create a fleet-split (new machines would have NIC-NSG while
-	// existing machines wouldn't, since this field is intentionally not part of the pool hash).
-	// In BYO mode the subnet is user-owned and Gardener never touches it, so the NIC layer is
-	// the only place the CCM-facing NSG can be attached.
-	//
-	// [NSG mutation contract]: /docs/proposals/flexible-network-configuration-proposal.md#nsg-mutation-contract
-	var nsgResourceID string
-	if infrastructureStatus.Networks.OutboundAccessType == azureapi.OutboundAccessTypeUserManaged {
-		if sg, ferr := azureapihelper.FindSecurityGroupByPurpose(infrastructureStatus.SecurityGroups, azureapi.PurposeNodes); ferr == nil && sg != nil {
-			auth, _, aerr := azureclient.GetClientAuthData(ctx, w.client, w.worker.Spec.SecretRef, false)
-			if aerr != nil {
-				return fmt.Errorf("could not read Azure credentials from secret %s/%s: %w", w.worker.Spec.SecretRef.Namespace, w.worker.Spec.SecretRef.Name, aerr)
-			}
-			sgResourceGroup := infrastructureStatus.ResourceGroup.Name
-			if sg.ResourceGroup != nil {
-				sgResourceGroup = *sg.ResourceGroup
-			}
-			nsgResourceID = fmt.Sprintf(
-				"/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Network/networkSecurityGroups/%s",
-				auth.SubscriptionID, sgResourceGroup, sg.Name,
-			)
-		}
-	}
-
 	for _, pool := range w.worker.Spec.Pools {
 		// Get the vmo dependency from the worker status if exists.
 		vmoDependency, err := w.determineWorkerPoolVmoDependency(ctx, infrastructureStatus, workerStatus, pool.Name, pool.UpdateStrategy)
@@ -232,9 +205,6 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			networkConfig := map[string]any{
 				"vnet":   infrastructureStatus.Networks.VNet.Name,
 				"subnet": subnetName,
-			}
-			if nsgResourceID != "" {
-				networkConfig["securityGroupID"] = nsgResourceID
 			}
 
 			cloudConfiguration, err := azureclient.CloudConfiguration(nil, &w.worker.Spec.Region)
@@ -409,7 +379,7 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 			return machineDeployment, machineClassSpec
 		}
 
-		workerPoolHash, err := w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, nil, nsgResourceID, &workerConfig)
+		workerPoolHash, err := w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, nil, &workerConfig)
 		if err != nil {
 			return err
 		}
@@ -435,12 +405,12 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 				}
 
 				if nodesSubnet.Migrated {
-					workerPoolHash, err = w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, nil, nsgResourceID, &workerConfig)
+					workerPoolHash, err = w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, nil, &workerConfig)
 					if err != nil {
 						return err
 					}
 				} else {
-					workerPoolHash, err = w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, &nodesSubnet.Name, nsgResourceID, &workerConfig)
+					workerPoolHash, err = w.generateWorkerPoolHash(pool, infrastructureStatus, vmoDependency, &nodesSubnet.Name, &workerConfig)
 					if err != nil {
 						return err
 					}
@@ -582,7 +552,7 @@ func addTopologyLabel(labels map[string]string, region string, zone *zoneInfo) m
 	return labels
 }
 
-func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPool, infrastructureStatus *azureapi.InfrastructureStatus, vmoDependency *azureapi.VmoDependency, subnetName *string, nsgResourceID string, workerConfig *azureapi.WorkerConfig) (string, error) {
+func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPool, infrastructureStatus *azureapi.InfrastructureStatus, vmoDependency *azureapi.VmoDependency, subnetName *string, workerConfig *azureapi.WorkerConfig) (string, error) {
 	var additionalHashData []string
 
 	// Integrate data disks/volumes in the hash.
@@ -608,14 +578,6 @@ func (w *workerDelegate) generateWorkerPoolHash(pool extensionsv1alpha1.WorkerPo
 
 	if subnetName != nil {
 		additionalHashData = append(additionalHashData, *subnetName)
-	}
-
-	// Include the node NSG ARM resource ID in the workerpool hash when set (BYO-subnet mode only).
-	// Machines must roll if the NSG identity changes so that new NICs pick up the new NSG. In
-	// managed mode nsgResourceID is empty and the pool hash is unaffected — the NSG is applied
-	// via the subnet-level attachment which is not per-machine.
-	if nsgResourceID != "" {
-		additionalHashData = append(additionalHashData, nsgResourceID)
 	}
 
 	// Include additional data for new worker-pool hash generation.
