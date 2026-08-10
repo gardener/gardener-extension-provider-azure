@@ -27,8 +27,8 @@ const (
 	TagShootName = "gardener-shoot-name"
 
 	// ChildKeyBYO is the prefix key used to persist BYO-subnet discovery data in the whiteboard so
-	// the delete flow can act deterministically (e.g. remove observability tags) without having to
-	// re-read the subnet.
+	// downstream tasks (status emission, azure.json rendering) can read it without re-querying
+	// Azure.
 	ChildKeyBYO = "byo"
 	// KeyBYONSGName is the name of the network security group discovered on the BYO subnet.
 	KeyBYONSGName = "nsgName"
@@ -45,19 +45,4 @@ const (
 	KeyBYORTID = "rtID"
 	// KeyBYOSubnetCIDR is the address prefix of the discovered BYO subnet.
 	KeyBYOSubnetCIDR = "subnetCIDR"
-	// KeyBYOVNetTagged marks whether the observability tag has been successfully applied to the
-	// BYO VNet by this shoot. Used to drive best-effort tag removal on shoot deletion.
-	KeyBYOVNetTagged = "vnetTagged"
-	// KeyBYONSGTagged marks whether the observability tag has been successfully applied to the
-	// BYO NSG by this shoot.
-	KeyBYONSGTagged = "nsgTagged"
-	// KeyBYORTTagged marks whether the observability tag has been successfully applied to the
-	// BYO route table by this shoot.
-	KeyBYORTTagged = "rtTagged"
-
-	// TagKeyClusterPrefix is the prefix used for the observability tag applied to BYO resources:
-	// full form is `kubernetes.io/cluster/<shootTechnicalName>`.
-	TagKeyClusterPrefix = "kubernetes.io/cluster/"
-	// TagValueShared is the value used for the shoot-cluster observability tag on BYO resources.
-	TagValueShared = "shared"
 )

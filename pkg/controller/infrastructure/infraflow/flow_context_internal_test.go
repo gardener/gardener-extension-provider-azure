@@ -94,7 +94,6 @@ const (
 	taskEnsureNATs           = "ensure nats"
 	taskEnsureSubnets        = "ensure subnets"
 	taskEnsureUserSubnet     = "ensure BYO subnet (read-only discovery)"
-	taskEnsureBYOTags        = "ensure BYO resource tags"
 )
 
 func TestBuildReconcileGraph_Managed_RegistersOnlyManagedTasks(t *testing.T) {
@@ -119,7 +118,7 @@ func TestBuildReconcileGraph_Managed_RegistersOnlyManagedTasks(t *testing.T) {
 
 	// Sanity: BYO-only tasks must not appear in a managed-mode graph.
 	for _, n := range got {
-		if n == taskEnsureUserSubnet || n == taskEnsureBYOTags {
+		if n == taskEnsureUserSubnet {
 			t.Errorf("managed-mode graph must not register %q", n)
 		}
 	}
@@ -135,7 +134,6 @@ func TestBuildReconcileGraph_BYO_RegistersOnlyBYOTasks(t *testing.T) {
 		taskEnsureVirtualNetwork,
 		taskEnsureManagedIdenty,
 		taskEnsureUserSubnet,
-		taskEnsureBYOTags,
 	}
 	sort.Strings(want)
 	if !reflect.DeepEqual(got, want) {
