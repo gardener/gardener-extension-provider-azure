@@ -568,7 +568,7 @@ func getControlPlaneChartValues(
 	map[string]interface{},
 	error,
 ) {
-	ccm, err := getCCMChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown, useWorkloadIdentity, infraStatus)
+	ccm, err := getCCMChartValues(cpConfig, cp, cluster, secretsReader, checksums, scaledDown, useWorkloadIdentity)
 	if err != nil {
 		return nil, err
 	}
@@ -599,7 +599,6 @@ func getCCMChartValues(
 	checksums map[string]string,
 	scaledDown bool,
 	useWorkloadIdentity bool,
-	infraStatus *apisazure.InfrastructureStatus,
 ) (map[string]interface{}, error) {
 	serverSecret, found := secretsReader.Get(cloudControllerManagerServerName)
 	if !found {
