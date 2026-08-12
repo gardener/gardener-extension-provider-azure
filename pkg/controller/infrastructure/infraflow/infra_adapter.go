@@ -289,6 +289,13 @@ func (ia *InfrastructureAdapter) hasDisableDefaultOutBoundAccessAnnotation() boo
 }
 
 func (ia *InfrastructureAdapter) zonesConfig() []ZoneConfig {
+	// In BYO-subnet mode the reconciler discovers the user's subnet at runtime instead of
+	// describing it here (validation forbids Networks.Workers and Networks.Zones in BYO mode).
+	// The managed-mode task graph is skipped in this mode, so an empty zone list is both safe
+	// and correct — otherwise defaultZone() would nil-deref *Networks.Workers.
+	if helper.IsUsingUserManagedEgress(ia.config) {
+		return nil
+	}
 	if len(ia.config.Networks.Zones) == 0 {
 		return ia.defaultZone()
 	}
