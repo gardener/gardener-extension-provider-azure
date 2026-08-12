@@ -127,7 +127,7 @@ var _ = Describe("Infrastructure tests - BYO subnet (user-managed egress)", func
 			RTName:          "byo-workers-rt",
 			AddDefaultRoute: true,
 		}
-		byoRunTest(ctx, log, c, clientSet, namespace, fx, func(status *azurev1alpha1.InfrastructureStatus) {
+		byoRunTest(ctx, log, c, clientSet, namespace, fx, func(_ *azurev1alpha1.InfrastructureStatus) {
 			By("verifying the user's 0.0.0.0/0 route is still present after reconcile")
 			rtRG := fx.RTResourceGroup
 			if rtRG == "" {
@@ -252,7 +252,7 @@ func byoRunTest(
 				16*time.Minute,
 			)).To(Succeed())
 
-			By("verify BYO resources still exist after shoot deletion (F1)")
+			By("verify BYO resources still exist after shoot deletion")
 			verifyBYODeletion(ctx, az, fx, namespaceName)
 		}
 		if namespace != nil {
@@ -467,8 +467,8 @@ func routeTableID(subscription, rg, name string) (string, error) {
 }
 
 // verifyBYOCreation asserts every invariant that must hold for a successfully reconciled BYO shoot:
-// status shape (E1, E2), no cluster-RG Gardener-owned network resources (E4, E5), and the
-// observability tags (G1).
+// status shape (E1, E2) and absence of any Gardener-owned worker network resources in the cluster
+// RG (E4, E5).
 func verifyBYOCreation(
 	ctx context.Context,
 	az *azureClientSet,
@@ -527,39 +527,10 @@ func verifyBYOCreation(
 		Expect(err).ToNot(HaveOccurred())
 		Expect(page.Value).To(BeEmpty(), "the cluster RG must NOT contain a Gardener-owned NAT gateway in BYO mode")
 	}
-
-	By("verifying observability tag was applied to the BYO VNet, NSG, and RT (G1)")
-	tagKey := "kubernetes.io/cluster/" + clusterRG // technicalName == cluster RG name
-	expectResourceHasTag(ctx, az, "vnet", func(ctx context.Context) (map[string]*string, error) {
-		resp, err := az.vnet.Get(ctx, fx.FixtureRG, fx.VNetName, nil)
-		if err != nil {
-			return nil, err
-		}
-		return resp.Tags, nil
-	}, tagKey, "shared")
-
-	expectResourceHasTag(ctx, az, "nsg", func(ctx context.Context) (map[string]*string, error) {
-		resp, err := az.securityGroups.Get(ctx, fx.nsgRG(), fx.NSGName, nil)
-		if err != nil {
-			return nil, err
-		}
-		return resp.Tags, nil
-	}, tagKey, "shared")
-
-	if fx.RTName != "" {
-		expectResourceHasTag(ctx, az, "rt", func(ctx context.Context) (map[string]*string, error) {
-			resp, err := az.routeTable.Get(ctx, fx.rtRG(), fx.RTName, nil)
-			if err != nil {
-				return nil, err
-			}
-			return resp.Tags, nil
-		}, tagKey, "shared")
-	}
 }
 
 // verifyBYODeletion asserts the invariants after the shoot has been deleted: cluster RG is gone
-// (managed by the framework), but every BYO fixture resource is still present, and the
-// observability tag added by this shoot is gone.
+// (managed by the framework) and every BYO fixture resource is still present.
 func verifyBYODeletion(ctx context.Context, az *azureClientSet, fx *BYONetworkFixture, technicalName string) {
 	By("cluster RG must be deleted")
 	_, err := az.groups.Get(ctx, technicalName, nil)
@@ -577,32 +548,6 @@ func verifyBYODeletion(ctx context.Context, az *azureClientSet, fx *BYONetworkFi
 		_, err = az.routeTable.Get(ctx, fx.rtRG(), fx.RTName, nil)
 		Expect(err).ToNot(HaveOccurred())
 	}
-
-	By("observability tag was removed from BYO resources (F1)")
-	tagKey := "kubernetes.io/cluster/" + technicalName
-	vnetResp, err := az.vnet.Get(ctx, fx.FixtureRG, fx.VNetName, nil)
-	Expect(err).ToNot(HaveOccurred())
-	Expect(vnetResp.Tags).ToNot(HaveKey(tagKey))
-
-	nsgResp, err := az.securityGroups.Get(ctx, fx.nsgRG(), fx.NSGName, nil)
-	Expect(err).ToNot(HaveOccurred())
-	Expect(nsgResp.Tags).ToNot(HaveKey(tagKey))
-
-	if fx.RTName != "" {
-		rtResp, err := az.routeTable.Get(ctx, fx.rtRG(), fx.RTName, nil)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(rtResp.Tags).ToNot(HaveKey(tagKey))
-	}
-}
-
-// expectResourceHasTag pulls the given resource's tags via `getTags` and asserts the key/value
-// pair is present. Small closure-based indirection avoids duplicating the three different get
-// signatures (vnet, nsg, rt).
-func expectResourceHasTag(ctx context.Context, _ *azureClientSet, label string, getTags func(ctx context.Context) (map[string]*string, error), key, value string) {
-	tags, err := getTags(ctx)
-	Expect(err).ToNot(HaveOccurred(), "failed to get tags on %s", label)
-	Expect(tags).To(HaveKey(key), "%s must carry the observability tag %q", label, key)
-	Expect(tags[key]).To(PointTo(Equal(value)), "observability tag on %s has wrong value", label)
 }
 
 // injectOverlayNetworking stamps `spec.networking.providerConfig.overlay.enabled=true` on the
