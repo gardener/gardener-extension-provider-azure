@@ -238,7 +238,7 @@ func byoRunSharedTest(
 func createBYOShoot(
 	ctx context.Context,
 	c client.Client,
-	log logr.Logger,
+	_ logr.Logger,
 	namespaceName, vnetName, vnetRG, subnetName string,
 	overlayEnabled bool,
 ) (*corev1.Namespace, *extensionsv1alpha1.Cluster, *extensionsv1alpha1.Infrastructure) {
