@@ -21,6 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
 
@@ -134,7 +135,13 @@ func getNetworkSecurityGroup(ctx context.Context, factory azureclient.Factory, o
 	return nsgResp, nil
 }
 
-func getWorkersCIDR(cluster *controller.Cluster) ([]string, error) {
+func getWorkersCIDR(cluster *controller.Cluster, infrastructureStatus *azure.InfrastructureStatus) ([]string, error) {
+	if infrastructureStatus != nil {
+		if _, subnet, err := helper.FindSubnetByPurposeAndZone(infrastructureStatus.Networks.Subnets, azure.PurposeNodes, nil); err == nil && subnet.CIDR != nil {
+			return []string{*subnet.CIDR}, nil
+		}
+	}
+
 	infrastructureConfig := &azure.InfrastructureConfig{}
 	err := json.Unmarshal(cluster.Shoot.Spec.Provider.InfrastructureConfig.Raw, infrastructureConfig)
 	if err != nil {

@@ -2082,6 +2082,18 @@ string
 </tr>
 <tr>
 <td>
+<code>cidr</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CIDR is the address prefix of the subnet.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>purpose</code></br>
 <em>
 <a href="#purpose">Purpose</a>
@@ -2776,5 +2788,4 @@ string
 
 </tbody>
 </table>
-
 

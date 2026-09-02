@@ -142,10 +142,28 @@ var _ = Describe("Bastion test", func() {
 		It("getWorkersCIDR", func() {
 			// no second tests without capabilities is required as the function does not depend on cloudprofile
 			cluster := createAzureTestCluster(vNetCIDR, true)
-			cidr, err := getWorkersCIDR(cluster)
+			cidr, err := getWorkersCIDR(cluster, nil)
 			Expect(err).To(Not(HaveOccurred()))
 			Expect(cidr).To(Equal([]string{"10.250.0.0/16"}))
 		})
+
+		It("should use the discovered BYO subnet CIDR from infrastructure status", func() {
+			cluster := createAzureTestCluster(vNetCIDR, true)
+			cluster.Shoot.Spec.Provider.InfrastructureConfig.Raw = []byte(`{"networks":{"vnet":{"name":"vnet","resourceGroup":"rg"},"subnet":{"name":"workers"}}}`)
+
+			cidr, err := getWorkersCIDR(cluster, &api.InfrastructureStatus{
+				Networks: api.NetworkStatus{
+					Subnets: []api.Subnet{{
+						Name:    "workers",
+						Purpose: api.PurposeNodes,
+						CIDR:    ptr.To("10.250.0.0/24"),
+					}},
+				},
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(cidr).To(Equal([]string{"10.250.0.0/24"}))
+		})
+
 	})
 
 	Describe("Determine options", func() {
@@ -190,6 +208,13 @@ var _ = Describe("Bastion test", func() {
 
 			options, err := NewOpts(bastion, cluster, &api.InfrastructureStatus{
 				ResourceGroup: api.ResourceGroup{Name: "cluster1"},
+				Networks: api.NetworkStatus{
+					Subnets: []api.Subnet{{
+						Name:    "workers",
+						Purpose: api.PurposeNodes,
+						CIDR:    ptr.To("10.250.0.0/24"),
+					}},
+				},
 				SecurityGroups: []api.SecurityGroup{
 					{
 						Purpose:       api.PurposeNodes,
@@ -201,6 +226,7 @@ var _ = Describe("Bastion test", func() {
 			Expect(err).To(Not(HaveOccurred()))
 			Expect(options.SecurityGroupName).To(Equal("team-owned-nsg"))
 			Expect(options.SecurityGroupResourceGroup).To(Equal("central-security-rg"))
+			Expect(options.WorkersCIDR).To(Equal([]string{"10.250.0.0/24"}))
 		})
 	})
 

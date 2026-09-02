@@ -131,6 +131,7 @@ func (fctx *FlowContext) getUserManagedEgressInfrastructureStatus() (*v1alpha1.I
 				{
 					Purpose: v1alpha1.PurposeNodes,
 					Name:    fctx.cfg.Networks.Subnet.Name,
+					CIDR:    byo.Get(KeyBYOSubnetCIDR),
 				},
 			},
 		},

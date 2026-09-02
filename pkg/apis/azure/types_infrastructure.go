@@ -200,6 +200,9 @@ const (
 type Subnet struct {
 	// Name is the name of the subnet.
 	Name string
+	// CIDR is the address prefix of the subnet.
+	// +optional
+	CIDR *string
 	// Purpose is the purpose for which the subnet was created.
 	Purpose Purpose
 	// Zone is the name of the zone for which the subnet was created.

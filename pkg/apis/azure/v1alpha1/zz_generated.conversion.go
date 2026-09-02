@@ -1241,6 +1241,7 @@ func Convert_azure_Storage_To_v1alpha1_Storage(in *azure.Storage, out *Storage, 
 
 func autoConvert_v1alpha1_Subnet_To_azure_Subnet(in *Subnet, out *azure.Subnet, s conversion.Scope) error {
 	out.Name = in.Name
+	out.CIDR = (*string)(unsafe.Pointer(in.CIDR))
 	out.Purpose = azure.Purpose(in.Purpose)
 	out.Zone = (*string)(unsafe.Pointer(in.Zone))
 	out.Migrated = in.Migrated
@@ -1255,6 +1256,7 @@ func Convert_v1alpha1_Subnet_To_azure_Subnet(in *Subnet, out *azure.Subnet, s co
 
 func autoConvert_azure_Subnet_To_v1alpha1_Subnet(in *azure.Subnet, out *Subnet, s conversion.Scope) error {
 	out.Name = in.Name
+	out.CIDR = (*string)(unsafe.Pointer(in.CIDR))
 	out.Purpose = Purpose(in.Purpose)
 	out.Zone = (*string)(unsafe.Pointer(in.Zone))
 	out.Migrated = in.Migrated
