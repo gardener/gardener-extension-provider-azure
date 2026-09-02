@@ -218,6 +218,9 @@ const (
 type Subnet struct {
 	// Name is the name of the subnet.
 	Name string `json:"name"`
+	// CIDR is the address prefix of the subnet.
+	// +optional
+	CIDR *string `json:"cidr,omitempty"`
 	// Purpose is the purpose for which the subnet was created.
 	Purpose Purpose `json:"purpose"`
 	// Zone is the name of the zone for which the subnet was created.

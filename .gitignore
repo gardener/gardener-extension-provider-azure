@@ -9,6 +9,7 @@ hack/tools/bin
 /.run
 
 *.coverprofile
+gosec-report.sarif
 *.html
 .vscode
 .idea

@@ -126,7 +126,7 @@ func NewOpts(bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster, i
 		return Options{}, err
 	}
 
-	workersCidr, err := getWorkersCIDR(cluster)
+	workersCidr, err := getWorkersCIDR(cluster, infrastructureStatus)
 	if err != nil {
 		return Options{}, err
 	}

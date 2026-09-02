@@ -1442,6 +1442,15 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				errorList := ValidateInfrastructureConfigUpdate(byoConfig, byoConfig.DeepCopy(), &shoot, providerPath)
 				Expect(errorList).To(BeEmpty())
 			})
+
+			It("should not run managed-layout transition validation for a BYO config", func() {
+				newConfig := byoConfig.DeepCopy()
+				newConfig.Networks.Zones = []apisazure.Zone{{Name: 1, CIDR: "10.250.0.0/24"}}
+
+				Expect(func() {
+					_ = ValidateInfrastructureConfigUpdate(byoConfig, newConfig, &shoot, providerPath)
+				}).NotTo(Panic())
+			})
 		})
 	})
 })

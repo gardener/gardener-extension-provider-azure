@@ -7,6 +7,7 @@ package infrastructure
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
@@ -21,6 +22,7 @@ import (
 
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
+	azureprovider "github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
 
@@ -37,7 +39,7 @@ type configValidator struct {
 
 // factoryBuilder constructs an Azure client factory from an infrastructure secret reference.
 // Parameterized so tests can inject a fake factory.
-type factoryBuilder func(ctx context.Context, c client.Client, secretRef corev1.SecretReference) (azureclient.Factory, error)
+type factoryBuilder func(ctx context.Context, c client.Client, secretRef corev1.SecretReference, options ...azureclient.AzureFactoryOption) (azureclient.Factory, error)
 
 // NewConfigValidator returns a new infrastructure ConfigValidator for the Azure provider.
 func NewConfigValidator(mgr clientManager) infrastructure.ConfigValidator {
@@ -54,8 +56,8 @@ type clientManager interface {
 	GetClient() client.Client
 }
 
-func defaultFactoryBuilder(ctx context.Context, c client.Client, secretRef corev1.SecretReference) (azureclient.Factory, error) {
-	return azureclient.NewAzureClientFactoryFromSecret(ctx, c, secretRef, false)
+func defaultFactoryBuilder(ctx context.Context, c client.Client, secretRef corev1.SecretReference, options ...azureclient.AzureFactoryOption) (azureclient.Factory, error) {
+	return azureclient.NewAzureClientFactoryFromSecret(ctx, c, secretRef, false, options...)
 }
 
 // Validate implements infrastructure.ConfigValidator.
@@ -82,7 +84,20 @@ func (cv *configValidator) Validate(ctx context.Context, infra *extensionsv1alph
 		return append(allErrs, field.InternalError(field.NewPath("spec", "secretRef"), fmt.Errorf("failed to read cloud credentials: %w", err)))
 	}
 
-	factory, err := cv.factoryBuilder(ctx, cv.client, infra.Spec.SecretRef)
+	cloudProfileConfig, err := helper.CloudProfileConfigFromCluster(cluster)
+	if err != nil {
+		return append(allErrs, field.InternalError(field.NewPath(""), fmt.Errorf("failed to extract cloud provider config: %w", err)))
+	}
+	var cloudConfiguration *apisazure.CloudConfiguration
+	if cloudProfileConfig != nil {
+		cloudConfiguration = cloudProfileConfig.CloudConfiguration
+	}
+	azCloudConfiguration, err := azureclient.AzureCloudConfiguration(cloudConfiguration, &cluster.Shoot.Spec.Region)
+	if err != nil {
+		return append(allErrs, field.InternalError(field.NewPath(""), fmt.Errorf("failed to determine Azure cloud configuration: %w", err)))
+	}
+
+	factory, err := cv.factoryBuilder(ctx, cv.client, infra.Spec.SecretRef, azureclient.WithCloudConfiguration(azCloudConfiguration))
 	if err != nil {
 		return append(allErrs, field.InternalError(field.NewPath("spec", "secretRef"), fmt.Errorf("failed to build Azure client factory: %w", err)))
 	}
@@ -126,6 +141,17 @@ func (cv *configValidator) validateUserManagedEgress(
 
 	if subnet.Properties == nil {
 		return append(allErrs, field.Invalid(subnetPath, subnetRef.Name, fmt.Sprintf("subnet %q in vnet %s/%s has no properties", subnetRef.Name, vnetRG, vnetName)))
+	}
+
+	if cluster != nil && cluster.Shoot != nil {
+		disableDefaultOutboundAccess, _ := strconv.ParseBool(cluster.Shoot.Annotations[azureprovider.DisableDefaultOutboundAccessAnnotation])
+		if disableDefaultOutboundAccess && (subnet.Properties.DefaultOutboundAccess == nil || *subnet.Properties.DefaultOutboundAccess) {
+			allErrs = append(allErrs, field.Invalid(
+				subnetPath,
+				subnetRef.Name,
+				fmt.Sprintf("subnet %q must have defaultOutboundAccess set to false when shoot annotation %q is enabled", subnetRef.Name, azureprovider.DisableDefaultOutboundAccessAnnotation),
+			))
+		}
 	}
 
 	// C9: subnet must have an NSG association.

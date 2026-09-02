@@ -19,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	azureprovider "github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	azureclientmock "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client/mock"
 )
 
@@ -79,6 +80,30 @@ func TestConfigValidator_UserManagedEgress(t *testing.T) {
 			name:   "happy path",
 			subnet: goodSubnet,
 			wantOK: true,
+		},
+		{
+			name: "disable-default-outbound-access annotation accepts an isolated subnet",
+			clusterMutator: func(cluster *extensionscontroller.Cluster) {
+				cluster.Shoot.Annotations = map[string]string{azureprovider.DisableDefaultOutboundAccessAnnotation: "true"}
+			},
+			subnet: &armnetwork.Subnet{
+				Properties: &armnetwork.SubnetPropertiesFormat{
+					AddressPrefix:         to.Ptr("10.250.0.0/24"),
+					DefaultOutboundAccess: to.Ptr(false),
+					NetworkSecurityGroup:  &armnetwork.SecurityGroup{ID: to.Ptr(nsgIDSameSub)},
+					RouteTable:            &armnetwork.RouteTable{ID: to.Ptr(rtIDSameSub)},
+				},
+			},
+			wantOK: true,
+		},
+		{
+			name: "disable-default-outbound-access annotation rejects a subnet with implicit outbound access",
+			clusterMutator: func(cluster *extensionscontroller.Cluster) {
+				cluster.Shoot.Annotations = map[string]string{azureprovider.DisableDefaultOutboundAccessAnnotation: "true"}
+			},
+			subnet:       goodSubnet,
+			wantErrField: "spec.providerConfig.networks.subnet.name",
+			wantErrType:  field.ErrorTypeInvalid,
 		},
 		{
 			name:         "C8: subnet does not exist",

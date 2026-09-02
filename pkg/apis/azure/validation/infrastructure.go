@@ -556,25 +556,28 @@ func ValidateInfrastructureConfigUpdate(oldConfig, newConfig *apisazure.Infrastr
 		}
 	}
 
-	// validate state transitions for the network layouts
-	switch {
-	// if both new and old InfrastructureConfigs use multiple-subnet layout, validate the zones
-	case !helper.IsUsingSingleSubnetLayout(oldConfig) && !helper.IsUsingSingleSubnetLayout(newConfig):
-		allErrs = append(allErrs, validateZonesUpdate(oldConfig, newConfig, providerPath)...)
-	// disallow transitioning from a multiple-subnet to a single-subnet layout
-	case !helper.IsUsingSingleSubnetLayout(oldConfig) && helper.IsUsingSingleSubnetLayout(newConfig):
-		allErrs = append(allErrs, field.Forbidden(providerPath.Child("networks").Child("worker"), "updating the infrastructure configuration from using dedicated subnets per zone to using single subnet is not allowed"))
-	// validate transition from single-subnet to multiple-subnet layout
-	case helper.IsUsingSingleSubnetLayout(oldConfig) && !helper.IsUsingSingleSubnetLayout(newConfig):
-		allErrs = append(allErrs, validateSingleSubnetToMultipleSubnetTransition(oldConfig, newConfig, providerPath)...)
-	default:
-		allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Networks.Workers, oldConfig.Networks.Workers, providerPath.Child("networks").Child("workers"))...)
+	allErrs = append(allErrs, validateSubnetUpdate(oldConfig, newConfig, providerPath.Child("networks"))...)
+
+	// The legacy layout transition checks assume a managed subnet and a non-nil workers CIDR.
+	if oldConfig.Networks.Subnet == nil && newConfig.Networks.Subnet == nil {
+		switch {
+		// if both new and old InfrastructureConfigs use multiple-subnet layout, validate the zones
+		case !helper.IsUsingSingleSubnetLayout(oldConfig) && !helper.IsUsingSingleSubnetLayout(newConfig):
+			allErrs = append(allErrs, validateZonesUpdate(oldConfig, newConfig, providerPath)...)
+		// disallow transitioning from a multiple-subnet to a single-subnet layout
+		case !helper.IsUsingSingleSubnetLayout(oldConfig) && helper.IsUsingSingleSubnetLayout(newConfig):
+			allErrs = append(allErrs, field.Forbidden(providerPath.Child("networks").Child("worker"), "updating the infrastructure configuration from using dedicated subnets per zone to using single subnet is not allowed"))
+		// validate transition from single-subnet to multiple-subnet layout
+		case helper.IsUsingSingleSubnetLayout(oldConfig) && !helper.IsUsingSingleSubnetLayout(newConfig):
+			allErrs = append(allErrs, validateSingleSubnetToMultipleSubnetTransition(oldConfig, newConfig, providerPath)...)
+		default:
+			allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.Networks.Workers, oldConfig.Networks.Workers, providerPath.Child("networks").Child("workers"))...)
+		}
 	}
 
 	allErrs = append(allErrs, apivalidation.ValidateImmutableField(oldConfig.Zoned, newConfig.Zoned, providerPath.Child("zoned"))...)
 	allErrs = append(allErrs, validateVnetConfigUpdate(&oldConfig.Networks, &newConfig.Networks, providerPath.Child("networks"))...)
 	allErrs = append(allErrs, validateNatGatewaySKUUpdate(oldConfig, newConfig, providerPath.Child("networks"))...)
-	allErrs = append(allErrs, validateSubnetUpdate(oldConfig, newConfig, providerPath.Child("networks"))...)
 
 	return allErrs
 }
