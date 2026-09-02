@@ -41,6 +41,7 @@ type AddOptions struct {
 func AddToManagerWithOptions(ctx context.Context, mgr manager.Manager, opts AddOptions) error {
 	return infrastructure.Add(mgr, infrastructure.AddArgs{
 		Actuator:          NewActuator(mgr, opts.DisableProjectedTokenMount),
+		ConfigValidator:   NewConfigValidator(mgr),
 		ControllerOptions: opts.Controller,
 		Predicates:        infrastructure.DefaultPredicates(ctx, mgr, opts.IgnoreOperationAnnotation),
 		Type:              azure.Type,

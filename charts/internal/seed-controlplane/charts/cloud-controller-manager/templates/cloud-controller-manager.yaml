@@ -45,7 +45,7 @@ spec:
         - --cluster-cidr={{ .Values.podNetwork }}
         - --cluster-name={{ .Values.clusterName }}
         - --concurrent-service-syncs=1
-        - --configure-cloud-routes=true
+        - --configure-cloud-routes={{ if hasKey .Values "configureCloudRoutes" }}{{ .Values.configureCloudRoutes }}{{ else }}true{{ end }}
         - --controllers=*,-cloud-node
         - --route-reconciliation-period=10s
         {{- include "cloud-controller-manager.featureGates" . | trimSuffix "," | indent 8 }}

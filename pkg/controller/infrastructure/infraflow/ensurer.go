@@ -640,6 +640,10 @@ func (fctx *FlowContext) EnsureManagedIdentity(ctx context.Context) (err error) 
 
 // GetInfrastructureStatus returns the infrastructure status.
 func (fctx *FlowContext) GetInfrastructureStatus(_ context.Context) (*v1alpha1.InfrastructureStatus, error) {
+	if helper.IsUsingUserManagedEgress(fctx.cfg) {
+		return fctx.getUserManagedEgressInfrastructureStatus()
+	}
+
 	status := &v1alpha1.InfrastructureStatus{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "InfrastructureStatus",

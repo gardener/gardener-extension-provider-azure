@@ -511,7 +511,12 @@ func createBastion(cluster *controller.Cluster, name string) (*extensionsv1alpha
 		},
 	}
 
-	options, err := bastionctrl.NewOpts(bastion, cluster, name, log)
+	options, err := bastionctrl.NewOpts(bastion, cluster, &apisazure.InfrastructureStatus{
+		ResourceGroup: apisazure.ResourceGroup{Name: name},
+		SecurityGroups: []apisazure.SecurityGroup{
+			{Purpose: apisazure.PurposeNodes, Name: bastionctrl.NSGName(name)},
+		},
+	}, log)
 	Expect(err).NotTo(HaveOccurred())
 
 	return bastion, options
