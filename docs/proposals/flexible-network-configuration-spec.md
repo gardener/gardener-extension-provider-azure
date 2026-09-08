@@ -53,15 +53,13 @@ type NetworkConfig struct {
 type SubnetReference struct {
     // Name is the name of the subnet.
     Name string `json:"name"`
-
-    // SkipRouteReconciliation disables the seed CCM's route controller for this shoot.
-    // Intended for overlay-CNI shoots (Cilium/Calico with VXLAN or Geneve) where pod-CIDR
-    // routes in the underlying VNet are not needed. When true, the reconciler does not
-    // require the BYO subnet to have a route table attached.
-    // +optional
-    SkipRouteReconciliation *bool `json:"skipRouteReconciliation,omitempty"`
 }
 ```
+
+Whether the seed CCM's route controller is needed is **not** expressed on this type. It is derived
+from the shoot's networking provider configuration (`spec.networking.providerConfig`): overlay-CNI
+shoots (Cilium/Calico with VXLAN or Geneve) do not need pod-CIDR routes in the underlying VNet, so
+the reconciler does not require a route table to be attached to the BYO subnet.
 
 `OutboundAccessType` enum gains a third value:
 

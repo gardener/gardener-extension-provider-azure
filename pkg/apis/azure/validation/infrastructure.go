@@ -7,6 +7,7 @@ package validation
 import (
 	"fmt"
 	"slices"
+	"strconv"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v10"
@@ -22,6 +23,7 @@ import (
 
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 const (
@@ -113,6 +115,20 @@ func ValidateInfrastructureConfig(infra *apisazure.InfrastructureConfig, shoot *
 	}
 
 	allErrs = append(allErrs, validateNetworkConfig(infra, nodes, pods, services, fldPath)...)
+
+	// In BYO-subnet mode Gardener never creates or mutates the worker subnet, so it cannot honour
+	// the disable-default-outbound-access annotation: its only consumer is the managed subnet
+	// reconciliation, which is not part of the BYO task graph. Rejecting the combination avoids
+	// silently leaving a shoot with implicit outbound access while the user believes it is
+	// network-isolated. The user configures defaultOutboundAccess on their own subnet instead.
+	if helper.IsUsingUserManagedEgress(infra) {
+		if disabled, _ := strconv.ParseBool(shoot.Annotations[azure.DisableDefaultOutboundAccessAnnotation]); disabled {
+			allErrs = append(allErrs, field.Forbidden(
+				field.NewPath("metadata", "annotations").Key(azure.DisableDefaultOutboundAccessAnnotation),
+				fmt.Sprintf("annotation is not supported when %s is set; Gardener does not manage the BYO subnet, set defaultOutboundAccess to false on the subnet itself instead", fldPath.Child("networks", "subnet")),
+			))
+		}
+	}
 
 	if infra.Identity != nil {
 		path := fldPath.Child("identity")
