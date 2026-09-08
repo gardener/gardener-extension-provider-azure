@@ -72,13 +72,21 @@ type Options struct {
 	BaseOptions
 }
 
-// NewBaseOpts determines base opts that are required for creating and deleting a Bastion.
-// The NSG name and its resource group are sourced from the shoot's InfrastructureStatus (i.e. the
-// discovered BYO NSG in user-managed-egress mode, or the Gardener-managed `<technicalName>-workers`
-// NSG in managed mode). Falls back to the historical name convention `NSGName(clusterName)` and the
-// cluster resource group if the status entry is missing (defensive; should not happen after the
-// BYO-subnet feature landed).
+// NewBaseOpts determines base opts that are required for creating and deleting a Bastion. It
+// requires a non-nil InfrastructureStatus — the callers (`getInfrastructureStatus` in
+// `actuator_reconcile.go` and `actuator_delete.go`) already fail loudly when it is missing, so
+// there is no meaningful fallback to return.
+//
+// The NSG name and its resource group are sourced from `InfrastructureStatus.SecurityGroups` (i.e.
+// the discovered BYO NSG in user-managed-egress mode, or the Gardener-managed
+// `<technicalName>-workers` NSG in managed mode). Falls back to the historical name convention
+// `NSGName(clusterName)` and the cluster resource group only when no `PurposeNodes` entry is
+// present in the status list (defensive; should not happen after the BYO-subnet feature landed).
 func NewBaseOpts(bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluster, infrastructureStatus *azure.InfrastructureStatus, log logr.Logger) (BaseOptions, error) {
+	if infrastructureStatus == nil {
+		return BaseOptions{}, fmt.Errorf("infrastructure status must not be nil")
+	}
+
 	clusterName := cluster.ObjectMeta.Name
 	baseResourceName, err := generateBastionBaseResourceName(clusterName, bastion.Name)
 	if err != nil {
@@ -92,12 +100,10 @@ func NewBaseOpts(bastion *extensionsv1alpha1.Bastion, cluster *controller.Cluste
 
 	nsgName := NSGName(clusterName)
 	var nsgResourceGroup string
-	if infrastructureStatus != nil {
-		if sg, ferr := helper.FindSecurityGroupByPurpose(infrastructureStatus.SecurityGroups, azure.PurposeNodes); ferr == nil && sg != nil {
-			nsgName = sg.Name
-			if sg.ResourceGroup != nil {
-				nsgResourceGroup = *sg.ResourceGroup
-			}
+	if sg, ferr := helper.FindSecurityGroupByPurpose(infrastructureStatus.SecurityGroups, azure.PurposeNodes); ferr == nil && sg != nil {
+		nsgName = sg.Name
+		if sg.ResourceGroup != nil {
+			nsgResourceGroup = *sg.ResourceGroup
 		}
 	}
 

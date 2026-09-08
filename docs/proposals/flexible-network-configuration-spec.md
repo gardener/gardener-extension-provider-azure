@@ -39,12 +39,12 @@ type NetworkConfig struct {
     // ... existing fields (VNet, Workers, NatGateway, ServiceEndpoints, Zones) ...
 
     // Subnet is an optional reference to an already-existing subnet inside the (also
-    // user-provided) VNet. When set, Gardener's infrastructure reconciler will not create
-    // or manage the worker subnet or its route table; it discovers the subnet's route-table
-    // association at reconcile time. Gardener still creates its own NSG in the shoot's cluster
-    // resource group, but attaches it to worker NICs (not to the user's subnet). A subnet-level
-    // NSG owned by the user is optional and independent. Requires VNet.Name and VNet.ResourceGroup
-    // to be set. Not compatible with Zones, Workers, NatGateway, or ServiceEndpoints.
+    // user-provided) VNet. When set, Gardener's infrastructure reconciler will not create or
+    // manage the worker subnet, its route table, or its network security group; it discovers
+    // the subnet's NSG and (optional) route-table associations at reconcile time and threads
+    // their names and resource groups into the shoot's cloud-provider config. Requires
+    // VNet.Name and VNet.ResourceGroup to be set. Not compatible with Zones, Workers,
+    // NatGateway, or ServiceEndpoints.
     // +optional
     Subnet *SubnetReference `json:"subnet,omitempty"`
 }
@@ -75,7 +75,10 @@ const (
 )
 ```
 
-`RouteTable` status type gains an optional `ResourceGroup`. The `SecurityGroup` status type does not need one — the NSG is always in the shoot's cluster RG in both managed and BYO mode. Both fields are pointers so absence in existing (managed-mode) shoots continues to round-trip cleanly:
+`RouteTable` and `SecurityGroup` status types both gain an optional `ResourceGroup`. In managed
+mode both resources live in the shoot's cluster RG (nil in status); in BYO-subnet mode they may
+live in any RG in the shoot's subscription (populated in status). The pointer shape keeps existing
+managed-mode shoots round-tripping cleanly:
 
 ```go
 type RouteTable struct {
@@ -90,8 +93,9 @@ type RouteTable struct {
 type SecurityGroup struct {
     Purpose Purpose
     Name    string
-    // ResourceGroup was reserved for a BYO-NSG design that was rejected. Always nil today
-    // — the NSG lives in the shoot's cluster resource group in every mode.
+    // ResourceGroup is the resource group hosting this network security group. If nil, the
+    // shoot's cluster resource group is assumed. Only populated in BYO-subnet mode where the
+    // discovered NSG may live in any resource group in the shoot's subscription.
     // +optional
     ResourceGroup *string
 }
@@ -134,9 +138,10 @@ Extend `ValidateInfrastructureConfigUpdate` with:
 Azure does not have a `ConfigValidator` today (provider-aws and provider-gcp both do; use their pattern). Called from the infrastructure controller before reconcile. Uses the shoot's Azure credentials to hit ARM. Checks:
 
 - The referenced subnet exists in the BYO VNet (`C8`).
-- The subnet has a `RouteTable` association, unless `Networks.Subnet.SkipRouteReconciliation=true` (`C9`).
+- The subnet has a `NetworkSecurityGroup` association (`C9b`).
+- The subnet has a `RouteTable` association, unless the shoot uses an overlay CNI (`C9`).
 - The subnet's CIDR is a subset of `shoot.spec.networking.nodes` and does not overlap `shoot.spec.networking.{pods,services}` (`C10`, `C11`).
-- The discovered RT ARM ID resolves to the same subscription as the shoot (`C12`).
+- The discovered NSG and RT ARM IDs resolve to the same subscription as the shoot (`C12`).
 
 Errors must include the subnet name and VNet identity so the user can debug without inspecting logs.
 
@@ -158,12 +163,12 @@ Add branching on `IsUsingUserManagedEgress()`:
 // Never writes to the subnet, NSG, or RT.
 func (fctx *FlowContext) EnsureUserSubnet(ctx context.Context) error {
     // 1. GET the subnet from ARM.
-    // 2. Verify the subnet's CIDR is compatible with shoot networking.
-    // 3. Verify subnet.Properties.NetworkSecurityGroup.ID is set. Parse to (rg, name); store on whiteboard.
-    // 4. Parse subnet.Properties.RouteTable.ID -> (rg, name); store on the whiteboard.
-    //    RT may be absent if the shoot uses overlay CNI (helper.IsOverlayEnabled) — then
-    //    RouteTables[] is not populated in status.
-    // 5. Do NOT PUT the subnet back — discovery must be read-only. Satisfies E3.
+    // 2. Verify subnet.Properties.NetworkSecurityGroup.ID is set. Parse to (rg, name); store on whiteboard.
+    // 3. Parse subnet.Properties.RouteTable.ID -> (rg, name); store on the whiteboard.
+    //    RT may be absent if the shoot uses an overlay CNI (helper.IsOverlayEnabled) — then any
+    //    previously discovered RT entries are cleared from the whiteboard and RouteTables[] is
+    //    not populated in status.
+    // 4. Do NOT PUT the subnet back — discovery must be read-only. Satisfies E3.
 }
 ```
 
@@ -177,25 +182,31 @@ Status builder (`ensurer.go:641-708` `EnsureInfrastructureStatus`):
 
 ## Cloud-provider config
 
-**Template**: `charts/internal/cloud-provider-config/templates/cloud-provider-config.tpl` — two conditional fields:
+**Template**: `charts/internal/cloud-provider-config/templates/cloud-provider-config.tpl` — three conditional fields:
 
 ```yaml
-{{- if .Values.routeTableResourceGroup }}
-routeTableResourceGroup: {{ .Values.routeTableResourceGroup }}
+{{- if hasKey .Values "routeTableResourceGroup" }}
+routeTableResourceGroup: "{{ .Values.routeTableResourceGroup }}"
+{{- end }}
+{{- if hasKey .Values "securityGroupResourceGroup" }}
+securityGroupResourceGroup: "{{ .Values.securityGroupResourceGroup }}"
 {{- end }}
 {{- if .Values.disableOutboundSNAT }}
 disableOutboundSNAT: true
 {{- end }}
 ```
 
-No `securityGroupResourceGroup` — the NSG is always in the shoot's cluster RG, so the default (`securityGroupResourceGroup` falls back to `resourceGroup`) suffices.
+`routeTableResourceGroup` and `securityGroupResourceGroup` are emitted in BYO-subnet mode when the
+discovered RT / NSG live outside the shoot's cluster RG. Both default to `resourceGroup` upstream,
+so managed-mode shoots (where the fields are omitted) keep behaving exactly as before.
 
 Upstream references for the field semantics:
 
 - `RouteTableResourceGroup` — `azure.go:62` upstream, fallback at `:278-279`.
+- `SecurityGroupResourceGroup` — `azure.go:64` upstream, same fallback pattern.
 - `DisableOutboundSNAT` — `azure.go:123-125` upstream, per-LB-rule applied at `azure_loadbalancer.go:3360`.
 
-**Value provider**: `pkg/controller/controlplane/valuesprovider.go` (`getConfigChartValues` at `:428-476`):
+**Value provider**: `pkg/controller/controlplane/valuesprovider.go` (`getConfigChartValues`):
 
 ```go
 if infraStatus.Networks.OutboundAccessType == azureapi.OutboundAccessTypeUserManaged {
@@ -206,20 +217,29 @@ for _, rt := range infraStatus.RouteTables {
         values["routeTableResourceGroup"] = *rt.ResourceGroup
     }
 }
+for _, sg := range infraStatus.SecurityGroups {
+    if sg.Purpose == azureapi.PurposeNodes && sg.ResourceGroup != nil {
+        values["securityGroupResourceGroup"] = *sg.ResourceGroup
+    }
+}
 ```
 
 Verifies `E8`.
 
 ## CCM route-controller flag
 
-**File**: `charts/internal/seed-controlplane/charts/cloud-controller-manager/templates/cloud-controller-manager.yaml:48`.
+**File**: `charts/internal/seed-controlplane/charts/cloud-controller-manager/templates/cloud-controller-manager.yaml`.
 
-Currently hard-codes `--configure-cloud-routes=true`. Make it values-driven, defaulting to `true` for backward compatibility. `valuesprovider.go` passes `false` when `Networks.Subnet.SkipRouteReconciliation == true`.
+Currently hard-codes `--configure-cloud-routes=true`. Make it values-driven, defaulting to `true`
+when the value is not provided (so callers that don't set it — including any consumers not yet
+migrated — keep behaving as before). `valuesprovider.go` passes `!overlayEnabled`, where
+`overlayEnabled` is derived from `helper.IsOverlayEnabled(shoot.Spec.Networking)` (the same signal
+the CNI extension uses).
 
-Example:
+Actual template:
 
 ```yaml
-- --configure-cloud-routes={{ .Values.configureCloudRoutes | default "true" }}
+- --configure-cloud-routes={{ if hasKey .Values "configureCloudRoutes" }}{{ .Values.configureCloudRoutes }}{{ else }}true{{ end }}
 ```
 
 When `false`, the CCM does not run the route controller and does not touch any route table. Verifies acceptance criterion `B5` (and future overlay-CNI tests).
@@ -246,9 +266,16 @@ Verifies `E7`.
 
 **Files**: `pkg/controller/bastion/options.go`, `pkg/controller/bastion/actuator.go`.
 
-- Replace the hard-coded `NSGName(clusterName)` (`options.go:82`) with a lookup from `InfrastructureStatus.SecurityGroups[0]` — read `Name`. Fall back to the hardcoded name only if the status list is empty (defensive; shouldn't happen after this PR).
-- `actuator.go:181-188` already handles the BYO-VNet case for the subnet lookup; no change needed there.
-- The NSG's `ResourceGroup` is nil in status (always cluster RG); no wiring change needed at the ARM client call sites (`actuator.go:120-135`, `actuator_reconcile.go:205`) beyond making them use the status-sourced NSG name.
+- Replace the hard-coded `NSGName(clusterName)` with a lookup from
+  `InfrastructureStatus.SecurityGroups` (find the `PurposeNodes` entry). Read `Name` for the NSG
+  and `ResourceGroup` for the RG that hosts it. Fall back to the historical name and the shoot's
+  cluster RG only when no `PurposeNodes` entry is present in the status (defensive; should not
+  happen after this PR).
+- ARM client call sites that operate on the NSG must use `SecurityGroupResourceGroup` (when
+  populated in BYO mode) instead of assuming the cluster RG.
+- `actuator.go` already handles the BYO-VNet case for the subnet lookup and now prefers
+  `InfrastructureStatus.Networks.Subnets[].CIDR` (populated by `EnsureUserSubnet`) over the
+  legacy `InfrastructureConfig`-based lookup for the workers CIDR.
 
 Verifies `E13`, `E14`.
 
@@ -282,7 +309,7 @@ Minimizes risk by getting the machine-checkable parts (types, validation, unit t
 5. **Reconciler task-graph branching** — add `EnsureUserSubnet`. Manual smoke test in a scratch shoot with a hand-crafted BYO subnet.
 6. **`cloud-provider-config` template + valuesprovider changes**. Unit tests for `E8`.
 7. **`allow-egress` gating change**. Unit test for `E7`.
-8. **CCM route-controller flag** — chart change + valuesprovider wiring. Manual test with `SkipRouteReconciliation=true`.
+8. **CCM route-controller flag** — chart change + valuesprovider wiring. Manual test with an overlay-CNI shoot to confirm `--configure-cloud-routes=false` is rendered.
 9. **Bastion controller refactor**. Unit test for `E13`.
 10. **Integration test harness updates**. Add scenarios `B1`–`B5`, `F1`–`F4`.
 11. **Documentation** — `docs/usage/user-managed-egress.md` and the pointer from `docs/usage/usage.md`.

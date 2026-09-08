@@ -203,6 +203,14 @@ var _ = Describe("Bastion test", func() {
 			Entry("cloudProfile with capabilities", true),
 		)
 
+		It("should return an error when the infrastructure status is nil", func() {
+			cluster := createAzureTestCluster(vNetCIDR, false)
+
+			_, err := NewOpts(bastion, cluster, nil, log)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("infrastructure status must not be nil"))
+		})
+
 		It("should source NSG name and foreign resource group from the BYO status", func() {
 			cluster := createAzureTestCluster(vNetCIDR, false)
 
