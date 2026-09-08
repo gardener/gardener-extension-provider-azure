@@ -7,7 +7,6 @@ package infrastructure
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
@@ -22,7 +21,6 @@ import (
 
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
-	azureprovider "github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
 
@@ -143,17 +141,6 @@ func (cv *configValidator) validateUserManagedEgress(
 		return append(allErrs, field.Invalid(subnetPath, subnetRef.Name, fmt.Sprintf("subnet %q in vnet %s/%s has no properties", subnetRef.Name, vnetRG, vnetName)))
 	}
 
-	if cluster != nil && cluster.Shoot != nil {
-		disableDefaultOutboundAccess, _ := strconv.ParseBool(cluster.Shoot.Annotations[azureprovider.DisableDefaultOutboundAccessAnnotation])
-		if disableDefaultOutboundAccess && (subnet.Properties.DefaultOutboundAccess == nil || *subnet.Properties.DefaultOutboundAccess) {
-			allErrs = append(allErrs, field.Invalid(
-				subnetPath,
-				subnetRef.Name,
-				fmt.Sprintf("subnet %q must have defaultOutboundAccess set to false when shoot annotation %q is enabled", subnetRef.Name, azureprovider.DisableDefaultOutboundAccessAnnotation),
-			))
-		}
-	}
-
 	// C9: subnet must have an NSG association.
 	nsgID := ""
 	if subnet.Properties.NetworkSecurityGroup != nil && subnet.Properties.NetworkSecurityGroup.ID != nil {
@@ -196,28 +183,25 @@ func (cv *configValidator) validateUserManagedEgress(
 		}
 	}
 
-	// C11 + C12: CIDR containment / non-overlap with pods / services.
-	subnetCIDR := ""
-	if subnet.Properties.AddressPrefix != nil {
-		subnetCIDR = *subnet.Properties.AddressPrefix
+	// C11 + C12: CIDR containment / non-overlap with pods / services. A subnet can carry more than
+	// one address prefix (dual-stack or multi-prefix subnets), and every prefix backs worker NICs,
+	// so each one must satisfy the constraints.
+	var subnetCIDRs []string
+	if subnet.Properties.AddressPrefix != nil && *subnet.Properties.AddressPrefix != "" {
+		subnetCIDRs = append(subnetCIDRs, *subnet.Properties.AddressPrefix)
 	}
-	if subnetCIDR == "" && len(subnet.Properties.AddressPrefixes) > 0 && subnet.Properties.AddressPrefixes[0] != nil {
-		subnetCIDR = *subnet.Properties.AddressPrefixes[0]
+	for _, prefix := range subnet.Properties.AddressPrefixes {
+		if prefix != nil && *prefix != "" {
+			subnetCIDRs = append(subnetCIDRs, *prefix)
+		}
 	}
-	if subnetCIDR == "" {
+	if len(subnetCIDRs) == 0 {
 		return append(allErrs, field.Invalid(subnetPath, subnetRef.Name, fmt.Sprintf("subnet %q has no address prefix", subnetRef.Name)))
 	}
 
 	if cluster != nil && cluster.Shoot != nil && cluster.Shoot.Spec.Networking != nil {
 		net := cluster.Shoot.Spec.Networking
-		subnetCIDRVal := cidrvalidation.NewCIDR(subnetCIDR, subnetPath)
-		allErrs = append(allErrs, subnetCIDRVal.ValidateParse()...)
 
-		if net.Nodes != nil {
-			nodesCIDR := cidrvalidation.NewCIDR(*net.Nodes, field.NewPath("networking", "nodes"))
-			// C11: subnet CIDR must be a subset of shoot.spec.networking.nodes
-			allErrs = append(allErrs, nodesCIDR.ValidateSubset(subnetCIDRVal)...)
-		}
 		// C12: subnet CIDR must not overlap pods / services
 		var others []cidrvalidation.CIDR
 		if net.Pods != nil {
@@ -226,8 +210,19 @@ func (cv *configValidator) validateUserManagedEgress(
 		if net.Services != nil {
 			others = append(others, cidrvalidation.NewCIDR(*net.Services, field.NewPath("networking", "services")))
 		}
-		if len(others) > 0 {
-			allErrs = append(allErrs, subnetCIDRVal.ValidateNotOverlap(others...)...)
+
+		for _, subnetCIDR := range subnetCIDRs {
+			subnetCIDRVal := cidrvalidation.NewCIDR(subnetCIDR, subnetPath)
+			allErrs = append(allErrs, subnetCIDRVal.ValidateParse()...)
+
+			if net.Nodes != nil {
+				nodesCIDR := cidrvalidation.NewCIDR(*net.Nodes, field.NewPath("networking", "nodes"))
+				// C11: subnet CIDR must be a subset of shoot.spec.networking.nodes
+				allErrs = append(allErrs, nodesCIDR.ValidateSubset(subnetCIDRVal)...)
+			}
+			if len(others) > 0 {
+				allErrs = append(allErrs, subnetCIDRVal.ValidateNotOverlap(others...)...)
+			}
 		}
 	}
 

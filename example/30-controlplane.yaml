@@ -73,11 +73,11 @@ spec:
     networks:
       vnet:
         name: vnet-1234
+      # outboundAccessType is one of "NATGateway", "LoadBalancer", or "UserManaged" (BYO subnet).
+#      outboundAccessType: NATGateway
       subnets:
       - purpose: nodes
         name: subnet-acbd1234
-      # outboundAccessType is one of "NATGateway", "LoadBalancer", or "UserManaged" (BYO subnet).
-#      outboundAccessType: NATGateway
     routeTables:
     - name: route-table
       purpose: nodes

@@ -16,6 +16,7 @@ import (
 
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	. "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/validation"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
 var _ = Describe("InfrastructureConfig validation", func() {
@@ -58,6 +59,15 @@ var _ = Describe("InfrastructureConfig validation", func() {
 
 	Describe("#ValidateInfrastructureConfig", func() {
 		Describe("ValidateInput", func() {
+			It("should allow the disable-default-outbound-access annotation in managed-subnet mode", func() {
+				shootWithAnnotation := *shoot.DeepCopy()
+				shootWithAnnotation.Annotations = map[string]string{
+					azure.DisableDefaultOutboundAccessAnnotation: "true",
+				}
+				errorList := ValidateInfrastructureConfig(infrastructureConfig, &shootWithAnnotation, providerPath)
+				Expect(errorList).To(BeEmpty())
+			})
+
 			It("should forbid specifying an invalid resource group name", func() {
 				infrastructureConfig.ResourceGroup = &apisazure.ResourceGroup{
 					Name: "invalid-resource-group-name[[]]",
@@ -1324,6 +1334,27 @@ var _ = Describe("InfrastructureConfig validation", func() {
 					"Type":  Equal(field.ErrorTypeRequired),
 					"Field": Equal("networks.vnet.resourceGroup"),
 				}))))
+			})
+
+			It("should reject the disable-default-outbound-access annotation in BYO mode", func() {
+				shootWithAnnotation := *shoot.DeepCopy()
+				shootWithAnnotation.Annotations = map[string]string{
+					azure.DisableDefaultOutboundAccessAnnotation: "true",
+				}
+				errorList := ValidateInfrastructureConfig(byoConfig, &shootWithAnnotation, providerPath)
+				Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeForbidden),
+					"Field": Equal(`metadata.annotations[azure.provider.extensions.gardener.cloud/disable-default-outbound-access]`),
+				}))))
+			})
+
+			It("should accept the disable-default-outbound-access annotation set to false in BYO mode", func() {
+				shootWithAnnotation := *shoot.DeepCopy()
+				shootWithAnnotation.Annotations = map[string]string{
+					azure.DisableDefaultOutboundAccessAnnotation: "false",
+				}
+				errorList := ValidateInfrastructureConfig(byoConfig, &shootWithAnnotation, providerPath)
+				Expect(errorList).To(BeEmpty())
 			})
 
 			It("should reject BYO subnet with zones set (C2)", func() {

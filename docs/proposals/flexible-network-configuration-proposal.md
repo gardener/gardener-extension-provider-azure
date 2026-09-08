@@ -107,7 +107,7 @@ Consequence for Gardener: implementing user-managed egress is entirely a matter 
 Two additions on `InfrastructureConfig.Networks`:
 
 1. **`Subnet` — an optional reference to an existing subnet inside the (also user-provided) VNet.** When set, Gardener switches into user-managed-egress mode. The reference carries only a subnet name, not a resource group — in ARM, a subnet is a child resource of its VNet, so the VNet's resource group (already available on `Networks.VNet.ResourceGroup`) plus VNet name plus subnet name uniquely identify it.
-2. **`Subnet.SkipRouteReconciliation` — an optional boolean, default `false`.** When `true`, the seed CCM's route controller is disabled and Gardener does not require the BYO subnet to have a route table attached. Intended for shoots using an overlay CNI (Cilium/Calico with VXLAN or Geneve) where pod-CIDR routes are not needed in the underlying VNet.
+2. **No route-controller opt-out field.** Whether the seed CCM's route controller is needed is derived from the shoot's networking provider configuration rather than from a field on `Subnet`. See [Route-controller and overlay-CNI opt-out](#route-controller-and-overlay-cni-opt-out).
 
 No new mode/enum is added. Presence of `Networks.Subnet` alone signals user-managed-egress mode (see [Derived mode](#derived-mode)).
 
@@ -141,12 +141,12 @@ When `Networks.Subnet != nil`:
 | Rule                                                                                                           | Rationale                                                                                                                                                                                                                   |
 | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | The referenced subnet must exist in the BYO VNet                                                               | Fail fast with a clear error.                                                                                                                                                                                               |
-| The subnet must have a `RouteTable` association (`subnet.properties.routeTable.id != nil`), unless `Networks.Subnet.SkipRouteReconciliation=true` | The seed CCM runs the route controller by default and needs somewhere to write per-node pod-CIDR routes. Relaxed for overlay CNI shoots that opt out (see [Route-controller and overlay-CNI opt-out](#route-controller-and-overlay-cni-opt-out)).                                                                                                                                                                              |
+| The subnet must have a `RouteTable` association (`subnet.properties.routeTable.id != nil`),  unless the shoot uses an overlay CNI | The seed CCM runs the route controller by default and needs somewhere to write per-node pod-CIDR routes. Relaxed for overlay CNI shoots that opt out (see [Route-controller and overlay-CNI opt-out](#route-controller-and-overlay-cni-opt-out)).                                                                                                                                                                              |
 | The subnet must have a `NetworkSecurityGroup` association (`subnet.properties.networkSecurityGroup.id != nil`) | Upstream CCM's `EnsureLoadBalancer` needs a non-empty `securityGroupName` in `azure.json` to program per-`Service type=LoadBalancer` ingress rules. Gardener discovers the NSG from the subnet; it does not create one in BYO mode. |
 | The subnet's CIDR must be a subset of `shoot.spec.networking.nodes` and non-overlapping with pods/services     | Same rule that validates managed subnets today.                                                                                                                                                                             |
 | The discovered route table and NSG must be in the same subscription as the shoot                               | Cross-subscription references aren't supported by CCM's `azure.json`. There is **no** cluster-RG-or-VNet-RG constraint: any RG in the subscription is fine (see [Cloud-provider config](#cloud-provider-config-azurejson)). |
 
-The subnet's `NetworkSecurityGroup` association is **required** in BYO mode (unlike the route table, which is optional under `SkipRouteReconciliation`): the upstream CCM cannot program `Service type=LoadBalancer` ingress rules without a `securityGroupName`. The user attaches the NSG to their subnet before shoot creation; Gardener discovers it and never creates, replaces, or mutates the resource itself. Runtime mutation of the NSG's `securityRules` collection by the CCM and the bastion controller is unchanged from managed mode — see [NSG mutation contract](#nsg-mutation-contract). The user is responsible for ensuring the NSG permits the traffic flows Kubernetes requires — see [Configuration patterns](#configuration-patterns) for the specifics.
+The subnet's `NetworkSecurityGroup` association is **required** in BYO mode (unlike the route table, which is optional for overlay-CNI shoots): the upstream CCM cannot program `Service type=LoadBalancer` ingress rules without a `securityGroupName`. The user attaches the NSG to their subnet before shoot creation; Gardener discovers it and never creates, replaces, or mutates the resource itself. Runtime mutation of the NSG's `securityRules` collection by the CCM and the bastion controller is unchanged from managed mode — see [NSG mutation contract](#nsg-mutation-contract). The user is responsible for ensuring the NSG permits the traffic flows Kubernetes requires — see [Configuration patterns](#configuration-patterns) for the specifics.
 
 **Immutability** (`ValidateInfrastructureConfigUpdate`):
 
@@ -196,7 +196,7 @@ flowchart TD
 **New reconciler task** `EnsureUserSubnet` — active only in BYO mode. It:
 
 1. Reads the referenced subnet from Azure.
-2. Verifies the subnet exists in the BYO VNet, that its CIDR is compatible with the shoot's networking config, that it has an NSG attached, and that it has a route table attached unless `SkipRouteReconciliation=true`.
+2. Verifies the subnet exists in the BYO VNet, that its CIDR is compatible with the shoot's networking config, that it has an NSG attached, and that it has a route table attached unless the shoot uses an overlay CNI.
 3. Parses the NSG and route table ARM IDs into `(resourceGroup, name)` pairs and stores them for status emission and `azure.json` rendering.
 4. Never issues a `PUT`/`PATCH` on the subnet itself — the discovery is read-only.
 
@@ -214,7 +214,7 @@ The `RouteTable` and `SecurityGroup` status types both gain an optional `Resourc
 | `Networks.Subnets[]`                 | one entry: `{Purpose: PurposeNodes, Name: <BYO subnet name>, Zone: nil, Migrated: false, NatGatewayID: nil}` |
 | `Networks.Layout`                    | `SingleSubnet`                                                                                               |
 | `Networks.OutboundAccessType`        | **new value** `UserManaged`                                                                                  |
-| `RouteTables[]`                      | one entry with the discovered RT `Name` + `ResourceGroup`; **omitted entirely** if `SkipRouteReconciliation=true` and no RT is attached |
+| `RouteTables[]`                      | one entry with the discovered RT `Name` + `ResourceGroup`; **omitted entirely** if the shoot uses an overlay CNI and no RT is attached |
 | `SecurityGroups[]`                   | one entry with the discovered NSG `Name` + `ResourceGroup`                                                   |
 | `EgressCIDRs`                        | **nil** (Gardener has no knowledge of the user's egress IPs)                                                 |
 
@@ -246,13 +246,13 @@ There are two operating modes for pod-CIDR routing on Azure:
 
 **Overlay-CNI (route-controller disabled)** — shoots using an overlay CNI (Cilium with VXLAN or Geneve, Calico with VXLAN, etc.) do not need pod-CIDR routes in the underlying VNet: pod-to-pod traffic is encapsulated at the node level. For those shoots Gardener should be able to leave the user's route table completely untouched.
 
-The proposal introduces an opt-out signal that turns the route controller off:
+The proposal derives the opt-out signal from the shoot's networking configuration:
 
-- A new optional field, `Networks.Subnet.SkipRouteReconciliation *bool` (default `false` — preserves today's behavior).
-- When `true`, the seed CCM runs with `--configure-cloud-routes=false` and the reconciler does not require the BYO subnet to have a route table attached at all. If a route table is attached, Gardener still discovers and references it in `azure.json` (for consistency and for the CCM's LB code paths that read route-table state), but no per-node routes are written.
-- Validation adjusts accordingly: the "subnet must have a `RouteTable` association" rule from [Validation rules](#validation-rules) is relaxed when `SkipRouteReconciliation=true`.
+- Overlay mode is read from `shoot.spec.networking.providerConfig` (the CNI extension's `overlay.enabled`), which is the same signal the CNI itself uses. No new field is added to `Networks.Subnet`.
+- When overlay is enabled, the seed CCM runs with `--configure-cloud-routes=false` and the reconciler does not require the BYO subnet to have a route table attached at all. If a route table is attached, Gardener still discovers and references it in `azure.json` (for consistency and for the CCM's LB code paths that read route-table state), but no per-node routes are written.
+- Validation adjusts accordingly: the "subnet must have a `RouteTable` association" rule from [Validation rules](#validation-rules) is relaxed for overlay-CNI shoots.
 
-The user takes ownership of using an overlay CNI. Gardener does not introspect the shoot's `networking.type` or the CNI's configuration to auto-derive this — the field is an explicit opt-in with clear semantics, and misconfiguration (setting it `true` while using a non-overlay CNI) is the user's responsibility.
+Deriving the signal keeps the two settings from drifting apart: a user cannot claim overlay semantics on the Azure side while running a non-overlay CNI, because both read the same source of truth.
 
 ### NSG mutation contract
 
@@ -501,7 +501,7 @@ Any implementation must pass the following scenarios end-to-end. They are groupe
 | C6  | `Networks.Subnet` set + `Networks.VNet.CIDR` set                                  | API validation rejects: CIDR is discovered from the actual VNet.                          |
 | C7  | `Networks.Subnet` set + `Networks.VNet.DDosProtectionPlanID` set                  | API validation rejects: DDoS plan managed by user on BYO VNet.                            |
 | C8  | `Networks.Subnet.Name` refers to a subnet that does not exist inside the BYO VNet | Pre-flight (runtime) validator rejects with error containing subnet name + VNet identity. |
-| C9  | Referenced subnet has no `RouteTable` association, and `SkipRouteReconciliation` is not set              | Pre-flight validator rejects: route table must be pre-attached to the BYO subnet, or overlay opt-out must be selected. |
+| C9  | Referenced subnet has no `RouteTable` association, and the shoot does not use an overlay CNI              | Pre-flight validator rejects: route table must be pre-attached to the BYO subnet, or overlay opt-out must be selected. |
 | C9b | Referenced subnet has no `NetworkSecurityGroup` association                        | Pre-flight validator rejects: an NSG must be pre-attached to the BYO subnet (CCM requires `securityGroupName`). |
 | C10 | Referenced subnet's CIDR is not a subset of `shoot.spec.networking.nodes`         | Pre-flight validator rejects.                                                             |
 | C11 | Referenced subnet's CIDR overlaps `shoot.spec.networking.pods` or `.services`     | Pre-flight validator rejects.                                                             |

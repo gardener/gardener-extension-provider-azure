@@ -68,10 +68,8 @@ func (fctx *FlowContext) EnsureUserSubnet(ctx context.Context) error {
 	// Route table discovery is optional when the shoot uses an overlay CNI: pod-to-pod traffic is
 	// encapsulated at the node level and no per-node routes are written into the underlying VNet.
 	// Signal comes from the shoot's networking provider config, not from the InfrastructureConfig.
-	overlayEnabled, err := helper.IsOverlayEnabled(fctx.cluster.Shoot.Spec.Networking)
-	if err != nil {
-		return fmt.Errorf("failed to determine overlay networking mode: %w", err)
-	}
+	// The overlay lookup can fail on a malformed providerConfig, so it is only consulted when the
+	// subnet actually lacks a route table and the answer matters.
 	if subnet.Properties.RouteTable != nil && subnet.Properties.RouteTable.ID != nil {
 		rtID := *subnet.Properties.RouteTable.ID
 		rtResID, err := arm.ParseResourceID(rtID)
@@ -81,8 +79,21 @@ func (fctx *FlowContext) EnsureUserSubnet(ctx context.Context) error {
 		byo.Set(KeyBYORTID, rtID)
 		byo.Set(KeyBYORTName, rtResID.Name)
 		byo.Set(KeyBYORTResourceGroup, rtResID.ResourceGroupName)
-	} else if !overlayEnabled {
-		return fmt.Errorf("BYO subnet %q has no route table attached; either attach one or enable an overlay CNI on the shoot's networking (Cilium/Calico with VXLAN or Geneve)", subnetRef.Name)
+	} else {
+		overlayEnabled, err := helper.IsOverlayEnabled(fctx.cluster.Shoot.Spec.Networking)
+		if err != nil {
+			return fmt.Errorf("failed to determine overlay networking mode: %w", err)
+		}
+		if !overlayEnabled {
+			return fmt.Errorf("BYO subnet %q has no route table attached; either attach one or enable an overlay CNI on the shoot's networking (Cilium/Calico with VXLAN or Geneve)", subnetRef.Name)
+		}
+		// Detaching the route table is legal for overlay shoots. The whiteboard is restored from
+		// persisted state, so any previously discovered association must be dropped here to keep
+		// InfrastructureStatus and azure.json from reporting a route table that is no longer
+		// attached.
+		byo.Delete(KeyBYORTID)
+		byo.Delete(KeyBYORTName)
+		byo.Delete(KeyBYORTResourceGroup)
 	}
 
 	if subnet.Properties.AddressPrefix != nil {
@@ -149,14 +160,17 @@ func (fctx *FlowContext) getUserManagedEgressInfrastructureStatus() (*v1alpha1.I
 	}
 
 	if rtName := byo.Get(KeyBYORTName); rtName != nil {
-		rtRG := byo.Get(KeyBYORTResourceGroup)
-		status.RouteTables = []v1alpha1.RouteTable{
-			{
-				Purpose:       v1alpha1.PurposeNodes,
-				Name:          *rtName,
-				ResourceGroup: to.Ptr(*rtRG),
-			},
+		routeTable := v1alpha1.RouteTable{
+			Purpose: v1alpha1.PurposeNodes,
+			Name:    *rtName,
 		}
+		// The resource group is written together with the name, but the whiteboard is restored
+		// from persisted state, so treat a missing value as "shoot's cluster resource group"
+		// rather than dereferencing a nil pointer.
+		if rtRG := byo.Get(KeyBYORTResourceGroup); rtRG != nil {
+			routeTable.ResourceGroup = to.Ptr(*rtRG)
+		}
+		status.RouteTables = []v1alpha1.RouteTable{routeTable}
 	}
 
 	if identity := fctx.cfg.Identity; identity != nil {

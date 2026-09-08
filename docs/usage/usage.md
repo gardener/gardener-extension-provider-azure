@@ -753,6 +753,8 @@ Using the `azure.provider.extensions.gardener.cloud/disable-default-outbound-acc
 
 This annotation is should only be used for testing and not production shoots. It will be removed in a future release shortly after the deprecation date by Azure.
 
+The annotation is only meaningful for Gardener-managed worker subnets. It is rejected at admission when the shoot brings its own subnet (`networks.subnet` is set), because Gardener neither creates nor mutates that subnet — configure `defaultOutboundAccess` on the subnet itself instead. See [user-managed egress](./user-managed-egress.md).
+
 ### Support for VolumeAttributesClasses (Beta in k8s 1.31)
 
 To have the CSI-driver configured to support the necessary features for [VolumeAttributesClasses](https://kubernetes.io/docs/concepts/storage/volume-attributes-classes/) on Azure for shoots with k8s-version < 1.34, use the `azure.provider.extensions.gardener.cloud/enable-volume-attributes-class=true` annotation on the shoot.

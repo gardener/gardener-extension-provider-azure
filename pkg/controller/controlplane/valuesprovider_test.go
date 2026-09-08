@@ -599,6 +599,42 @@ var _ = Describe("ValuesProvider", func() {
 			}))
 		})
 
+		It("should not deploy the allow-egress services for a BYO-subnet shoot", func() {
+			// The allow-{tcp,udp}-egress services exist solely to work around SNAT exhaustion on
+			// standard loadbalancer egress. In user-managed-egress mode the user owns egress
+			// entirely, so these services must never be created - regardless of the shoot being
+			// zoned, which would otherwise satisfy the first half of the condition.
+			cluster = generateCluster(cidr, k8sVersion, true, nil, nil, nil)
+			infrastructureStatus.Zoned = true
+			infrastructureStatus.Networks.OutboundAccessType = v1alpha1.OutboundAccessTypeUserManaged
+			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+			csiNode := csiNodeEnabled
+
+			values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(map[string]interface{}{
+				azure.AllowEgressName:            enabledFalse,
+				azure.CloudControllerManagerName: cloudControllerManager,
+				azure.CSINodeName:                csiNode,
+				azure.RemedyControllerName:       enabledTrue,
+			}))
+		})
+
+		It("should not deploy the allow-egress services for a BYO-subnet shoot carrying the disable-default-outbound-access annotation", func() {
+			// The annotation has no effect in BYO mode - Gardener does not manage the user's
+			// subnet - but it must not accidentally re-enable the loadbalancer egress workaround.
+			cluster = generateCluster(cidr, k8sVersion, true, map[string]string{
+				azure.DisableDefaultOutboundAccessAnnotation: "true",
+			}, nil, nil)
+			infrastructureStatus.Zoned = true
+			infrastructureStatus.Networks.OutboundAccessType = v1alpha1.OutboundAccessTypeUserManaged
+			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+
+			values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(HaveKeyWithValue(azure.AllowEgressName, enabledFalse))
+		})
+
 		Context("remedy controller is disabled", func() {
 			It("should return correct control plane shoot chart values for zoned cluster", func() {
 				shootAnnotations := map[string]string{

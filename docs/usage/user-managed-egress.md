@@ -7,7 +7,13 @@ title: User-managed egress via BYO subnet
 Azure shoots may bring their own worker **subnet** inside their own **VNet** to take full control of
 egress. In this mode Gardener stops creating and managing the worker subnet, its route table, its
 network security group, the NAT Gateway, and the `allow-{tcp,udp}-egress` loadbalancer workaround
-services. You pre-provision all of the above; Gardener only discovers and references them.
+services.
+
+You pre-provision the subnet and the network security group attached to it. A route table is
+required only for shoots that do **not** use an overlay CNI, because that is the case where the seed
+cloud-controller-manager has to write per-node pod-CIDR routes into the VNet. A NAT Gateway is
+optional and only needed if you want Azure-managed egress instead of your own firewall or NVA.
+Gardener only discovers and references whatever you attach.
 
 The NSG attached to your subnet is what the Azure cloud-controller-manager writes
 `Service type=LoadBalancer` ingress rules onto, and what the bastion controller writes bastion SSH
@@ -83,7 +89,7 @@ The user MUST NOT:
   the callout at the top of this page).
 - Run competing automation (Terraform, policy engines) against the discovered NSG or route table
   in ways that fight the CCM/bastion controller's normal rule/route management.
-- Rely on `shoot.status.provider.egressCIDRs` for firewall allowlisting on the receiving side.
+- Rely on `shoot.status.networking.egressCIDRs` for firewall allowlisting on the receiving side.
   That field is empty (`nil`) in BYO mode because Gardener has no reliable way to know the user's
   firewall / NVA egress IPs.
 - Expect Gardener to prune orphan rules or routes on shoot deletion — see [Deletion](#deletion)
@@ -121,6 +127,9 @@ marker annotation is required. When the config is submitted Gardener:
   table.
 - Skips deploying the `allow-tcp-egress` and `allow-udp-egress` services in the shoot's
   `kube-system` namespace.
+- Rejects the `azure.provider.extensions.gardener.cloud/disable-default-outbound-access` annotation
+  at admission. Gardener does not create or mutate the BYO subnet, so it cannot apply the setting;
+  configure `defaultOutboundAccess` on the subnet yourself before shoot creation.
 
 The `zoned` field remains valid — the shoot can still be zonal even though the worker subnet is
 single-subnet.
