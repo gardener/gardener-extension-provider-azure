@@ -19,7 +19,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-
 	azureclientmock "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client/mock"
 )
 
