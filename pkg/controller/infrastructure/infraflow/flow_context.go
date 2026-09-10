@@ -151,15 +151,37 @@ func (fctx *FlowContext) buildReconcileGraph() *flow.Graph {
 	fctx.BasicFlowContext = shared.NewBasicFlowContext().WithSpan().WithLogger(fctx.log).WithPersist(fctx.persistState)
 	g := flow.NewGraph("Azure infrastructure reconciliation")
 
-	resourceGroup := fctx.AddTask(g, "ensure resource group",
+	resourceGroup, vnet := fctx.addCommonReconcileTasks(g)
+
+	if helper.IsUsingUserManagedEgress(fctx.cfg) {
+		fctx.addUserManagedEgressReconcileTasks(g, vnet)
+	} else {
+		fctx.addManagedReconcileTasks(g, resourceGroup, vnet)
+	}
+	return g
+}
+
+// addCommonReconcileTasks registers the tasks that both managed-mode and BYO-subnet shoots share:
+// the shoot's resource group, the VNet (managed or BYO), and the optional managed identity. It
+// returns the resource-group and VNet task IDs so the mode-specific builders can wire further
+// dependencies on top of them.
+func (fctx *FlowContext) addCommonReconcileTasks(g *flow.Graph) (resourceGroup, vnet flow.TaskIDer) {
+	resourceGroup = fctx.AddTask(g, "ensure resource group",
 		fctx.EnsureResourceGroup, shared.Timeout(defaultTimeout))
 
-	vnet := fctx.AddTask(g, "ensure vnet",
+	vnet = fctx.AddTask(g, "ensure vnet",
 		fctx.EnsureVirtualNetwork, shared.Timeout(defaultTimeout), shared.Dependencies(resourceGroup))
 
 	_ = fctx.AddTask(g, "ensure managed identity",
 		fctx.EnsureManagedIdentity, shared.DoIf(fctx.cfg.Identity != nil))
 
+	return resourceGroup, vnet
+}
+
+// addManagedReconcileTasks registers the tasks that create the Gardener-managed network stack:
+// route table, worker network security group, worker public IPs, NAT gateway (if enabled), and
+// the worker subnet(s). All of these are skipped in BYO-subnet mode.
+func (fctx *FlowContext) addManagedReconcileTasks(g *flow.Graph, resourceGroup, vnet flow.TaskIDer) {
 	routeTable := fctx.AddTask(g, "ensure route table",
 		fctx.EnsureRouteTable, shared.Timeout(defaultTimeout), shared.Dependencies(resourceGroup))
 
@@ -168,12 +190,20 @@ func (fctx *FlowContext) buildReconcileGraph() *flow.Graph {
 
 	ip := fctx.AddTask(g, "ensure public IPs",
 		fctx.EnsurePublicIps, shared.Timeout(defaultLongTimeout), shared.Dependencies(resourceGroup))
+
 	nat := fctx.AddTask(g, "ensure nats",
 		fctx.EnsureNatGateways, shared.Timeout(defaultLongTimeout), shared.Dependencies(resourceGroup, ip))
 
 	_ = fctx.AddTask(g, "ensure subnets", fctx.EnsureSubnets,
 		shared.Timeout(defaultLongTimeout), shared.Dependencies(vnet, routeTable, securityGroup, nat))
-	return g
+}
+
+// addUserManagedEgressReconcileTasks registers the tasks that support user-managed-egress mode: a
+// read-only discovery pass over the BYO subnet that populates status with the discovered NSG and
+// route table. No mutating call is ever issued against the user's network resources.
+func (fctx *FlowContext) addUserManagedEgressReconcileTasks(g *flow.Graph, vnet flow.TaskIDer) {
+	_ = fctx.AddTask(g, "ensure BYO subnet (read-only discovery)",
+		fctx.EnsureUserSubnet, shared.Timeout(defaultTimeout), shared.Dependencies(vnet))
 }
 
 // Delete deletes all resources managed by the reconciler
@@ -188,13 +218,14 @@ func (fctx *FlowContext) Delete(ctx context.Context) error {
 
 	fctx.BasicFlowContext = shared.NewBasicFlowContext().WithSpan().WithLogger(fctx.log).WithPersist(fctx.persistState)
 	managedVnet := fctx.adapter.VirtualNetworkConfig().Managed
+	byo := helper.IsUsingUserManagedEgress(fctx.cfg)
 	g := flow.NewGraph("Azure infrastructure deletion")
 
 	loadBalancers := fctx.AddTask(g, "delete load balancers",
 		fctx.DeleteLoadBalancers, shared.Timeout(defaultLongTimeout), shared.DoIf(!managedVnet))
 	foreignSubnets := fctx.AddTask(g, "delete subnets in foreign resource group",
 		fctx.DeleteSubnetsInForeignGroup, shared.Timeout(defaultLongTimeout),
-		shared.Dependencies(loadBalancers), shared.DoIf(!managedVnet))
+		shared.Dependencies(loadBalancers), shared.DoIf(!managedVnet && !byo))
 
 	fctx.AddTask(g, "delete resource group",
 		fctx.DeleteResourceGroup, shared.Dependencies(foreignSubnets), shared.Timeout(defaultLongTimeout))

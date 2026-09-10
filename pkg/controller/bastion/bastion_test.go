@@ -142,17 +142,40 @@ var _ = Describe("Bastion test", func() {
 		It("getWorkersCIDR", func() {
 			// no second tests without capabilities is required as the function does not depend on cloudprofile
 			cluster := createAzureTestCluster(vNetCIDR, true)
-			cidr, err := getWorkersCIDR(cluster)
+			cidr, err := getWorkersCIDR(cluster, nil)
 			Expect(err).To(Not(HaveOccurred()))
 			Expect(cidr).To(Equal([]string{"10.250.0.0/16"}))
 		})
+
+		It("should use the discovered BYO subnet CIDR from infrastructure status", func() {
+			cluster := createAzureTestCluster(vNetCIDR, true)
+			cluster.Shoot.Spec.Provider.InfrastructureConfig.Raw = []byte(`{"networks":{"vnet":{"name":"vnet","resourceGroup":"rg"},"subnet":{"name":"workers"}}}`)
+
+			cidr, err := getWorkersCIDR(cluster, &api.InfrastructureStatus{
+				Networks: api.NetworkStatus{
+					Subnets: []api.Subnet{{
+						Name:    "workers",
+						Purpose: api.PurposeNodes,
+						CIDR:    ptr.To("10.250.0.0/24"),
+					}},
+				},
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(cidr).To(Equal([]string{"10.250.0.0/24"}))
+		})
+
 	})
 
 	Describe("Determine options", func() {
 		DescribeTable("should return options", func(isCapabilityCloudProfile bool) {
 			cluster := createAzureTestCluster(vNetCIDR, isCapabilityCloudProfile)
 
-			options, err := NewOpts(bastion, cluster, "cluster1", log)
+			options, err := NewOpts(bastion, cluster, &api.InfrastructureStatus{
+				ResourceGroup: api.ResourceGroup{Name: "cluster1"},
+				SecurityGroups: []api.SecurityGroup{
+					{Purpose: api.PurposeNodes, Name: "cluster1-workers"},
+				},
+			}, log)
 			Expect(err).To(Not(HaveOccurred()))
 
 			Expect(options.BastionInstanceName).To(Equal("cluster1-bastionName1-bastion-1cdc8"))
@@ -172,12 +195,47 @@ var _ = Describe("Bastion test", func() {
 				"Type": ptr.To("gardenctl"),
 			}))
 			Expect(options.SecurityGroupName).To(Equal("cluster1-workers"))
+			Expect(options.SecurityGroupResourceGroup).To(BeEmpty())
 			Expect(options.MachineType).To(Equal("machineName"))
 			Expect(*options.ImageRef.CommunityGalleryImageID).To(Equal("/CommunityGalleries/gardenlinux-1.2.3"))
 		},
 			Entry("cloudProfile without capabilities", false),
 			Entry("cloudProfile with capabilities", true),
 		)
+
+		It("should return an error when the infrastructure status is nil", func() {
+			cluster := createAzureTestCluster(vNetCIDR, false)
+
+			_, err := NewOpts(bastion, cluster, nil, log)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("infrastructure status must not be nil"))
+		})
+
+		It("should source NSG name and foreign resource group from the BYO status", func() {
+			cluster := createAzureTestCluster(vNetCIDR, false)
+
+			options, err := NewOpts(bastion, cluster, &api.InfrastructureStatus{
+				ResourceGroup: api.ResourceGroup{Name: "cluster1"},
+				Networks: api.NetworkStatus{
+					Subnets: []api.Subnet{{
+						Name:    "workers",
+						Purpose: api.PurposeNodes,
+						CIDR:    ptr.To("10.250.0.0/24"),
+					}},
+				},
+				SecurityGroups: []api.SecurityGroup{
+					{
+						Purpose:       api.PurposeNodes,
+						Name:          "team-owned-nsg",
+						ResourceGroup: ptr.To("central-security-rg"),
+					},
+				},
+			}, log)
+			Expect(err).To(Not(HaveOccurred()))
+			Expect(options.SecurityGroupName).To(Equal("team-owned-nsg"))
+			Expect(options.SecurityGroupResourceGroup).To(Equal("central-security-rg"))
+			Expect(options.WorkersCIDR).To(Equal([]string{"10.250.0.0/24"}))
+		})
 	})
 
 	Describe("check Names generations", func() {

@@ -291,6 +291,9 @@ var _ = Describe("ValuesProvider", func() {
 				"secrets": map[string]interface{}{
 					"server": "cloud-controller-manager-server",
 				},
+				// Test fixtures set no networking.providerConfig, so IsOverlayEnabled returns true
+				// and configureCloudRoutes evaluates to !true = false.
+				"configureCloudRoutes": false,
 			})
 		)
 
@@ -424,6 +427,42 @@ var _ = Describe("ValuesProvider", func() {
 			}))
 		})
 
+		Context("CCM route-controller flag (configureCloudRoutes)", func() {
+			It("sets configureCloudRoutes=false when the shoot has no networking provider config (overlay defaults to enabled)", func() {
+				// IsOverlayEnabled returns true when providerConfig is absent, so cloud routes must be off.
+				cluster = generateCluster(cidr, k8sVersion, true, nil, nil, &gardencorev1beta1.Seed{})
+				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+
+				values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, fakeSecretsManager, checksums, false)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values[azure.CloudControllerManagerName]).To(HaveKeyWithValue("configureCloudRoutes", false))
+			})
+
+			It("sets configureCloudRoutes=false when the shoot's networking has overlay enabled", func() {
+				cluster = generateCluster(cidr, k8sVersion, true, nil, nil, &gardencorev1beta1.Seed{})
+				cluster.Shoot.Spec.Networking.ProviderConfig = &runtime.RawExtension{
+					Raw: []byte(`{"overlay":{"enabled":true}}`),
+				}
+				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+
+				values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, fakeSecretsManager, checksums, false)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values[azure.CloudControllerManagerName]).To(HaveKeyWithValue("configureCloudRoutes", false))
+			})
+
+			It("sets configureCloudRoutes=true when the shoot's networking has overlay disabled", func() {
+				cluster = generateCluster(cidr, k8sVersion, true, nil, nil, &gardencorev1beta1.Seed{})
+				cluster.Shoot.Spec.Networking.ProviderConfig = &runtime.RawExtension{
+					Raw: []byte(`{"overlay":{"enabled":false}}`),
+				}
+				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+
+				values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, fakeSecretsManager, checksums, false)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values[azure.CloudControllerManagerName]).To(HaveKeyWithValue("configureCloudRoutes", true))
+			})
+		})
+
 		DescribeTable("topologyAwareRoutingEnabled value",
 			func(seedSettings *gardencorev1beta1.SeedSettings, shootControlPlane *gardencorev1beta1.ControlPlane) {
 				seed := &gardencorev1beta1.Seed{
@@ -477,12 +516,14 @@ var _ = Describe("ValuesProvider", func() {
 				"cloudProviderConfig": cloudProviderConfigData,
 			})
 			cloudControllerManager = map[string]interface{}{
-				"enabled":    true,
-				"vpaEnabled": true,
+				"enabled":              true,
+				"vpaEnabled":           true,
+				"configureCloudRoutes": false, // default fixture has no networking providerConfig -> overlay defaults to enabled -> cloud routes off
 			}
 			cloudControllerManagerWithVPADisabled = map[string]interface{}{
-				"enabled":    true,
-				"vpaEnabled": false,
+				"enabled":              true,
+				"vpaEnabled":           false,
+				"configureCloudRoutes": false,
 			}
 
 			cpDiskConfig = &corev1.Secret{
@@ -556,6 +597,42 @@ var _ = Describe("ValuesProvider", func() {
 				azure.CSINodeName:                csiNode,
 				azure.RemedyControllerName:       enabledTrue,
 			}))
+		})
+
+		It("should not deploy the allow-egress services for a BYO-subnet shoot", func() {
+			// The allow-{tcp,udp}-egress services exist solely to work around SNAT exhaustion on
+			// standard loadbalancer egress. In user-managed-egress mode the user owns egress
+			// entirely, so these services must never be created - regardless of the shoot being
+			// zoned, which would otherwise satisfy the first half of the condition.
+			cluster = generateCluster(cidr, k8sVersion, true, nil, nil, nil)
+			infrastructureStatus.Zoned = true
+			infrastructureStatus.Networks.OutboundAccessType = v1alpha1.OutboundAccessTypeUserManaged
+			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+			csiNode := csiNodeEnabled
+
+			values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(Equal(map[string]interface{}{
+				azure.AllowEgressName:            enabledFalse,
+				azure.CloudControllerManagerName: cloudControllerManager,
+				azure.CSINodeName:                csiNode,
+				azure.RemedyControllerName:       enabledTrue,
+			}))
+		})
+
+		It("should not deploy the allow-egress services for a BYO-subnet shoot carrying the disable-default-outbound-access annotation", func() {
+			// The annotation has no effect in BYO mode - Gardener does not manage the user's
+			// subnet - but it must not accidentally re-enable the loadbalancer egress workaround.
+			cluster = generateCluster(cidr, k8sVersion, true, map[string]string{
+				azure.DisableDefaultOutboundAccessAnnotation: "true",
+			}, nil, nil)
+			infrastructureStatus.Zoned = true
+			infrastructureStatus.Networks.OutboundAccessType = v1alpha1.OutboundAccessTypeUserManaged
+			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+
+			values, err := vp.GetControlPlaneShootChartValues(ctx, cp, cluster, fakeSecretsManager, checksums)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(values).To(HaveKeyWithValue(azure.AllowEgressName, enabledFalse))
 		})
 
 		Context("remedy controller is disabled", func() {
