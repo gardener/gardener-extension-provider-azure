@@ -183,9 +183,12 @@ func (cv *configValidator) validateUserManagedEgress(
 		}
 	}
 
-	// C11 + C12: CIDR containment / non-overlap with pods / services. A subnet can carry more than
-	// one address prefix (dual-stack or multi-prefix subnets), and every prefix backs worker NICs,
-	// so each one must satisfy the constraints.
+	// C11 + C12: CIDR containment / non-overlap with pods / services. Multi-prefix subnets
+	// (a subnet carrying more than one AddressPrefix — an Azure feature intended for growing
+	// a subnet's range without recreating it) are rejected: the downstream infrastructure
+	// status and Bastion NSG rules are single-CIDR today, and quietly picking the first
+	// prefix would leave workers assigned to a later prefix unreachable from the bastion.
+	// Multi-prefix support is a future scope-widening change.
 	var subnetCIDRs []string
 	if subnet.Properties.AddressPrefix != nil && *subnet.Properties.AddressPrefix != "" {
 		subnetCIDRs = append(subnetCIDRs, *subnet.Properties.AddressPrefix)
@@ -198,10 +201,20 @@ func (cv *configValidator) validateUserManagedEgress(
 	if len(subnetCIDRs) == 0 {
 		return append(allErrs, field.Invalid(subnetPath, subnetRef.Name, fmt.Sprintf("subnet %q has no address prefix", subnetRef.Name)))
 	}
+	if len(subnetCIDRs) > 1 {
+		return append(allErrs, field.Invalid(subnetPath, subnetRef.Name, fmt.Sprintf("subnet %q carries multiple address prefixes (%v); multi-prefix subnets are not supported for BYO worker subnets", subnetRef.Name, subnetCIDRs)))
+	}
 
 	if cluster != nil && cluster.Shoot != nil && cluster.Shoot.Spec.Networking != nil {
 		net := cluster.Shoot.Spec.Networking
+		subnetCIDRVal := cidrvalidation.NewCIDR(subnetCIDRs[0], subnetPath)
+		allErrs = append(allErrs, subnetCIDRVal.ValidateParse()...)
 
+		if net.Nodes != nil {
+			nodesCIDR := cidrvalidation.NewCIDR(*net.Nodes, field.NewPath("networking", "nodes"))
+			// C11: subnet CIDR must be a subset of shoot.spec.networking.nodes
+			allErrs = append(allErrs, nodesCIDR.ValidateSubset(subnetCIDRVal)...)
+		}
 		// C12: subnet CIDR must not overlap pods / services
 		var others []cidrvalidation.CIDR
 		if net.Pods != nil {
@@ -210,19 +223,8 @@ func (cv *configValidator) validateUserManagedEgress(
 		if net.Services != nil {
 			others = append(others, cidrvalidation.NewCIDR(*net.Services, field.NewPath("networking", "services")))
 		}
-
-		for _, subnetCIDR := range subnetCIDRs {
-			subnetCIDRVal := cidrvalidation.NewCIDR(subnetCIDR, subnetPath)
-			allErrs = append(allErrs, subnetCIDRVal.ValidateParse()...)
-
-			if net.Nodes != nil {
-				nodesCIDR := cidrvalidation.NewCIDR(*net.Nodes, field.NewPath("networking", "nodes"))
-				// C11: subnet CIDR must be a subset of shoot.spec.networking.nodes
-				allErrs = append(allErrs, nodesCIDR.ValidateSubset(subnetCIDRVal)...)
-			}
-			if len(others) > 0 {
-				allErrs = append(allErrs, subnetCIDRVal.ValidateNotOverlap(others...)...)
-			}
+		if len(others) > 0 {
+			allErrs = append(allErrs, subnetCIDRVal.ValidateNotOverlap(others...)...)
 		}
 	}
 
