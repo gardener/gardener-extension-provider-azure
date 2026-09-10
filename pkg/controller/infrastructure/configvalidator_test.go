@@ -71,6 +71,7 @@ func TestConfigValidator_UserManagedEgress(t *testing.T) {
 		clusterMutator func(cluster *extensionscontroller.Cluster)
 		subnet         *armnetwork.Subnet
 		subnetErr      error
+		skipARMLookup  bool
 		wantErrField   string
 		wantErrType    field.ErrorType
 		wantOK         bool
@@ -193,6 +194,24 @@ func TestConfigValidator_UserManagedEgress(t *testing.T) {
 			wantErrType:  field.ErrorTypeInternal,
 			wantErrField: "spec.providerConfig.networks.subnet.name",
 		},
+		{
+			name: "defensive: nil VNet.Name short-circuits before the ARM lookup",
+			cfgMutator: func(cfg *apisazure.InfrastructureConfig) {
+				cfg.Networks.VNet.Name = nil
+			},
+			skipARMLookup: true,
+			wantErrField:  "spec.providerConfig.networks.vnet.name",
+			wantErrType:   field.ErrorTypeRequired,
+		},
+		{
+			name: "defensive: nil VNet.ResourceGroup short-circuits before the ARM lookup",
+			cfgMutator: func(cfg *apisazure.InfrastructureConfig) {
+				cfg.Networks.VNet.ResourceGroup = nil
+			},
+			skipARMLookup: true,
+			wantErrField:  "spec.providerConfig.networks.vnet.resourceGroup",
+			wantErrType:   field.ErrorTypeRequired,
+		},
 	}
 
 	for _, tc := range tests {
@@ -201,10 +220,14 @@ func TestConfigValidator_UserManagedEgress(t *testing.T) {
 			defer ctrl.Finish()
 
 			mockSubnets := azureclientmock.NewMockSubnet(ctrl)
+			expectedCalls := 1
+			if tc.skipARMLookup {
+				expectedCalls = 0
+			}
 			mockSubnets.EXPECT().
 				Get(gomock.Any(), vnetRG, vnetName, subnetName, gomock.Nil()).
 				Return(tc.subnet, tc.subnetErr).
-				Times(1)
+				Times(expectedCalls)
 
 			cfg := baseInfraCfg.DeepCopy()
 			if tc.cfgMutator != nil {

@@ -123,10 +123,25 @@ func (cv *configValidator) validateUserManagedEgress(
 	var (
 		allErrs    field.ErrorList
 		subnetRef  = infraConfig.Networks.Subnet
-		vnetName   = *infraConfig.Networks.VNet.Name
-		vnetRG     = *infraConfig.Networks.VNet.ResourceGroup
+		vnet       = infraConfig.Networks.VNet
 		subnetPath = basePath.Child("subnet", "name")
+		vnetPath   = basePath.Child("vnet")
 	)
+
+	// Guard the BYO-VNet dereferences. The API-level validator already requires these fields when
+	// Networks.Subnet is set, but ConfigValidator.Validate runs on the actual Infrastructure
+	// resource — an admission bypass or a stale object would otherwise panic the reconciler here.
+	if vnet.Name == nil || *vnet.Name == "" {
+		allErrs = append(allErrs, field.Required(vnetPath.Child("name"), "vnet name is required when networks.subnet is set"))
+	}
+	if vnet.ResourceGroup == nil || *vnet.ResourceGroup == "" {
+		allErrs = append(allErrs, field.Required(vnetPath.Child("resourceGroup"), "vnet resource group is required when networks.subnet is set"))
+	}
+	if len(allErrs) > 0 {
+		return allErrs
+	}
+	vnetName := *vnet.Name
+	vnetRG := *vnet.ResourceGroup
 
 	// C8: subnet must exist.
 	subnet, err := subnetsClient.Get(ctx, vnetRG, vnetName, subnetRef.Name, nil)
