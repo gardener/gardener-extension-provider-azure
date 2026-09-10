@@ -163,6 +163,31 @@ func TestConfigValidator_UserManagedEgress(t *testing.T) {
 			wantErrType:  field.ErrorTypeInvalid,
 		},
 		{
+			name: "multi-prefix subnet is rejected (AddressPrefix + AddressPrefixes)",
+			subnet: &armnetwork.Subnet{
+				Properties: &armnetwork.SubnetPropertiesFormat{
+					AddressPrefix:        to.Ptr("10.250.0.0/24"),
+					AddressPrefixes:      []*string{to.Ptr("10.250.1.0/24")},
+					NetworkSecurityGroup: &armnetwork.SecurityGroup{ID: to.Ptr(nsgIDSameSub)},
+					RouteTable:           &armnetwork.RouteTable{ID: to.Ptr(rtIDSameSub)},
+				},
+			},
+			wantErrField: "spec.providerConfig.networks.subnet.name",
+			wantErrType:  field.ErrorTypeInvalid,
+		},
+		{
+			name: "multi-prefix subnet is rejected (AddressPrefixes with two entries)",
+			subnet: &armnetwork.Subnet{
+				Properties: &armnetwork.SubnetPropertiesFormat{
+					AddressPrefixes:      []*string{to.Ptr("10.250.0.0/24"), to.Ptr("10.250.1.0/24")},
+					NetworkSecurityGroup: &armnetwork.SecurityGroup{ID: to.Ptr(nsgIDSameSub)},
+					RouteTable:           &armnetwork.RouteTable{ID: to.Ptr(rtIDSameSub)},
+				},
+			},
+			wantErrField: "spec.providerConfig.networks.subnet.name",
+			wantErrType:  field.ErrorTypeInvalid,
+		},
+		{
 			name:         "ARM lookup fails with transient error",
 			subnetErr:    errors.New("ARM returned 500"),
 			wantErrType:  field.ErrorTypeInternal,
