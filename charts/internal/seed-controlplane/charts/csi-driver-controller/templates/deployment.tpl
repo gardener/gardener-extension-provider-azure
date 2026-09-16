@@ -62,6 +62,7 @@ spec:
         - --kube-api-qps=100
         - --kube-api-burst=200
         - --v=5
+        - --metrics-address=0.0.0.0:{{ .Values.metricsPort }}
         securityContext:
           allowPrivilegeEscalation: false
         env:
@@ -84,6 +85,9 @@ spec:
         ports:
         - name: healthz
           containerPort: 9808
+          protocol: TCP
+        - name: metrics
+          containerPort: {{ .Values.metricsPort }}
           protocol: TCP
         livenessProbe:
           failureThreshold: 5

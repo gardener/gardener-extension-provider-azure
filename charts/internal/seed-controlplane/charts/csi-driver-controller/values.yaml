@@ -13,6 +13,8 @@ images:
 
 socketPath: /var/lib/csi/sockets/pluginproxy
 
+metricsPort: 29604
+
 diskConfig:
   convertRWCachingModeForInTreePV: false
 
