@@ -1,0 +1,1 @@
+{{- include "csi-driver-controller.service" (set $ "role" "disk") }}
