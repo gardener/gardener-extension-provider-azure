@@ -82,7 +82,9 @@ spec:
         command:
         - cloud-node-manager
         - --node-name=$(NODE_NAME)
-        - --wait-routes=true   # only set to true when --configure-cloud-routes=true in cloud-controller-manager.
+        # Must match --configure-cloud-routes on the seed cloud-controller-manager: set to true only
+        # when the CCM is writing per-node pod-CIDR routes. Disabled for overlay-CNI shoots.
+        - --wait-routes={{ if hasKey .Values "configureCloudRoutes" }}{{ .Values.configureCloudRoutes }}{{ else }}true{{ end }}
         securityContext:
           allowPrivilegeEscalation: false
         env:
