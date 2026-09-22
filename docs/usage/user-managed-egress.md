@@ -29,7 +29,7 @@ NSG must permit.
 > one route table per subnet. Two shoots pointing at the same subnet therefore share the same
 > route table, and their CCMs *mutually delete* each other's routes on every reconcile —
 > silently breaking pod-to-pod connectivity across nodes. Overlay-CNI shoots (Gardener default:
-> Calico/Cilium with VXLAN) do not have this specific writer conflict, but the CCM still writes
+> Cilium with VXLAN) do not have this specific writer conflict, but the CCM still writes
 > LB Service rules into the NSG attached to your subnet — and Azure enforces one NSG per subnet
 > as well, so a shared subnet still means a shared NSG on the CCM's write path. The
 > "one-shoot-per-subnet" rule therefore applies uniformly across CNI modes.
@@ -73,9 +73,11 @@ Before creating the shoot, the user MUST provide the following in their Azure su
    other subnet used by another Gardener shoot). For firewall-based egress this route table should
    contain a `0.0.0.0/0` route to the user's firewall / NVA (next-hop = `VirtualAppliance` +
    firewall IP). For network-isolated shoots the route table may be empty. If the shoot uses an
-   overlay CNI (Cilium/Calico with VXLAN or Geneve — i.e. `shoot.spec.networking.providerConfig`
+   overlay CNI (Cilium with VXLAN or Geneve — i.e. `shoot.spec.networking.providerConfig`
    sets `overlay.enabled: true`), the route table can be omitted entirely; the seed CCM's route
-   controller is disabled automatically in that case (same behavior as provider-gcp).
+   controller is disabled automatically in that case (same behavior as provider-gcp). Note: Calico
+   overlay is **not supported on Azure** (the admission webhook rejects it) — only Cilium supports
+   overlay mode on Azure.
 5. Any firewall rules required for Azure control-plane traffic and container image pulls —
    at minimum the `AzureCloud` service tag, the `AzureContainerRegistry` service tag, and the
    public MCR endpoint (`mcr.microsoft.com` and its CDN backends).
@@ -149,23 +151,28 @@ The following fields must **not** be set when `networks.subnet` is set:
 
 ## Overlay-CNI shoots
 
-Shoots using an overlay CNI (Cilium/Calico with VXLAN or Geneve) do not need pod-CIDR routes in
+Shoots using an overlay CNI (Cilium with VXLAN or Geneve) do not need pod-CIDR routes in
 the underlying VNet: pod-to-pod traffic is encapsulated at the node level. Gardener automatically
 disables the seed CCM's route controller (`--configure-cloud-routes=false`) whenever the shoot's
 networking provider config sets `overlay.enabled: true`, using the same signal as `provider-gcp`.
 
-In BYO mode, this also relaxes the "subnet must have a route table" precondition — an overlay-CNI
-BYO shoot may attach no route table at all:
+> [!NOTE]
+> **Calico overlay is not supported on Azure.** The admission webhook rejects `type: calico` with
+> `overlay.enabled: true` (`validation/shoot.go`). On Azure, Calico always runs in non-overlay
+> (VNet-native) mode and always requires a route table. Only Cilium supports overlay mode on Azure.
+
+In BYO mode, this also relaxes the "subnet must have a route table" precondition — a Cilium
+overlay BYO shoot may attach no route table at all:
 
 ```yaml
 spec:
   networking:
-    type: calico
+    type: cilium
     nodes: 10.250.0.0/16
     pods: 100.96.0.0/11
     services: 100.64.0.0/13
     providerConfig:
-      apiVersion: calico.networking.extensions.gardener.cloud/v1alpha1
+      apiVersion: cilium.networking.extensions.gardener.cloud/v1alpha1
       kind: NetworkConfig
       overlay:
         enabled: true
@@ -224,7 +231,7 @@ At minimum your NSG must permit the following flows for the cluster to function:
 | Inbound   | AzureLoadBalancer service tag | Node CIDR | TCP | any     | LB health probes                                 |
 | Outbound  | Node CIDR     | Kubernetes API server  | TCP      | 443, 4443 | Node → apiserver                                 |
 
-For overlay CNIs (Calico with VXLAN, Cilium with VXLAN/Geneve — the Gardener default) the pod↔pod
+For overlay CNIs (Cilium with VXLAN/Geneve — the Gardener default) the pod↔pod
 flow is encapsulated inside node↔node traffic; only the node↔node row is required.
 
 Misconfiguration (denying a required flow, or blocking the CCM/bastion rule priorities) breaks
