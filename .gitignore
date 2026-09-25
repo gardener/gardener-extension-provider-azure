@@ -9,6 +9,7 @@ hack/tools/bin
 /.run
 
 *.coverprofile
+*.sarif
 *.html
 .vscode
 .idea
