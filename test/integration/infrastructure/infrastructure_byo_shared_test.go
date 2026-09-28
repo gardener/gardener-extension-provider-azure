@@ -159,16 +159,17 @@ func byoRunSharedTest(
 ) {
 	log.Info("BYO shared-fixture integration test running", "namespaceA", nsA, "namespaceB", nsB, "fixtureRG", fx.FixtureRG)
 
-	By("provisioning shared BYO network fixture")
-	Expect(provisionBYOSharedFixture(ctx, log, az, fx)).To(Succeed())
-
 	// Fixture RG must survive both shoot deletions and is torn down here at test cleanup.
+	// Registered before provisioning so a partial provisioning failure still cleans up the RG.
 	framework.AddCleanupAction(func() {
 		By("teardown fixture RG")
 		if err := teardownResourceGroup(ctx, az, fx.FixtureRG); err != nil {
 			log.Info("teardownResourceGroup returned error (may be already deleted)", "rg", fx.FixtureRG, "error", err.Error())
 		}
 	})
+
+	By("provisioning shared BYO network fixture")
+	Expect(provisionBYOSharedFixture(ctx, log, az, fx)).To(Succeed())
 
 	var (
 		nsAObj, nsBObj     *corev1.Namespace

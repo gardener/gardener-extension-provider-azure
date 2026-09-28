@@ -214,12 +214,10 @@ func byoRunTest(
 ) {
 	log.Info("BYO integration test running", "namespace", namespaceName, "fixtureRG", fx.FixtureRG)
 
-	By("provisioning BYO network fixture (RG + VNet + NSG + RT + subnet)")
-	Expect(provisionBYOFixture(ctx, log, az, fx, *region)).To(Succeed())
-
 	// The user-owned fixture RGs must survive the shoot's deletion and are torn down here at the
 	// end of the test. Order: fixture RGs first (which may host the NSG/RT), then any foreign-RG
-	// overrides. Deletion is idempotent (ignore NotFound).
+	// overrides. Deletion is idempotent (ignore NotFound). Registered before provisioning so a
+	// partial provisioning failure still cleans up any resource groups already created.
 	framework.AddCleanupAction(func() {
 		By("teardown fixture RGs")
 		for _, rg := range fx.uniqueResourceGroups() {
@@ -228,6 +226,9 @@ func byoRunTest(
 			}
 		}
 	})
+
+	By("provisioning BYO network fixture (RG + VNet + NSG + RT + subnet)")
+	Expect(provisionBYOFixture(ctx, log, az, fx, *region)).To(Succeed())
 
 	var (
 		namespace *corev1.Namespace

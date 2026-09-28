@@ -142,6 +142,11 @@ func TestConfigValidator_UserManagedEgress(t *testing.T) {
 		},
 		{
 			name: "C12: subnet CIDR overlaps pods CIDR",
+			// Drop the nodes CIDR so the C11 subset check is skipped and the error can only come
+			// from the C12 pod-overlap check we want to exercise here.
+			clusterMutator: func(cluster *extensionscontroller.Cluster) {
+				cluster.Shoot.Spec.Networking.Nodes = nil
+			},
 			subnet: &armnetwork.Subnet{
 				Properties: &armnetwork.SubnetPropertiesFormat{
 					AddressPrefix:        to.Ptr("100.96.0.0/24"),
