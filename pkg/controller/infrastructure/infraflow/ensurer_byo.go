@@ -85,7 +85,7 @@ func (fctx *FlowContext) EnsureUserSubnet(ctx context.Context) error {
 			return fmt.Errorf("failed to determine overlay networking mode: %w", err)
 		}
 		if !overlayEnabled {
-			return fmt.Errorf("BYO subnet %q has no route table attached; either attach one or enable an overlay CNI on the shoot's networking (Cilium/Calico with VXLAN or Geneve)", subnetRef.Name)
+			return fmt.Errorf("BYO subnet %q has no route table attached; either attach one or enable an overlay CNI on the shoot's networking (Cilium with VXLAN or Geneve)", subnetRef.Name)
 		}
 		// Detaching the route table is legal for overlay shoots. The whiteboard is restored from
 		// persisted state, so any previously discovered association must be dropped here to keep
@@ -96,11 +96,26 @@ func (fctx *FlowContext) EnsureUserSubnet(ctx context.Context) error {
 		byo.Delete(KeyBYORTResourceGroup)
 	}
 
-	if subnet.Properties.AddressPrefix != nil {
-		byo.Set(KeyBYOSubnetCIDR, *subnet.Properties.AddressPrefix)
-	} else if len(subnet.Properties.AddressPrefixes) > 0 && subnet.Properties.AddressPrefixes[0] != nil {
-		byo.Set(KeyBYOSubnetCIDR, *subnet.Properties.AddressPrefixes[0])
+	// Defense in depth: the ConfigValidator already enforces exactly one address prefix, but the
+	// live subnet may have changed between validation and reconciliation. Aggregate both fields the
+	// same way and fail loudly on anything other than a single prefix, since the downstream status
+	// and bastion NSG rules are single-CIDR.
+	var prefixes []string
+	if subnet.Properties.AddressPrefix != nil && *subnet.Properties.AddressPrefix != "" {
+		prefixes = append(prefixes, *subnet.Properties.AddressPrefix)
 	}
+	for _, prefix := range subnet.Properties.AddressPrefixes {
+		if prefix != nil && *prefix != "" {
+			prefixes = append(prefixes, *prefix)
+		}
+	}
+	if len(prefixes) == 0 {
+		return fmt.Errorf("BYO subnet %q has no address prefix", subnetRef.Name)
+	}
+	if len(prefixes) > 1 {
+		return fmt.Errorf("BYO subnet %q carries multiple address prefixes (%v); multi-prefix subnets are not supported for BYO worker subnets", subnetRef.Name, prefixes)
+	}
+	byo.Set(KeyBYOSubnetCIDR, prefixes[0])
 
 	log.Info("discovered BYO subnet associations",
 		"subnet", subnetRef.Name,

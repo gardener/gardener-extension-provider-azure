@@ -15,6 +15,11 @@ cloud-controller-manager has to write per-node pod-CIDR routes into the VNet. A 
 optional and only needed if you want Azure-managed egress instead of your own firewall or NVA.
 Gardener only discovers and references whatever you attach.
 
+> [!NOTE]
+> The BYO worker subnet must carry a **single address prefix**. Azure lets a subnet grow by
+> adding multiple prefixes, but Gardener's infrastructure status and the bastion NSG rules are
+> single-CIDR today, so multi-prefix subnets are rejected during infrastructure reconciliation.
+
 The NSG attached to your subnet is what the Azure cloud-controller-manager writes
 `Service type=LoadBalancer` ingress rules onto, and what the bastion controller writes bastion SSH
 rules onto. See [The NSG](#the-nsg) for the details of what rules land there and what flows the

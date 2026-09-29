@@ -629,7 +629,7 @@ func getCCMChartValues(
 	}
 
 	// Derive the CCM route-controller flag from the shoot's networking overlay setting. Overlay
-	// CNIs (Cilium/Calico with VXLAN or Geneve) encapsulate pod-to-pod traffic at the node level
+	// CNIs (Cilium with VXLAN or Geneve) encapsulate pod-to-pod traffic at the node level
 	// and do not need per-node pod-CIDR routes in the underlying VNet, so `--configure-cloud-routes`
 	// can be turned off. This matches provider-gcp's behavior and is orthogonal to BYO subnet.
 	overlayEnabled, err := azureapihelper.IsOverlayEnabled(cluster.Shoot.Spec.Networking)

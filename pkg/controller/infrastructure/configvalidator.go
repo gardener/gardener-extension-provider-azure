@@ -179,7 +179,7 @@ func (cv *configValidator) validateUserManagedEgress(
 		}
 	}
 	if rtID == "" && !overlayEnabled {
-		allErrs = append(allErrs, field.Invalid(subnetPath, subnetRef.Name, fmt.Sprintf("subnet %q must have a route table attached before it can be used as a BYO worker subnet; alternatively enable an overlay CNI on the shoot's networking (Cilium/Calico with VXLAN or Geneve) so the seed CCM's route controller is not needed", subnetRef.Name)))
+		allErrs = append(allErrs, field.Invalid(subnetPath, subnetRef.Name, fmt.Sprintf("subnet %q must have a route table attached before it can be used as a BYO worker subnet; alternatively enable an overlay CNI on the shoot's networking (Cilium with VXLAN or Geneve) so the seed CCM's route controller is not needed", subnetRef.Name)))
 	}
 
 	// C13: NSG and RT (if present) must live in the same subscription as the shoot.

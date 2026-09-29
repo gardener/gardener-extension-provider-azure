@@ -87,7 +87,7 @@ var _ = Describe("IsOverlayEnabled", func() {
 
 	It("returns an error when overlay.enabled is not a boolean", func() {
 		_, err := IsOverlayEnabled(providerConfig(`{"overlay":{"enabled":"yes"}}`))
-		Expect(err).To(HaveOccurred())
+		Expect(err).To(MatchError("overlay.enabled is not a boolean"))
 	})
 
 	It("returns an error when the provider config is not valid JSON", func() {

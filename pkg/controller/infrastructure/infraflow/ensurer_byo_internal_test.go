@@ -93,10 +93,10 @@ func TestEnsureUserSubnet(t *testing.T) {
 			wantNoRT:           true,
 		},
 		{
-			name: "reads addressPrefixes[0] when addressPrefix is unset",
+			name: "reads addressPrefixes when addressPrefix is unset",
 			subnet: &armnetwork.Subnet{
 				Properties: &armnetwork.SubnetPropertiesFormat{
-					AddressPrefixes:      []*string{to.Ptr(subnetCIDR), to.Ptr("10.250.1.0/24")},
+					AddressPrefixes:      []*string{to.Ptr(subnetCIDR)},
 					NetworkSecurityGroup: &armnetwork.SecurityGroup{ID: to.Ptr(nsgID)},
 					RouteTable:           &armnetwork.RouteTable{ID: to.Ptr(rtID)},
 				},
@@ -106,6 +106,43 @@ func TestEnsureUserSubnet(t *testing.T) {
 			wantRTName:          rtName,
 			wantRTResourceGroup: rtRG,
 			wantCIDR:            subnetCIDR,
+		},
+		{
+			name: "rejects a subnet carrying multiple address prefixes",
+			subnet: &armnetwork.Subnet{
+				Properties: &armnetwork.SubnetPropertiesFormat{
+					AddressPrefixes:      []*string{to.Ptr(subnetCIDR), to.Ptr("10.250.1.0/24")},
+					NetworkSecurityGroup: &armnetwork.SecurityGroup{ID: to.Ptr(nsgID)},
+					RouteTable:           &armnetwork.RouteTable{ID: to.Ptr(rtID)},
+				},
+			},
+			wantErr:         true,
+			wantErrContains: "multiple address prefixes",
+		},
+		{
+			name: "rejects a subnet mixing singular and plural prefixes",
+			subnet: &armnetwork.Subnet{
+				Properties: &armnetwork.SubnetPropertiesFormat{
+					AddressPrefix:        to.Ptr(subnetCIDR),
+					AddressPrefixes:      []*string{to.Ptr("10.250.1.0/24")},
+					NetworkSecurityGroup: &armnetwork.SecurityGroup{ID: to.Ptr(nsgID)},
+					RouteTable:           &armnetwork.RouteTable{ID: to.Ptr(rtID)},
+				},
+			},
+			wantErr:         true,
+			wantErrContains: "multiple address prefixes",
+		},
+		{
+			name: "rejects a subnet with no address prefix",
+			subnet: &armnetwork.Subnet{
+				Properties: &armnetwork.SubnetPropertiesFormat{
+					AddressPrefix:        to.Ptr(""),
+					NetworkSecurityGroup: &armnetwork.SecurityGroup{ID: to.Ptr(nsgID)},
+					RouteTable:           &armnetwork.RouteTable{ID: to.Ptr(rtID)},
+				},
+			},
+			wantErr:         true,
+			wantErrContains: "has no address prefix",
 		},
 		{
 			name:            "subnet not found (nil response) fails",
