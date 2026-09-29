@@ -92,4 +92,16 @@ spec:
 #        natGateway:
 #          enabled: false
 #          sku: Standard  # StandardV2 not allowed in per-zone config
+#      # subnet: user-managed egress via BYO subnet.
+#      # When set, Gardener stops creating the worker subnet, its route table, its NSG, and the NAT
+#      # gateway and only discovers them from the referenced (pre-provisioned) subnet. Requires
+#      # networks.vnet.name AND networks.vnet.resourceGroup to be set (BYO VNet). Not compatible
+#      # with networks.workers, networks.zones, networks.natGateway, networks.serviceEndpoints,
+#      # networks.vnet.cidr, or networks.vnet.ddosProtectionPlanID.
+#      # The BYO subnet must have an NSG attached before reconcile. It must also have a route table
+#      # attached unless the shoot uses an overlay CNI
+#      # (shoot.spec.networking.providerConfig.overlay.enabled=true) — in which case the CCM's route
+#      # controller is disabled and no route table is required.
+#      subnet:
+#        name: my-worker-subnet
     zoned: false

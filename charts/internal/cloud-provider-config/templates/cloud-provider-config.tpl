@@ -3,13 +3,22 @@ cloud: "{{ .Values.cloud }}"
 location: "{{ .Values.region }}"
 resourceGroup: "{{ .Values.resourceGroup }}"
 routeTableName: "{{ .Values.routeTableName }}"
+{{- if hasKey .Values "routeTableResourceGroup" }}
+routeTableResourceGroup: "{{ .Values.routeTableResourceGroup }}"
+{{- end }}
 securityGroupName: "{{ .Values.securityGroupName }}"
+{{- if hasKey .Values "securityGroupResourceGroup" }}
+securityGroupResourceGroup: "{{ .Values.securityGroupResourceGroup }}"
+{{- end }}
 subnetName: "{{ .Values.subnetName }}"
 vnetName: "{{ .Values.vnetName }}"
 {{- if hasKey .Values "vnetResourceGroup" }}
 vnetResourceGroup: "{{ .Values.vnetResourceGroup }}"
 {{- end }}
 loadBalancerSku: "standard"
+{{- if .Values.disableOutboundSNAT }}
+disableOutboundSNAT: true
+{{- end }}
 {{- if hasKey .Values "vmType" }}
 vmType: "{{ .Values.vmType }}"
 {{- end }}

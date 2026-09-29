@@ -28,7 +28,7 @@ func (a *actuator) Delete(ctx context.Context, log logr.Logger, bastion *extensi
 		return err
 	}
 
-	opts, err := NewBaseOpts(bastion, cluster, infrastructureStatus.ResourceGroup.Name, log)
+	opts, err := NewBaseOpts(bastion, cluster, infrastructureStatus, log)
 	if err != nil {
 		return err
 	}

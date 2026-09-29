@@ -21,6 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 )
 
@@ -75,7 +76,7 @@ func createOrUpdateNetworkSecGroup(ctx context.Context, factory azureclient.Fact
 		return err
 	}
 
-	_, err = nsgClient.CreateOrUpdate(ctx, opts.ResourceGroupName, opts.SecurityGroupName, *parameters)
+	_, err = nsgClient.CreateOrUpdate(ctx, opts.nsgResourceGroup(), opts.SecurityGroupName, *parameters)
 	if err != nil {
 		return fmt.Errorf("can't update Network Security Group %s: %w", opts.SecurityGroupName, err)
 	}
@@ -123,7 +124,7 @@ func getNetworkSecurityGroup(ctx context.Context, factory azureclient.Factory, o
 		return nil, err
 	}
 
-	nsgResp, err := nsgClient.Get(ctx, opts.ResourceGroupName, opts.SecurityGroupName)
+	nsgResp, err := nsgClient.Get(ctx, opts.nsgResourceGroup(), opts.SecurityGroupName)
 	if err != nil {
 		if azureclient.IsAzureAPINotFoundError(err) {
 			opts.Logr.Error(err, "Network Security Group not found, test environment?", "nsg_name", opts.SecurityGroupName)
@@ -134,7 +135,13 @@ func getNetworkSecurityGroup(ctx context.Context, factory azureclient.Factory, o
 	return nsgResp, nil
 }
 
-func getWorkersCIDR(cluster *controller.Cluster) ([]string, error) {
+func getWorkersCIDR(cluster *controller.Cluster, infrastructureStatus *azure.InfrastructureStatus) ([]string, error) {
+	if infrastructureStatus != nil {
+		if _, subnet, err := helper.FindSubnetByPurposeAndZone(infrastructureStatus.Networks.Subnets, azure.PurposeNodes, nil); err == nil && subnet.CIDR != nil {
+			return []string{*subnet.CIDR}, nil
+		}
+	}
+
 	infrastructureConfig := &azure.InfrastructureConfig{}
 	err := json.Unmarshal(cluster.Shoot.Spec.Provider.InfrastructureConfig.Raw, infrastructureConfig)
 	if err != nil {
