@@ -461,6 +461,16 @@ var _ = Describe("ValuesProvider", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(values[azure.CloudControllerManagerName]).To(HaveKeyWithValue("configureCloudRoutes", true))
 			})
+
+			It("sets configureCloudRoutes=true for a Calico shoot with no explicit overlay config (Calico is never overlay on Azure)", func() {
+				cluster = generateCluster(cidr, k8sVersion, true, nil, nil, &gardencorev1beta1.Seed{})
+				cluster.Shoot.Spec.Networking.Type = ptr.To("calico")
+				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+
+				values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, fakeSecretsManager, checksums, false)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(values[azure.CloudControllerManagerName]).To(HaveKeyWithValue("configureCloudRoutes", true))
+			})
 		})
 
 		DescribeTable("topologyAwareRoutingEnabled value",

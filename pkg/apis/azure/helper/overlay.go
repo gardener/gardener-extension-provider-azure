@@ -12,12 +12,18 @@ import (
 )
 
 // IsOverlayEnabled inspects a Shoot networking provider config and reports whether an overlay CNI
-// is enabled. Absence of a provider config is treated as "overlay enabled" (the historical default
-// for Calico/Cilium in Gardener). Mirrors the identical helper in provider-gcp so both providers
-// derive the CCM route-controller flag from the same shoot-level signal.
+// is enabled. When overlay.enabled is not specified the default depends on the CNI: Calico on Azure
+// never runs in overlay mode (the admission webhook rejects overlay.enabled: true), so an absent key
+// keeps the CCM route controller on; Cilium's historical default is overlay-on. Mirrors the helper
+// in provider-gcp so both providers derive the CCM route-controller flag from the same shoot-level
+// signal.
 func IsOverlayEnabled(network *gardencorev1beta1.Networking) (bool, error) {
-	if network == nil || network.ProviderConfig == nil || len(network.ProviderConfig.Raw) == 0 {
+	if network == nil {
 		return true, nil
+	}
+
+	if network.ProviderConfig == nil || len(network.ProviderConfig.Raw) == 0 {
+		return overlayDefaultEnabled(network), nil
 	}
 
 	var networkConfig map[string]interface{}
@@ -26,11 +32,23 @@ func IsOverlayEnabled(network *gardencorev1beta1.Networking) (bool, error) {
 	}
 
 	if overlay, ok := networkConfig["overlay"].(map[string]interface{}); ok {
-		if enabled, ok2 := overlay["enabled"].(bool); ok2 {
-			return enabled, nil
+		enabledValue, present := overlay["enabled"]
+		if !present {
+			return overlayDefaultEnabled(network), nil
 		}
-		return false, fmt.Errorf("overlay.enabled is not a boolean")
+		enabled, isBool := enabledValue.(bool)
+		if !isBool {
+			return false, fmt.Errorf("overlay.enabled is not a boolean")
+		}
+		return enabled, nil
 	}
 
-	return true, nil
+	return overlayDefaultEnabled(network), nil
+}
+
+// overlayDefaultEnabled returns the assumed overlay state when overlay.enabled is not set in the
+// shoot's networking provider config. Calico on Azure is always non-overlay, so its route controller
+// must stay enabled; every other CNI keeps the historical overlay-on default.
+func overlayDefaultEnabled(network *gardencorev1beta1.Networking) bool {
+	return network.Type == nil || *network.Type != "calico"
 }
