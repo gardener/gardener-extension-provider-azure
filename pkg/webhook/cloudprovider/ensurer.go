@@ -14,7 +14,6 @@ import (
 	securityv1alpha1constants "github.com/gardener/gardener/pkg/apis/security/v1alpha1/constants"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
@@ -22,22 +21,18 @@ import (
 )
 
 // NewEnsurer creates cloudprovider ensurer.
-func NewEnsurer(mgr manager.Manager, logger logr.Logger) cloudprovider.Ensurer {
+func NewEnsurer(_ manager.Manager, logger logr.Logger) cloudprovider.Ensurer {
 	return &ensurer{
-		client: mgr.GetClient(),
 		logger: logger,
 	}
 }
 
 type ensurer struct {
 	logger logr.Logger
-	client client.Client
 }
 
-// EnsureCloudProviderSecret ensures that cloudprovider secret contain
-// a service principal clientID and clientSecret (if not present) that match
-// to a corresponding tenantID.
-func (e *ensurer) EnsureCloudProviderSecret(ctx context.Context, _ gcontext.GardenContext, newSecret, _ *corev1.Secret) error {
+// EnsureCloudProviderSecret ensures that cloudprovider secret contains the required fields.
+func (e *ensurer) EnsureCloudProviderSecret(_ context.Context, _ gcontext.GardenContext, newSecret, _ *corev1.Secret) error {
 	if newSecret.Labels != nil && newSecret.Labels[securityv1alpha1constants.LabelWorkloadIdentityProvider] == "azure" {
 		config, ok := newSecret.Data[securityv1alpha1constants.DataKeyConfig]
 		if !ok {
@@ -60,54 +55,11 @@ func (e *ensurer) EnsureCloudProviderSecret(ctx context.Context, _ gcontext.Gard
 		return fmt.Errorf("could not mutate cloudprovider secret as %q field is missing", azure.TenantIDKey)
 	}
 
-	if hasSecretKey(newSecret, azure.ClientIDKey) || hasSecretKey(newSecret, azure.ClientSecretKey) {
-		return nil
+	if !hasSecretKey(newSecret, azure.ClientIDKey) || !hasSecretKey(newSecret, azure.ClientSecretKey) {
+		return fmt.Errorf("could not mutate cloudprovider secret as %q or %q field is missing", azure.ClientIDKey, azure.ClientSecretKey)
 	}
-
-	servicePrincipalSecret, err := e.fetchTenantServicePrincipalSecret(ctx, string(newSecret.Data[azure.TenantIDKey]))
-	if err != nil {
-		return err
-	}
-
-	e.logger.V(5).Info("mutate cloudprovider secret", "namespace", newSecret.Namespace, "name", newSecret.Name)
-	newSecret.Data[azure.ClientIDKey] = servicePrincipalSecret.Data[azure.ClientIDKey]
-	newSecret.Data[azure.ClientSecretKey] = servicePrincipalSecret.Data[azure.ClientSecretKey]
 
 	return nil
-}
-
-func (e *ensurer) fetchTenantServicePrincipalSecret(ctx context.Context, tenantID string) (*corev1.Secret, error) {
-	var (
-		servicePrincipalSecretList = &corev1.SecretList{}
-		matchingSecrets            = []*corev1.Secret{}
-		labelSelector              = client.MatchingLabels{azure.ExtensionPurposeLabel: azure.ExtensionPurposeServicePrincipalSecret}
-	)
-
-	if err := e.client.List(ctx, servicePrincipalSecretList, labelSelector); err != nil {
-		return nil, err
-	}
-
-	for _, sec := range servicePrincipalSecretList.Items {
-		if !hasSecretKey(&sec, azure.TenantIDKey) {
-			e.logger.V(5).Info("service principal secret is invalid as it does not contain a tenant id", "namespace", sec.Namespace, "name", sec.Name)
-			continue
-		}
-
-		if string(sec.Data[azure.TenantIDKey]) == tenantID {
-			tmp := &sec
-			matchingSecrets = append(matchingSecrets, tmp)
-		}
-	}
-
-	if len(matchingSecrets) == 0 {
-		return nil, fmt.Errorf("found no service principal secrets matching to tenant id %q", tenantID)
-	}
-
-	if len(matchingSecrets) > 1 {
-		return nil, fmt.Errorf("found more than one service principal matching to tenant id %q", tenantID)
-	}
-
-	return matchingSecrets[0], nil
 }
 
 func hasSecretKey(secret *corev1.Secret, key string) bool {
