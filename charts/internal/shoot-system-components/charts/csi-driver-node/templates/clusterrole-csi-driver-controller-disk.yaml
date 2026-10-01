@@ -18,4 +18,4 @@ rules:
   verbs: ["create", "patch", "update"]
 - apiGroups: [""]
   resources: ["nodes"]
-  verbs: ["get"]
+  verbs: ["get", "list", "watch"]
