@@ -21,5 +21,8 @@ spec:
     - sourceLabels:
       - __name__
       action: keep
-      regex: ^(azure{{ .role }}_csi_driver_operation_duration_seconds_labeled_(bucket|sum|count)|azure{{ .role }}_csi_driver_operations_total)$
+      # process_start_time_seconds is always emitted while the driver is up, so a healthy-but-idle
+      # driver (no volume operations yet) is not flagged by the shoot Prometheus scrape:empty healthcheck.
+      # The operation_* metrics are created lazily on the first CSI operation.
+      regex: ^(azure{{ .role }}_csi_driver_operation_duration_seconds_labeled_(bucket|sum|count)|azure{{ .role }}_csi_driver_operations_total|process_start_time_seconds)$
 {{- end -}}
