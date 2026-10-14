@@ -786,6 +786,8 @@ func autoConvert_v1alpha1_InfrastructureConfig_To_azure_InfrastructureConfig(in 
 	}
 	out.Identity = (*azure.IdentityConfig)(unsafe.Pointer(in.Identity))
 	out.Zoned = in.Zoned
+	out.EnableMTUCustomizer = (*bool)(unsafe.Pointer(in.EnableMTUCustomizer))
+	out.CustomMTUSize = (*int32)(unsafe.Pointer(in.CustomMTUSize))
 	return nil
 }
 
@@ -801,6 +803,8 @@ func autoConvert_azure_InfrastructureConfig_To_v1alpha1_InfrastructureConfig(in 
 	}
 	out.Identity = (*IdentityConfig)(unsafe.Pointer(in.Identity))
 	out.Zoned = in.Zoned
+	out.EnableMTUCustomizer = (*bool)(unsafe.Pointer(in.EnableMTUCustomizer))
+	out.CustomMTUSize = (*int32)(unsafe.Pointer(in.CustomMTUSize))
 	return nil
 }
 
