@@ -437,6 +437,59 @@ var _ = Describe("InfrastructureConfig validation", func() {
 			})
 		})
 
+		Context("MTU customizer", func() {
+			It("should pass when CustomMTUSize is not set", func() {
+				infrastructureConfig.CustomMTUSize = nil
+				Expect(ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)).To(BeEmpty())
+			})
+
+			It("should pass for a valid CustomMTUSize", func() {
+				infrastructureConfig.EnableMTUCustomizer = ptr.To(true)
+				infrastructureConfig.CustomMTUSize = ptr.To(int32(9000))
+				Expect(ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)).To(BeEmpty())
+			})
+
+			It("should fail when CustomMTUSize is set without enableMTUCustomizer", func() {
+				infrastructureConfig.CustomMTUSize = ptr.To(int32(1500))
+				infrastructureConfig.EnableMTUCustomizer = nil
+				Expect(ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeInvalid),
+					"Field": Equal("customMTUSize"),
+				}))))
+			})
+
+			It("should fail when CustomMTUSize is set while enableMTUCustomizer is false", func() {
+				infrastructureConfig.CustomMTUSize = ptr.To(int32(1500))
+				infrastructureConfig.EnableMTUCustomizer = ptr.To(false)
+				Expect(ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeInvalid),
+					"Field": Equal("customMTUSize"),
+				}))))
+			})
+
+			It("should pass when CustomMTUSize is set with enableMTUCustomizer true", func() {
+				infrastructureConfig.CustomMTUSize = ptr.To(int32(1500))
+				infrastructureConfig.EnableMTUCustomizer = ptr.To(true)
+				Expect(ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)).To(BeEmpty())
+			})
+
+			It("should fail when CustomMTUSize is below the minimum", func() {
+				infrastructureConfig.CustomMTUSize = ptr.To(int32(67))
+				Expect(ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeInvalid),
+					"Field": Equal("customMTUSize"),
+				}))))
+			})
+
+			It("should fail when CustomMTUSize exceeds the maximum", func() {
+				infrastructureConfig.CustomMTUSize = ptr.To(int32(9001))
+				Expect(ValidateInfrastructureConfig(infrastructureConfig, &shoot, providerPath)).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  Equal(field.ErrorTypeInvalid),
+					"Field": Equal("customMTUSize"),
+				}))))
+			})
+		})
+
 		Context("NatGateway", func() {
 			BeforeEach(func() {
 				infrastructureConfig.Zoned = true

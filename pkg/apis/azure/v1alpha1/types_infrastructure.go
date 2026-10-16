@@ -26,6 +26,16 @@ type InfrastructureConfig struct {
 	// Zoned indicates whether the cluster uses availability zones.
 	// +optional
 	Zoned bool `json:"zoned,omitempty"`
+	// EnableMTUCustomizer controls whether the mtu-customizer systemd unit and script are deployed to
+	// the shoot worker nodes. When enabled, the MTU of all non-virtual network interfaces is set to CustomMTUSize.
+	// Default: false
+	// +optional
+	EnableMTUCustomizer *bool `json:"enableMTUCustomizer,omitempty"`
+	// CustomMTUSize is the MTU size to set on non-virtual network interfaces when the MTU customizer is enabled.
+	// If not specified, the MTU is auto-detected based on the VM SKU generation: 9000 for v5+ (MANA NICs) and 3900 for older generations (Mellanox NICs).
+	// Valid range is 68–9000.
+	// +optional
+	CustomMTUSize *int32 `json:"customMTUSize,omitempty"`
 }
 
 // ResourceGroup is azure resource group
