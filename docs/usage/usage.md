@@ -805,14 +805,14 @@ This will force the Azure Disk in-tree PVs to use ReadCache caching mode instead
 
 ### MTU Customizer
 
-Azure worker nodes may benefit from a non-default MTU depending on the NIC type used by the VM SKU:
+Azure worker nodes may benefit from a non-default MTU depending on the NIC type:
 
-- **MANA NICs** (VM generations v5 and above, e.g. `Standard_D4_v5`) support jumbo frames with an MTU of **9000**.
-- **Mellanox / non-Accelerated-Networking NICs** (older generations) cap out at **3900**.
+- **MANA NICs** (v5+ VMs with accelerated networking enabled) support jumbo frames with an MTU of **9000**.
+- **Mellanox / non-Accelerated-Networking NICs** cap out at **3900**.
 
 See the [Azure virtual machine MTU documentation](https://learn.microsoft.com/en-us/azure/virtual-network/how-to-virtual-machine-mtu) for details.
 
-The MTU customizer deploys a systemd unit and shell script to each worker node that detects the VM's NIC generation at boot time via the [Azure IMDS](https://learn.microsoft.com/en-us/azure/virtual-machines/instance-metadata-service) and sets the MTU on all non-virtual network interfaces accordingly.
+The MTU customizer deploys a systemd unit and shell script to each worker node that detects the NIC type at boot time by checking for a bound device under `/sys/bus/pci/drivers/mana/` and sets the MTU on all non-virtual network interfaces accordingly. Note that a v5+ VM running on Mellanox hardware (no MANA NIC present) will receive 3900, not 9000.
 
 The feature is **opt-in** and is enabled by setting `enableMTUCustomizer: true` in the `InfrastructureConfig`:
 
@@ -827,7 +827,7 @@ zoned: false
 enableMTUCustomizer: true
 ```
 
-By default the script auto-detects the appropriate MTU (9000 for v5+ VM SKUs, 3900 for all others). If you need a specific value, you can override it with `customMTUSize`. Note that `customMTUSize` has no effect unless `enableMTUCustomizer` is set to `true`. Valid values are 68–9000:
+By default the script auto-detects the appropriate MTU (9000 if a MANA NIC is detected, 3900 otherwise). If you need a specific value, you can override it with `customMTUSize`. Note that `customMTUSize` has no effect unless `enableMTUCustomizer` is set to `true`. Valid values are 68–9000:
 
 ```yaml
 enableMTUCustomizer: true

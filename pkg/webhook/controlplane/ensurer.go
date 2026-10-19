@@ -429,6 +429,7 @@ func (e *ensurer) EnsureAdditionalUnits(ctx context.Context, gctx gcontext.Garde
 Description=Apply a custom MTU to network interfaces
 After=network.target
 Wants=network.target
+Before=kubelet.service
 
 [Install]
 WantedBy=kubelet.service
@@ -470,26 +471,18 @@ done
 	} else {
 		data = `#!/bin/sh
 
-# Detect MTU from Azure IMDS based on VM SKU.
-# MANA NICs (v5+) support 9000; Mellanox/no-AN NICs cap out at 3900.
-vmsize=$(curl -sf --max-time 10 -H Metadata:true \
-  "http://169.254.169.254/metadata/instance/compute/vmSize?api-version=2021-02-01&format=text" \
-  | tr '[:upper:]' '[:lower:]')
-
-if [ -z "${vmsize}" ]; then
-	echo "IMDS unavailable or returned empty vmSize, defaulting MTU to 3900"
-fi
-
-echo "detected VM size: ${vmsize}"
-
-gen=$(echo "${vmsize}" | sed -n 's/.*_v\([0-9][0-9]*\)$/\1/p')
-if [ -n "${gen}" ] && [ "${gen}" -ge 5 ]; then
+# Detect NIC type via the mana PCI driver binding.
+# MANA VFs present as hv_netvsc at the interface level (both MANA and Mellanox do),
+# so the driver must be detected from the PCI layer, not the network interface.
+# If the mana driver is bound to any PCI device, this is a MANA-capable VM (9000 MTU).
+# Otherwise fall back to 3900 .
+if ls /sys/bus/pci/drivers/mana/ 2>/dev/null | grep -qE '^[0-9a-f]{4}:'; then
 	mtu=9000
 else
 	mtu=3900
 fi
 
-echo "selected MTU: ${mtu}"
+echo "detected MTU: ${mtu}"
 
 for interface_path in $(find /sys/class/net -type l -print)
 do

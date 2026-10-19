@@ -32,7 +32,8 @@ type InfrastructureConfig struct {
 	// +optional
 	EnableMTUCustomizer *bool `json:"enableMTUCustomizer,omitempty"`
 	// CustomMTUSize is the MTU size to set on non-virtual network interfaces when the MTU customizer is enabled.
-	// If not specified, the MTU is auto-detected based on the VM SKU generation: 9000 for v5+ (MANA NICs) and 3900 for older generations (Mellanox NICs).
+	// If not specified, the MTU is auto-detected via the PCI driver layer: 9000 if a MANA NIC is present
+	// (/sys/bus/pci/drivers/mana/ has a bound device), 3900 otherwise.
 	// Valid range is 68–9000.
 	// +optional
 	CustomMTUSize *int32 `json:"customMTUSize,omitempty"`

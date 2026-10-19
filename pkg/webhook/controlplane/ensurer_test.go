@@ -597,6 +597,7 @@ var _ = Describe("Ensurer ", func() {
 Description=Apply a custom MTU to network interfaces
 After=network.target
 Wants=network.target
+Before=kubelet.service
 
 [Install]
 WantedBy=kubelet.service

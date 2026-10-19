@@ -836,7 +836,7 @@ integer
 </td>
 <td>
 <em>(Optional)</em>
-<p>CustomMTUSize is the MTU size to set on non-virtual network interfaces when the MTU customizer is enabled.<br />If not specified, the MTU is auto-detected based on the VM SKU generation: 9000 for v5+ (MANA NICs) and 3900 for older generations (Mellanox NICs).<br />Valid range is 68–9000.</p>
+<p>CustomMTUSize is the MTU size to set on non-virtual network interfaces when the MTU customizer is enabled.<br />If not specified, the MTU is auto-detected via the PCI driver layer: 9000 if a MANA NIC is present<br />(/sys/bus/pci/drivers/mana/ has a bound device), 3900 otherwise.<br />Valid range is 68–9000.</p>
 </td>
 </tr>
 
