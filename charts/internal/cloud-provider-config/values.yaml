@@ -1,9 +1,10 @@
 cloud: AZUREPUBLICCLOUD # aka AZURECLOUD. Other possible values: AZURECHINACLOUD/AZUREUSGOVERNMENT
-tenantId: fooTenant
-subscriptionId: barSub
-aadClientId: fooClient
-aadClientSecret: barSecret
-useWorkloadIdentity: false
+azureCredentials: |
+  aadClientId: fooClient
+  aadClientSecret: barSecret
+azureSubscriptionInfo: |
+  subscriptionId: barSub
+  tenantId: fooTenant
 resourceGroup: foobarGroup
 vnetName: name
 #vnetResourceGroup: vnetResourceGroup

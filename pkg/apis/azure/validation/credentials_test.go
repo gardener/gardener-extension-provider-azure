@@ -150,6 +150,27 @@ var _ = Describe("Credential validation helpers", func() {
 			Expect(errs[1].Detail).To(Equal(expectedDetailWhitespace))
 		})
 
+		DescribeTable("should reject characters that could alter rendered configuration",
+			func(value string) {
+				secret.Data["SUBSCRIPTION_ID"] = []byte(subscriptionIDValue)
+				secret.Data["TENANT_ID"] = []byte(tenantIDValue)
+				secret.Data["CLIENT_SECRET"] = []byte(value)
+
+				errs := mapping.ValidateData(secret.Data, nil, "test resources", fldPath)
+				Expect(errs).To(HaveLen(1))
+				Expect(errs[0].Type).To(Equal(field.ErrorTypeInvalid))
+				Expect(errs[0].Field).To(Equal("secret.data[CLIENT_SECRET]"))
+				Expect(errs[0].BadValue).To(Equal("(hidden)"))
+				Expect(errs[0].Detail).To(Equal("field \"CLIENT_SECRET\" must not contain control characters, newlines, or double quotes"))
+			},
+			Entry("with an embedded newline", "secret\nmalicious: value"),
+			Entry("with a carriage return", "secret\rmalicious: value"),
+			Entry("with a tab", "secret\tvalue"),
+			Entry("with a NUL byte", "secret\x00value"),
+			Entry("with a Unicode line separator", "secret\u2028value"),
+			Entry("with a double quote", `secret"value`),
+		)
+
 		It("should return error when unexpected field is present", func() {
 			secret.Data["SUBSCRIPTION_ID"] = []byte(subscriptionIDValue)
 			secret.Data["TENANT_ID"] = []byte(tenantIDValue)

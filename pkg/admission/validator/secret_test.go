@@ -22,8 +22,9 @@ import (
 var _ = Describe("Secret validator", func() {
 	Describe("#Validate", func() {
 		const (
-			namespace = "garden-dev"
-			name      = "my-secret"
+			namespace             = "garden-dev"
+			name                  = "my-secret"
+			shootProviderLabelKey = "provider.shoot.gardener.cloud/azure"
 		)
 
 		var (
@@ -60,9 +61,30 @@ var _ = Describe("Secret validator", func() {
 			Expect(err).To(MatchError("wrong object type *v1.ConfigMap for old object"))
 		})
 
-		It("should skip validation when data unchanged (early exit)", func() {
+		It("should validate unchanged data when the provider label is introduced", func() {
 			secret.Data["FOO"] = []byte("bar") // invalid but unchanged
 			oldSecret = secret.DeepCopy()
+			secret.Labels = map[string]string{shootProviderLabelKey: "true"}
+			Expect(secretValidator.Validate(ctx, secret, oldSecret)).To(HaveOccurred())
+		})
+
+		It("should skip validation for unchanged data that was previously validated", func() {
+			secret.Labels = map[string]string{shootProviderLabelKey: "true"}
+			secret.Data["FOO"] = []byte("bar") // invalid now, but assumed to have passed earlier validation
+			oldSecret = secret.DeepCopy()
+
+			Expect(secretValidator.Validate(ctx, secret, oldSecret)).To(Succeed())
+		})
+
+		It("should skip immutability checks when the provider label is introduced", func() {
+			oldSecret = secret.DeepCopy()
+			oldSecret.Data[azure.SubscriptionIDKey] = []byte(subscriptionIDValue)
+			oldSecret.Data[azure.TenantIDKey] = []byte(tenantIDValue)
+
+			secret.Labels = map[string]string{shootProviderLabelKey: "true"}
+			secret.Data[azure.SubscriptionIDKey] = []byte(changedSubscriptionGUID)
+			secret.Data[azure.TenantIDKey] = []byte(tenantIDValue)
+
 			Expect(secretValidator.Validate(ctx, secret, oldSecret)).To(Succeed())
 		})
 
@@ -76,6 +98,7 @@ var _ = Describe("Secret validator", func() {
 		})
 
 		It("should fail when immutable subscriptionID changes", func() {
+			secret.Labels = map[string]string{shootProviderLabelKey: "true"}
 			oldSecret = secret.DeepCopy()
 			oldSecret.Data[azure.SubscriptionIDKey] = []byte(subscriptionIDValue)
 			oldSecret.Data[azure.TenantIDKey] = []byte(tenantIDValue)

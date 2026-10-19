@@ -322,4 +322,36 @@ var _ = Describe("ValidateWorkerConfig", func() {
 			Expect(validateOSDiskConf(osDiskConf, nil)).To(BeEmpty())
 		})
 	})
+
+	Describe("CapacityReservation", func() {
+		const validCapacityReservationGroupID = "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/my-resource-group/providers/Microsoft.Compute/capacityReservationGroups/my-capacity-reservation-group"
+
+		It("should accept a canonical capacity reservation group ID", func() {
+			workerCfg.CapacityReservation = &apisazure.CapacityReservation{
+				CapacityReservationGroupID: ptr.To(validCapacityReservationGroupID),
+			}
+
+			Expect(ValidateWorkerConfig(workerCfg, nil, fldPath)).To(BeEmpty())
+		})
+
+		DescribeTable("should reject a non-canonical capacity reservation group ID",
+			func(capacityReservationGroupID string) {
+				workerCfg.CapacityReservation = &apisazure.CapacityReservation{
+					CapacityReservationGroupID: ptr.To(capacityReservationGroupID),
+				}
+
+				Expect(ValidateWorkerConfig(workerCfg, nil, fldPath)).To(ConsistOf(
+					PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":  Equal(field.ErrorTypeInvalid),
+						"Field": Equal("config.capacityReservation.capacityReservationGroupID"),
+					})),
+				))
+			},
+			Entry("with a space", validCapacityReservationGroupID+" invalid"),
+			Entry("with a newline", validCapacityReservationGroupID+"\n---"),
+			Entry("with a tab", validCapacityReservationGroupID+"\tinvalid"),
+			Entry("with a control character", validCapacityReservationGroupID+"\x00"),
+			Entry("with an empty path segment", "/subscriptions//11111111-2222-3333-4444-555555555555/resourceGroups/my-resource-group/providers/Microsoft.Compute/capacityReservationGroups/my-capacity-reservation-group"),
+		)
+	})
 })

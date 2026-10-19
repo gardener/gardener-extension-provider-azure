@@ -134,7 +134,7 @@ var _ = Describe("DNS secrets validation", func() {
 				Expect(errs[0].BadValue).To(Equal("(hidden)"))
 			})
 
-			It("should fail when AZURE_CLIENT_SECRET contains trailing newline (whitespace)", func() {
+			It("should fail when AZURE_CLIENT_SECRET contains a trailing newline", func() {
 				secret.Data[azure.DNSSubscriptionIDKey] = []byte(subscriptionIDValue)
 				secret.Data[azure.DNSTenantIDKey] = []byte(tenantIDValue)
 				secret.Data[azure.DNSClientIDKey] = []byte(clientIDValue)
@@ -143,7 +143,7 @@ var _ = Describe("DNS secrets validation", func() {
 				errs := ValidateDNSProviderSecret(secret, fldPath)
 				Expect(errs).To(HaveLen(1))
 				Expect(errs[0].Type).To(Equal(field.ErrorTypeInvalid))
-				expected := fmt.Sprintf("field %q must not contain leading or trailing whitespace", azure.DNSClientSecretKey)
+				expected := fmt.Sprintf("field %q must not contain control characters, newlines, or double quotes", azure.DNSClientSecretKey)
 				Expect(errs[0].Field).To(Equal("dnsRecord.spec.secretRef.data[AZURE_CLIENT_SECRET]"))
 				Expect(errs[0].Detail).To(Equal(expected))
 				Expect(errs[0].BadValue).To(Equal("(hidden)"))

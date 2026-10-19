@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"unicode"
 
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -92,6 +93,13 @@ func (cm *CredentialMapping) validateFormats(data map[string][]byte, fldPath *fi
 		}
 
 		valueStr := string(value)
+		if strings.Contains(valueStr, "\"") || strings.ContainsFunc(valueStr, func(r rune) bool {
+			return unicode.IsControl(r) || unicode.Is(unicode.Zl, r) || unicode.Is(unicode.Zp, r)
+		}) {
+			allErrs = append(allErrs, field.Invalid(fldPath.Key(dataKey), "(hidden)", fmt.Sprintf("field %q must not contain control characters, newlines, or double quotes", dataKey)))
+			continue
+		}
+
 		if strings.TrimSpace(valueStr) != valueStr {
 			allErrs = append(allErrs, field.Invalid(fldPath.Key(dataKey), "(hidden)", fmt.Sprintf("field %q must not contain leading or trailing whitespace", dataKey)))
 		}
