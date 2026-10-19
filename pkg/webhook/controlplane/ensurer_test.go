@@ -7,6 +7,7 @@ package controlplane
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/Masterminds/semver/v3"
@@ -592,9 +593,13 @@ var _ = Describe("Ensurer ", func() {
 	})
 
 	Describe("#EnsureAdditionalUnits", func() {
-		mtuUnit := func() extensionsv1alpha1.Unit {
-			content := `[Unit]
-Description=Apply a custom MTU to network interfaces
+		mtuUnit := func(customMTUSize *int32) extensionsv1alpha1.Unit {
+			mtuDesc := "auto"
+			if customMTUSize != nil {
+				mtuDesc = fmt.Sprintf("%d", *customMTUSize)
+			}
+			content := fmt.Sprintf(`[Unit]
+Description=Apply a custom MTU to network interfaces (mtu=%s)
 After=network.target
 Wants=network.target
 Before=kubelet.service
@@ -606,7 +611,7 @@ WantedBy=kubelet.service
 Type=oneshot
 RemainAfterExit=yes
 ExecStart=/opt/bin/mtu-customizer.sh
-`
+`, mtuDesc)
 			return extensionsv1alpha1.Unit{
 				Name:    "custom-mtu.service",
 				Enable:  ptr.To(true),
@@ -615,13 +620,14 @@ ExecStart=/opt/bin/mtu-customizer.sh
 			}
 		}
 
-		infraConfigRaw := func(enabled *bool) []byte {
+		infraConfigRaw := func(enabled *bool, customMTUSize *int32) []byte {
 			cfg := azurev1alpha1.InfrastructureConfig{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: azurev1alpha1.SchemeGroupVersion.String(),
 					Kind:       "InfrastructureConfig",
 				},
 				EnableMTUCustomizer: enabled,
+				CustomMTUSize:       customMTUSize,
 			}
 			raw, err := json.Marshal(cfg)
 			Expect(err).NotTo(HaveOccurred())
@@ -642,20 +648,26 @@ ExecStart=/opt/bin/mtu-customizer.sh
 
 		It("should not add the MTU unit when EnableMTUCustomizer is unset (default disabled)", func() {
 			units := []extensionsv1alpha1.Unit{}
-			Expect(ensurer.EnsureAdditionalUnits(ctx, gardenCtxWithInfra(infraConfigRaw(nil)), &units, nil)).To(Succeed())
+			Expect(ensurer.EnsureAdditionalUnits(ctx, gardenCtxWithInfra(infraConfigRaw(nil, nil)), &units, nil)).To(Succeed())
 			Expect(units).To(BeEmpty())
 		})
 
 		It("should add the MTU unit when EnableMTUCustomizer is true", func() {
 			units := []extensionsv1alpha1.Unit{}
-			Expect(ensurer.EnsureAdditionalUnits(ctx, gardenCtxWithInfra(infraConfigRaw(ptr.To(true))), &units, nil)).To(Succeed())
-			Expect(units).To(ContainElement(mtuUnit()))
+			Expect(ensurer.EnsureAdditionalUnits(ctx, gardenCtxWithInfra(infraConfigRaw(ptr.To(true), nil)), &units, nil)).To(Succeed())
+			Expect(units).To(ContainElement(mtuUnit(nil)))
 		})
 
 		It("should not add the MTU unit when EnableMTUCustomizer is false", func() {
 			units := []extensionsv1alpha1.Unit{}
-			Expect(ensurer.EnsureAdditionalUnits(ctx, gardenCtxWithInfra(infraConfigRaw(ptr.To(false))), &units, nil)).To(Succeed())
+			Expect(ensurer.EnsureAdditionalUnits(ctx, gardenCtxWithInfra(infraConfigRaw(ptr.To(false), nil)), &units, nil)).To(Succeed())
 			Expect(units).To(BeEmpty())
+		})
+
+		It("should embed the custom MTU size in the unit when CustomMTUSize is set", func() {
+			units := []extensionsv1alpha1.Unit{}
+			Expect(ensurer.EnsureAdditionalUnits(ctx, gardenCtxWithInfra(infraConfigRaw(ptr.To(true), ptr.To(int32(1500)))), &units, nil)).To(Succeed())
+			Expect(units).To(ContainElement(mtuUnit(ptr.To(int32(1500)))))
 		})
 	})
 

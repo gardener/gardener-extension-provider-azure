@@ -425,8 +425,12 @@ func (e *ensurer) EnsureAdditionalUnits(ctx context.Context, gctx gcontext.Garde
 		return nil
 	}
 
-	customMTUUnitContent := `[Unit]
-Description=Apply a custom MTU to network interfaces
+	mtuDesc := "auto"
+	if infraConfig.CustomMTUSize != nil {
+		mtuDesc = fmt.Sprintf("%d", *infraConfig.CustomMTUSize)
+	}
+	customMTUUnitContent := fmt.Sprintf(`[Unit]
+Description=Apply a custom MTU to network interfaces (mtu=%s)
 After=network.target
 Wants=network.target
 Before=kubelet.service
@@ -438,7 +442,7 @@ WantedBy=kubelet.service
 Type=oneshot
 RemainAfterExit=yes
 ExecStart=/opt/bin/mtu-customizer.sh
-`
+`, mtuDesc)
 	extensionswebhook.AppendUniqueUnit(newObj, extensionsv1alpha1.Unit{
 		Name:    "custom-mtu.service",
 		Enable:  ptr.To(true),
@@ -475,7 +479,7 @@ done
 # MANA VFs present as hv_netvsc at the interface level (both MANA and Mellanox do),
 # so the driver must be detected from the PCI layer, not the network interface.
 # If the mana driver is bound to any PCI device, this is a MANA-capable VM (9000 MTU).
-# Otherwise fall back to 3900 .
+# Otherwise fall back to 3900.
 if ls /sys/bus/pci/drivers/mana/ 2>/dev/null | grep -qE '^[0-9a-f]{4}:'; then
 	mtu=9000
 else

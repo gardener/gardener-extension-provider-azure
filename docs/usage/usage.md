@@ -827,12 +827,15 @@ zoned: false
 enableMTUCustomizer: true
 ```
 
-By default the script auto-detects the appropriate MTU (9000 if a MANA NIC is detected, 3900 otherwise). If you need a specific value, you can override it with `customMTUSize`. Note that `customMTUSize` has no effect unless `enableMTUCustomizer` is set to `true`. Valid values are 68–9000:
+By default the script auto-detects the appropriate MTU (9000 if a MANA NIC is detected, 3900 otherwise). If you need a specific value, you can override it with `customMTUSize`. `customMTUSize` is valid only when `enableMTUCustomizer` is set to `true`. Valid values are 68–9000:
 
 ```yaml
 enableMTUCustomizer: true
 customMTUSize: 8900
 ```
+
+> [!WARNING]
+> Azure only supports MTU values above 1500 for traffic within the same virtual network or directly peered virtual networks in the same region. Internet egress, VPN gateways, and globally peered virtual networks do not support jumbo frames and will silently drop or fragment oversized packets. Test those paths before enabling the MTU customizer.
 
 > [!NOTE]
 > When the MTU customizer is **enabled**, the systemd unit is pushed to existing nodes by the node agent without requiring a node replacement.
