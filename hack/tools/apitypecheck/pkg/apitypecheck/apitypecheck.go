@@ -165,6 +165,27 @@ func findPkg(pkg *types.Package, path string) *types.Package {
 	return nil
 }
 
+// isFieldPath reports whether expr has type *field.Path from
+// k8s.io/apimachinery/pkg/util/validation/field.
+func isFieldPath(pass *analysis.Pass, expr ast.Expr) bool {
+	t := pass.TypesInfo.TypeOf(expr)
+	if t == nil {
+		return false
+	}
+	ptr, ok := t.(*types.Pointer)
+	if !ok {
+		return false
+	}
+	named, ok := ptr.Elem().(*types.Named)
+	if !ok {
+		return false
+	}
+	obj := named.Obj()
+	return obj.Name() == "Path" &&
+		obj.Pkg() != nil &&
+		obj.Pkg().Path() == "k8s.io/apimachinery/pkg/util/validation/field"
+}
+
 // collectValidatedFields returns the set of field names (lowerCamelCase) that
 // appear as the first string literal argument of field.Child(...) calls within
 // the current package.
@@ -181,9 +202,13 @@ func collectValidatedFields(pass *analysis.Pass) map[string]bool {
 	insp.Preorder([]ast.Node{(*ast.CallExpr)(nil)}, func(n ast.Node) {
 		call := n.(*ast.CallExpr)
 
-		// We want calls of the form <expr>.Child("name", ...).
+		// We want calls of the form <expr>.Child("name", ...) where the
+		// receiver is *field.Path from k8s.io/apimachinery.
 		sel, ok := call.Fun.(*ast.SelectorExpr)
 		if !ok || sel.Sel.Name != "Child" {
+			return
+		}
+		if !isFieldPath(pass, sel.X) {
 			return
 		}
 		// Record only the first argument — that is the immediate field name.
