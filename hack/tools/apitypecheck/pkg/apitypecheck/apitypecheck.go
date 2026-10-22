@@ -21,6 +21,7 @@ package apitypecheck
 import (
 	"go/ast"
 	"go/types"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -194,7 +195,11 @@ func collectValidatedFields(pass *analysis.Pass) map[string]bool {
 		if !ok {
 			return
 		}
-		validated[strings.Trim(lit.Value, `"`)] = true
+		fieldName, err := strconv.Unquote(lit.Value)
+		if err != nil {
+			return
+		}
+		validated[fieldName] = true
 	})
 
 	return validated
