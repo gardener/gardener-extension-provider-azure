@@ -119,6 +119,7 @@ spec:
         {{- end }}
         - name: cloud-provider-config
           mountPath: /etc/kubernetes/cloudprovider
+          readOnly: true
 
       - name: azure-csi-provisioner
         image: {{ index .Values.images "csi-provisioner" }}
