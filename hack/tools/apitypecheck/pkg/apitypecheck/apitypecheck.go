@@ -12,9 +12,9 @@
 // and checks that each field's lowerCamelCase name appears in at least one
 // field.Child("name") call within the validation package.
 //
-// Structs whose names end with "Status", "State", "Flavor", or "Version", as well
-// as structs listed in noValidationStructs, are skipped — they are output or lookup
-// types that do not require input validation.
+// Structs whose names end with "Status" or "State", as well as structs listed in
+// noValidationStructs, are skipped — they are output or lookup types that do not
+// require input validation.
 // Fields listed in noValidationFields are also skipped.
 package apitypecheck
 
@@ -122,10 +122,10 @@ var noValidationFields = map[string]bool{
 
 func run(pass *analysis.Pass) (any, error) {
 	// Only run on packages whose import path contains "/validation".
-	// Skip external test packages (path ends in "_test") — they don't contribute
-	// validation logic and would generate spurious diagnostics.
+	// Skip external test packages (path ends in "_test" or ".test") — they don't
+	// contribute validation logic and would generate spurious diagnostics.
 	pkgPath := pass.Pkg.Path()
-	if strings.HasSuffix(pkgPath, "_test") {
+	if strings.HasSuffix(pkgPath, "_test") || strings.HasSuffix(pkgPath, ".test") {
 		return nil, nil
 	}
 	validationIdx := strings.LastIndex(pkgPath, "/validation")
@@ -139,7 +139,9 @@ func run(pass *analysis.Pass) (any, error) {
 	// Find the types package among the imports of the validation package.
 	typesPkg := findPkg(pass.Pkg, typesPkgPath)
 	if typesPkg == nil {
-		// Types package not imported — nothing to check.
+		pass.Reportf(pass.Files[0].Package,
+			"validation package %s does not import sibling types package %s",
+			pass.Pkg.Path(), typesPkgPath)
 		return nil, nil
 	}
 
@@ -163,8 +165,14 @@ func findPkg(pkg *types.Package, path string) *types.Package {
 }
 
 // collectValidatedFields returns the set of field names (lowerCamelCase) that
-// appear as string literals in any argument to field.Child("name", ...) calls
-// within the current package.
+// appear as the first string literal argument of field.Child(...) calls within
+// the current package.
+//
+// Known limitation: the set is package-wide, not per-type. A Child("tags") call
+// inside ValidateOtherConfig satisfies the check for WidgetConfig.Tags as well.
+// This is acceptable because the Azure validation package has one function per
+// config type and no two checked types share a field name that one validates and
+// the other does not.
 func collectValidatedFields(pass *analysis.Pass) map[string]bool {
 	insp := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
 	validated := make(map[string]bool)
@@ -177,15 +185,16 @@ func collectValidatedFields(pass *analysis.Pass) map[string]bool {
 		if !ok || sel.Sel.Name != "Child" {
 			return
 		}
-		// Collect all string literal arguments (Child accepts variadic extras).
-		for _, arg := range call.Args {
-			lit, ok := arg.(*ast.BasicLit)
-			if !ok {
-				continue
-			}
-			name := strings.Trim(lit.Value, `"`)
-			validated[name] = true
+		// Record only the first argument — that is the immediate field name.
+		// Variadic extras describe nested path segments, not top-level fields.
+		if len(call.Args) == 0 {
+			return
 		}
+		lit, ok := call.Args[0].(*ast.BasicLit)
+		if !ok {
+			return
+		}
+		validated[strings.Trim(lit.Value, `"`)] = true
 	})
 
 	return validated

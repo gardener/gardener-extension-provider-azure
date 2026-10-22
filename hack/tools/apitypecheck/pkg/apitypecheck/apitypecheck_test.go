@@ -20,4 +20,8 @@ func TestAPITypeCheck(t *testing.T) {
 	t.Run("incomplete validation — missing field.Child reference reported", func(t *testing.T) {
 		analysistest.Run(t, analysistest.TestData(), Analyzer, "apis/azure/validation/incomplete")
 	})
+
+	t.Run("variadic Child args — second argument must not count as validated", func(t *testing.T) {
+		analysistest.Run(t, analysistest.TestData(), Analyzer, "apis/azure/validation/variadic")
+	})
 }
