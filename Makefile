@@ -221,6 +221,7 @@ check-generate:
 check: $(GOIMPORTS) $(GOLANGCI_LINT) $(HELM)
 	@REPO_ROOT=$(REPO_ROOT) bash $(GARDENER_HACK_DIR)/check.sh --golangci-lint-config=./.golangci.yaml ./cmd/... ./pkg/... ./test/...
 	@REPO_ROOT=$(REPO_ROOT) bash $(GARDENER_HACK_DIR)/check-charts.sh ./charts
+	@go run ./hack/tools/apitypecheck/. ./pkg/apis/azure/validation/...
 
 .PHONY: generate
 generate: $(CONTROLLER_GEN) $(EXTENSION_GEN) $(CRD_REF_DOCS) $(HELM) $(KUSTOMIZE) $(MOCKGEN) $(YQ)
