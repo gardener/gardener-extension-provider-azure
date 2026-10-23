@@ -59,7 +59,6 @@ images:
       availability_requirement: low
     signing: false
   targetVersion: 1.35.x
-# max-supported-k8s
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/v2/kubernetes/azure-cloud-controller-manager
@@ -74,7 +73,23 @@ images:
       integrity_requirement: high
       availability_requirement: low
     signing: false
-  targetVersion: '>= 1.36'
+  targetVersion: '1.36.x'
+# max-supported-k8s
+- name: cloud-controller-manager
+  sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
+  repository: mcr.microsoft.com/oss/v2/kubernetes/azure-cloud-controller-manager
+  tag: v1.37.0
+  labels:
+  - name: gardener.cloud/cve-categorisation
+    value:
+      network_exposure: protected
+      authentication_enforced: false
+      user_interaction: gardener-operator
+      confidentiality_requirement: high
+      integrity_requirement: high
+      availability_requirement: low
+    signing: false
+  targetVersion: '>= 1.37'
 - name: cloud-node-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/v2/kubernetes/azure-cloud-node-manager
@@ -135,7 +150,6 @@ images:
       availability_requirement: low
     signing: false
   targetVersion: 1.35.x
-# max-supported-k8s
 - name: cloud-node-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/v2/kubernetes/azure-cloud-node-manager
@@ -150,7 +164,23 @@ images:
       integrity_requirement: high
       availability_requirement: low
     signing: false
-  targetVersion: '>= 1.36'
+  targetVersion: '1.36.x'
+# max-supported-k8s
+- name: cloud-node-manager
+  sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
+  repository: mcr.microsoft.com/oss/v2/kubernetes/azure-cloud-node-manager
+  tag: v1.37.0
+  labels:
+  - name: gardener.cloud/cve-categorisation
+    value:
+      network_exposure: protected
+      authentication_enforced: false
+      user_interaction: gardener-operator
+      confidentiality_requirement: high
+      integrity_requirement: high
+      availability_requirement: low
+    signing: false
+  targetVersion: '>= 1.37'
 - name: csi-attacher
   sourceRepository: github.com/kubernetes-csi/external-attacher
   repository: registry.k8s.io/sig-storage/csi-attacher
