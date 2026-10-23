@@ -1196,8 +1196,54 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
 					"Field":  Equal("networks.natGateway.sku"),
-					"Detail": ContainSubstring("changing the NAT Gateway SKU is not allowed"),
+					"Detail": ContainSubstring(azure.ShootConfirmNatGatewaySKURecreationAnnotation),
 				}))
+			})
+
+			It("should allow changing the NAT Gateway SKU when recreation is confirmed", func() {
+				oldInfra := &apisazure.InfrastructureConfig{
+					Networks: apisazure.NetworkConfig{
+						Workers: &workers,
+						VNet:    apisazure.VNet{CIDR: &vnetCIDR},
+						NatGateway: &apisazure.NatGatewayConfig{
+							Enabled: true,
+							SKU:     ptr.To("Standard"),
+						},
+					},
+				}
+				newInfra := oldInfra.DeepCopy()
+				newInfra.Networks.NatGateway.SKU = ptr.To("StandardV2")
+				shootWithAnnotation := *shoot.DeepCopy()
+				shootWithAnnotation.Annotations = map[string]string{
+					azure.ShootConfirmNatGatewaySKURecreationAnnotation: "true",
+				}
+
+				Expect(ValidateInfrastructureConfigUpdate(oldInfra, newInfra, &shootWithAnnotation, providerPath)).To(BeEmpty())
+			})
+
+			It("should not allow changing the NAT Gateway SKU for a non-true confirmation value", func() {
+				oldInfra := &apisazure.InfrastructureConfig{
+					Networks: apisazure.NetworkConfig{
+						Workers: &workers,
+						VNet:    apisazure.VNet{CIDR: &vnetCIDR},
+						NatGateway: &apisazure.NatGatewayConfig{
+							Enabled: true,
+							SKU:     ptr.To("Standard"),
+						},
+					},
+				}
+				newInfra := oldInfra.DeepCopy()
+				newInfra.Networks.NatGateway.SKU = ptr.To("StandardV2")
+				shootWithAnnotation := *shoot.DeepCopy()
+				shootWithAnnotation.Annotations = map[string]string{
+					azure.ShootConfirmNatGatewaySKURecreationAnnotation: "yes",
+				}
+
+				Expect(ValidateInfrastructureConfigUpdate(oldInfra, newInfra, &shootWithAnnotation, providerPath)).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.natGateway.sku"),
+					"Detail": ContainSubstring(azure.ShootConfirmNatGatewaySKURecreationAnnotation),
+				}))))
 			})
 
 			It("should forbid changing NAT Gateway SKU from StandardV2 to Standard", func() {
@@ -1218,7 +1264,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
 					"Field":  Equal("networks.natGateway.sku"),
-					"Detail": ContainSubstring("changing the NAT Gateway SKU is not allowed"),
+					"Detail": ContainSubstring(azure.ShootConfirmNatGatewaySKURecreationAnnotation),
 				}))
 			})
 
@@ -1239,7 +1285,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				Expect(errorList).To(ConsistOfFields(Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
 					"Field":  Equal("networks.natGateway.sku"),
-					"Detail": ContainSubstring("changing the NAT Gateway SKU is not allowed"),
+					"Detail": ContainSubstring(azure.ShootConfirmNatGatewaySKURecreationAnnotation),
 				}))
 			})
 
@@ -1260,7 +1306,7 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				Expect(errorList).To(BeEmpty())
 			})
 
-			It("should forbid changing zoned NAT Gateway SKU", func() {
+			It("should forbid changing zoned NAT Gateway SKU without confirmation", func() {
 				oldInfra := &apisazure.InfrastructureConfig{
 					Zoned: true,
 					Networks: apisazure.NetworkConfig{
@@ -1284,7 +1330,38 @@ var _ = Describe("InfrastructureConfig validation", func() {
 				Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":   Equal(field.ErrorTypeInvalid),
 					"Field":  Equal("networks.zones[0].natGateway.sku"),
-					"Detail": ContainSubstring("changing the NAT Gateway SKU is not allowed"),
+					"Detail": ContainSubstring("confirmation annotation only applies to the network-level NAT Gateway"),
+				}))))
+			})
+
+			It("should forbid changing zoned NAT Gateway SKU even when recreation is confirmed", func() {
+				oldInfra := &apisazure.InfrastructureConfig{
+					Zoned: true,
+					Networks: apisazure.NetworkConfig{
+						VNet: apisazure.VNet{CIDR: &vnetCIDR},
+						Zones: []apisazure.Zone{
+							{
+								Name: 1,
+								CIDR: "10.250.0.0/24",
+								NatGateway: &apisazure.ZonedNatGatewayConfig{
+									Enabled: true,
+									SKU:     ptr.To("Standard"),
+								},
+							},
+						},
+					},
+				}
+				newInfra := oldInfra.DeepCopy()
+				newInfra.Networks.Zones[0].NatGateway.SKU = ptr.To("StandardV2")
+				shootWithAnnotation := *shoot.DeepCopy()
+				shootWithAnnotation.Annotations = map[string]string{
+					azure.ShootConfirmNatGatewaySKURecreationAnnotation: "true",
+				}
+
+				Expect(ValidateInfrastructureConfigUpdate(oldInfra, newInfra, &shootWithAnnotation, providerPath)).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":   Equal(field.ErrorTypeInvalid),
+					"Field":  Equal("networks.zones[0].natGateway.sku"),
+					"Detail": ContainSubstring("confirmation annotation only applies to the network-level NAT Gateway"),
 				}))))
 			})
 		})
