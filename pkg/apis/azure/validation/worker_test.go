@@ -324,7 +324,7 @@ var _ = Describe("ValidateWorkerConfig", func() {
 	})
 
 	Describe("CapacityReservation", func() {
-		const validCapacityReservationGroupID = "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/my-resource-group/providers/Microsoft.Compute/capacityReservationGroups/my-capacity-reservation-group"
+		const validCapacityReservationGroupID = "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/my-resource-group/providers/Microsoft.Compute/CapacityReservationGroups/my-capacity-reservation-group"
 
 		It("should accept a canonical capacity reservation group ID", func() {
 			workerCfg.CapacityReservation = &apisazure.CapacityReservation{

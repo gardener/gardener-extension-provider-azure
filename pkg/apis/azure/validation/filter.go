@@ -25,7 +25,7 @@ var (
 	urnRegex                        = `^[\w-]+:[\w-]+:[\w.-]+:[\w.-]+$`
 	sharedGalleryImageIDRegex       = `^/SharedGalleries/[\w-]+/Images/[\w-]+/Versions/[\w.-]+$`
 	communityGalleryImageIDRegex    = `^/CommunityGalleries/[\w-]+/Images/[\w-]+/Versions/[\w.-]+$`
-	capacityReservationGroupIDRegex = `^/subscriptions/[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}/resourceGroups/[A-Za-z0-9_().-]+/providers/Microsoft\.Compute/capacityReservationGroups/[A-Za-z0-9_.-]+$`
+	capacityReservationGroupIDRegex = `^/subscriptions/[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}/resourceGroups/[A-Za-z0-9_().-]+/providers/Microsoft\.Compute/CapacityReservationGroups/[A-Za-z0-9_.-]+$`
 
 	validateServiceEndpoint              = combineValidationFuncs(regex(serviceEndpointsRegex), minLength(9), maxLength(120))
 	validateResourceGroupName            = combineValidationFuncs(regex(resourceGroupNameRegex), notEmpty, maxLength(90))
@@ -36,7 +36,7 @@ var (
 	urnValidation                        = combineValidationFuncs(regex(urnRegex), notEmpty, maxLength(256))
 	sharedGalleryImageIDValidation       = combineValidationFuncs(regex(sharedGalleryImageIDRegex), notEmpty, maxLength(512))
 	communityGalleryImageIDValidation    = combineValidationFuncs(regex(communityGalleryImageIDRegex), notEmpty, maxLength(512))
-	capacityReservationGroupIDValidation = combineValidationFuncs(regex(capacityReservationGroupIDRegex), notEmpty)
+	capacityReservationGroupIDValidation = combineValidationFuncs(regex(capacityReservationGroupIDRegex), notEmpty, maxLength(512))
 )
 
 type validateFunc[T any] func(T, *field.Path) field.ErrorList
