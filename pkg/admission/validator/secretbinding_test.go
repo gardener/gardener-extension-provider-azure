@@ -37,12 +37,7 @@ var _ = Describe("SecretBinding validator", func() {
 			scheme *runtime.Scheme
 
 			ctx           = context.TODO()
-			secretBinding = &core.SecretBinding{
-				SecretRef: corev1.SecretReference{
-					Name:      name,
-					Namespace: namespace,
-				},
-			}
+			secretBinding *core.SecretBinding
 		)
 
 		newValidator := func(objs ...client.Object) {
@@ -54,6 +49,12 @@ var _ = Describe("SecretBinding validator", func() {
 		BeforeEach(func() {
 			scheme = runtime.NewScheme()
 			Expect(corev1.AddToScheme(scheme)).To(Succeed())
+			secretBinding = &core.SecretBinding{
+				SecretRef: corev1.SecretReference{
+					Name:      name,
+					Namespace: namespace,
+				},
+			}
 
 			newValidator()
 		})
