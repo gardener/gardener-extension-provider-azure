@@ -56,7 +56,7 @@ import (
 const (
 	caNameControlPlane               = "ca-" + azure.Name + "-controlplane"
 	cloudControllerManagerServerName = azure.CloudControllerManagerName + "-server"
-	workloadIdentityTokenFile        = "/var/run/secrets/gardener.cloud/workload-identity/token"
+	workloadIdentityTokenFile        = "/var/run/secrets/gardener.cloud/workload-identity/token" // #nosec G101 -- Fixed path to the workload identity token file, not a credential.
 )
 
 type azureCredentials struct {
