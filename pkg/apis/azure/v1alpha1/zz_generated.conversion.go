@@ -13,7 +13,6 @@ import (
 	unsafe "unsafe"
 
 	azure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
-	v1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	conversion "k8s.io/apimachinery/pkg/conversion"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -460,8 +459,7 @@ func RegisterConversions(s *runtime.Scheme) error {
 }
 
 func autoConvert_v1alpha1_AzureResource_To_azure_AzureResource(in *AzureResource, out *azure.AzureResource, s conversion.Scope) error {
-	out.Kind = in.Kind
-	out.ID = in.ID
+	*out = *(*azure.AzureResource)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -471,8 +469,7 @@ func Convert_v1alpha1_AzureResource_To_azure_AzureResource(in *AzureResource, ou
 }
 
 func autoConvert_azure_AzureResource_To_v1alpha1_AzureResource(in *azure.AzureResource, out *AzureResource, s conversion.Scope) error {
-	out.Kind = in.Kind
-	out.ID = in.ID
+	*out = *(*AzureResource)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -506,7 +503,7 @@ func Convert_azure_BackupBucketConfig_To_v1alpha1_BackupBucketConfig(in *azure.B
 }
 
 func autoConvert_v1alpha1_CapacityReservation_To_azure_CapacityReservation(in *CapacityReservation, out *azure.CapacityReservation, s conversion.Scope) error {
-	out.CapacityReservationGroupID = (*string)(unsafe.Pointer(in.CapacityReservationGroupID))
+	*out = *(*azure.CapacityReservation)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -516,7 +513,7 @@ func Convert_v1alpha1_CapacityReservation_To_azure_CapacityReservation(in *Capac
 }
 
 func autoConvert_azure_CapacityReservation_To_v1alpha1_CapacityReservation(in *azure.CapacityReservation, out *CapacityReservation, s conversion.Scope) error {
-	out.CapacityReservationGroupID = (*string)(unsafe.Pointer(in.CapacityReservationGroupID))
+	*out = *(*CapacityReservation)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -526,7 +523,7 @@ func Convert_azure_CapacityReservation_To_v1alpha1_CapacityReservation(in *azure
 }
 
 func autoConvert_v1alpha1_CloudConfiguration_To_azure_CloudConfiguration(in *CloudConfiguration, out *azure.CloudConfiguration, s conversion.Scope) error {
-	out.Name = in.Name
+	*out = *(*azure.CloudConfiguration)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -536,7 +533,7 @@ func Convert_v1alpha1_CloudConfiguration_To_azure_CloudConfiguration(in *CloudCo
 }
 
 func autoConvert_azure_CloudConfiguration_To_v1alpha1_CloudConfiguration(in *azure.CloudConfiguration, out *CloudConfiguration, s conversion.Scope) error {
-	out.Name = in.Name
+	*out = *(*CloudConfiguration)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -546,7 +543,7 @@ func Convert_azure_CloudConfiguration_To_v1alpha1_CloudConfiguration(in *azure.C
 }
 
 func autoConvert_v1alpha1_CloudControllerManagerConfig_To_azure_CloudControllerManagerConfig(in *CloudControllerManagerConfig, out *azure.CloudControllerManagerConfig, s conversion.Scope) error {
-	out.FeatureGates = *(*map[string]bool)(unsafe.Pointer(&in.FeatureGates))
+	*out = *(*azure.CloudControllerManagerConfig)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -556,7 +553,7 @@ func Convert_v1alpha1_CloudControllerManagerConfig_To_azure_CloudControllerManag
 }
 
 func autoConvert_azure_CloudControllerManagerConfig_To_v1alpha1_CloudControllerManagerConfig(in *azure.CloudControllerManagerConfig, out *CloudControllerManagerConfig, s conversion.Scope) error {
-	out.FeatureGates = *(*map[string]bool)(unsafe.Pointer(&in.FeatureGates))
+	*out = *(*CloudControllerManagerConfig)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -616,8 +613,7 @@ func Convert_azure_ControlPlaneConfig_To_v1alpha1_ControlPlaneConfig(in *azure.C
 }
 
 func autoConvert_v1alpha1_DataVolume_To_azure_DataVolume(in *DataVolume, out *azure.DataVolume, s conversion.Scope) error {
-	out.Name = in.Name
-	out.ImageRef = (*azure.Image)(unsafe.Pointer(in.ImageRef))
+	*out = *(*azure.DataVolume)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -627,8 +623,7 @@ func Convert_v1alpha1_DataVolume_To_azure_DataVolume(in *DataVolume, out *azure.
 }
 
 func autoConvert_azure_DataVolume_To_v1alpha1_DataVolume(in *azure.DataVolume, out *DataVolume, s conversion.Scope) error {
-	out.Name = in.Name
-	out.ImageRef = (*Image)(unsafe.Pointer(in.ImageRef))
+	*out = *(*DataVolume)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -638,8 +633,7 @@ func Convert_azure_DataVolume_To_v1alpha1_DataVolume(in *azure.DataVolume, out *
 }
 
 func autoConvert_v1alpha1_DiagnosticsProfile_To_azure_DiagnosticsProfile(in *DiagnosticsProfile, out *azure.DiagnosticsProfile, s conversion.Scope) error {
-	out.Enabled = in.Enabled
-	out.StorageURI = (*string)(unsafe.Pointer(in.StorageURI))
+	*out = *(*azure.DiagnosticsProfile)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -649,8 +643,7 @@ func Convert_v1alpha1_DiagnosticsProfile_To_azure_DiagnosticsProfile(in *Diagnos
 }
 
 func autoConvert_azure_DiagnosticsProfile_To_v1alpha1_DiagnosticsProfile(in *azure.DiagnosticsProfile, out *DiagnosticsProfile, s conversion.Scope) error {
-	out.Enabled = in.Enabled
-	out.StorageURI = (*string)(unsafe.Pointer(in.StorageURI))
+	*out = *(*DiagnosticsProfile)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -660,8 +653,7 @@ func Convert_azure_DiagnosticsProfile_To_v1alpha1_DiagnosticsProfile(in *azure.D
 }
 
 func autoConvert_v1alpha1_DomainCount_To_azure_DomainCount(in *DomainCount, out *azure.DomainCount, s conversion.Scope) error {
-	out.Region = in.Region
-	out.Count = in.Count
+	*out = *(*azure.DomainCount)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -671,8 +663,7 @@ func Convert_v1alpha1_DomainCount_To_azure_DomainCount(in *DomainCount, out *azu
 }
 
 func autoConvert_azure_DomainCount_To_v1alpha1_DomainCount(in *azure.DomainCount, out *DomainCount, s conversion.Scope) error {
-	out.Region = in.Region
-	out.Count = in.Count
+	*out = *(*DomainCount)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -682,9 +673,7 @@ func Convert_azure_DomainCount_To_v1alpha1_DomainCount(in *azure.DomainCount, ou
 }
 
 func autoConvert_v1alpha1_IdentityConfig_To_azure_IdentityConfig(in *IdentityConfig, out *azure.IdentityConfig, s conversion.Scope) error {
-	out.Name = in.Name
-	out.ResourceGroup = in.ResourceGroup
-	out.ACRAccess = (*bool)(unsafe.Pointer(in.ACRAccess))
+	*out = *(*azure.IdentityConfig)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -694,9 +683,7 @@ func Convert_v1alpha1_IdentityConfig_To_azure_IdentityConfig(in *IdentityConfig,
 }
 
 func autoConvert_azure_IdentityConfig_To_v1alpha1_IdentityConfig(in *azure.IdentityConfig, out *IdentityConfig, s conversion.Scope) error {
-	out.Name = in.Name
-	out.ResourceGroup = in.ResourceGroup
-	out.ACRAccess = (*bool)(unsafe.Pointer(in.ACRAccess))
+	*out = *(*IdentityConfig)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -706,9 +693,7 @@ func Convert_azure_IdentityConfig_To_v1alpha1_IdentityConfig(in *azure.IdentityC
 }
 
 func autoConvert_v1alpha1_IdentityStatus_To_azure_IdentityStatus(in *IdentityStatus, out *azure.IdentityStatus, s conversion.Scope) error {
-	out.ID = in.ID
-	out.ClientID = in.ClientID
-	out.ACRAccess = in.ACRAccess
+	*out = *(*azure.IdentityStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -718,9 +703,7 @@ func Convert_v1alpha1_IdentityStatus_To_azure_IdentityStatus(in *IdentityStatus,
 }
 
 func autoConvert_azure_IdentityStatus_To_v1alpha1_IdentityStatus(in *azure.IdentityStatus, out *IdentityStatus, s conversion.Scope) error {
-	out.ID = in.ID
-	out.ClientID = in.ClientID
-	out.ACRAccess = in.ACRAccess
+	*out = *(*IdentityStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -730,10 +713,7 @@ func Convert_azure_IdentityStatus_To_v1alpha1_IdentityStatus(in *azure.IdentityS
 }
 
 func autoConvert_v1alpha1_Image_To_azure_Image(in *Image, out *azure.Image, s conversion.Scope) error {
-	out.URN = (*string)(unsafe.Pointer(in.URN))
-	out.ID = (*string)(unsafe.Pointer(in.ID))
-	out.CommunityGalleryImageID = (*string)(unsafe.Pointer(in.CommunityGalleryImageID))
-	out.SharedGalleryImageID = (*string)(unsafe.Pointer(in.SharedGalleryImageID))
+	*out = *(*azure.Image)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -743,10 +723,7 @@ func Convert_v1alpha1_Image_To_azure_Image(in *Image, out *azure.Image, s conver
 }
 
 func autoConvert_azure_Image_To_v1alpha1_Image(in *azure.Image, out *Image, s conversion.Scope) error {
-	out.URN = (*string)(unsafe.Pointer(in.URN))
-	out.ID = (*string)(unsafe.Pointer(in.ID))
-	out.CommunityGalleryImageID = (*string)(unsafe.Pointer(in.CommunityGalleryImageID))
-	out.SharedGalleryImageID = (*string)(unsafe.Pointer(in.SharedGalleryImageID))
+	*out = *(*Image)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -756,9 +733,7 @@ func Convert_azure_Image_To_v1alpha1_Image(in *azure.Image, out *Image, s conver
 }
 
 func autoConvert_v1alpha1_ImmutableConfig_To_azure_ImmutableConfig(in *ImmutableConfig, out *azure.ImmutableConfig, s conversion.Scope) error {
-	out.RetentionType = azure.RetentionType(in.RetentionType)
-	out.RetentionPeriod = in.RetentionPeriod
-	out.Locked = in.Locked
+	*out = *(*azure.ImmutableConfig)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -768,9 +743,7 @@ func Convert_v1alpha1_ImmutableConfig_To_azure_ImmutableConfig(in *ImmutableConf
 }
 
 func autoConvert_azure_ImmutableConfig_To_v1alpha1_ImmutableConfig(in *azure.ImmutableConfig, out *ImmutableConfig, s conversion.Scope) error {
-	out.RetentionType = RetentionType(in.RetentionType)
-	out.RetentionPeriod = in.RetentionPeriod
-	out.Locked = in.Locked
+	*out = *(*ImmutableConfig)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -870,15 +843,7 @@ func Convert_azure_InfrastructureStatus_To_v1alpha1_InfrastructureStatus(in *azu
 }
 
 func autoConvert_v1alpha1_MachineImage_To_azure_MachineImage(in *MachineImage, out *azure.MachineImage, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Version = in.Version
-	out.AcceleratedNetworking = (*bool)(unsafe.Pointer(in.AcceleratedNetworking))
-	out.Architecture = (*string)(unsafe.Pointer(in.Architecture))
-	out.Capabilities = *(*v1beta1.Capabilities)(unsafe.Pointer(&in.Capabilities))
-	out.SkipMarketplaceAgreement = (*bool)(unsafe.Pointer(in.SkipMarketplaceAgreement))
-	if err := Convert_v1alpha1_Image_To_azure_Image(&in.Image, &out.Image, s); err != nil {
-		return err
-	}
+	*out = *(*azure.MachineImage)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -888,15 +853,7 @@ func Convert_v1alpha1_MachineImage_To_azure_MachineImage(in *MachineImage, out *
 }
 
 func autoConvert_azure_MachineImage_To_v1alpha1_MachineImage(in *azure.MachineImage, out *MachineImage, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Version = in.Version
-	out.AcceleratedNetworking = (*bool)(unsafe.Pointer(in.AcceleratedNetworking))
-	out.Architecture = (*string)(unsafe.Pointer(in.Architecture))
-	out.Capabilities = *(*v1beta1.Capabilities)(unsafe.Pointer(&in.Capabilities))
-	out.SkipMarketplaceAgreement = (*bool)(unsafe.Pointer(in.SkipMarketplaceAgreement))
-	if err := Convert_azure_Image_To_v1alpha1_Image(&in.Image, &out.Image, s); err != nil {
-		return err
-	}
+	*out = *(*MachineImage)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -906,11 +863,7 @@ func Convert_azure_MachineImage_To_v1alpha1_MachineImage(in *azure.MachineImage,
 }
 
 func autoConvert_v1alpha1_MachineImageFlavor_To_azure_MachineImageFlavor(in *MachineImageFlavor, out *azure.MachineImageFlavor, s conversion.Scope) error {
-	out.SkipMarketplaceAgreement = (*bool)(unsafe.Pointer(in.SkipMarketplaceAgreement))
-	out.Capabilities = *(*v1beta1.Capabilities)(unsafe.Pointer(&in.Capabilities))
-	if err := Convert_v1alpha1_Image_To_azure_Image(&in.Image, &out.Image, s); err != nil {
-		return err
-	}
+	*out = *(*azure.MachineImageFlavor)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -920,11 +873,7 @@ func Convert_v1alpha1_MachineImageFlavor_To_azure_MachineImageFlavor(in *Machine
 }
 
 func autoConvert_azure_MachineImageFlavor_To_v1alpha1_MachineImageFlavor(in *azure.MachineImageFlavor, out *MachineImageFlavor, s conversion.Scope) error {
-	out.SkipMarketplaceAgreement = (*bool)(unsafe.Pointer(in.SkipMarketplaceAgreement))
-	out.Capabilities = *(*v1beta1.Capabilities)(unsafe.Pointer(&in.Capabilities))
-	if err := Convert_azure_Image_To_v1alpha1_Image(&in.Image, &out.Image, s); err != nil {
-		return err
-	}
+	*out = *(*MachineImageFlavor)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -934,14 +883,7 @@ func Convert_azure_MachineImageFlavor_To_v1alpha1_MachineImageFlavor(in *azure.M
 }
 
 func autoConvert_v1alpha1_MachineImageVersion_To_azure_MachineImageVersion(in *MachineImageVersion, out *azure.MachineImageVersion, s conversion.Scope) error {
-	out.Version = in.Version
-	out.SkipMarketplaceAgreement = (*bool)(unsafe.Pointer(in.SkipMarketplaceAgreement))
-	out.AcceleratedNetworking = (*bool)(unsafe.Pointer(in.AcceleratedNetworking))
-	out.Architecture = (*string)(unsafe.Pointer(in.Architecture))
-	out.CapabilityFlavors = *(*[]azure.MachineImageFlavor)(unsafe.Pointer(&in.CapabilityFlavors))
-	if err := Convert_v1alpha1_Image_To_azure_Image(&in.Image, &out.Image, s); err != nil {
-		return err
-	}
+	*out = *(*azure.MachineImageVersion)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -951,14 +893,7 @@ func Convert_v1alpha1_MachineImageVersion_To_azure_MachineImageVersion(in *Machi
 }
 
 func autoConvert_azure_MachineImageVersion_To_v1alpha1_MachineImageVersion(in *azure.MachineImageVersion, out *MachineImageVersion, s conversion.Scope) error {
-	out.Version = in.Version
-	out.SkipMarketplaceAgreement = (*bool)(unsafe.Pointer(in.SkipMarketplaceAgreement))
-	out.AcceleratedNetworking = (*bool)(unsafe.Pointer(in.AcceleratedNetworking))
-	out.Architecture = (*string)(unsafe.Pointer(in.Architecture))
-	out.CapabilityFlavors = *(*[]MachineImageFlavor)(unsafe.Pointer(&in.CapabilityFlavors))
-	if err := Convert_azure_Image_To_v1alpha1_Image(&in.Image, &out.Image, s); err != nil {
-		return err
-	}
+	*out = *(*MachineImageVersion)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -968,8 +903,7 @@ func Convert_azure_MachineImageVersion_To_v1alpha1_MachineImageVersion(in *azure
 }
 
 func autoConvert_v1alpha1_MachineImages_To_azure_MachineImages(in *MachineImages, out *azure.MachineImages, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Versions = *(*[]azure.MachineImageVersion)(unsafe.Pointer(&in.Versions))
+	*out = *(*azure.MachineImages)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -979,8 +913,7 @@ func Convert_v1alpha1_MachineImages_To_azure_MachineImages(in *MachineImages, ou
 }
 
 func autoConvert_azure_MachineImages_To_v1alpha1_MachineImages(in *azure.MachineImages, out *MachineImages, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Versions = *(*[]MachineImageVersion)(unsafe.Pointer(&in.Versions))
+	*out = *(*MachineImages)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -990,8 +923,7 @@ func Convert_azure_MachineImages_To_v1alpha1_MachineImages(in *azure.MachineImag
 }
 
 func autoConvert_v1alpha1_MachineType_To_azure_MachineType(in *MachineType, out *azure.MachineType, s conversion.Scope) error {
-	out.Name = in.Name
-	out.AcceleratedNetworking = (*bool)(unsafe.Pointer(in.AcceleratedNetworking))
+	*out = *(*azure.MachineType)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1001,8 +933,7 @@ func Convert_v1alpha1_MachineType_To_azure_MachineType(in *MachineType, out *azu
 }
 
 func autoConvert_azure_MachineType_To_v1alpha1_MachineType(in *azure.MachineType, out *MachineType, s conversion.Scope) error {
-	out.Name = in.Name
-	out.AcceleratedNetworking = (*bool)(unsafe.Pointer(in.AcceleratedNetworking))
+	*out = *(*MachineType)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1012,11 +943,7 @@ func Convert_azure_MachineType_To_v1alpha1_MachineType(in *azure.MachineType, ou
 }
 
 func autoConvert_v1alpha1_NatGatewayConfig_To_azure_NatGatewayConfig(in *NatGatewayConfig, out *azure.NatGatewayConfig, s conversion.Scope) error {
-	out.Enabled = in.Enabled
-	out.IdleConnectionTimeoutMinutes = (*int32)(unsafe.Pointer(in.IdleConnectionTimeoutMinutes))
-	out.Zone = (*int32)(unsafe.Pointer(in.Zone))
-	out.SKU = (*string)(unsafe.Pointer(in.SKU))
-	out.IPAddresses = *(*[]azure.PublicIPReference)(unsafe.Pointer(&in.IPAddresses))
+	*out = *(*azure.NatGatewayConfig)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1026,11 +953,7 @@ func Convert_v1alpha1_NatGatewayConfig_To_azure_NatGatewayConfig(in *NatGatewayC
 }
 
 func autoConvert_azure_NatGatewayConfig_To_v1alpha1_NatGatewayConfig(in *azure.NatGatewayConfig, out *NatGatewayConfig, s conversion.Scope) error {
-	out.Enabled = in.Enabled
-	out.IdleConnectionTimeoutMinutes = (*int32)(unsafe.Pointer(in.IdleConnectionTimeoutMinutes))
-	out.Zone = (*int32)(unsafe.Pointer(in.Zone))
-	out.SKU = (*string)(unsafe.Pointer(in.SKU))
-	out.IPAddresses = *(*[]PublicIPReference)(unsafe.Pointer(&in.IPAddresses))
+	*out = *(*NatGatewayConfig)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1040,14 +963,7 @@ func Convert_azure_NatGatewayConfig_To_v1alpha1_NatGatewayConfig(in *azure.NatGa
 }
 
 func autoConvert_v1alpha1_NetworkConfig_To_azure_NetworkConfig(in *NetworkConfig, out *azure.NetworkConfig, s conversion.Scope) error {
-	if err := Convert_v1alpha1_VNet_To_azure_VNet(&in.VNet, &out.VNet, s); err != nil {
-		return err
-	}
-	out.Workers = (*string)(unsafe.Pointer(in.Workers))
-	out.NatGateway = (*azure.NatGatewayConfig)(unsafe.Pointer(in.NatGateway))
-	out.ServiceEndpoints = *(*[]string)(unsafe.Pointer(&in.ServiceEndpoints))
-	out.Zones = *(*[]azure.Zone)(unsafe.Pointer(&in.Zones))
-	out.Subnet = (*azure.SubnetReference)(unsafe.Pointer(in.Subnet))
+	*out = *(*azure.NetworkConfig)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1057,14 +973,7 @@ func Convert_v1alpha1_NetworkConfig_To_azure_NetworkConfig(in *NetworkConfig, ou
 }
 
 func autoConvert_azure_NetworkConfig_To_v1alpha1_NetworkConfig(in *azure.NetworkConfig, out *NetworkConfig, s conversion.Scope) error {
-	if err := Convert_azure_VNet_To_v1alpha1_VNet(&in.VNet, &out.VNet, s); err != nil {
-		return err
-	}
-	out.Workers = (*string)(unsafe.Pointer(in.Workers))
-	out.NatGateway = (*NatGatewayConfig)(unsafe.Pointer(in.NatGateway))
-	out.ServiceEndpoints = *(*[]string)(unsafe.Pointer(&in.ServiceEndpoints))
-	out.Zones = *(*[]Zone)(unsafe.Pointer(&in.Zones))
-	out.Subnet = (*SubnetReference)(unsafe.Pointer(in.Subnet))
+	*out = *(*NetworkConfig)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1074,12 +983,7 @@ func Convert_azure_NetworkConfig_To_v1alpha1_NetworkConfig(in *azure.NetworkConf
 }
 
 func autoConvert_v1alpha1_NetworkStatus_To_azure_NetworkStatus(in *NetworkStatus, out *azure.NetworkStatus, s conversion.Scope) error {
-	if err := Convert_v1alpha1_VNetStatus_To_azure_VNetStatus(&in.VNet, &out.VNet, s); err != nil {
-		return err
-	}
-	out.Subnets = *(*[]azure.Subnet)(unsafe.Pointer(&in.Subnets))
-	out.Layout = azure.NetworkLayout(in.Layout)
-	out.OutboundAccessType = azure.OutboundAccessType(in.OutboundAccessType)
+	*out = *(*azure.NetworkStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1089,12 +993,7 @@ func Convert_v1alpha1_NetworkStatus_To_azure_NetworkStatus(in *NetworkStatus, ou
 }
 
 func autoConvert_azure_NetworkStatus_To_v1alpha1_NetworkStatus(in *azure.NetworkStatus, out *NetworkStatus, s conversion.Scope) error {
-	if err := Convert_azure_VNetStatus_To_v1alpha1_VNetStatus(&in.VNet, &out.VNet, s); err != nil {
-		return err
-	}
-	out.Subnets = *(*[]Subnet)(unsafe.Pointer(&in.Subnets))
-	out.Layout = NetworkLayout(in.Layout)
-	out.OutboundAccessType = OutboundAccessType(in.OutboundAccessType)
+	*out = *(*NetworkStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1104,9 +1003,7 @@ func Convert_azure_NetworkStatus_To_v1alpha1_NetworkStatus(in *azure.NetworkStat
 }
 
 func autoConvert_v1alpha1_PublicIPReference_To_azure_PublicIPReference(in *PublicIPReference, out *azure.PublicIPReference, s conversion.Scope) error {
-	out.Name = in.Name
-	out.ResourceGroup = in.ResourceGroup
-	out.Zone = (*int32)(unsafe.Pointer(in.Zone))
+	*out = *(*azure.PublicIPReference)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1116,9 +1013,7 @@ func Convert_v1alpha1_PublicIPReference_To_azure_PublicIPReference(in *PublicIPR
 }
 
 func autoConvert_azure_PublicIPReference_To_v1alpha1_PublicIPReference(in *azure.PublicIPReference, out *PublicIPReference, s conversion.Scope) error {
-	out.Name = in.Name
-	out.ResourceGroup = in.ResourceGroup
-	out.Zone = (*int32)(unsafe.Pointer(in.Zone))
+	*out = *(*PublicIPReference)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1128,7 +1023,7 @@ func Convert_azure_PublicIPReference_To_v1alpha1_PublicIPReference(in *azure.Pub
 }
 
 func autoConvert_v1alpha1_ResourceGroup_To_azure_ResourceGroup(in *ResourceGroup, out *azure.ResourceGroup, s conversion.Scope) error {
-	out.Name = in.Name
+	*out = *(*azure.ResourceGroup)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1138,7 +1033,7 @@ func Convert_v1alpha1_ResourceGroup_To_azure_ResourceGroup(in *ResourceGroup, ou
 }
 
 func autoConvert_azure_ResourceGroup_To_v1alpha1_ResourceGroup(in *azure.ResourceGroup, out *ResourceGroup, s conversion.Scope) error {
-	out.Name = in.Name
+	*out = *(*ResourceGroup)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1148,8 +1043,7 @@ func Convert_azure_ResourceGroup_To_v1alpha1_ResourceGroup(in *azure.ResourceGro
 }
 
 func autoConvert_v1alpha1_RotationConfig_To_azure_RotationConfig(in *RotationConfig, out *azure.RotationConfig, s conversion.Scope) error {
-	out.RotationPeriodDays = in.RotationPeriodDays
-	out.ExpirationPeriodDays = (*int32)(unsafe.Pointer(in.ExpirationPeriodDays))
+	*out = *(*azure.RotationConfig)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1159,8 +1053,7 @@ func Convert_v1alpha1_RotationConfig_To_azure_RotationConfig(in *RotationConfig,
 }
 
 func autoConvert_azure_RotationConfig_To_v1alpha1_RotationConfig(in *azure.RotationConfig, out *RotationConfig, s conversion.Scope) error {
-	out.RotationPeriodDays = in.RotationPeriodDays
-	out.ExpirationPeriodDays = (*int32)(unsafe.Pointer(in.ExpirationPeriodDays))
+	*out = *(*RotationConfig)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1170,9 +1063,7 @@ func Convert_azure_RotationConfig_To_v1alpha1_RotationConfig(in *azure.RotationC
 }
 
 func autoConvert_v1alpha1_RouteTable_To_azure_RouteTable(in *RouteTable, out *azure.RouteTable, s conversion.Scope) error {
-	out.Purpose = azure.Purpose(in.Purpose)
-	out.Name = in.Name
-	out.ResourceGroup = (*string)(unsafe.Pointer(in.ResourceGroup))
+	*out = *(*azure.RouteTable)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1182,9 +1073,7 @@ func Convert_v1alpha1_RouteTable_To_azure_RouteTable(in *RouteTable, out *azure.
 }
 
 func autoConvert_azure_RouteTable_To_v1alpha1_RouteTable(in *azure.RouteTable, out *RouteTable, s conversion.Scope) error {
-	out.Purpose = Purpose(in.Purpose)
-	out.Name = in.Name
-	out.ResourceGroup = (*string)(unsafe.Pointer(in.ResourceGroup))
+	*out = *(*RouteTable)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1194,9 +1083,7 @@ func Convert_azure_RouteTable_To_v1alpha1_RouteTable(in *azure.RouteTable, out *
 }
 
 func autoConvert_v1alpha1_SecurityGroup_To_azure_SecurityGroup(in *SecurityGroup, out *azure.SecurityGroup, s conversion.Scope) error {
-	out.Purpose = azure.Purpose(in.Purpose)
-	out.Name = in.Name
-	out.ResourceGroup = (*string)(unsafe.Pointer(in.ResourceGroup))
+	*out = *(*azure.SecurityGroup)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1206,9 +1093,7 @@ func Convert_v1alpha1_SecurityGroup_To_azure_SecurityGroup(in *SecurityGroup, ou
 }
 
 func autoConvert_azure_SecurityGroup_To_v1alpha1_SecurityGroup(in *azure.SecurityGroup, out *SecurityGroup, s conversion.Scope) error {
-	out.Purpose = Purpose(in.Purpose)
-	out.Name = in.Name
-	out.ResourceGroup = (*string)(unsafe.Pointer(in.ResourceGroup))
+	*out = *(*SecurityGroup)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1218,8 +1103,7 @@ func Convert_azure_SecurityGroup_To_v1alpha1_SecurityGroup(in *azure.SecurityGro
 }
 
 func autoConvert_v1alpha1_Storage_To_azure_Storage(in *Storage, out *azure.Storage, s conversion.Scope) error {
-	out.ManagedDefaultStorageClass = (*bool)(unsafe.Pointer(in.ManagedDefaultStorageClass))
-	out.ManagedDefaultVolumeSnapshotClass = (*bool)(unsafe.Pointer(in.ManagedDefaultVolumeSnapshotClass))
+	*out = *(*azure.Storage)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1229,8 +1113,7 @@ func Convert_v1alpha1_Storage_To_azure_Storage(in *Storage, out *azure.Storage, 
 }
 
 func autoConvert_azure_Storage_To_v1alpha1_Storage(in *azure.Storage, out *Storage, s conversion.Scope) error {
-	out.ManagedDefaultStorageClass = (*bool)(unsafe.Pointer(in.ManagedDefaultStorageClass))
-	out.ManagedDefaultVolumeSnapshotClass = (*bool)(unsafe.Pointer(in.ManagedDefaultVolumeSnapshotClass))
+	*out = *(*Storage)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1240,12 +1123,7 @@ func Convert_azure_Storage_To_v1alpha1_Storage(in *azure.Storage, out *Storage, 
 }
 
 func autoConvert_v1alpha1_Subnet_To_azure_Subnet(in *Subnet, out *azure.Subnet, s conversion.Scope) error {
-	out.Name = in.Name
-	out.CIDR = (*string)(unsafe.Pointer(in.CIDR))
-	out.Purpose = azure.Purpose(in.Purpose)
-	out.Zone = (*string)(unsafe.Pointer(in.Zone))
-	out.Migrated = in.Migrated
-	out.NatGatewayID = (*string)(unsafe.Pointer(in.NatGatewayID))
+	*out = *(*azure.Subnet)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1255,12 +1133,7 @@ func Convert_v1alpha1_Subnet_To_azure_Subnet(in *Subnet, out *azure.Subnet, s co
 }
 
 func autoConvert_azure_Subnet_To_v1alpha1_Subnet(in *azure.Subnet, out *Subnet, s conversion.Scope) error {
-	out.Name = in.Name
-	out.CIDR = (*string)(unsafe.Pointer(in.CIDR))
-	out.Purpose = Purpose(in.Purpose)
-	out.Zone = (*string)(unsafe.Pointer(in.Zone))
-	out.Migrated = in.Migrated
-	out.NatGatewayID = (*string)(unsafe.Pointer(in.NatGatewayID))
+	*out = *(*Subnet)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1270,7 +1143,7 @@ func Convert_azure_Subnet_To_v1alpha1_Subnet(in *azure.Subnet, out *Subnet, s co
 }
 
 func autoConvert_v1alpha1_SubnetReference_To_azure_SubnetReference(in *SubnetReference, out *azure.SubnetReference, s conversion.Scope) error {
-	out.Name = in.Name
+	*out = *(*azure.SubnetReference)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1280,7 +1153,7 @@ func Convert_v1alpha1_SubnetReference_To_azure_SubnetReference(in *SubnetReferen
 }
 
 func autoConvert_azure_SubnetReference_To_v1alpha1_SubnetReference(in *azure.SubnetReference, out *SubnetReference, s conversion.Scope) error {
-	out.Name = in.Name
+	*out = *(*SubnetReference)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1290,10 +1163,7 @@ func Convert_azure_SubnetReference_To_v1alpha1_SubnetReference(in *azure.SubnetR
 }
 
 func autoConvert_v1alpha1_VNet_To_azure_VNet(in *VNet, out *azure.VNet, s conversion.Scope) error {
-	out.Name = (*string)(unsafe.Pointer(in.Name))
-	out.ResourceGroup = (*string)(unsafe.Pointer(in.ResourceGroup))
-	out.CIDR = (*string)(unsafe.Pointer(in.CIDR))
-	out.DDosProtectionPlanID = (*string)(unsafe.Pointer(in.DDosProtectionPlanID))
+	*out = *(*azure.VNet)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1303,10 +1173,7 @@ func Convert_v1alpha1_VNet_To_azure_VNet(in *VNet, out *azure.VNet, s conversion
 }
 
 func autoConvert_azure_VNet_To_v1alpha1_VNet(in *azure.VNet, out *VNet, s conversion.Scope) error {
-	out.Name = (*string)(unsafe.Pointer(in.Name))
-	out.ResourceGroup = (*string)(unsafe.Pointer(in.ResourceGroup))
-	out.CIDR = (*string)(unsafe.Pointer(in.CIDR))
-	out.DDosProtectionPlanID = (*string)(unsafe.Pointer(in.DDosProtectionPlanID))
+	*out = *(*VNet)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1316,8 +1183,7 @@ func Convert_azure_VNet_To_v1alpha1_VNet(in *azure.VNet, out *VNet, s conversion
 }
 
 func autoConvert_v1alpha1_VNetStatus_To_azure_VNetStatus(in *VNetStatus, out *azure.VNetStatus, s conversion.Scope) error {
-	out.Name = in.Name
-	out.ResourceGroup = (*string)(unsafe.Pointer(in.ResourceGroup))
+	*out = *(*azure.VNetStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1327,8 +1193,7 @@ func Convert_v1alpha1_VNetStatus_To_azure_VNetStatus(in *VNetStatus, out *azure.
 }
 
 func autoConvert_azure_VNetStatus_To_v1alpha1_VNetStatus(in *azure.VNetStatus, out *VNetStatus, s conversion.Scope) error {
-	out.Name = in.Name
-	out.ResourceGroup = (*string)(unsafe.Pointer(in.ResourceGroup))
+	*out = *(*VNetStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1338,9 +1203,7 @@ func Convert_azure_VNetStatus_To_v1alpha1_VNetStatus(in *azure.VNetStatus, out *
 }
 
 func autoConvert_v1alpha1_VmoDependency_To_azure_VmoDependency(in *VmoDependency, out *azure.VmoDependency, s conversion.Scope) error {
-	out.PoolName = in.PoolName
-	out.ID = in.ID
-	out.Name = in.Name
+	*out = *(*azure.VmoDependency)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1350,9 +1213,7 @@ func Convert_v1alpha1_VmoDependency_To_azure_VmoDependency(in *VmoDependency, ou
 }
 
 func autoConvert_azure_VmoDependency_To_v1alpha1_VmoDependency(in *azure.VmoDependency, out *VmoDependency, s conversion.Scope) error {
-	out.PoolName = in.PoolName
-	out.ID = in.ID
-	out.Name = in.Name
+	*out = *(*VmoDependency)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1362,8 +1223,7 @@ func Convert_azure_VmoDependency_To_v1alpha1_VmoDependency(in *azure.VmoDependen
 }
 
 func autoConvert_v1alpha1_Volume_To_azure_Volume(in *Volume, out *azure.Volume, s conversion.Scope) error {
-	out.Caching = (*string)(unsafe.Pointer(in.Caching))
-	out.DiskControllerType = (*string)(unsafe.Pointer(in.DiskControllerType))
+	*out = *(*azure.Volume)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1373,8 +1233,7 @@ func Convert_v1alpha1_Volume_To_azure_Volume(in *Volume, out *azure.Volume, s co
 }
 
 func autoConvert_azure_Volume_To_v1alpha1_Volume(in *azure.Volume, out *Volume, s conversion.Scope) error {
-	out.Caching = (*string)(unsafe.Pointer(in.Caching))
-	out.DiskControllerType = (*string)(unsafe.Pointer(in.DiskControllerType))
+	*out = *(*Volume)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1458,10 +1317,7 @@ func Convert_azure_WorkloadIdentityConfig_To_v1alpha1_WorkloadIdentityConfig(in 
 }
 
 func autoConvert_v1alpha1_Zone_To_azure_Zone(in *Zone, out *azure.Zone, s conversion.Scope) error {
-	out.Name = in.Name
-	out.CIDR = in.CIDR
-	out.ServiceEndpoints = *(*[]string)(unsafe.Pointer(&in.ServiceEndpoints))
-	out.NatGateway = (*azure.ZonedNatGatewayConfig)(unsafe.Pointer(in.NatGateway))
+	*out = *(*azure.Zone)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1471,10 +1327,7 @@ func Convert_v1alpha1_Zone_To_azure_Zone(in *Zone, out *azure.Zone, s conversion
 }
 
 func autoConvert_azure_Zone_To_v1alpha1_Zone(in *azure.Zone, out *Zone, s conversion.Scope) error {
-	out.Name = in.Name
-	out.CIDR = in.CIDR
-	out.ServiceEndpoints = *(*[]string)(unsafe.Pointer(&in.ServiceEndpoints))
-	out.NatGateway = (*ZonedNatGatewayConfig)(unsafe.Pointer(in.NatGateway))
+	*out = *(*Zone)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1484,10 +1337,7 @@ func Convert_azure_Zone_To_v1alpha1_Zone(in *azure.Zone, out *Zone, s conversion
 }
 
 func autoConvert_v1alpha1_ZonedNatGatewayConfig_To_azure_ZonedNatGatewayConfig(in *ZonedNatGatewayConfig, out *azure.ZonedNatGatewayConfig, s conversion.Scope) error {
-	out.Enabled = in.Enabled
-	out.IdleConnectionTimeoutMinutes = (*int32)(unsafe.Pointer(in.IdleConnectionTimeoutMinutes))
-	out.SKU = (*string)(unsafe.Pointer(in.SKU))
-	out.IPAddresses = *(*[]azure.ZonedPublicIPReference)(unsafe.Pointer(&in.IPAddresses))
+	*out = *(*azure.ZonedNatGatewayConfig)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1497,10 +1347,7 @@ func Convert_v1alpha1_ZonedNatGatewayConfig_To_azure_ZonedNatGatewayConfig(in *Z
 }
 
 func autoConvert_azure_ZonedNatGatewayConfig_To_v1alpha1_ZonedNatGatewayConfig(in *azure.ZonedNatGatewayConfig, out *ZonedNatGatewayConfig, s conversion.Scope) error {
-	out.Enabled = in.Enabled
-	out.IdleConnectionTimeoutMinutes = (*int32)(unsafe.Pointer(in.IdleConnectionTimeoutMinutes))
-	out.SKU = (*string)(unsafe.Pointer(in.SKU))
-	out.IPAddresses = *(*[]ZonedPublicIPReference)(unsafe.Pointer(&in.IPAddresses))
+	*out = *(*ZonedNatGatewayConfig)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1510,8 +1357,7 @@ func Convert_azure_ZonedNatGatewayConfig_To_v1alpha1_ZonedNatGatewayConfig(in *a
 }
 
 func autoConvert_v1alpha1_ZonedPublicIPReference_To_azure_ZonedPublicIPReference(in *ZonedPublicIPReference, out *azure.ZonedPublicIPReference, s conversion.Scope) error {
-	out.Name = in.Name
-	out.ResourceGroup = in.ResourceGroup
+	*out = *(*azure.ZonedPublicIPReference)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1521,8 +1367,7 @@ func Convert_v1alpha1_ZonedPublicIPReference_To_azure_ZonedPublicIPReference(in 
 }
 
 func autoConvert_azure_ZonedPublicIPReference_To_v1alpha1_ZonedPublicIPReference(in *azure.ZonedPublicIPReference, out *ZonedPublicIPReference, s conversion.Scope) error {
-	out.Name = in.Name
-	out.ResourceGroup = in.ResourceGroup
+	*out = *(*ZonedPublicIPReference)(unsafe.Pointer(in))
 	return nil
 }
 
