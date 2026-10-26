@@ -8,6 +8,7 @@ metadata:
   labels:
     app: csi
     role: controller-{{ .role }}
+    high-availability-config.resources.gardener.cloud/type: controller
 spec:
   replicas: {{ .Values.replicas }}
   revisionHistoryLimit: 1
@@ -31,7 +32,6 @@ spec:
         app: csi
         role: controller-{{ .role }}
         gardener.cloud/role: controlplane
-        high-availability-config.resources.gardener.cloud/type: controller
         networking.gardener.cloud/to-dns: allowed
         networking.gardener.cloud/to-public-networks: allowed
         networking.resources.gardener.cloud/to-kube-apiserver-tcp-443: allowed
