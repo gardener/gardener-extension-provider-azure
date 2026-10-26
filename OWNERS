@@ -2,5 +2,9 @@
 
 reviewers:
 - gardener-extension-provider-azure-reviewers
+- gardener-core-reviewers
+- gardener-networking-reviewers
+- machine-controller-manager-reviewers
+- security-reviewers
 approvers:
 - gardener-extension-provider-azure-approvers

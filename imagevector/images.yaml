@@ -2,7 +2,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/v2/kubernetes/azure-cloud-controller-manager
-  tag: v1.32.20
+  tag: v1.32.23
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -17,7 +17,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/v2/kubernetes/azure-cloud-controller-manager
-  tag: v1.33.17
+  tag: v1.33.20
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -32,7 +32,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/v2/kubernetes/azure-cloud-controller-manager
-  tag: v1.34.13
+  tag: v1.34.16
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -47,7 +47,7 @@ images:
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/v2/kubernetes/azure-cloud-controller-manager
-  tag: v1.35.8
+  tag: v1.35.11
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -59,11 +59,10 @@ images:
       availability_requirement: low
     signing: false
   targetVersion: 1.35.x
-# max-supported-k8s
 - name: cloud-controller-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/v2/kubernetes/azure-cloud-controller-manager
-  tag: v1.36.5
+  tag: v1.36.8
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -74,11 +73,27 @@ images:
       integrity_requirement: high
       availability_requirement: low
     signing: false
-  targetVersion: '>= 1.36'
+  targetVersion: '1.36.x'
+# max-supported-k8s
+- name: cloud-controller-manager
+  sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
+  repository: mcr.microsoft.com/oss/v2/kubernetes/azure-cloud-controller-manager
+  tag: v1.37.0
+  labels:
+  - name: gardener.cloud/cve-categorisation
+    value:
+      network_exposure: protected
+      authentication_enforced: false
+      user_interaction: gardener-operator
+      confidentiality_requirement: high
+      integrity_requirement: high
+      availability_requirement: low
+    signing: false
+  targetVersion: '>= 1.37'
 - name: cloud-node-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/v2/kubernetes/azure-cloud-node-manager
-  tag: v1.32.20
+  tag: v1.32.23
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -93,7 +108,7 @@ images:
 - name: cloud-node-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/v2/kubernetes/azure-cloud-node-manager
-  tag: v1.33.17
+  tag: v1.33.20
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -108,7 +123,7 @@ images:
 - name: cloud-node-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/v2/kubernetes/azure-cloud-node-manager
-  tag: v1.34.13
+  tag: v1.34.16
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -123,7 +138,7 @@ images:
 - name: cloud-node-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/v2/kubernetes/azure-cloud-node-manager
-  tag: v1.35.8
+  tag: v1.35.11
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -135,11 +150,10 @@ images:
       availability_requirement: low
     signing: false
   targetVersion: 1.35.x
-# max-supported-k8s
 - name: cloud-node-manager
   sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
   repository: mcr.microsoft.com/oss/v2/kubernetes/azure-cloud-node-manager
-  tag: v1.36.5
+  tag: v1.36.8
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -150,7 +164,23 @@ images:
       integrity_requirement: high
       availability_requirement: low
     signing: false
-  targetVersion: '>= 1.36'
+  targetVersion: '1.36.x'
+# max-supported-k8s
+- name: cloud-node-manager
+  sourceRepository: github.com/kubernetes-sigs/cloud-provider-azure
+  repository: mcr.microsoft.com/oss/v2/kubernetes/azure-cloud-node-manager
+  tag: v1.37.0
+  labels:
+  - name: gardener.cloud/cve-categorisation
+    value:
+      network_exposure: protected
+      authentication_enforced: false
+      user_interaction: gardener-operator
+      confidentiality_requirement: high
+      integrity_requirement: high
+      availability_requirement: low
+    signing: false
+  targetVersion: '>= 1.37'
 - name: csi-attacher
   sourceRepository: github.com/kubernetes-csi/external-attacher
   repository: registry.k8s.io/sig-storage/csi-attacher
@@ -168,7 +198,7 @@ images:
 - name: csi-driver-disk
   sourceRepository: github.com/kubernetes-sigs/azuredisk-csi-driver
   repository: mcr.microsoft.com/oss/v2/kubernetes-csi/azuredisk-csi
-  tag: v1.34.6
+  tag: v1.36.1
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -182,7 +212,7 @@ images:
 - name: csi-driver-file
   sourceRepository: github.com/kubernetes-sigs/azurefile-csi-driver
   repository: mcr.microsoft.com/oss/v2/kubernetes-csi/azurefile-csi
-  tag: v1.35.8
+  tag: v1.35.11
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -238,7 +268,7 @@ images:
 - name: csi-provisioner
   sourceRepository: github.com/kubernetes-csi/external-provisioner
   repository: registry.k8s.io/sig-storage/csi-provisioner
-  tag: v6.3.0
+  tag: v6.4.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -267,7 +297,7 @@ images:
 - name: csi-resizer
   sourceRepository: github.com/kubernetes-csi/external-resizer
   repository: registry.k8s.io/sig-storage/csi-resizer
-  tag: v2.2.1
+  tag: v2.3.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -282,7 +312,7 @@ images:
 - name: csi-snapshot-controller
   sourceRepository: github.com/kubernetes-csi/external-snapshotter
   repository: registry.k8s.io/sig-storage/snapshot-controller
-  tag: v8.6.0
+  tag: v8.7.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
@@ -296,7 +326,7 @@ images:
 - name: csi-snapshotter
   sourceRepository: github.com/kubernetes-csi/external-snapshotter
   repository: registry.k8s.io/sig-storage/csi-snapshotter
-  tag: v8.6.0
+  tag: v8.7.0
   labels:
   - name: gardener.cloud/cve-categorisation
     value:
