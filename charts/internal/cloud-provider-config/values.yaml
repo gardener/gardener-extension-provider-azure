@@ -1,7 +1,10 @@
 cloud: AZUREPUBLICCLOUD # aka AZURECLOUD. Other possible values: AZURECHINACLOUD/AZUREUSGOVERNMENT
+# For workload identity, replace aadClientSecret with the commented fields below.
 azureCredentials: |
   aadClientId: fooClient
   aadClientSecret: barSecret
+#  aadFederatedTokenFile: /var/run/secrets/gardener.cloud/workload-identity/token
+#  useFederatedWorkloadIdentityExtension: true
 azureSubscriptionInfo: |
   subscriptionId: barSub
   tenantId: fooTenant
@@ -10,8 +13,20 @@ vnetName: name
 #vnetResourceGroup: vnetResourceGroup
 subnetName: sname
 routeTableName: rtname
+#routeTableResourceGroup: routeTableResourceGroup
 securityGroupName: sgname
+#securityGroupResourceGroup: securityGroupResourceGroup
+# Disable outbound SNAT for user-managed outbound access.
+#disableOutboundSNAT: true
 region: location
 maxNodes: 0
-#acrIdentityClientId: identityClientID
+#kubeletACRConfig: |
+#  cloud: AZUREPUBLICCLOUD
+#  tenantId: fooTenant
+#  subscriptionId: barSub
+#  aadClientId: msi
+#  aadClientSecret: msi
+#  useManagedIdentityExtension: true
+#  userAssignedIdentityID: identityClientID
+#  useInstanceMetadata: true
 #vmType: standard
