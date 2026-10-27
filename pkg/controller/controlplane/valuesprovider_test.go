@@ -28,6 +28,7 @@ import (
 	vpaautoscalingv1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	"k8s.io/utils/ptr"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/yaml"
 
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
@@ -170,19 +171,16 @@ var _ = Describe("ValuesProvider", func() {
 		cluster = generateCluster(cidr, k8sVersion, false, nil, nil, nil)
 
 		ControlPlaneChartValues = map[string]interface{}{
-			"tenantId":            "TenantID",
-			"subscriptionId":      "SubscriptionID",
-			"aadClientId":         "ClientID",
-			"aadClientSecret":     "ClientSecret",
-			"resourceGroup":       "rg-abcd1234",
-			"vnetName":            "vnet-abcd1234",
-			"subnetName":          "subnet-abcd1234-nodes",
-			"region":              "eu-west-1a",
-			"routeTableName":      "route-table-name",
-			"securityGroupName":   "security-group-name-workers",
-			"vmType":              "standard",
-			"cloud":               "AZUREPUBLICCLOUD",
-			"useWorkloadIdentity": false,
+			"azureCredentials":      "aadClientId: ClientID\naadClientSecret: ClientSecret\n",
+			"azureSubscriptionInfo": "subscriptionId: SubscriptionID\ntenantId: TenantID\n",
+			"resourceGroup":         "rg-abcd1234",
+			"vnetName":              "vnet-abcd1234",
+			"subnetName":            "subnet-abcd1234-nodes",
+			"region":                "eu-west-1a",
+			"routeTableName":        "route-table-name",
+			"securityGroupName":     "security-group-name-workers",
+			"vmType":                "standard",
+			"cloud":                 "AZUREPUBLICCLOUD",
 		}
 	})
 
@@ -217,6 +215,54 @@ var _ = Describe("ValuesProvider", func() {
 		})
 
 		Context("Generate config chart values", func() {
+			It("should safely marshal credential values", func() {
+				maliciousClientSecret := "secret\"\nmaliciousField: maliciousValue"
+				originalClientSecret := controlPlaneSecret.Data[azure.ClientSecretKey]
+				DeferCleanup(func() {
+					controlPlaneSecret.Data[azure.ClientSecretKey] = originalClientSecret
+				})
+				controlPlaneSecret.Data[azure.ClientSecretKey] = []byte(maliciousClientSecret)
+				mgr = buildMgr(*controlPlaneSecret, *controlPlaneConfigSecret)
+				vp = NewValuesProvider(mgr)
+
+				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+				values, err := vp.GetConfigChartValues(ctx, cp, cluster)
+				Expect(err).NotTo(HaveOccurred())
+
+				renderedCredentials := map[string]string{}
+				Expect(yaml.Unmarshal([]byte(values["azureCredentials"].(string)), &renderedCredentials)).To(Succeed())
+				Expect(renderedCredentials).To(Equal(map[string]string{
+					"aadClientId":     "ClientID",
+					"aadClientSecret": maliciousClientSecret,
+				}))
+			})
+
+			It("should safely marshal workload identity credentials", func() {
+				originalLabels := controlPlaneSecret.Labels
+				DeferCleanup(func() {
+					controlPlaneSecret.Labels = originalLabels
+					delete(controlPlaneSecret.Data, "token")
+				})
+				controlPlaneSecret.Labels = map[string]string{
+					"security.gardener.cloud/purpose": "workload-identity-token-requestor",
+				}
+				controlPlaneSecret.Data["token"] = []byte("token")
+				mgr = buildMgr(*controlPlaneSecret, *controlPlaneConfigSecret)
+				vp = NewValuesProvider(mgr)
+
+				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
+				values, err := vp.GetConfigChartValues(ctx, cp, cluster)
+				Expect(err).NotTo(HaveOccurred())
+
+				renderedCredentials := map[string]interface{}{}
+				Expect(yaml.Unmarshal([]byte(values["azureCredentials"].(string)), &renderedCredentials)).To(Succeed())
+				Expect(renderedCredentials).To(Equal(map[string]interface{}{
+					"aadClientId":                           "ClientID",
+					"aadFederatedTokenFile":                 "/var/run/secrets/gardener.cloud/workload-identity/token",
+					"useFederatedWorkloadIdentityExtension": true,
+				}))
+			})
+
 			It("should return correct config chart valued for cluser with vmo (non-zoned)", func() {
 				infrastructureStatus.Zoned = false
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
@@ -253,8 +299,8 @@ var _ = Describe("ValuesProvider", func() {
 				values, err := vp.GetConfigChartValues(ctx, cp, cluster)
 				Expect(err).NotTo(HaveOccurred())
 				maps.Copy(ControlPlaneChartValues, map[string]interface{}{
-					"maxNodes":            maxNodes,
-					"acrIdentityClientId": identityName,
+					"maxNodes":         maxNodes,
+					"kubeletACRConfig": "aadClientId: msi\naadClientSecret: msi\ncloud: AZUREPUBLICCLOUD\nsubscriptionId: SubscriptionID\ntenantId: TenantID\nuseInstanceMetadata: true\nuseManagedIdentityExtension: true\nuserAssignedIdentityID: identity-client-id\n",
 				})
 				Expect(values).To(Equal(ControlPlaneChartValues))
 			})

@@ -115,7 +115,7 @@ var _ = Describe("Infrastructure secrets validation", func() {
 			Expect(errs[0].BadValue).To(Equal("(hidden)"))
 		})
 
-		It("should fail when clientSecret contains trailing newline (whitespace)", func() {
+		It("should fail when clientSecret contains a trailing newline", func() {
 			secret.Data[azure.SubscriptionIDKey] = []byte(subscriptionIDValue)
 			secret.Data[azure.TenantIDKey] = []byte(tenantIDValue)
 			secret.Data[azure.ClientIDKey] = []byte(clientIDValue)
@@ -124,7 +124,7 @@ var _ = Describe("Infrastructure secrets validation", func() {
 			errs := ValidateCloudProviderSecret(secret, nil, fldPath)
 			Expect(errs).To(HaveLen(1))
 			Expect(errs[0].Type).To(Equal(field.ErrorTypeInvalid))
-			expected := fmt.Sprintf("field %q must not contain leading or trailing whitespace", azure.ClientSecretKey)
+			expected := fmt.Sprintf("field %q must not contain control characters, newlines, or double quotes", azure.ClientSecretKey)
 			Expect(errs[0].Field).To(Equal("secret.data[clientSecret]"))
 			Expect(errs[0].Detail).To(Equal(expected))
 			Expect(errs[0].BadValue).To(Equal("(hidden)"))

@@ -41,6 +41,7 @@ import (
 	"k8s.io/utils/ptr"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/yaml"
 
 	"github.com/gardener/gardener-extension-provider-azure/charts"
 	apisazure "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
@@ -55,7 +56,31 @@ import (
 const (
 	caNameControlPlane               = "ca-" + azure.Name + "-controlplane"
 	cloudControllerManagerServerName = azure.CloudControllerManagerName + "-server"
+	workloadIdentityTokenFile        = "/var/run/secrets/gardener.cloud/workload-identity/token" // #nosec G101 -- Fixed path to the workload identity token file, not a credential.
 )
+
+type azureCredentials struct {
+	AADClientID                           string `json:"aadClientId"`
+	AADClientSecret                       string `json:"aadClientSecret,omitempty"`
+	AADFederatedTokenFile                 string `json:"aadFederatedTokenFile,omitempty"`
+	UseFederatedWorkloadIdentityExtension bool   `json:"useFederatedWorkloadIdentityExtension,omitempty"`
+}
+
+type azureSubscriptionInfo struct {
+	TenantID       string `json:"tenantId"`
+	SubscriptionID string `json:"subscriptionId"`
+}
+
+type kubeletACRConfig struct {
+	Cloud                       string `json:"cloud"`
+	TenantID                    string `json:"tenantId"`
+	SubscriptionID              string `json:"subscriptionId"`
+	AADClientID                 string `json:"aadClientId"`
+	AADClientSecret             string `json:"aadClientSecret"`
+	UseManagedIdentityExtension bool   `json:"useManagedIdentityExtension"`
+	UserAssignedIdentityID      string `json:"userAssignedIdentityID"`
+	UseInstanceMetadata         bool   `json:"useInstanceMetadata"`
+}
 
 func secretConfigsFunc(namespace string) []extensionssecretmanager.SecretConfigWithOptions {
 	return []extensionssecretmanager.SecretConfigWithOptions{
@@ -441,20 +466,37 @@ func getConfigChartValues(infraStatus *apisazure.InfrastructureStatus, cp *exten
 		useWorkloadIdentity = true
 	}
 
+	credentials := azureCredentials{AADClientID: ca.ClientID}
+	if useWorkloadIdentity {
+		credentials.AADFederatedTokenFile = workloadIdentityTokenFile
+		credentials.UseFederatedWorkloadIdentityExtension = true
+	} else {
+		credentials.AADClientSecret = ca.ClientSecret
+	}
+	credentialsYAML, err := yaml.Marshal(credentials)
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal Azure credentials: %w", err)
+	}
+
+	subscriptionInfoYAML, err := yaml.Marshal(azureSubscriptionInfo{
+		TenantID:       ca.TenantID,
+		SubscriptionID: ca.SubscriptionID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal Azure subscription information: %w", err)
+	}
+
 	// Collect config chart values.
 	values := map[string]interface{}{
-		"tenantId":            ca.TenantID,
-		"subscriptionId":      ca.SubscriptionID,
-		"aadClientId":         ca.ClientID,
-		"aadClientSecret":     ca.ClientSecret,
-		"useWorkloadIdentity": useWorkloadIdentity,
-		"resourceGroup":       infraStatus.ResourceGroup.Name,
-		"vnetName":            infraStatus.Networks.VNet.Name,
-		"subnetName":          names.subnetName,
-		"routeTableName":      names.routeTableName,
-		"securityGroupName":   names.securityGroupName,
-		"region":              cp.Spec.Region,
-		"maxNodes":            maxNodes,
+		"azureCredentials":      string(credentialsYAML),
+		"azureSubscriptionInfo": string(subscriptionInfoYAML),
+		"resourceGroup":         infraStatus.ResourceGroup.Name,
+		"vnetName":              infraStatus.Networks.VNet.Name,
+		"subnetName":            names.subnetName,
+		"routeTableName":        names.routeTableName,
+		"securityGroupName":     names.securityGroupName,
+		"region":                cp.Spec.Region,
+		"maxNodes":              maxNodes,
 	}
 
 	cloudConfiguration, err := azureclient.CloudConfiguration(nil, &cluster.Shoot.Spec.Region)
@@ -462,7 +504,8 @@ func getConfigChartValues(infraStatus *apisazure.InfrastructureStatus, cp *exten
 		return nil, err
 	}
 
-	values["cloud"] = cloudInstanceName(*cloudConfiguration)
+	cloud := cloudInstanceName(*cloudConfiguration)
+	values["cloud"] = cloud
 
 	if infraStatus.Networks.VNet.ResourceGroup != nil {
 		values["vnetResourceGroup"] = *infraStatus.Networks.VNet.ResourceGroup
@@ -481,7 +524,20 @@ func getConfigChartValues(infraStatus *apisazure.InfrastructureStatus, cp *exten
 	}
 
 	if infraStatus.Identity != nil && infraStatus.Identity.ACRAccess {
-		values["acrIdentityClientId"] = infraStatus.Identity.ClientID
+		kubeletACRConfigYAML, err := yaml.Marshal(kubeletACRConfig{
+			Cloud:                       cloud,
+			TenantID:                    ca.TenantID,
+			SubscriptionID:              ca.SubscriptionID,
+			AADClientID:                 "msi",
+			AADClientSecret:             "msi",
+			UseManagedIdentityExtension: true,
+			UserAssignedIdentityID:      infraStatus.Identity.ClientID,
+			UseInstanceMetadata:         true,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("could not marshal kubelet ACR configuration: %w", err)
+		}
+		values["kubeletACRConfig"] = string(kubeletACRConfigYAML)
 	}
 
 	return appendMachineSetValues(values, infraStatus), nil

@@ -26,8 +26,9 @@ var _ = Describe("SecretBinding validator", func() {
 
 	Describe("#Validate", func() {
 		const (
-			namespace = "garden-dev"
-			name      = "my-provider-account"
+			namespace                 = "garden-dev"
+			name                      = "my-provider-account"
+			extensionProviderLabelKey = "provider.extensions.gardener.cloud/azure"
 		)
 
 		var (
@@ -36,12 +37,7 @@ var _ = Describe("SecretBinding validator", func() {
 			scheme *runtime.Scheme
 
 			ctx           = context.TODO()
-			secretBinding = &core.SecretBinding{
-				SecretRef: corev1.SecretReference{
-					Name:      name,
-					Namespace: namespace,
-				},
-			}
+			secretBinding *core.SecretBinding
 		)
 
 		newValidator := func(objs ...client.Object) {
@@ -53,6 +49,12 @@ var _ = Describe("SecretBinding validator", func() {
 		BeforeEach(func() {
 			scheme = runtime.NewScheme()
 			Expect(corev1.AddToScheme(scheme)).To(Succeed())
+			secretBinding = &core.SecretBinding{
+				SecretRef: corev1.SecretReference{
+					Name:      name,
+					Namespace: namespace,
+				},
+			}
 
 			newValidator()
 		})
@@ -96,6 +98,25 @@ var _ = Describe("SecretBinding validator", func() {
 
 			err := secretBindingValidator.Validate(ctx, secretBinding, nil)
 			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should revalidate the referenced Secret when the provider label is introduced", func() {
+			secretBinding.Provider = &core.SecretBindingProvider{Type: "azure"}
+			oldSecretBinding := secretBinding.DeepCopy()
+			secretBinding.Labels = map[string]string{extensionProviderLabelKey: "true"}
+			newValidator(&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+				Data:       map[string][]byte{azure.ClientSecretKey: []byte(`injected"\nfield: value`)},
+			})
+
+			Expect(secretBindingValidator.Validate(ctx, secretBinding, oldSecretBinding)).To(HaveOccurred())
+		})
+
+		It("should skip validation when the SecretBinding was previously validated", func() {
+			secretBinding.Provider = &core.SecretBindingProvider{Type: "azure"}
+			secretBinding.Labels = map[string]string{extensionProviderLabelKey: "true"}
+
+			Expect(secretBindingValidator.Validate(ctx, secretBinding, secretBinding.DeepCopy())).To(Succeed())
 		})
 	})
 })

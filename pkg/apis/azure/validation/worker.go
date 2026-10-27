@@ -180,22 +180,35 @@ func validateCapacityReservationConfig(capacityReservationConfig *apiazure.Capac
 	allErrs := field.ErrorList{}
 
 	if capacityReservationGroupID := capacityReservationConfig.CapacityReservationGroupID; capacityReservationGroupID != nil {
+		capacityReservationGroupIDPath := fldPath.Child("capacityReservationGroupID")
+		if validationErrs := capacityReservationGroupIDValidation(*capacityReservationGroupID, capacityReservationGroupIDPath); len(validationErrs) > 0 {
+			return append(allErrs, validationErrs...)
+		}
+
 		resourceID, err := arm.ParseResourceID(*capacityReservationGroupID)
 		if err != nil {
 			allErrs = append(
 				allErrs,
 				field.Invalid(
-					fldPath.Child("capacityReservationGroupID"),
+					capacityReservationGroupIDPath,
 					*capacityReservationGroupID,
 					fmt.Sprintf("invalid Azure resource ID: %v", err),
+				),
+			)
+		} else if resourceID.String() != *capacityReservationGroupID {
+			allErrs = append(
+				allErrs,
+				field.Invalid(
+					capacityReservationGroupIDPath,
+					*capacityReservationGroupID,
+					"Azure resource ID must use its canonical representation",
 				),
 			)
 		} else if resourceType := resourceID.ResourceType.Type; !strings.EqualFold(resourceType, "CapacityReservationGroups") {
 			allErrs = append(
 				allErrs,
 				field.Invalid(
-					fldPath.Child(
-						"capacityReservationGroupID"),
+					capacityReservationGroupIDPath,
 					*capacityReservationGroupID,
 					fmt.Sprintf("provided resource ID must be of type 'CapacityReservationGroups', got '%s'", resourceType),
 				),
