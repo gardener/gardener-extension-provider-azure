@@ -271,6 +271,10 @@ var _ = Describe("Shoot validation", func() {
 								"Type":  Equal(field.ErrorTypeInvalid),
 								"Field": Equal("workers[0].zones[0]"),
 							})),
+							PointTo(MatchFields(IgnoreExtras, Fields{
+								"Type":  Equal(field.ErrorTypeInvalid),
+								"Field": Equal("workers[0].zones[0]"),
+							})),
 						))
 					})
 

@@ -250,7 +250,11 @@ func (w *workerDelegate) generateMachineConfig(ctx context.Context) error {
 					MaxUnavailable: ptr.To(worker.DistributePositiveIntOrPercent(zone.index, pool.MaxUnavailable, zone.count, pool.Minimum)),
 					MaxSurge:       ptr.To(worker.DistributePositiveIntOrPercent(zone.index, pool.MaxSurge, zone.count, pool.Maximum)),
 				}
-				machineClassSpec["zone"] = zone.name
+				if zoneInt, err := strconv.Atoi(zone.name); err == nil {
+					machineClassSpec["zone"] = zoneInt
+				} else {
+					machineClassSpec["zone"] = zone.name
+				}
 				if pool.MachineControllerManagerSettings != nil {
 					machineDeployment.AutoPreserveFailedMachineMax = worker.DistributeOverZones(zone.index, ptr.Deref(pool.MachineControllerManagerSettings.AutoPreserveFailedMachineMax, 0), zone.count)
 				}

@@ -7,6 +7,7 @@ package validation
 import (
 	"encoding/json"
 	"math"
+	"strconv"
 
 	gardenercorehelper "github.com/gardener/gardener/pkg/api/core/helper"
 	"github.com/gardener/gardener/pkg/apis/core"
@@ -112,6 +113,9 @@ func ValidateWorkers(workers []core.Worker, infra *api.InfrastructureConfig, fld
 				continue
 			}
 			zones.Insert(zone)
+			if _, err := strconv.Atoi(zone); err != nil {
+				allErrs = append(allErrs, field.Invalid(path.Child("zones").Index(j), zone, "must be a valid integer (Azure availability zones are numeric)"))
+			}
 		}
 
 		if !helper.IsUsingSingleSubnetLayout(infra) {
