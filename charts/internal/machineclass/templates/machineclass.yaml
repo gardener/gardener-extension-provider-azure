@@ -51,7 +51,7 @@ providerSpec:
   {{- end }}
 {{- end }}
 {{- if hasKey $machineClass "zone" }}
-    zone: {{ $machineClass.zone | quote }}
+    zone: {{ $machineClass.zone }}
 {{- end }}
 {{- if hasKey $machineClass "machineSet" }}
     machineSet:

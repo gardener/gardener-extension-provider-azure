@@ -515,7 +515,7 @@ var _ = Describe("Machines", func() {
 					"cloudConfiguration": map[string]any{
 						"name": apisazure.AzurePublicCloudName,
 					},
-					"zone": zone1,
+					"zone": 1,
 					"image": map[string]any{
 						"sharedGalleryImageID": machineImageSharedID,
 					},
@@ -954,7 +954,7 @@ var _ = Describe("Machines", func() {
 					machineClassPool1["network"].(map[string]any)["subnet"] = subnet1
 
 					machineClassPool2 := copyMachineClass(defaultMachineClass)
-					machineClassPool2["zone"] = zone2
+					machineClassPool2["zone"] = 2
 					machineClassPool2["operatingSystem"] = map[string]any{
 						"operatingSystemName":    machineImageName,
 						"operatingSystemVersion": strings.ReplaceAll(machineImageVersionSharedID, "+", "_"),
