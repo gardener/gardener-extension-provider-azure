@@ -244,6 +244,35 @@ var _ = Describe("Shoot validation", func() {
 					))
 				})
 
+				It("should forbid non-numeric zone names", func() {
+					workers[0].Zones[0] = "zone-a"
+
+					errorList := ValidateWorkers(workers,
+						infraConfig, field.NewPath("workers"))
+
+					Expect(errorList).To(ConsistOf(
+						PointTo(MatchFields(IgnoreExtras, Fields{
+							"Type":   Equal(field.ErrorTypeInvalid),
+							"Field":  Equal("workers[0].zones[0]"),
+							"Detail": ContainSubstring("must be a valid integer"),
+						})),
+					))
+				})
+
+				It("should forbid equivalent integer zones specified with different string representations", func() {
+					workers[0].Zones[1] = "0" + workers[0].Zones[0] // e.g. "01" duplicates "1"
+
+					errorList := ValidateWorkers(workers,
+						infraConfig, field.NewPath("workers"))
+
+					Expect(errorList).To(ConsistOf(
+						PointTo(MatchFields(IgnoreExtras, Fields{
+							"Type":  Equal(field.ErrorTypeInvalid),
+							"Field": Equal("workers[0].zones[1]"),
+						})),
+					))
+				})
+
 				Context("multiple subnet network layout", func() {
 					BeforeEach(func() {
 						infraConfig = &api.InfrastructureConfig{

@@ -106,16 +106,18 @@ func ValidateWorkers(workers []core.Worker, infra *api.InfrastructureConfig, fld
 			continue
 		}
 
-		zones := sets.New[string]()
+		zones := sets.New[int]()
 		for j, zone := range worker.Zones {
-			if zones.Has(zone) {
+			zoneInt, err := strconv.Atoi(zone)
+			if err != nil {
+				allErrs = append(allErrs, field.Invalid(path.Child("zones").Index(j), zone, "must be a valid integer (Azure availability zones are numeric)"))
+				continue
+			}
+			if zones.Has(zoneInt) {
 				allErrs = append(allErrs, field.Invalid(path.Child("zones").Index(j), zone, "must only be specified once per worker group"))
 				continue
 			}
-			zones.Insert(zone)
-			if _, err := strconv.Atoi(zone); err != nil {
-				allErrs = append(allErrs, field.Invalid(path.Child("zones").Index(j), zone, "must be a valid integer (Azure availability zones are numeric)"))
-			}
+			zones.Insert(zoneInt)
 		}
 
 		if !helper.IsUsingSingleSubnetLayout(infra) {
