@@ -539,7 +539,7 @@ spec:
     nodes: 10.250.0.0/16
     services: 100.64.0.0/13
   kubernetes:
-    version: 1.32.0
+    version: 1.33.0
   maintenance:
     autoUpdate:
       kubernetesVersion: true
@@ -597,7 +597,7 @@ spec:
     nodes: 10.250.0.0/16
     services: 100.64.0.0/13
   kubernetes:
-    version: 1.32.0
+    version: 1.33.0
   maintenance:
     autoUpdate:
       kubernetesVersion: true
@@ -670,7 +670,7 @@ spec:
     nodes: 10.250.0.0/16
     services: 100.64.0.0/13
   kubernetes:
-    version: 1.32.0
+    version: 1.33.0
   maintenance:
     autoUpdate:
       kubernetesVersion: true
@@ -745,7 +745,7 @@ The annotation is only meaningful for Gardener-managed worker subnets. It is rej
 
 To have the CSI-driver configured to support the necessary features for [VolumeAttributesClasses](https://kubernetes.io/docs/concepts/storage/volume-attributes-classes/) on Azure for shoots with k8s-version < 1.34, use the `azure.provider.extensions.gardener.cloud/enable-volume-attributes-class=true` annotation on the shoot.
 
-For more information and examples on how to configure the volume attributes class, see [example](https://github.com/kubernetes-sigs/azuredisk-csi-driver/blob/release-1.32/deploy/example/modifyvolume/README.md) provided in the azuredisk-csi-driver repository.
+For more information and examples on how to configure the volume attributes class, see [example](https://github.com/kubernetes-sigs/azuredisk-csi-driver/blob/release-1.33/deploy/example/modifyvolume/README.md) provided in the azuredisk-csi-driver repository.
 
 ### Node-specific Volume Limits
 
