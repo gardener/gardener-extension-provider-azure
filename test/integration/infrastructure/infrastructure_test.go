@@ -300,6 +300,83 @@ var _ = Describe("Infrastructure tests", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
+		It("should migrate a network-level NatGateway from Standard to StandardV2", func() {
+			natGatewayConfig := &azurev1alpha1.NatGatewayConfig{
+				Enabled: true,
+				SKU:     ptr.To(string(armnetwork.NatGatewaySKUNameStandard)),
+				Zone:    ptr.To[int32](1),
+			}
+			providerConfig := newInfrastructureConfig(nil, natGatewayConfig, nil, true)
+
+			namespace, err := generateName()
+			Expect(err).ToNot(HaveOccurred())
+
+			err = runTest(ctx, log, c, clientSet, namespace, providerConfig, false, decoder,
+				func(cluster *extensionsv1alpha1.Cluster, infra *extensionsv1alpha1.Infrastructure, initialConfig *azurev1alpha1.InfrastructureConfig, _ *azurev1alpha1.InfrastructureStatus) error {
+					By("confirming NAT Gateway recreation on the Shoot")
+					shoot := &gardencorev1beta1.Shoot{}
+					if err := json.Unmarshal(cluster.Spec.Shoot.Raw, shoot); err != nil {
+						return err
+					}
+					shoot.Annotations = map[string]string{
+						azure.ShootConfirmNatGatewaySKURecreationAnnotation: "true",
+					}
+					shootRaw, err := json.Marshal(shoot)
+					if err != nil {
+						return err
+					}
+					cluster.Spec.Shoot.Raw = shootRaw
+					if err := c.Update(ctx, cluster); err != nil {
+						return err
+					}
+
+					By("updating the network-level NAT Gateway SKU to StandardV2")
+					targetConfig := initialConfig.DeepCopy()
+					targetConfig.Networks.NatGateway.SKU = ptr.To(string(armnetwork.NatGatewaySKUNameStandardV2))
+					targetConfig.Networks.NatGateway.Zone = nil
+					targetConfigRaw, err := json.Marshal(targetConfig)
+					if err != nil {
+						return err
+					}
+					infra.Spec.ProviderConfig.Raw = targetConfigRaw
+					if infra.Annotations == nil {
+						infra.Annotations = make(map[string]string)
+					}
+					infra.Annotations[v1beta1constants.GardenerOperation] = v1beta1constants.GardenerOperationReconcile
+					infra.Annotations[v1beta1constants.GardenerTimestamp] = time.Now().UTC().Format(time.RFC3339Nano)
+					if err := c.Update(ctx, infra); err != nil {
+						return err
+					}
+
+					By("waiting for the migrated infrastructure to become ready")
+					if err := extensions.WaitUntilExtensionObjectReady(
+						ctx,
+						c,
+						log,
+						infra,
+						extensionsv1alpha1.InfrastructureResource,
+						10*time.Second,
+						30*time.Second,
+						16*time.Minute,
+						nil,
+					); err != nil {
+						return err
+					}
+					if err := c.Get(ctx, client.ObjectKey{Namespace: infra.Namespace, Name: infra.Name}, infra); err != nil {
+						return err
+					}
+
+					providerStatus := &azurev1alpha1.InfrastructureStatus{}
+					if _, _, err := decoder.Decode(infra.Status.ProviderStatus.Raw, nil, providerStatus); err != nil {
+						return err
+					}
+					By("verifying StandardV2 NAT Gateway, public IP, and subnet association")
+					verifyCreation(ctx, clientSet, infra, targetConfig, providerStatus)
+					return nil
+				})
+			Expect(err).ToNot(HaveOccurred())
+		})
+
 		It("should successfully create and delete a zonal cluster with NatGateway using an existing vNet and identity", func() {
 			foreignName, err := generateName()
 			Expect(err).ToNot(HaveOccurred())
@@ -574,6 +651,7 @@ func runTest(
 	providerConfig *azurev1alpha1.InfrastructureConfig,
 	setVmoAnnotationToShoot bool,
 	decoder runtime.Decoder,
+	afterCreate ...func(*extensionsv1alpha1.Cluster, *extensionsv1alpha1.Infrastructure, *azurev1alpha1.InfrastructureConfig, *azurev1alpha1.InfrastructureStatus) error,
 ) error {
 	var (
 		namespace  *corev1.Namespace
@@ -679,6 +757,15 @@ func runTest(
 	}
 	By("verify infrastructure creation")
 	identifier = verifyCreation(ctx, az, infra, providerConfig, providerStatus)
+
+	if len(afterCreate) > 0 {
+		By("After create hook")
+		for _, hook := range afterCreate {
+			if err := hook(cluster, infra, providerConfig, providerStatus); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 
@@ -1131,6 +1218,9 @@ func verifyNAT(az *azureClientSet, zone, timeout *int32, ngName string, expected
 		expectedNatSku = ptr.To(string(armnetwork.NatGatewaySKUNameStandard))
 	}
 	Expect(string(*natGateway.SKU.Name)).To(Equal(*expectedNatSku))
+	if *expectedNatSku == string(armnetwork.NatGatewaySKUNameStandardV2) {
+		Expect(natGateway.Zones).To(BeEmpty())
+	}
 
 	expectedIpSku := armnetwork.PublicIPAddressSKUNameStandard
 	if *expectedNatSku == string(armnetwork.NatGatewaySKUNameStandardV2) {

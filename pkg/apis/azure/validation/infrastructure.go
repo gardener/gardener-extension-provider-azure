@@ -593,7 +593,8 @@ func ValidateInfrastructureConfigUpdate(oldConfig, newConfig *apisazure.Infrastr
 
 	allErrs = append(allErrs, apivalidation.ValidateImmutableField(oldConfig.Zoned, newConfig.Zoned, providerPath.Child("zoned"))...)
 	allErrs = append(allErrs, validateVnetConfigUpdate(&oldConfig.Networks, &newConfig.Networks, providerPath.Child("networks"))...)
-	allErrs = append(allErrs, validateNatGatewaySKUUpdate(oldConfig, newConfig, providerPath.Child("networks"))...)
+	confirmNatGatewaySKURecreation := shoot.Annotations[azure.ShootConfirmNatGatewaySKURecreationAnnotation] == "true"
+	allErrs = append(allErrs, validateNatGatewaySKUUpdate(oldConfig, newConfig, providerPath.Child("networks"), confirmNatGatewaySKURecreation)...)
 
 	return allErrs
 }
@@ -711,21 +712,22 @@ func isDefaultVnetConfig(vnetConfig *apisazure.VNet) bool {
 	return false
 }
 
-// validateNatGatewaySKUUpdate validates that the NAT Gateway SKU is not changed during an infrastructure update.
-// Changing the SKU requires recreation of the NAT Gateway and its associated public IPs, which would cause
-// outbound connectivity disruption.
-func validateNatGatewaySKUUpdate(oldConfig, newConfig *apisazure.InfrastructureConfig, networksPath *field.Path) field.ErrorList {
+// validateNatGatewaySKUUpdate requires explicit confirmation before allowing a NAT Gateway SKU change,
+// which recreates the gateway and may disrupt outbound connectivity.
+func validateNatGatewaySKUUpdate(oldConfig, newConfig *apisazure.InfrastructureConfig, networksPath *field.Path, confirmRecreation bool) field.ErrorList {
 	allErrs := field.ErrorList{}
 
+	detail := fmt.Sprintf("changing the NAT Gateway SKU requires recreation of the NAT Gateway and its associated public IPs, which changes the outbound IP and disrupt outbound connectivity; set the Shoot annotation %q to \"true\" to confirm", azure.ShootConfirmNatGatewaySKURecreationAnnotation)
+
 	// Single-subnet layout: check networks.natGateway.sku
-	if oldConfig.Networks.NatGateway != nil && newConfig.Networks.NatGateway != nil {
+	if !confirmRecreation && oldConfig.Networks.NatGateway != nil && newConfig.Networks.NatGateway != nil {
 		oldSKU := ptr.Deref(oldConfig.Networks.NatGateway.SKU, string(armnetwork.NatGatewaySKUNameStandard))
 		newSKU := ptr.Deref(newConfig.Networks.NatGateway.SKU, string(armnetwork.NatGatewaySKUNameStandard))
 		if oldSKU != newSKU {
 			allErrs = append(allErrs, field.Invalid(
 				networksPath.Child("natGateway", "sku"),
 				newSKU,
-				"changing the NAT Gateway SKU is not allowed as it requires recreation of the NAT Gateway and causes outbound connectivity disruption",
+				detail,
 			))
 		}
 	}
@@ -743,7 +745,7 @@ func validateNatGatewaySKUUpdate(oldConfig, newConfig *apisazure.InfrastructureC
 					allErrs = append(allErrs, field.Invalid(
 						networksPath.Child("zones").Index(i).Child("natGateway", "sku"),
 						newSKU,
-						"changing the NAT Gateway SKU is not allowed as it requires recreation of the NAT Gateway and causes outbound connectivity disruption",
+						"changing the NAT Gateway SKU for a per-zone NAT Gateway is not supported; the confirmation annotation only applies to the network-level NAT Gateway",
 					))
 				}
 			}
