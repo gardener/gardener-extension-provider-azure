@@ -788,3 +788,41 @@ Please also see the [official documentation](https://learn.microsoft.com/en-us/a
 
 To have the in-tree Azure Disk PVs use ReadCache caching mode, use the `azure.provider.extensions.gardener.cloud/convert-rw-caching-mode-for-intree-pv="true"` annotation on the shoot.
 This will force the Azure Disk in-tree PVs to use ReadCache caching mode instead of the default ReadWrite caching mode when they get attached to a node, irrespective of the caching mode defined in the PV.
+
+### MTU Customizer
+
+Azure worker nodes may benefit from a non-default MTU depending on the NIC type:
+
+- **MANA NICs** (v5+ VMs with accelerated networking enabled) support jumbo frames with an MTU of **9000**.
+- **Mellanox / non-Accelerated-Networking NICs** cap out at **3900**.
+
+See the [Azure virtual machine MTU documentation](https://learn.microsoft.com/en-us/azure/virtual-network/how-to-virtual-machine-mtu) for details.
+
+The MTU customizer deploys a systemd unit and shell script to each worker node that detects the NIC type at boot time by checking for a bound device under `/sys/bus/pci/drivers/mana/` and sets the MTU on all non-virtual network interfaces accordingly. Note that a v5+ VM running on Mellanox hardware (no MANA NIC present) will receive 3900, not 9000.
+
+The feature is **opt-in** and is enabled by setting `enableMTUCustomizer: true` in the `InfrastructureConfig`:
+
+```yaml
+apiVersion: azure.provider.extensions.gardener.cloud/v1alpha1
+kind: InfrastructureConfig
+networks:
+  vnet:
+    cidr: 10.250.0.0/16
+  workers: 10.250.0.0/19
+zoned: false
+enableMTUCustomizer: true
+```
+
+By default the script auto-detects the appropriate MTU (9000 if a MANA NIC is detected, 3900 otherwise). If you need a specific value, you can override it with `customMTUSize`. `customMTUSize` is valid only when `enableMTUCustomizer` is set to `true`. Valid values are 68–9000:
+
+```yaml
+enableMTUCustomizer: true
+customMTUSize: 8900
+```
+
+> [!WARNING]
+> Azure only supports MTU values above 1500 for traffic within the same virtual network or directly peered virtual networks in the same region. Internet egress, VPN gateways, and globally peered virtual networks do not support jumbo frames and will silently drop or fragment oversized packets. Test those paths before enabling the MTU customizer.
+
+> [!NOTE]
+> When the MTU customizer is **enabled**, the systemd unit is pushed to existing nodes by the node agent without requiring a node replacement.
+> When it is **disabled**, the unit is removed but the MTU already set on running network interfaces is not reverted. To restore the default MTU on existing nodes they must be replaced (e.g., via a manual rolling update).
