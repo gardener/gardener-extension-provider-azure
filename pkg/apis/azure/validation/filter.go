@@ -25,7 +25,7 @@ var (
 	urnRegex                        = `^[\w-]+:[\w-]+:[\w.-]+:[\w.-]+$`
 	sharedGalleryImageIDRegex       = `^/SharedGalleries/[\w-]+/Images/[\w-]+/Versions/[\w.-]+$`
 	communityGalleryImageIDRegex    = `^/CommunityGalleries/[\w-]+/Images/[\w-]+/Versions/[\w.-]+$`
-	capacityReservationGroupIDRegex = `^/subscriptions/[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}/resourceGroups/[A-Za-z0-9_().-]+/providers/Microsoft\.Compute/CapacityReservationGroups/[A-Za-z0-9_.-]+$`
+	capacityReservationGroupIDRegex = `(?i)^/subscriptions/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/resourceGroups/[a-z0-9_().-]+/providers/Microsoft\.Compute/capacityReservationGroups/[a-z0-9_.-]+$`
 
 	validateServiceEndpoint              = combineValidationFuncs(regex(serviceEndpointsRegex), minLength(9), maxLength(120))
 	validateResourceGroupName            = combineValidationFuncs(regex(resourceGroupNameRegex), notEmpty, maxLength(90))
