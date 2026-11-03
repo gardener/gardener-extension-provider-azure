@@ -324,15 +324,20 @@ var _ = Describe("ValidateWorkerConfig", func() {
 	})
 
 	Describe("CapacityReservation", func() {
-		const validCapacityReservationGroupID = "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/my-resource-group/providers/Microsoft.Compute/CapacityReservationGroups/my-capacity-reservation-group"
+		const validCapacityReservationGroupIDUppercase = "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/my-resource-group/providers/Microsoft.Compute/CapacityReservationGroups/my-capacity-reservation-group"
+		const validCapacityReservationGroupIDLowercase = "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/my-resource-group/providers/Microsoft.Compute/capacityReservationGroups/my-capacity-reservation-group"
 
-		It("should accept a canonical capacity reservation group ID", func() {
-			workerCfg.CapacityReservation = &apisazure.CapacityReservation{
-				CapacityReservationGroupID: ptr.To(validCapacityReservationGroupID),
-			}
+		DescribeTable("should accept a valid capacity reservation group ID",
+			func(capacityReservationGroupID string) {
+				workerCfg.CapacityReservation = &apisazure.CapacityReservation{
+					CapacityReservationGroupID: ptr.To(capacityReservationGroupID),
+				}
 
-			Expect(ValidateWorkerConfig(workerCfg, nil, fldPath)).To(BeEmpty())
-		})
+				Expect(ValidateWorkerConfig(workerCfg, nil, fldPath)).To(BeEmpty())
+			},
+			Entry("with uppercase CapacityReservationGroups segment (legacy)", validCapacityReservationGroupIDUppercase),
+			Entry("with lowercase capacityReservationGroups segment (Azure Portal/API)", validCapacityReservationGroupIDLowercase),
+		)
 
 		DescribeTable("should reject a non-canonical capacity reservation group ID",
 			func(capacityReservationGroupID string) {
@@ -347,10 +352,10 @@ var _ = Describe("ValidateWorkerConfig", func() {
 					})),
 				))
 			},
-			Entry("with a space", validCapacityReservationGroupID+" invalid"),
-			Entry("with a newline", validCapacityReservationGroupID+"\n---"),
-			Entry("with a tab", validCapacityReservationGroupID+"\tinvalid"),
-			Entry("with a control character", validCapacityReservationGroupID+"\x00"),
+			Entry("with a space", validCapacityReservationGroupIDLowercase+" invalid"),
+			Entry("with a newline", validCapacityReservationGroupIDLowercase+"\n---"),
+			Entry("with a tab", validCapacityReservationGroupIDLowercase+"\tinvalid"),
+			Entry("with a control character", validCapacityReservationGroupIDLowercase+"\x00"),
 			Entry("with an empty path segment", "/subscriptions//11111111-2222-3333-4444-555555555555/resourceGroups/my-resource-group/providers/Microsoft.Compute/capacityReservationGroups/my-capacity-reservation-group"),
 		)
 	})
