@@ -383,6 +383,16 @@ func (in *InfrastructureConfig) DeepCopyInto(out *InfrastructureConfig) {
 		*out = new(IdentityConfig)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.EnableMTUCustomizer != nil {
+		in, out := &in.EnableMTUCustomizer, &out.EnableMTUCustomizer
+		*out = new(bool)
+		**out = **in
+	}
+	if in.CustomMTUSize != nil {
+		in, out := &in.CustomMTUSize, &out.CustomMTUSize
+		*out = new(int32)
+		**out = **in
+	}
 	return
 }
 

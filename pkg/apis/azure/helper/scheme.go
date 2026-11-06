@@ -60,6 +60,18 @@ func InfrastructureConfigFromInfrastructure(infra *extensionsv1alpha1.Infrastruc
 	return nil, fmt.Errorf("provider config is not set on the infrastructure resource")
 }
 
+// InfrastructureConfigFromCluster extracts the InfrastructureConfig from the shoot's provider config within a cluster.
+func InfrastructureConfigFromCluster(cluster *controller.Cluster) (*api.InfrastructureConfig, error) {
+	if cluster == nil || cluster.Shoot == nil || cluster.Shoot.Spec.Provider.InfrastructureConfig == nil || cluster.Shoot.Spec.Provider.InfrastructureConfig.Raw == nil {
+		return nil, nil
+	}
+	infrastructureConfig := &api.InfrastructureConfig{}
+	if _, _, err := decoder.Decode(cluster.Shoot.Spec.Provider.InfrastructureConfig.Raw, nil, infrastructureConfig); err != nil {
+		return nil, fmt.Errorf("could not decode infrastructureConfig of shoot '%s': %w", k8sclient.ObjectKeyFromObject(cluster.Shoot), err)
+	}
+	return infrastructureConfig, nil
+}
+
 // InfrastructureStatusFromRaw extracts the InfrastructureStatus from the
 // ProviderStatus section of the given Infrastructure.
 func InfrastructureStatusFromRaw(raw *runtime.RawExtension) (*api.InfrastructureStatus, error) {
