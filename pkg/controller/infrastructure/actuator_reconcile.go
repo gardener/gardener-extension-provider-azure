@@ -11,17 +11,11 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/util"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure/infraflow"
-	infrainternal "github.com/gardener/gardener-extension-provider-azure/pkg/internal/infrastructure"
-)
-
-const (
-	terraformerPurpose = "infra"
 )
 
 // Reconcile implements infrastructure.Actuator.
@@ -30,26 +24,9 @@ func (a *actuator) Reconcile(ctx context.Context, log logr.Logger, infra *extens
 }
 
 func (a *actuator) reconcile(ctx context.Context, log logr.Logger, infra *extensionsv1alpha1.Infrastructure, cluster *controller.Cluster) error {
-	var (
-		infraState *azure.InfrastructureState
-		err        error
-	)
-	fsOk, err := helper.HasFlowState(infra.Status)
+	infraState, err := helper.InfrastructureStateFromRaw(infra.Status.State)
 	if err != nil {
 		return err
-	}
-
-	if fsOk {
-		infraState, err = helper.InfrastructureStateFromRaw(infra.Status.State)
-		if err != nil {
-			return err
-		}
-	} else {
-		// otherwise migrate it from the terraform state if needed.
-		infraState, err = a.migrateFromTerraform(ctx, log, infra)
-		if err != nil {
-			return err
-		}
 	}
 
 	auth, _, err := azureclient.GetClientAuthData(ctx, a.client, infra.Spec.SecretRef, false)
@@ -97,27 +74,4 @@ func (a *actuator) reconcile(ctx context.Context, log logr.Logger, infra *extens
 	}
 
 	return fctx.Reconcile(ctx)
-}
-
-func (a *actuator) migrateFromTerraform(ctx context.Context, log logr.Logger, infra *extensionsv1alpha1.Infrastructure) (*azure.InfrastructureState, error) {
-	var (
-		state = &azure.InfrastructureState{
-			Data: map[string]string{},
-		}
-	)
-	tf, err := newTerraformer(log, a.restConfig, terraformerPurpose, infra, a.disableProjectedTokenMount)
-	if err != nil {
-		return nil, err
-	}
-
-	// nothing to do if state is empty
-	if tf.IsStateEmpty(ctx) {
-		return state, nil
-	}
-
-	// this is a special case when migrating from Terraform. If TF had created any resources (meaning there is an actual content in tf.state written)
-	// we will use a specific "marker" to make the reconciler aware of existing resources. This will prevent the reconciler from skipping the deletion flow.
-	state.Data[infraflow.CreatedResourcesExistKey] = "true"
-
-	return state, infrainternal.PatchProviderStatusAndState(ctx, a.client, infra, nil, &runtime.RawExtension{Object: state}, nil)
 }

@@ -31,7 +31,6 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	corev1 "k8s.io/api/core/v1"
-	schedulingv1 "k8s.io/api/scheduling/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -237,11 +236,7 @@ var _ = BeforeSuite(func() {
 	Expect(extensionsv1alpha1.AddToScheme(mgr.GetScheme())).To(Succeed())
 	Expect(azureinstall.AddToScheme(mgr.GetScheme())).To(Succeed())
 
-	Expect(infrastructure.AddToManagerWithOptions(ctx, mgr, infrastructure.AddOptions{
-		// During testing in testmachinery cluster, there is no gardener-resource-manager to inject the volume mount.
-		// Hence, we need to run without projected token mount.
-		DisableProjectedTokenMount: true,
-	})).To(Succeed())
+	Expect(infrastructure.AddToManagerWithOptions(ctx, mgr, infrastructure.AddOptions{})).To(Succeed())
 
 	var mgrContext context.Context
 	mgrContext, mgrCancel = context.WithCancel(ctx)
@@ -258,16 +253,6 @@ var _ = BeforeSuite(func() {
 
 	clientSet, err = newAzureClientSet(*subscriptionId, *tenantId, *clientId, *clientSecret)
 	Expect(err).ToNot(HaveOccurred())
-
-	priorityClass := &schedulingv1.PriorityClass{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: v1beta1constants.PriorityClassNameShootControlPlane300,
-		},
-		Description:   "PriorityClass for Shoot control plane components",
-		GlobalDefault: false,
-		Value:         999998300,
-	}
-	Expect(client.IgnoreAlreadyExists(c.Create(ctx, priorityClass))).To(Succeed())
 })
 
 var _ = Describe("Infrastructure tests", func() {

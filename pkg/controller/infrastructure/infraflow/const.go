@@ -9,8 +9,8 @@ const (
 	ChildKeyIDs = "ids"
 	// ChildKeyInventory is the prefix key for for the inventory struct.
 	ChildKeyInventory = "inventory"
-	// CreatedResourcesExistKey is a marker for the Terraform migration case. If the TF state is not empty
-	// we inject this marker into the state to block the deletion without having first a successful reconciliation.
+	// CreatedResourcesExistKey marks pre-existing resources in older saved states that do not yet
+	// have a managed-item inventory. Honor it so deletion cannot skip those resources.
 	CreatedResourcesExistKey = "resources_exist"
 
 	// KeyManagedIdentityClientId is a key for the MI's client ID.

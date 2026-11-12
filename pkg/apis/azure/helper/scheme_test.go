@@ -5,7 +5,6 @@
 package helper_test
 
 import (
-	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -15,20 +14,33 @@ import (
 )
 
 var _ = Describe("Scheme", func() {
-	DescribeTable("#HasFlowState",
-		func(state *runtime.RawExtension, expectedHasFlowState, expectedErr bool) {
-			infraStatus := extensionsv1alpha1.InfrastructureStatus{
-				DefaultStatus: extensionsv1alpha1.DefaultStatus{
-					State: state,
-				},
+	DescribeTable("#InfrastructureStateFromRaw",
+		func(raw *runtime.RawExtension, expectedState *api.InfrastructureState, expectedErr bool) {
+			state, err := InfrastructureStateFromRaw(raw)
+			if expectedErr {
+				Expect(err).To(HaveOccurred())
+				Expect(state).To(BeNil())
+			} else {
+				Expect(err).NotTo(HaveOccurred())
+				Expect(state).To(Equal(expectedState))
 			}
-			hasFlowState, err := HasFlowState(infraStatus)
-			expectResults(hasFlowState, expectedHasFlowState, err, expectedErr)
 		},
-		Entry("when state is nil", nil, false, false),
-		Entry("when state is invalid json", &runtime.RawExtension{Raw: []byte(`foo`)}, false, true),
-		Entry("when state is not in 'azure.provider.extensions.gardener.cloud/v1alpha1' group version", &runtime.RawExtension{Raw: []byte(`{"apiVersion":"foo.bar/v1alpha1","kind":"InfrastructureState"}`)}, false, false),
-		Entry("when state is in 'azure.provider.extensions.gardener.cloud/v1alpha1' group version", &runtime.RawExtension{Raw: []byte(`{"apiVersion":"azure.provider.extensions.gardener.cloud/v1alpha1","kind":"InfrastructureState"}`)}, true, false),
+		Entry("when state is nil", nil, &api.InfrastructureState{Data: map[string]string{}, ManagedItems: []api.AzureResource{}}, false),
+		Entry("when state is invalid JSON", &runtime.RawExtension{Raw: []byte(`foo`)}, nil, true),
+		Entry("when state has an unsupported API version", &runtime.RawExtension{Raw: []byte(`{"apiVersion":"foo.bar/v1alpha1","kind":"InfrastructureState"}`)}, nil, true),
+		Entry("when state has a different registered kind", &runtime.RawExtension{Raw: []byte(`{"apiVersion":"azure.provider.extensions.gardener.cloud/v1alpha1","kind":"InfrastructureConfig"}`)}, nil, true),
+		Entry("when state is a legacy Terraform envelope", &runtime.RawExtension{Raw: []byte(`{"terraformState":{"data":"{}","encoding":"none"},"savedProviderStatus":{}}`)}, nil, true),
+		Entry("when state has no type metadata", &runtime.RawExtension{Raw: []byte(`{"data":{"resources_exist":"true"}}`)}, nil, true),
+		Entry("when state is empty", &runtime.RawExtension{Raw: []byte(`{"apiVersion":"azure.provider.extensions.gardener.cloud/v1alpha1","kind":"InfrastructureState"}`)}, &api.InfrastructureState{Data: map[string]string{}, ManagedItems: []api.AzureResource{}}, false),
+		Entry("when state contains resources and a saved layout annotation", &runtime.RawExtension{Raw: []byte(`{
+			"apiVersion":"azure.provider.extensions.gardener.cloud/v1alpha1",
+			"kind":"InfrastructureState",
+			"data":{"resources_exist":"true","zoneMigration":"2"},
+			"managedItems":[{"kind":"Microsoft.Resources/resourceGroups","id":"/subscriptions/sub/resourceGroups/shoot"}]
+		}`)}, &api.InfrastructureState{
+			Data:         map[string]string{"resources_exist": "true", "zoneMigration": "2"},
+			ManagedItems: []api.AzureResource{{Kind: "Microsoft.Resources/resourceGroups", ID: "/subscriptions/sub/resourceGroups/shoot"}},
+		}, false),
 	)
 
 	DescribeTable("#WorkloadIdentityConfigFromBytes",

@@ -4,6 +4,12 @@ The [`core.gardener.cloud/v1beta1.Shoot` resource](https://github.com/gardener/g
 
 This document describes the configurable options for Azure and provides an example `Shoot` manifest with minimal configuration that can be used to create an Azure cluster (modulo the landscape-specific information like cloud profile names, secret binding names, etc.).
 
+## Infrastructure Reconciliation
+
+The infrastructure reconciler manages Azure resources using the native Azure Go SDK. Its state is stored in the Infrastructure resource's `status.state` field as an `InfrastructureState`.
+
+Starting with v1.67.0, migration from legacy Terraform state is no longer supported. Shoots still carrying Terraform state must first complete an infrastructure reconciliation with provider-azure v1.54 through v1.66 to migrate their state before upgrading to v1.67 or later.
+
 ## Azure Provider Credentials
 
 In order for Gardener to create a Kubernetes cluster using Azure infrastructure components, a Shoot has to provide credentials with sufficient permissions to the desired Azure subscription.

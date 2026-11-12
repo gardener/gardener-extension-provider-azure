@@ -6,7 +6,6 @@ package infrastructure
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	extensionswebhook "github.com/gardener/gardener/extensions/pkg/webhook"
@@ -19,7 +18,6 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azuretypes "github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	infrastructurecontroller "github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure"
 )
 
 type layoutMutator struct {
@@ -153,39 +151,13 @@ func addMigratedZoneAnnotationDuringRestore(infra *extensionsv1alpha1.Infrastruc
 		return nil
 	}
 
-	fsOk, err := helper.HasFlowState(infra.Status)
+	infraState, err := helper.InfrastructureStateFromRaw(infra.Status.State)
 	if err != nil {
 		return err
 	}
 
-	if fsOk {
-		infraState, err := helper.InfrastructureStateFromRaw(infra.Status.State)
-		if err != nil {
-			return err
-		}
-
-		if migratedZone, ok := infraState.Data[azuretypes.NetworkLayoutZoneMigrationAnnotation]; ok {
-			metav1.SetMetaDataAnnotation(&infra.ObjectMeta, azuretypes.NetworkLayoutZoneMigrationAnnotation, migratedZone)
-		}
-
-		return nil
-	}
-
-	infraState := &infrastructurecontroller.TerraformInfrastructureState{}
-	if err := json.Unmarshal(infra.Status.State.Raw, infraState); err != nil {
-		return err
-	}
-
-	infrastructureStatus, err := helper.InfrastructureStatusFromRaw(infraState.SavedProviderStatus)
-	if err != nil {
-		return err
-	}
-
-	for _, subnet := range infrastructureStatus.Networks.Subnets {
-		if subnet.Migrated && subnet.Zone != nil {
-			metav1.SetMetaDataAnnotation(&infra.ObjectMeta, azuretypes.NetworkLayoutZoneMigrationAnnotation, *subnet.Zone)
-			break
-		}
+	if migratedZone, ok := infraState.Data[azuretypes.NetworkLayoutZoneMigrationAnnotation]; ok {
+		metav1.SetMetaDataAnnotation(&infra.ObjectMeta, azuretypes.NetworkLayoutZoneMigrationAnnotation, migratedZone)
 	}
 	return nil
 }
