@@ -464,3 +464,15 @@ Options:
 > A full rotation (a rotation of both storage account keys) is completed after 2*`rotationPeriod`.
 > It is suggested that the `rotationPeriod` is configured at least twice the maintenance interval of the shoots.
 > This will ensure that at least one active key is currently used by the etcd-backup pods.
+
+## Profiling
+
+The controller exposes a [pprof](https://pkg.go.dev/net/http/pprof) endpoint on `127.0.0.1:8082` for runtime profiling. It binds to localhost only and is reachable exclusively via `kubectl port-forward`.
+
+To take a heap or goroutine snapshot from a running pod:
+
+```bash
+kubectl port-forward -n <extension-namespace> <pod-name> 8082:8082
+go tool pprof http://localhost:8082/debug/pprof/heap
+go tool pprof http://localhost:8082/debug/pprof/goroutine
+```
