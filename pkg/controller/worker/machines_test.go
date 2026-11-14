@@ -305,7 +305,7 @@ var _ = Describe("Machines", func() {
 					Architecture: ptr.To(archARM),
 				}
 
-				shootVersionMajorMinor = "1.32"
+				shootVersionMajorMinor = "1.33"
 				shootVersion = shootVersionMajorMinor + ".0"
 
 				machineImages = []apiv1alpha1.MachineImages{
