@@ -192,8 +192,8 @@ In the `networks.serviceEndpoints[]` list you can specify the list of Azure serv
 The `networks.natGateway` section contains configuration for the Azure NatGateway which can be attached to the worker subnet of a Shoot cluster.
 Here are some key information about the usage of the NatGateway for a Shoot cluster:
 - If the NatGateway is not used then the egress connections initiated within the Shoot cluster will be nated via the LoadBalancer of the clusters (default Azure behaviour, see [here](https://docs.microsoft.com/en-us/azure/load-balancer/load-balancer-outbound-connections#scenarios)).
-- The NatGateway is currently **not** zone redundantly deployed.
-  That means the NatGateway of a Shoot cluster will always be in just one zone. This zone can be optionally selected via `.networks.natGateway.zone`.
+- With the `Standard` SKU, the NatGateway is deployed in a single zone. This zone can be optionally selected via `.networks.natGateway.zone`.
+- The `StandardV2` NAT Gateway SKU is zone-redundant and cannot be combined with `.networks.natGateway.zone`.
 - **Caution:** Modifying the `.networks.natGateway.zone` setting requires a recreation of the NatGateway and the managed public ip (automatically used if no own public ip is specified, see below).
   That means you will most likely get a different public ip for egress connections.
 - It is possible to bring own zonal public ip(s) via `networks.natGateway.ipAddresses`.
@@ -202,6 +202,8 @@ Here are some key information about the usage of the NatGateway for a Shoot clus
   If you provide your own public IPs, the shoot’s `status.networking.egressCIDRs` field will be populated with those addresses.
   If you don’t, the field remains empty because it depends on the public IP of your load balancers and hence it can change at runtime depending on the services you create/delete.
   Since the set of egress IPs cannot be determined in advance in this scenario, we intentionally leave the field empty.
+- Changing the NAT Gateway SKU on an existing Shoot requires the NAT Gateway and its managed public IPs to be destroyed and recreated. Azure does not upgrade `Standard` to `StandardV2` in place; the outbound IP can change, and outbound connectivity and interrupted during reconciliation. To explicitly accept this, set `azure.provider.extensions.gardener.cloud/confirm-natgateway-sku-recreation: "true"` on the Shoot while changing the SKU. The annotation is persistent and also confirms future NAT Gateway SKU changes until removed. If added to an existing Shoot, trigger reconciliation manually because annotation changes do not generally increment `.metadata.generation`.
+- For `StandardV2`, use zone-redundant StandardV2 public IPs. User-provided public IPs are references and are not upgraded by the extension; provision compatible IPs before referencing them. Check Azure's [StandardV2 NAT Gateway SKU documentation](https://learn.microsoft.com/en-us/azure/nat-gateway/nat-sku) for current regional availability.
 - The field `networks.natGateway.idleConnectionTimeoutMinutes` allows the configuration of NAT Gateway's idle connection timeout property.
   The idle timeout value can be adjusted from 4 minutes, up to 120 minutes.
   Omitting this property will set the idle timeout to its default value according to [NAT Gateway's documentation](https://docs.microsoft.com/en-us/azure/virtual-network/nat-gateway-resource#timers).

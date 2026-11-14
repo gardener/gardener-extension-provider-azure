@@ -19,6 +19,8 @@ const (
 	ShootSkipAllowEgressDeployment = "azure.provider.extensions.gardener.cloud/skip-allow-egress"
 	// ShootDiskConvertRWCachingModeAnnotation is used to convert the caching mode of existing in-tree PVs to ReadOnly when attached to nodes.
 	ShootDiskConvertRWCachingModeAnnotation = "azure.provider.extensions.gardener.cloud/convert-rw-caching-mode-for-intree-pv"
+	// ShootConfirmNatGatewaySKURecreationAnnotation confirms that a NAT Gateway SKU change may destroy and recreate the NAT Gateway and its public IPs.
+	ShootConfirmNatGatewaySKURecreationAnnotation = "azure.provider.extensions.gardener.cloud/confirm-natgateway-sku-recreation"
 	// NetworkLayoutZoneMigrationAnnotation is used when migrating from a single subnet network layout to a multiple subnet network layout to indicate the zone that the existing subnet should be assigned to.
 	NetworkLayoutZoneMigrationAnnotation = "migration.azure.provider.extensions.gardener.cloud/zone"
 	// VolumeAttachLimit is the key for an annotation on a Shoot object whose value represents the maximum number of
