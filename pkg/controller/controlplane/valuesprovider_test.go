@@ -115,9 +115,8 @@ var _ = Describe("ValuesProvider", func() {
 
 		k8sVersion = "1.32.0"
 
-		enabledTrue    = map[string]interface{}{"enabled": true}
-		enabledFalse   = map[string]interface{}{"enabled": false}
-		remedyDisabled = map[string]interface{}{"enabled": true, "replicas": 0}
+		enabledTrue  = map[string]interface{}{"enabled": true}
+		enabledFalse = map[string]interface{}{"enabled": false}
 
 		checksums = map[string]string{
 			v1beta1constants.SecretNameCloudProvider: "8bafb35ff1ac60275d62e1cbd495aceb511fb354f74a20f7d06ecb48b3a68432",
@@ -380,13 +379,6 @@ var _ = Describe("ValuesProvider", func() {
 					"vmType":              "vmss",
 					"useWorkloadIdentity": false,
 				}),
-				azure.RemedyControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
-					"replicas": 1,
-					"podAnnotations": map[string]interface{}{
-						"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
-					},
-					"useWorkloadIdentity": false,
-				}),
 			}))
 		})
 
@@ -415,45 +407,6 @@ var _ = Describe("ValuesProvider", func() {
 					},
 					"useWorkloadIdentity": false,
 				}),
-				azure.RemedyControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
-					"replicas": 1,
-					"podAnnotations": map[string]interface{}{
-						"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
-					},
-					"useWorkloadIdentity": false,
-				}),
-			}))
-		})
-
-		It("should return correct control plane chart values when remedy controller is disabled", func() {
-			shootAnnotations := map[string]string{
-				azure.DisableRemedyControllerAnnotation: "true",
-			}
-			cluster = generateCluster(cidr, k8sVersion, false, shootAnnotations, nil, &gardencorev1beta1.Seed{})
-
-			cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
-			values, err := vp.GetControlPlaneChartValues(ctx, cp, cluster, fakeSecretsManager, checksums, false)
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(values).To(Equal(map[string]interface{}{
-				"global": map[string]interface{}{
-					"genericTokenKubeconfigSecretName": genericTokenKubeconfigSecretName,
-				},
-				azure.CloudControllerManagerName: utils.MergeMaps(ccmChartValues, map[string]interface{}{
-					"useWorkloadIdentity": false,
-				}),
-				azure.CSIControllerName: utils.MergeMaps(enabledTrue, map[string]interface{}{
-					"replicas": 1,
-					"vmType":   "standard",
-					"podAnnotations": map[string]interface{}{
-						"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
-					},
-					"csiSnapshotController": map[string]interface{}{
-						"replicas": 1,
-					},
-					"useWorkloadIdentity": false,
-				}),
-				azure.RemedyControllerName: remedyDisabled,
 			}))
 		})
 
@@ -615,7 +568,6 @@ var _ = Describe("ValuesProvider", func() {
 				azure.AllowEgressName:            enabledTrue,
 				azure.CloudControllerManagerName: cloudControllerManager,
 				azure.CSINodeName:                csiNode,
-				azure.RemedyControllerName:       enabledTrue,
 			}))
 		})
 
@@ -651,7 +603,6 @@ var _ = Describe("ValuesProvider", func() {
 				azure.AllowEgressName:            enabledFalse,
 				azure.CloudControllerManagerName: cloudControllerManager,
 				azure.CSINodeName:                csiNode,
-				azure.RemedyControllerName:       enabledTrue,
 			}))
 		})
 
@@ -672,7 +623,6 @@ var _ = Describe("ValuesProvider", func() {
 				azure.AllowEgressName:            enabledFalse,
 				azure.CloudControllerManagerName: cloudControllerManager,
 				azure.CSINodeName:                csiNode,
-				azure.RemedyControllerName:       enabledTrue,
 			}))
 		})
 
@@ -691,12 +641,9 @@ var _ = Describe("ValuesProvider", func() {
 			Expect(values).To(HaveKeyWithValue(azure.AllowEgressName, enabledFalse))
 		})
 
-		Context("remedy controller is disabled", func() {
+		Context("VPA is disabled", func() {
 			It("should return correct control plane shoot chart values for zoned cluster", func() {
-				shootAnnotations := map[string]string{
-					azure.DisableRemedyControllerAnnotation: "true",
-				}
-				cluster = generateCluster(cidr, k8sVersion, false, shootAnnotations, nil, nil)
+				cluster = generateCluster(cidr, k8sVersion, false, nil, nil, nil)
 				cp := generateControlPlane(controlPlaneConfig, infrastructureStatus)
 				csiNode := csiNodeEnabled
 
@@ -706,7 +653,6 @@ var _ = Describe("ValuesProvider", func() {
 					azure.AllowEgressName:            enabledTrue,
 					azure.CloudControllerManagerName: cloudControllerManagerWithVPADisabled,
 					azure.CSINodeName:                csiNode,
-					azure.RemedyControllerName:       enabledFalse,
 				}))
 			})
 		})

@@ -66,7 +66,6 @@ rules:
   resourceNames:
   - provider-azure-leader-election
   - gardener-extension-heartbeat
-  - remedy-controller-azure-leader-election
   verbs:
   - get
   - update
@@ -139,6 +138,7 @@ rules:
   - patch
   - update
   - delete
+# TODO(kon-angelo): Remove legacy remedy-controller cleanup permissions in v1.70.0.
 - apiGroups:
   - azure.remedy.gardener.cloud
   resources:
@@ -150,16 +150,6 @@ rules:
   - get
   - list
   - patch
-  - create
-  - update
-  - watch
-- apiGroups:
-  - azure.remedy.gardener.cloud
-  resources:
-  - virtualmachines/status
-  verbs:
-  - patch
-  - update
 - apiGroups:
   - policy
   resources:

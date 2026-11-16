@@ -20,7 +20,6 @@ import (
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	gardenerhealthz "github.com/gardener/gardener/pkg/healthz"
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
-	azurev1alpha1 "github.com/gardener/remedy-controller/pkg/apis/azure/v1alpha1"
 	"github.com/go-logr/logr"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/spf13/cobra"
@@ -195,9 +194,6 @@ func NewControllerManagerCommand(ctx context.Context) *cobra.Command {
 				return fmt.Errorf("could not update manager scheme: %w", err)
 			}
 			if err := machinev1alpha1.AddToScheme(scheme); err != nil {
-				return fmt.Errorf("could not update manager scheme: %w", err)
-			}
-			if err := azurev1alpha1.AddToScheme(scheme); err != nil {
 				return fmt.Errorf("could not update manager scheme: %w", err)
 			}
 			if err := monitoringv1.AddToScheme(mgr.GetScheme()); err != nil {

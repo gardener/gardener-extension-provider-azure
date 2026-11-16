@@ -351,19 +351,3 @@ images:
       integrity_requirement: high
       availability_requirement: low
     signing: false
-- name: remedy-controller-azure
-  sourceRepository: github.com/gardener/remedy-controller
-  repository: europe-docker.pkg.dev/gardener-project/releases/gardener/remedy-controller/remedy-controller-azure
-  tag: v0.14.0
-  labels:
-  - name: gardener.cloud/cve-categorisation
-    value:
-      network_exposure: protected
-      authentication_enforced: false
-      user_interaction: gardener-operator
-      confidentiality_requirement: high
-      integrity_requirement: high
-      availability_requirement: low
-    signing: false
-  resourceId:
-    name: remedy-controller-image
