@@ -10,14 +10,19 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"time"
 
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
+	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
 	mockcontrolplane "github.com/gardener/gardener/extensions/pkg/controller/controlplane/mock"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	resourcesv1alpha1 "github.com/gardener/gardener/pkg/apis/resources/v1alpha1"
 	reconcilerutils "github.com/gardener/gardener/pkg/controllerutils/reconciler"
+	"github.com/gardener/gardener/pkg/utils/managedresources"
 	testutils "github.com/gardener/gardener/pkg/utils/test"
+	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/mock/gomock"
@@ -89,6 +94,7 @@ var _ = Describe("Actuator", func() {
 		scheme = runtime.NewScheme()
 		Expect(corev1.AddToScheme(scheme)).To(Succeed())
 		Expect(extensionsv1alpha1.AddToScheme(scheme)).To(Succeed())
+		Expect(resourcesv1alpha1.AddToScheme(scheme)).To(Succeed())
 
 		c = fakeclient.NewClientBuilder().WithScheme(scheme).Build()
 		mgr = testutils.FakeManager{Client: c}
@@ -100,6 +106,14 @@ var _ = Describe("Actuator", func() {
 	})
 
 	Describe("#Delete", func() {
+		It("should return shoot cleanup errors before invoking the composed deletion", func() {
+			cluster.Shoot.Spec.Hibernation = nil
+			cluster.Shoot.Status.IsHibernated = false
+
+			// No shoot credentials exist, and no composed Delete call is expected.
+			Expect(act.Delete(ctx, logger, newControlPlane(), cluster)).To(MatchError(ContainSubstring("not found")))
+		})
+
 		It("should successfully delete controlplane if there are no remedy controller resources", func() {
 			cp := newControlPlane()
 			t := metav1.Now()
@@ -335,6 +349,7 @@ var _ = Describe("Actuator", func() {
 			cluster.Shoot.Spec.Hibernation = nil
 			cluster.Shoot.Status.IsHibernated = false
 			patches := make(chan string, 2)
+			var serviceFinalizersRemoved atomic.Bool
 			service := &corev1.Service{
 				TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "Service"},
 				ObjectMeta: metav1.ObjectMeta{Name: "lb", Namespace: "default", ResourceVersion: "1", Finalizers: []string{serviceFinalizerName, "example.com/other"}},
@@ -374,6 +389,9 @@ var _ = Describe("Actuator", func() {
 					var patch map[string]interface{}
 					Expect(json.NewDecoder(r.Body).Decode(&patch)).To(Succeed())
 					Expect(patch["metadata"]).To(HaveKeyWithValue("finalizers", []interface{}{"example.com/other"}))
+					if r.URL.Path == "/api/v1/namespaces/default/services/lb" {
+						serviceFinalizersRemoved.Store(true)
+					}
 					patches <- r.URL.Path
 				}
 				Expect(json.NewEncoder(w).Encode(response)).To(Succeed())
@@ -396,8 +414,38 @@ var _ = Describe("Actuator", func() {
 				_, err := act.Reconcile(ctx, logger, cp, cluster)
 				Expect(err).NotTo(HaveOccurred())
 			case "Delete":
-				a.EXPECT().Delete(ctx, logger, cp, cluster).Return(nil)
-				Expect(act.Delete(ctx, logger, cp, cluster)).To(Succeed())
+				mr := &resourcesv1alpha1.ManagedResource{ObjectMeta: metav1.ObjectMeta{
+					Name: genericactuator.ControlPlaneShootChartResourceName, Namespace: namespace,
+					Finalizers: []string{"resources.gardener.cloud/gardener-resource-manager"},
+				}}
+				Expect(c.Create(ctx, mr)).To(Succeed())
+				// Model resource-manager withholding its finalizer while a managed Service still has
+				// a Remedy finalizer, and exercise the same deletion wait as the generic actuator.
+				seedClient := interceptor.NewClient(c.(client.WithWatch), interceptor.Funcs{
+					Get: func(ctx context.Context, base client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+						if err := base.Get(ctx, key, obj, opts...); err != nil {
+							return err
+						}
+						if _, ok := obj.(*resourcesv1alpha1.ManagedResource); ok && obj.GetDeletionTimestamp() != nil && serviceFinalizersRemoved.Load() {
+							obj.SetFinalizers(nil)
+							if err := base.Update(ctx, obj); err != nil {
+								return err
+							}
+							return base.Get(ctx, key, obj, opts...)
+						}
+						return nil
+					},
+				})
+				deleteCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+				defer cancel()
+				a.EXPECT().Delete(deleteCtx, logger, cp, cluster).DoAndReturn(func(ctx context.Context, _ logr.Logger, cp *extensionsv1alpha1.ControlPlane, _ *extensionscontroller.Cluster) error {
+					if err := managedresources.Delete(ctx, seedClient, cp.Namespace, mr.Name, false); err != nil {
+						return err
+					}
+					return managedresources.WaitUntilDeleted(ctx, seedClient, cp.Namespace, mr.Name)
+				})
+				Expect(act.Delete(deleteCtx, logger, cp, cluster)).To(Succeed())
+				Expect(apierrors.IsNotFound(c.Get(ctx, client.ObjectKeyFromObject(mr), mr))).To(BeTrue())
 			case "Migrate":
 				a.EXPECT().Migrate(ctx, logger, cp, cluster).Return(nil)
 				Expect(act.Migrate(ctx, logger, cp, cluster)).To(Succeed())
@@ -412,7 +460,7 @@ var _ = Describe("Actuator", func() {
 			Expect(patches).To(Receive(Equal("/api/v1/nodes/node")))
 		},
 			Entry("during reconciliation", "Reconcile"),
-			Entry("during deletion", "Delete"),
+			Entry("before waiting for shoot ManagedResource deletion", "Delete"),
 			Entry("during migration", "Migrate"),
 			Entry("during restore", "Restore"),
 		)

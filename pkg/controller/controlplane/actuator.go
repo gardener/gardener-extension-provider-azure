@@ -100,7 +100,13 @@ func (a *actuator) Delete(
 	cp *extensionsv1alpha1.ControlPlane,
 	cluster *extensionscontroller.Cluster,
 ) error {
-	if !features.ExtensionFeatureGate.Enabled(features.DisableRemedyController) {
+	if features.ExtensionFeatureGate.Enabled(features.DisableRemedyController) {
+		// The composed actuator waits for shoot ManagedResources to be deleted. Remove legacy
+		// finalizers first so Services in those ManagedResources cannot block that deletion.
+		if err := a.forceDeleteShootRemedyControllerResources(ctx, log, cp.Namespace, cluster); err != nil {
+			return err
+		}
+	} else {
 		list := newRemedyResourceList(publicIPAddressKind)
 		if err := a.client.List(ctx, list, client.InNamespace(cp.Namespace)); ignoreMissingRemedyAPI(err) != nil {
 			return err
@@ -122,9 +128,6 @@ func (a *actuator) Delete(
 		return err
 	}
 
-	if features.ExtensionFeatureGate.Enabled(features.DisableRemedyController) {
-		return a.forceDeleteRemedyControllerResources(ctx, log, cp.Namespace, cluster)
-	}
 	// Delete all remaining remedy controller resources
 	return a.forceDeleteSeedRemedyControllerResources(ctx, log, cp.GetNamespace())
 }
