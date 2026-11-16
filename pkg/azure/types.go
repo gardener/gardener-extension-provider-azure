@@ -57,9 +57,6 @@ const (
 	// MachineControllerManagerProviderAzureImageName is the name of the MachineController Azure image.
 	MachineControllerManagerProviderAzureImageName = "machine-controller-manager-provider-azure"
 
-	// RemedyControllerImageName is the name of the remedy-controller image.
-	RemedyControllerImageName = "remedy-controller-azure"
-
 	// SubscriptionIDKey is the key for the subscription ID.
 	SubscriptionIDKey = "subscriptionID"
 	// TenantIDKey is the key for the tenant ID.
@@ -147,10 +144,6 @@ const (
 	CSINodeDriverRegistrarName = "csi-node-driver-registrar"
 	// CSILivenessProbeName is a constant for the name of the csi-liveness-probe component.
 	CSILivenessProbeName = "csi-liveness-probe"
-	// RemedyControllerName is a constant for the name of the remedy-controller.
-	RemedyControllerName = "remedy-controller-azure"
-	// DisableRemedyControllerAnnotation disables the Azure remedy controller (enabled by default)
-	DisableRemedyControllerAnnotation = "azure.provider.extensions.gardener.cloud/disable-remedy-controller"
 	// AnnotationEnableVolumeAttributesClass is the annotation to use on shoots to enable VolumeAttributesClasses
 	AnnotationEnableVolumeAttributesClass = "azure.provider.extensions.gardener.cloud/enable-volume-attributes-class"
 

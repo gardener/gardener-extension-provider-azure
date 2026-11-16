@@ -2,6 +2,19 @@
 
 **Disclaimer:** This document is NOT a step by step installation guide for the Azure provider extension and only contains some configuration specifics regarding the installation of different components via the helm charts residing in the Azure provider extension [repository](https://github.com/gardener/gardener-extension-provider-azure).
 
+## Remedy controller retirement
+
+Starting with v1.67.0, `DisableRemedyController` defaults to `true`.
+The extension no longer deploys the Remedy controller or its `PublicIPAddress` and `VirtualMachine` CRDs.
+The Remedy controller Go module dependency has also been removed.
+
+Migration code remains to remove legacy seed resources, the controller's shoot-access secret, and Remedy finalizers from shoot Services and Nodes.
+Cleanup tolerates missing CRDs and resumes for hibernated shoots when they wake up.
+Keep `DisableRemedyController` enabled while completing this migration; setting it to `false` opts out of the shoot finalizer cleanup and does not restore the removed controller or CRDs.
+
+All remaining Remedy-related code, including the feature gate, migration cleanup, and its RBAC permissions, will be removed in **v1.70.0**, three minor versions after v1.67.0.
+Reconcile existing shoots, including waking hibernated shoots to clean up their finalizers, before upgrading to v1.70.0.
+
 ## gardener-extension-admission-azure
 
 ### Authentication against the Garden cluster

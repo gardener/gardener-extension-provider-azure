@@ -84,7 +84,7 @@ config:
 #     backup:
 #       schedule: "0 */1 * * *"
   featureGates:
-#     DisableRemedyController: false
+#     DisableRemedyController: true
 #     EnableImmutableBuckets: false
 
 gardener:
