@@ -145,9 +145,7 @@ rules:
   - publicipaddresses
   - virtualmachines
   verbs:
-  - delete
   - deletecollection
-  - get
   - list
   - patch
 - apiGroups:

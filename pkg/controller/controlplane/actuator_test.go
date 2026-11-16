@@ -163,8 +163,46 @@ var _ = Describe("Actuator", func() {
 		})
 	})
 
+	Describe("#Restore", func() {
+		DescribeTable("should preserve the composed result without running cleanup", func(enabled bool, restoreErr error) {
+			featuregatetesting.SetFeatureGateDuringTest(GinkgoT(), features.ExtensionFeatureGate, features.DisableRemedyController, enabled)
+			pubip := newPubip()
+			pubip.SetFinalizers([]string{publicIpFinalizerString})
+			Expect(c.Create(ctx, pubip)).To(Succeed())
+			cp := newControlPlane()
+			a.EXPECT().Restore(ctx, logger, cp, cluster).Return(true, restoreErr)
+
+			requeue, err := act.Restore(ctx, logger, cp, cluster)
+			Expect(requeue).To(BeTrue())
+			if restoreErr != nil {
+				Expect(err).To(MatchError(restoreErr))
+			} else {
+				Expect(err).NotTo(HaveOccurred())
+			}
+			Expect(c.Get(ctx, client.ObjectKeyFromObject(pubip), pubip)).To(Succeed())
+			Expect(pubip.GetFinalizers()).To(ConsistOf(publicIpFinalizerString))
+		},
+			Entry("when the feature gate is disabled", false, nil),
+			Entry("when the composed restore fails", true, fmt.Errorf("restore failed")),
+		)
+
+		It("should return cleanup errors and preserve the composed requeue result", func() {
+			act.client = fakeclient.NewClientBuilder().WithScheme(scheme).WithInterceptorFuncs(interceptor.Funcs{
+				List: func(context.Context, client.WithWatch, client.ObjectList, ...client.ListOption) error {
+					return fmt.Errorf("cleanup failed")
+				},
+			}).Build()
+			cp := newControlPlane()
+			a.EXPECT().Restore(ctx, logger, cp, cluster).Return(true, nil)
+
+			requeue, err := act.Restore(ctx, logger, cp, cluster)
+			Expect(requeue).To(BeTrue())
+			Expect(err).To(MatchError(ContainSubstring("cleanup failed")))
+		})
+	})
+
 	Describe("legacy resource cleanup", func() {
-		It("should clean up seed resources by default even while the shoot is hibernated", func() {
+		DescribeTable("should clean up seed resources by default even while the shoot is hibernated", func(restore bool) {
 			pubip := newPubip()
 			pubip.SetFinalizers([]string{publicIpFinalizerString})
 			vm := newVirtualMachine()
@@ -174,15 +212,24 @@ var _ = Describe("Actuator", func() {
 				Expect(c.Create(ctx, obj)).To(Succeed())
 			}
 			cp := newControlPlane()
-			a.EXPECT().Reconcile(ctx, logger, cp, cluster).Return(true, nil)
+			reconcile := act.Reconcile
+			if restore {
+				a.EXPECT().Restore(ctx, logger, cp, cluster).Return(true, nil)
+				reconcile = act.Restore
+			} else {
+				a.EXPECT().Reconcile(ctx, logger, cp, cluster).Return(true, nil)
+			}
 
-			requeue, err := act.Reconcile(ctx, logger, cp, cluster)
+			requeue, err := reconcile(ctx, logger, cp, cluster)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(requeue).To(BeTrue())
 			for _, obj := range []client.Object{pubip, vm, secret} {
 				Expect(apierrors.IsNotFound(c.Get(ctx, client.ObjectKeyFromObject(obj), obj))).To(BeTrue())
 			}
-		})
+		},
+			Entry("during reconciliation", false),
+			Entry("during restore", true),
+		)
 
 		DescribeTable("should tolerate removed CRDs", func(apiErr error) {
 			act.client = fakeclient.NewClientBuilder().WithScheme(scheme).WithInterceptorFuncs(interceptor.Funcs{
@@ -230,6 +277,59 @@ var _ = Describe("Actuator", func() {
 			}).Build()
 			Expect(act.forceDeleteSeedRemedyControllerResources(ctx, logger, namespace)).To(MatchError(ContainSubstring("denied")))
 		})
+
+		It("should remove legacy finalizers from Services that are no longer LoadBalancers", func() {
+			service := &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{Name: "former-lb", Namespace: namespace, Finalizers: []string{serviceFinalizerName, "example.com/other"}},
+				Spec:       corev1.ServiceSpec{Type: corev1.ServiceTypeClusterIP},
+			}
+			Expect(c.Create(ctx, service)).To(Succeed())
+
+			Expect(act.forceDeleteRemedyServiceFinalizer(ctx, logger, c)).To(Succeed())
+			Expect(c.Get(ctx, client.ObjectKeyFromObject(service), service)).To(Succeed())
+			Expect(service.Finalizers).To(ConsistOf("example.com/other"))
+		})
+
+		DescribeTable("should tolerate concurrent disappearance but propagate other get errors", func(node bool, missing bool) {
+			var (
+				obj client.Object = &corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{Name: "lb", Namespace: namespace, Finalizers: []string{serviceFinalizerName}},
+					Spec:       corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer},
+				}
+				resource = schema.GroupResource{Resource: "services"}
+				cleanup  = act.forceDeleteRemedyServiceFinalizer
+			)
+			if node {
+				obj = &corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "node", Finalizers: []string{nodeFinalizerName}}}
+				resource.Resource = "nodes"
+				cleanup = act.forceDeleteRemedyNodeFinalizer
+			}
+			var apiErr error = apierrors.NewForbidden(resource, obj.GetName(), fmt.Errorf("denied"))
+			if missing {
+				apiErr = apierrors.NewNotFound(resource, obj.GetName())
+			}
+			shootClient := fakeclient.NewClientBuilder().WithScheme(scheme).WithObjects(obj).WithInterceptorFuncs(interceptor.Funcs{
+				Get: func(context.Context, client.WithWatch, client.ObjectKey, client.Object, ...client.GetOption) error {
+					return apiErr
+				},
+				Patch: func(context.Context, client.WithWatch, client.Object, client.Patch, ...client.PatchOption) error {
+					Fail("must not patch a stale listed object after Get failed")
+					return nil
+				},
+			}).Build()
+
+			err := cleanup(ctx, logger, shootClient)
+			if missing {
+				Expect(err).NotTo(HaveOccurred())
+			} else {
+				Expect(err).To(MatchError(ContainSubstring("denied")))
+			}
+		},
+			Entry("Service disappears", false, true),
+			Entry("Node disappears", true, true),
+			Entry("Service access is forbidden", false, false),
+			Entry("Node access is forbidden", true, false),
+		)
 
 		DescribeTable("should clean up shoot finalizers without seed CRDs", func(operation string) {
 			cluster.Shoot.Spec.Hibernation = nil
@@ -301,6 +401,11 @@ var _ = Describe("Actuator", func() {
 			case "Migrate":
 				a.EXPECT().Migrate(ctx, logger, cp, cluster).Return(nil)
 				Expect(act.Migrate(ctx, logger, cp, cluster)).To(Succeed())
+			case "Restore":
+				a.EXPECT().Restore(ctx, logger, cp, cluster).Return(true, nil)
+				requeue, err := act.Restore(ctx, logger, cp, cluster)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(requeue).To(BeTrue())
 			}
 			Expect(patches).To(HaveLen(2))
 			Expect(patches).To(Receive(Equal("/api/v1/namespaces/default/services/lb")))
@@ -309,6 +414,7 @@ var _ = Describe("Actuator", func() {
 			Entry("during reconciliation", "Reconcile"),
 			Entry("during deletion", "Delete"),
 			Entry("during migration", "Migrate"),
+			Entry("during restore", "Restore"),
 		)
 	})
 

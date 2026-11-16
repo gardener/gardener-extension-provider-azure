@@ -165,6 +165,23 @@ func (a *actuator) Migrate(
 	return a.forceDeleteSeedRemedyControllerResources(ctx, log, cp.GetNamespace())
 }
 
+// Restore restores the controlplane and cleans up legacy remedy-controller resources and finalizers.
+func (a *actuator) Restore(
+	ctx context.Context,
+	log logr.Logger,
+	cp *extensionsv1alpha1.ControlPlane,
+	cluster *extensionscontroller.Cluster,
+) (bool, error) {
+	requeue, err := a.Actuator.Restore(ctx, log, cp, cluster)
+	if err != nil {
+		return requeue, err
+	}
+	if features.ExtensionFeatureGate.Enabled(features.DisableRemedyController) {
+		return requeue, a.forceDeleteRemedyControllerResources(ctx, log, cp.Namespace, cluster)
+	}
+	return requeue, nil
+}
+
 func (a *actuator) forceDeleteSeedRemedyControllerResources(ctx context.Context, log logr.Logger, namespace string) error {
 	log.Info("Removing legacy remedy controller resources")
 	for _, resource := range []struct {
@@ -229,7 +246,7 @@ func (a *actuator) forceDeleteShootRemedyControllerResources(ctx context.Context
 
 	// The seed CRDs may already have been removed by the extension chart upgrade.
 	// Shoot finalizers must be cleaned up independently of the existence of seed resources.
-	if err := a.forceDeleteRemedyLoadBalancerFinalizer(ctx, log, shootClient); err != nil {
+	if err := a.forceDeleteRemedyServiceFinalizer(ctx, log, shootClient); err != nil {
 		return fmt.Errorf("could not remove remedy controller finalizers from services: %w", err)
 	}
 
@@ -264,7 +281,7 @@ func (a *actuator) forceDeleteRemedyNodeFinalizer(ctx context.Context, log logr.
 					func() error {
 						err := shootClient.Get(ctx, client.ObjectKey{Name: node.Name}, &node)
 						if err != nil {
-							return err
+							return client.IgnoreNotFound(err)
 						}
 						return controllerutils.RemoveFinalizers(ctx, shootClient, &node, nodeFinalizerName)
 					}); retryErr != nil {
@@ -281,36 +298,33 @@ func (a *actuator) forceDeleteRemedyNodeFinalizer(ctx context.Context, log logr.
 	return errs
 }
 
-func (a *actuator) forceDeleteRemedyLoadBalancerFinalizer(ctx context.Context, log logr.Logger, shootClient client.Client) error {
-	lbs := &corev1.ServiceList{}
+func (a *actuator) forceDeleteRemedyServiceFinalizer(ctx context.Context, log logr.Logger, shootClient client.Client) error {
+	services := &corev1.ServiceList{}
 	var errs error
 
 	for {
-		if err := shootClient.List(ctx, lbs, client.Limit(100), client.Continue(lbs.GetContinue())); err != nil {
+		if err := shootClient.List(ctx, services, client.Limit(100), client.Continue(services.GetContinue())); err != nil {
 			log.Info("Could not list services in shoot cluster to check for existing remedy controller resources", "error", err)
 			return err
 		}
 
-		for _, lb := range lbs.Items {
-			if lb.Spec.Type != corev1.ServiceTypeLoadBalancer {
-				continue
-			}
-			if controllerutil.ContainsFinalizer(&lb, serviceFinalizerName) {
+		for _, service := range services.Items {
+			if controllerutil.ContainsFinalizer(&service, serviceFinalizerName) {
 				if retryErr := retry.RetryOnConflict(retry.DefaultRetry,
 					func() error {
-						err := shootClient.Get(ctx, client.ObjectKey{Namespace: lb.Namespace, Name: lb.Name}, &lb)
+						err := shootClient.Get(ctx, client.ObjectKeyFromObject(&service), &service)
 						if err != nil {
-							return err
+							return client.IgnoreNotFound(err)
 						}
-						return controllerutils.RemoveFinalizers(ctx, shootClient, &lb, serviceFinalizerName)
+						return controllerutils.RemoveFinalizers(ctx, shootClient, &service, serviceFinalizerName)
 					}); retryErr != nil {
-					log.Info("Could not remove remedy finalizer from service", "namespace", lb.Namespace, "name", lb.Name, "error", retryErr)
+					log.Info("Could not remove remedy finalizer from service", "namespace", service.Namespace, "name", service.Name, "error", retryErr)
 					errs = errors.Join(errs, retryErr)
 					continue
 				}
 			}
 		}
-		if lbs.GetContinue() == "" {
+		if services.GetContinue() == "" {
 			break
 		}
 	}
