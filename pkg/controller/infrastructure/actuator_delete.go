@@ -68,16 +68,10 @@ func (a *actuator) delete(ctx context.Context, log logr.Logger, infra *extension
 		return err
 	}
 
-	err = fctx.Delete(ctx)
-	if err != nil {
+	if err := a.cleanupTerraformerResources(ctx, infra); err != nil {
 		return err
 	}
-
-	tf, err := newTerraformer(log, a.restConfig, terraformerPurpose, infra, a.disableProjectedTokenMount)
-	if err != nil {
-		return err
-	}
-	return CleanupTerraformerResources(ctx, tf)
+	return fctx.Delete(ctx)
 }
 
 func (a *actuator) ForceDelete(_ context.Context, _ logr.Logger, _ *extensionsv1alpha1.Infrastructure, _ *controller.Cluster) error {

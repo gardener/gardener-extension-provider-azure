@@ -18,7 +18,6 @@ LD_FLAGS                    := "-w $(shell bash $(GARDENER_HACK_DIR)/get-build-l
 LEADER_ELECTION             := false
 IGNORE_OPERATION_ANNOTATION := true
 TARGET_PLATFORMS            ?= linux/$(shell go env GOARCH)
-TEST_RECONCILER             := tf
 EXTENSION_NAMESPACE         := garden
 
 WEBHOOK_CONFIG_PORT	:= 8443

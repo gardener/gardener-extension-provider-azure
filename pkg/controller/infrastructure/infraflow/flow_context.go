@@ -134,7 +134,7 @@ func (fctx *FlowContext) Reconcile(ctx context.Context) error {
 	}); err != nil {
 		// even if the run ends with an error we should still update our state.
 		err = flow.Causes(err)
-		fctx.log.Error(err, "flow reconciliation failed")
+		fctx.log.Error(err, "Infrastructure reconciliation failed")
 		return errors.Join(err, fctx.persistState(ctx))
 	}
 
