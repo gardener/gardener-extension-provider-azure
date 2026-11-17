@@ -114,8 +114,12 @@ func BackupConfigFromProviderConfig(config *runtime.RawExtension) (api.BackupBuc
 // InfrastructureStateFromRaw extracts the state from the Infrastructure. If no state was available, it returns a "zero" value InfrastructureState object.
 func InfrastructureStateFromRaw(raw *runtime.RawExtension) (*api.InfrastructureState, error) {
 	state := &api.InfrastructureState{}
-	if raw != nil && raw.Raw != nil {
-		obj, _, err := lenientDecoder.Decode(raw.Raw, nil, nil)
+	if raw != nil && (len(raw.Raw) > 0 || raw.Object != nil) {
+		data, err := raw.MarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		obj, _, err := lenientDecoder.Decode(data, nil, nil)
 		if err != nil {
 			return nil, err
 		}
