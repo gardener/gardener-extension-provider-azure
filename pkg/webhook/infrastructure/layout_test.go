@@ -21,7 +21,6 @@ import (
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	azurev1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	infrastructurecontroller "github.com/gardener/gardener-extension-provider-azure/pkg/controller/infrastructure"
 )
 
 const (
@@ -119,7 +118,7 @@ var _ = Describe("Mutate", func() {
 				_, ok := getLayoutMigrationAnnotation(newInfra)
 				Expect(ok).To(BeFalse())
 			})
-			It("should mutate the resource if the current 'gardener.cloud/operation' annotation is 'restore' and has flow state", func() {
+			It("should restore the zone migration annotation from InfrastructureState", func() {
 				newInfra := generateInfrastructureWithProviderConfig(zonesConfig, nil)
 				newInfra.Annotations = map[string]string{
 					"gardener.cloud/operation": "restore",
@@ -141,49 +140,16 @@ var _ = Describe("Mutate", func() {
 				Expect(ok).To(BeTrue())
 				Expect(v).To(Equal("2"))
 			})
-			It("should mutate the resource if the current 'gardener.cloud/operation' annotation is 'restore' and has terraform state", func() {
+			It("should reject legacy state during restore", func() {
 				newInfra := generateInfrastructureWithProviderConfig(zonesConfig, nil)
 				newInfra.Annotations = map[string]string{
 					"gardener.cloud/operation": "restore",
 				}
+				newInfra.Status.State = &runtime.RawExtension{Raw: []byte(`{"terraformState":{"data":"{}","encoding":"none"},"savedProviderStatus":{}}`)}
 
-				status := &azurev1alpha1.InfrastructureStatus{
-					TypeMeta: metav1.TypeMeta{
-						APIVersion: azurev1alpha1.SchemeGroupVersion.String(),
-						Kind:       "InfrastructureStatus",
-					},
-					Networks: azurev1alpha1.NetworkStatus{
-						Subnets: []azurev1alpha1.Subnet{
-							{
-								Name:     "subnet-zone1",
-								Zone:     ptr.To("1"),
-								Migrated: false,
-							},
-							{
-								Name:     "subnet",
-								Zone:     ptr.To("2"),
-								Migrated: true,
-							},
-						},
-					},
-				}
-				marshalled, err := json.Marshal(status)
-				Expect(err).ToNot(HaveOccurred())
-
-				state := &infrastructurecontroller.TerraformInfrastructureState{
-					SavedProviderStatus: &runtime.RawExtension{
-						Raw: marshalled,
-					},
-				}
-				marshalledState, err := json.Marshal(state)
-				Expect(err).ToNot(HaveOccurred())
-				newInfra.Status.State = &runtime.RawExtension{Raw: marshalledState}
-
-				err = mutator.Mutate(context.TODO(), newInfra, newInfra)
-				Expect(err).ToNot(HaveOccurred())
-				v, ok := getLayoutMigrationAnnotation(newInfra)
-				Expect(ok).To(BeTrue())
-				Expect(v).To(Equal("2"))
+				Expect(mutator.Mutate(context.TODO(), newInfra, newInfra)).To(HaveOccurred())
+				_, ok := getLayoutMigrationAnnotation(newInfra)
+				Expect(ok).To(BeFalse())
 			})
 		})
 
