@@ -7,7 +7,7 @@ package infrastructure
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/gardener/gardener/extensions/pkg/controller"
@@ -84,6 +84,31 @@ func IsShootResourceGroupAvailable(ctx context.Context, factory azureclient.Fact
 	return true, nil
 }
 
+// IsShootSubnetName reports whether name matches a complete subnet name generated for the shoot's technical name.
+// Subnets use either <technicalName>-nodes (single-subnet and migrated layouts) or
+// <technicalName>-nodes-z<zone>, where zone is a canonical positive int32.
+// Match all zones, including ones removed from the desired configuration, so they can still be cleaned up.
+func IsShootSubnetName(technicalName string, name *string) bool {
+	if technicalName == "" || name == nil {
+		return false
+	}
+
+	suffix, found := strings.CutPrefix(*name, technicalName+"-nodes")
+	if !found {
+		return false
+	}
+	if suffix == "" {
+		return true
+	}
+
+	zoneName, found := strings.CutPrefix(suffix, "-z")
+	if !found {
+		return false
+	}
+	zone, err := strconv.ParseInt(zoneName, 10, 32)
+	return err == nil && zone > 0 && strconv.FormatInt(zone, 10) == zoneName
+}
+
 // DeleteNodeSubnetIfExists will delete the nodes subnet(s) if exists.
 func DeleteNodeSubnetIfExists(ctx context.Context, factory azureclient.Factory, infra *extensionsv1alpha1.Infrastructure, infraConfig *api.InfrastructureConfig) error {
 	if infraConfig.Networks.VNet.ResourceGroup == nil || infraConfig.Networks.VNet.Name == nil {
@@ -100,9 +125,8 @@ func DeleteNodeSubnetIfExists(ctx context.Context, factory azureclient.Factory, 
 		return err
 	}
 
-	subnetNamePrefix := fmt.Sprintf("%s-nodes", infra.Namespace)
 	for _, subnet := range subnets {
-		if !strings.HasPrefix(*subnet.Name, subnetNamePrefix) {
+		if subnet == nil || !IsShootSubnetName(infra.Namespace, subnet.Name) {
 			continue
 		}
 

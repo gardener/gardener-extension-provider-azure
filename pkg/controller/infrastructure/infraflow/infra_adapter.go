@@ -256,22 +256,9 @@ func (ia *InfrastructureAdapter) subnetName(zone *int32, migrated bool) string {
 	return n
 }
 
-// IsOwnSubnetName returns a bool indicating whether the subnet with the given name was created by the
-// reconciliation of the current shoot.
-//
-// This is needed to distinguish between subnets by unfortunately named shoots (i.e. the current shoot's name
-// is a prefix to another's) that deploy in the same vnet.
+// IsOwnSubnetName reports whether name matches a complete subnet name generated for this shoot.
 func (ia *InfrastructureAdapter) IsOwnSubnetName(name *string) bool {
-	if name == nil {
-		return false
-	}
-	expectedPrefix := ia.shootSubnetNamePrefix()
-	if _, found := strings.CutPrefix(*name, expectedPrefix); found {
-		return true
-		// No need to check further. The important thing to check is that there is nothing
-		// between the technical name and the next expected part.
-	}
-	return false
+	return infrastructure.IsShootSubnetName(ia.TechnicalName(), name)
 }
 
 func (ia *InfrastructureAdapter) publicIPName(natName string) string {

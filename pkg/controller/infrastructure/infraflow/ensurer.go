@@ -518,7 +518,7 @@ func (fctx *FlowContext) ensureSubnets(ctx context.Context) (err error) {
 
 	// filteredSubnets are the subnets of this shoot. In a shared VNet scenario, it is not guaranteed that all subnets in the VNet belong to a particular shoot.
 	filteredSubnets := Filter(currentSubnets, func(s *armnetwork.Subnet) bool {
-		return fctx.adapter.IsOwnSubnetName(s.Name)
+		return s != nil && fctx.adapter.IsOwnSubnetName(s.Name)
 	})
 	// mappedSubnets maps the unique subnet name to the subnet object.
 	mappedSubnets := ToMap(filteredSubnets, func(s *armnetwork.Subnet) string {
@@ -782,7 +782,7 @@ func (fctx *FlowContext) DeleteSubnetsInForeignGroup(ctx context.Context) error 
 	}
 
 	filteredSubnets := Filter(currentSubnets, func(s *armnetwork.Subnet) bool {
-		return fctx.adapter.HasShootPrefix(s.Name)
+		return s != nil && fctx.adapter.IsOwnSubnetName(s.Name)
 	})
 
 	var joinErr error

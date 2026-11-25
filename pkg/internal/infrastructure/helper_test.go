@@ -16,6 +16,7 @@ import (
 	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	api "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure"
 	mockazureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client/mock"
@@ -36,6 +37,41 @@ var (
 	infraConfig        *api.InfrastructureConfig
 	infraNamespace     string
 )
+
+var _ = Describe("IsShootSubnetName", func() {
+	const technicalName = "shoot--project--a"
+
+	DescribeTable("matches only complete generated names", func(name *string, expected bool) {
+		Expect(IsShootSubnetName(technicalName, name)).To(Equal(expected))
+	},
+		Entry("single-subnet or migrated layout", ptr.To(technicalName+"-nodes"), true),
+		Entry("zonal layout", ptr.To(technicalName+"-nodes-z1"), true),
+		Entry("another zone", ptr.To(technicalName+"-nodes-z3"), true),
+		Entry("multi-digit zone", ptr.To(technicalName+"-nodes-z10"), true),
+		Entry("largest int32 zone", ptr.To(technicalName+"-nodes-z2147483647"), true),
+		Entry("nil name", nil, false),
+		Entry("empty name", ptr.To(""), false),
+		Entry("technical name alone", ptr.To(technicalName), false),
+		Entry("unrelated subnet", ptr.To("unrelated-nodes"), false),
+		Entry("sibling with a shared prefix", ptr.To(technicalName+"b-nodes"), false),
+		Entry("sibling with a hyphenated suffix", ptr.To(technicalName+"-other-nodes"), false),
+		Entry("sibling ending in nodes", ptr.To(technicalName+"-nodes-nodes"), false),
+		Entry("sibling ending in a zone suffix", ptr.To(technicalName+"-nodes-z1-nodes"), false),
+		Entry("zonal sibling ending in a zone suffix", ptr.To(technicalName+"-nodes-z1-nodes-z2"), false),
+		Entry("missing zone number", ptr.To(technicalName+"-nodes-z"), false),
+		Entry("zero zone", ptr.To(technicalName+"-nodes-z0"), false),
+		Entry("negative zone", ptr.To(technicalName+"-nodes-z-1"), false),
+		Entry("explicit positive sign", ptr.To(technicalName+"-nodes-z+1"), false),
+		Entry("leading zero", ptr.To(technicalName+"-nodes-z01"), false),
+		Entry("zone outside int32 range", ptr.To(technicalName+"-nodes-z2147483648"), false),
+		Entry("trailing text", ptr.To(technicalName+"-nodes-z1extra"), false),
+		Entry("trailing newline", ptr.To(technicalName+"-nodes-z1\n"), false),
+	)
+
+	It("rejects an empty technical name", func() {
+		Expect(IsShootSubnetName("", ptr.To("-nodes"))).To(BeFalse())
+	})
+})
 
 var _ = Describe("InfrastructureHelper", func() {
 	BeforeEach(func() {
@@ -161,6 +197,26 @@ var _ = Describe("InfrastructureHelper", func() {
 
 			err := DeleteNodeSubnetIfExists(ctx, azureClientFactory, infra, infraConfig)
 			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should preserve sibling subnets when the shoot name is a prefix", func() {
+			subnetList = []*armnetwork.Subnet{
+				{Name: &baseSubnetName},
+				{Name: ptr.To(baseSubnetName + "-z2")},
+				{Name: ptr.To(clusterName + "b-nodes")},
+				{Name: ptr.To(clusterName + "-other-nodes")},
+				{Name: ptr.To(baseSubnetName + "-nodes")},
+				{Name: ptr.To(baseSubnetName + "-z1-nodes")},
+				{Name: ptr.To(baseSubnetName + "-z01")},
+				{},
+				nil,
+			}
+			azureClientFactory.EXPECT().Subnet().Return(azureSubnetClient, nil)
+			azureSubnetClient.EXPECT().List(ctx, vnetResourceGroup, vnetName).Return(subnetList, nil)
+			azureSubnetClient.EXPECT().Delete(ctx, vnetResourceGroup, vnetName, baseSubnetName)
+			azureSubnetClient.EXPECT().Delete(ctx, vnetResourceGroup, vnetName, baseSubnetName+"-z2")
+
+			Expect(DeleteNodeSubnetIfExists(ctx, azureClientFactory, infra, infraConfig)).To(Succeed())
 		})
 	})
 })
