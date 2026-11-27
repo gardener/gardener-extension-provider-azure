@@ -48,7 +48,6 @@ import (
 	azureapihelper "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 	azureclient "github.com/gardener/gardener-extension-provider-azure/pkg/azure/client"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/features"
 )
 
 // Object names
@@ -114,7 +113,6 @@ func shootAccessSecretsFunc(namespace string) []*gutil.AccessSecret {
 		gutil.NewShootAccessSecret(azure.CSISnapshotterName, namespace),
 		gutil.NewShootAccessSecret(azure.CSIResizerName, namespace),
 		gutil.NewShootAccessSecret(azure.CSISnapshotControllerName, namespace),
-		gutil.NewShootAccessSecret(azure.RemedyControllerName, namespace),
 	}
 }
 
@@ -172,18 +170,6 @@ var (
 					// csi-snapshot-controller
 					{Type: &appsv1.Deployment{}, Name: azure.CSISnapshotControllerName},
 					{Type: &vpaautoscalingv1.VerticalPodAutoscaler{}, Name: azure.CSISnapshotControllerName + "-vpa"},
-				},
-			},
-			{
-				Name:   azure.RemedyControllerName,
-				Images: []string{azure.RemedyControllerImageName},
-				Objects: []*chart.Object{
-					{Type: &appsv1.Deployment{}, Name: azure.RemedyControllerName},
-					{Type: &corev1.ConfigMap{}, Name: azure.RemedyControllerName + "-config"},
-					{Type: &vpaautoscalingv1.VerticalPodAutoscaler{}, Name: azure.RemedyControllerName + "-vpa"},
-					{Type: &rbacv1.Role{}, Name: azure.RemedyControllerName},
-					{Type: &rbacv1.RoleBinding{}, Name: azure.RemedyControllerName},
-					{Type: &corev1.ServiceAccount{}, Name: azure.RemedyControllerName},
 				},
 			},
 		},
@@ -257,13 +243,6 @@ var (
 					{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.CSIResizerName},
 					{Type: &rbacv1.Role{}, Name: azure.UsernamePrefix + azure.CSIResizerName},
 					{Type: &rbacv1.RoleBinding{}, Name: azure.UsernamePrefix + azure.CSIResizerName},
-				},
-			},
-			{
-				Name: azure.RemedyControllerName,
-				Objects: []*chart.Object{
-					{Type: &rbacv1.ClusterRole{}, Name: azure.UsernamePrefix + azure.RemedyControllerName},
-					{Type: &rbacv1.ClusterRoleBinding{}, Name: azure.UsernamePrefix + azure.RemedyControllerName},
 				},
 			},
 		},
@@ -634,15 +613,12 @@ func getControlPlaneChartValues(
 		return nil, err
 	}
 
-	remedy := getRemedyControllerChartValues(cluster, checksums, scaledDown, useWorkloadIdentity)
-
 	return map[string]interface{}{
 		"global": map[string]interface{}{
 			"genericTokenKubeconfigSecretName": extensionscontroller.GenericTokenKubeconfigSecretNameFromCluster(cluster),
 		},
 		azure.CloudControllerManagerName: ccm,
 		azure.CSIControllerName:          csi,
-		azure.RemedyControllerName:       remedy,
 	}, nil
 }
 
@@ -751,32 +727,6 @@ func getCSIControllerChartValues(
 	return values, nil
 }
 
-// getRemedyControllerChartValues collects and returns the remedy controller chart values.
-func getRemedyControllerChartValues(
-	cluster *extensionscontroller.Cluster,
-	checksums map[string]string,
-	scaledDown bool,
-	useWorkloadIdentity bool,
-) map[string]interface{} {
-	if features.ExtensionFeatureGate.Enabled(features.DisableRemedyController) {
-		return map[string]interface{}{"enabled": true, "replicas": 0}
-	}
-
-	// disable remedy controller for the shoot by annotation. In this case, only set the replicas to 0.
-	disableRemedyController := cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] == "true"
-	if disableRemedyController {
-		return map[string]interface{}{"enabled": true, "replicas": 0}
-	}
-	return map[string]interface{}{
-		"enabled":  true,
-		"replicas": extensionscontroller.GetControlPlaneReplicas(cluster, scaledDown, 1),
-		"podAnnotations": map[string]interface{}{
-			"checksum/secret-" + azure.CloudProviderConfigName: checksums[azure.CloudProviderConfigName],
-		},
-		"useWorkloadIdentity": useWorkloadIdentity,
-	}
-}
-
 // getControlPlaneShootChartValues collects and returns the control plane shoot chart values.
 func getControlPlaneShootChartValues(
 	ctx context.Context,
@@ -806,9 +756,6 @@ func getControlPlaneShootChartValues(
 
 	cloudProviderDiskConfig = string(secret.Data[azure.CloudProviderConfigMapKey])
 	cloudProviderDiskConfigChecksum = utils.ComputeChecksum(secret.Data)
-
-	disableRemedyController := cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] == "true" ||
-		features.ExtensionFeatureGate.Enabled(features.DisableRemedyController)
 
 	// Keep cloud-node-manager's --wait-routes flag aligned with the seed CCM's --configure-cloud-routes.
 	// Both are derived from the shoot's overlay networking setting (see getCCMChartValues); if they
@@ -852,9 +799,6 @@ func getControlPlaneShootChartValues(
 			"configureCloudRoutes": configureCloudRoutes,
 		},
 		azure.CSINodeName: csiNodeConfig,
-		azure.RemedyControllerName: map[string]interface{}{
-			"enabled": !disableRemedyController,
-		},
 	}
 
 	return values, err

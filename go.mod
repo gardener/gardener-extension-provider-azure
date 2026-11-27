@@ -21,7 +21,6 @@ require (
 	github.com/gardener/gardener/hack/tools v1.153.0
 	github.com/gardener/gardener/pkg/apis v1.153.0
 	github.com/gardener/machine-controller-manager v0.63.0
-	github.com/gardener/remedy-controller v0.14.0
 	github.com/go-logr/logr v1.4.4
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
@@ -257,9 +256,3 @@ require (
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.4.2 // indirect
 )
-
-// github.com/gardener/remedy-controller still depends on the old monolithic opentelemetry-operator
-// module, but github.com/gardener/gardener uses the split opentelemetry-operator/apis module.
-// Both provide the same packages, causing an ambiguous import. Excluding the old monolithic module
-// forces Go to use only the split module.
-exclude github.com/open-telemetry/opentelemetry-operator v0.129.1

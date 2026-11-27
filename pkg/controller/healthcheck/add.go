@@ -9,7 +9,6 @@ import (
 	"time"
 
 	apisconfigv1alpha1 "github.com/gardener/gardener/extensions/pkg/apis/config/v1alpha1"
-	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/healthcheck"
 	"github.com/gardener/gardener/extensions/pkg/controller/healthcheck/general"
 	"github.com/gardener/gardener/extensions/pkg/controller/healthcheck/worker"
@@ -25,7 +24,6 @@ import (
 
 	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
-	"github.com/gardener/gardener-extension-provider-azure/pkg/features"
 )
 
 var (
@@ -45,15 +43,6 @@ var (
 // RegisterHealthChecks registers health checks for each extension resource
 // HealthChecks are grouped by extension (e.g worker), extension.type (e.g azure) and  Health Check Type (e.g SystemComponentsHealthy)
 func RegisterHealthChecks(_ context.Context, mgr manager.Manager, opts healthcheck.DefaultAddArgs) error {
-	remedyControllerPreCheckFunc := func(_ context.Context, _ client.Client, _ client.Object, obj any) bool {
-		cluster, ok := obj.(*extensionscontroller.Cluster)
-		if !ok || cluster == nil || cluster.Shoot == nil {
-			return false
-		}
-		return !features.ExtensionFeatureGate.Enabled(features.DisableRemedyController) &&
-			cluster.Shoot.Annotations[azure.DisableRemedyControllerAnnotation] != "true"
-	}
-
 	if err := healthcheck.DefaultRegistration(
 		azure.Type,
 		extensionsv1alpha1.SchemeGroupVersion.WithKind(extensionsv1alpha1.ControlPlaneResource),
@@ -74,11 +63,6 @@ func RegisterHealthChecks(_ context.Context, mgr manager.Manager, opts healthche
 			{
 				ConditionType: string(gardencorev1beta1.ShootControlPlaneHealthy),
 				HealthCheck:   general.NewSeedDeploymentHealthChecker(azure.CSIControllerFileName),
-			},
-			{
-				ConditionType: string(gardencorev1beta1.ShootControlPlaneHealthy),
-				HealthCheck:   general.NewSeedDeploymentHealthChecker(azure.RemedyControllerName),
-				PreCheckFunc:  remedyControllerPreCheckFunc,
 			},
 			{
 				ConditionType: string(gardencorev1beta1.ShootControlPlaneHealthy),

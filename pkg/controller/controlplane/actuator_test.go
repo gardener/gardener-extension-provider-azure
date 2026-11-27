@@ -6,24 +6,41 @@ package controlplane
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"sync/atomic"
 	"time"
 
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
-	"github.com/gardener/gardener/extensions/pkg/controller/controlplane"
+	"github.com/gardener/gardener/extensions/pkg/controller/controlplane/genericactuator"
 	mockcontrolplane "github.com/gardener/gardener/extensions/pkg/controller/controlplane/mock"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	resourcesv1alpha1 "github.com/gardener/gardener/pkg/apis/resources/v1alpha1"
 	reconcilerutils "github.com/gardener/gardener/pkg/controllerutils/reconciler"
+	"github.com/gardener/gardener/pkg/utils/managedresources"
 	testutils "github.com/gardener/gardener/pkg/utils/test"
-	azurev1alpha1 "github.com/gardener/remedy-controller/pkg/apis/azure/v1alpha1"
+	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/mock/gomock"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	featuregatetesting "k8s.io/component-base/featuregate/testing"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/gardener/gardener-extension-provider-azure/pkg/features"
 )
 
 var _ = Describe("Actuator", func() {
@@ -32,11 +49,11 @@ var _ = Describe("Actuator", func() {
 		ctx    = context.TODO()
 		logger = log.Log.WithName("test")
 
-		c        client.Client
-		scheme   *runtime.Scheme
-		mgr      testutils.FakeManager
-		a        *mockcontrolplane.MockActuator
-		actuator controlplane.Actuator
+		c      client.Client
+		scheme *runtime.Scheme
+		mgr    testutils.FakeManager
+		a      *mockcontrolplane.MockActuator
+		act    *actuator
 
 		gracefulDeletionTimeout      time.Duration
 		gracefulDeletionWaitInterval time.Duration
@@ -46,40 +63,38 @@ var _ = Describe("Actuator", func() {
 				Spec:       extensionsv1alpha1.ControlPlaneSpec{},
 			}
 		}
-		cluster = &extensionscontroller.Cluster{
-			Shoot: &gardencorev1beta1.Shoot{
-				Spec: gardencorev1beta1.ShootSpec{},
-			},
-		}
-		newPubip = func(annotations map[string]string) *azurev1alpha1.PublicIPAddress {
-			return &azurev1alpha1.PublicIPAddress{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:        "foo-1.2.3.4",
-					Namespace:   namespace,
-					Annotations: annotations,
-				},
-				Spec: azurev1alpha1.PublicIPAddressSpec{
-					IPAddress: "1.2.3.4",
-				},
-			}
+		cluster  *extensionscontroller.Cluster
+		newPubip = func() *unstructured.Unstructured {
+			return &unstructured.Unstructured{Object: map[string]interface{}{
+				"apiVersion": remedyAPIVersion,
+				"kind":       publicIPAddressKind,
+				"metadata":   map[string]interface{}{"name": "foo-1.2.3.4", "namespace": namespace},
+				"spec":       map[string]interface{}{"ipAddress": "1.2.3.4"},
+			}}
 		}
 
-		newVirtualMachine = func() *azurev1alpha1.VirtualMachine {
-			return &azurev1alpha1.VirtualMachine{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "node-name",
-					Namespace: namespace,
-				},
-			}
+		newVirtualMachine = func() *unstructured.Unstructured {
+			return &unstructured.Unstructured{Object: map[string]interface{}{
+				"apiVersion": remedyAPIVersion,
+				"kind":       virtualMachineKind,
+				"metadata":   map[string]interface{}{"name": "node-name", "namespace": namespace},
+			}}
 		}
 	)
 
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
+		cluster = &extensionscontroller.Cluster{
+			Shoot: &gardencorev1beta1.Shoot{
+				Spec:   gardencorev1beta1.ShootSpec{Hibernation: &gardencorev1beta1.Hibernation{Enabled: ptr.To(true)}},
+				Status: gardencorev1beta1.ShootStatus{IsHibernated: true},
+			},
+		}
 
 		scheme = runtime.NewScheme()
-		Expect(azurev1alpha1.AddToScheme(scheme)).To(Succeed())
+		Expect(corev1.AddToScheme(scheme)).To(Succeed())
 		Expect(extensionsv1alpha1.AddToScheme(scheme)).To(Succeed())
+		Expect(resourcesv1alpha1.AddToScheme(scheme)).To(Succeed())
 
 		c = fakeclient.NewClientBuilder().WithScheme(scheme).Build()
 		mgr = testutils.FakeManager{Client: c}
@@ -87,69 +102,368 @@ var _ = Describe("Actuator", func() {
 		a = mockcontrolplane.NewMockActuator(ctrl)
 		gracefulDeletionTimeout = 10 * time.Second
 		gracefulDeletionWaitInterval = 1 * time.Second
-		actuator = NewActuator(mgr, a, gracefulDeletionTimeout, gracefulDeletionWaitInterval)
+		act = NewActuator(mgr, a, gracefulDeletionTimeout, gracefulDeletionWaitInterval).(*actuator)
 	})
 
 	Describe("#Delete", func() {
+		It("should return shoot cleanup errors before invoking the composed deletion", func() {
+			cluster.Shoot.Spec.Hibernation = nil
+			cluster.Shoot.Status.IsHibernated = false
+
+			// No shoot credentials exist, and no composed Delete call is expected.
+			Expect(act.Delete(ctx, logger, newControlPlane(), cluster)).To(MatchError(ContainSubstring("not found")))
+		})
+
 		It("should successfully delete controlplane if there are no remedy controller resources", func() {
 			cp := newControlPlane()
 			t := metav1.Now()
 			cp.DeletionTimestamp = &t
 
 			a.EXPECT().Delete(ctx, logger, cp, cluster).Return(nil)
-			err := actuator.Delete(ctx, logger, cp, cluster)
+			err := act.Delete(ctx, logger, cp, cluster)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Both DeleteAllOf calls must have run (store was already empty, remains empty).
-			pubipList := &azurev1alpha1.PublicIPAddressList{}
+			pubipList := newRemedyResourceList(publicIPAddressKind)
 			Expect(c.List(ctx, pubipList, client.InNamespace(namespace))).To(Succeed())
 			Expect(pubipList.Items).To(BeEmpty())
 
-			vmList := &azurev1alpha1.VirtualMachineList{}
+			vmList := newRemedyResourceList(virtualMachineKind)
 			Expect(c.List(ctx, vmList, client.InNamespace(namespace))).To(Succeed())
 			Expect(vmList.Items).To(BeEmpty())
 		})
 
 		It("should return RequeueAfterError if there are publicipaddresses remaining and timeout is not yet reached", func() {
+			featuregatetesting.SetFeatureGateDuringTest(GinkgoT(), features.ExtensionFeatureGate, features.DisableRemedyController, false)
 			cp := newControlPlane()
 			t := metav1.Now()
 			cp.DeletionTimestamp = &t
 
-			pubipWithFinalizers := newPubip(nil)
-			pubipWithFinalizers.Finalizers = append(pubipWithFinalizers.Finalizers, "azure.remedy.gardener.cloud/publicipaddress")
+			pubipWithFinalizers := newPubip()
+			pubipWithFinalizers.SetFinalizers([]string{publicIpFinalizerString})
 			Expect(c.Create(ctx, pubipWithFinalizers)).To(Succeed())
 
-			err := actuator.Delete(ctx, logger, cp, cluster)
+			err := act.Delete(ctx, logger, cp, cluster)
 			Expect(err).To(MatchError(&reconcilerutils.RequeueAfterError{RequeueAfter: gracefulDeletionWaitInterval}))
 		})
 
 		It("should forcefully remove remedy controller resources after grace period timeout has been reached", func() {
+			featuregatetesting.SetFeatureGateDuringTest(GinkgoT(), features.ExtensionFeatureGate, features.DisableRemedyController, false)
 			cp := newControlPlane()
 			t := metav1.NewTime(time.Now().Add(-2 * gracefulDeletionTimeout))
 			cp.DeletionTimestamp = &t
 
-			pubipWithFinalizers := newPubip(nil)
-			pubipWithFinalizers.Finalizers = append(pubipWithFinalizers.Finalizers, "azure.remedy.gardener.cloud/publicipaddress")
+			pubipWithFinalizers := newPubip()
+			pubipWithFinalizers.SetFinalizers([]string{publicIpFinalizerString})
 			Expect(c.Create(ctx, pubipWithFinalizers)).To(Succeed())
 
 			vmWithFinalizers := newVirtualMachine()
-			vmWithFinalizers.Finalizers = append(vmWithFinalizers.Finalizers, "azure.remedy.gardener.cloud/virtualmachine")
+			vmWithFinalizers.SetFinalizers([]string{virtualMachineFinalizerString})
 			Expect(c.Create(ctx, vmWithFinalizers)).To(Succeed())
 
 			a.EXPECT().Delete(ctx, logger, cp, cluster).Return(nil)
 
-			err := actuator.Delete(ctx, logger, cp, cluster)
+			err := act.Delete(ctx, logger, cp, cluster)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Finalizers removed and DeleteAllOf called — both objects must be gone.
-			pubipList := &azurev1alpha1.PublicIPAddressList{}
+			pubipList := newRemedyResourceList(publicIPAddressKind)
 			Expect(c.List(ctx, pubipList, client.InNamespace(namespace))).To(Succeed())
 			Expect(pubipList.Items).To(BeEmpty())
 
-			vmList := &azurev1alpha1.VirtualMachineList{}
+			vmList := newRemedyResourceList(virtualMachineKind)
 			Expect(c.List(ctx, vmList, client.InNamespace(namespace))).To(Succeed())
 			Expect(vmList.Items).To(BeEmpty())
 		})
+	})
+
+	Describe("#Restore", func() {
+		DescribeTable("should preserve the composed result without running cleanup", func(enabled bool, restoreErr error) {
+			featuregatetesting.SetFeatureGateDuringTest(GinkgoT(), features.ExtensionFeatureGate, features.DisableRemedyController, enabled)
+			pubip := newPubip()
+			pubip.SetFinalizers([]string{publicIpFinalizerString})
+			Expect(c.Create(ctx, pubip)).To(Succeed())
+			cp := newControlPlane()
+			a.EXPECT().Restore(ctx, logger, cp, cluster).Return(true, restoreErr)
+
+			requeue, err := act.Restore(ctx, logger, cp, cluster)
+			Expect(requeue).To(BeTrue())
+			if restoreErr != nil {
+				Expect(err).To(MatchError(restoreErr))
+			} else {
+				Expect(err).NotTo(HaveOccurred())
+			}
+			Expect(c.Get(ctx, client.ObjectKeyFromObject(pubip), pubip)).To(Succeed())
+			Expect(pubip.GetFinalizers()).To(ConsistOf(publicIpFinalizerString))
+		},
+			Entry("when the feature gate is disabled", false, nil),
+			Entry("when the composed restore fails", true, fmt.Errorf("restore failed")),
+		)
+
+		It("should return cleanup errors and preserve the composed requeue result", func() {
+			act.client = fakeclient.NewClientBuilder().WithScheme(scheme).WithInterceptorFuncs(interceptor.Funcs{
+				List: func(context.Context, client.WithWatch, client.ObjectList, ...client.ListOption) error {
+					return fmt.Errorf("cleanup failed")
+				},
+			}).Build()
+			cp := newControlPlane()
+			a.EXPECT().Restore(ctx, logger, cp, cluster).Return(true, nil)
+
+			requeue, err := act.Restore(ctx, logger, cp, cluster)
+			Expect(requeue).To(BeTrue())
+			Expect(err).To(MatchError(ContainSubstring("cleanup failed")))
+		})
+	})
+
+	Describe("legacy resource cleanup", func() {
+		DescribeTable("should clean up seed resources by default even while the shoot is hibernated", func(restore bool) {
+			pubip := newPubip()
+			pubip.SetFinalizers([]string{publicIpFinalizerString})
+			vm := newVirtualMachine()
+			vm.SetFinalizers([]string{virtualMachineFinalizerString})
+			secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: remedyShootAccessSecretName, Namespace: namespace}}
+			for _, obj := range []client.Object{pubip, vm, secret} {
+				Expect(c.Create(ctx, obj)).To(Succeed())
+			}
+			cp := newControlPlane()
+			reconcile := act.Reconcile
+			if restore {
+				a.EXPECT().Restore(ctx, logger, cp, cluster).Return(true, nil)
+				reconcile = act.Restore
+			} else {
+				a.EXPECT().Reconcile(ctx, logger, cp, cluster).Return(true, nil)
+			}
+
+			requeue, err := reconcile(ctx, logger, cp, cluster)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(requeue).To(BeTrue())
+			for _, obj := range []client.Object{pubip, vm, secret} {
+				Expect(apierrors.IsNotFound(c.Get(ctx, client.ObjectKeyFromObject(obj), obj))).To(BeTrue())
+			}
+		},
+			Entry("during reconciliation", false),
+			Entry("during restore", true),
+		)
+
+		DescribeTable("should tolerate removed CRDs", func(apiErr error) {
+			act.client = fakeclient.NewClientBuilder().WithScheme(scheme).WithInterceptorFuncs(interceptor.Funcs{
+				List: func(context.Context, client.WithWatch, client.ObjectList, ...client.ListOption) error {
+					return apiErr
+				},
+			}).Build()
+			Expect(act.forceDeleteSeedRemedyControllerResources(ctx, logger, namespace)).To(Succeed())
+		},
+			Entry("no REST mapping", &meta.NoKindMatchError{GroupKind: schema.GroupKind{Group: "azure.remedy.gardener.cloud", Kind: publicIPAddressKind}}),
+			Entry("API endpoint removed", apierrors.NewNotFound(schema.GroupResource{Group: "azure.remedy.gardener.cloud", Resource: "publicipaddresses"}, "")),
+		)
+
+		It("should tolerate CRDs disappearing between listing and deletion", func() {
+			act.client = fakeclient.NewClientBuilder().WithScheme(scheme).WithInterceptorFuncs(interceptor.Funcs{
+				DeleteAllOf: func(context.Context, client.WithWatch, client.Object, ...client.DeleteAllOfOption) error {
+					return apierrors.NewNotFound(schema.GroupResource{Group: "azure.remedy.gardener.cloud", Resource: "publicipaddresses"}, "")
+				},
+			}).Build()
+			Expect(act.forceDeleteSeedRemedyControllerResources(ctx, logger, namespace)).To(Succeed())
+		})
+
+		It("should preserve unrelated finalizers and resources in other namespaces", func() {
+			pubip := newPubip()
+			pubip.SetFinalizers([]string{publicIpFinalizerString, "example.com/other"})
+			other := newVirtualMachine()
+			other.SetNamespace("other")
+			other.SetFinalizers([]string{virtualMachineFinalizerString})
+			Expect(c.Create(ctx, pubip)).To(Succeed())
+			Expect(c.Create(ctx, other)).To(Succeed())
+
+			Expect(act.forceDeleteSeedRemedyControllerResources(ctx, logger, namespace)).To(Succeed())
+			Expect(c.Get(ctx, client.ObjectKeyFromObject(pubip), pubip)).To(Succeed())
+			Expect(pubip.GetFinalizers()).To(ConsistOf("example.com/other"))
+			Expect(c.Get(ctx, client.ObjectKeyFromObject(other), other)).To(Succeed())
+			Expect(other.GetFinalizers()).To(ConsistOf(virtualMachineFinalizerString))
+		})
+
+		It("should propagate API errors other than missing CRDs", func() {
+			apiErr := apierrors.NewForbidden(schema.GroupResource{Group: "azure.remedy.gardener.cloud", Resource: "publicipaddresses"}, "", fmt.Errorf("denied"))
+			act.client = fakeclient.NewClientBuilder().WithScheme(scheme).WithInterceptorFuncs(interceptor.Funcs{
+				List: func(context.Context, client.WithWatch, client.ObjectList, ...client.ListOption) error {
+					return apiErr
+				},
+			}).Build()
+			Expect(act.forceDeleteSeedRemedyControllerResources(ctx, logger, namespace)).To(MatchError(ContainSubstring("denied")))
+		})
+
+		It("should remove legacy finalizers from Services that are no longer LoadBalancers", func() {
+			service := &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{Name: "former-lb", Namespace: namespace, Finalizers: []string{serviceFinalizerName, "example.com/other"}},
+				Spec:       corev1.ServiceSpec{Type: corev1.ServiceTypeClusterIP},
+			}
+			Expect(c.Create(ctx, service)).To(Succeed())
+
+			Expect(act.forceDeleteRemedyServiceFinalizer(ctx, logger, c)).To(Succeed())
+			Expect(c.Get(ctx, client.ObjectKeyFromObject(service), service)).To(Succeed())
+			Expect(service.Finalizers).To(ConsistOf("example.com/other"))
+		})
+
+		DescribeTable("should tolerate concurrent disappearance but propagate other get errors", func(node bool, missing bool) {
+			var (
+				obj client.Object = &corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{Name: "lb", Namespace: namespace, Finalizers: []string{serviceFinalizerName}},
+					Spec:       corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer},
+				}
+				resource = schema.GroupResource{Resource: "services"}
+				cleanup  = act.forceDeleteRemedyServiceFinalizer
+			)
+			if node {
+				obj = &corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "node", Finalizers: []string{nodeFinalizerName}}}
+				resource.Resource = "nodes"
+				cleanup = act.forceDeleteRemedyNodeFinalizer
+			}
+			var apiErr error = apierrors.NewForbidden(resource, obj.GetName(), fmt.Errorf("denied"))
+			if missing {
+				apiErr = apierrors.NewNotFound(resource, obj.GetName())
+			}
+			shootClient := fakeclient.NewClientBuilder().WithScheme(scheme).WithObjects(obj).WithInterceptorFuncs(interceptor.Funcs{
+				Get: func(context.Context, client.WithWatch, client.ObjectKey, client.Object, ...client.GetOption) error {
+					return apiErr
+				},
+				Patch: func(context.Context, client.WithWatch, client.Object, client.Patch, ...client.PatchOption) error {
+					Fail("must not patch a stale listed object after Get failed")
+					return nil
+				},
+			}).Build()
+
+			err := cleanup(ctx, logger, shootClient)
+			if missing {
+				Expect(err).NotTo(HaveOccurred())
+			} else {
+				Expect(err).To(MatchError(ContainSubstring("denied")))
+			}
+		},
+			Entry("Service disappears", false, true),
+			Entry("Node disappears", true, true),
+			Entry("Service access is forbidden", false, false),
+			Entry("Node access is forbidden", true, false),
+		)
+
+		DescribeTable("should clean up shoot finalizers without seed CRDs", func(operation string) {
+			cluster.Shoot.Spec.Hibernation = nil
+			cluster.Shoot.Status.IsHibernated = false
+			patches := make(chan string, 2)
+			var serviceFinalizersRemoved atomic.Bool
+			service := &corev1.Service{
+				TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "Service"},
+				ObjectMeta: metav1.ObjectMeta{Name: "lb", Namespace: "default", ResourceVersion: "1", Finalizers: []string{serviceFinalizerName, "example.com/other"}},
+				Spec:       corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer},
+			}
+			node := &corev1.Node{
+				TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "Node"},
+				ObjectMeta: metav1.ObjectMeta{Name: "node", ResourceVersion: "1", Finalizers: []string{nodeFinalizerName, "example.com/other"}},
+			}
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				defer GinkgoRecover()
+				w.Header().Set("Content-Type", "application/json")
+				var response interface{}
+				switch r.URL.Path {
+				case "/api":
+					response = &metav1.APIVersions{Versions: []string{"v1"}}
+				case "/apis":
+					response = &metav1.APIGroupList{}
+				case "/api/v1":
+					response = &metav1.APIResourceList{GroupVersion: "v1", APIResources: []metav1.APIResource{
+						{Name: "services", Kind: "Service", Namespaced: true},
+						{Name: "nodes", Kind: "Node"},
+					}}
+				case "/api/v1/services":
+					response = &corev1.ServiceList{TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "ServiceList"}, Items: []corev1.Service{*service}}
+				case "/api/v1/nodes":
+					response = &corev1.NodeList{TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "NodeList"}, Items: []corev1.Node{*node}}
+				case "/api/v1/namespaces/default/services/lb":
+					response = service
+				case "/api/v1/nodes/node":
+					response = node
+				default:
+					http.NotFound(w, r)
+					return
+				}
+				if r.Method == http.MethodPatch {
+					var patch map[string]interface{}
+					Expect(json.NewDecoder(r.Body).Decode(&patch)).To(Succeed())
+					Expect(patch["metadata"]).To(HaveKeyWithValue("finalizers", []interface{}{"example.com/other"}))
+					if r.URL.Path == "/api/v1/namespaces/default/services/lb" {
+						serviceFinalizersRemoved.Store(true)
+					}
+					patches <- r.URL.Path
+				}
+				Expect(json.NewEncoder(w).Encode(response)).To(Succeed())
+			}))
+			DeferCleanup(server.Close)
+			kubeconfig := fmt.Sprintf("apiVersion: v1\nkind: Config\nclusters:\n- name: shoot\n  cluster:\n    server: %s\ncontexts:\n- name: shoot\n  context:\n    cluster: shoot\ncurrent-context: shoot\n", server.URL)
+			Expect(c.Create(ctx, &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "gardener", Namespace: namespace},
+				Data:       map[string][]byte{"kubeconfig": []byte(kubeconfig)},
+			})).To(Succeed())
+			act.client = interceptor.NewClient(c.(client.WithWatch), interceptor.Funcs{
+				List: func(context.Context, client.WithWatch, client.ObjectList, ...client.ListOption) error {
+					return &meta.NoKindMatchError{GroupKind: schema.GroupKind{Group: "azure.remedy.gardener.cloud", Kind: publicIPAddressKind}}
+				},
+			})
+			cp := newControlPlane()
+			switch operation {
+			case "Reconcile":
+				a.EXPECT().Reconcile(ctx, logger, cp, cluster).Return(false, nil)
+				_, err := act.Reconcile(ctx, logger, cp, cluster)
+				Expect(err).NotTo(HaveOccurred())
+			case "Delete":
+				mr := &resourcesv1alpha1.ManagedResource{ObjectMeta: metav1.ObjectMeta{
+					Name: genericactuator.ControlPlaneShootChartResourceName, Namespace: namespace,
+					Finalizers: []string{"resources.gardener.cloud/gardener-resource-manager"},
+				}}
+				Expect(c.Create(ctx, mr)).To(Succeed())
+				// Model resource-manager withholding its finalizer while a managed Service still has
+				// a Remedy finalizer, and exercise the same deletion wait as the generic actuator.
+				seedClient := interceptor.NewClient(c.(client.WithWatch), interceptor.Funcs{
+					Get: func(ctx context.Context, base client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+						if err := base.Get(ctx, key, obj, opts...); err != nil {
+							return err
+						}
+						if _, ok := obj.(*resourcesv1alpha1.ManagedResource); ok && obj.GetDeletionTimestamp() != nil && serviceFinalizersRemoved.Load() {
+							obj.SetFinalizers(nil)
+							if err := base.Update(ctx, obj); err != nil {
+								return err
+							}
+							return base.Get(ctx, key, obj, opts...)
+						}
+						return nil
+					},
+				})
+				deleteCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+				defer cancel()
+				a.EXPECT().Delete(deleteCtx, logger, cp, cluster).DoAndReturn(func(ctx context.Context, _ logr.Logger, cp *extensionsv1alpha1.ControlPlane, _ *extensionscontroller.Cluster) error {
+					if err := managedresources.Delete(ctx, seedClient, cp.Namespace, mr.Name, false); err != nil {
+						return err
+					}
+					return managedresources.WaitUntilDeleted(ctx, seedClient, cp.Namespace, mr.Name)
+				})
+				Expect(act.Delete(deleteCtx, logger, cp, cluster)).To(Succeed())
+				Expect(apierrors.IsNotFound(c.Get(ctx, client.ObjectKeyFromObject(mr), mr))).To(BeTrue())
+			case "Migrate":
+				a.EXPECT().Migrate(ctx, logger, cp, cluster).Return(nil)
+				Expect(act.Migrate(ctx, logger, cp, cluster)).To(Succeed())
+			case "Restore":
+				a.EXPECT().Restore(ctx, logger, cp, cluster).Return(true, nil)
+				requeue, err := act.Restore(ctx, logger, cp, cluster)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(requeue).To(BeTrue())
+			}
+			Expect(patches).To(HaveLen(2))
+			Expect(patches).To(Receive(Equal("/api/v1/namespaces/default/services/lb")))
+			Expect(patches).To(Receive(Equal("/api/v1/nodes/node")))
+		},
+			Entry("during reconciliation", "Reconcile"),
+			Entry("before waiting for shoot ManagedResource deletion", "Delete"),
+			Entry("during migration", "Migrate"),
+			Entry("during restore", "Restore"),
+		)
 	})
 
 	Describe("#Migrate", func() {
@@ -157,23 +471,23 @@ var _ = Describe("Actuator", func() {
 			cp := newControlPlane()
 			a.EXPECT().Migrate(ctx, logger, cp, cluster).Return(nil)
 
-			pubipWithFinalizers := newPubip(nil)
-			pubipWithFinalizers.Finalizers = append(pubipWithFinalizers.Finalizers, "azure.remedy.gardener.cloud/publicipaddress")
+			pubipWithFinalizers := newPubip()
+			pubipWithFinalizers.SetFinalizers([]string{publicIpFinalizerString})
 			Expect(c.Create(ctx, pubipWithFinalizers)).To(Succeed())
 
 			vmWithFinalizers := newVirtualMachine()
-			vmWithFinalizers.Finalizers = append(vmWithFinalizers.Finalizers, "azure.remedy.gardener.cloud/virtualmachine")
+			vmWithFinalizers.SetFinalizers([]string{virtualMachineFinalizerString})
 			Expect(c.Create(ctx, vmWithFinalizers)).To(Succeed())
 
-			err := actuator.Migrate(ctx, logger, cp, cluster)
+			err := act.Migrate(ctx, logger, cp, cluster)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Finalizers removed and DeleteAllOf called — both objects must be gone.
-			pubipList := &azurev1alpha1.PublicIPAddressList{}
+			pubipList := newRemedyResourceList(publicIPAddressKind)
 			Expect(c.List(ctx, pubipList, client.InNamespace(namespace))).To(Succeed())
 			Expect(pubipList.Items).To(BeEmpty())
 
-			vmList := &azurev1alpha1.VirtualMachineList{}
+			vmList := newRemedyResourceList(virtualMachineKind)
 			Expect(c.List(ctx, vmList, client.InNamespace(namespace))).To(Succeed())
 			Expect(vmList.Items).To(BeEmpty())
 		})

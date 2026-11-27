@@ -11,7 +11,3 @@ dependencies:
   repository: http://localhost:10191
   version: 0.1.0
   condition: csi-driver-node.enabled
-- name: remedy-controller-azure
-  repository: http://localhost:10191
-  version: 0.1.0
-  condition: remedy-controller-azure.enabled
