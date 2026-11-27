@@ -32,6 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/gardener/gardener-extension-provider-azure/imagevector"
+	"github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/helper"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
@@ -408,8 +409,127 @@ func (e *ensurer) EnsureKubeletCloudProviderConfig(ctx context.Context, _ gconte
 	return nil
 }
 
+// EnsureAdditionalUnits ensures additional systemd units
+func (e *ensurer) EnsureAdditionalUnits(ctx context.Context, gctx gcontext.GardenContext, newObj, _ *[]extensionsv1alpha1.Unit) error {
+	cluster, err := gctx.GetCluster(ctx)
+	if err != nil {
+		return err
+	}
+
+	infraConfig, err := helper.InfrastructureConfigFromCluster(cluster)
+	if err != nil {
+		return err
+	}
+
+	if infraConfig == nil || !ptr.Deref(infraConfig.EnableMTUCustomizer, false) {
+		return nil
+	}
+
+	mtuDesc := "auto"
+	if infraConfig.CustomMTUSize != nil {
+		mtuDesc = fmt.Sprintf("%d", *infraConfig.CustomMTUSize)
+	}
+	customMTUUnitContent := fmt.Sprintf(`[Unit]
+Description=Apply a custom MTU to network interfaces (mtu=%s)
+After=network.target
+Wants=network.target
+Before=kubelet.service
+
+[Install]
+WantedBy=kubelet.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/bin/mtu-customizer.sh
+`, mtuDesc)
+	extensionswebhook.AppendUniqueUnit(newObj, extensionsv1alpha1.Unit{
+		Name:    "custom-mtu.service",
+		Enable:  ptr.To(true),
+		Command: ptr.To(extensionsv1alpha1.CommandStart),
+		Content: &customMTUUnitContent,
+	})
+	return nil
+}
+
+func mtuCustomizerFile(customMTUSize *int32) extensionsv1alpha1.File {
+	permissions := uint32(0755)
+	var data string
+	if customMTUSize != nil {
+		data = fmt.Sprintf(`#!/bin/sh
+
+for interface_path in $(find /sys/class/net -type l -print)
+do
+	interface=$(basename ${interface_path})
+
+	if ls -l ${interface_path} | grep -q virtual
+	then
+		echo skipping virtual interface: ${interface}
+		continue
+	fi
+
+	echo changing mtu of non-virtual interface: ${interface} to %d
+	ip link set dev ${interface} mtu %d
+done
+`, *customMTUSize, *customMTUSize)
+	} else {
+		data = `#!/bin/sh
+
+# Detect NIC type via the mana PCI driver binding.
+# MANA VFs present as hv_netvsc at the interface level (both MANA and Mellanox do),
+# so the driver must be detected from the PCI layer, not the network interface.
+# If the mana driver is bound to any PCI device, this is a MANA-capable VM (9000 MTU).
+# Otherwise fall back to 3900.
+if ls /sys/bus/pci/drivers/mana/ 2>/dev/null | grep -qE '^[0-9a-f]{4}:'; then
+	mtu=9000
+else
+	mtu=3900
+fi
+
+echo "detected MTU: ${mtu}"
+
+for interface_path in $(find /sys/class/net -type l -print)
+do
+	interface=$(basename ${interface_path})
+
+	if ls -l ${interface_path} | grep -q virtual
+	then
+		echo skipping virtual interface: ${interface}
+		continue
+	fi
+
+	echo "changing mtu of non-virtual interface: ${interface} to ${mtu}"
+	ip link set dev ${interface} mtu ${mtu}
+done
+`
+	}
+	return extensionsv1alpha1.File{
+		Path:        "/opt/bin/mtu-customizer.sh",
+		Permissions: &permissions,
+		Content: extensionsv1alpha1.FileContent{
+			Inline: &extensionsv1alpha1.FileContentInline{
+				Data: data,
+			},
+		},
+	}
+}
+
 // EnsureAdditionalFiles ensures additional systemd files
 func (e *ensurer) EnsureAdditionalFiles(ctx context.Context, gctx gcontext.GardenContext, newFile, _ *[]extensionsv1alpha1.File) error {
+	cluster, err := gctx.GetCluster(ctx)
+	if err != nil {
+		return err
+	}
+
+	infraConfig, err := helper.InfrastructureConfigFromCluster(cluster)
+	if err != nil {
+		return err
+	}
+
+	if infraConfig != nil && ptr.Deref(infraConfig.EnableMTUCustomizer, false) {
+		*newFile = extensionswebhook.EnsureFileWithPath(*newFile, mtuCustomizerFile(infraConfig.CustomMTUSize))
+	}
+
 	return e.ensureAcrConfigFile(ctx, gctx, newFile)
 }
 

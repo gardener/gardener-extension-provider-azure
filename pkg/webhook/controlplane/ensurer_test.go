@@ -6,6 +6,8 @@ package controlplane
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/Masterminds/semver/v3"
@@ -17,6 +19,7 @@ import (
 	"github.com/gardener/gardener/extensions/pkg/webhook/controlplane/test"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/component/nodemanagement/machinecontrollermanager"
 	"github.com/gardener/gardener/pkg/utils/imagevector"
 	testutils "github.com/gardener/gardener/pkg/utils/test"
@@ -32,6 +35,7 @@ import (
 	"k8s.io/utils/ptr"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	azurev1alpha1 "github.com/gardener/gardener-extension-provider-azure/pkg/apis/azure/v1alpha1"
 	"github.com/gardener/gardener-extension-provider-azure/pkg/azure"
 )
 
@@ -585,6 +589,140 @@ var _ = Describe("Ensurer ", func() {
 				ContainerName:    "machine-controller-manager-provider-azure",
 				ControlledValues: &ccv,
 			}))
+		})
+	})
+
+	Describe("#EnsureAdditionalUnits", func() {
+		mtuUnit := func(customMTUSize *int32) extensionsv1alpha1.Unit {
+			mtuDesc := "auto"
+			if customMTUSize != nil {
+				mtuDesc = fmt.Sprintf("%d", *customMTUSize)
+			}
+			content := fmt.Sprintf(`[Unit]
+Description=Apply a custom MTU to network interfaces (mtu=%s)
+After=network.target
+Wants=network.target
+Before=kubelet.service
+
+[Install]
+WantedBy=kubelet.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/bin/mtu-customizer.sh
+`, mtuDesc)
+			return extensionsv1alpha1.Unit{
+				Name:    "custom-mtu.service",
+				Enable:  ptr.To(true),
+				Command: ptr.To(extensionsv1alpha1.CommandStart),
+				Content: &content,
+			}
+		}
+
+		infraConfigRaw := func(enabled *bool, customMTUSize *int32) []byte {
+			cfg := azurev1alpha1.InfrastructureConfig{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: azurev1alpha1.SchemeGroupVersion.String(),
+					Kind:       "InfrastructureConfig",
+				},
+				EnableMTUCustomizer: enabled,
+				CustomMTUSize:       customMTUSize,
+			}
+			raw, err := json.Marshal(cfg)
+			Expect(err).NotTo(HaveOccurred())
+			return raw
+		}
+
+		gardenCtxWithInfra := func(raw []byte) gcontext.GardenContext {
+			return gcontext.NewInternalGardenContext(&extensionscontroller.Cluster{
+				Shoot: &gardencorev1beta1.Shoot{
+					Spec: gardencorev1beta1.ShootSpec{
+						Provider: gardencorev1beta1.Provider{
+							InfrastructureConfig: &runtime.RawExtension{Raw: raw},
+						},
+					},
+				},
+			})
+		}
+
+		It("should not add the MTU unit when EnableMTUCustomizer is unset (default disabled)", func() {
+			units := []extensionsv1alpha1.Unit{}
+			Expect(ensurer.EnsureAdditionalUnits(ctx, gardenCtxWithInfra(infraConfigRaw(nil, nil)), &units, nil)).To(Succeed())
+			Expect(units).To(BeEmpty())
+		})
+
+		It("should add the MTU unit when EnableMTUCustomizer is true", func() {
+			units := []extensionsv1alpha1.Unit{}
+			Expect(ensurer.EnsureAdditionalUnits(ctx, gardenCtxWithInfra(infraConfigRaw(ptr.To(true), nil)), &units, nil)).To(Succeed())
+			Expect(units).To(ContainElement(mtuUnit(nil)))
+		})
+
+		It("should not add the MTU unit when EnableMTUCustomizer is false", func() {
+			units := []extensionsv1alpha1.Unit{}
+			Expect(ensurer.EnsureAdditionalUnits(ctx, gardenCtxWithInfra(infraConfigRaw(ptr.To(false), nil)), &units, nil)).To(Succeed())
+			Expect(units).To(BeEmpty())
+		})
+
+		It("should embed the custom MTU size in the unit when CustomMTUSize is set", func() {
+			units := []extensionsv1alpha1.Unit{}
+			Expect(ensurer.EnsureAdditionalUnits(ctx, gardenCtxWithInfra(infraConfigRaw(ptr.To(true), ptr.To(int32(1500)))), &units, nil)).To(Succeed())
+			Expect(units).To(ContainElement(mtuUnit(ptr.To(int32(1500)))))
+		})
+	})
+
+	Describe("#EnsureAdditionalFiles", func() {
+		infraConfigRaw := func(enabled *bool, customMTUSize *int32) []byte {
+			cfg := azurev1alpha1.InfrastructureConfig{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: azurev1alpha1.SchemeGroupVersion.String(),
+					Kind:       "InfrastructureConfig",
+				},
+				EnableMTUCustomizer: enabled,
+				CustomMTUSize:       customMTUSize,
+			}
+			raw, err := json.Marshal(cfg)
+			Expect(err).NotTo(HaveOccurred())
+			return raw
+		}
+
+		gardenCtxWithInfra := func(raw []byte) gcontext.GardenContext {
+			return gcontext.NewInternalGardenContext(&extensionscontroller.Cluster{
+				Shoot: &gardencorev1beta1.Shoot{
+					Spec: gardencorev1beta1.ShootSpec{
+						Provider: gardencorev1beta1.Provider{
+							InfrastructureConfig: &runtime.RawExtension{Raw: raw},
+						},
+					},
+					Status: gardencorev1beta1.ShootStatus{
+						TechnicalID: namespace,
+					},
+				},
+			})
+		}
+
+		It("should not add the MTU script file when EnableMTUCustomizer is unset (default disabled)", func() {
+			files := []extensionsv1alpha1.File{}
+			Expect(ensurer.EnsureAdditionalFiles(ctx, gardenCtxWithInfra(infraConfigRaw(nil, nil)), &files, nil)).To(Succeed())
+			Expect(files).To(BeEmpty())
+		})
+
+		It("should add the MTU script file when EnableMTUCustomizer is true", func() {
+			files := []extensionsv1alpha1.File{}
+			Expect(ensurer.EnsureAdditionalFiles(ctx, gardenCtxWithInfra(infraConfigRaw(ptr.To(true), nil)), &files, nil)).To(Succeed())
+			Expect(files).To(ContainElement(mtuCustomizerFile(nil)))
+		})
+
+		It("should not add the MTU script file when EnableMTUCustomizer is false", func() {
+			files := []extensionsv1alpha1.File{}
+			Expect(ensurer.EnsureAdditionalFiles(ctx, gardenCtxWithInfra(infraConfigRaw(ptr.To(false), nil)), &files, nil)).To(Succeed())
+			Expect(files).NotTo(ContainElement(mtuCustomizerFile(nil)))
+		})
+
+		It("should use the custom MTU size when CustomMTUSize is set", func() {
+			files := []extensionsv1alpha1.File{}
+			Expect(ensurer.EnsureAdditionalFiles(ctx, gardenCtxWithInfra(infraConfigRaw(ptr.To(true), ptr.To(int32(1500)))), &files, nil)).To(Succeed())
+			Expect(files).To(ContainElement(mtuCustomizerFile(ptr.To(int32(1500)))))
 		})
 	})
 })

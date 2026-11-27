@@ -815,6 +815,30 @@ boolean
 <p>Zoned indicates whether the cluster uses availability zones.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>enableMTUCustomizer</code></br>
+<em>
+boolean
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnableMTUCustomizer controls whether the mtu-customizer systemd unit and script are deployed to<br />the shoot worker nodes. When enabled, the MTU of all non-virtual network interfaces is set to CustomMTUSize.<br />Default: false</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>customMTUSize</code></br>
+<em>
+integer
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CustomMTUSize is the MTU size to set on non-virtual network interfaces when the MTU customizer is enabled.<br />If not specified, the MTU is auto-detected via the PCI driver layer: 9000 if a MANA NIC is present<br />(/sys/bus/pci/drivers/mana/ has a bound device), 3900 otherwise.<br />Valid range is 68–9000.</p>
+</td>
+</tr>
 
 </tbody>
 </table>

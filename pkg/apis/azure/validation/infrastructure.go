@@ -29,6 +29,8 @@ import (
 const (
 	natGatewayMinTimeoutInMinutes int32 = 4
 	natGatewayMaxTimeoutInMinutes int32 = 120
+	mtuMinSize                    int32 = 68
+	mtuMaxSize                    int32 = 9000
 )
 
 // ValidateInfrastructureConfigAgainstCloudProfile validates the InfrastructureConfig against the CloudProfile.
@@ -134,6 +136,14 @@ func ValidateInfrastructureConfig(infra *apisazure.InfrastructureConfig, shoot *
 		path := fldPath.Child("identity")
 		allErrs = append(allErrs, validateResourceGroupName(infra.Identity.ResourceGroup, path.Child("resourceGroup"))...)
 		allErrs = append(allErrs, validateGenericName(infra.Identity.Name, path.Child("name"))...)
+	}
+
+	if infra.CustomMTUSize != nil && (*infra.CustomMTUSize < mtuMinSize || *infra.CustomMTUSize > mtuMaxSize) {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("customMTUSize"), *infra.CustomMTUSize, fmt.Sprintf("must be between %d and %d", mtuMinSize, mtuMaxSize)))
+	}
+
+	if infra.CustomMTUSize != nil && !ptr.Deref(infra.EnableMTUCustomizer, false) {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("customMTUSize"), *infra.CustomMTUSize, "has no effect when enableMTUCustomizer is not set to true"))
 	}
 
 	return allErrs
